@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -6,15 +7,20 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
+import { TKmsServiceFactory } from "../kms/kms-service";
+import { TProjectDALFactory } from "../project/project-dal";
+import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
   EnrollmentType,
@@ -27,18 +33,67 @@ import {
   TCertificateProfileWithRawMetrics
 } from "./certificate-profile-types";
 
-const validateAndEncodeBase64CaChain = (caChain: unknown) => {
+const validateAndEncryptPemCaChain = async (
+  caChain: string,
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+) => {
   try {
-    if (typeof caChain !== "string") {
-      throw new BadRequestError({ message: "CA chain must be a string" });
+    const certificates = extractX509CertFromChain(caChain)?.map((cert) => new x509.X509Certificate(cert));
+
+    if (!certificates || certificates.length === 0) {
+      throw new BadRequestError({ message: "Failed to parse certificate chain" });
     }
-    const buffer = Buffer.from(caChain, "base64");
-    if (buffer.toString("base64") !== caChain) {
-      throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
+
+    if (!(await isCertChainValid(certificates))) {
+      throw new BadRequestError({ message: "Invalid certificate chain" });
     }
-    return { encryptedCaChain: buffer };
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const { cipherTextBlob } = await kmsEncryptor({
+      plainText: Buffer.from(caChain)
+    });
+
+    return { encryptedCaChain: cipherTextBlob };
   } catch (error) {
-    throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
+    throw new BadRequestError({ message: `Failed to process certificate chain: ${(error as Error).message}` });
+  }
+};
+
+const decryptCaChain = async (
+  encryptedCaChain: Buffer,
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "decryptWithKmsKey">,
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+): Promise<string> => {
+  try {
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const decryptedCaChain = await kmsDecryptor({
+      cipherTextBlob: encryptedCaChain
+    });
+
+    return decryptedCaChain.toString();
+  } catch (error) {
+    throw new BadRequestError({ message: `Failed to decrypt certificate chain: ${(error as Error).message}` });
   }
 };
 
@@ -53,6 +108,8 @@ type TCertificateProfileServiceFactoryDep = {
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
 };
 
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
@@ -69,7 +126,9 @@ export const certificateProfileServiceFactory = ({
   certificateTemplateV2DAL,
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
-  permissionService
+  permissionService,
+  kmsService,
+  projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
   const createProfile = async ({
     actor,
@@ -140,21 +199,17 @@ export const certificateProfileServiceFactory = ({
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
         // Hash the passphrase
-        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphraseInput, appCfg.SALT_ROUNDS);
+        const hashedPassphrase = await crypto.hashing().createHash(data.estConfig.passphrase, appCfg.SALT_ROUNDS);
 
         let encryptedCaChainBuffer: Buffer | null = null;
-        if (!data.estConfig.disableBootstrapCaValidation) {
-          try {
-            if (!data.estConfig.encryptedCaChain || typeof data.estConfig.encryptedCaChain !== "string") {
-              throw new BadRequestError({ message: "Invalid or missing CA chain data" });
-            }
-            encryptedCaChainBuffer = Buffer.from(data.estConfig.encryptedCaChain, "base64");
-            if (encryptedCaChainBuffer.toString("base64") !== data.estConfig.encryptedCaChain) {
-              throw new BadRequestError({ message: "Invalid Base64 encoding in CA chain data" });
-            }
-          } catch (error) {
-            throw new BadRequestError({ message: "Failed to decode CA chain data: Invalid Base64 format" });
-          }
+        if (!data.estConfig.disableBootstrapCaValidation && data.estConfig.caChain) {
+          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
+            data.estConfig.caChain,
+            projectId,
+            kmsService,
+            projectDAL
+          );
+          encryptedCaChainBuffer = encryptedCaChain;
         }
 
         const estConfig = await estEnrollmentConfigDAL.create(
@@ -256,17 +311,31 @@ export const certificateProfileServiceFactory = ({
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
-        await estEnrollmentConfigDAL.updateById(
-          existingProfile.estConfigId,
-          {
-            disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation,
-            ...(estConfig.passphraseInput && {
-              hashedPassphrase: await crypto.hashing().createHash(estConfig.passphraseInput, getConfig().SALT_ROUNDS)
-            }),
-            ...(estConfig.caChain && validateAndEncodeBase64CaChain(estConfig.caChain))
-          },
-          tx
-        );
+        const updateData: {
+          disableBootstrapCaValidation: boolean;
+          hashedPassphrase?: string;
+          encryptedCaChain?: Buffer;
+        } = {
+          disableBootstrapCaValidation: estConfig.disableBootstrapCaValidation ?? false
+        };
+
+        if (estConfig.passphrase) {
+          updateData.hashedPassphrase = await crypto
+            .hashing()
+            .createHash(estConfig.passphrase, getConfig().SALT_ROUNDS);
+        }
+
+        if (estConfig.caChain) {
+          const { encryptedCaChain } = await validateAndEncryptPemCaChain(
+            estConfig.caChain,
+            existingProfile.projectId,
+            kmsService,
+            projectDAL
+          );
+          updateData.encryptedCaChain = encryptedCaChain;
+        }
+
+        await estEnrollmentConfigDAL.updateById(existingProfile.estConfigId, updateData, tx);
       }
 
       if (apiConfig && existingProfile.apiConfigId) {
@@ -366,6 +435,25 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
+    if (profile.estConfig && profile.estConfig.caChain) {
+      try {
+        const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId!);
+        if (estConfig && estConfig.encryptedCaChain) {
+          const decryptedCaChain = await decryptCaChain(
+            estConfig.encryptedCaChain,
+            profile.projectId,
+            kmsService,
+            projectDAL
+          );
+          profile.estConfig.caChain = decryptedCaChain;
+        } else {
+          profile.estConfig.caChain = "";
+        }
+      } catch (error) {
+        profile.estConfig.caChain = "";
+      }
+    }
+
     return {
       ...profile,
       enrollmentType: profile.enrollmentType as EnrollmentType
@@ -435,7 +523,7 @@ export const certificateProfileServiceFactory = ({
     includeMetrics?: boolean;
     expiringDays?: number;
   }): Promise<{
-    profiles: (TCertificateProfile & { metrics?: TCertificateProfileMetrics })[];
+    profiles: (TCertificateProfileWithConfigs & { metrics?: TCertificateProfileMetrics })[];
     totalCount: number;
   }> => {
     const { permission } = await permissionService.getProjectPermission({
@@ -467,24 +555,66 @@ export const certificateProfileServiceFactory = ({
       caId
     });
 
-    const convertedProfiles = profiles.map((profile) => {
-      const converted = convertDalToService(profile);
-      if (includeMetrics) {
-        const profileWithMetrics = profile as TCertificateProfileWithRawMetrics;
-        return {
-          ...converted,
-          metrics: {
-            profileId: converted.id,
-            totalCertificates: parseInt(String(profileWithMetrics.total_certificates || 0), 10),
-            activeCertificates: parseInt(String(profileWithMetrics.active_certificates || 0), 10),
-            expiredCertificates: parseInt(String(profileWithMetrics.expired_certificates || 0), 10),
-            expiringCertificates: parseInt(String(profileWithMetrics.expiring_certificates || 0), 10),
-            revokedCertificates: parseInt(String(profileWithMetrics.revoked_certificates || 0), 10)
+    const convertedProfiles = await Promise.all(
+      profiles.map(async (profile) => {
+        const profileWithConfigs = profile as TCertificateProfileWithConfigs;
+
+        let decryptedEstConfig = profileWithConfigs.estConfig;
+        if (decryptedEstConfig && profileWithConfigs.estConfigId) {
+          try {
+            const estConfig = await estEnrollmentConfigDAL.findById(profileWithConfigs.estConfigId);
+            if (estConfig && estConfig.encryptedCaChain) {
+              const decryptedCaChain = await decryptCaChain(
+                estConfig.encryptedCaChain,
+                projectId,
+                kmsService,
+                projectDAL
+              );
+              decryptedEstConfig = {
+                ...decryptedEstConfig,
+                caChain: decryptedCaChain
+              };
+            } else if (decryptedEstConfig) {
+              decryptedEstConfig = {
+                ...decryptedEstConfig,
+                caChain: ""
+              };
+            }
+          } catch (error) {
+            if (decryptedEstConfig) {
+              decryptedEstConfig = {
+                ...decryptedEstConfig,
+                caChain: ""
+              };
+            }
           }
+        }
+
+        const converted = convertDalToService(profileWithConfigs);
+        let result: TCertificateProfileWithConfigs & { metrics?: TCertificateProfileMetrics } = {
+          ...converted,
+          estConfig: decryptedEstConfig,
+          apiConfig: profileWithConfigs.apiConfig
         };
-      }
-      return converted;
-    });
+
+        if (includeMetrics) {
+          const profileWithMetrics = profile as TCertificateProfileWithRawMetrics;
+          result = {
+            ...result,
+            metrics: {
+              profileId: converted.id,
+              totalCertificates: parseInt(String(profileWithMetrics.total_certificates || 0), 10),
+              activeCertificates: parseInt(String(profileWithMetrics.active_certificates || 0), 10),
+              expiredCertificates: parseInt(String(profileWithMetrics.expired_certificates || 0), 10),
+              expiringCertificates: parseInt(String(profileWithMetrics.expiring_certificates || 0), 10),
+              revokedCertificates: parseInt(String(profileWithMetrics.revoked_certificates || 0), 10)
+            }
+          };
+        }
+
+        return result;
+      })
+    );
 
     return {
       profiles: convertedProfiles,
@@ -673,9 +803,9 @@ export const certificateProfileServiceFactory = ({
     return {
       orgId: profile.projectId,
       isEnabled: true,
-      caChain: profile.estConfig.encryptedCaChain,
+      caChain: profile.estConfig.caChain,
       disableBootstrapCertValidation: profile.estConfig.disableBootstrapCaValidation,
-      hashedPassphrase: profile.estConfig.hashedPassphrase
+      hashedPassphrase: ""
     };
   };
 

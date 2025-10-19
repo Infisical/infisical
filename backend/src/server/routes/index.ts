@@ -1139,7 +1139,9 @@ export const registerRoutes = async (
     certificateTemplateV2DAL,
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
-    permissionService
+    permissionService,
+    kmsService,
+    projectDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({

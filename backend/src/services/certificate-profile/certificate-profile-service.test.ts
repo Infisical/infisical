@@ -12,6 +12,8 @@ import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
+import type { TKmsServiceFactory } from "../kms/kms-service";
+import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import { EnrollmentType, TCertificateProfile, TCertificateProfileWithConfigs } from "./certificate-profile-types";
@@ -149,6 +151,22 @@ describe("CertificateProfileService", () => {
     })
   } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission">;
 
+  const mockKmsService = {
+    encryptWithKmsKey: vi
+      .fn()
+      .mockResolvedValue(() => Promise.resolve({ cipherTextBlob: Buffer.from("encrypted-data") })),
+    decryptWithKmsKey: vi.fn().mockResolvedValue(() => Promise.resolve(Buffer.from("decrypted-ca-chain"))),
+    generateKmsKey: vi.fn()
+  } as unknown as Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+
+  const mockProjectDAL = {
+    findById: vi.fn(),
+    findOne: vi.fn(),
+    updateById: vi.fn(),
+    findProjectBySlug: vi.fn(),
+    transaction: vi.fn()
+  } as unknown as Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
+
   beforeEach(() => {
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
       throwUnlessCan: vi.fn()
@@ -165,7 +183,9 @@ describe("CertificateProfileService", () => {
       certificateTemplateV2DAL: mockCertificateTemplateV2DAL,
       apiEnrollmentConfigDAL: mockApiEnrollmentConfigDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
-      permissionService: mockPermissionService
+      permissionService: mockPermissionService,
+      kmsService: mockKmsService,
+      projectDAL: mockProjectDAL
     });
   });
 
@@ -698,8 +718,9 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           estConfig: {
             disableBootstrapCaValidation: false,
-            passphraseInput: "secret-passphrase",
-            encryptedCaChain: Buffer.from("test-ca-chain-data").toString("base64")
+            passphrase: "secret-passphrase",
+            caChain:
+              "-----BEGIN CERTIFICATE-----\nMIIC+DCCAeCgAwIBAgIUBmCvLQ7l6CmNYjGeGXqIaS9LPuUwDQYJKoZIhvcNAQEL\nBQAwFDESMBAGA1UEChMJSW5maXNpY2FsMB4XDTI1MTAxNzE1MjczMFoXDTM1MTAx\nNzAwMDAwMFowFDESMBAGA1UEChMJSW5maXNpY2FsMIIBIjANBgkqhkiG9w0BAQEF\nAAOCAQ8AMIIBCgKCAQEAqRS0ZKh44Y1GHvD4/ryduaelVtfvqkdCmhxpCp7OTjIA\n/gPuVoBA31gxqMVcpDgIAk8dfqds0WFzFe2byhbBalNm3+FSYJkEKa1mdCnqM/mL\nt6O0V/dPv2dcepDluwWbHJIuFf5elH1F8eeyqZV5w6c980lOyDO0DVNqB6pjGlPq\njEVcvEdEtGSfIX3B2tmODilwUvl/lGjhnK6ghfots7i1Xno9VAY/YTqR0T+lyPx4\n23r+22gstJ7XCLA7aqfRyFyYaVKqubHPBwz2qKiBTc3Shc3ii/OHc5KjTpADNRDv\nvH7X5kOXYtdpGbMsJ1uY+MPwfbOVkxy4tg4HFejmyQIDAQABo0IwQDAPBgNVHRMB\nAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAdBgNVHQ4EFgQUpshrlfvvw+zkoLKf\nxNUYD92/YxIwDQYJKoZIhvcNAQELBQADggEBAAWDMNe8HnoOPHF1sIUcCvJjBeUz\neB++l5Er9P+UPpkSr7+KpD+9DQGWmaOT57Vp7nBYXd42828h+cq7KEG2w5Uf6fYD\nBuitrzj2IzNznvKwOMh/qAePC17tH4mnkSnsJCMg6cvG99GG+vQoMQW7+D6VshIH\nm5hNThNGSPznk+eNk+NlIIVzD4autRn+U5geYzDaZIWfmx95gwCPK2VVw1IDExA+\naQiZi4g1JviUB97E92rZzX+Ai4GYk+CKQTxAiZPZ2M9gRFLrjKIGbRu7FaL+9lwU\nWnax4HJZ/cdVUtVp8VgaAOy7qvl5WGZ4eLopLhMkW3RyPiFr4+M3vNJocqU=\n-----END CERTIFICATE-----"
           }
         };
 
@@ -723,7 +744,7 @@ describe("CertificateProfileService", () => {
           {
             disableBootstrapCaValidation: estProfileData.estConfig.disableBootstrapCaValidation,
             hashedPassphrase: "mocked-hash",
-            encryptedCaChain: Buffer.from(estProfileData.estConfig.encryptedCaChain, "base64")
+            encryptedCaChain: Buffer.from("encrypted-data")
           },
           undefined
         );
@@ -1091,8 +1112,8 @@ describe("CertificateProfileService", () => {
         estConfig: {
           id: "est-config-123",
           disableBootstrapCaValidation: false,
-          hashedPassphrase: "hashed-passphrase",
-          encryptedCaChain: Buffer.from("mock-ca-chain").toString("base64")
+          passphrase: "",
+          caChain: "mock-ca-chain"
         }
       } as TCertificateProfileWithConfigs;
 
@@ -1103,9 +1124,9 @@ describe("CertificateProfileService", () => {
       expect(result).toEqual({
         orgId: "project-123",
         isEnabled: true,
-        caChain: "bW9jay1jYS1jaGFpbg==", // base64 encoded
+        caChain: "mock-ca-chain",
         disableBootstrapCertValidation: false,
-        hashedPassphrase: "hashed-passphrase"
+        hashedPassphrase: ""
       });
     });
 
@@ -1125,8 +1146,8 @@ describe("CertificateProfileService", () => {
         estConfig: {
           id: "est-config-123",
           disableBootstrapCaValidation: false,
-          hashedPassphrase: "hashed-passphrase",
-          encryptedCaChain: Buffer.from("mock-ca-chain").toString("base64")
+          passphrase: "",
+          caChain: "mock-ca-chain"
         }
       } as TCertificateProfileWithConfigs;
 

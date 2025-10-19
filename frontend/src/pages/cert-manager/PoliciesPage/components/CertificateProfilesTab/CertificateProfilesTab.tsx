@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
-  TCertificateProfile,
+  TCertificateProfileWithDetails,
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
@@ -23,7 +23,9 @@ export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedProfile, setSelectedProfile] = useState<TCertificateProfile | null>(null);
+  const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
+    null
+  );
 
   const deleteProfile = useDeleteCertificateProfile();
 
@@ -36,12 +38,12 @@ export const CertificateProfilesTab = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleEditProfile = (profile: TCertificateProfile) => {
+  const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteProfile = (profile: TCertificateProfile) => {
+  const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsDeleteModalOpen(true);
   };
@@ -111,7 +113,9 @@ export const CertificateProfilesTab = () => {
             title={`Delete Certificate Profile ${selectedProfile.slug}?`}
             onChange={(isOpen) => {
               setIsDeleteModalOpen(isOpen);
-              if (!isOpen) setSelectedProfile(null);
+              if (!isOpen) {
+                setSelectedProfile(null);
+              }
             }}
             deleteKey={selectedProfile.slug}
             onDeleteApproved={handleDeleteConfirm}

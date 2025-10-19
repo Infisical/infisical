@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -47,7 +48,7 @@ const createSchema = z
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
-        passphraseInput: z.string().min(1, "EST passphrase is required"),
+        passphrase: z.string().min(1, "EST passphrase is required"),
         caChain: z.string().min(1, "EST CA chain is required").optional()
       })
       .refine(
@@ -107,7 +108,7 @@ const editSchema = z
     estConfig: z
       .object({
         disableBootstrapCaValidation: z.boolean().optional(),
-        passphraseInput: z.string().optional(),
+        passphrase: z.string().optional(),
         caChain: z.string().optional()
       })
       .optional(),
@@ -174,8 +175,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               ? {
                   disableBootstrapCaValidation:
                     profile.estConfig?.disableBootstrapCaValidation || false,
-                  passphraseInput: "",
-                  caChain: profile.estConfig?.encryptedCaChain || ""
+                  passphrase: profile.estConfig?.passphrase || "",
+                  caChain: profile.estConfig?.caChain || ""
                 }
               : undefined,
           apiConfig:
@@ -202,6 +203,34 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   const watchedEnrollmentType = watch("enrollmentType");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
+
+  useEffect(() => {
+    if (isEdit && profile) {
+      reset({
+        slug: profile.slug,
+        description: profile.description || "",
+        enrollmentType: profile.enrollmentType,
+        certificateAuthorityId: profile.caId,
+        certificateTemplateId: profile.certificateTemplateId,
+        estConfig:
+          profile.enrollmentType === "est"
+            ? {
+                disableBootstrapCaValidation:
+                  profile.estConfig?.disableBootstrapCaValidation || false,
+                passphrase: profile.estConfig?.passphrase || "",
+                caChain: profile.estConfig?.caChain || ""
+              }
+            : undefined,
+        apiConfig:
+          profile.enrollmentType === "api"
+            ? {
+                autoRenew: profile.apiConfig?.autoRenew || false,
+                autoRenewDays: profile.apiConfig?.autoRenewDays || 30
+              }
+            : undefined
+      });
+    }
+  }, [isEdit, profile, reset]);
 
   const onFormSubmit = async (data: FormData) => {
     try {
@@ -237,7 +266,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
         if (data.enrollmentType === "est" && data.estConfig) {
           createData.estConfig = {
-            passphraseInput: data.estConfig.passphraseInput,
+            passphrase: data.estConfig.passphrase,
             caChain: data.estConfig.caChain || undefined,
             disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
           };
@@ -354,7 +383,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                     if (watchedEnrollmentType === "est") {
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
-                        passphraseInput: ""
+                        passphrase: ""
                       });
                       setValue("apiConfig", undefined);
                     } else {
@@ -398,7 +427,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                       setValue("apiConfig", undefined);
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
-                        passphraseInput: ""
+                        passphrase: ""
                       });
                     } else {
                       setValue("estConfig", undefined);
@@ -450,7 +479,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
 
                 <Controller
                   control={control}
-                  name="estConfig.passphraseInput"
+                  name="estConfig.passphrase"
                   render={({ field, fieldState: { error } }) => (
                     <FormControl
                       label="EST Passphrase"
@@ -543,7 +572,6 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                           if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= 365) {
                             field.onChange(parsed);
                           } else {
-                            // Preserve the original field value instead of defaulting to 30
                             field.onChange(field.value || "");
                           }
                         }

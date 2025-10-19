@@ -11,15 +11,15 @@ import {
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
-  TCertificateProfile,
+  TCertificateProfileWithDetails,
   useListCertificateProfiles
 } from "@app/hooks/api/certificateProfiles";
 
 import { ProfileRow } from "./ProfileRow";
 
 interface Props {
-  onEditProfile: (profile: TCertificateProfile) => void;
-  onDeleteProfile: (profile: TCertificateProfile) => void;
+  onEditProfile: (profile: TCertificateProfileWithDetails) => void;
+  onDeleteProfile: (profile: TCertificateProfileWithDetails) => void;
 }
 
 export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
@@ -29,6 +29,7 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
     projectId: currentProject?.id || "",
     limit: 100,
     offset: 0,
+    includeConfigs: true,
     includeMetrics: true
   });
 

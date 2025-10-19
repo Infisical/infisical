@@ -21,7 +21,7 @@ export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enr
   enrollmentType?: EnrollmentType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
-    passphraseInput?: string;
+    passphrase?: string;
     caChain?: string;
   };
   apiConfig?: {
@@ -46,8 +46,8 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
   estConfig?: {
     id: string;
     disableBootstrapCaValidation: boolean;
-    hashedPassphrase: string;
-    encryptedCaChain: string;
+    passphrase: string;
+    caChain: string;
   };
   apiConfig?: {
     id: string;

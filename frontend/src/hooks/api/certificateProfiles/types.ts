@@ -23,14 +23,14 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   certificateTemplate?: {
     id: string;
     projectId: string;
-    slug: string;
+    name: string;
     description?: string;
   };
   estConfig?: {
     id: string;
     disableBootstrapCaValidation: boolean;
-    hashedPassphrase: string;
-    encryptedCaChain: string;
+    passphrase: string;
+    caChain: string;
   };
   apiConfig?: {
     id: string;
@@ -48,7 +48,7 @@ export type TCreateCertificateProfileDTO = {
   enrollmentType: "api" | "est";
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
-    passphraseInput: string;
+    passphrase: string;
     caChain?: string;
   };
   apiConfig?: {
@@ -82,6 +82,7 @@ export type TListCertificateProfilesDTO = {
   offset?: number;
   search?: string;
   includeMetrics?: boolean;
+  includeConfigs?: boolean;
   expiringDays?: number;
 };
 

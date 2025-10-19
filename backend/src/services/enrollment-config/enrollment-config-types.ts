@@ -19,8 +19,8 @@ export type TApiEnrollmentConfigUpdate = TPkiApiEnrollmentConfigsUpdate;
 
 export interface TEstConfigData {
   disableBootstrapCaValidation: boolean;
-  passphraseInput: string;
-  encryptedCaChain?: string;
+  passphrase: string;
+  caChain?: string;
 }
 
 export interface TApiConfigData {

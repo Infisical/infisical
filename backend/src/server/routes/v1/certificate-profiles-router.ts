@@ -35,8 +35,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
-              passphraseInput: z.string().min(1),
-              encryptedCaChain: z.string().optional()
+              passphrase: z.string().min(1),
+              caChain: z.string().optional()
             })
             .optional(),
           apiConfig: z
@@ -137,6 +137,21 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 expiringCertificates: z.number(),
                 revokedCertificates: z.number()
               })
+              .optional(),
+            estConfig: z
+              .object({
+                id: z.string(),
+                disableBootstrapCaValidation: z.boolean(),
+                passphrase: z.string(),
+                caChain: z.string().optional()
+              })
+              .optional(),
+            apiConfig: z
+              .object({
+                id: z.string(),
+                autoRenew: z.boolean(),
+                autoRenewDays: z.number().optional()
+              })
               .optional()
           }).array(),
           totalCount: z.number()
@@ -207,8 +222,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               .object({
                 id: z.string(),
                 disableBootstrapCaValidation: z.boolean(),
-                hashedPassphrase: z.string(),
-                encryptedCaChain: z.string()
+                passphrase: z.string(),
+                caChain: z.string().optional()
               })
               .optional(),
             apiConfig: z
@@ -333,8 +348,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
-              passphraseInput: z.string().min(1),
-              encryptedCaChain: z.string()
+              passphrase: z.string().min(1).optional(),
+              caChain: z.string().optional()
             })
             .optional(),
           apiConfig: z

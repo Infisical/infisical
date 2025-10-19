@@ -21,6 +21,7 @@ export const certificateProfileKeys = {
     offset?: number;
     search?: string;
     includeMetrics?: boolean;
+    includeConfigs?: boolean;
     expiringDays?: number;
   }) => ["certificate-profiles", "list", params],
   getById: (profileId: string) => ["certificate-profiles", "get-by-id", profileId],
@@ -50,6 +51,7 @@ export const useListCertificateProfiles = ({
   offset = 0,
   search,
   includeMetrics = false,
+  includeConfigs = false,
   expiringDays = 7
 }: TListCertificateProfilesDTO) => {
   return useQuery({
@@ -59,6 +61,7 @@ export const useListCertificateProfiles = ({
       offset,
       search,
       includeMetrics,
+      includeConfigs,
       expiringDays
     }),
     queryFn: async () => {
@@ -72,6 +75,7 @@ export const useListCertificateProfiles = ({
           offset,
           search,
           includeMetrics,
+          includeConfigs,
           expiringDays
         }
       });
