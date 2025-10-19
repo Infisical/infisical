@@ -20,6 +20,7 @@ export type Identity = {
   createdAt: string;
   updatedAt: string;
   isInstanceAdmin?: boolean;
+  orgId: string;
 };
 
 export type IdentityAccessToken = {

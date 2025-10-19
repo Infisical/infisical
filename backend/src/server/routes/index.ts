@@ -1583,6 +1583,7 @@ export const registerRoutes = async (
   });
 
   const identityService = identityServiceFactory({
+    additionalPrivilegeDAL,
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,

@@ -33,6 +33,7 @@ const Page = () => {
   const orgId = currentOrg?.id || "";
   const { data } = useGetIdentityById(identityId);
   const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+  const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "identity",
@@ -91,10 +92,12 @@ const Page = () => {
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-              <IdentityAuthenticationSection
-                identityId={identityId}
-                handlePopUpOpen={handlePopUpOpen}
-              />
+              {!isAuthHidden && (
+                <IdentityAuthenticationSection
+                  identityId={identityId}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              )}
             </div>
             <IdentityProjectsSection identityId={identityId} />
           </div>

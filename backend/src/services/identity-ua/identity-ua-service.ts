@@ -13,6 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import {
   BadRequestError,
+  ForbiddenRequestError,
   NotFoundError,
   PermissionBoundaryError,
   RateLimitError,
@@ -315,6 +316,13 @@ export const identityUaServiceFactory = ({
         message: "Failed to add universal auth to already configured identity"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
@@ -425,6 +433,10 @@ export const identityUaServiceFactory = ({
       });
     }
 
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
     if (
       (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL) > 0 &&
       (accessTokenTTL || uaIdentityAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
@@ -515,6 +527,9 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -548,6 +563,9 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
+    }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
@@ -616,6 +634,9 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
+    }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
     const { permission } = await permissionService.getOrgPermission({
@@ -700,6 +721,10 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
     const { permission } = await permissionService.getOrgPermission({
       scope: OrganizationActionScope.Any,
       actor,
@@ -770,6 +795,9 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     const identityUa = await identityUaDAL.findOne({ identityId });
     if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -838,6 +866,9 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
+    }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
     const identityUa = await identityUaDAL.findOne({ identityId });
@@ -912,6 +943,9 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({
         message: "The identity does not have universal auth"
       });
+    }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
     const { permission } = await permissionService.getOrgPermission({

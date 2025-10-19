@@ -163,7 +163,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.Membership),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
-          db.ref("hasDeleteProtection").withSchema(TableName.Identity)
+          db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("orgId").withSchema(TableName.Identity)
         )
         .where(filter)
         .as("paginatedIdentity");
@@ -257,6 +258,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
           db.ref("scopeOrgId").withSchema("paginatedIdentity").as("orgId"),
           db.ref("lastLoginAuthMethod").withSchema("paginatedIdentity"),
+          db.ref("orgId").withSchema("paginatedIdentity").as("identityOrgId"),
           db.ref("lastLoginTime").withSchema("paginatedIdentity"),
           db.ref("createdAt").withSchema("paginatedIdentity"),
           db.ref("updatedAt").withSchema("paginatedIdentity"),
@@ -309,6 +311,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           roleId,
           id,
           orgId,
+          identityOrgId,
           uaId,
           alicloudId,
           awsId,
@@ -348,6 +351,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
+            orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,

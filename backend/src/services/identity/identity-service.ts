@@ -28,6 +28,7 @@ import {
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
@@ -40,6 +41,7 @@ type TIdentityServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
 };
 
 export type TIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
@@ -54,7 +56,8 @@ export const identityServiceFactory = ({
   keyStore,
   orgDAL,
   membershipIdentityDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  additionalPrivilegeDAL
 }: TIdentityServiceFactoryDep) => {
   const createIdentity = async ({
     name,
@@ -337,10 +340,35 @@ export const identityServiceFactory = ({
     if (identityOrgMembership.identity.hasDeleteProtection)
       throw new BadRequestError({ message: "Identity has delete protection" });
 
-    const deletedIdentity = await identityDAL.deleteById(id);
+    if (identityOrgMembership.identity.identityOrgId === actorOrgId) {
+      const deletedIdentity = await identityDAL.deleteById(id);
+      await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
+      return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
+    }
 
-    await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
+    await membershipIdentityDAL.transaction(async (tx) => {
+      const identityProjectMembership = await membershipIdentityDAL.find(
+        {
+          actorIdentityId: id,
+          scope: AccessScope.Project,
+          scopeOrgId: actorOrgId
+        },
+        { tx }
+      );
+      await additionalPrivilegeDAL.delete(
+        {
+          actorIdentityId: id,
+          $in: {
+            projectId: identityProjectMembership.map((el) => el.scopeProjectId)
+          }
+        },
+        tx
+      );
+      const doc = await membershipIdentityDAL.delete({ actorIdentityId: id, scopeOrgId: actorOrgId }, tx);
+      return doc;
+    });
 
+    const deletedIdentity = await identityDAL.findById(id);
     return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
   };
 
