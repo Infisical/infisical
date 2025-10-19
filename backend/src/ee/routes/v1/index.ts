@@ -48,9 +48,9 @@ import { registerSshCertRouter } from "./ssh-certificate-router";
 import { registerSshCertificateTemplateRouter } from "./ssh-certificate-template-router";
 import { registerSshHostGroupRouter } from "./ssh-host-group-router";
 import { registerSshHostRouter } from "./ssh-host-router";
+import { registerSubOrgRouter } from "./sub-org-router";
 import { registerTrustedIpRouter } from "./trusted-ip-router";
 import { registerUserAdditionalPrivilegeRouter } from "./user-additional-privilege-router";
-import { registerSubOrgRouter } from "./sub-org-router";
 
 export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   // org role starts with organization

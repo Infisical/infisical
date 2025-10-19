@@ -24,11 +24,11 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
 import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
+import { IdentityLinkForm } from "./IdentityLinkForm";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
-import { IdentityLinkForm } from "./IdentityLinkForm";
 
 export const IdentitySection = withPermission(
   () => {

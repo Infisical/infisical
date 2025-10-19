@@ -105,7 +105,7 @@ export const IdentityLinkForm = ({ onClose }: Props) => {
               placeholder="Select role..."
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
-              menuPortalTarget={document.body}
+              // menuPortalTarget={document.body}
             />
           </FormControl>
         )}

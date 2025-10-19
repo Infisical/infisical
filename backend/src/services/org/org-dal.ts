@@ -705,6 +705,25 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findRootOrgDetails = async (orgId: string): Promise<TOrganizations | undefined> => {
+    try {
+      const org = await db
+        .replicaNode()(TableName.Organization)
+        .select(selectAllTableCols(TableName.Organization))
+        .where(
+          "id",
+          db(TableName.Organization)
+            .select(db.raw(`CASE WHEN "rootOrgId" IS NULL THEN id ELSE "rootOrgId" END`))
+            .where("id", orgId)
+        )
+        .first();
+
+      return org;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindRootOrgDetails" });
+    }
+  };
+
   return withTransaction(db, {
     ...orgOrm,
     findOrgByProjectId,
@@ -728,6 +747,7 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipById,
     deleteMembershipsById,
     updateMembership,
-    findIdentityOrganization
+    findIdentityOrganization,
+    findRootOrgDetails
   });
 };

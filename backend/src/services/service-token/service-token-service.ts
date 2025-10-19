@@ -14,6 +14,7 @@ import { logger } from "@app/lib/logger";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -25,7 +26,6 @@ import {
   TGetServiceTokenInfoDTO,
   TProjectServiceTokensDTO
 } from "./service-token-types";
-import { TOrgDALFactory } from "../org/org-dal";
 
 type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;

@@ -58,8 +58,8 @@ import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 import { ServerAdminsPanel } from "../ServerAdminsPanel/ServerAdminsPanel";
-import { NotificationDropdown } from "./NotificationDropdown";
 import { NewSubOrganizationForm } from "./NewSubOrganizationForm";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 const getPlan = (subscription: SubscriptionPlan) => {
   if (subscription.groups) return "Enterprise";

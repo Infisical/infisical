@@ -12,6 +12,7 @@ import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
 
+import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
@@ -28,7 +29,6 @@ import {
   TSearchOrgIdentitiesByOrgIdDTO,
   TUpdateIdentityDTO
 } from "./identity-types";
-import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 
 type TIdentityServiceFactoryDep = {
   identityDAL: TIdentityDALFactory;
@@ -347,6 +347,13 @@ export const identityServiceFactory = ({
     }
 
     await membershipIdentityDAL.transaction(async (tx) => {
+      await identityMetadataDAL.delete(
+        {
+          identityId: id,
+          orgId: actorOrgId
+        },
+        tx
+      );
       const identityProjectMembership = await membershipIdentityDAL.find(
         {
           actorIdentityId: id,

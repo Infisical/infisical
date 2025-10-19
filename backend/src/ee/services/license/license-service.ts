@@ -15,7 +15,6 @@ import { getConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -46,11 +45,10 @@ import {
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
-  orgDAL: Pick<TOrgDALFactory, "findOrgById" | "countAllOrgMembers">;
+  orgDAL: Pick<TOrgDALFactory, "findRootOrgDetails" | "countAllOrgMembers" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
-  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   projectDAL: TProjectDALFactory;
 };
 
@@ -67,7 +65,6 @@ export const licenseServiceFactory = ({
   permissionService,
   licenseDAL,
   keyStore,
-  identityOrgMembershipDAL,
   projectDAL
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
@@ -200,19 +197,21 @@ export const licenseServiceFactory = ({
           return JSON.parse(cachedPlan) as TFeatureSet;
         }
 
-        const org = await orgDAL.findOrgById(orgId);
+        const org = await orgDAL.findRootOrgDetails(orgId);
         if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+        const rootOrgId = org.id;
+
         const {
           data: { currentPlan }
         } = await licenseServerCloudApi.request.get<{ currentPlan: TFeatureSet }>(
           `/api/license-server/v1/customers/${org.customerId}/cloud-plan`
         );
-        const workspacesUsed = await projectDAL.countOfOrgProjects(orgId);
+        const workspacesUsed = await projectDAL.countOfOrgProjects(rootOrgId);
         currentPlan.workspacesUsed = workspacesUsed;
 
-        const membersUsed = await licenseDAL.countOfOrgMembers(orgId);
+        const membersUsed = await licenseDAL.countOfOrgMembers(rootOrgId);
         currentPlan.membersUsed = membersUsed;
-        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
+        const identityUsed = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
         currentPlan.identitiesUsed = identityUsed;
 
         if (currentPlan.identityLimit && currentPlan.identityLimit !== identityUsed) {
@@ -285,10 +284,10 @@ export const licenseServiceFactory = ({
   };
 
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
-    const org = await orgDAL.findOrgById(orgId);
+    const org = await orgDAL.findRootOrgDetails(orgId);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
-    const rootOrgId = org.rootOrgId || org.id;
+    const rootOrgId = org.id;
     if (instanceType === InstanceType.Cloud) {
       const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
       const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
@@ -381,7 +380,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -420,7 +419,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: "Organization not found"
@@ -473,7 +472,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -539,7 +538,7 @@ export const licenseServiceFactory = ({
   const getUsageMetrics = async (orgId: string) => {
     const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
       orgDAL.countAllOrgMembers(orgId),
-      identityOrgMembershipDAL.countAllOrgIdentities({ scopeOrgId: orgId }),
+      licenseDAL.countOfOrgIdentities(orgId),
       projectDAL.countOfOrgProjects(orgId)
     ]);
 
@@ -563,7 +562,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -607,7 +606,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -642,7 +641,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -669,7 +668,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -706,7 +705,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -745,7 +744,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -781,7 +780,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -809,7 +808,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -840,7 +839,7 @@ export const licenseServiceFactory = ({
       OrgPermissionSubjects.Billing
     );
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -864,7 +863,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -888,7 +887,7 @@ export const licenseServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
 
-    const organization = await orgDAL.findOrgById(orgId);
+    const organization = await orgDAL.findById(orgId);
     if (!organization) {
       throw new NotFoundError({
         message: `Organization with ID '${orgId}' not found`
@@ -933,7 +932,6 @@ export const licenseServiceFactory = ({
     getLicenseId,
     invalidateGetPlan,
     updateSubscriptionOrgMemberCount,
-    refreshPlan,
     getOrgPlan,
     getOrgPlansTableByBillCycle,
     startOrgTrial,

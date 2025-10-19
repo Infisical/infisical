@@ -53,7 +53,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: roles } = useGetOrgRoles(orgId);
-  const isOrgIdentity = orgId === popUp?.identity?.data?.orgId;
+  const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();

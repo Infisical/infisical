@@ -3,6 +3,7 @@ import { useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
@@ -14,7 +15,6 @@ import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSsoTab } from "../OrgSsoTab";
 import { OrgWorkflowIntegrationTab } from "../OrgWorkflowIntegrationTab";
 import { ProjectTemplatesTab } from "../ProjectTemplatesTab";
-import { useOrganization } from "@app/context";
 
 export const OrgTabGroup = () => {
   const search = useSearch({

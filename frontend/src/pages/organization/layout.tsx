@@ -1,7 +1,7 @@
 import { createFileRoute, retainSearchParams } from "@tanstack/react-router";
+import { z } from "zod";
 
 import { OrganizationLayout } from "@app/layouts/OrganizationLayout";
-import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticate/_inject-org-details/_org-layout")({
   component: OrganizationLayout,

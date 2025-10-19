@@ -582,7 +582,7 @@ export const useGetAvailableOrgIdentities = (enabled = true) =>
     queryKey: organizationKeys.getAvailableIdentities(),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ identities: { name: string; id: string }[] }>(
-        `/api/v1/organization/identities/available`
+        "/api/v1/organization/identities/available"
       );
 
       return data.identities;
@@ -596,7 +596,7 @@ export const useGetAvailableOrgUsers = (enabled = true) =>
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         users: { username: string; id: string; firstName: string; lastName: string }[];
-      }>(`/api/v1/organization/users/available`);
+      }>("/api/v1/organization/users/available");
 
       return data.users;
     },

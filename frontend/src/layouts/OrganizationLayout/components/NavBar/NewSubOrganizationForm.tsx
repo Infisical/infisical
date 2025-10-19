@@ -4,8 +4,8 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { GenericResourceNameSchema } from "@app/lib/schemas";
 import { useCreateSubOrganization } from "@app/hooks/api";
+import { GenericResourceNameSchema } from "@app/lib/schemas";
 
 type ContentProps = {
   onClose: () => void;

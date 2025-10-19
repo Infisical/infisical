@@ -654,7 +654,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
     tx?: Knex
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.Membership)
+      const query = (tx || db.replicaNode())(TableName.Identity)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(filter)

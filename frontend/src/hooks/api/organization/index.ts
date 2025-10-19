@@ -1,12 +1,12 @@
 export {
   useAddOrgPmtMethod,
-  useGetAvailableOrgIdentities,
   useAddOrgTaxId,
   useCreateCustomerPortalSession,
   useCreateOrg,
   useDeleteOrgById,
   useDeleteOrgPmtMethod,
   useDeleteOrgTaxId,
+  useGetAvailableOrgIdentities,
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
   useGetOrganizations,
