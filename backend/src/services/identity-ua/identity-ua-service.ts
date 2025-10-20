@@ -41,8 +41,10 @@ import {
   TRevokeUaDTO,
   TUpdateUaDTO
 } from "./identity-ua-types";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 
 type TIdentityUaServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityUaDAL: TIdentityUaDALFactory;
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
@@ -71,7 +73,8 @@ export const identityUaServiceFactory = ({
   permissionService,
   licenseService,
   orgDAL,
-  keyStore
+  keyStore,
+  identityDAL
 }: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDAL.findOne({ clientId });
@@ -98,16 +101,6 @@ export const identityUaServiceFactory = ({
     if (lockout && lockout.lockedOut) {
       throw new UnauthorizedError({
         message: "This identity auth method is temporarily locked, please try again later"
-      });
-    }
-
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityUa.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({
-        message: "Invalid credentials"
       });
     }
 
@@ -228,10 +221,11 @@ export const identityUaServiceFactory = ({
             accessTokenMaxTTL: 1000000000
           };
 
+    const identity = await identityDAL.findById(identityUa.identityId);
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
       const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
           lastLoginTime: new Date()
@@ -277,7 +271,7 @@ export const identityUaServiceFactory = ({
       identityUa,
       validClientSecretInfo,
       identityAccessToken,
-      identityMembershipOrg,
+      identity,
       ...accessTokenTTLParams
     };
   };

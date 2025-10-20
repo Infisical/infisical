@@ -25,6 +25,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -41,9 +42,10 @@ import {
 } from "./identity-aws-auth-types";
 
 type TIdentityAwsAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityAwsAuthDAL: Pick<TIdentityAwsAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -86,6 +88,7 @@ function isValidAwsRegion(region: string | null): boolean {
 }
 
 export const identityAwsAuthServiceFactory = ({
+  identityDAL,
   identityAccessTokenDAL,
   identityAwsAuthDAL,
   membershipIdentityDAL,
@@ -99,11 +102,8 @@ export const identityAwsAuthServiceFactory = ({
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityAwsAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityAwsAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
     const body: string = Buffer.from(iamRequestBody, "base64").toString();
@@ -165,8 +165,8 @@ export const identityAwsAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
           lastLoginTime: new Date()
@@ -218,7 +218,7 @@ export const identityAwsAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityAwsAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityAwsAuth, identityAccessToken, identity };
   };
 
   const attachAwsAuth = async ({

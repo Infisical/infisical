@@ -25,6 +25,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -41,9 +42,10 @@ import {
 } from "./identity-oci-auth-types";
 
 type TIdentityOciAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -52,6 +54,7 @@ type TIdentityOciAuthServiceFactoryDep = {
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
 
 export const identityOciAuthServiceFactory = ({
+  identityDAL,
   identityAccessTokenDAL,
   identityOciAuthDAL,
   membershipIdentityDAL,
@@ -65,11 +68,8 @@ export const identityOciAuthServiceFactory = ({
       throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityOciAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityOciAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
     if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -104,12 +104,9 @@ export const identityOciAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -146,7 +143,7 @@ export const identityOciAuthServiceFactory = ({
       identityOciAuth,
       accessToken,
       identityAccessToken,
-      identityMembershipOrg
+      identity
     };
   };
 

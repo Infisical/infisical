@@ -22,6 +22,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -37,8 +38,9 @@ import {
 } from "./identity-gcp-auth-types";
 
 type TIdentityGcpAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -48,6 +50,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
 
 export const identityGcpAuthServiceFactory = ({
+  identityDAL,
   identityGcpAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -61,13 +64,8 @@ export const identityGcpAuthServiceFactory = ({
       throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityGcpAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
-    }
+    const identity = await identityDAL.findById(identityGcpAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     let gcpIdentityDetails: TGcpIdentityDetails;
     switch (identityGcpAuth.type) {
@@ -131,8 +129,8 @@ export const identityGcpAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
           lastLoginTime: new Date()
@@ -170,7 +168,7 @@ export const identityGcpAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityGcpAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityGcpAuth, identityAccessToken, identity };
   };
 
   const attachGcpAuth = async ({

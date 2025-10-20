@@ -10,10 +10,17 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, ForbiddenRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -32,11 +39,12 @@ import {
 } from "./identity-token-auth-types";
 
 type TIdentityTokenAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityTokenAuthDAL: Pick<
     TIdentityTokenAuthDALFactory,
     "transaction" | "create" | "findOne" | "updateById" | "delete"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<
     TIdentityAccessTokenDALFactory,
     "create" | "find" | "update" | "findById" | "findOne" | "updateById" | "delete"
@@ -49,8 +57,8 @@ type TIdentityTokenAuthServiceFactoryDep = {
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
 
 export const identityTokenAuthServiceFactory = ({
+  identityDAL,
   identityTokenAuthDAL,
-  // identityDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
   permissionService,
@@ -400,13 +408,13 @@ export const identityTokenAuthServiceFactory = ({
 
     const identityTokenAuth = await identityTokenAuthDAL.findOne({ identityId });
 
+    const identity = await identityDAL.findById(identityTokenAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+
     const identityAccessToken = await identityTokenAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.TOKEN_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -441,7 +449,7 @@ export const identityTokenAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityTokenAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityTokenAuth, identityAccessToken, identity };
   };
 
   const getTokenAuthTokens = async ({

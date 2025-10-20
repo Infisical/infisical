@@ -22,6 +22,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -36,11 +37,12 @@ import {
 } from "./identity-azure-auth-types";
 
 type TIdentityAzureAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAzureAuthDAL: Pick<
     TIdentityAzureAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -50,6 +52,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
 
 export const identityAzureAuthServiceFactory = ({
+  identityDAL,
   identityAzureAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -63,11 +66,8 @@ export const identityAzureAuthServiceFactory = ({
       throw new NotFoundError({ message: "Azure auth method not found for identity, did you configure Azure Auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityAzureAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityAzureAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const azureIdentity = await validateAzureIdentity({
       tenantId: identityAzureAuth.tenantId,
@@ -92,8 +92,8 @@ export const identityAzureAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
           lastLoginTime: new Date()
@@ -131,7 +131,7 @@ export const identityAzureAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityAzureAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityAzureAuth, identityAccessToken, identity };
   };
 
   const attachAzureAuth = async ({

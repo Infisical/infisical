@@ -25,6 +25,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -43,8 +44,9 @@ import {
 } from "./identity-oidc-auth-types";
 
 type TIdentityOidcAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityOidcAuthDAL: TIdentityOidcAuthDALFactory;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -55,6 +57,7 @@ type TIdentityOidcAuthServiceFactoryDep = {
 export type TIdentityOidcAuthServiceFactory = ReturnType<typeof identityOidcAuthServiceFactory>;
 
 export const identityOidcAuthServiceFactory = ({
+  identityDAL,
   identityOidcAuthDAL,
   membershipIdentityDAL,
   permissionService,
@@ -69,19 +72,12 @@ export const identityOidcAuthServiceFactory = ({
       throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityOidcAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityOidcAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityOidcAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     let caCert = "";
@@ -182,12 +178,9 @@ export const identityOidcAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -226,7 +219,7 @@ export const identityOidcAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityOidcAuth, identityAccessToken, identityMembershipOrg, oidcTokenData: tokenData };
+    return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: tokenData };
   };
 
   const attachOidcAuth = async ({

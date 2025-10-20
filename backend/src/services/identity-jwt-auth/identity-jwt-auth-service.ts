@@ -24,6 +24,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -43,8 +44,9 @@ import {
 } from "./identity-jwt-auth-types";
 
 type TIdentityJwtAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -55,6 +57,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
 
 export const identityJwtAuthServiceFactory = ({
+  identityDAL,
   identityJwtAuthDAL,
   membershipIdentityDAL,
   permissionService,
@@ -69,19 +72,12 @@ export const identityJwtAuthServiceFactory = ({
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityJwtAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityJwtAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityJwtAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
@@ -211,12 +207,9 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -251,7 +244,7 @@ export const identityJwtAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityJwtAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityJwtAuth, identityAccessToken, identity };
   };
 
   const attachJwtAuth = async ({

@@ -57,11 +57,11 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TIdentityLdapAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: TKmsServiceFactory;
-  identityDAL: TIdentityDALFactory;
+  identityDAL: Pick<TIdentityDALFactory, "findById" | "findOne">;
   identityAuthTemplateDAL: TIdentityAuthTemplateDALFactory;
   keyStore: Pick<
     TKeyStoreFactory,
@@ -151,17 +151,6 @@ export const identityLdapAuthServiceFactory = ({
   };
 
   const login = async ({ identityId }: TLoginLdapAuthDTO) => {
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityId,
-      scope: AccessScope.Organization
-    });
-
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({
-        message: "Invalid credentials"
-      });
-    }
-
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
     if (!identityLdapAuth) {
@@ -170,7 +159,10 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
+    const identity = await identityDAL.findById(identityLdapAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
+
+    const plan = await licenseService.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
         message:
@@ -179,12 +171,9 @@ export const identityLdapAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -218,7 +207,7 @@ export const identityLdapAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityLdapAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityLdapAuth, identityAccessToken, identity };
   };
 
   const attachLdapAuth = async ({

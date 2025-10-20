@@ -26,6 +26,7 @@ import { logger } from "@app/lib/logger";
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
@@ -40,12 +41,13 @@ import {
 } from "./identity-alicloud-auth-types";
 
 type TIdentityAliCloudAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityAliCloudAuthDAL: Pick<
     TIdentityAliCloudAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
@@ -54,6 +56,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
 export type TIdentityAliCloudAuthServiceFactory = ReturnType<typeof identityAliCloudAuthServiceFactory>;
 
 export const identityAliCloudAuthServiceFactory = ({
+  identityDAL,
   identityAccessTokenDAL,
   identityAliCloudAuthDAL,
   membershipIdentityDAL,
@@ -69,12 +72,8 @@ export const identityAliCloudAuthServiceFactory = ({
       });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityAliCloudAuth.identityId,
-      scope: AccessScope.Organization
-    });
-
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityAliCloudAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const requestUrl = new URL("https://sts.aliyuncs.com");
 
@@ -99,8 +98,8 @@ export const identityAliCloudAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
           lastLoginTime: new Date()
@@ -141,7 +140,7 @@ export const identityAliCloudAuthServiceFactory = ({
       identityAliCloudAuth,
       accessToken,
       identityAccessToken,
-      identityMembershipOrg
+      identity
     };
   };
 

@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { TableName } from "../schemas";
+import { AccessScope, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasParentOrgId = await knex.schema.hasColumn(TableName.Organization, "parentOrgId");
@@ -18,8 +18,24 @@ export async function up(knex: Knex): Promise<void> {
   const hasIdentityOrgCol = await knex.schema.hasColumn(TableName.Identity, "orgId");
   if (!hasIdentityOrgCol) {
     await knex.schema.alterTable(TableName.Identity, (t) => {
-      t.uuid("orgId").notNullable();
+      t.uuid("orgId");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+    });
+
+    await knex.raw(
+      `
+  UPDATE ?? AS identity
+  SET "orgId" = membership."scopeOrgId"
+  FROM ?? AS membership
+  WHERE 
+    membership."actorIdentityId" = identity."id"
+    AND membership."scope" = ?
+`,
+      [TableName.Identity, TableName.Membership, AccessScope.Organization]
+    );
+
+    await knex.schema.alterTable(TableName.Identity, (t) => {
+      t.uuid("orgId").notNullable();
     });
   }
 }

@@ -21,6 +21,7 @@ import {
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -31,12 +32,13 @@ import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
 
 type TIdentityTlsCertAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityTlsCertAuthDAL: Pick<
     TIdentityTlsCertAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -52,6 +54,7 @@ const parseSubjectDetails = (data: string) => {
 };
 
 export const identityTlsCertAuthServiceFactory = ({
+  identityDAL,
   identityAccessTokenDAL,
   identityTlsCertAuthDAL,
   membershipIdentityDAL,
@@ -67,20 +70,12 @@ export const identityTlsCertAuthServiceFactory = ({
       });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityTlsCertAuth.identityId,
-      scope: AccessScope.Organization
-    });
-
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityTlsCertAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityTlsCertAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     const caCertificate = decryptor({
@@ -125,12 +120,9 @@ export const identityTlsCertAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -167,7 +159,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityTlsCertAuth,
       accessToken,
       identityAccessToken,
-      identityMembershipOrg
+      identity
     };
   };
 

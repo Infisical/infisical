@@ -39,6 +39,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -59,12 +60,13 @@ import {
 } from "./identity-kubernetes-auth-types";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityKubernetesAuthDAL: Pick<
     TIdentityKubernetesAuthDALFactory,
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -80,6 +82,7 @@ export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKu
 const GATEWAY_AUTH_DEFAULT_HOST = "https://kubernetes.default.svc.cluster.local";
 
 export const identityKubernetesAuthServiceFactory = ({
+  identityDAL,
   identityKubernetesAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -186,19 +189,12 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityKubernetesAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityKubernetesAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     let caCert = "";
@@ -441,12 +437,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -486,7 +479,7 @@ export const identityKubernetesAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityKubernetesAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityKubernetesAuth, identityAccessToken, identity };
   };
 
   const attachKubernetesAuth = async ({
