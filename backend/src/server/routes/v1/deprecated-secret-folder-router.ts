@@ -318,7 +318,8 @@ export const registerDeprecatedSecretFolderRouter = async (server: FastifyZodPro
         ...req.body,
         projectId: req.body.workspaceId,
         idOrName: req.params.folderIdOrName,
-        path
+        path,
+        forceDelete: true
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

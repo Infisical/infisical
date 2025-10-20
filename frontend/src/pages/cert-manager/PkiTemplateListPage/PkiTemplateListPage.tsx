@@ -48,6 +48,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { useDeleteCertTemplateV2 } from "@app/hooks/api";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
@@ -104,15 +105,15 @@ export const PkiTemplateListPage = () => {
         <title>{t("common.head-title", { title: "PKI Templates" })}</title>
       </Helmet>
       <div className="h-full bg-bunker-800">
-        <div className="container mx-auto flex flex-col justify-between text-white">
-          <div className="mx-auto mb-6 w-full max-w-7xl">
+        <div className="mx-auto flex flex-col justify-between text-white">
+          <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
-              scope="project"
+              scope={ProjectType.CertificateManager}
               title="Certificate Templates"
               description="Manage certificate template to request and issue dynamic certificates following a strict format."
             />
           </div>
-          <div className="container mx-auto mb-6 max-w-7xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+          <div className="container mx-auto mb-6 max-w-8xl rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             {subscription?.pkiLegacyTemplates && (
               <div className="mb-4 flex justify-between">
                 <p className="text-xl font-medium text-mineshaft-100">Templates</p>
@@ -270,7 +271,7 @@ export const PkiTemplateListPage = () => {
               onDeleteApproved={() => onRemovePkiSubscriberSubmit()}
             />
           </div>
-          <div className="container mx-auto max-w-7xl" />
+          <div className="container mx-auto max-w-8xl" />
         </div>
         <Modal
           isOpen={popUp?.certificateTemplate?.isOpen}

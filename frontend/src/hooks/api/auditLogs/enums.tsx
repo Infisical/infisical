@@ -48,6 +48,7 @@ export enum EventType {
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
 
   LOGIN_IDENTITY_LDAP_AUTH = "login-identity-ldap-auth",
   ADD_IDENTITY_LDAP_AUTH = "add-identity-ldap-auth",

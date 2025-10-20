@@ -43,6 +43,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET]: "Revoke universal auth client secret",
   [EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS]: "Clear universal auth lockouts",
   [EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS]: "Get universal auth client secrets",
+  [EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID]:
+    "Get universal auth client secret by id",
   [EventType.CREATE_ENVIRONMENT]: "Create environment",
   [EventType.UPDATE_ENVIRONMENT]: "Update environment",
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",

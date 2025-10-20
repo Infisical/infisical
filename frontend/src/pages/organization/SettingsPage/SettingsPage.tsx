@@ -14,8 +14,12 @@ export const SettingsPage = () => {
         <title>{t("common.head-title", { title: t("settings.org.title") })}</title>
       </Helmet>
       <div className="flex w-full justify-center bg-bunker-800 text-white">
-        <div className="w-full max-w-7xl">
-          <PageHeader scope="org" title={t("settings.org.title")} />
+        <div className="w-full max-w-8xl">
+          <PageHeader
+            scope="org"
+            description="Configure organization-wide settings"
+            title={t("settings.org.title")}
+          />
           <OrgTabGroup />
         </div>
       </div>

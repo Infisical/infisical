@@ -184,6 +184,7 @@ import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-gr
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
 import { externalMigrationServiceFactory } from "@app/services/external-migration/external-migration-service";
+import { vaultExternalMigrationConfigDALFactory } from "@app/services/external-migration/vault-external-migration-config-dal";
 import { folderCheckpointDALFactory } from "@app/services/folder-checkpoint/folder-checkpoint-dal";
 import { folderCheckpointResourcesDALFactory } from "@app/services/folder-checkpoint-resources/folder-checkpoint-resources-dal";
 import { folderCommitDALFactory } from "@app/services/folder-commit/folder-commit-dal";
@@ -541,6 +542,8 @@ export const registerRoutes = async (
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const roleDAL = roleDALFactory(db);
+
+  const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
   const eventBusService = eventBusFactory(server.redis);
   const sseService = sseServiceFactory(eventBusService, server.redis);
@@ -1371,7 +1374,8 @@ export const registerRoutes = async (
     projectDAL,
     folderCommitService,
     secretApprovalPolicyService,
-    secretV2BridgeDAL
+    secretV2BridgeDAL,
+    dynamicSecretDAL
   });
 
   const secretImportService = secretImportServiceFactory({
@@ -1908,13 +1912,6 @@ export const registerRoutes = async (
     notificationService
   });
 
-  const migrationService = externalMigrationServiceFactory({
-    externalMigrationQueue,
-    userDAL,
-    permissionService,
-    gatewayService
-  });
-
   const externalGroupOrgRoleMappingService = externalGroupOrgRoleMappingServiceFactory({
     permissionService,
     licenseService,
@@ -2250,6 +2247,18 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService
+  });
+
+  const migrationService = externalMigrationServiceFactory({
+    externalMigrationQueue,
+    userDAL,
+    permissionService,
+    gatewayService,
+    kmsService,
+    appConnectionService,
+    vaultExternalMigrationConfigDAL,
+    secretService,
+    auditLogService
   });
 
   // setup the communication with license key server

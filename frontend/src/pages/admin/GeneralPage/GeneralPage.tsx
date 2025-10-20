@@ -15,8 +15,8 @@ export const GeneralPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl">
+      <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+        <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
             scope="instance"
             title="General"

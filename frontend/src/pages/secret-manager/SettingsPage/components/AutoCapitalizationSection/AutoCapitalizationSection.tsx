@@ -40,7 +40,7 @@ export const AutoCapitalizationSection = () => {
       <p className="mb-3 text-xl font-medium">{t("settings.project.enforce-capitalization")}</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
-          <div className="w-max">
+          <div>
             <Checkbox
               id="autoCapitalization"
               isDisabled={!isAllowed}
@@ -48,6 +48,7 @@ export const AutoCapitalizationSection = () => {
               onCheckedChange={(state) => {
                 handleToggleCapitalizationToggle(state as boolean);
               }}
+              allowMultilineLabel
             >
               {t("settings.project.enforce-capitalization-description")}
             </Checkbox>

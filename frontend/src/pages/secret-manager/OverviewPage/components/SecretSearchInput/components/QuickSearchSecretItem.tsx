@@ -126,7 +126,7 @@ export const QuickSearchSecretItem = ({
           </span>
           <span className="text-xs text-mineshaft-400">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
-            <Tooltip className="max-w-7xl" content={groupSecret.path}>
+            <Tooltip className="max-w-8xl" content={groupSecret.path}>
               <span>{reverseTruncate(groupSecret.path ?? "")}</span>
             </Tooltip>
           </span>

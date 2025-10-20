@@ -530,6 +530,9 @@ import {
   TUsers,
   TUsersInsert,
   TUsersUpdate,
+  TVaultExternalMigrationConfigs,
+  TVaultExternalMigrationConfigsInsert,
+  TVaultExternalMigrationConfigsUpdate,
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
@@ -1376,6 +1379,11 @@ declare module "knex/types/tables" {
       TAdditionalPrivileges,
       TAdditionalPrivilegesInsert,
       TAdditionalPrivilegesUpdate
+    >;
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

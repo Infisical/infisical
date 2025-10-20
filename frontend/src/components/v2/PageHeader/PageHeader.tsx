@@ -5,29 +5,48 @@ import { ReactNode } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { Badge } from "@app/components/v2";
+import { BadgeProps } from "@app/components/v2/Badge/Badge";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
   title: ReactNode;
   description?: ReactNode;
   children?: ReactNode;
   className?: string;
-  scope: "org" | "project" | "namespace" | "instance";
+  scope: "org" | "namespace" | "instance" | ProjectType | null;
 };
 
 const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: IconDefinition }> = {
   org: { label: "Organization", icon: faGlobe },
-  project: { label: "Project", icon: faCube },
+  [ProjectType.SecretManager]: { label: "Project", icon: faCube },
+  [ProjectType.CertificateManager]: { label: "Project", icon: faCube },
+  [ProjectType.SSH]: { label: "Project", icon: faCube },
+  [ProjectType.KMS]: { label: "Project", icon: faCube },
+  [ProjectType.PAM]: { label: "Project", icon: faCube },
+  [ProjectType.SecretScanning]: { label: "Project", icon: faCube },
   namespace: { label: "Namespace", icon: faCubes },
   instance: { label: "Server", icon: faServer }
 };
 
+const SCOPE_VARIANT: Record<NonNullable<Props["scope"]>, BadgeProps["variant"]> = {
+  org: "org",
+  [ProjectType.SecretManager]: "project",
+  [ProjectType.CertificateManager]: "project",
+  [ProjectType.SSH]: "project",
+  [ProjectType.KMS]: "project",
+  [ProjectType.PAM]: "project",
+  [ProjectType.SecretScanning]: "project",
+  namespace: "namespace",
+  instance: "instance"
+};
+
 export const PageHeader = ({ title, description, children, className, scope }: Props) => (
-  <div className={twMerge("mb-4 w-full", className)}>
+  <div className={twMerge("mb-10 w-full", className)}>
     <div className="flex w-full justify-between">
       <div className="mr-4 flex w-full items-center">
         <h1 className="text-3xl font-medium text-white capitalize">{title}</h1>
         {scope && (
-          <Badge variant={scope} className="mt-1 ml-2.5">
+          <Badge variant={SCOPE_VARIANT[scope]} className="mt-1 ml-2.5">
             <FontAwesomeIcon icon={SCOPE_NAME[scope].icon} />
             {SCOPE_NAME[scope].label}
           </Badge>

@@ -7,6 +7,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   ExternalMigrationProviders,
+  VaultImportStatus,
   VaultMappingType
 } from "@app/services/external-migration/external-migration-types";
 
@@ -111,6 +112,368 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
         provider: req.params.provider
       });
       return { enabled };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/configs",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          configs: z
+            .object({
+              id: z.string(),
+              orgId: z.string(),
+              namespace: z.string(),
+              connectionId: z.string().nullish(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const configs = await server.services.migration.getVaultExternalMigrationConfigs({
+        actor: req.permission
+      });
+
+      return { configs };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/vault/configs",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        connectionId: z.string(),
+        namespace: z.string()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            namespace: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.createVaultExternalMigration({
+        ...req.body,
+        actor: req.permission
+      });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "PUT",
+    url: "/vault/configs/:id",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      body: z.object({
+        connectionId: z.string(),
+        namespace: z.string()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            namespace: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.updateVaultExternalMigration({
+        id: req.params.id,
+        ...req.body,
+        actor: req.permission
+      });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/vault/configs/:id",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        id: z.string()
+      }),
+      response: {
+        200: z.object({
+          config: z.object({
+            id: z.string(),
+            orgId: z.string(),
+            namespace: z.string(),
+            connectionId: z.string().nullable().optional(),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const config = await server.services.migration.deleteVaultExternalMigration({
+        id: req.params.id,
+        actor: req.permission
+      });
+
+      return { config };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/namespaces",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          namespaces: z.array(z.object({ id: z.string(), name: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const namespaces = await server.services.migration.getVaultNamespaces({
+        actor: req.permission
+      });
+
+      return { namespaces };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/policies",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string()
+      }),
+      response: {
+        200: z.object({
+          policies: z.array(z.object({ name: z.string(), rules: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const policies = await server.services.migration.getVaultPolicies({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { policies };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/mounts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string()
+      }),
+      response: {
+        200: z.object({
+          mounts: z.array(z.object({ path: z.string(), type: z.string(), version: z.string().nullish() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const mounts = await server.services.migration.getVaultMounts({
+        actor: req.permission,
+        namespace: req.query.namespace
+      });
+
+      return { mounts };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/auth-mounts",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        authType: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          mounts: z.array(z.object({ path: z.string(), type: z.string() }))
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const mounts = await server.services.migration.getVaultAuthMounts({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        authType: req.query.authType
+      });
+
+      return { mounts };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/vault/import-secrets",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      body: z.object({
+        projectId: z.string(),
+        environment: z.string(),
+        secretPath: z.string(),
+        vaultNamespace: z.string(),
+        vaultSecretPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          status: z.nativeEnum(VaultImportStatus)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.migration.importVaultSecrets({
+        actor: req.permission,
+        auditLogInfo: req.auditLogInfo,
+        ...req.body
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/secret-paths",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        mountPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          secretPaths: z.string().array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const secretPaths = await server.services.migration.getVaultSecretPaths({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
+      });
+
+      return { secretPaths };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/vault/auth-roles/kubernetes",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        mountPath: z.string()
+      }),
+
+      response: {
+        200: z.object({
+          roles: z.array(
+            z.object({
+              name: z.string(),
+              mountPath: z.string(),
+              bound_service_account_names: z.array(z.string()),
+              bound_service_account_namespaces: z.array(z.string()),
+              token_ttl: z.number().optional(),
+              token_max_ttl: z.number().optional(),
+              token_policies: z.array(z.string()).optional(),
+              token_bound_cidrs: z.array(z.string()).optional(),
+              token_explicit_max_ttl: z.number().optional(),
+              token_no_default_policy: z.boolean().optional(),
+              token_num_uses: z.number().optional(),
+              token_period: z.number().optional(),
+              token_type: z.string().optional(),
+              audience: z.string().optional(),
+              alias_name_source: z.string().optional(),
+              config: z.object({
+                kubernetes_host: z.string(),
+                kubernetes_ca_cert: z.string().optional(),
+                issuer: z.string().optional(),
+                disable_iss_validation: z.boolean().optional(),
+                disable_local_ca_jwt: z.boolean().optional()
+              })
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const roles = await server.services.migration.getVaultKubernetesAuthRoles({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
+      });
+
+      return { roles };
     }
   });
 };
