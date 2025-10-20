@@ -26,8 +26,7 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     formState: { isSubmitting }
   } = useForm({
     defaultValues: {
-      name: "",
-      invitees: []
+      name: ""
     },
     resolver: zodResolver(AddOrgSchema)
   });

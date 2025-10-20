@@ -11,6 +11,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 
 export type TAuthMode =
   | {
@@ -147,6 +148,9 @@ export const injectIdentity = fp(
       if (!authMode) return;
 
       const subOrganizationSelector = req.headers?.["x-infisical-org"] as string | undefined;
+      if (subOrganizationSelector) {
+        await GenericResourceNameSchema.parseAsync(subOrganizationSelector);
+      }
 
       switch (authMode) {
         case AuthMode.JWT: {

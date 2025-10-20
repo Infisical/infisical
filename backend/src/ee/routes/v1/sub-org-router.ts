@@ -6,6 +6,7 @@ import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 
 const sanitiziedSubOrganizationSchema = OrganizationsSchema.pick({
   id: true,
@@ -32,7 +33,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: z.string().trim().describe(SUB_ORGANIZATIONS.CREATE.name)
+        name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name)
       }),
       response: {
         200: z.object({
@@ -40,7 +41,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
@@ -100,7 +101,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { organizations } = await server.services.subOrganization.listSubOrgs({
         permissionActor: {

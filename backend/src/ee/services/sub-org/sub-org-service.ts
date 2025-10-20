@@ -47,13 +47,21 @@ export const subOrgServiceFactory = ({
     const orgLicensePlan = await licenseService.getPlan(permissionActor.rootOrgId);
     if (!orgLicensePlan.subOrganization) {
       throw new BadRequestError({
-        message: "Child organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
+        message: "Sub-organization creation failed. Please upgrade your instance to Infisical's Enterprise plan."
       });
+    }
+
+    const existingSubOrg = await orgDAL.find({
+      parentOrgId: permissionActor.orgId,
+      name
+    });
+    if (existingSubOrg) {
+      throw new BadRequestError({ message: `Sub-organization with name ${name} already exists` });
     }
 
     const organization = await orgDAL.transaction(async (tx) => {
       const org = await orgDAL.create(
-        { name, slug: name, rootOrgId: permissionActor.orgId, parentOrgId: permissionActor.orgId },
+        { name, slug: name, rootOrgId: permissionActor.rootOrgId, parentOrgId: permissionActor.orgId },
         tx
       );
       const membership = await membershipDAL.create(
