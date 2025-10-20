@@ -193,21 +193,13 @@ export const certificateV3ServiceFactory = ({
       subjectAlternativeNames: certificateRequest.altNames
     });
 
-    let template;
-    try {
-      template = await certificateTemplateV2Service.getTemplateV2ById({
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId,
-        templateId: profile.certificateTemplateId
-      });
-    } catch (error) {
-      throw new BadRequestError({
-        message: `Certificate profile is using a legacy template (${profile.certificateTemplateId}) that doesn't support security validation policies. Please migrate to a template v2 for proper security enforcement.`
-      });
-    }
-
+    const template = await certificateTemplateV2Service.getTemplateV2ById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      templateId: profile.certificateTemplateId
+    });
     if (!template) {
       throw new NotFoundError({ message: "Certificate template not found for this profile" });
     }

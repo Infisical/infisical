@@ -45,9 +45,7 @@ export enum CertDurationUnit {
 }
 
 export enum CertSubjectAttributeType {
-  COMMON_NAME = "common_name",
-  ORGANIZATION = "organization",
-  COUNTRY = "country"
+  COMMON_NAME = "common_name"
 }
 
 export const formatSANType = (type: CertSubjectAlternativeNameType): string => {
@@ -113,10 +111,6 @@ export const formatSubjectAttributeType = (type: CertSubjectAttributeType): stri
   switch (type) {
     case CertSubjectAttributeType.COMMON_NAME:
       return "Common Name (CN)";
-    case CertSubjectAttributeType.ORGANIZATION:
-      return "Organization";
-    case CertSubjectAttributeType.COUNTRY:
-      return "Country";
     default:
       return type;
   }

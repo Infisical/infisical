@@ -62,9 +62,7 @@ interface Props {
 }
 
 const ATTRIBUTE_TYPE_LABELS: Record<(typeof SUBJECT_ATTRIBUTE_TYPE_OPTIONS)[number], string> = {
-  common_name: "Common Name (CN)",
-  organization: "Organization (O)",
-  country: "Country (C)"
+  common_name: "Common Name (CN)"
 };
 
 const SAN_TYPE_LABELS: Record<(typeof SAN_TYPE_OPTIONS)[number], string> = {
@@ -532,7 +530,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
         }
       >
         <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6">
-          <Accordion type="multiple" defaultValue={["basic"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["basic", "algorithms"]} className="w-full">
             <div className="space-y-4">
               <Controller
                 control={control}
@@ -774,18 +772,6 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="usages" className="mt-4">
-              <AccordionTrigger>Key Usages</AccordionTrigger>
-              <AccordionContent>
-                <KeyUsagesSection
-                  watchedKeyUsages={watchedKeyUsages}
-                  watchedExtendedKeyUsages={watchedExtendedKeyUsages}
-                  onKeyUsagesChange={handleKeyUsagesChange}
-                  onExtendedKeyUsagesChange={handleExtendedKeyUsagesChange}
-                />
-              </AccordionContent>
-            </AccordionItem>
-
             <AccordionItem value="algorithms" className="mt-4">
               <AccordionTrigger>Algorithms</AccordionTrigger>
               <AccordionContent>
@@ -793,6 +779,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                   <div>
                     <h4 className="mb-3 text-sm font-medium text-mineshaft-200">
                       Allowed Signature Algorithms
+                      <span className="ml-1 text-red-500">*</span>
                     </h4>
                     <Controller
                       control={control}
@@ -838,6 +825,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                   <div>
                     <h4 className="mb-3 text-sm font-medium text-mineshaft-200">
                       Allowed Key Algorithms
+                      <span className="ml-1 text-red-500">*</span>
                     </h4>
                     <Controller
                       control={control}
@@ -880,6 +868,18 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                     />
                   </div>
                 </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="usages" className="mt-4">
+              <AccordionTrigger>Key Usages</AccordionTrigger>
+              <AccordionContent>
+                <KeyUsagesSection
+                  watchedKeyUsages={watchedKeyUsages}
+                  watchedExtendedKeyUsages={watchedExtendedKeyUsages}
+                  onKeyUsagesChange={handleKeyUsagesChange}
+                  onExtendedKeyUsagesChange={handleExtendedKeyUsagesChange}
+                />
               </AccordionContent>
             </AccordionItem>
 

@@ -41,12 +41,9 @@ export const certificateTemplateV2ServiceFactory = ({
     attributes.forEach((attr) => {
       const existing = consolidated.get(attr.type);
       if (existing) {
-        consolidated.set(attr.type, {
-          ...attr,
-          allowed: [...new Set([...(existing.allowed || []), ...(attr.allowed || [])])],
-          required: [...new Set([...(existing.required || []), ...(attr.required || [])])],
-          denied: [...new Set([...(existing.denied || []), ...(attr.denied || [])])]
-        } as T);
+        throw new ForbiddenRequestError({
+          message: `Duplicate attribute type '${attr.type}' found in request. Each attribute type must appear only once.`
+        });
       } else {
         consolidated.set(attr.type, attr);
       }

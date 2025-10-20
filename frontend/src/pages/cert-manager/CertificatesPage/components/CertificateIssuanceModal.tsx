@@ -25,15 +25,11 @@ import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
 
 import { AlgorithmSelectors } from "./AlgorithmSelectors";
 import { CertificateContent } from "./CertificateContent";
-import {
-  filterUsages,
-  formatSubjectAltNames,
-  FrontendSanType,
-  getAttributeValue
-} from "./certificateUtils";
+import { filterUsages, formatSubjectAltNames, getAttributeValue } from "./certificateUtils";
 import { KeyUsageSection } from "./KeyUsageSection";
 import { SubjectAltNamesField } from "./SubjectAltNamesField";
 import { useCertificateTemplate } from "./useCertificateTemplate";
@@ -61,7 +57,7 @@ const createSchema = (shouldShowSubjectSection: boolean) => {
     subjectAltNames: z
       .array(
         z.object({
-          type: z.nativeEnum(FrontendSanType),
+          type: z.nativeEnum(CertSubjectAlternativeNameType),
           value: z.string().min(1, "Value is required")
         })
       )
@@ -125,7 +121,8 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
-    includeMetrics: false
+    includeMetrics: false,
+    enrollmentType: "api"
   });
 
   const { mutateAsync: createCertificate } = useCreateCertificateV3();
@@ -206,11 +203,13 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         subjectAltNames: cert.subjectAltNames
           ? cert.subjectAltNames.split(",").map((name) => {
               const trimmed = name.trim();
-              if (trimmed.includes("@")) return { type: FrontendSanType.EMAIL, value: trimmed };
+              if (trimmed.includes("@"))
+                return { type: CertSubjectAlternativeNameType.EMAIL, value: trimmed };
               if (trimmed.match(/^\d+\.\d+\.\d+\.\d+$/))
-                return { type: FrontendSanType.IP, value: trimmed };
-              if (trimmed.startsWith("http")) return { type: FrontendSanType.URI, value: trimmed };
-              return { type: FrontendSanType.DNS, value: trimmed };
+                return { type: CertSubjectAlternativeNameType.IP_ADDRESS, value: trimmed };
+              if (trimmed.startsWith("http"))
+                return { type: CertSubjectAlternativeNameType.URI, value: trimmed };
+              return { type: CertSubjectAlternativeNameType.DNS_NAME, value: trimmed };
             })
           : [],
         ttl: "",

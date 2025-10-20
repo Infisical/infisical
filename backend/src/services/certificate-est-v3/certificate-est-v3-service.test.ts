@@ -123,6 +123,12 @@ vi.mock("@app/services/certificate/certificate-types", () => ({
     };
     return mapping[type] || type;
   }),
+  TAltNameType: {
+    EMAIL: "email",
+    DNS: "dns",
+    IP: "ip",
+    URL: "url"
+  },
   CertExtendedKeyUsageOIDToName: {
     "1.3.6.1.5.5.7.3.1": "serverAuth",
     "1.3.6.1.5.5.7.3.2": "clientAuth",
@@ -159,10 +165,6 @@ describe("CertificateEstV3Service Security Fix", () => {
 
   const mockInternalCertificateAuthorityService = {
     signCertFromCa: vi.fn()
-  };
-
-  const mockCertificateTemplateDAL = {
-    findById: vi.fn()
   };
 
   const mockCertificateTemplateV2Service = {
@@ -230,7 +232,6 @@ describe("CertificateEstV3Service Security Fix", () => {
 
     service = certificateEstV3ServiceFactory({
       internalCertificateAuthorityService: mockInternalCertificateAuthorityService,
-      certificateTemplateDAL: mockCertificateTemplateDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,

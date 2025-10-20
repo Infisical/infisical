@@ -3,17 +3,13 @@ import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Button, FormControl, IconButton, Input, Select, SelectItem } from "@app/components/v2";
+import { CertSubjectAlternativeNameType } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
 
-import {
-  FrontendSanType,
-  getSanPlaceholder,
-  getSanTypeLabels,
-  SubjectAltName
-} from "./certificateUtils";
+import { getSanPlaceholder, getSanTypeLabels, SubjectAltName } from "./certificateUtils";
 
 type SubjectAltNamesFieldProps = {
   control: Control<any>;
-  allowedSanTypes: FrontendSanType[];
+  allowedSanTypes: CertSubjectAlternativeNameType[];
   error?: string;
 };
 
@@ -44,7 +40,7 @@ export const SubjectAltNamesField = ({
                     const newValue = [...value];
                     newValue[index] = {
                       ...san,
-                      type: newType as FrontendSanType
+                      type: newType as CertSubjectAlternativeNameType
                     };
                     onChange(newValue);
                   }}
@@ -86,7 +82,9 @@ export const SubjectAltNamesField = ({
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
                 const defaultType =
-                  allowedSanTypes.length > 0 ? allowedSanTypes[0] : FrontendSanType.DNS;
+                  allowedSanTypes.length > 0
+                    ? allowedSanTypes[0]
+                    : CertSubjectAlternativeNameType.DNS_NAME;
                 onChange([...value, { type: defaultType, value: "" }]);
               }}
               className="w-full"

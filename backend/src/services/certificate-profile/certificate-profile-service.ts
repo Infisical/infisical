@@ -805,7 +805,7 @@ export const certificateProfileServiceFactory = ({
       isEnabled: true,
       caChain: profile.estConfig.caChain,
       disableBootstrapCertValidation: profile.estConfig.disableBootstrapCaValidation,
-      hashedPassphrase: ""
+      hashedPassphrase: profile.estConfig.passphrase
     };
   };
 

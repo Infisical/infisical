@@ -6,11 +6,10 @@ import {
   KEY_USAGES_OPTIONS
 } from "@app/hooks/api/certificates/constants";
 import {
+  CertSubjectAlternativeNameType,
   mapTemplateKeyAlgorithmToApi,
   mapTemplateSignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
-
-import { FrontendSanType, mapBackendSanTypeToFrontend } from "./certificateUtils";
 
 export type TemplateConstraints = {
   allowedKeyUsages: string[];
@@ -19,7 +18,7 @@ export type TemplateConstraints = {
   requiredExtendedKeyUsages: string[];
   allowedSignatureAlgorithms: string[];
   allowedKeyAlgorithms: string[];
-  allowedSanTypes: FrontendSanType[];
+  allowedSanTypes: CertSubjectAlternativeNameType[];
   shouldShowSanSection: boolean;
   shouldShowSubjectSection: boolean;
 };
@@ -39,10 +38,10 @@ export const useCertificateTemplate = (
     allowedSignatureAlgorithms: [],
     allowedKeyAlgorithms: [],
     allowedSanTypes: [
-      FrontendSanType.DNS,
-      FrontendSanType.IP,
-      FrontendSanType.EMAIL,
-      FrontendSanType.URI
+      CertSubjectAlternativeNameType.DNS_NAME,
+      CertSubjectAlternativeNameType.IP_ADDRESS,
+      CertSubjectAlternativeNameType.EMAIL,
+      CertSubjectAlternativeNameType.URI
     ],
     shouldShowSanSection: true,
     shouldShowSubjectSection: true
@@ -87,10 +86,10 @@ export const useCertificateTemplate = (
       allowedSignatureAlgorithms: [],
       allowedKeyAlgorithms: [],
       allowedSanTypes: [
-        FrontendSanType.DNS,
-        FrontendSanType.IP,
-        FrontendSanType.EMAIL,
-        FrontendSanType.URI
+        CertSubjectAlternativeNameType.DNS_NAME,
+        CertSubjectAlternativeNameType.IP_ADDRESS,
+        CertSubjectAlternativeNameType.EMAIL,
+        CertSubjectAlternativeNameType.URI
       ],
       shouldShowSanSection: true,
       shouldShowSubjectSection: true
@@ -124,11 +123,10 @@ export const useCertificateTemplate = (
 
       // Handle SAN types
       if (templateData.sans && templateData.sans.length > 0) {
-        const sanTypes: FrontendSanType[] = [];
+        const sanTypes: CertSubjectAlternativeNameType[] = [];
         templateData.sans.forEach((sanPolicy: any) => {
-          const frontendType = mapBackendSanTypeToFrontend(sanPolicy.type);
-          if (!sanTypes.includes(frontendType)) {
-            sanTypes.push(frontendType);
+          if (!sanTypes.includes(sanPolicy.type)) {
+            sanTypes.push(sanPolicy.type);
           }
         });
         newConstraints.allowedSanTypes = sanTypes;

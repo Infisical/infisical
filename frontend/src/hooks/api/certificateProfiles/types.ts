@@ -83,6 +83,7 @@ export type TListCertificateProfilesDTO = {
   search?: string;
   includeMetrics?: boolean;
   includeConfigs?: boolean;
+  enrollmentType?: "api" | "est";
   expiringDays?: number;
 };
 

@@ -1,38 +1,25 @@
-import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   ACMESANType,
-  CertExtendedKeyUsageOIDToName,
   CertificateOrderStatus,
   CertKeyAlgorithm,
-  CertKeyUsage,
-  CertSignatureAlgorithm,
-  mapLegacyAltNameType,
-  TAltNameMapping
+  CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { parseDistinguishedName } from "@app/services/certificate-authority/certificate-authority-fns";
-import {
-  validateAndMapAltNameType,
-  validateCaDateField
-} from "@app/services/certificate-authority/certificate-authority-validators";
+import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType,
-  mapLegacyExtendedKeyUsageToStandard,
-  mapLegacyKeyUsageToStandard
+  CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
-import { TCertificateRequest } from "@app/services/certificate-template-v2/certificate-template-v2-types";
 
 interface CertificateRequestForService {
   commonName?: string;
@@ -66,67 +53,6 @@ const validateDateOrder = (data: { notBefore?: string; notAfter?: string }) => {
   return true;
 };
 
-const extractCertificateRequestFromCSR = (csr: string): TCertificateRequest => {
-  let csrPem = csr;
-  if (!csr.includes("-----BEGIN CERTIFICATE REQUEST-----")) {
-    try {
-      csrPem = Buffer.from(csr, "base64").toString("utf8");
-    } catch (error) {
-      throw new BadRequestError({ message: "Invalid base64 CSR encoding" });
-    }
-  }
-
-  const csrObj = new x509.Pkcs10CertificateRequest(csrPem);
-  const subject = parseDistinguishedName(csrObj.subject);
-
-  const certificateRequest: TCertificateRequest = {
-    commonName: subject.commonName,
-    organization: subject.organization,
-    organizationUnit: subject.ou,
-    locality: subject.locality,
-    state: subject.province,
-    country: subject.country
-  };
-
-  const csrKeyUsageExtension = csrObj.getExtension("2.5.29.15") as x509.KeyUsagesExtension;
-  if (csrKeyUsageExtension) {
-    const csrKeyUsages = Object.values(CertKeyUsage).filter(
-      // eslint-disable-next-line no-bitwise
-      (keyUsage) => (x509.KeyUsageFlags[keyUsage] & csrKeyUsageExtension.usages) !== 0
-    );
-    certificateRequest.keyUsages = csrKeyUsages.map(mapLegacyKeyUsageToStandard);
-  }
-
-  const csrExtendedKeyUsageExtension = csrObj.getExtension("2.5.29.37") as x509.ExtendedKeyUsageExtension;
-  if (csrExtendedKeyUsageExtension) {
-    const csrExtendedKeyUsages = csrExtendedKeyUsageExtension.usages
-      .map((ekuOid) => CertExtendedKeyUsageOIDToName[ekuOid as string])
-      .filter((eku) => eku !== undefined);
-    certificateRequest.extendedKeyUsages = csrExtendedKeyUsages.map(mapLegacyExtendedKeyUsageToStandard);
-  }
-
-  const sanExtension = csrObj.extensions.find((ext) => ext.type === "2.5.29.17");
-  if (sanExtension) {
-    const sanNames = new x509.GeneralNames(sanExtension.value);
-    const altNamesArray: TAltNameMapping[] = sanNames.items
-      .filter((value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip")
-      .map((name): TAltNameMapping => {
-        const altNameType = validateAndMapAltNameType(name.value);
-        if (!altNameType) {
-          throw new BadRequestError({ message: `Invalid altName from CSR: ${name.value}` });
-        }
-        return altNameType;
-      });
-
-    certificateRequest.subjectAlternativeNames = altNamesArray.map((altName) => ({
-      type: mapLegacyAltNameType(altName.type),
-      value: altName.value
-    }));
-  }
-
-  return certificateRequest;
-};
-
 export const registerCertificatesRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
@@ -140,7 +66,6 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           profileId: z.string().uuid(),
-          csr: z.string().trim().optional(),
           commonName: validateTemplateRegexField.optional(),
           ttl: z
             .string()
@@ -182,43 +107,19 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let certificateRequestForService: CertificateRequestForService;
-
-      if (req.body.csr) {
-        try {
-          const csrData = extractCertificateRequestFromCSR(req.body.csr);
-
-          certificateRequestForService = {
-            commonName: csrData.commonName,
-            keyUsages: csrData.keyUsages,
-            extendedKeyUsages: csrData.extendedKeyUsages,
-            altNames: csrData.subjectAlternativeNames,
-            validity: {
-              ttl: req.body.ttl
-            },
-            notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-            notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-            signatureAlgorithm: req.body.signatureAlgorithm,
-            keyAlgorithm: req.body.keyAlgorithm
-          };
-        } catch (error) {
-          throw new BadRequestError({ message: `Invalid CSR: ${(error as Error).message}` });
-        }
-      } else {
-        certificateRequestForService = {
-          commonName: req.body.commonName,
-          keyUsages: req.body.keyUsages,
-          extendedKeyUsages: req.body.extendedKeyUsages,
-          altNames: req.body.altNames,
-          validity: {
-            ttl: req.body.ttl
-          },
-          notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-          notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-          signatureAlgorithm: req.body.signatureAlgorithm,
-          keyAlgorithm: req.body.keyAlgorithm
-        };
-      }
+      const certificateRequestForService: CertificateRequestForService = {
+        commonName: req.body.commonName,
+        keyUsages: req.body.keyUsages,
+        extendedKeyUsages: req.body.extendedKeyUsages,
+        altNames: req.body.altNames,
+        validity: {
+          ttl: req.body.ttl
+        },
+        notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+        signatureAlgorithm: req.body.signatureAlgorithm,
+        keyAlgorithm: req.body.keyAlgorithm
+      };
 
       const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
 

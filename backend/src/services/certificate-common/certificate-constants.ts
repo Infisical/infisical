@@ -55,39 +55,6 @@ export enum CertSubjectAttributeType {
   COUNTRY = "country"
 }
 
-export const mapSANTypeToLegacy = (type: CertSubjectAlternativeNameType): string => {
-  switch (type) {
-    case CertSubjectAlternativeNameType.DNS_NAME:
-      return "dns";
-    case CertSubjectAlternativeNameType.IP_ADDRESS:
-      return "ip";
-    case CertSubjectAlternativeNameType.EMAIL:
-      return "email";
-    case CertSubjectAlternativeNameType.URI:
-      return "uri";
-    default:
-      return type;
-  }
-};
-
-export const mapLegacySANTypeToStandard = (type: string): CertSubjectAlternativeNameType => {
-  switch (type) {
-    case "dns":
-    case "dns_name":
-      return CertSubjectAlternativeNameType.DNS_NAME;
-    case "ip":
-    case "ip_address":
-      return CertSubjectAlternativeNameType.IP_ADDRESS;
-    case "email":
-      return CertSubjectAlternativeNameType.EMAIL;
-    case "uri":
-    case "url":
-      return CertSubjectAlternativeNameType.URI;
-    default:
-      throw new Error(`Unknown SAN type: ${type}`);
-  }
-};
-
 export const mapKeyUsageToLegacy = (usage: CertKeyUsageType): string => {
   switch (usage) {
     case CertKeyUsageType.DIGITAL_SIGNATURE:

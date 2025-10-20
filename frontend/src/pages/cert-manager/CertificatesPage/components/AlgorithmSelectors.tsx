@@ -33,6 +33,7 @@ export const AlgorithmSelectors = ({
               label="Signature Algorithm"
               errorText={signatureError}
               isError={Boolean(signatureError)}
+              isRequired
             >
               <Select
                 defaultValue=""
@@ -62,7 +63,12 @@ export const AlgorithmSelectors = ({
           control={control}
           name="keyAlgorithm"
           render={({ field: { onChange, ...field } }) => (
-            <FormControl label="Key Algorithm" errorText={keyError} isError={Boolean(keyError)}>
+            <FormControl
+              label="Key Algorithm"
+              errorText={keyError}
+              isError={Boolean(keyError)}
+              isRequired
+            >
               <Select
                 defaultValue=""
                 {...field}

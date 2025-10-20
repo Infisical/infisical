@@ -7,7 +7,8 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyUsage,
   mapLegacyAltNameType,
-  TAltNameMapping
+  TAltNameMapping,
+  TAltNameType
 } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityCertDALFactory } from "@app/services/certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
@@ -25,7 +26,6 @@ import {
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { TCertificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateRequest } from "@app/services/certificate-template-v2/certificate-template-v2-types";
 import { TEstEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
@@ -38,7 +38,6 @@ import { TLicenseServiceFactory } from "../../ee/services/license/license-servic
 
 type TCertificateEstV3ServiceFactoryDep = {
   internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
-  certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "findById">;
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "find" | "findById">;
@@ -53,7 +52,6 @@ export type TCertificateEstV3ServiceFactory = ReturnType<typeof certificateEstV3
 
 export const certificateEstV3ServiceFactory = ({
   internalCertificateAuthorityService,
-  certificateTemplateDAL,
   certificateTemplateV2Service,
   certificateAuthorityCertDAL,
   certificateAuthorityDAL,
@@ -98,7 +96,11 @@ export const certificateEstV3ServiceFactory = ({
       const sanNames = new x509.GeneralNames(sanExtension.value);
       const altNamesArray: TAltNameMapping[] = sanNames.items
         .filter(
-          (value) => value.type === "email" || value.type === "dns" || value.type === "url" || value.type === "ip"
+          (value) =>
+            value.type === TAltNameType.EMAIL ||
+            value.type === TAltNameType.DNS ||
+            value.type === TAltNameType.IP ||
+            value.type === TAltNameType.URL
         )
         .map((name): TAltNameMapping => {
           const altNameType = validateAndMapAltNameType(name.value);
@@ -257,13 +259,6 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const certTemplate = await certificateTemplateDAL.findById(profile.certificateTemplateId);
-    if (!certTemplate) {
-      throw new NotFoundError({
-        message: `Certificate template with ID '${profile.certificateTemplateId}' not found`
-      });
-    }
-
     const leafCertificate = extractX509CertFromChain(decodeURIComponent(sslClientCert))?.[0];
 
     if (!leafCertificate) {
@@ -272,7 +267,7 @@ export const certificateEstV3ServiceFactory = ({
 
     const cert = new x509.X509Certificate(leafCertificate);
     const caCertChains = await getCaCertChains({
-      caId: certTemplate.caId,
+      caId: profile.caId,
       certificateAuthorityCertDAL,
       certificateAuthorityDAL,
       projectDAL,
@@ -374,17 +369,10 @@ export const certificateEstV3ServiceFactory = ({
       });
     }
 
-    const certTemplate = await certificateTemplateDAL.findById(profile.certificateTemplateId);
-    if (!certTemplate) {
-      throw new NotFoundError({
-        message: `Certificate template with ID '${profile.certificateTemplateId}' not found`
-      });
-    }
-
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certTemplate.caId);
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
     if (!ca?.internalCa?.id) {
       throw new NotFoundError({
-        message: `Internal Certificate Authority with ID '${certTemplate.caId}' not found`
+        message: `Internal Certificate Authority with ID '${profile.caId}' not found`
       });
     }
 
@@ -396,15 +384,17 @@ export const certificateEstV3ServiceFactory = ({
       kmsService
     });
 
-    const certificateChain = extractX509CertFromChain(caCertChain);
-    if (!certificateChain || certificateChain.length === 0) {
-      throw new BadRequestError({
-        message: "Invalid CA certificate chain: unable to extract certificates"
-      });
+    let certificates: x509.X509Certificate[] = [];
+    if (caCertChain && caCertChain.trim()) {
+      try {
+        certificates = extractX509CertFromChain(caCertChain).map((cert) => new x509.X509Certificate(cert));
+      } catch (error) {
+        certificates = [];
+      }
     }
 
-    const certificates = certificateChain.map((cert) => new x509.X509Certificate(cert));
     const caCertificate = new x509.X509Certificate(caCert);
+
     return convertRawCertsToPkcs7([caCertificate.rawData, ...certificates.map((cert) => cert.rawData)]);
   };
 
