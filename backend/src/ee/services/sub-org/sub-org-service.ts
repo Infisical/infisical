@@ -13,7 +13,7 @@ import { TPermissionServiceFactory } from "../permission/permission-service-type
 import { TCreateSubOrgDTO, TListSubOrgDTO } from "./sub-org-types";
 
 type TSubOrgServiceFactoryDep = {
-  orgDAL: Pick<TOrgDALFactory, "find" | "create" | "transaction" | "listSubOrganizations">;
+  orgDAL: Pick<TOrgDALFactory, "findOne" | "create" | "transaction" | "listSubOrganizations">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create">;
@@ -51,7 +51,7 @@ export const subOrgServiceFactory = ({
       });
     }
 
-    const existingSubOrg = await orgDAL.find({
+    const existingSubOrg = await orgDAL.findOne({
       parentOrgId: permissionActor.orgId,
       name
     });

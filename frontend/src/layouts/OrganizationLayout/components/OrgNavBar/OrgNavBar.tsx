@@ -4,12 +4,14 @@ import { motion } from "framer-motion";
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
+import { useOrganization } from "@app/context";
 
 type Props = {
   isHidden?: boolean;
 };
 
 export const OrgNavBar = ({ isHidden }: Props) => {
+  const { isRootOrganization } = useOrganization();
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
   const { pathname } = useLocation();
@@ -80,13 +82,15 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                       </Tab>
                     )}
                   </Link>
-                  <Link to="/organization/billing">
-                    {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
-                        Usage & Billing
-                      </Tab>
-                    )}
-                  </Link>
+                  {isRootOrganization && (
+                    <Link to="/organization/billing">
+                      {({ isActive }) => (
+                        <Tab variant="org" value={isActive ? "selected" : ""}>
+                          Usage & Billing
+                        </Tab>
+                      )}
+                    </Link>
+                  )}
                   <Link to="/organization/settings">
                     {({ isActive }) => (
                       <Tab variant="org" value={isActive ? "selected" : ""}>

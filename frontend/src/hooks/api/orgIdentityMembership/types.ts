@@ -1,4 +1,6 @@
-import { TemporaryPermissionMode } from "@app/db/schemas";
+export enum TemporaryPermissionMode {
+  Relative = "relative"
+}
 
 export type TOrgIdentityMembership = {
   id: string;

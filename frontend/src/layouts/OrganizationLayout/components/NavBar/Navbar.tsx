@@ -49,7 +49,13 @@ import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
-import { projectKeys, subOrganizationsQuery, useGetOrganizations, useGetOrgTrialUrl, useLogoutUser } from "@app/hooks/api";
+import {
+  projectKeys,
+  subOrganizationsQuery,
+  useGetOrganizations,
+  useGetOrgTrialUrl,
+  useLogoutUser
+} from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
@@ -297,6 +303,75 @@ export const Navbar = () => {
                   className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                   style={{ minWidth: "220px" }}
                 >
+                  {subscription?.subOrganization && (
+                    <>
+                      <DropdownSubMenu>
+                        <DropdownSubMenuTrigger>
+                          <Button
+                            onClick={async () => {}}
+                            variant="plain"
+                            colorSchema="secondary"
+                            size="xs"
+                            className="flex w-full items-center justify-start p-0 font-normal"
+                            leftIcon={<FontAwesomeIcon icon={faCubes} className="mr-3" />}
+                          >
+                            <div className="flex w-full max-w-[150px] items-center justify-between truncate">
+                              Sub Organizations
+                            </div>
+                          </Button>
+                        </DropdownSubMenuTrigger>
+                        <DropdownSubMenuContent
+                          alignOffset={-30}
+                          sideOffset={5}
+                          className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
+                          style={{ minWidth: "220px" }}
+                        >
+                          <DropdownMenuItem
+                            icon={<FontAwesomeIcon icon={faPlus} />}
+                            onClick={() => setShowSubOrgForm(true)}
+                          >
+                            New Sub Organization
+                          </DropdownMenuItem>
+                          {Boolean(subOrganizations.length) && (
+                            <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                          )}
+                          {subOrganizations?.map((org) => {
+                            return (
+                              <DropdownMenuItem key={org.id}>
+                                <Button
+                                  variant="plain"
+                                  colorSchema="secondary"
+                                  size="xs"
+                                  className="flex w-full items-center justify-start p-0 font-normal"
+                                  leftIcon={
+                                    currentOrg?.id === org.id && (
+                                      <FontAwesomeIcon
+                                        icon={faCheck}
+                                        className="mr-3 text-primary"
+                                      />
+                                    )
+                                  }
+                                  onClick={async () => {
+                                    navigate({
+                                      to: "/organization/projects",
+                                      search: (prev) => ({ ...prev, subOrganization: org.name })
+                                    });
+                                    queryClient.clear();
+                                    await router.invalidate({ sync: true }).catch(() => null);
+                                  }}
+                                >
+                                  <div className="flex w-full max-w-[150px] items-center justify-between truncate">
+                                    {org.name}
+                                  </div>
+                                </Button>
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownSubMenuContent>
+                      </DropdownSubMenu>
+                      <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                    </>
+                  )}
                   <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
                     organizations
                   </div>
