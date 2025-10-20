@@ -1179,7 +1179,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     keyUsages,
     extendedKeyUsages,
     signatureAlgorithm,
-    keyAlgorithm
+    keyAlgorithm,
+    isFromProfile
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1226,7 +1227,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (!ca.enableDirectIssuance && !certificateTemplate) {
+    if (!isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
@@ -1355,7 +1356,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     // handle key usages
     let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
     if (keyUsages === undefined && !certificateTemplate) {
-      selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+      selectedKeyUsages = isFromProfile ? [] : [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
     }
 
     if (keyUsages === undefined && certificateTemplate) {
@@ -1601,7 +1602,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (!ca.enableDirectIssuance && !certificateTemplate) {
+    if (!dto.isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
@@ -1731,7 +1732,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (csrKeyUsageExtension) {
         selectedKeyUsages = csrKeyUsages;
       } else {
-        selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+        selectedKeyUsages = dto.isFromProfile ? [] : [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
       }
     }
 

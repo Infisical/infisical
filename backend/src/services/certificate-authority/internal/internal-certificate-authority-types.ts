@@ -138,6 +138,7 @@ export type TIssueCertFromCaDTO = {
   extendedKeyUsages?: CertExtendedKeyUsage[];
   signatureAlgorithm?: CertSignatureAlgorithm;
   keyAlgorithm?: CertKeyAlgorithm;
+  isFromProfile?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =
@@ -157,6 +158,7 @@ export type TSignCertFromCaDTO =
       extendedKeyUsages?: CertExtendedKeyUsage[];
       signatureAlgorithm?: string;
       keyAlgorithm?: string;
+      isFromProfile?: boolean;
     }
   | ({
       isInternal: false;
@@ -174,6 +176,7 @@ export type TSignCertFromCaDTO =
       extendedKeyUsages?: CertExtendedKeyUsage[];
       signatureAlgorithm?: string;
       keyAlgorithm?: string;
+      isFromProfile?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {

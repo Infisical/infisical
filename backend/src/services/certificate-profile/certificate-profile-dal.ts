@@ -123,7 +123,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           ? ({
               id: result.estConfigId,
               disableBootstrapCaValidation: !!result.estConfigDisableBootstrapCaValidation,
-              passphrase: "",
+              passphrase: result.estConfigHashedPassphrase,
               caChain: result.estConfigEncryptedCaChain ? result.estConfigEncryptedCaChain.toString("utf8") : ""
             } as TCertificateProfileWithConfigs["estConfig"])
           : undefined;
@@ -324,7 +324,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             ? {
                 id: result.estId as string,
                 disableBootstrapCaValidation: !!result.estDisableBootstrapCaValidation,
-                passphrase: "",
+                passphrase: result.estConfigHashedPassphrase,
                 caChain: result.estEncryptedCaChain ? (result.estEncryptedCaChain as Buffer).toString("utf8") : ""
               }
             : undefined;

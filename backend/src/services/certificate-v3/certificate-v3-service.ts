@@ -265,7 +265,8 @@ export const certificateV3ServiceFactory = ({
         actor,
         actorId,
         actorAuthMethod,
-        actorOrgId
+        actorOrgId,
+        isFromProfile: true
       });
 
     const cert = await certificateDAL.findOne({ serialNumber, caId: ca.id });
@@ -361,7 +362,8 @@ export const certificateV3ServiceFactory = ({
         notBefore: normalizeDateForApi(notBefore),
         notAfter: normalizeDateForApi(notAfter),
         signatureAlgorithm: effectiveSignatureAlgorithm,
-        keyAlgorithm: effectiveKeyAlgorithm
+        keyAlgorithm: effectiveKeyAlgorithm,
+        isFromProfile: true
       });
 
     const cert = await certificateDAL.findOne({ serialNumber, caId: ca.id });

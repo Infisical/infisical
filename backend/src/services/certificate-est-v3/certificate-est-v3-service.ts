@@ -213,7 +213,8 @@ export const certificateEstV3ServiceFactory = ({
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
-      csr
+      csr,
+      isFromProfile: true
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
@@ -332,7 +333,8 @@ export const certificateEstV3ServiceFactory = ({
     const { certificate } = await internalCertificateAuthorityService.signCertFromCa({
       isInternal: true,
       caId: profile.caId,
-      csr
+      csr,
+      isFromProfile: true
     });
 
     return convertRawCertsToPkcs7([certificate.rawData]);
