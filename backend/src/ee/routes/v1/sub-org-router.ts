@@ -4,7 +4,7 @@ import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
@@ -33,7 +33,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
         }
       ],
       body: z.object({
-        name: GenericResourceNameSchema.describe(SUB_ORGANIZATIONS.CREATE.name)
+        name: slugSchema().describe(SUB_ORGANIZATIONS.CREATE.name)
       }),
       response: {
         200: z.object({
@@ -106,6 +106,57 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { organizations };
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:subOrgId",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.SubOrganizations],
+      description: "Update a sub organization",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        subOrgId: z.string().trim().describe(SUB_ORGANIZATIONS.UPDATE.subOrgId)
+      }),
+      body: z.object({
+        name: slugSchema().describe(SUB_ORGANIZATIONS.UPDATE.name)
+      }),
+      response: {
+        200: z.object({
+          organization: sanitizedSubOrganizationSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { organization } = await server.services.subOrganization.updateSubOrg({
+        subOrgId: req.params.subOrgId,
+        name: req.body.name,
+        permissionActor: req.permission
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        event: {
+          type: EventType.UPDATE_SUB_ORGANIZATION,
+          metadata: {
+            name: req.body.name,
+            organizationId: organization.id
+          }
+        }
+      });
+
+      return { organization };
     }
   });
 };

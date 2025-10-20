@@ -1,8 +1,8 @@
+import { useMemo } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRouteContext, useSearch } from "@tanstack/react-router";
 
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
-import { useMemo } from "react";
 
 export const useOrganization = () => {
   const organizationId = useRouteContext({

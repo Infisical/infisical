@@ -721,6 +721,10 @@ export const SUB_ORGANIZATIONS = {
   CREATE: {
     name: "The name of the sub organization to create."
   },
+  UPDATE: {
+    name: "The name of the sub organization to update.",
+    subOrgId: "The id of the sub organization to update."
+  },
   LIST: {
     limit: "The number of sub organizations to return.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th sub organization.",

@@ -8,12 +8,19 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import { OrgPermissionChildOrgActions, OrgPermissionSubjects } from "../permission/org-permission";
+import {
+  OrgPermissionActions,
+  OrgPermissionChildOrgActions,
+  OrgPermissionSubjects
+} from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TCreateSubOrgDTO, TListSubOrgDTO } from "./sub-org-types";
+import { TCreateSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 
 type TSubOrgServiceFactoryDep = {
-  orgDAL: Pick<TOrgDALFactory, "findOne" | "create" | "transaction" | "listSubOrganizations">;
+  orgDAL: Pick<
+    TOrgDALFactory,
+    "findOne" | "create" | "transaction" | "listSubOrganizations" | "updateById" | "findById"
+  >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   membershipDAL: Pick<TMembershipDALFactory, "create">;
@@ -113,8 +120,45 @@ export const subOrgServiceFactory = ({
     };
   };
 
+  const updateSubOrg = async ({ subOrgId, name, permissionActor }: TUpdateSubOrgDTO) => {
+    const subOrg = await orgDAL.findOne({
+      rootOrgId: permissionActor.rootOrgId,
+      id: subOrgId
+    });
+    if (!subOrg) {
+      throw new BadRequestError({ message: "Sub-organization not found" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: permissionActor.id,
+      actor: permissionActor.type,
+      orgId: subOrgId,
+      actorOrgId: subOrgId,
+      actorAuthMethod: permissionActor.authMethod,
+      scope: OrganizationActionScope.ChildOrganization
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
+
+    const existingSubOrg = await orgDAL.findOne({
+      parentOrgId: subOrg.parentOrgId,
+      slug: name
+    });
+
+    if (existingSubOrg && existingSubOrg.id !== subOrgId) {
+      throw new BadRequestError({ message: `Sub-organization with name ${name} already exists` });
+    }
+
+    const organization = await orgDAL.updateById(subOrgId, { name, slug: name });
+
+    return {
+      organization
+    };
+  };
+
   return {
     createSubOrg,
-    listSubOrgs
+    listSubOrgs,
+    updateSubOrg
   };
 };

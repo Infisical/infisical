@@ -31,5 +31,5 @@ export * from "./SecretScanningSecretsDetectedTemplate";
 export * from "./SecretSyncFailedTemplate";
 export * from "./ServiceTokenExpiryNoticeTemplate";
 export * from "./SignupEmailVerificationTemplate";
-export * from "./UnlockAccountTemplate";
 export * from "./SubOrganizationInvitationTemplate";
+export * from "./UnlockAccountTemplate";

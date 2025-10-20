@@ -40,8 +40,8 @@ import {
   SecretSyncFailedTemplate,
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
-  UnlockAccountTemplate,
-  SubOrganizationInvitationTemplate
+  SubOrganizationInvitationTemplate,
+  UnlockAccountTemplate
 } from "./emails";
 
 export type TSmtpConfig = SMTPTransport.Options;

@@ -15,3 +15,8 @@ export type TListSubOrganizationsDTO = {
   offset?: number;
   isAccessible?: boolean;
 };
+
+export type TUpdateSubOrganizationDTO = {
+  subOrgId: string;
+  name: string;
+};

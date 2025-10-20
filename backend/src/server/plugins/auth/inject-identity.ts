@@ -8,7 +8,7 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
+import { slugSchema } from "@app/server/lib/schemas";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
@@ -149,7 +149,7 @@ export const injectIdentity = fp(
 
       const subOrganizationSelector = req.headers?.["x-infisical-org"] as string | undefined;
       if (subOrganizationSelector) {
-        await GenericResourceNameSchema.parseAsync(subOrganizationSelector);
+        await slugSchema().parseAsync(subOrganizationSelector);
       }
 
       switch (authMode) {

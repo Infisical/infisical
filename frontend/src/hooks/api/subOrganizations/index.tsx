@@ -1,7 +1,8 @@
-export { useCreateSubOrganization } from "./mutations";
+export { useCreateSubOrganization, useUpdateSubOrganization } from "./mutations";
 export { subOrganizationsQuery } from "./queries";
 export type {
   TCreateSubOrganizationDTO,
   TListSubOrganizationsDTO,
-  TSubOrganization
+  TSubOrganization,
+  TUpdateSubOrganizationDTO
 } from "./types";

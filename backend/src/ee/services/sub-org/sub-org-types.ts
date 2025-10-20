@@ -14,3 +14,9 @@ export type TListSubOrgDTO = {
     isAccessible?: boolean;
   }>;
 };
+
+export type TUpdateSubOrgDTO = {
+  subOrgId: string;
+  name: string;
+  permissionActor: OrgServiceActor;
+};
