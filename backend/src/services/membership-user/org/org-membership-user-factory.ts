@@ -84,6 +84,7 @@ export const newOrgMembershipUserFactory = ({
         message: "Failed to invite user due to org-level auth enforced for organization"
       });
     }
+
     if (org.rootOrgId) {
       const rootOrgMembership = await membershipUserDAL.find({
         scope: AccessScope.Organization,
@@ -120,40 +121,52 @@ export const newOrgMembershipUserFactory = ({
 
     const signUpTokens: { email: string; link: string }[] = [];
     const orgDetails = await orgDAL.findById(dto.permission.orgId);
+    if (orgDetails.rootOrgId) {
+      const emails = newUsers.map((el) => el.email).filter(Boolean);
+      await smtpService.sendMail({
+        template: SmtpTemplates.SubOrgInvite,
+        subjectLine: "Infisical sub-organization invitation",
+        recipients: emails as string[],
+        substitutions: {
+          subOrganizationName: orgDetails.slug,
+          callback_url: `${appCfg.SITE_URL}/organization/projects?${orgDetails.slug}`
+        }
+      });
+    } else {
+      await Promise.allSettled(
+        newUsers.map(async (el) => {
+          const token = await tokenService.createTokenForUser({
+            type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+            userId: el.id,
+            orgId: dto.permission.orgId
+          });
 
-    await Promise.allSettled(
-      newUsers.map(async (el) => {
-        const token = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-          userId: el.id,
-          orgId: dto.permission.orgId
-        });
+          if (el.email) {
+            if (!appCfg.isSmtpConfigured) {
+              signUpTokens.push({
+                email: el.email,
+                link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+              });
+            }
 
-        if (el.email) {
-          if (!appCfg.isSmtpConfigured) {
-            signUpTokens.push({
-              email: el.email,
-              link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+            await smtpService.sendMail({
+              template: SmtpTemplates.OrgInvite,
+              subjectLine: "Infisical organization invitation",
+              recipients: [el.email],
+              substitutions: {
+                inviterFirstName: actorDetails?.firstName,
+                inviterUsername: actorDetails?.email,
+                organizationName: orgDetails?.name,
+                email: el.email,
+                organizationId: orgDetails?.id.toString(),
+                token,
+                callback_url: `${appCfg.SITE_URL}/signupinvite`
+              }
             });
           }
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.OrgInvite,
-            subjectLine: "Infisical organization invitation",
-            recipients: [el.email],
-            substitutions: {
-              inviterFirstName: actorDetails?.firstName,
-              inviterUsername: actorDetails?.email,
-              organizationName: orgDetails?.name,
-              email: el.email,
-              organizationId: orgDetails?.id.toString(),
-              token,
-              callback_url: `${appCfg.SITE_URL}/signupinvite`
-            }
-          });
-        }
-      })
-    );
+        })
+      );
+    }
 
     return { signUpTokens };
   };

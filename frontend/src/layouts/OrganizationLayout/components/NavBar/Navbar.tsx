@@ -131,14 +131,14 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
   const { data: subOrganizations = [] } = useQuery({
     ...subOrganizationsQuery.list({ limit: 500 }),
-    enabled: Boolean(subscription.subOrganization) && !isSubOrganization
+    enabled: Boolean(subscription.subOrganization)
   });
 
   useEffect(() => {

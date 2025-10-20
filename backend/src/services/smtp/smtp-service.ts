@@ -40,7 +40,8 @@ import {
   SecretSyncFailedTemplate,
   ServiceTokenExpiryNoticeTemplate,
   SignupEmailVerificationTemplate,
-  UnlockAccountTemplate
+  UnlockAccountTemplate,
+  SubOrganizationInvitationTemplate
 } from "./emails";
 
 export type TSmtpConfig = SMTPTransport.Options;
@@ -65,6 +66,7 @@ export enum SmtpTemplates {
   // HistoricalSecretList = "historicalSecretLeakIncident", not used anymore?
   NewDeviceJoin = "newDevice",
   OrgInvite = "organizationInvitation",
+  SubOrgInvite = "subOrganizationInvitation",
   OrgAssignment = "organizationAssignment",
   OAuthPasswordReset = "oAuthPasswordReset",
   ResetPassword = "passwordReset",
@@ -102,6 +104,7 @@ export enum SmtpHost {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.OrgInvite]: OrganizationInvitationTemplate,
+  [SmtpTemplates.SubOrgInvite]: SubOrganizationInvitationTemplate,
   [SmtpTemplates.OrgAssignment]: OrganizationAssignmentTemplate,
   [SmtpTemplates.NewDeviceJoin]: NewDeviceLoginTemplate,
   [SmtpTemplates.SignupEmailVerification]: SignupEmailVerificationTemplate,

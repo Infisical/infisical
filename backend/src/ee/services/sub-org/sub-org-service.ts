@@ -93,10 +93,10 @@ export const subOrgServiceFactory = ({
     await permissionService.getOrgPermission({
       actorId: permissionActor.id,
       actor: permissionActor.type,
-      orgId: permissionActor.parentOrgId,
+      orgId: permissionActor.rootOrgId,
       actorOrgId: permissionActor.rootOrgId,
       actorAuthMethod: permissionActor.authMethod,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
 
     const organizations = await orgDAL.listSubOrganizations({

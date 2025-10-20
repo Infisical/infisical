@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { useRouteContext, useSearch } from "@tanstack/react-router";
 
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
+import { useMemo } from "react";
 
 export const useOrganization = () => {
   const organizationId = useRouteContext({
@@ -20,13 +21,18 @@ export const useOrganization = () => {
     staleTime: Infinity
   });
 
-  return {
-    currentOrg: {
-      ...currentOrg,
-      id: currentOrg?.subOrganization?.id || currentOrg?.id,
-      parentOrgId: currentOrg.id
-    },
-    isSubOrganization: Boolean(currentOrg.subOrganization),
-    isRootOrganization: !currentOrg.subOrganization
-  };
+  const org = useMemo(
+    () => ({
+      currentOrg: {
+        ...currentOrg,
+        id: currentOrg?.subOrganization?.id || currentOrg?.id,
+        parentOrgId: currentOrg.id
+      },
+      isSubOrganization: Boolean(currentOrg.subOrganization),
+      isRootOrganization: !currentOrg.subOrganization
+    }),
+    [currentOrg]
+  );
+
+  return org;
 };

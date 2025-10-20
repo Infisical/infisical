@@ -346,7 +346,7 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.ParentOrganization
     });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
@@ -418,7 +418,7 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.ParentOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
@@ -878,7 +878,7 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.ParentOrganization
     });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
@@ -1172,7 +1172,7 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.ParentOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.IncidentAccount);
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
@@ -1200,7 +1200,7 @@ export const orgServiceFactory = ({
       orgId,
       actorAuthMethod,
       actorOrgId,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.ParentOrganization
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.IncidentAccount);
 
