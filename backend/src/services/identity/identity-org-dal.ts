@@ -519,6 +519,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           db.ref("actorIdentityId").withSchema(TableName.Membership).as("identityId"),
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity),
+          db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
 
           db.ref("id").as("uaId").withSchema(TableName.IdentityUniversalAuth),
           db.ref("id").as("gcpId").withSchema(TableName.IdentityGcpAuth),
@@ -570,6 +571,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
           crPermission,
           crName,
           identityId,
+          identityOrgId,
           identityName,
           hasDeleteProtection,
           role,
@@ -615,6 +617,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
             id: identityId as string,
             name: identityName,
             hasDeleteProtection,
+            orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,

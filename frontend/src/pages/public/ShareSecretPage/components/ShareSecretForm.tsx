@@ -22,6 +22,7 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
+import { useSearch } from "@tanstack/react-router";
 
 // values in ms
 const expiresInOptions = [
@@ -87,6 +88,10 @@ export const ShareSecretForm = ({
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
+  const subOrganization = useSearch({
+    strict: false,
+    select: (el) => el?.subOrganization
+  });
 
   const publicSharedSecretCreator = useCreatePublicSharedSecret();
   const privateSharedSecretCreator = useCreateSharedSecret();
@@ -148,11 +153,14 @@ export const ShareSecretForm = ({
           type: "success"
         });
       } else {
-        const link = `${window.location.origin}/shared/secret/${id}`;
+        const link = new URL(`${window.location.origin}/shared/secret/${id}`);
+        if (subOrganization) {
+          link.searchParams.set("subOrganization", subOrganization);
+        }
 
-        setSecretLink(link);
+        setSecretLink(link.toString());
 
-        navigator.clipboard.writeText(link);
+        navigator.clipboard.writeText(link.toString());
         setCopyTextSecret("secret");
 
         createNotification({

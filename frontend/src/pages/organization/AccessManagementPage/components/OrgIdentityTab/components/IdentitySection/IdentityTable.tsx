@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faBuilding,
   faCheckCircle,
   faChevronRight,
   faEdit,
@@ -78,7 +79,7 @@ type Filter = {
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
     offset,
@@ -286,15 +287,18 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
+              {isSubOrganization && <Th>Managed By</Th>}
               <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
+            {isPending && (
+              <TableSkeleton columns={isSubOrganization ? 4 : 3} innerKey="org-identities" />
+            )}
             {!isPending &&
               data?.identities?.map(
                 ({
-                  identity: { id, name },
+                  identity: { id, name, orgId },
                   role,
                   customRole,
                   lastLoginAuthMethod,
@@ -362,6 +366,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           }}
                         </OrgPermissionCan>
                       </Td>
+                      {isSubOrganization && (
+                        <Td>
+                          <p className="truncate">
+                            <FontAwesomeIcon size="sm" className="mr-1.5" icon={faBuilding} />
+                            {currentOrg.id === orgId ? "Organization" : "Root Organization"}
+                          </p>
+                        </Td>
+                      )}
                       <Td>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

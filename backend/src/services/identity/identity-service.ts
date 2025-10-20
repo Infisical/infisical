@@ -477,7 +477,7 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId);
+    const identityMemberships = await identityProjectDAL.findByIdentityId(identityId, actorOrgId);
     return identityMemberships;
   };
 

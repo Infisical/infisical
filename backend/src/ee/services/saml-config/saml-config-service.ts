@@ -408,7 +408,7 @@ export const samlConfigServiceFactory = ({
         });
       }
     } else if (dto.type === "orgSlug") {
-      const org = await orgDAL.findOne({ slug: dto.orgSlug });
+      const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
       if (!org) {
         throw new NotFoundError({
           message: `Organization with slug '${dto.orgSlug}' not found`

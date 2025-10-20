@@ -91,7 +91,11 @@ const Page = () => {
           <PageHeader scope="org" description="Organization Identity" title={data.identity.name} />
           <div className="flex">
             <div className="mr-4 w-96">
-              <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
+              <IdentityDetailsSection
+                isOrgIdentity={data.identity.orgId === currentOrg.id}
+                identityId={identityId}
+                handlePopUpOpen={handlePopUpOpen}
+              />
               {!isAuthHidden && (
                 <IdentityAuthenticationSection
                   identityId={identityId}

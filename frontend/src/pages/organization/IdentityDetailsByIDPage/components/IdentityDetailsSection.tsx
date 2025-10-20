@@ -21,7 +21,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -39,6 +39,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
+  const { isSubOrganization } = useOrganization();
 
   const { data } = useGetIdentityById(identityId);
   return data ? (
@@ -142,6 +143,14 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
           <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
+        {isSubOrganization && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-mineshaft-300">Manage By</p>
+            <p className="text-sm text-mineshaft-300">
+              {isOrgIdentity ? "Organization" : "Root Organization"}
+            </p>
+          </div>
+        )}
         {isOrgIdentity && (
           <div className="mb-4">
             <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>

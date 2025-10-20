@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useRouteContext } from "@tanstack/react-router";
+import { useRouteContext, useSearch } from "@tanstack/react-router";
 
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 
@@ -9,8 +9,13 @@ export const useOrganization = () => {
     select: (el) => el.organizationId
   });
 
+  const subOrganization = useSearch({
+    strict: false,
+    select: (el) => el?.subOrganization
+  });
+
   const { data: currentOrg } = useSuspenseQuery({
-    queryKey: organizationKeys.getOrgById(organizationId),
+    queryKey: organizationKeys.getOrgById(organizationId, subOrganization),
     queryFn: () => fetchOrganizationById(organizationId),
     staleTime: Infinity
   });
