@@ -130,7 +130,7 @@ export const scimServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
@@ -172,7 +172,7 @@ export const scimServiceFactory = ({
       scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      orgId: actorOrgId,
+      orgId,
       actorAuthMethod,
       actorOrgId
     });
