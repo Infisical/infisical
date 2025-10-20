@@ -5,14 +5,30 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Tab, TabList, Tabs } from "@app/components/v2";
-import { useProject, useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import {
+  useListWorkspaceCertificateTemplates,
+  useListWorkspacePkiSubscribers
+} from "@app/hooks/api";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const PkiManagerLayout = () => {
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
+  const { subscription } = useSubscription();
   const { t } = useTranslation();
+
+  const { data: subscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
+  const { data: templatesData } = useListWorkspaceCertificateTemplates({
+    projectId: currentProject?.id || ""
+  });
+  const templates = templatesData?.certificateTemplates || [];
+
+  const hasExistingSubscribers = subscribers.length > 0;
+  const hasExistingTemplates = templates.length > 0;
+  const showLegacySection =
+    subscription.pkiLegacyTemplates || hasExistingSubscribers || hasExistingTemplates;
 
   const location = useLocation();
   return (
@@ -31,22 +47,12 @@ export const PkiManagerLayout = () => {
               <Tabs value="selected">
                 <TabList className="border-b-0">
                   <Link
-                    to="/projects/cert-management/$projectId/subscribers"
+                    to="/projects/cert-management/$projectId/policies"
                     params={{
                       projectId: currentProject.id
                     }}
                   >
-                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Subscribers</Tab>}
-                  </Link>
-                  <Link
-                    to="/projects/cert-management/$projectId/certificate-templates"
-                    params={{
-                      projectId: currentProject.id
-                    }}
-                  >
-                    {({ isActive }) => (
-                      <Tab value={isActive ? "selected" : ""}>Certificate Templates</Tab>
-                    )}
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Policies</Tab>}
                   </Link>
                   <Link
                     to="/projects/cert-management/$projectId/certificates"
@@ -104,6 +110,36 @@ export const PkiManagerLayout = () => {
                       <Tab value={isActive ? "selected" : ""}>App Connections</Tab>
                     )}
                   </Link>
+                  {showLegacySection && (
+                    <>
+                      {(subscription.pkiLegacyTemplates || hasExistingSubscribers) && (
+                        <Link
+                          to="/projects/cert-management/$projectId/subscribers"
+                          params={{
+                            projectId: currentProject.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <Tab value={isActive ? "selected" : ""}>Subscribers (Legacy)</Tab>
+                          )}
+                        </Link>
+                      )}
+                      {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
+                        <Link
+                          to="/projects/cert-management/$projectId/certificate-templates"
+                          params={{
+                            projectId: currentProject.id
+                          }}
+                        >
+                          {({ isActive }) => (
+                            <Tab value={isActive ? "selected" : ""}>
+                              Certificate Templates (Legacy)
+                            </Tab>
+                          )}
+                        </Link>
+                      )}
+                    </>
+                  )}
                   <Link
                     to="/projects/cert-management/$projectId/access-management"
                     params={{

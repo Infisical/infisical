@@ -4,6 +4,7 @@ export {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionGroupActions,

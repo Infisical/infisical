@@ -47,6 +47,7 @@ export type SubscriptionPlan = {
   gateway: boolean;
   externalKms: boolean;
   pkiEst: boolean;
+  pkiLegacyTemplates: boolean;
   enforceMfa: boolean;
   enforceGoogleSSO: boolean;
   projectTemplates: boolean;
