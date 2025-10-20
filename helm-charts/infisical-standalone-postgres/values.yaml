@@ -104,10 +104,11 @@ infisical:
       cpu: 350m
 
   # -- Adds a list of environment variables with support for all possible configurations including valueFrom. This is especially useful to override Infisical configuration environment variables. See [Infisical Environment Variables](https://infisical.com/docs/self-hosting/configuration/envars) for available configuration options and the [Kubernetes API reference](https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/#environment-variables) for details on environment variable configuration.
+  # WARNING: Chart-managed variables (DB_CONNECTION_URI, REDIS_URL) take precedence. Do not attempt to override these as they are managed by postgresql.enabled and redis.enabled settings.
   env: []
   # Example:
   # env:
-  #   # Sensitive data from Kubernetes Secrets
+  #   # Sensitive data from Kubernetes Secrets (DO NOT hardcode secrets here!)
   #   - name: AUTH_SECRET
   #     valueFrom:
   #       secretKeyRef:
