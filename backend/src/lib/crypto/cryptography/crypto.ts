@@ -258,6 +258,13 @@ const cryptographyFactory = () => {
         const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg.ENCRYPTION_KEY;
 
+        // Sanity check
+        if (!rootEncryptionKey && !encryptionKey) {
+          throw new CryptographyError({
+            message: "Tried to encrypt with instance root encryption key, but no root encryption key is set."
+          });
+        }
+
         if (rootEncryptionKey) {
           const { iv, tag, ciphertext } = encrypt({
             plaintext: data,
@@ -303,6 +310,14 @@ const cryptographyFactory = () => {
         // the or gate is used used in migration
         const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+
+        // Sanity check
+        if (!rootEncryptionKey && !encryptionKey) {
+          throw new CryptographyError({
+            message: "Tried to decrypt with instance root encryption key, but no root encryption key is set."
+          });
+        }
+
         if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
           const data = symmetric().decrypt({
             key: rootEncryptionKey,
