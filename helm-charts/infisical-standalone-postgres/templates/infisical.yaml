@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: {{ include "infisical.fullname" . }}
   annotations:
-    {{- if .Values.reloader.enabled }}
+    {{- if $infisicalValues.redeployOnSecretChange }}
     secret.reloader.stakater.com/reload: {{ $infisicalValues.kubeSecretRef }}
     {{- end }}
     updatedAt: {{ now | date "2006-01-01 MST 15:04:05" | quote }}

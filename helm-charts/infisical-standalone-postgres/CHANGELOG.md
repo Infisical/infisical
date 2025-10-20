@@ -1,7 +1,7 @@
 ## 1.7.2 (October 20, 2025)
 Changes:
 * Added automatic reloading support for the Infisical deployment when the `infisical.kubeSecretRef` kubernetes secret changes.
-  * Configurable by `reloader.enabled: true|false`. Defaults to `true`.
+  * Configurable by `infisical.redeployOnSecretChange: true|false`. Defaults to `true`.
 
 ## 1.7.1 (October 10, 2025)
 

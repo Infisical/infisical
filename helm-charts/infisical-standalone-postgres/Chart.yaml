@@ -31,4 +31,4 @@ dependencies:
   - name: reloader
     version: 2.2.3
     repository: https://stakater.github.io/stakater-charts
-    condition: reloader.enabled
+    condition: infisical.redeployOnSecretChange

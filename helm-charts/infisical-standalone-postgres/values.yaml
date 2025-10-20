@@ -13,6 +13,9 @@ infisical:
   # -- Automatically migrates new database schema when deploying
   autoDatabaseSchemaMigration: true
 
+  # -- redeployOnSecretChange is used to reload the Infisical instance when the Kubernetes secret referenced by `infisical.kubeSecretRef` is updated
+  redeployOnSecretChange: true
+
   autoBootstrap:
     # -- Enable auto-bootstrap of the Infisical instance
     enabled: false
@@ -183,7 +186,3 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
-
-# -- Reloader is used to reload the Infisical instance when the Kubernetes secret referenced by `infisical.kubeSecretRef` is updated
-reloader:
-  enabled: true
