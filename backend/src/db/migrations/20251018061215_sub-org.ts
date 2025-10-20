@@ -38,7 +38,7 @@ export async function up(knex: Knex): Promise<void> {
     );
 
     await knex.schema.alterTable(TableName.Identity, (t) => {
-      t.uuid("orgId").notNullable();
+      t.uuid("orgId").notNullable().alter();
     });
   }
 }
