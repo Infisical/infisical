@@ -208,7 +208,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
+    actorOrgId: string
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: ActorType.USER,
@@ -701,7 +701,7 @@ export const orgServiceFactory = ({
     ipAddress: string;
     orgId: string;
     actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string | undefined;
+    actorOrgId: string;
   }) => {
     const { hasRole } = await permissionService.getOrgPermission({
       actor: ActorType.USER,
@@ -1150,7 +1150,7 @@ export const orgServiceFactory = ({
     userId: string,
     orgId: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
+    actorOrgId: string
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: ActorType.USER,
@@ -1170,7 +1170,7 @@ export const orgServiceFactory = ({
     orgId: string,
     email: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
+    actorOrgId: string
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: ActorType.USER,
@@ -1198,7 +1198,7 @@ export const orgServiceFactory = ({
     orgId: string,
     id: string,
     actorAuthMethod: ActorAuthMethod,
-    actorOrgId: string | undefined
+    actorOrgId: string
   ) => {
     const { permission } = await permissionService.getOrgPermission({
       actor: ActorType.USER,

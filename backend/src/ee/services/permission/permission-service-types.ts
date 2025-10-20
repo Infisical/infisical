@@ -39,7 +39,7 @@ export type TGetOrgPermissionArg = {
   actorId: string;
   orgId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId?: string;
+  actorOrgId: string;
   scope: OrganizationActionScope;
 };
 

@@ -1830,7 +1830,8 @@ export const projectServiceFactory = ({
       actorId: permission.id,
       orgId: permission.orgId,
       actorAuthMethod: permission.authMethod,
-      scope: OrganizationActionScope.Any
+      scope: OrganizationActionScope.Any,
+      actorOrgId: permission.orgId
     });
 
     return projectDAL.searchProjects({
@@ -1854,6 +1855,7 @@ export const projectServiceFactory = ({
       actorId: permission.id,
       orgId: permission.orgId,
       actorAuthMethod: permission.authMethod,
+      actorOrgId: permission.orgId,
       scope: OrganizationActionScope.Any
     });
 

@@ -5,7 +5,7 @@ export type TGenericPermission = {
   actor: ActorType;
   actorId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string | undefined;
+  actorOrgId: string;
 };
 
 /**

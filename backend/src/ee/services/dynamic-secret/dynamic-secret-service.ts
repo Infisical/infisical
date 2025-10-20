@@ -138,7 +138,7 @@ export const dynamicSecretServiceFactory = ({
         scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        orgId: actorOrgId,
+        orgId: gateway?.orgId || gatewayv2?.orgId,
         actorAuthMethod,
         actorOrgId
       });
@@ -302,7 +302,7 @@ export const dynamicSecretServiceFactory = ({
         scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        orgId: actorOrgId,
+        orgId: gateway?.orgId || gatewayv2?.orgId,
         actorAuthMethod,
         actorOrgId
       });
