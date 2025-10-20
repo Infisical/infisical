@@ -216,7 +216,7 @@ export const identityAccessTokenServiceFactory = ({
 
     if (subOrganizationSelector) {
       const subOrganization = await orgDAL.findOne({ rootOrgId, slug: subOrganizationSelector });
-      if (!subOrganizationSelector)
+      if (!subOrganization)
         throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
 
       const identityOrgMembership = await membershipIdentityDAL.findOne({

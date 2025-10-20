@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +23,6 @@ import {
 import { useTimedReset } from "@app/hooks";
 import { useCreatePublicSharedSecret, useCreateSharedSecret } from "@app/hooks/api";
 import { SecretSharingAccessType } from "@app/hooks/api/secretSharing";
-import { useSearch } from "@tanstack/react-router";
 
 // values in ms
 const expiresInOptions = [

@@ -57,7 +57,7 @@ export const newOrgMembershipIdentityFactory = ({
 
     const identityDetails = await identityDAL.findById(dto.data.identityId);
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
-      throw new BadRequestError({ message: "Only identites from parent organization can be invited" });
+      throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
 
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
@@ -143,11 +143,11 @@ export const newOrgMembershipIdentityFactory = ({
       scope: OrganizationActionScope.ChildOrganization
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
     const identityDetails = await identityDAL.findById(dto.selector.identityId);
     if (identityDetails.orgId !== dto.permission.rootOrgId) {
-      throw new BadRequestError({ message: "Only identites from parent organization can do this operation" });
+      throw new BadRequestError({ message: "Only identities from parent organization can do this operation" });
     }
 
     if (identityDetails.orgId === dto.permission.orgId) {

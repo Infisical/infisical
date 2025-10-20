@@ -356,7 +356,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // this right nwo only support sub organization
+  // this right now only support sub organization
   const listAvailableIdentities = async (orgId: string, rootOrgId: string) => {
     try {
       const usersConnectedToOrg = db
@@ -381,7 +381,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
 
       return docs;
     } catch (error) {
-      throw new DatabaseError({ error, name: "ListAvailableUsers" });
+      throw new DatabaseError({ error, name: "ListAvailableIdentities" });
     }
   };
 

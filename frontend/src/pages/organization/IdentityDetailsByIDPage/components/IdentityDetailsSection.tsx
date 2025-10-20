@@ -145,7 +145,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
         </div>
         {isSubOrganization && (
           <div className="mb-4">
-            <p className="text-sm font-medium text-mineshaft-300">Manage By</p>
+            <p className="text-sm font-medium text-mineshaft-300">Managed By</p>
             <p className="text-sm text-mineshaft-300">
               {isOrgIdentity ? "Organization" : "Root Organization"}
             </p>

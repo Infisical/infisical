@@ -23,6 +23,7 @@ import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from 
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -41,7 +42,6 @@ import {
   TRevokeUaDTO,
   TUpdateUaDTO
 } from "./identity-ua-types";
-import { TIdentityDALFactory } from "../identity/identity-dal";
 
 type TIdentityUaServiceFactoryDep = {
   identityDAL: Pick<TIdentityDALFactory, "findById">;
@@ -310,10 +310,6 @@ export const identityUaServiceFactory = ({
         message: "Failed to add universal auth to already configured identity"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
-    }
-
     if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }

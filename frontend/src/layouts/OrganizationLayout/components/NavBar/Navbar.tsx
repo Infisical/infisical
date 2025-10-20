@@ -344,7 +344,7 @@ export const Navbar = () => {
                                   size="xs"
                                   className="flex w-full items-center justify-start p-0 font-normal"
                                   leftIcon={
-                                    currentOrg?.id === org.id && (
+                                    currentOrg?.parentOrgId === org.id && (
                                       <FontAwesomeIcon
                                         icon={faCheck}
                                         className="mr-3 text-primary"
@@ -654,7 +654,7 @@ export const Navbar = () => {
           subTitle="Define a new sub-organization under your current organization."
         >
           <div className="mb-2">
-            <NewSubOrganizationForm onClose={() => setShowSubOrgForm(true)} />
+            <NewSubOrganizationForm onClose={() => setShowSubOrgForm(false)} />
           </div>
         </ModalContent>
       </Modal>

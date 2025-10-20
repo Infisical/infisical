@@ -243,7 +243,7 @@ export const IdentitySection = withPermission(
         >
           <ModalContent
             title="Assign Existing Identity"
-            subTitle="Assign an existing identity from your organization or namespace to this project. The identity will continue to be managed at its original scope."
+            subTitle="Assign an existing identity from your root organization to the sub organization. The identity will continue to be managed at its original scope."
           >
             <IdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
           </ModalContent>

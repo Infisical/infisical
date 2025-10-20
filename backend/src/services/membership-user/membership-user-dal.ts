@@ -291,7 +291,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
     }
   };
 
-  // this right nwo only support sub organization
+  // this right now only support sub organization
   const listAvailableUsers = async (orgId: string, rootOrgId: string) => {
     try {
       const usersConnectedToOrg = db

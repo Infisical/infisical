@@ -24,7 +24,8 @@ export async function seed(knex: Knex): Promise<void> {
       // @ts-ignore
       id: seedData1.machineIdentity.id,
       name: seedData1.machineIdentity.name,
-      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: seedData1.organization.id
     }
   ]);
   const identityUa = await knex(TableName.IdentityUniversalAuth)

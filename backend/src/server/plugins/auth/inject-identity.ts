@@ -8,10 +8,10 @@ import { TScimTokenJwtPayload } from "@app/ee/services/scim/scim-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError } from "@app/lib/errors";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { ActorType, AuthMethod, AuthMode, AuthModeJwtTokenPayload, AuthTokenType } from "@app/services/auth/auth-type";
 import { TIdentityAccessTokenJwtPayload } from "@app/services/identity-access-token/identity-access-token-types";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 
 export type TAuthMode =
   | {
@@ -243,7 +243,7 @@ export const injectIdentity = fp(
           requestContext.set("orgId", orgId);
 
           if (subOrganizationSelector)
-            throw new BadRequestError({ message: `Service token doesn't support sub organization selector` });
+            throw new BadRequestError({ message: `SCIM token doesn't support sub organization selector` });
 
           req.auth = {
             authMode: AuthMode.SCIM_TOKEN,

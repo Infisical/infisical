@@ -14,8 +14,14 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("rootOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
       t.dropUnique(["slug"]);
-      t.unique(["rootOrgId", "parentOrgId", "slug"]);
     });
+
+    // had to switch to raw for null not distinct
+    await knex.raw(`
+ALTER TABLE "organization"
+ADD CONSTRAINT "organization_root_parent_slug_unique"
+UNIQUE ("rootOrgId", "parentOrgId", "slug") NULLS NOT DISTINCT;
+`);
   }
 
   const hasIdentityOrgCol = await knex.schema.hasColumn(TableName.Identity, "orgId");

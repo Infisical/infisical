@@ -173,7 +173,7 @@ export enum EventType {
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
 
-  CREATE_CHILD_ORGANIZATION = "create-child-organization",
+  CREATE_SUB_ORGANIZATION = "create-child-organization",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -609,8 +609,8 @@ interface GetSecretsEvent {
   };
 }
 
-interface CreateChildOrganizationEvent {
-  type: EventType.CREATE_CHILD_ORGANIZATION;
+interface CreateSubOrganizationEvent {
+  type: EventType.CREATE_SUB_ORGANIZATION;
   metadata: {
     name: string;
     organizationId: string;
@@ -3873,7 +3873,7 @@ interface PamResourceDeleteEvent {
 }
 
 export type Event =
-  | CreateChildOrganizationEvent
+  | CreateSubOrganizationEvent
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent

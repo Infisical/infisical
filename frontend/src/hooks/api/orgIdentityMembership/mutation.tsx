@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { identitiesKeys } from "../identities";
 import {
   TCreateOrgIdentityMembershipDTO,
   TDeleteOrgIdentityMembershipDTO,
@@ -19,8 +20,7 @@ export const useCreateOrgIdentityMembership = () => {
       return data.identityMembership;
     },
     onSuccess: () => {
-      // Invalidate relevant queries if needed
-      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentities({ search: {} }) });
     }
   });
 };
@@ -35,8 +35,7 @@ export const useDeleteOrgIdentityMembership = () => {
       return data.identityMembership;
     },
     onSuccess: () => {
-      // Invalidate relevant queries if needed
-      queryClient.invalidateQueries({ queryKey: ["organization"] });
+      queryClient.invalidateQueries({ queryKey: identitiesKeys.searchIdentities({ search: {} }) });
     }
   });
 };

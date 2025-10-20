@@ -4,11 +4,11 @@ import { OrganizationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, SUB_ORGANIZATIONS } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { GenericResourceNameSchema } from "@app/server/lib/schemas";
 
-const sanitiziedSubOrganizationSchema = OrganizationsSchema.pick({
+const sanitizedSubOrganizationSchema = OrganizationsSchema.pick({
   id: true,
   name: true,
   slug: true,
@@ -26,7 +26,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SubOrganizations],
-      description: "Create a child organization",
+      description: "Create a sub organization",
       security: [
         {
           bearerAuth: []
@@ -37,7 +37,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitiziedSubOrganizationSchema
+          organization: sanitizedSubOrganizationSchema
         })
       }
     },
@@ -45,21 +45,14 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       const { organization } = await server.services.subOrganization.createSubOrg({
         name: req.body.name,
-        permissionActor: {
-          id: req.permission.id,
-          type: req.permission.type,
-          authMethod: req.permission.authMethod,
-          orgId: req.permission.orgId,
-          parentOrgId: req.permission.parentOrgId,
-          rootOrgId: req.permission.rootOrgId
-        }
+        permissionActor: req.permission
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         event: {
-          type: EventType.CREATE_CHILD_ORGANIZATION,
+          type: EventType.CREATE_SUB_ORGANIZATION,
           metadata: {
             name: req.body.name,
             organizationId: organization.id
@@ -80,7 +73,7 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
     schema: {
       hide: false,
       tags: [ApiDocsTags.SubOrganizations],
-      description: "List child organizations",
+      description: "List of sub organizations",
       security: [
         {
           bearerAuth: []
@@ -97,21 +90,14 @@ export const registerSubOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organizations: sanitiziedSubOrganizationSchema.array()
+          organizations: sanitizedSubOrganizationSchema.array()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       const { organizations } = await server.services.subOrganization.listSubOrgs({
-        permissionActor: {
-          id: req.permission.id,
-          type: req.permission.type,
-          authMethod: req.permission.authMethod,
-          orgId: req.permission.orgId,
-          parentOrgId: req.permission.orgId,
-          rootOrgId: req.permission.rootOrgId
-        },
+        permissionActor: req.permission,
         data: {
           limit: req.query.limit,
           offset: req.query.offset,

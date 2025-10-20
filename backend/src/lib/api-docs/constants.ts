@@ -719,12 +719,12 @@ export const ORGANIZATIONS = {
 
 export const SUB_ORGANIZATIONS = {
   CREATE: {
-    name: "The name of the child organization to create."
+    name: "The name of the sub organization to create."
   },
   LIST: {
-    limit: "The number of child organizations to return.",
-    offset: "The offset to start from. If you enter 10, it will start from the 10th child organization.",
-    isAccessible: "Filter to only return child organizations that the actor has access to."
+    limit: "The number of sub organizations to return.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th sub organization.",
+    isAccessible: "Filter to only return sub organizations that the actor has access to."
   }
 } as const;
 

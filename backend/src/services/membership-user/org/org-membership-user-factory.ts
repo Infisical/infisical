@@ -92,10 +92,15 @@ export const newOrgMembershipUserFactory = ({
         },
         scopeOrgId: org.rootOrgId
       });
-      if (rootOrgMembership.length !== newMembers.length)
+      if (rootOrgMembership.length !== newMembers.length) {
+        const emails = newMembers
+          .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
+          .map((el) => el.email)
+          .join(",");
         throw new BadRequestError({
-          message: "User doesn't have membership in root organization"
+          message: `Users with email ${emails}  doesn't have membership in root organization`
         });
+      }
     }
   };
 

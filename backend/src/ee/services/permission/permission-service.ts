@@ -212,9 +212,9 @@ export const permissionServiceFactory = ({
     const rootOrgId = permissionData?.[0]?.rootOrgId;
     const isChild = Boolean(rootOrgId);
     if (scope === OrganizationActionScope.ParentOrganization && isChild) {
-      throw new BadRequestError({ message: `Child organization cannot do this operation` });
+      throw new ForbiddenRequestError({ message: `Child organization cannot do this operation` });
     } else if (scope === OrganizationActionScope.ChildOrganization && !isChild) {
-      throw new BadRequestError({ message: `Parent organization cannot do this operation` });
+      throw new ForbiddenRequestError({ message: `Parent organization cannot do this operation` });
     }
 
     const permissionFromRoles = permissionData.flatMap((membership) => {

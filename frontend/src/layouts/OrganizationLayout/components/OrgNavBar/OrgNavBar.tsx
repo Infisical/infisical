@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
-import { usePopUp } from "@app/hooks";
 import { useOrganization } from "@app/context";
+import { usePopUp } from "@app/hooks";
 
 type Props = {
   isHidden?: boolean;

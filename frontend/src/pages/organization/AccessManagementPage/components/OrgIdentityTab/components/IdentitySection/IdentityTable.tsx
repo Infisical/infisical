@@ -370,7 +370,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         <Td>
                           <p className="truncate">
                             <FontAwesomeIcon size="sm" className="mr-1.5" icon={faBuilding} />
-                            {currentOrg.id === orgId ? "Organization" : "Root Organization"}
+                            {currentOrg.id === orgId ? "Sub Organization" : "Root Organization"}
                           </p>
                         </Td>
                       )}
