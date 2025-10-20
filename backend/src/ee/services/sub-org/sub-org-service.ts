@@ -8,11 +8,7 @@ import { TMembershipRoleDALFactory } from "@app/services/membership/membership-r
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TLicenseServiceFactory } from "../license/license-service";
-import {
-  OrgPermissionActions,
-  OrgPermissionChildOrgActions,
-  OrgPermissionSubjects
-} from "../permission/org-permission";
+import { OrgPermissionActions, OrgPermissionSubjects, OrgPermissionSubOrgActions } from "../permission/org-permission";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TCreateSubOrgDTO, TListSubOrgDTO, TUpdateSubOrgDTO } from "./sub-org-types";
 
@@ -47,8 +43,8 @@ export const subOrgServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionChildOrgActions.Create,
-      OrgPermissionSubjects.ChildOrganization
+      OrgPermissionSubOrgActions.Create,
+      OrgPermissionSubjects.SubOrganization
     );
 
     const orgLicensePlan = await licenseService.getPlan(permissionActor.rootOrgId);
