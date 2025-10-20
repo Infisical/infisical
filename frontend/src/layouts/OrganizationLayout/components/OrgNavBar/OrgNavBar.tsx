@@ -16,6 +16,8 @@ export const OrgNavBar = ({ isHidden }: Props) => {
 
   const { pathname } = useLocation();
 
+  const variant = isRootOrganization ? "org" : "namespace";
+
   return (
     <>
       {!isHidden && (
@@ -32,28 +34,28 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                 <TabList className="border-b-0">
                   <Link to="/organization/projects">
                     {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Overview
                       </Tab>
                     )}
                   </Link>
                   <Link to="/organization/app-connections">
                     {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
                         App Connections
                       </Tab>
                     )}
                   </Link>
                   <Link to="/organization/networking">
                     {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Networking
                       </Tab>
                     )}
                   </Link>
                   <Link to="/organization/secret-sharing">
                     {({ isActive }) => (
-                      <Tab value={isActive ? "selected" : ""} variant="org">
+                      <Tab value={isActive ? "selected" : ""} variant={variant}>
                         Secret Sharing
                       </Tab>
                     )}
@@ -61,7 +63,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                   <Link to="/organization/access-management">
                     {({ isActive }) => (
                       <Tab
-                        variant="org"
+                        variant={variant}
                         value={
                           isActive ||
                           pathname.match(
@@ -77,7 +79,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                   </Link>
                   <Link to="/organization/audit-logs">
                     {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Audit Logs
                       </Tab>
                     )}
@@ -85,7 +87,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                   {isRootOrganization && (
                     <Link to="/organization/billing">
                       {({ isActive }) => (
-                        <Tab variant="org" value={isActive ? "selected" : ""}>
+                        <Tab variant={variant} value={isActive ? "selected" : ""}>
                           Usage & Billing
                         </Tab>
                       )}
@@ -93,7 +95,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
                   )}
                   <Link to="/organization/settings">
                     {({ isActive }) => (
-                      <Tab variant="org" value={isActive ? "selected" : ""}>
+                      <Tab variant={variant} value={isActive ? "selected" : ""}>
                         Settings
                       </Tab>
                     )}

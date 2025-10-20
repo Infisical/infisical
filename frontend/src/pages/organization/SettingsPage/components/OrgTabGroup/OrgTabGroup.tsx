@@ -74,7 +74,7 @@ export const OrgTabGroup = () => {
         {tabs
           .filter((el) => !el.isHidden)
           .map((tab) => (
-            <Tab variant="org" value={tab.key} key={tab.key}>
+            <Tab variant={isSubOrganization ? "namespace" : "org"} value={tab.key} key={tab.key}>
               {tab.name}
             </Tab>
           ))}

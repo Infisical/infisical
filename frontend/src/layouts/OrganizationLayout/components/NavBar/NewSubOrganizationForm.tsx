@@ -1,5 +1,7 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -31,9 +33,13 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     resolver: zodResolver(AddOrgSchema)
   });
 
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+
   const onSubmit = async ({ name }: FormData) => {
     try {
-      await createSubOrg.mutateAsync({
+      const { organization } = await createSubOrg.mutateAsync({
         name
       });
 
@@ -42,6 +48,13 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
         text: "Successfully created sub organization"
       });
       onClose();
+
+      navigate({
+        to: "/organization/projects",
+        search: (prev) => ({ ...prev, subOrganization: organization.name })
+      });
+      queryClient.clear();
+      await router.invalidate({ sync: true }).catch(() => null);
     } catch {
       createNotification({
         text: "Failed to create sub organization",

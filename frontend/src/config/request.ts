@@ -40,9 +40,16 @@ apiRequest.interceptors.request.use((config) => {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${providerAuthToken}`;
     }
-    const subOrganization = params.get("subOrganization");
-    if (subOrganization) {
-      config.headers.set("x-infisical-org", subOrganization);
+
+    const rootOrgHeader = config.headers.get("x-root-org");
+
+    if (rootOrgHeader) {
+      config.headers.delete("x-root-org");
+    } else {
+      const subOrganization = params.get("subOrganization");
+      if (subOrganization) {
+        config.headers.set("x-infisical-org", subOrganization);
+      }
     }
   }
 

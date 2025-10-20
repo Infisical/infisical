@@ -29,7 +29,7 @@ const Page = () => {
     from: ROUTE_PATHS.Organization.IdentityDetailsByIDPage.id
   });
   const identityId = params.identityId as string;
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetIdentityById(identityId);
   const { mutateAsync: deleteIdentity } = useDeleteIdentity();
@@ -88,7 +88,11 @@ const Page = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Identities
           </Link>
-          <PageHeader scope="org" description="Organization Identity" title={data.identity.name} />
+          <PageHeader
+            scope={isSubOrganization ? "namespace" : "org"}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
+            title={data.identity.name}
+          />
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection

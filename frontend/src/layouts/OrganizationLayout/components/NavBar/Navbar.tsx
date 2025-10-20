@@ -6,6 +6,7 @@ import {
   faBook,
   faCaretDown,
   faCheck,
+  faChevronRight,
   faCubes,
   faEnvelope,
   faExclamationTriangle,
@@ -59,7 +60,7 @@ import {
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
-import { SubscriptionPlan } from "@app/hooks/api/types";
+import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
 import { AuthMethod } from "@app/hooks/api/users/types";
 import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
@@ -131,7 +132,9 @@ export const INFISICAL_SUPPORT_OPTIONS = [
 export const Navbar = () => {
   const { user } = useUser();
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
+
+  console.log("current", currentOrg, isSubOrganization);
 
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
@@ -155,6 +158,7 @@ export const Navbar = () => {
   const [shouldShowMfa, toggleShowMfa] = useToggle(false);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
@@ -224,6 +228,33 @@ export const Navbar = () => {
 
   const isOrgScope = location.pathname.startsWith("/organization"); // TODO: scott/akhil is this adequate?
 
+  const handleOrgNav = async (org: Organization) => {
+    if (currentOrg?.id === org.id) return;
+
+    if (org.authEnforced) {
+      // org has an org-level auth method enabled (e.g. SAML)
+      // -> logout + redirect to SAML SSO
+
+      await logout.mutateAsync();
+      if (org.orgAuthMethod === AuthMethod.OIDC) {
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
+      } else {
+        window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
+      }
+      window.close();
+      return;
+    }
+
+    if (org.googleSsoAuthEnforced) {
+      await logout.mutateAsync();
+      window.open(`/api/v1/sso/redirect/google?org_slug=${org.slug}`);
+      window.close();
+      return;
+    }
+
+    handleOrgChange(org?.id);
+  };
+
   return (
     <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4 pt-1">
       <div className="mr-auto flex items-center overflow-hidden">
@@ -253,38 +284,46 @@ export const Navbar = () => {
         ) : (
           <>
             <div className="flex items-center overflow-hidden">
-              <DropdownMenu modal={false}>
-                <Link className="overflow-hidden" to="/organization/projects">
-                  <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
-                    <Badge
-                      variant="org"
-                      className={twMerge(
-                        "max-w-full min-w-0 cursor-pointer text-sm",
-                        !isOrgScope &&
-                          "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
-                      )}
-                    >
-                      <FontAwesomeIcon icon={faGlobe} />
-                      <p className="truncate">{currentOrg?.name}</p>
-                    </Badge>
-                    <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
-                      {getPlan(subscription)}
-                    </div>
-                    {subscription.cardDeclined && (
-                      <Tooltip
-                        content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
-                        className="max-w-xs"
-                      >
-                        <div className="flex items-center">
-                          <FontAwesomeIcon
-                            icon={faExclamationTriangle}
-                            className="animate-pulse cursor-help text-xs text-primary-400"
-                          />
-                        </div>
-                      </Tooltip>
+              <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
+                <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
+                  <Badge
+                    onClick={async () => {
+                      navigate({
+                        to: "/organization/projects",
+                        search: (search) => ({ ...search, subOrganization: undefined })
+                      });
+                      if (isSubOrganization) {
+                        queryClient.clear();
+                        await router.invalidate({ sync: true }).catch(() => null);
+                      }
+                    }}
+                    variant="org"
+                    className={twMerge(
+                      "max-w-full min-w-0 cursor-pointer text-sm",
+                      (!isOrgScope || isSubOrganization) &&
+                        "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
                     )}
+                  >
+                    <FontAwesomeIcon icon={faGlobe} />
+                    <p className="truncate">{currentOrg?.name}</p>
+                  </Badge>
+                  <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
+                    {getPlan(subscription)}
                   </div>
-                </Link>
+                  {subscription.cardDeclined && (
+                    <Tooltip
+                      content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
+                      className="max-w-xs"
+                    >
+                      <div className="flex items-center">
+                        <FontAwesomeIcon
+                          icon={faExclamationTriangle}
+                          className="animate-pulse cursor-help text-xs text-primary-400"
+                        />
+                      </div>
+                    </Tooltip>
+                  )}
+                </div>
                 <DropdownMenuTrigger asChild>
                   <div>
                     <IconButton
@@ -298,127 +337,96 @@ export const Navbar = () => {
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  align="start"
+                  align="center"
                   side="bottom"
                   className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
                   style={{ minWidth: "220px" }}
                 >
-                  {subscription?.subOrganization && (
-                    <>
-                      <DropdownSubMenu>
-                        <DropdownSubMenuTrigger>
-                          <Button
-                            onClick={async () => {}}
-                            variant="plain"
-                            colorSchema="secondary"
-                            size="xs"
-                            className="flex w-full items-center justify-start p-0 font-normal"
-                            leftIcon={<FontAwesomeIcon icon={faCubes} className="mr-3" />}
-                          >
-                            <div className="flex w-full max-w-[150px] items-center justify-between truncate">
-                              Sub Organizations
-                            </div>
-                          </Button>
-                        </DropdownSubMenuTrigger>
-                        <DropdownSubMenuContent
-                          alignOffset={-30}
-                          sideOffset={5}
-                          className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
-                          style={{ minWidth: "220px" }}
-                        >
-                          <DropdownMenuItem
-                            icon={<FontAwesomeIcon icon={faPlus} />}
-                            onClick={() => setShowSubOrgForm(true)}
-                          >
-                            New Sub Organization
-                          </DropdownMenuItem>
-                          {Boolean(subOrganizations.length) && (
-                            <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                          )}
-                          {subOrganizations?.map((org) => {
-                            return (
-                              <DropdownMenuItem key={org.id}>
-                                <Button
-                                  variant="plain"
-                                  colorSchema="secondary"
-                                  size="xs"
-                                  className="flex w-full items-center justify-start p-0 font-normal"
-                                  leftIcon={
-                                    currentOrg?.parentOrgId === org.id && (
-                                      <FontAwesomeIcon
-                                        icon={faCheck}
-                                        className="mr-3 text-primary"
-                                      />
-                                    )
-                                  }
-                                  onClick={async () => {
-                                    navigate({
-                                      to: "/organization/projects",
-                                      search: (prev) => ({ ...prev, subOrganization: org.name })
-                                    });
-                                    queryClient.clear();
-                                    await router.invalidate({ sync: true }).catch(() => null);
-                                  }}
-                                >
-                                  <div className="flex w-full max-w-[150px] items-center justify-between truncate">
-                                    {org.name}
-                                  </div>
-                                </Button>
-                              </DropdownMenuItem>
-                            );
-                          })}
-                        </DropdownSubMenuContent>
-                      </DropdownSubMenu>
-                      <div className="mt-1 h-1 border-t border-mineshaft-600" />
-                    </>
-                  )}
                   <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
-                    organizations
+                    Organizations
                   </div>
                   {orgs?.map((org) => {
+                    if (
+                      subscription.subOrganization &&
+                      (org.id === currentOrg?.id || org.id === currentOrg?.parentOrgId)
+                    ) {
+                      return (
+                        <DropdownSubMenu key={`${org.id}-sub-orgs`}>
+                          <DropdownSubMenuTrigger
+                            onClick={() => {
+                              setIsOrgSelectOpen(false);
+                              handleOrgNav(org);
+                            }}
+                            className="cursor-pointer font-normal"
+                          >
+                            <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+                              {currentOrg?.id === org.id && (
+                                <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+                              )}
+                              <p className="truncate">{org.name}</p>
+                              <FontAwesomeIcon className="ml-auto shrink-0" icon={faChevronRight} />
+                            </div>
+                          </DropdownSubMenuTrigger>
+                          <DropdownSubMenuContent
+                            sideOffset={8}
+                            alignOffset={-24}
+                            className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
+                            style={{ minWidth: "220px" }}
+                          >
+                            <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
+                              Sub-Organizations
+                            </div>
+                            {subOrganizations.map((subOrg) => (
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  navigate({
+                                    to: "/organization/projects",
+                                    search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                                  });
+                                  queryClient.clear();
+                                  await router.invalidate({ sync: true }).catch(() => null);
+                                }}
+                                className="cursor-pointer font-normal"
+                                key={subOrg.id}
+                              >
+                                <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+                                  {currentOrg?.id === subOrg.id && (
+                                    <FontAwesomeIcon
+                                      icon={faCheck}
+                                      className="shrink-0 text-primary"
+                                    />
+                                  )}
+                                  <p className="truncate">{subOrg.name}</p>
+                                </div>
+                              </DropdownMenuItem>
+                            ))}
+                            {Boolean(subOrganizations.length) && (
+                              <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                            )}
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              icon={<FontAwesomeIcon icon={faPlus} />}
+                              onClick={() => setShowSubOrgForm(true)}
+                            >
+                              New Sub-Organization
+                            </DropdownMenuItem>
+                          </DropdownSubMenuContent>
+                        </DropdownSubMenu>
+                      );
+                    }
+
                     return (
-                      <DropdownMenuItem key={org.id}>
-                        <Button
-                          onClick={async () => {
-                            if (currentOrg?.id === org.id) return;
-
-                            if (org.authEnforced) {
-                              // org has an org-level auth method enabled (e.g. SAML)
-                              // -> logout + redirect to SAML SSO
-
-                              await logout.mutateAsync();
-                              if (org.orgAuthMethod === AuthMethod.OIDC) {
-                                window.open(`/api/v1/sso/oidc/login?orgSlug=${org.slug}`);
-                              } else {
-                                window.open(`/api/v1/sso/redirect/saml2/organizations/${org.slug}`);
-                              }
-                              window.close();
-                              return;
-                            }
-
-                            if (org.googleSsoAuthEnforced) {
-                              await logout.mutateAsync();
-                              window.open(`/api/v1/sso/redirect/google?org_slug=${org.slug}`);
-                              window.close();
-                              return;
-                            }
-
-                            handleOrgChange(org?.id);
-                          }}
-                          variant="plain"
-                          colorSchema="secondary"
-                          size="xs"
-                          className="flex w-full items-center justify-start p-0 font-normal"
-                          leftIcon={
-                            currentOrg?.id === org.id && (
-                              <FontAwesomeIcon icon={faCheck} className="mr-3 text-primary" />
-                            )
-                          }
-                        >
-                          <div className="flex w-full max-w-[150px] items-center justify-between truncate">
-                            {org.name}
-                          </div>
-                        </Button>
+                      <DropdownMenuItem
+                        onClick={() => handleOrgNav(org)}
+                        className="cursor-pointer font-normal"
+                        key={org.id}
+                      >
+                        <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+                          {currentOrg?.id === org.id && (
+                            <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+                          )}
+                          <p className="truncate">{org.name}</p>
+                        </div>
                       </DropdownMenuItem>
                     );
                   })}
@@ -432,6 +440,79 @@ export const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
+            {currentOrg.subOrganization && (
+              <>
+                <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
+                <DropdownMenu modal={false}>
+                  <Link to="/organization/projects">
+                    <Badge
+                      variant="namespace"
+                      className={twMerge(
+                        "max-w-full min-w-0 cursor-pointer text-sm",
+                        !isOrgScope &&
+                          "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
+                      )}
+                    >
+                      <FontAwesomeIcon icon={faCubes} />
+                      <p className="truncate">{currentOrg.subOrganization.name}</p>
+                    </Badge>
+                  </Link>
+                  <DropdownMenuTrigger asChild>
+                    <div>
+                      <IconButton
+                        variant="plain"
+                        colorSchema="secondary"
+                        ariaLabel="switch-org"
+                        className="px-2 py-1"
+                      >
+                        <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
+                      </IconButton>
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="center"
+                    side="bottom"
+                    className="mt-6 cursor-default p-1 shadow-mineshaft-600 drop-shadow-md"
+                    style={{ minWidth: "220px" }}
+                  >
+                    <div className="px-2 py-1 text-xs text-mineshaft-400 capitalize">
+                      Sub-Organizations
+                    </div>
+                    {subOrganizations.map((subOrg) => (
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          navigate({
+                            to: "/organization/projects",
+                            search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                          });
+                          queryClient.clear();
+                          await router.invalidate({ sync: true }).catch(() => null);
+                        }}
+                        className="cursor-pointer font-normal"
+                        key={subOrg.id}
+                      >
+                        <div className="flex w-full max-w-48 cursor-pointer items-center gap-x-2">
+                          {currentOrg?.id === subOrg.id && (
+                            <FontAwesomeIcon icon={faCheck} className="shrink-0 text-primary" />
+                          )}
+                          <p className="truncate">{subOrg.name}</p>
+                        </div>
+                      </DropdownMenuItem>
+                    ))}
+                    {Boolean(subOrganizations.length) && (
+                      <div className="mt-1 h-1 border-t border-mineshaft-600" />
+                    )}
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      icon={<FontAwesomeIcon icon={faPlus} />}
+                      onClick={() => setShowSubOrgForm(true)}
+                    >
+                      New Sub-Organization
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
             {!isOrgScope && (
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
@@ -654,7 +735,11 @@ export const Navbar = () => {
           subTitle="Define a new sub-organization under your current organization."
         >
           <div className="mb-2">
-            <NewSubOrganizationForm onClose={() => setShowSubOrgForm(false)} />
+            <NewSubOrganizationForm
+              onClose={() => {
+                setShowSubOrgForm(false);
+              }}
+            />
           </div>
         </ModalContent>
       </Modal>

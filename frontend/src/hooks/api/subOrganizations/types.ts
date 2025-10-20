@@ -4,6 +4,7 @@ export type TSubOrganization = {
   slug: string;
   createdAt: string;
   updatedAt: string;
+  parentOrgId: string;
 };
 
 export type TCreateSubOrganizationDTO = {

@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
 import { ShareSecretTab } from "./components/ShareSecret/ShareSecretTab";
@@ -14,6 +15,7 @@ enum SecretSharingPageTabs {
 
 export const ShareSecretSection = () => {
   const navigate = useNavigate();
+  const { isSubOrganization } = useOrganization();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.Organization.SecretSharing.id
@@ -26,6 +28,8 @@ export const ShareSecretSection = () => {
     });
   };
 
+  const tabVariant = isSubOrganization ? "namespace" : "org";
+
   return (
     <div>
       <Helmet>
@@ -36,10 +40,10 @@ export const ShareSecretSection = () => {
 
       <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
         <TabList>
-          <Tab variant="org" value={SecretSharingPageTabs.ShareSecret}>
+          <Tab variant={tabVariant} value={SecretSharingPageTabs.ShareSecret}>
             Share Secrets
           </Tab>
-          <Tab variant="org" value={SecretSharingPageTabs.RequestSecret}>
+          <Tab variant={tabVariant} value={SecretSharingPageTabs.RequestSecret}>
             Request Secrets
           </Tab>
         </TabList>

@@ -30,7 +30,7 @@ export const Page = () => {
     from: ROUTE_PATHS.Organization.RoleByIDPage.id
   });
   const roleId = params.roleId as string;
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgRole(orgId, roleId);
   const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
@@ -91,7 +91,7 @@ export const Page = () => {
             Roles
           </Link>
           <PageHeader
-            scope="org"
+            scope={isSubOrganization ? "namespace" : "org"}
             title={data.name}
             description={
               <>

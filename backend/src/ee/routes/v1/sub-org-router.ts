@@ -13,7 +13,8 @@ const sanitizedSubOrganizationSchema = OrganizationsSchema.pick({
   name: true,
   slug: true,
   createdAt: true,
-  updatedAt: true
+  updatedAt: true,
+  parentOrgId: true
 });
 
 export const registerSubOrgRouter = async (server: FastifyZodProvider) => {

@@ -2,6 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import {
   OrgPermissionSecretShareAction,
   OrgPermissionSubjects
@@ -13,6 +14,7 @@ import { SecretSharingSettingsTabGroup } from "./components";
 export const SecretSharingSettingsPage = withPermission(
   () => {
     const { t } = useTranslation();
+    const { isSubOrganization } = useOrganization();
 
     return (
       <>
@@ -21,7 +23,10 @@ export const SecretSharingSettingsPage = withPermission(
         </Helmet>
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-8xl">
-            <PageHeader scope="org" title="Secret Share Settings" />
+            <PageHeader
+              scope={isSubOrganization ? "namespace" : "org"}
+              title="Secret Share Settings"
+            />
             <SecretSharingSettingsTabGroup />
           </div>
         </div>
