@@ -86,6 +86,7 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
+  useGetOrCreateFolder,
   useGetWsTags,
   useUpdateSecretV3
 } from "@app/hooks/api";
@@ -367,6 +368,7 @@ export const OverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -384,16 +386,32 @@ export const OverviewPage = () => {
   ] as const);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
-    const promises = userAvailableEnvs.map((env) => {
-      const environment = env.slug;
-      return createFolder({
-        name: folderName,
-        path: secretPath,
-        environment,
-        projectId,
-        description
+    const promises = userAvailableEnvs
+      .map((env) => {
+        const environment = env.slug;
+        const isFolderPresent = isFolderPresentInEnv(folderName, environment);
+        if (isFolderPresent) {
+          return undefined;
+        }
+
+        return createFolder({
+          name: folderName,
+          path: secretPath,
+          environment,
+          projectId,
+          description
+        });
+      })
+      .filter((promise) => promise !== undefined);
+
+    if (promises.length === 0) {
+      handlePopUpClose("addFolder");
+      createNotification({
+        type: "info",
+        text: "Folder already exists in all environments"
       });
-    });
+      return;
+    }
 
     const results = await Promise.allSettled(promises);
     const isFoldersAdded = results.some((result) => result.status === "fulfilled");
@@ -481,7 +499,7 @@ export const OverviewPage = () => {
           })
         );
         if (folderName && parentPath && canCreateFolder) {
-          await createFolder({
+          await getOrCreateFolder({
             projectId,
             path: parentPath,
             environment: env,
@@ -645,7 +663,7 @@ export const OverviewPage = () => {
         })
       );
       if (folderName && parentPath && canCreateFolder) {
-        await createFolder({
+        await getOrCreateFolder({
           projectId,
           environment: slug,
           path: parentPath,
