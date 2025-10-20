@@ -132,7 +132,9 @@ export const PkiManagerLayout = () => {
                           }}
                         >
                           {({ isActive }) => (
-                            <Tab value={isActive ? "selected" : ""}>Certificate Templates (Legacy)</Tab>
+                            <Tab value={isActive ? "selected" : ""}>
+                              Certificate Templates (Legacy)
+                            </Tab>
                           )}
                         </Link>
                       )}

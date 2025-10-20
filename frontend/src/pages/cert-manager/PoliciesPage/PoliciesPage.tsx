@@ -52,14 +52,18 @@ export const PoliciesPage = () => {
                 description="Manage certificate templates and profiles for unified certificate issuance"
               />
 
-              <Tabs orientation="vertical" value={activeTab} onValueChange={(value) => setActiveTab(value as TabSections)}>
+              <Tabs
+                orientation="vertical"
+                value={activeTab}
+                onValueChange={(value) => setActiveTab(value as TabSections)}
+              >
                 <TabList>
-                    <Tab variant="project" value={TabSections.CertificateProfiles}>
-                      Certificate Profiles
-                    </Tab>
-                    <Tab variant="project" value={TabSections.CertificateTemplatesV2}>
-                      Certificate Templates
-                    </Tab>
+                  <Tab variant="project" value={TabSections.CertificateProfiles}>
+                    Certificate Profiles
+                  </Tab>
+                  <Tab variant="project" value={TabSections.CertificateTemplatesV2}>
+                    Certificate Templates
+                  </Tab>
                 </TabList>
 
                 <TabPanel value={TabSections.CertificateProfiles}>
