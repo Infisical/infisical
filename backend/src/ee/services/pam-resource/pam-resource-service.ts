@@ -204,13 +204,26 @@ export const pamResourceServiceFactory = ({
           finalCredentials.password = decryptedCredentials.password;
         }
 
-        const validatedRotationAccountCredentials = await factory.validateAccountCredentials(finalCredentials);
+        try {
+          const validatedRotationAccountCredentials = await factory.validateAccountCredentials(finalCredentials);
 
-        updateDoc.encryptedRotationAccountCredentials = await encryptAccountCredentials({
-          credentials: validatedRotationAccountCredentials,
-          projectId: resource.projectId,
-          kmsService
-        });
+          updateDoc.encryptedRotationAccountCredentials = await encryptAccountCredentials({
+            credentials: validatedRotationAccountCredentials,
+            projectId: resource.projectId,
+            kmsService
+          });
+        } catch (err) {
+          if (
+            err instanceof BadRequestError &&
+            err.message === "Account credentials invalid: Username or password incorrect"
+          ) {
+            throw new BadRequestError({
+              message: "Rotation Account credentials invalid: Username or password incorrect"
+            });
+          }
+
+          throw err;
+        }
       }
     }
 

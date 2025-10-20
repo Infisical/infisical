@@ -9,6 +9,7 @@ export interface TBasePamAccount {
     id: string;
     name: string;
     resourceType: PamResourceType;
+    rotationCredentialsConfigured: boolean;
   };
   name: string;
   description?: string | null;

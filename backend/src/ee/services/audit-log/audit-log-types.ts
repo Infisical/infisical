@@ -516,6 +516,7 @@ export enum EventType {
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
   PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -3834,6 +3835,16 @@ interface PamAccountCredentialRotationEvent {
   };
 }
 
+interface PamAccountCredentialRotationFailedEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    errorMessage: string;
+  };
+}
+
 interface PamResourceListEvent {
   type: EventType.PAM_RESOURCE_LIST;
   metadata: {
@@ -4225,6 +4236,7 @@ export type Event =
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
   | PamAccountCredentialRotationEvent
+  | PamAccountCredentialRotationFailedEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

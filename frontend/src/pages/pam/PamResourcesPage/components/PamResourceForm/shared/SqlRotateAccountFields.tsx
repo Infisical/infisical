@@ -16,11 +16,11 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value="advance-settings" className="data-[state=open]:border-none">
         <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
-          <div className="order-1 ml-3">Credential Rotation Account</div>
+          <div className="order-1 ml-3">Rotation Account</div>
         </AccordionTrigger>
         <AccordionContent childrenClassName="px-0 py-0">
           <p className="mb-2 text-xs">
-            Credentials to the high privilege account which will be used for rotating other accounts
+            Credentials of the privileged account which will be used for rotating other accounts
             under this resource
           </p>
           <div className="flex gap-2">
@@ -34,7 +34,7 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                   isError={Boolean(error?.message)}
                   label="Username"
                 >
-                  <Input {...field} />
+                  <Input {...field} autoComplete="off" />
                 </FormControl>
               )}
             />
@@ -51,6 +51,7 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                   <Input
                     {...field}
                     type="password"
+                    autoComplete="new-password"
                     onFocus={(e) => {
                       if (isUpdate && field.value === "******") {
                         field.onChange("");

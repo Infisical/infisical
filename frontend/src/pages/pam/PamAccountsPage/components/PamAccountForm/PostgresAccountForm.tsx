@@ -1,9 +1,10 @@
+import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
-import { TPostgresAccount } from "@app/hooks/api/pam";
+import { TPostgresAccount, useGetPamResourceById } from "@app/hooks/api/pam";
 
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
@@ -12,6 +13,7 @@ import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountF
 
 type Props = {
   account?: TPostgresAccount;
+  resourceId?: string;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
@@ -21,7 +23,7 @@ const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.s
 
 type FormData = z.infer<typeof formSchema>;
 
-export const PostgresAccountForm = ({ account, onSubmit }: Props) => {
+export const PostgresAccountForm = ({ account, resourceId, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
@@ -42,6 +44,18 @@ export const PostgresAccountForm = ({ account, onSubmit }: Props) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
+  const [rotationCredentialsConfigured, setRotationCredentialsConfigured] = useState(false);
+
+  const { data: resource } = useGetPamResourceById(resourceId);
+
+  useEffect(() => {
+    if (account) {
+      setRotationCredentialsConfigured(account.resource.rotationCredentialsConfigured);
+    } else {
+      setRotationCredentialsConfigured(!!resource?.rotationAccountCredentials);
+    }
+  }, [account]);
+
   return (
     <FormProvider {...form}>
       <form
@@ -51,7 +65,7 @@ export const PostgresAccountForm = ({ account, onSubmit }: Props) => {
       >
         <GenericAccountFields />
         <SqlAccountFields isUpdate={isUpdate} />
-        <RotateAccountFields />
+        <RotateAccountFields rotationCredentialsConfigured={rotationCredentialsConfigured} />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

@@ -18,7 +18,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .select(
         // resource
         db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-        db.ref("resourceType").withSchema(TableName.PamResource)
+        db.ref("resourceType").withSchema(TableName.PamResource),
+        db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource)
       );
 
     if (filter) {
@@ -28,15 +29,18 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
     const accounts = await query;
 
-    return accounts.map(({ resourceId, resourceName, resourceType, ...account }) => ({
-      ...account,
-      resourceId,
-      resource: {
-        id: resourceId,
-        name: resourceName,
-        resourceType
-      }
-    }));
+    return accounts.map(
+      ({ resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, ...account }) => ({
+        ...account,
+        resourceId,
+        resource: {
+          id: resourceId,
+          name: resourceName,
+          resourceType,
+          encryptedRotationAccountCredentials
+        }
+      })
+    );
   };
 
   const findAccountsDueForRotation = async (tx?: Knex) => {

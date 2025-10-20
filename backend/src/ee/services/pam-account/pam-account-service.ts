@@ -330,7 +330,7 @@ export const pamAccountServiceFactory = ({
 
     const decryptedAndPermittedAccounts: Array<
       TPamAccounts & {
-        resource: Pick<TPamResources, "id" | "name" | "resourceType">;
+        resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
       }
     > = [];
@@ -360,7 +360,8 @@ export const pamAccountServiceFactory = ({
           resource: {
             id: account.resource.id,
             name: account.resource.name,
-            resourceType: account.resource.resourceType
+            resourceType: account.resource.resourceType,
+            rotationCredentialsConfigured: !!account.resource.encryptedRotationAccountCredentials
           }
         });
       }
@@ -608,6 +609,25 @@ export const pamAccountServiceFactory = ({
             }
           });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+
+          await auditLogService.createAuditLog({
+            projectId: account.projectId,
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            event: {
+              type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED,
+              metadata: {
+                accountId: account.id,
+                accountName: account.name,
+                resourceId: account.resourceId,
+                errorMessage
+              }
+            }
+          });
+
           logger.error(error, `Failed to rotate credentials for account ${account.id}`);
         }
       });

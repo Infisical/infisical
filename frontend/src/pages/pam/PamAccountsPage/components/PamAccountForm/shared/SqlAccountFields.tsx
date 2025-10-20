@@ -17,7 +17,7 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
             isError={Boolean(error?.message)}
             label="Username"
           >
-            <Input {...field} />
+            <Input {...field} autoComplete="off" />
           </FormControl>
         )}
       />
@@ -34,6 +34,7 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
             <Input
               {...field}
               type="password"
+              autoComplete="new-password"
               onFocus={(e) => {
                 if (isUpdate && field.value === "******") {
                   field.onChange("");
