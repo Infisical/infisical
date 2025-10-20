@@ -516,6 +516,12 @@ export const orgServiceFactory = ({
       }
     }
 
+    if (slug) {
+      const existingOrg = await orgDAL.findOne({ slug, rootOrgId: null });
+      if (existingOrg && existingOrg?.id !== orgId)
+        throw new BadRequestError({ message: `Organization with slug ${slug} already exist` });
+    }
+
     if (googleSsoAuthEnforced) {
       if (googleSsoAuthEnforced && currentOrg.authEnforced) {
         throw new BadRequestError({
