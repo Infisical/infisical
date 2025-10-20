@@ -1,11 +1,13 @@
 import { Knex } from "knex";
 
+import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
+
 import { AccessScope, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasParentOrgId = await knex.schema.hasColumn(TableName.Organization, "parentOrgId");
   if (!hasParentOrgId) {
-    await knex.schema.alterTable(TableName.Organization, (t) => {
+    await knex.schema.alterTable(TableName.Organization, async (t) => {
       // the one just above the chain
       t.uuid("parentOrgId");
       t.foreign("parentOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
@@ -13,7 +15,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("rootOrgId");
       t.foreign("rootOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
-      t.dropUnique(["slug"]);
+      await dropConstraintIfExists(TableName.Organization, "organizations_slug_unique", knex);
       t.unique(["rootOrgId", "parentOrgId", "slug"]);
     });
 
