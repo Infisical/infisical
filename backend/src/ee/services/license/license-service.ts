@@ -284,7 +284,7 @@ export const licenseServiceFactory = ({
   };
 
   const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
-    const org = await orgDAL.findRootOrgDetails(orgId);
+    const org = await orgDAL.findRootOrgDetails(orgId, tx);
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
 
     const rootOrgId = org.id;

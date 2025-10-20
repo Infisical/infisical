@@ -11,7 +11,7 @@ export const OrgGeneralTab = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-6">
       {isSubOrganization ? <SubOrgNameChangeSection /> : <OrgNameChangeSection />}
-      <OrgIncidentContactsSection />
+      {!isSubOrganization && <OrgIncidentContactsSection />}
       {hasOrgRole(OrgMembershipRole.Admin) && <OrgDeleteSection />}
     </div>
   );

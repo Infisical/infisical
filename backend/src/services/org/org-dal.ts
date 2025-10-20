@@ -705,10 +705,9 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findRootOrgDetails = async (orgId: string): Promise<TOrganizations | undefined> => {
+  const findRootOrgDetails = async (orgId: string, tx?: Knex): Promise<TOrganizations | undefined> => {
     try {
-      const org = await db
-        .replicaNode()(TableName.Organization)
+      const org = await (tx ?? db.replicaNode())(TableName.Organization)
         .select(selectAllTableCols(TableName.Organization))
         .where(
           "id",

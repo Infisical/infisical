@@ -679,7 +679,7 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
     return organization;
   };
 
