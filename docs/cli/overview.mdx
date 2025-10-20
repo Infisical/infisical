@@ -137,28 +137,28 @@ You can use it across various environments, whether it's local development, CI/C
 
 ---
 
-## 🔢 Install a Specific Version (New Section)
+## Install a Specific Version
 
 In production or CI environments, it’s best to **pin the Infisical CLI to a specific version** to avoid unexpected updates.  
 Below are the common methods to do so:
 
-### **1. npm (cross-platform)**
+### npm (cross-platform)
 ```bash
 # Replace <version> with the desired release
 npm install -g @infisical/cli@<version>
 infisical --version
 ```
 
-### **2. Homebrew (macOS/Linux)**
+### Homebrew (macOS/Linux)
 > Homebrew keeps only the latest formula. To install a specific version, extract and install from a local tap:
 ```bash
 brew tap-new $USER/local
-brew extract --version=<version> infisical $USER/local
+brew extract --version <version> infisical $USER/local
 brew install $USER/local/infisical@<version>
 infisical --version
 ```
 
-### **3. Direct Binary (GitHub Releases)**
+### Direct Binary (GitHub Releases)
 > Download the tarball for your OS/architecture from [Infisical CLI Releases](https://github.com/Infisical/cli/releases)
 ```bash
 # Example (macOS arm64)
@@ -168,7 +168,7 @@ sudo mv infisical /usr/local/bin/
 infisical --version
 ```
 
-> 💡 **Tip:** For CI/CD pipelines, always pin a fixed version and update it manually through PRs or release workflows.
+> 💡 For CI/CD pipelines, always pin a fixed version and update it manually through PRs or release workflows.
 
 ---
 
