@@ -7,14 +7,14 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
 import { useCreateSubOrganization } from "@app/hooks/api";
-import { GenericResourceNameSchema } from "@app/lib/schemas";
+import { GenericResourceNameSchema, slugSchema } from "@app/lib/schemas";
 
 type ContentProps = {
   onClose: () => void;
 };
 
 const AddOrgSchema = z.object({
-  name: GenericResourceNameSchema.nonempty("Suborganization name required")
+  name: slugSchema()
 });
 
 type FormData = z.infer<typeof AddOrgSchema>;
@@ -67,7 +67,12 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     <form onSubmit={handleSubmit(onSubmit)}>
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
-          <FormControl isError={Boolean(error)} errorText={error?.message} label="Name">
+          <FormControl
+            isError={Boolean(error)}
+            helperText="Must be slug-friendly"
+            errorText={error?.message}
+            label="Name"
+          >
             <Input autoFocus value={value} onChange={onChange} placeholder="My Organization" />
           </FormControl>
         )}
