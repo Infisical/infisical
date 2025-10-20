@@ -12,6 +12,9 @@ export async function up(knex: Knex): Promise<void> {
       // this would root organization containing various informations like billing etc
       t.uuid("rootOrgId");
       t.foreign("rootOrgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
+
+      t.dropUnique(["slug"]);
+      t.unique(["rootOrgId", "parentOrgId", "slug"]);
     });
   }
 
