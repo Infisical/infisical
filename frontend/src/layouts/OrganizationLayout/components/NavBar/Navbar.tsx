@@ -140,7 +140,7 @@ export const Navbar = () => {
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
   const { data: subOrganizations = [] } = useQuery({
-    ...subOrganizationsQuery.list({ limit: 500 }),
+    ...subOrganizationsQuery.list({ limit: 500, isAccessible: true }),
     enabled: Boolean(subscription.subOrganization)
   });
 
