@@ -524,7 +524,8 @@ describe("CertificateEstV3Service Security Fix", () => {
       expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith({
         isInternal: true,
         caId: "ca-123",
-        csr: basicCSR
+        csr: basicCSR,
+        isFromProfile: true
       });
     });
 
@@ -702,6 +703,7 @@ describe("CertificateEstV3Service Security Fix", () => {
       expect(mockInternalCertificateAuthorityService.signCertFromCa).toHaveBeenCalledWith({
         isInternal: true,
         caId: "ca-123",
+        isFromProfile: true,
         csr: basicCSR
       });
     });
