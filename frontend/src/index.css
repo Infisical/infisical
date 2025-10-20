@@ -42,7 +42,7 @@
   --font-inter: "Inter", sans-serif;
   --color-org-v1: #30B3FF;
   --color-namespace-v1: #96ff59;
-
+  --max-width-8xl: 88rem; /* 1408px */
   /* Primary */
   --color-primary-50: #fffff5;
   --color-primary-100: #fcfce8;

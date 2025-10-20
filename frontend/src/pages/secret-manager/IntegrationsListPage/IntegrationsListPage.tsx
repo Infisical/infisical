@@ -7,6 +7,7 @@ import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import {
@@ -45,21 +46,25 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="relative container mx-auto max-w-7xl pb-12 text-white">
+      <div className="relative mx-auto max-w-8xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
-            scope="project"
+            scope={ProjectType.SecretManager}
             title="Integrations"
             description="Manage integrations with third-party services."
           />
-          <Tabs value={selectedTab} onValueChange={updateSelectedTab}>
+          <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
             <TabList>
-              <Tab value={IntegrationsListPageTabs.SecretSyncs}>Secret Syncs</Tab>
-              <Tab value={IntegrationsListPageTabs.NativeIntegrations}>Native Integrations</Tab>
-              <Tab value={IntegrationsListPageTabs.FrameworkIntegrations}>
+              <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
+                Secret Syncs
+              </Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                Native Integrations
+              </Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </Tab>
-              <Tab value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+              <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
               </Tab>
             </TabList>

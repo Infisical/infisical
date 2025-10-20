@@ -93,7 +93,7 @@ import {
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -929,11 +929,11 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:scheme-dark">
+      <div className="relative mx-auto max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
-            scope="project"
-            title="Secrets Overview"
+            scope={ProjectType.SecretManager}
+            title="Overview"
             description={
               <p className="text-md text-bunker-300">
                 Inject your secrets using
@@ -977,7 +977,7 @@ export const OverviewPage = () => {
             }
           />
         </div>
-        <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
           <div className="flex flex-row items-center justify-center space-x-2">
             {isTableFiltered && (

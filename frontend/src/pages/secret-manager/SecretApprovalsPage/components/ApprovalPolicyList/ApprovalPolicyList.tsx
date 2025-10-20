@@ -12,7 +12,6 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -240,262 +239,253 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key="approval-changes-list"
-        transition={{ duration: 0.1 }}
-        initial={{ opacity: 0, translateX: 30 }}
-        animate={{ opacity: 1, translateX: 0 }}
-        exit={{ opacity: 0, translateX: 30 }}
-        className="rounded-md text-gray-300"
-      >
-        <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="flex items-start gap-1">
-                <p className="text-xl font-medium text-mineshaft-100">Policies</p>
-                <a
-                  href="https://infisical.com/docs/documentation/platform/pr-workflows"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                    <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                    <span>Docs</span>
-                    <FontAwesomeIcon
-                      icon={faArrowUpRightFromSquare}
-                      className="mb-[0.07rem] ml-1.5 text-[10px]"
-                    />
-                  </div>
-                </a>
-              </div>
-              <p className="text-sm text-bunker-300">
-                Implement granular policies for access requests and secrets management
-              </p>
-            </div>
-            <ProjectPermissionCan
-              I={ProjectPermissionActions.Create}
-              a={ProjectPermissionSub.SecretApproval}
-            >
-              {(isAllowed) => (
-                <Button
-                  onClick={() => {
-                    if (subscription && !subscription?.secretApproval) {
-                      handlePopUpOpen("upgradePlan");
-                      return;
-                    }
-                    handlePopUpOpen("policyForm");
-                  }}
-                  colorSchema="secondary"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  isDisabled={!isAllowed}
-                >
-                  Create Policy
-                </Button>
-              )}
-            </ProjectPermissionCan>
-          </div>
-          <div className="mb-4 flex items-center gap-2">
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-              placeholder="Search policies by name, type, environment or secret path..."
-              className="flex-1"
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  ariaLabel="Filter findings"
-                  variant="plain"
-                  size="sm"
-                  className={twMerge(
-                    "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
-                    isTableFiltered && "border-primary/50 text-primary"
-                  )}
-                >
-                  <FontAwesomeIcon icon={faFilter} />
-                </IconButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
-                align="end"
+    <>
+      <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <div className="flex items-start gap-1">
+              <p className="text-xl font-medium text-mineshaft-100">Policies</p>
+              <a
+                href="https://infisical.com/docs/documentation/platform/pr-workflows"
+                target="_blank"
+                rel="noopener noreferrer"
               >
-                <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      type: null
-                    }))
-                  }
-                  icon={!filters && <FontAwesomeIcon icon={faCheckCircle} />}
-                  iconPos="right"
-                >
-                  All
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      type: PolicyType.AccessPolicy
-                    }))
-                  }
-                  icon={
-                    filters.type === PolicyType.AccessPolicy && (
-                      <FontAwesomeIcon icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
-                >
-                  Access Policy
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      type: PolicyType.ChangePolicy
-                    }))
-                  }
-                  icon={
-                    filters.type === PolicyType.ChangePolicy && (
-                      <FontAwesomeIcon icon={faCheckCircle} />
-                    )
-                  }
-                  iconPos="right"
-                >
-                  Change Policy
-                </DropdownMenuItem>
-                <DropdownMenuLabel>Environment</DropdownMenuLabel>
-                {currentProject.environments.map((env) => (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setFilters((prev) => ({
-                        ...prev,
-                        environmentIds: prev.environmentIds.includes(env.id)
-                          ? prev.environmentIds.filter((i) => i !== env.id)
-                          : [...prev.environmentIds, env.id]
-                      }));
-                    }}
-                    key={env.id}
-                    icon={
-                      filters.environmentIds.includes(env.id) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
-                  >
-                    <span className="capitalize">{env.name}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          <TableContainer>
-            <Table>
-              <THead>
-                <Tr>
-                  <Th>
-                    <div className="flex items-center">
-                      Name
-                      <IconButton
-                        variant="plain"
-                        className={getClassName(PolicyOrderBy.Name)}
-                        ariaLabel="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Name)}
-                      >
-                        <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Name)} />
-                      </IconButton>
-                    </div>
-                  </Th>
-                  <Th>
-                    <div className="flex items-center">
-                      Environment
-                      <IconButton
-                        variant="plain"
-                        className={getClassName(PolicyOrderBy.Environment)}
-                        ariaLabel="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Environment)}
-                      >
-                        <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Environment)} />
-                      </IconButton>
-                    </div>
-                  </Th>
-                  <Th>
-                    <div className="flex items-center">
-                      Secret Path
-                      <IconButton
-                        variant="plain"
-                        className={getClassName(PolicyOrderBy.SecretPath)}
-                        ariaLabel="sort"
-                        onClick={() => handleSort(PolicyOrderBy.SecretPath)}
-                      >
-                        <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.SecretPath)} />
-                      </IconButton>
-                    </div>
-                  </Th>
-                  <Th>
-                    <div className="flex items-center">
-                      Type
-                      <IconButton
-                        variant="plain"
-                        className={getClassName(PolicyOrderBy.Type)}
-                        ariaLabel="sort"
-                        onClick={() => handleSort(PolicyOrderBy.Type)}
-                      >
-                        <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Type)} />
-                      </IconButton>
-                    </div>
-                  </Th>
-                  <Th className="w-5" />
-                </Tr>
-              </THead>
-              <TBody>
-                {isPoliciesLoading && (
-                  <TableSkeleton
-                    columns={5}
-                    innerKey="secret-policies"
-                    className="bg-mineshaft-700"
+                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
+                  <span>Docs</span>
+                  <FontAwesomeIcon
+                    icon={faArrowUpRightFromSquare}
+                    className="mb-[0.07rem] ml-1.5 text-[10px]"
                   />
-                )}
-                {!isPoliciesLoading && !policies?.length && (
-                  <Tr>
-                    <Td colSpan={5}>
-                      <EmptyState title="No Policies Found" icon={faFileShield} />
-                    </Td>
-                  </Tr>
-                )}
-                {!!currentProject &&
-                  filteredPolicies
-                    ?.slice(offset, perPage * page)
-                    .map((policy) => (
-                      <ApprovalPolicyRow
-                        policy={policy}
-                        key={policy.id}
-                        members={members}
-                        groups={groups}
-                        onEdit={() => handlePopUpOpen("policyForm", policy)}
-                        onDelete={() => handlePopUpOpen("deletePolicy", policy)}
-                      />
-                    ))}
-              </TBody>
-            </Table>
-            {Boolean(!filteredPolicies.length && policies.length && !isPoliciesLoading) && (
-              <EmptyState title="No Policies Match Search" icon={faSearch} />
+                </div>
+              </a>
+            </div>
+            <p className="text-sm text-bunker-300">
+              Implement granular policies for access requests and secrets management
+            </p>
+          </div>
+          <ProjectPermissionCan
+            I={ProjectPermissionActions.Create}
+            a={ProjectPermissionSub.SecretApproval}
+          >
+            {(isAllowed) => (
+              <Button
+                onClick={() => {
+                  if (subscription && !subscription?.secretApproval) {
+                    handlePopUpOpen("upgradePlan");
+                    return;
+                  }
+                  handlePopUpOpen("policyForm");
+                }}
+                colorSchema="secondary"
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                isDisabled={!isAllowed}
+              >
+                Create Policy
+              </Button>
             )}
-            {Boolean(filteredPolicies.length) && (
-              <Pagination
-                count={filteredPolicies.length}
-                page={page}
-                perPage={perPage}
-                onChangePage={setPage}
-                onChangePerPage={handlePerPageChange}
-              />
-            )}
-          </TableContainer>
+          </ProjectPermissionCan>
         </div>
-      </motion.div>
+        <div className="mb-4 flex items-center gap-2">
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            placeholder="Search policies by name, type, environment or secret path..."
+            className="flex-1"
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                ariaLabel="Filter findings"
+                variant="plain"
+                size="sm"
+                className={twMerge(
+                  "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                  isTableFiltered && "border-primary/50 text-primary"
+                )}
+              >
+                <FontAwesomeIcon icon={faFilter} />
+              </IconButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+              align="end"
+            >
+              <DropdownMenuLabel>Policy Type</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: null
+                  }))
+                }
+                icon={!filters && <FontAwesomeIcon icon={faCheckCircle} />}
+                iconPos="right"
+              >
+                All
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: PolicyType.AccessPolicy
+                  }))
+                }
+                icon={
+                  filters.type === PolicyType.AccessPolicy && (
+                    <FontAwesomeIcon icon={faCheckCircle} />
+                  )
+                }
+                iconPos="right"
+              >
+                Access Policy
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: PolicyType.ChangePolicy
+                  }))
+                }
+                icon={
+                  filters.type === PolicyType.ChangePolicy && (
+                    <FontAwesomeIcon icon={faCheckCircle} />
+                  )
+                }
+                iconPos="right"
+              >
+                Change Policy
+              </DropdownMenuItem>
+              <DropdownMenuLabel>Environment</DropdownMenuLabel>
+              {currentProject.environments.map((env) => (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilters((prev) => ({
+                      ...prev,
+                      environmentIds: prev.environmentIds.includes(env.id)
+                        ? prev.environmentIds.filter((i) => i !== env.id)
+                        : [...prev.environmentIds, env.id]
+                    }));
+                  }}
+                  key={env.id}
+                  icon={
+                    filters.environmentIds.includes(env.id) && (
+                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    )
+                  }
+                  iconPos="right"
+                >
+                  <span className="capitalize">{env.name}</span>
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+        <TableContainer>
+          <Table>
+            <THead>
+              <Tr>
+                <Th>
+                  <div className="flex items-center">
+                    Name
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(PolicyOrderBy.Name)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(PolicyOrderBy.Name)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Name)} />
+                    </IconButton>
+                  </div>
+                </Th>
+                <Th>
+                  <div className="flex items-center">
+                    Environment
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(PolicyOrderBy.Environment)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(PolicyOrderBy.Environment)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Environment)} />
+                    </IconButton>
+                  </div>
+                </Th>
+                <Th>
+                  <div className="flex items-center">
+                    Secret Path
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(PolicyOrderBy.SecretPath)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(PolicyOrderBy.SecretPath)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.SecretPath)} />
+                    </IconButton>
+                  </div>
+                </Th>
+                <Th>
+                  <div className="flex items-center">
+                    Type
+                    <IconButton
+                      variant="plain"
+                      className={getClassName(PolicyOrderBy.Type)}
+                      ariaLabel="sort"
+                      onClick={() => handleSort(PolicyOrderBy.Type)}
+                    >
+                      <FontAwesomeIcon icon={getColSortIcon(PolicyOrderBy.Type)} />
+                    </IconButton>
+                  </div>
+                </Th>
+                <Th className="w-5" />
+              </Tr>
+            </THead>
+            <TBody>
+              {isPoliciesLoading && (
+                <TableSkeleton
+                  columns={5}
+                  innerKey="secret-policies"
+                  className="bg-mineshaft-700"
+                />
+              )}
+              {!isPoliciesLoading && !policies?.length && (
+                <Tr>
+                  <Td colSpan={5}>
+                    <EmptyState title="No Policies Found" icon={faFileShield} />
+                  </Td>
+                </Tr>
+              )}
+              {!!currentProject &&
+                filteredPolicies
+                  ?.slice(offset, perPage * page)
+                  .map((policy) => (
+                    <ApprovalPolicyRow
+                      policy={policy}
+                      key={policy.id}
+                      members={members}
+                      groups={groups}
+                      onEdit={() => handlePopUpOpen("policyForm", policy)}
+                      onDelete={() => handlePopUpOpen("deletePolicy", policy)}
+                    />
+                  ))}
+            </TBody>
+          </Table>
+          {Boolean(!filteredPolicies.length && policies.length && !isPoliciesLoading) && (
+            <EmptyState title="No Policies Match Search" icon={faSearch} />
+          )}
+          {Boolean(filteredPolicies.length) && (
+            <Pagination
+              count={filteredPolicies.length}
+              page={page}
+              perPage={perPage}
+              onChangePage={setPage}
+              onChangePerPage={handlePerPageChange}
+            />
+          )}
+        </TableContainer>
+      </div>
       <AccessPolicyForm
         projectId={currentProject.id}
         projectSlug={currentProject.slug}
@@ -517,6 +507,6 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can add secret approval policy if you switch to Infisical's Enterprise plan."
       />
-    </AnimatePresence>
+    </>
   );
 };
