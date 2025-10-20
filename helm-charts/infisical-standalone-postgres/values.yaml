@@ -118,8 +118,7 @@ ingress:
   # -- Custom annotations for ingress resource
   annotations: {}
   # -- TLS settings for HTTPS access
-  tls:
-    []
+  tls: []
     # -- TLS secret name for HTTPS
     # - secretName: letsencrypt-prod
     # -- Domain name to associate with the TLS certificate
@@ -184,3 +183,7 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
+
+# -- Reloader is used to reload the Infisical instance when the Kubernetes secret referenced by `infisical.kubeSecretRef` is updated
+reloader:
+  enabled: true

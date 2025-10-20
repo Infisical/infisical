@@ -15,6 +15,10 @@ spec:
         app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+      {{- if .Values.reloader.enabled }}
+      annotations:
+        secret.reloader.stakater.com/reload: {{ $infisicalValues.kubeSecretRef }}
+      {{- end }}
     spec:
       serviceAccountName: {{ include "infisical.serviceAccountName" . }}
     {{- if $infisicalValues.image.imagePullSecrets }}
