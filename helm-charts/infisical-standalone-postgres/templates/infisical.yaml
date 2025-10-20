@@ -83,6 +83,9 @@ spec:
         - name: REDIS_URL
           value: {{ include "infisical.redisConnectionString" . }}
         {{- end }}
+        {{- with $infisicalValues.env }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
         envFrom:
         - secretRef:
             name: {{ $infisicalValues.kubeSecretRef }}
