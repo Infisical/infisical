@@ -85,6 +85,12 @@ export const pamAccountServiceFactory = ({
       });
     }
 
+    if (rotationEnabled && (rotationIntervalSeconds === undefined || rotationIntervalSeconds === null)) {
+      throw new BadRequestError({
+        message: "Rotation interval must be defined when rotation is enabled."
+      });
+    }
+
     const resource = await pamResourceDAL.findById(resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${resourceId}' not found` });
 
@@ -568,87 +574,97 @@ export const pamAccountServiceFactory = ({
     for (let i = 0; i < accounts.length; i += ROTATION_CONCURRENCY_LIMIT) {
       const batch = accounts.slice(i, i + ROTATION_CONCURRENCY_LIMIT);
 
-      const rotationPromises = batch.map(async (account) => {
-        let logResourceType = "unknown";
-        try {
-          const resource = await pamResourceDAL.findById(account.resourceId);
-          if (!resource || !resource.encryptedRotationAccountCredentials) return;
-          logResourceType = resource.resourceType;
+      const rotationPromises = batch.map(async (account) =>
+        pamAccountDAL.transaction(async (tx) => {
+          let logResourceType = "unknown";
+          try {
+            const resource = await pamResourceDAL.findById(account.resourceId, tx);
+            if (!resource || !resource.encryptedRotationAccountCredentials) return;
+            logResourceType = resource.resourceType;
 
-          const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
-            resource,
-            account.projectId,
-            kmsService
-          );
+            const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
+              resource,
+              account.projectId,
+              kmsService
+            );
 
-          if (!rotationAccountCredentials) return;
+            if (!rotationAccountCredentials) return;
 
-          const accountCredentials = await decryptAccountCredentials({
-            encryptedCredentials: account.encryptedCredentials,
-            projectId: account.projectId,
-            kmsService
-          });
+            const accountCredentials = await decryptAccountCredentials({
+              encryptedCredentials: account.encryptedCredentials,
+              projectId: account.projectId,
+              kmsService
+            });
 
-          const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
-            resourceType as PamResource,
-            connectionDetails,
-            gatewayId,
-            gatewayV2Service
-          );
+            const factory = PAM_RESOURCE_FACTORY_MAP[resourceType as PamResource](
+              resourceType as PamResource,
+              connectionDetails,
+              gatewayId,
+              gatewayV2Service
+            );
 
-          const newCredentials = await factory.rotateAccountCredentials(rotationAccountCredentials, accountCredentials);
+            const newCredentials = await factory.rotateAccountCredentials(
+              rotationAccountCredentials,
+              accountCredentials
+            );
 
-          const encryptedCredentials = await encryptAccountCredentials({
-            credentials: newCredentials,
-            projectId: account.projectId,
-            kmsService
-          });
+            const encryptedCredentials = await encryptAccountCredentials({
+              credentials: newCredentials,
+              projectId: account.projectId,
+              kmsService
+            });
 
-          await pamAccountDAL.updateById(account.id, {
-            encryptedCredentials,
-            lastRotatedAt: new Date()
-          });
+            await pamAccountDAL.updateById(
+              account.id,
+              {
+                encryptedCredentials,
+                lastRotatedAt: new Date()
+              },
+              tx
+            );
 
-          await auditLogService.createAuditLog({
-            projectId: account.projectId,
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
-            },
-            event: {
-              type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
-              metadata: {
-                accountId: account.id,
-                accountName: account.name,
-                resourceId: resource.id,
-                resourceType: logResourceType
+            await auditLogService.createAuditLog({
+              projectId: account.projectId,
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              },
+              event: {
+                type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION,
+                metadata: {
+                  accountId: account.id,
+                  accountName: account.name,
+                  resourceId: resource.id,
+                  resourceType: logResourceType
+                }
               }
-            }
-          });
-        } catch (error) {
-          logger.error(error, `Failed to rotate credentials for account [accountId=${account.id}]`);
+            });
+          } catch (error) {
+            logger.error(error, `Failed to rotate credentials for account [accountId=${account.id}]`);
 
-          const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
 
-          await auditLogService.createAuditLog({
-            projectId: account.projectId,
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
-            },
-            event: {
-              type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED,
-              metadata: {
-                accountId: account.id,
-                accountName: account.name,
-                resourceId: account.resourceId,
-                resourceType: logResourceType,
-                errorMessage
+            await auditLogService.createAuditLog({
+              projectId: account.projectId,
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              },
+              event: {
+                type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED,
+                metadata: {
+                  accountId: account.id,
+                  accountName: account.name,
+                  resourceId: account.resourceId,
+                  resourceType: logResourceType,
+                  errorMessage
+                }
               }
-            }
-          });
-        }
-      });
+            });
+            throw error; // Rollback transaction
+          }
+        })
+      );
 
       // eslint-disable-next-line no-await-in-loop
       await Promise.all(rotationPromises);

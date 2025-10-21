@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TPostgresAccount, useGetPamResourceById } from "@app/hooks/api/pam";
+import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
@@ -34,7 +35,7 @@ export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmi
           ...account,
           credentials: {
             ...account.credentials,
-            password: "__INFISICAL_UNCHANGED__"
+            password: UNCHANGED_PASSWORD_SENTINEL
           }
         }
       : undefined

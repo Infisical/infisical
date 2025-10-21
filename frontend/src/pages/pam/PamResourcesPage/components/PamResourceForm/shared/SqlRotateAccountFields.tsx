@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Controller, useFormContext } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import {
   Accordion,
@@ -9,10 +9,18 @@ import {
   FormControl,
   Input
 } from "@app/components/v2";
+import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();
   const [showPassword, setShowPassword] = useState(false);
+  const password = useWatch({ control, name: "credentials.password" });
+
+  useEffect(() => {
+    if (password === UNCHANGED_PASSWORD_SENTINEL) {
+      setShowPassword(false);
+    }
+  }, [password]);
 
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -55,14 +63,14 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                     type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
                     onFocus={() => {
-                      if (isUpdate && field.value === "__INFISICAL_UNCHANGED__") {
+                      if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
                         field.onChange("");
                       }
                       setShowPassword(true);
                     }}
                     onBlur={() => {
                       if (isUpdate && field.value === "") {
-                        field.onChange("__INFISICAL_UNCHANGED__");
+                        field.onChange(UNCHANGED_PASSWORD_SENTINEL);
                       }
                       setShowPassword(false);
                     }}

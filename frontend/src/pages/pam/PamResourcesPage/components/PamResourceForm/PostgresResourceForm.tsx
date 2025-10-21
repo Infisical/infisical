@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
+import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { BaseSqlAccountSchema } from "@app/pages/pam/PamAccountsPage/components/PamAccountForm/shared/sql-account-schemas";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
@@ -37,7 +38,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           rotationAccountCredentials: resource.rotationAccountCredentials
             ? {
                 ...resource.rotationAccountCredentials,
-                password: "__INFISICAL_UNCHANGED__"
+                password: UNCHANGED_PASSWORD_SENTINEL
               }
             : resource.rotationAccountCredentials
         }
