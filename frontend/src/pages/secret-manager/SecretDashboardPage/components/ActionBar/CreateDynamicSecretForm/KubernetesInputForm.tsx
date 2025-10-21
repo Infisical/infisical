@@ -196,7 +196,7 @@ export const KubernetesInputForm = ({
     }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "provider.audiences"
   });
@@ -263,7 +263,7 @@ export const KubernetesInputForm = ({
 
       // Set audiences if available
       if (role.token_default_audiences && role.token_default_audiences.length > 0) {
-        setValue("provider.audiences", role.token_default_audiences);
+        replace(role.token_default_audiences);
       }
 
       createNotification({
