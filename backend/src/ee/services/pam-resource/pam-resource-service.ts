@@ -213,12 +213,9 @@ export const pamResourceServiceFactory = ({
             kmsService
           });
         } catch (err) {
-          if (
-            err instanceof BadRequestError &&
-            err.message === "Account credentials invalid: Username or password incorrect"
-          ) {
+          if (err instanceof BadRequestError) {
             throw new BadRequestError({
-              message: "Rotation Account credentials invalid: Username or password incorrect"
+              message: `Rotation Account Error: ${err.message}`
             });
           }
 
