@@ -92,8 +92,10 @@ export const secretSharingServiceFactory = ({
     if (!permission) throw new ForbiddenRequestError({ name: "User is not a part of the specified organization" });
     $validateSharedSecretExpiry(expiresAt);
 
-    const org = await orgDAL.findOrgById(orgId);
-    if (!org.allowSecretSharingOutsideOrganization && accessType === SecretSharingAccessType.Anyone) {
+    const rootOrg = await orgDAL.findRootOrgDetails(orgId);
+    if (!rootOrg) throw new BadRequestError({ message: `Organization with id  ${orgId} not found` });
+
+    if (!rootOrg.allowSecretSharingOutsideOrganization && accessType === SecretSharingAccessType.Anyone) {
       throw new BadRequestError({
         message: "Organization does not allow sharing secrets to members outside of this organization"
       });
@@ -107,13 +109,16 @@ export const secretSharingServiceFactory = ({
     const expiresAtTimestamp = new Date(expiresAt).getTime();
     const lifetime = expiresAtTimestamp - new Date().getTime();
 
-    // org.maxSharedSecretLifetime is in seconds
-    if (org.maxSharedSecretLifetime && lifetime / 1000 > org.maxSharedSecretLifetime) {
+    // rootOrg.maxSharedSecretLifetime is in seconds
+    if (rootOrg.maxSharedSecretLifetime && lifetime / 1000 > rootOrg.maxSharedSecretLifetime) {
       throw new BadRequestError({ message: "Secret lifetime exceeds organization limit" });
     }
 
     // Check max view count is within org allowance
-    if (org.maxSharedSecretViewLimit && (!expiresAfterViews || expiresAfterViews > org.maxSharedSecretViewLimit)) {
+    if (
+      rootOrg.maxSharedSecretViewLimit &&
+      (!expiresAfterViews || expiresAfterViews > rootOrg.maxSharedSecretViewLimit)
+    ) {
       throw new BadRequestError({ message: "Secret max views parameter exceeds organization limit" });
     }
 
@@ -129,7 +134,10 @@ export const secretSharingServiceFactory = ({
         if (allOrgMembers.some((v) => v.user.email === email)) {
           orgEmails.push(email);
           // If the email is not part of the org, but access type / org settings require it
-        } else if (!org.allowSecretSharingOutsideOrganization || accessType === SecretSharingAccessType.Organization) {
+        } else if (
+          !rootOrg.allowSecretSharingOutsideOrganization ||
+          accessType === SecretSharingAccessType.Organization
+        ) {
           throw new BadRequestError({
             message: "Organization does not allow sharing secrets to members outside of this organization"
           });
