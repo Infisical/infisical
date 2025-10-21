@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { crypto } from "@app/lib/crypto/cryptography";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { zpStr } from "@app/lib/zod";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
@@ -22,13 +23,17 @@ const envSchema = z
     HSM_LIB_PATH: zpStr(z.string().optional()),
     HSM_PIN: zpStr(z.string().optional()),
     HSM_KEY_LABEL: zpStr(z.string().optional()),
-    HSM_SLOT: z.coerce.number().optional().default(0)
+    HSM_SLOT: z.coerce.number().optional().default(0),
+
+    LICENSE_SERVER_URL: zpStr(z.string().optional().default("https://portal.infisical.com")),
+    LICENSE_SERVER_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY: zpStr(z.string().optional()),
+    LICENSE_KEY_OFFLINE: zpStr(z.string().optional()),
+    INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional()),
+
+    SITE_URL: zpStr(z.string().transform((val) => (val ? removeTrailingSlash(val) : val))).optional()
   })
   // To ensure that basic encryption is always possible.
-  .refine(
-    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
-    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
-  )
   .transform((data) => ({
     ...data,
     isHsmConfigured:

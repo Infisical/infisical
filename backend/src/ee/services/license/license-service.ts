@@ -10,7 +10,7 @@ import { CronJob } from "cron";
 import { Knex } from "knex";
 
 import { TKeyStoreFactory } from "@app/keystore/keystore";
-import { getConfig } from "@app/lib/config/env";
+import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -45,6 +45,10 @@ import {
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
+  envConfig: Pick<
+    TEnvConfig,
+    "LICENSE_SERVER_URL" | "LICENSE_SERVER_KEY" | "LICENSE_KEY" | "LICENSE_KEY_OFFLINE" | "INTERNAL_REGION" | "SITE_URL"
+  >;
   orgDAL: Pick<TOrgDALFactory, "findOrgById" | "countAllOrgMembers">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseDAL: TLicenseDALFactory;
@@ -67,26 +71,26 @@ export const licenseServiceFactory = ({
   licenseDAL,
   keyStore,
   identityOrgMembershipDAL,
-  projectDAL
+  projectDAL,
+  envConfig
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
   let selfHostedLicense: TOfflineLicense | null = null;
 
-  const appCfg = getConfig();
   const licenseServerCloudApi = setupLicenseRequestWithStore(
-    appCfg.LICENSE_SERVER_URL || "",
+    envConfig.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_CLOUD_LOGIN,
-    appCfg.LICENSE_SERVER_KEY || "",
-    appCfg.INTERNAL_REGION
+    envConfig.LICENSE_SERVER_KEY || "",
+    envConfig.INTERNAL_REGION
   );
 
   const licenseServerOnPremApi = setupLicenseRequestWithStore(
-    appCfg.LICENSE_SERVER_URL || "",
+    envConfig.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_ON_PREM_LOGIN,
-    appCfg.LICENSE_KEY || "",
-    appCfg.INTERNAL_REGION
+    envConfig.LICENSE_KEY || "",
+    envConfig.INTERNAL_REGION
   );
 
   const syncLicenseKeyOnPremFeatures = async (shouldThrow: boolean = false) => {
@@ -120,7 +124,7 @@ export const licenseServiceFactory = ({
 
   const init = async () => {
     try {
-      if (appCfg.LICENSE_SERVER_KEY) {
+      if (envConfig.LICENSE_SERVER_KEY) {
         const token = await licenseServerCloudApi.refreshLicense();
         if (token) instanceType = InstanceType.Cloud;
         logger.info(`Instance type: ${InstanceType.Cloud}`);
@@ -128,7 +132,7 @@ export const licenseServiceFactory = ({
         return;
       }
 
-      if (appCfg.LICENSE_KEY) {
+      if (envConfig.LICENSE_KEY) {
         const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
           await syncLicenseKeyOnPremFeatures(true);
@@ -139,10 +143,10 @@ export const licenseServiceFactory = ({
         return;
       }
 
-      if (appCfg.LICENSE_KEY_OFFLINE) {
+      if (envConfig.LICENSE_KEY_OFFLINE) {
         let isValidOfflineLicense = true;
         const contents: TOfflineLicenseContents = JSON.parse(
-          Buffer.from(appCfg.LICENSE_KEY_OFFLINE, "base64").toString("utf8")
+          Buffer.from(envConfig.LICENSE_KEY_OFFLINE, "base64").toString("utf8")
         );
         const isVerified = await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature);
 
@@ -181,7 +185,7 @@ export const licenseServiceFactory = ({
   };
 
   const initializeBackgroundSync = async () => {
-    if (appCfg.LICENSE_KEY) {
+    if (envConfig.LICENSE_KEY) {
       logger.info("Setting up background sync process for refresh onPremFeatures");
       const job = new CronJob("*/10 * * * *", syncLicenseKeyOnPremFeatures);
       job.start();
@@ -397,8 +401,8 @@ export const licenseServiceFactory = ({
       } = await licenseServerCloudApi.request.post(
         `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
         {
-          success_url: `${appCfg.SITE_URL}/organization/billing`,
-          cancel_url: `${appCfg.SITE_URL}/organization/billing`
+          success_url: `${envConfig.SITE_URL}/organization/billing`,
+          cancel_url: `${envConfig.SITE_URL}/organization/billing`
         }
       );
 
@@ -411,7 +415,7 @@ export const licenseServiceFactory = ({
     } = await licenseServerCloudApi.request.post(
       `/api/license-server/v1/customers/${organization.customerId}/billing-details/billing-portal`,
       {
-        return_url: `${appCfg.SITE_URL}/organization/billing`
+        return_url: `${envConfig.SITE_URL}/organization/billing`
       }
     );
 

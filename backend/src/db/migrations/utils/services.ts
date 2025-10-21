@@ -61,7 +61,8 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     licenseDAL,
     keyStore,
     identityOrgMembershipDAL,
-    projectDAL
+    projectDAL,
+    envConfig
   });
 
   // ----- HSM startup -----
