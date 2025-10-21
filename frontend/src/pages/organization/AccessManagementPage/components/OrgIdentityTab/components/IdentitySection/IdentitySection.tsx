@@ -244,6 +244,7 @@ export const IdentitySection = withPermission(
           <ModalContent
             title="Assign Existing Identity"
             subTitle="Assign an existing identity from your root organization to the sub organization. The identity will continue to be managed at its original scope."
+            bodyClassName="overflow-visible"
           >
             <IdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
           </ModalContent>
