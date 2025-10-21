@@ -17,19 +17,19 @@ export const SubOrganizationInvitationTemplate = ({
   return (
     <BaseEmailWrapper
       title="Sub-Organization Invitation"
-      preview="You've been invited to join a suborganization on Infisical."
+      preview="You've been invited to join a sub-organization on Infisical."
       siteUrl={siteUrl}
     >
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        You've been invited to join a suborganization on Infisical
+        You've been invited to join a sub-organization on Infisical
       </Heading>
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border text-center border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-black text-[14px] leading-[24px]">
-          You've been invited to join the suborganization <strong>{subOrganizationName}</strong>.
+          You've been invited to join the sub-organization <strong>{subOrganizationName}</strong>.
         </Text>
       </Section>
       <Section className="text-center">
-        <BaseButton href={callback_url}>Join Suborganization</BaseButton>
+        <BaseButton href={callback_url}>Join Sub-Organization</BaseButton>
       </Section>
       <Section className="mt-[24px] bg-gray-50 pt-[2px] pb-[16px] border border-solid border-gray-200 px-[24px] rounded-md text-gray-800">
         <Text className="mb-[0px]">
