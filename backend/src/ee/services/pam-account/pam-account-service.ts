@@ -611,6 +611,8 @@ export const pamAccountServiceFactory = ({
             }
           });
         } catch (error) {
+          logger.error(error, `Failed to rotate credentials for account [accountId=${account.id}]`);
+
           const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
 
           await auditLogService.createAuditLog({
@@ -630,8 +632,6 @@ export const pamAccountServiceFactory = ({
               }
             }
           });
-
-          logger.error(error, `Failed to rotate credentials for account ${account.id}`);
         }
       });
 

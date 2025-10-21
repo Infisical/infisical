@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import {
@@ -11,6 +12,7 @@ import {
 
 export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -50,19 +52,19 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                 >
                   <Input
                     {...field}
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
-                    onFocus={(e) => {
+                    onFocus={() => {
                       if (isUpdate && field.value === "******") {
                         field.onChange("");
                       }
-                      e.target.type = "text";
+                      setShowPassword(true);
                     }}
-                    onBlur={(e) => {
+                    onBlur={() => {
                       if (isUpdate && field.value === "") {
                         field.onChange("******");
                       }
-                      e.target.type = "password";
+                      setShowPassword(false);
                     }}
                   />
                 </FormControl>

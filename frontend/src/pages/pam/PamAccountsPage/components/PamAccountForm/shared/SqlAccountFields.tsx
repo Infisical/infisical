@@ -1,9 +1,11 @@
 import { Controller, useFormContext } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
+import { useState } from "react";
 
 export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="flex gap-2">
@@ -33,19 +35,19 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
           >
             <Input
               {...field}
-              type="password"
+              type={showPassword ? "text" : "password"}
               autoComplete="new-password"
-              onFocus={(e) => {
+              onFocus={() => {
                 if (isUpdate && field.value === "******") {
                   field.onChange("");
                 }
-                e.target.type = "text";
+                setShowPassword(true);
               }}
-              onBlur={(e) => {
+              onBlur={() => {
                 if (isUpdate && field.value === "") {
                   field.onChange("******");
                 }
-                e.target.type = "password";
+                setShowPassword(false);
               }}
             />
           </FormControl>
