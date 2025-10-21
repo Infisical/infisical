@@ -308,7 +308,7 @@ export const membershipUserDALFactory = (db: TDbClient) => {
         .where(`${TableName.Users}.isGhost`, false)
         .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
-        .whereNot(`${TableName.Membership}.actorUserId`, usersConnectedToOrg)
+        .whereNotIn(`${TableName.Membership}.actorUserId`, usersConnectedToOrg)
         .select(
           db.ref("id").withSchema(TableName.Users),
           db.ref("email").withSchema(TableName.Users),

@@ -73,7 +73,7 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
             errorText={error?.message}
             label="Name"
           >
-            <Input autoFocus value={value} onChange={onChange} placeholder="My Organization" />
+            <Input autoFocus value={value} onChange={onChange} placeholder="example-team" />
           </FormControl>
         )}
         control={control}

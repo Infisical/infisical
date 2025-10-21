@@ -11,6 +11,8 @@ import {
   Button,
   DeleteActionModal,
   EmailServiceSetupModal,
+  Modal,
+  ModalContent,
   Tooltip
 } from "@app/components/v2";
 import {
@@ -27,10 +29,11 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
+import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 
 export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id ?? "";
   const { user } = useUser();
   const userId = user?.id || "";
@@ -41,6 +44,7 @@ export const OrgMembersSection = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
+    "addMemberToSubOrg",
     "removeMember",
     "deactivateMember",
     "upgradePlan",
@@ -210,7 +214,9 @@ export const OrgMembersSection = () => {
                 colorSchema="secondary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handleAddMemberModal()}
+                onClick={() =>
+                  isSubOrganization ? handlePopUpOpen("addMemberToSubOrg") : handleAddMemberModal()
+                }
                 isDisabled={!isAllowed}
               >
                 Add Member
@@ -230,6 +236,14 @@ export const OrgMembersSection = () => {
           completeInviteLinks={completeInviteLinks}
           setCompleteInviteLinks={setCompleteInviteLinks}
         />
+        <Modal
+          isOpen={popUp.addMemberToSubOrg.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
+        >
+          <ModalContent title="Add member from your organization">
+            <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
+          </ModalContent>
+        </Modal>
         <DeleteActionModal
           isOpen={popUp.removeMember.isOpen}
           title={`Are you sure you want to remove member with username ${
