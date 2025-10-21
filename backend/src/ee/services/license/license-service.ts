@@ -212,9 +212,8 @@ export const licenseServiceFactory = ({
         const membersUsed = await licenseDAL.countOfOrgMembers(orgId);
         currentPlan.membersUsed = membersUsed;
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
-        currentPlan.identitiesUsed = identityUsed;
 
-        if (currentPlan.identityLimit && currentPlan.identityLimit !== identityUsed) {
+        if (currentPlan?.identitiesUsed && currentPlan.identitiesUsed !== identityUsed) {
           try {
             await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
               quantity: membersUsed,
@@ -227,6 +226,7 @@ export const licenseServiceFactory = ({
             );
           }
         }
+        currentPlan.identitiesUsed = identityUsed;
 
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
