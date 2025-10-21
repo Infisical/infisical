@@ -55,6 +55,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useOrgPermission,
   useProject,
   useProjectPermission,
   useSubscription
@@ -64,6 +65,7 @@ import {
   ProjectPermissionSecretActions,
   ProjectPermissionSecretRotationActions
 } from "@app/context/ProjectPermissionContext/types";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import {
   useCreateFolder,
@@ -203,6 +205,8 @@ export const ActionBar = ({
   const { permission } = useProjectPermission();
   const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { hasOrgRole } = useOrgPermission();
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
@@ -1114,25 +1118,33 @@ export const ActionBar = ({
                     })}
                   >
                     {(isAllowed) => (
-                      <Button
-                        leftIcon={
-                          <img
-                            src="/images/integrations/Vault.png"
-                            alt="HashiCorp Vault"
-                            className="h-4 w-4"
-                          />
+                      <Tooltip
+                        content={
+                          !isOrgAdmin
+                            ? "Only organization admins can import secrets from HashiCorp Vault"
+                            : undefined
                         }
-                        onClick={() => {
-                          handlePopUpOpen("importFromVault");
-                          handlePopUpClose("misc");
-                        }}
-                        isDisabled={!isAllowed}
-                        variant="outline_bg"
-                        className="h-10 text-left"
-                        isFullWidth
                       >
-                        Add from HashiCorp Vault
-                      </Button>
+                        <Button
+                          leftIcon={
+                            <img
+                              src="/images/integrations/Vault.png"
+                              alt="HashiCorp Vault"
+                              className="h-4 w-4"
+                            />
+                          }
+                          onClick={() => {
+                            handlePopUpOpen("importFromVault");
+                            handlePopUpClose("misc");
+                          }}
+                          isDisabled={!isAllowed || !isOrgAdmin}
+                          variant="outline_bg"
+                          className="h-10 text-left"
+                          isFullWidth
+                        >
+                          Add from HashiCorp Vault
+                        </Button>
+                      </Tooltip>
                     )}
                   </ProjectPermissionCan>
                 )}
