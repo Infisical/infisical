@@ -1083,8 +1083,8 @@ export const kmsServiceFactory = ({
 
       const isHsmActive = hsmStatus.isHsmConfigured;
 
-      logger.info("KMS: Generating new ROOT Key");
-      const newRootKey = crypto.randomBytes(32);
+      logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
+      const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
 
       const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
 

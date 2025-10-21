@@ -35,6 +35,7 @@ export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured
 
       if ((error as { message?: string })?.message === "CKR_CRYPTOKI_ALREADY_INITIALIZED") {
         logger.info("Skipping HSM initialization because it's already initialized.");
+        isInitialized = true;
       } else {
         logger.error(error, "Failed to initialize PKCS#11 module");
         throw error;
@@ -83,7 +84,7 @@ export const isHsmActiveAndEnabled = async ({
 
   const rootKmsConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID).catch(() => null);
 
-  rootKmsConfigEncryptionStrategy = rootKmsConfig?.encryptionStrategy as RootKeyEncryptionStrategy | null;
+  rootKmsConfigEncryptionStrategy = (rootKmsConfig?.encryptionStrategy || null) as RootKeyEncryptionStrategy | null;
   if (rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM && !licenseService.onPremFeatures.hsm) {
     throw new BadRequestError({
       message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."

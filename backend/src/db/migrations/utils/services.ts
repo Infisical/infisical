@@ -68,13 +68,13 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   // ----- HSM startup -----
 
   const hsmModule = initializeHsmModule(envConfig);
+  hsmModule.initialize();
 
   const hsmService = hsmServiceFactory({
     hsmModule: hsmModule.getModule(),
     envConfig
   });
 
-  hsmModule.initialize();
   await hsmService.startService();
 
   const hsmStatus = await isHsmActiveAndEnabled({

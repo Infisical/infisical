@@ -460,10 +460,23 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
   };
 
+  const randomBytes = async (length: number) => {
+    if (!pkcs11 || !isInitialized) {
+      throw new Error("PKCS#11 module is not initialized");
+    }
+
+    const randomData = await $withSession((sessionHandle) =>
+      pkcs11.C_GenerateRandom(sessionHandle, Buffer.alloc(length))
+    );
+
+    return randomData;
+  };
+
   return {
     encrypt,
     startService,
     isActive,
-    decrypt
+    decrypt,
+    randomBytes
   };
 };
