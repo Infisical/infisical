@@ -12,7 +12,7 @@ export const pamKeys = {
   session: () => [...pamKeys.all, "session"] as const,
   listResourceOptions: () => [...pamKeys.resource(), "options"] as const,
   listResources: (projectId: string) => [...pamKeys.resource(), "list", projectId],
-  getResource: (resourceId?: string) => [...pamKeys.resource(), "get", resourceId],
+  getResource: (resourceId: string) => [...pamKeys.resource(), "get", resourceId],
   listAccounts: (projectId: string) => [...pamKeys.account(), "list", projectId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
@@ -77,7 +77,7 @@ export const useGetPamResourceById = (
   >
 ) => {
   return useQuery({
-    queryKey: pamKeys.getResource(resourceId),
+    queryKey: pamKeys.getResource(resourceId || ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ resource: TPamResource }>(
         `/api/v1/pam/resources/${resourceId}`
