@@ -28,8 +28,8 @@ import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
-import { OrgMembersTable } from "./OrgMembersTable";
 import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
+import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
