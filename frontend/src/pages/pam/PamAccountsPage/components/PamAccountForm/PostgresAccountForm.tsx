@@ -34,7 +34,7 @@ export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmi
           ...account,
           credentials: {
             ...account.credentials,
-            password: "******"
+            password: "__INFISICAL_UNCHANGED__"
           }
         }
       : undefined

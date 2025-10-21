@@ -194,7 +194,10 @@ export const pamResourceServiceFactory = ({
 
         // Logic to prevent overwriting unedited censored values
         const finalCredentials = { ...rotationAccountCredentials };
-        if (resource.encryptedRotationAccountCredentials && rotationAccountCredentials.password === "******") {
+        if (
+          resource.encryptedRotationAccountCredentials &&
+          rotationAccountCredentials.password === "__INFISICAL_UNCHANGED__"
+        ) {
           const decryptedCredentials = await decryptAccountCredentials({
             encryptedCredentials: resource.encryptedRotationAccountCredentials,
             projectId: resource.projectId,

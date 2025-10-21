@@ -150,7 +150,12 @@ export const pamAccountServiceFactory = ({
 
       return {
         ...(await decryptAccount(account, resource.projectId, kmsService)),
-        resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType }
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+        }
       };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
@@ -241,7 +246,7 @@ export const pamAccountServiceFactory = ({
 
       // Logic to prevent overwriting unedited censored values
       const finalCredentials = { ...credentials };
-      if (credentials.password === "******") {
+      if (credentials.password === "__INFISICAL_UNCHANGED__") {
         const decryptedCredentials = await decryptAccountCredentials({
           encryptedCredentials: account.encryptedCredentials,
           projectId: account.projectId,
@@ -269,7 +274,12 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
-      resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType }
+      resource: {
+        id: resource.id,
+        name: resource.name,
+        resourceType: resource.resourceType,
+        rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+      }
     };
   };
 
@@ -308,7 +318,12 @@ export const pamAccountServiceFactory = ({
 
     return {
       ...(await decryptAccount(deletedAccount, account.projectId, kmsService)),
-      resource: { id: resource.id, name: resource.name, resourceType: resource.resourceType }
+      resource: {
+        id: resource.id,
+        name: resource.name,
+        resourceType: resource.resourceType,
+        rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+      }
     };
   };
 

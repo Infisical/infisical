@@ -37,7 +37,7 @@ export const PostgresResourceForm = ({ resource, onSubmit }: Props) => {
           rotationAccountCredentials: resource.rotationAccountCredentials
             ? {
                 ...resource.rotationAccountCredentials,
-                password: "******"
+                password: "__INFISICAL_UNCHANGED__"
               }
             : resource.rotationAccountCredentials
         }

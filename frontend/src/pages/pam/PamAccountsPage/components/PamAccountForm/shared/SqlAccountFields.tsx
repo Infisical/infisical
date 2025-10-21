@@ -38,14 +38,14 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               onFocus={() => {
-                if (isUpdate && field.value === "******") {
+                if (isUpdate && field.value === "__INFISICAL_UNCHANGED__") {
                   field.onChange("");
                 }
                 setShowPassword(true);
               }}
               onBlur={() => {
                 if (isUpdate && field.value === "") {
-                  field.onChange("******");
+                  field.onChange("__INFISICAL_UNCHANGED__");
                 }
                 setShowPassword(false);
               }}
