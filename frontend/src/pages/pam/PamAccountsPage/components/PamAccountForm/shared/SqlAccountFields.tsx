@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
-import { useState } from "react";
 
 export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -7,7 +8,6 @@ import { z } from "zod";
 import { Button, FormControl, FormLabel, IconButton, Input, ModalClose } from "@app/components/v2";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 import { TCustomProviderLogStream } from "@app/hooks/api/auditLogStreams/types/providers/custom-provider";
-import { useState } from "react";
 
 type Props = {
   auditLogStream?: TCustomProviderLogStream;

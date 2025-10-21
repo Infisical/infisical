@@ -3,8 +3,8 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
-import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
 import { PamResourceType } from "./enums";
+import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
 
 export const pamKeys = {
   all: ["pam"] as const,
