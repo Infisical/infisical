@@ -124,6 +124,14 @@ export enum ProjectPermissionPkiTemplateActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionCertificateProfileActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -293,6 +301,7 @@ export enum ProjectPermissionSub {
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   PkiSubscribers = "pki-subscribers",
+  CertificateProfiles = "certificate-profiles",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -470,6 +479,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
       )
     ]
+  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]

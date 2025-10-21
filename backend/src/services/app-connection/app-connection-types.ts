@@ -149,6 +149,12 @@ import {
   TValidateHumanitecConnectionCredentialsSchema
 } from "./humanitec";
 import {
+  TLaravelForgeConnection,
+  TLaravelForgeConnectionConfig,
+  TLaravelForgeConnectionInput,
+  TValidateLaravelForgeConnectionCredentialsSchema
+} from "./laravel-forge";
+import {
   TLdapConnection,
   TLdapConnectionConfig,
   TLdapConnectionInput,
@@ -256,6 +262,7 @@ export type TAppConnection = { id: string } & (
   | TOnePassConnection
   | THerokuConnection
   | TRenderConnection
+  | TLaravelForgeConnection
   | TFlyioConnection
   | TGitLabConnection
   | TCloudflareConnection
@@ -302,6 +309,7 @@ export type TAppConnectionInput = { id: string } & (
   | TOnePassConnectionInput
   | THerokuConnectionInput
   | TRenderConnectionInput
+  | TLaravelForgeConnectionInput
   | TFlyioConnectionInput
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
@@ -366,6 +374,7 @@ export type TAppConnectionConfig =
   | TOnePassConnectionConfig
   | THerokuConnectionConfig
   | TRenderConnectionConfig
+  | TLaravelForgeConnectionConfig
   | TFlyioConnectionConfig
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
@@ -407,6 +416,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOnePassConnectionCredentialsSchema
   | TValidateHerokuConnectionCredentialsSchema
   | TValidateRenderConnectionCredentialsSchema
+  | TValidateLaravelForgeConnectionCredentialsSchema
   | TValidateFlyioConnectionCredentialsSchema
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema

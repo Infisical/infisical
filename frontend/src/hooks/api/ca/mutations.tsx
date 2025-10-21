@@ -9,9 +9,13 @@ import {
   TCreateCertificateAuthorityDTO,
   TCreateCertificateDTO,
   TCreateCertificateResponse,
+  TCreateCertificateV3DTO,
+  TCreateCertificateV3Response,
   TDeleteCertificateAuthorityDTO,
   TImportCaCertificateDTO,
   TImportCaCertificateResponse,
+  TOrderCertificateDTO,
+  TOrderCertificateResponse,
   TRenewCaDTO,
   TRenewCaResponse,
   TSignIntermediateDTO,
@@ -136,6 +140,46 @@ export const useCreateCertificate = () => {
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateResponse>(
         "/api/v1/pki/certificates/issue-certificate",
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+    }
+  });
+};
+
+export const useCreateCertificateV3 = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TCreateCertificateV3Response, object, TCreateCertificateV3DTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TCreateCertificateV3Response>(
+        "/api/v3/certificates/issue-certificate",
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["certificate-profiles"]
+      });
+    }
+  });
+};
+
+export const useOrderCertificateWithProfile = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TOrderCertificateResponse, object, TOrderCertificateDTO>({
+    mutationFn: async (body) => {
+      const { data } = await apiRequest.post<TOrderCertificateResponse>(
+        "/api/v3/certificates/order-certificate",
         body
       );
       return data;

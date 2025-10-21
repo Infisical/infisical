@@ -125,6 +125,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mysql",
@@ -420,6 +421,7 @@
                       "documentation/guides/node",
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
+                      "documentation/guides/kubernetes-operator",
                       "documentation/guides/microsoft-power-apps"
                     ]
                   }
@@ -550,6 +552,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/railway",
@@ -1779,6 +1782,18 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/laravel-forge/list",
+                      "api-reference/endpoints/app-connections/laravel-forge/available",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-id",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-name",
+                      "api-reference/endpoints/app-connections/laravel-forge/create",
+                      "api-reference/endpoints/app-connections/laravel-forge/update",
+                      "api-reference/endpoints/app-connections/laravel-forge/delete"
+                    ]
+                  },
+                  {
                     "group": "LDAP",
                     "pages": [
                       "api-reference/endpoints/app-connections/ldap/list",
@@ -2259,6 +2274,19 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/laravel-forge/list",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-id",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-name",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/create",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/update",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/delete",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Netlify",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/netlify/list",
@@ -2425,20 +2453,6 @@
             "group": "Infisical PKI",
             "pages": [
               {
-                "group": "Subscribers",
-                "pages": [
-                  "api-reference/endpoints/pki/subscribers/list-certs",
-                  "api-reference/endpoints/pki/subscribers/create",
-                  "api-reference/endpoints/pki/subscribers/read",
-                  "api-reference/endpoints/pki/subscribers/update",
-                  "api-reference/endpoints/pki/subscribers/delete",
-                  "api-reference/endpoints/pki/subscribers/issue-cert",
-                  "api-reference/endpoints/pki/subscribers/sign-cert",
-                  "api-reference/endpoints/pki/subscribers/order-cert",
-                  "api-reference/endpoints/pki/subscribers/get-latest-cert-bundle"
-                ]
-              },
-              {
                 "group": "Certificate Authorities",
                 "pages": [
                   {
@@ -2494,10 +2508,11 @@
               {
                 "group": "Certificate Templates",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates/create",
-                  "api-reference/endpoints/certificate-templates/update",
-                  "api-reference/endpoints/certificate-templates/get-by-id",
-                  "api-reference/endpoints/certificate-templates/delete"
+                  "api-reference/endpoints/certificate-templates-v2/list",
+                  "api-reference/endpoints/certificate-templates-v2/create",
+                  "api-reference/endpoints/certificate-templates-v2/update",
+                  "api-reference/endpoints/certificate-templates-v2/get-by-id",
+                  "api-reference/endpoints/certificate-templates-v2/delete"
                 ]
               },
               {
@@ -2519,6 +2534,15 @@
                   "api-reference/endpoints/pki-alerts/read",
                   "api-reference/endpoints/pki-alerts/update",
                   "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
+                "group": "Certificate Profiles",
+                "pages": [
+                  "api-reference/endpoints/certificate-profiles/create",
+                  "api-reference/endpoints/certificate-profiles/update",
+                  "api-reference/endpoints/certificate-profiles/get-by-id",
+                  "api-reference/endpoints/certificate-profiles/delete"
                 ]
               },
               {

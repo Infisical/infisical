@@ -263,7 +263,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
           .default("/")
           .transform(prefixWithSlash) // Transformations get skipped if path is undefined
           .transform(removeTrailingSlash)
-          .describe(FOLDERS.DELETE.path)
+          .describe(FOLDERS.DELETE.path),
+        forceDelete: z.boolean().optional().default(false).describe(FOLDERS.DELETE.forceDelete)
       }),
       response: {
         200: z.object({
@@ -279,7 +280,8 @@ export const registerSecretFolderRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         ...req.body,
-        idOrName: req.params.folderIdOrName
+        idOrName: req.params.folderIdOrName,
+        forceDelete: req.body.forceDelete
       });
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

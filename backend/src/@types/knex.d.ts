@@ -266,12 +266,24 @@ import {
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateProfiles,
+  TPkiCertificateProfilesInsert,
+  TPkiCertificateProfilesUpdate,
+  TPkiCertificateTemplatesV2,
+  TPkiCertificateTemplatesV2Insert,
+  TPkiCertificateTemplatesV2Update,
   TPkiCollectionItems,
   TPkiCollectionItemsInsert,
   TPkiCollectionItemsUpdate,
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -518,6 +530,9 @@ import {
   TUsers,
   TUsersInsert,
   TUsersUpdate,
+  TVaultExternalMigrationConfigs,
+  TVaultExternalMigrationConfigsInsert,
+  TVaultExternalMigrationConfigsUpdate,
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
@@ -670,6 +685,26 @@ declare module "knex/types/tables" {
       TCertificateTemplates,
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
+    >;
+    [TableName.PkiCertificateTemplateV2]: KnexOriginal.CompositeTableType<
+      TPkiCertificateTemplatesV2,
+      TPkiCertificateTemplatesV2Insert,
+      TPkiCertificateTemplatesV2Update
+    >;
+    [TableName.PkiCertificateProfile]: KnexOriginal.CompositeTableType<
+      TPkiCertificateProfiles,
+      TPkiCertificateProfilesInsert,
+      TPkiCertificateProfilesUpdate
+    >;
+    [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiEstEnrollmentConfigs,
+      TPkiEstEnrollmentConfigsInsert,
+      TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiApiEnrollmentConfigs,
+      TPkiApiEnrollmentConfigsInsert,
+      TPkiApiEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
@@ -1344,6 +1379,11 @@ declare module "knex/types/tables" {
       TAdditionalPrivileges,
       TAdditionalPrivilegesInsert,
       TAdditionalPrivilegesUpdate
+    >;
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

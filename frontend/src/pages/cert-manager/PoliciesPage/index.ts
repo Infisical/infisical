@@ -1,0 +1,1 @@
+export { PoliciesPage } from "./PoliciesPage";

@@ -17,7 +17,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-mineshaft-900">
+    <div className="flex h-full items-center justify-center">
       <div className="flex max-w-3xl flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-8 text-center text-mineshaft-200">
         <FontAwesomeIcon icon={faBugs} className="my-2 inline text-6xl" />
         <p>

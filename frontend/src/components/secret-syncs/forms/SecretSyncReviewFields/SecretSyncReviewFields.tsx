@@ -35,6 +35,7 @@ import { GitLabSyncReviewFields } from "./GitLabSyncReviewFields";
 import { HCVaultSyncReviewFields } from "./HCVaultSyncReviewFields";
 import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
+import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
@@ -167,6 +168,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.Bitbucket:
       DestinationFieldsComponent = <BitbucketSyncReviewFields />;
+      break;
+    case SecretSync.LaravelForge:
+      DestinationFieldsComponent = <LaravelForgeSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

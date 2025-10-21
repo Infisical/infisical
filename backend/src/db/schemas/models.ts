@@ -23,6 +23,10 @@ export enum TableName {
   CertificateBody = "certificate_bodies",
   CertificateSecret = "certificate_secrets",
   CertificateTemplate = "certificate_templates",
+  PkiCertificateTemplateV2 = "pki_certificate_templates_v2",
+  PkiCertificateProfile = "pki_certificate_profiles",
+  PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
+  PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiCollection = "pki_collections",
@@ -203,7 +207,9 @@ export enum TableName {
   PamFolder = "pam_folders",
   PamResource = "pam_resources",
   PamAccount = "pam_accounts",
-  PamSession = "pam_sessions"
+  PamSession = "pam_sessions",
+
+  VaultExternalMigrationConfig = "vault_external_migration_configs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

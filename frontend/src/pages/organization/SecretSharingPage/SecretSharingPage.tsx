@@ -20,7 +20,7 @@ export const SecretSharingPage = () => {
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
       <div className="h-full">
-        <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
           <PageHeader
             scope="org"
             title="Secret Sharing"

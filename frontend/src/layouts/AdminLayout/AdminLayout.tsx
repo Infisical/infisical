@@ -12,7 +12,7 @@ import { RedisBanner } from "@app/layouts/OrganizationLayout/components/RedisBan
 import { SmtpBanner } from "@app/layouts/OrganizationLayout/components/SmtpBanner";
 
 import { InsecureConnectionBanner } from "../OrganizationLayout/components/InsecureConnectionBanner";
-import { AdminSidebar } from "./Sidebar";
+import { AdminNavBar } from "./AdminNavBar";
 
 export const AdminLayout = () => {
   const { t } = useTranslation();
@@ -33,9 +33,9 @@ export const AdminLayout = () => {
         {!isLoading && !serverDetails?.emailConfigured && <SmtpBanner />}
         {!isLoading && subscription.auditLogs && <AuditLogBanner />}
         {!window.isSecureContext && <InsecureConnectionBanner />}
-        <div className="flex grow flex-col overflow-y-hidden md:flex-row">
-          <AdminSidebar />
-          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-4 pt-8 pb-4 dark:scheme-dark">
+        <div className="flex grow flex-col overflow-y-hidden">
+          <AdminNavBar />
+          <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4 dark:scheme-dark">
             <Outlet />
           </div>
         </div>

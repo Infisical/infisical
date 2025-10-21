@@ -1,8 +1,14 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faCopy, faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronLeft,
+  faCopy,
+  faEdit,
+  faEllipsisV,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -86,20 +92,29 @@ const Page = () => {
   );
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Link
+            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+            params={{
+              projectId
+            }}
+            search={{
+              selectedTab: ProjectAccessControlTabs.Roles
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Roles
+          </Link>
           <PageHeader
-            scope="project"
-            title={
-              <div className="flex flex-col">
-                <div>
-                  <span>{data.name}</span>
-                  <p className="text-sm leading-3 font-normal text-mineshaft-400 normal-case">
-                    {data.slug} {data.description && `- ${data.description}`}
-                  </p>
-                </div>
-              </div>
+            scope={currentProject.type}
+            title={data.name}
+            description={
+              <>
+                {data.slug} {data.description && `- ${data.description}`}
+              </>
             }
           >
             {isCustomRole && (

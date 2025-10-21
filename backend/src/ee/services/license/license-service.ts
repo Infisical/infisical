@@ -218,6 +218,20 @@ export const licenseServiceFactory = ({
         const identityUsed = await licenseDAL.countOrgUsersAndIdentities(orgId);
         currentPlan.identitiesUsed = identityUsed;
 
+        if (currentPlan.identityLimit && currentPlan.identityLimit !== identityUsed) {
+          try {
+            await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
+              quantity: membersUsed,
+              quantityIdentities: identityUsed
+            });
+          } catch (error) {
+            logger.error(
+              error,
+              `Update seats used: encountered an error when updating plan for customer [customerId=${org.customerId}]`
+            );
+          }
+        }
+
         await keyStore.setItemWithExpiry(
           FEATURE_CACHE_KEY(org.id),
           LICENSE_SERVER_CLOUD_PLAN_TTL,

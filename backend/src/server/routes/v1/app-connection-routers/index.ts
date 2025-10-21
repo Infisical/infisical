@@ -24,6 +24,7 @@ import { registerGitLabConnectionRouter } from "./gitlab-connection-router";
 import { registerHCVaultConnectionRouter } from "./hc-vault-connection-router";
 import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
+import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
@@ -71,6 +72,7 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.OnePass]: registerOnePassConnectionRouter,
     [AppConnection.Heroku]: registerHerokuConnectionRouter,
     [AppConnection.Render]: registerRenderConnectionRouter,
+    [AppConnection.LaravelForge]: registerLaravelForgeConnectionRouter,
     [AppConnection.Flyio]: registerFlyioConnectionRouter,
     [AppConnection.GitLab]: registerGitLabConnectionRouter,
     [AppConnection.Cloudflare]: registerCloudflareConnectionRouter,

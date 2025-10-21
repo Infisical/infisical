@@ -111,6 +111,14 @@ export enum ProjectPermissionPkiSubscriberActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionCertificateProfileActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert"
+}
+
 export enum ProjectPermissionSecretSyncActions {
   Read = "read",
   Create = "create",
@@ -249,7 +257,8 @@ export enum ProjectPermissionSub {
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
-  PamSessions = "pam-sessions"
+  PamSessions = "pam-sessions",
+  CertificateProfiles = "certificate-profiles"
 }
 
 export type SecretSubjectFields = {
@@ -438,7 +447,8 @@ export type ProjectPermissionSet =
       ProjectPermissionPamAccountActions,
       ProjectPermissionSub.PamAccounts | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
     ]
-  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions];
+  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -1108,6 +1118,13 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
     conditions: SecretSyncConditionV2Schema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.CertificateProfiles).describe("The entity this permission pertains to."),
+    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionCertificateProfileActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   ...GeneralPermissionSchema
 ]);

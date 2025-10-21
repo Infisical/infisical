@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import * as x509 from "@peculiar/x509";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -68,6 +69,13 @@ export const parseDistinguishedName = (dn: string): TDNParts => {
 
 export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   switch (keyAlgorithm) {
+    case CertKeyAlgorithm.RSA_3072:
+      return {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: "SHA-256",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength: 3072
+      };
     case CertKeyAlgorithm.RSA_4096:
       return {
         name: "RSASSA-PKCS1-v1_5",
@@ -99,6 +107,73 @@ export const keyAlgorithmToAlgCfg = (keyAlgorithm: CertKeyAlgorithm) => {
   }
 };
 
+export const signatureAlgorithmToAlgCfg = (signatureAlgorithm: string, keyAlgorithm: CertKeyAlgorithm | string) => {
+  // Parse signature algorithm like "RSA-SHA256", "ECDSA-SHA256" etc.
+  if (!signatureAlgorithm || typeof signatureAlgorithm !== "string" || !signatureAlgorithm.includes("-")) {
+    throw new Error(`Invalid signature algorithm format: ${signatureAlgorithm}`);
+  }
+
+  const [keyType, hashType] = signatureAlgorithm.split("-");
+
+  if (!keyType || !hashType) {
+    throw new Error(`Malformed signature algorithm: ${signatureAlgorithm}`);
+  }
+
+  const normalizeHashType = (hash: string) => {
+    const upperHash = hash.toUpperCase();
+
+    if (upperHash === "SHA1" || upperHash === "SHA-1") return "SHA-1";
+
+    if (upperHash === "SHA224" || upperHash === "SHA-224") return "SHA-224";
+    if (upperHash === "SHA256" || upperHash === "SHA-256") return "SHA-256";
+    if (upperHash === "SHA384" || upperHash === "SHA-384") return "SHA-384";
+    if (upperHash === "SHA512" || upperHash === "SHA-512") return "SHA-512";
+
+    if (upperHash === "SHA3224" || upperHash === "SHA3-224") return "SHA3-224";
+    if (upperHash === "SHA3256" || upperHash === "SHA3-256") return "SHA3-256";
+    if (upperHash === "SHA3384" || upperHash === "SHA3-384") return "SHA3-384";
+    if (upperHash === "SHA3512" || upperHash === "SHA3-512") return "SHA3-512";
+
+    throw new Error(`Unsupported hash algorithm: ${hash}`);
+  };
+
+  const normalizedHash = hashType ? normalizeHashType(hashType) : undefined;
+
+  switch (keyType) {
+    case "RSA":
+      return {
+        name: "RSASSA-PKCS1-v1_5",
+        hash: normalizedHash || "SHA-256",
+        publicExponent: new Uint8Array([1, 0, 1]),
+        modulusLength:
+          keyAlgorithm === CertKeyAlgorithm.RSA_4096 ? 4096 : keyAlgorithm === CertKeyAlgorithm.RSA_3072 ? 3072 : 2048
+      };
+    case "ECDSA":
+      // eslint-disable-next-line no-case-declarations
+      const is384Curve =
+        keyAlgorithm === CertKeyAlgorithm.ECDSA_P384 || keyAlgorithm === "EC_secp384r1" || keyAlgorithm === "EC_P384";
+      // eslint-disable-next-line no-case-declarations
+      const is521Curve = keyAlgorithm === "EC_secp521r1" || keyAlgorithm === "EC_P521";
+      // eslint-disable-next-line no-case-declarations
+      let namedCurve: string;
+      if (is521Curve) {
+        namedCurve = "P-521";
+      } else if (is384Curve) {
+        namedCurve = "P-384";
+      } else {
+        namedCurve = "P-256";
+      }
+      return {
+        name: "ECDSA",
+        namedCurve,
+        hash: normalizedHash || (namedCurve === "P-384" ? "SHA-384" : "SHA-256")
+      };
+    default:
+      // Fallback to key algorithm default
+      return keyAlgorithmToAlgCfg(keyAlgorithm as CertKeyAlgorithm);
+  }
+};
+
 /**
  * Return the public and private key of CA with id [caId]
  * Note: credentials are returned as crypto.webcrypto.CryptoKey
@@ -111,7 +186,8 @@ export const getCaCredentials = async ({
   certificateAuthorityDAL,
   certificateAuthoritySecretDAL,
   projectDAL,
-  kmsService
+  kmsService,
+  signatureAlgorithm
 }: TGetCaCredentialsDTO) => {
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
   if (!ca?.internalCa?.id) throw new NotFoundError({ message: `Internal CA with ID '${caId}' not found` });
@@ -132,7 +208,7 @@ export const getCaCredentials = async ({
     cipherTextBlob: caSecret.encryptedPrivateKey
   });
 
-  const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+  const alg = signatureAlgorithm || keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
   const skObj = crypto.nativeCrypto.createPrivateKey({ key: decryptedPrivateKey, format: "der", type: "pkcs8" });
   const caPrivateKey = await crypto.nativeCrypto.subtle.importKey(
     "pkcs8",
