@@ -10,7 +10,6 @@ import {
   faUpload
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -34,21 +33,27 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
-import {
-  dashboardKeys,
-  fetchDashboardProjectSecretsByKeys
-} from "@app/hooks/api/dashboard/queries";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
-import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { SecretType } from "@app/hooks/api/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
-import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
+import {
+  PopUpNames, 
+  usePopUpAction,
+  useBatchModeActions,
+  PendingSecretCreate,
+  PendingSecretUpdate,
+  BatchContext
+} from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
 import { PasteSecretEnvModal } from "./PasteSecretEnvModal";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
-type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
+type TSecOverwriteOpt = {
+  update: TParsedEnv;
+  create: TParsedEnv;
+  existingSecrets: SecretV3RawSanitized[];
+};
 
 type Props = {
   isSmaller: boolean;
@@ -56,7 +61,6 @@ type Props = {
   projectId: string;
   environment: string;
   secretPath: string;
-  isProtectedBranch?: boolean;
 };
 
 type SecretMatrixMap = {
@@ -142,8 +146,7 @@ export const SecretDropzone = ({
   environments = [],
   projectId,
   environment,
-  secretPath,
-  isProtectedBranch = false
+  secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -157,18 +160,12 @@ export const SecretDropzone = ({
   });
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp(popupKeys);
-  const queryClient = useQueryClient();
   const { openPopUp } = usePopUpAction();
+  const { addPendingChange } = useBatchModeActions();
 
-  const { mutateAsync: updateSecretBatch, isPending: isUpdatingSecrets } = useUpdateSecretBatch({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
-    options: { onSuccess: undefined }
-  });
   // hide copy secrets from board due to import folders feature
   const shouldRenderCopySecrets = false;
-  const isSubmitting = isCreatingSecrets || isUpdatingSecrets;
+  const [isSubmitting, setIsSubmitting] = useToggle();
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -193,29 +190,38 @@ export const SecretDropzone = ({
 
     try {
       setIsLoading.on();
-      const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
-        secretPath,
-        environment,
+      const { secrets: rawExistingSecrets } = await fetchProjectSecrets({
         projectId,
-        keys: envSecretKeys
+        environment,
+        secretPath,
+        viewSecretValue: true
       });
 
-      const secretsGroupedByKey = existingSecrets.reduce<Record<string, boolean>>(
-        (prev, curr) => ({ ...prev, [curr.secretKey]: true }),
+      const allExistingSecrets = mergePersonalSecrets(rawExistingSecrets);
+
+      const existingSecretsMap = allExistingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
+        (prev, curr) => ({ ...prev, [curr.key]: curr }),
         {}
       );
 
-      const updateSecrets = Object.keys(env)
-        .filter((secKey) => secretsGroupedByKey[secKey])
-        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+      const updateSecrets: TParsedEnv = {};
+      const createSecrets: TParsedEnv = {};
+      const relevantExistingSecrets: SecretV3RawSanitized[] = [];
 
-      const createSecrets = Object.keys(env)
-        .filter((secKey) => !secretsGroupedByKey[secKey])
-        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+      Object.entries(env).forEach(([secretKey, secretData]) => {
+        const existingSecret = existingSecretsMap[secretKey];
+        if (existingSecret) {
+          updateSecrets[secretKey] = secretData;
+          relevantExistingSecrets.push(existingSecret);
+        } else {
+          createSecrets[secretKey] = secretData;
+        }
+      });
 
       handlePopUpOpen("confirmUpload", {
         update: updateSecrets,
-        create: createSecrets
+        create: createSecrets,
+        existingSecrets: relevantExistingSecrets
       });
     } catch (e) {
       console.error(e);
@@ -329,56 +335,72 @@ export const SecretDropzone = ({
   };
 
   const handleSaveSecrets = async () => {
-    const { update, create } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
+    const { update, create, existingSecrets } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
+
     try {
+      setIsSubmitting.on();
+
+      const context: BatchContext = {
+        projectId,
+        environment,
+        secretPath
+      };
+
+      const existingSecretsMap = existingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
+        (prev, curr) => ({ ...prev, [curr.key]: curr }),
+        {}
+      );
+
       if (Object.keys(create || {}).length) {
-        await createSecretBatch({
-          secretPath,
-          projectId,
-          environment,
-          secrets: Object.entries(create).map(([secretKey, secData]) => ({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
+        Object.entries(create).forEach(([secretKey, secData]) => {
+          const createChange: PendingSecretCreate = {
+            id: secretKey,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Create,
+            secretKey,
             secretValue: secData.value,
-            secretKey
-          }))
+            secretComment: secData.comments.join("\n") || undefined,
+            tags: [],
+            secretMetadata: []
+          };
+          addPendingChange(createChange, context);
         });
       }
+
       if (Object.keys(update || {}).length) {
-        await updateSecretBatch({
-          secretPath,
-          projectId,
-          environment,
-          secrets: Object.entries(update).map(([secretKey, secData]) => ({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
+        Object.entries(update).forEach(([secretKey, secData]) => {
+          const existingSecret = existingSecretsMap[secretKey];
+
+          if (!existingSecret) {
+            console.warn(`Existing secret not found for key: ${secretKey}`);
+            return;
+          }
+
+          const updateChange: PendingSecretUpdate = {
+            id: existingSecret.id,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Update,
+            secretKey,
             secretValue: secData.value,
-            secretKey
-          }))
+            secretComment: secData.comments.join("\n") || undefined,
+            existingSecret,
+            originalValue: existingSecret.value || "",
+            originalComment: existingSecret.comment || "",
+            originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding || false,
+            originalTags: existingSecret.tags || [],
+            originalSecretMetadata: existingSecret.secretMetadata || []
+          };
+          addPendingChange(updateChange, context);
         });
       }
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ projectId })
-      });
+
       handlePopUpClose("confirmUpload");
-      createNotification({
-        type: "success",
-        text: isProtectedBranch
-          ? "Uploaded changes have been sent for review"
-          : "Successfully uploaded secrets"
-      });
     } catch (err) {
       console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to upload secrets"
-      });
+    } finally {
+      setIsSubmitting.off();
     }
   };
 
@@ -541,7 +563,7 @@ export const SecretDropzone = ({
                   ? ` and import ${createSecretCount} new
                 one${createSecretCount > 1 ? "s" : ""}`
                   : ""}
-                ?
+                ? These will be applied when you commit your changes.
               </div>
             </div>
           )}
