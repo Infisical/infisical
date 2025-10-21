@@ -294,7 +294,6 @@ export const Navbar = () => {
                         search: (search) => ({ ...search, subOrganization: undefined })
                       });
                       if (isSubOrganization) {
-                        queryClient.clear();
                         await router.invalidate({ sync: true }).catch(() => null);
                       }
                     }}
@@ -384,7 +383,7 @@ export const Navbar = () => {
                                     to: "/organization/projects",
                                     search: (prev) => ({ ...prev, subOrganization: subOrg.name })
                                   });
-                                  queryClient.clear();
+
                                   await router.invalidate({ sync: true }).catch(() => null);
                                 }}
                                 className="cursor-pointer font-normal"
@@ -486,7 +485,6 @@ export const Navbar = () => {
                             to: "/organization/projects",
                             search: (prev) => ({ ...prev, subOrganization: subOrg.name })
                           });
-                          queryClient.clear();
                           await router.invalidate({ sync: true }).catch(() => null);
                         }}
                         className="cursor-pointer font-normal"

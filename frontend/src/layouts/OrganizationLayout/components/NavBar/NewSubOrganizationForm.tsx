@@ -34,7 +34,6 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
   });
 
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const router = useRouter();
 
   const onSubmit = async ({ name }: FormData) => {
@@ -53,7 +52,7 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
         to: "/organization/projects",
         search: (prev) => ({ ...prev, subOrganization: organization.name })
       });
-      queryClient.clear();
+
       await router.invalidate({ sync: true }).catch(() => null);
     } catch {
       createNotification({
