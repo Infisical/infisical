@@ -54,7 +54,7 @@ export const PostgresAccountForm = ({ account, resourceId, onSubmit }: Props) =>
     } else {
       setRotationCredentialsConfigured(!!resource?.rotationAccountCredentials);
     }
-  }, [account]);
+  }, [account, resource]);
 
   return (
     <FormProvider {...form}>

@@ -22,7 +22,10 @@ export const RotateAccountFields = ({
   const rotationEnabled = watch("rotationEnabled");
 
   return (
-    <Tooltip content="The resource which owns this account does not have rotation credentials configured.">
+    <Tooltip
+      isDisabled={rotationCredentialsConfigured}
+      content="The resource which owns this account does not have rotation credentials configured."
+    >
       <div
         className={twMerge(
           "flex h-9 w-fit items-center gap-3",
