@@ -47,8 +47,7 @@ import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
-import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { HsmModule } from "@app/ee/services/hsm/hsm-types";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
@@ -237,7 +236,7 @@ import { integrationAuthDALFactory } from "@app/services/integration-auth/integr
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
 import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
@@ -365,20 +364,22 @@ export const registerRoutes = async (
     auditLogDb,
     superAdminDAL,
     db,
-    hsmModule,
     smtp: smtpService,
     queue: queueService,
     keyStore,
-    envConfig
+    envConfig,
+    hsmService,
+    kmsRootConfigDAL
   }: {
     auditLogDb?: Knex;
     superAdminDAL: TSuperAdminDALFactory;
     db: Knex;
-    hsmModule: HsmModule;
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
     envConfig: TEnvConfig;
+    hsmService: THsmServiceFactory;
+    kmsRootConfigDAL: TKmsRootConfigDALFactory;
   }
 ) => {
   const appCfg = getConfig();
@@ -509,7 +510,6 @@ export const registerRoutes = async (
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
@@ -623,11 +623,6 @@ export const registerRoutes = async (
     membershipDAL,
     orgDAL,
     permissionService
-  });
-
-  const hsmService = hsmServiceFactory({
-    hsmModule,
-    envConfig
   });
 
   const kmsService = kmsServiceFactory({

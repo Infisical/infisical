@@ -29,6 +29,24 @@ type TDependencies = {
   keyStore: TKeyStoreFactory;
 };
 
+type THsmServiceDependencies = {
+  envConfig: Pick<TMigrationEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured">;
+};
+
+export const getMigrationHsmService = async ({ envConfig }: THsmServiceDependencies) => {
+  const hsmModule = initializeHsmModule(envConfig);
+  hsmModule.initialize();
+
+  const hsmService = hsmServiceFactory({
+    hsmModule: hsmModule.getModule(),
+    envConfig
+  });
+
+  await hsmService.startService();
+
+  return { hsmService };
+};
+
 export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }: TDependencies) => {
   // ----- DAL dependencies -----
   const orgDAL = orgDALFactory(db);
@@ -67,15 +85,7 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
 
   // ----- HSM startup -----
 
-  const hsmModule = initializeHsmModule(envConfig);
-  hsmModule.initialize();
-
-  const hsmService = hsmServiceFactory({
-    hsmModule: hsmModule.getModule(),
-    envConfig
-  });
-
-  await hsmService.startService();
+  const { hsmService } = await getMigrationHsmService({ envConfig });
 
   const hsmStatus = await isHsmActiveAndEnabled({
     hsmService,
@@ -113,5 +123,5 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
 
   await kmsService.startService(hsmStatus);
 
-  return { kmsService };
+  return { kmsService, hsmService };
 };
