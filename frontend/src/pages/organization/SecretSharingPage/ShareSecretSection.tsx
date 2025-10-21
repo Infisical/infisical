@@ -6,11 +6,13 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization } from "@app/context";
 
 import { RequestSecretTab } from "./components/RequestSecret/RequestSecretTab";
+import { SecretSharingSettingsTab } from "./components/SecretSharingSettings/SecretSharingSettingsTab";
 import { ShareSecretTab } from "./components/ShareSecret/ShareSecretTab";
 
 enum SecretSharingPageTabs {
   ShareSecret = "share-secret",
-  RequestSecret = "request-secret"
+  RequestSecret = "request-secret",
+  Settings = "settings"
 }
 
 export const ShareSecretSection = () => {
@@ -46,12 +48,20 @@ export const ShareSecretSection = () => {
           <Tab variant={tabVariant} value={SecretSharingPageTabs.RequestSecret}>
             Request Secrets
           </Tab>
+          {!isSubOrganization && (
+            <Tab variant={tabVariant} value={SecretSharingPageTabs.Settings}>
+              Settings
+            </Tab>
+          )}
         </TabList>
         <TabPanel value={SecretSharingPageTabs.ShareSecret}>
           <ShareSecretTab />
         </TabPanel>
         <TabPanel value={SecretSharingPageTabs.RequestSecret}>
           <RequestSecretTab />
+        </TabPanel>
+        <TabPanel value={SecretSharingPageTabs.Settings}>
+          <SecretSharingSettingsTab />
         </TabPanel>
       </Tabs>
     </div>
