@@ -38,12 +38,12 @@ import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secret
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
 import {
-  PopUpNames, 
-  usePopUpAction,
-  useBatchModeActions,
+  BatchContext,
   PendingSecretCreate,
   PendingSecretUpdate,
-  BatchContext
+  PopUpNames,
+  useBatchModeActions,
+  usePopUpAction
 } from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
 import { PasteSecretEnvModal } from "./PasteSecretEnvModal";
