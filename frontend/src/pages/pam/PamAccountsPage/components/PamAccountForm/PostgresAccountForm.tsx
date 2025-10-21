@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
-import { TPostgresAccount, useGetPamResourceById } from "@app/hooks/api/pam";
+import { PamResourceType, TPostgresAccount, useGetPamResourceById } from "@app/hooks/api/pam";
 
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
@@ -14,6 +14,7 @@ import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountF
 type Props = {
   account?: TPostgresAccount;
   resourceId?: string;
+  resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
@@ -23,7 +24,7 @@ const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.s
 
 type FormData = z.infer<typeof formSchema>;
 
-export const PostgresAccountForm = ({ account, resourceId, onSubmit }: Props) => {
+export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
@@ -46,7 +47,9 @@ export const PostgresAccountForm = ({ account, resourceId, onSubmit }: Props) =>
 
   const [rotationCredentialsConfigured, setRotationCredentialsConfigured] = useState(false);
 
-  const { data: resource } = useGetPamResourceById(resourceId);
+  const { data: resource } = useGetPamResourceById(resourceType, resourceId, {
+    enabled: !account && !!resourceId && !!resourceType
+  });
 
   useEffect(() => {
     if (account) {

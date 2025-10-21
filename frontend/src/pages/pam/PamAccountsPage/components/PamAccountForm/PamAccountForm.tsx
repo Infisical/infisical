@@ -65,7 +65,13 @@ const CreateForm = ({
 
   switch (resourceType) {
     case PamResourceType.Postgres:
-      return <PostgresAccountForm onSubmit={onSubmit} resourceId={resourceId} />;
+      return (
+        <PostgresAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }

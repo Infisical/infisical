@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
 import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
+import { PamResourceType } from "./enums";
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -70,22 +71,23 @@ export const useListPamResources = (
 };
 
 export const useGetPamResourceById = (
+  resourceType?: PamResourceType,
   resourceId?: string,
   options?: Omit<
     UseQueryOptions<TPamResource, unknown, TPamResource, ReturnType<typeof pamKeys.getResource>>,
-    "queryKey" | "queryFn" | "enabled"
+    "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
     queryKey: pamKeys.getResource(resourceId || ""),
     queryFn: async () => {
       const { data } = await apiRequest.get<{ resource: TPamResource }>(
-        `/api/v1/pam/resources/${resourceId}`
+        `/api/v1/pam/resources/${resourceType}/${resourceId}`
       );
 
       return data.resource;
     },
-    enabled: !!resourceId,
+    enabled: !!resourceId && !!resourceType && (options?.enabled ?? true),
     ...options
   });
 };
