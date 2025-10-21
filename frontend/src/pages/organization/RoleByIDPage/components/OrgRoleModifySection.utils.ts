@@ -12,6 +12,7 @@ import {
   OrgPermissionKmipActions,
   OrgPermissionMachineIdentityAuthTemplateActions,
   OrgPermissionSecretShareAction,
+  OrgPermissionSubOrgActions,
   OrgRelayPermissionActions
 } from "@app/context/OrgPermissionContext/types";
 import { TPermission } from "@app/hooks/api/roles/types";
@@ -123,6 +124,13 @@ const secretSharingPermissionSchema = z
   })
   .optional();
 
+const subOrganizationPermissionSchema = z
+  .object({
+    [OrgPermissionSubOrgActions.Create]: z.boolean().optional(),
+    [OrgPermissionSubOrgActions.DirectAccess]: z.boolean().optional()
+  })
+  .optional();
+
 export const formSchema = z.object({
   name: z.string().trim(),
   description: z.string().trim().optional(),
@@ -159,7 +167,8 @@ export const formSchema = z.object({
       gateway: orgGatewayPermissionSchema,
       relay: orgRelayPermissionSchema,
       "machine-identity-auth-template": machineIdentityAuthTemplatePermissionSchema,
-      "secret-share": secretSharingPermissionSchema
+      "secret-share": secretSharingPermissionSchema,
+      "sub-organization": subOrganizationPermissionSchema
     })
     .optional()
 });

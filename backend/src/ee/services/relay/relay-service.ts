@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrgMembershipRole, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -126,8 +126,8 @@ export const relayServiceFactory = ({
 
       // generate instance relay CA
       const instanceRelayCaSerialNumber = createSerialNumber();
-      const instanceRelayCaIssuedAt = new Date();
       const instanceRelayCaExpiration = new Date(new Date().setFullYear(2045));
+      const instanceRelayCaIssuedAt = new Date();
       const instanceRelayCaKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
       const instanceRelayCaSkObj = crypto.nativeCrypto.KeyObject.from(instanceRelayCaKeys.privateKey);
       const instanceRelayCaCert = await x509.X509CertificateGenerator.create({
@@ -972,13 +972,14 @@ export const relayServiceFactory = ({
         });
       }
 
-      const { permission } = await permissionService.getOrgPermission(
-        ActorType.IDENTITY,
-        identityId,
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: ActorType.IDENTITY,
+        actorId: identityId,
         orgId,
-        actorAuthMethod!,
-        orgId
-      );
+        actorAuthMethod: actorAuthMethod!,
+        actorOrgId: orgId
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionRelayActions.CreateRelays,
@@ -1102,13 +1103,14 @@ export const relayServiceFactory = ({
         });
       }
 
-      const { permission } = await permissionService.getOrgPermission(
-        ActorType.IDENTITY,
-        identityId,
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor: ActorType.IDENTITY,
+        actorId: identityId,
         orgId,
-        actorAuthMethod!,
-        orgId
-      );
+        actorAuthMethod: actorAuthMethod!,
+        actorOrgId: orgId
+      });
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionRelayActions.CreateRelays,
         OrgPermissionSubjects.Relay
@@ -1155,13 +1157,14 @@ export const relayServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
-      actorAuthMethod,
+      orgId: actorOrgId,
+      actorAuthMethod: actorAuthMethod!,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.ListRelays, OrgPermissionSubjects.Relay);
 
@@ -1189,13 +1192,14 @@ export const relayServiceFactory = ({
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
   }) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionRelayActions.DeleteRelays, OrgPermissionSubjects.Relay);
 

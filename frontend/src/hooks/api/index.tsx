@@ -48,6 +48,7 @@ export * from "./sshCertificateTemplates";
 export * from "./sshHost";
 export * from "./sshHostGroup";
 export * from "./ssoConfig";
+export * from "./subOrganizations";
 export * from "./subscriptions";
 export * from "./tags";
 export * from "./trustedIps";

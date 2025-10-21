@@ -4,6 +4,7 @@ import { scimPatch } from "scim-patch";
 
 import {
   AccessScope,
+  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   TableName,
@@ -56,6 +57,7 @@ type TScimServiceFactoryDep = {
     TOrgDALFactory,
     | "createMembership"
     | "findById"
+    | "find"
     | "findMembership"
     | "findMembershipWithScimFilter"
     | "deleteMembershipById"
@@ -125,7 +127,14 @@ export const scimServiceFactory = ({
     description,
     ttlDays
   }) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
@@ -160,7 +169,14 @@ export const scimServiceFactory = ({
     actorAuthMethod,
     orgId
   }) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(orgId);
@@ -183,13 +199,14 @@ export const scimServiceFactory = ({
     let scimToken = await scimDAL.findById(scimTokenId);
     if (!scimToken) throw new NotFoundError({ message: `SCIM token with ID '${scimTokenId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
       actor,
       actorId,
-      scimToken.orgId,
+      orgId: scimToken.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Scim);
 
     const plan = await licenseService.getPlan(scimToken.orgId);

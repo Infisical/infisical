@@ -48,6 +48,7 @@ import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh
 import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
@@ -182,6 +183,8 @@ declare module "fastify" {
       type: ActorType;
       id: string;
       orgId: string;
+      parentOrgId: string;
+      rootOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
     // passport data
@@ -335,6 +338,7 @@ declare module "fastify" {
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
+      subOrganization: TSubOrgServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

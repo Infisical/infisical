@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
@@ -134,13 +134,14 @@ export const dynamicSecretServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        gateway?.orgId ?? gatewayv2?.orgId,
+        orgId: gateway?.orgId || gatewayv2?.orgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
 
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
@@ -297,13 +298,14 @@ export const dynamicSecretServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        actorOrgId,
+        orgId: gateway?.orgId || gatewayv2?.orgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
 
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,

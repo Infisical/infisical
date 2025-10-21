@@ -41,7 +41,7 @@ export type TCreateProjectDTO = {
   actor: ActorType;
   actorAuthMethod: ActorAuthMethod;
   actorId: string;
-  actorOrgId?: string;
+  actorOrgId: string;
   projectName: string;
   projectDescription?: string;
   slug?: string;
