@@ -28,7 +28,3 @@ dependencies:
     version: 18.14.1
     repository: oci://registry-1.docker.io/bitnamicharts
     condition: redis.enabled
-  - name: reloader
-    version: 2.2.3
-    repository: https://stakater.github.io/stakater-charts
-    condition: infisical.redeployOnSecretChange
