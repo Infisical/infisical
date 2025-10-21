@@ -20,7 +20,7 @@ export const PamAccountsSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   rotationEnabled: z.boolean().default(false),
-  rotationIntervalSeconds: z.number().default(2592000),
+  rotationIntervalSeconds: z.number().nullable().optional(),
   lastRotatedAt: z.date().nullable().optional()
 });
 

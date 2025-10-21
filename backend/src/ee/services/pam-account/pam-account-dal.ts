@@ -49,6 +49,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
     const accounts = await dbClient(TableName.PamAccount)
       .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
       .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`)
+      .whereNotNull(`${TableName.PamAccount}.rotationIntervalSeconds`)
       .whereRaw(
         `COALESCE("${TableName.PamAccount}"."lastRotatedAt", "${TableName.PamAccount}"."createdAt") + "${TableName.PamAccount}"."rotationIntervalSeconds" * interval '1 second' < NOW()`
       )

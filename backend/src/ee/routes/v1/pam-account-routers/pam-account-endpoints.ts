@@ -23,7 +23,7 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     name: C["name"];
     description?: C["description"];
     rotationEnabled: C["rotationEnabled"];
-    rotationIntervalSeconds: C["rotationIntervalSeconds"];
+    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];

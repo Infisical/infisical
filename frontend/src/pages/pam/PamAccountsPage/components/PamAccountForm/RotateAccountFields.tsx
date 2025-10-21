@@ -6,7 +6,7 @@ import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/component
 
 export const rotateAccountFieldsSchema = z.object({
   rotationEnabled: z.boolean(),
-  rotationIntervalSeconds: z.number()
+  rotationIntervalSeconds: z.number().nullable().optional()
 });
 
 export const RotateAccountFields = ({
@@ -16,7 +16,7 @@ export const RotateAccountFields = ({
 }) => {
   const { control, watch } = useFormContext<{
     rotationEnabled: boolean;
-    rotationIntervalSeconds: number;
+    rotationIntervalSeconds?: number | null;
   }>();
 
   const rotationEnabled = watch("rotationEnabled");
@@ -62,7 +62,7 @@ export const RotateAccountFields = ({
               className="mb-0"
             >
               <Select
-                value={value.toString()}
+                value={(value || 2592000).toString()}
                 onValueChange={(val) => onChange(parseInt(val, 10))}
                 className="w-full border border-mineshaft-500 capitalize"
                 position="popper"
