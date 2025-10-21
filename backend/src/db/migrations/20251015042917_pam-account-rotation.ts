@@ -10,7 +10,7 @@ export async function up(knex: Knex): Promise<void> {
   ) {
     await knex.schema.alterTable(TableName.PamAccount, (t) => {
       t.boolean("rotationEnabled").notNullable().defaultTo(false);
-      t.integer("rotationIntervalSeconds").notNullable().defaultTo(2592000);
+      t.integer("rotationIntervalSeconds").notNullable();
       t.timestamp("lastRotatedAt").nullable();
     });
   }
