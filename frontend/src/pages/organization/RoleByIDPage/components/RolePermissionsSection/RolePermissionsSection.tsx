@@ -25,6 +25,7 @@ import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
 import { OrgRelayPermissionRow } from "./OrgPermissionRelayRow";
 import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
+import { OrgPermissionSubOrgRow } from "./OrgPermissionSubOrgRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
@@ -220,6 +221,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 isEditable={isCustomRole}
               />
               <OrgPermissionKmipRow
+                control={control}
+                setValue={setValue}
+                isEditable={isCustomRole}
+              />
+              <OrgPermissionSubOrgRow
                 control={control}
                 setValue={setValue}
                 isEditable={isCustomRole}

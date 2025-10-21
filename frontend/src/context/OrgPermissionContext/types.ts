@@ -62,7 +62,8 @@ export enum OrgPermissionSubjects {
   SecretShare = "secret-share",
   GithubOrgSync = "github-org-sync",
   GithubOrgSyncManual = "github-org-sync-manual",
-  MachineIdentityAuthTemplate = "machine-identity-auth-template"
+  MachineIdentityAuthTemplate = "machine-identity-auth-template",
+  SubOrganization = "sub-organization"
 }
 
 export enum OrgPermissionAdminConsoleAction {
@@ -112,6 +113,11 @@ export enum OrgPermissionGroupActions {
   RemoveMembers = "remove-members"
 }
 
+export enum OrgPermissionSubOrgActions {
+  Create = "create",
+  DirectAccess = "direct-access"
+}
+
 export type AppConnectionSubjectFields = {
   connectionId: string;
 };
@@ -151,6 +157,7 @@ export type OrgPermissionSet =
         | OrgPermissionSubjects.AppConnections
         | (ForcedSubject<OrgPermissionSubjects.AppConnections> & AppConnectionSubjectFields)
       )
-    ];
+    ]
+  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization];
 
 export type TOrgPermission = MongoAbility<OrgPermissionSet>;
