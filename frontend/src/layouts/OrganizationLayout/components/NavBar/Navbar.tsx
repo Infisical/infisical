@@ -383,7 +383,6 @@ export const Navbar = () => {
                                     to: "/organization/projects",
                                     search: (prev) => ({ ...prev, subOrganization: subOrg.name })
                                   });
-
                                   await router.invalidate({ sync: true }).catch(() => null);
                                 }}
                                 className="cursor-pointer font-normal"

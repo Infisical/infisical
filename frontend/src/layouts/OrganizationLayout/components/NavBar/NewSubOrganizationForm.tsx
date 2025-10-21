@@ -51,7 +51,6 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
         to: "/organization/projects",
         search: (prev) => ({ ...prev, subOrganization: organization.name })
       });
-
       await router.invalidate({ sync: true }).catch(() => null);
     } catch {
       createNotification({

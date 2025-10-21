@@ -33,7 +33,7 @@ export type TFeatureSet = {
   membersUsed: number;
   identityLimit: null;
   identitiesUsed: number;
-  subOrganization: true;
+  subOrganization: false;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;

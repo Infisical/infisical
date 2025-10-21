@@ -46,7 +46,7 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
       });
 
       navigate({ to: "/organization/settings", search: { subOrganization: name } });
-      queryClient.clear();
+      queryClient.invalidateQueries();
       await router.invalidate({ sync: true });
       createNotification({
         text: "Successfully updated sub-organization details",
