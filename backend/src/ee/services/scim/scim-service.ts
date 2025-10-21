@@ -57,6 +57,7 @@ type TScimServiceFactoryDep = {
     TOrgDALFactory,
     | "createMembership"
     | "findById"
+    | "find"
     | "findMembership"
     | "findMembershipWithScimFilter"
     | "deleteMembershipById"

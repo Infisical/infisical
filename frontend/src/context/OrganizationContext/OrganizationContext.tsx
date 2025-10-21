@@ -16,7 +16,7 @@ export const useOrganization = () => {
   });
 
   const { data: currentOrg } = useSuspenseQuery({
-    queryKey: organizationKeys.getOrgById(organizationId, subOrganization),
+    queryKey: organizationKeys.getOrgById(organizationId, subOrganization || "root"),
     queryFn: () => fetchOrganizationById(organizationId),
     staleTime: Infinity
   });
@@ -31,7 +31,7 @@ export const useOrganization = () => {
       isSubOrganization: Boolean(currentOrg.subOrganization),
       isRootOrganization: !currentOrg.subOrganization
     }),
-    [currentOrg]
+    [currentOrg, subOrganization]
   );
 
   return org;

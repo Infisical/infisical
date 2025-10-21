@@ -40,7 +40,7 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
@@ -405,7 +405,7 @@ export const membershipUserServiceFactory = ({
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
         const [doc] = await deleteOrgMembershipsFn({
-          orgMembershipIds: [],
+          orgMembershipIds: [existingMembership.id],
           orgId: dto.permission.orgId,
           orgDAL,
           projectKeyDAL,
