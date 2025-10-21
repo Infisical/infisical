@@ -444,11 +444,11 @@ export const Navbar = () => {
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 <DropdownMenu modal={false}>
-                  <Link to="/organization/projects">
+                  <Link className="overflow-hidden" to="/organization/projects">
                     <Badge
                       variant="namespace"
                       className={twMerge(
-                        "max-w-full min-w-0 cursor-pointer text-sm",
+                        "flex max-w-full min-w-0 cursor-pointer text-sm",
                         !isOrgScope &&
                           "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
                       )}
