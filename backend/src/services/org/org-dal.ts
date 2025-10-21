@@ -172,14 +172,16 @@ export const orgDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.Organization));
 
       if (dto.isAccessible) {
-        void query.leftJoin(`${TableName.Membership}`, (qb) => {
-          void qb.on(`${TableName.Membership}.scope`, AccessScope.Organization);
-          if (dto.actorType === ActorType.IDENTITY) {
-            void qb.andOn(`${TableName.Membership}.actorIdentityId`, dto.actorId);
-          } else {
-            void qb.andOn(`${TableName.Membership}.actorUserId`, dto.actorId);
-          }
-        });
+        void query
+          .leftJoin(`${TableName.Membership}`, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+          .where((qb) => {
+            void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
+            if (dto.actorType === ActorType.IDENTITY) {
+              void qb.andWhere(`${TableName.Membership}.actorIdentityId`, dto.actorId);
+            } else {
+              void qb.andWhere(`${TableName.Membership}.actorUserId`, dto.actorId);
+            }
+          });
       }
       if (dto.limit) void query.limit(dto.limit);
       if (dto.offset) void query.offset(dto.offset);

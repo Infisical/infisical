@@ -134,13 +134,13 @@ export const Navbar = () => {
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
 
-  console.log("current", currentOrg, isSubOrganization);
-
   const [showAdminsModal, setShowAdminsModal] = useState(false);
   const [showSubOrgForm, setShowSubOrgForm] = useState(false);
   const [showCardDeclinedModal, setShowCardDeclinedModal] = useState(false);
+
+  const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
   const { data: subOrganizations = [] } = useQuery({
-    ...subOrganizationsQuery.list({ limit: 500, isAccessible: true }),
+    ...subOrgQuery,
     enabled: Boolean(subscription.subOrganization)
   });
 
@@ -183,6 +183,7 @@ export const Navbar = () => {
     }
     await router.invalidate();
     await navigateUserToOrg(navigate, orgId);
+    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
   };
 
   const { mutateAsync } = useGetOrgTrialUrl();
