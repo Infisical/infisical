@@ -3841,6 +3841,7 @@ interface PamAccountCredentialRotationFailedEvent {
     accountName: string;
     accountId: string;
     resourceId: string;
+    resourceType: string;
     errorMessage: string;
   };
 }

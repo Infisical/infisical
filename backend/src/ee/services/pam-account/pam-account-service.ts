@@ -554,9 +554,11 @@ export const pamAccountServiceFactory = ({
       const batch = accounts.slice(i, i + ROTATION_CONCURRENCY_LIMIT);
 
       const rotationPromises = batch.map(async (account) => {
+        let logResourceType = "unknown";
         try {
           const resource = await pamResourceDAL.findById(account.resourceId);
           if (!resource || !resource.encryptedRotationAccountCredentials) return;
+          logResourceType = resource.resourceType;
 
           const { connectionDetails, rotationAccountCredentials, gatewayId, resourceType } = await decryptResource(
             resource,
@@ -604,7 +606,7 @@ export const pamAccountServiceFactory = ({
                 accountId: account.id,
                 accountName: account.name,
                 resourceId: resource.id,
-                resourceType: resource.resourceType
+                resourceType: logResourceType
               }
             }
           });
@@ -623,6 +625,7 @@ export const pamAccountServiceFactory = ({
                 accountId: account.id,
                 accountName: account.name,
                 resourceId: account.resourceId,
+                resourceType: logResourceType,
                 errorMessage
               }
             }
