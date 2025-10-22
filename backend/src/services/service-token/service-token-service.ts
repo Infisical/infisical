@@ -14,6 +14,7 @@ import { logger } from "@app/lib/logger";
 
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { ActorType } from "../auth/auth-type";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TProjectDALFactory } from "../project/project-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
@@ -29,6 +30,7 @@ import {
 type TServiceTokenServiceFactoryDep = {
   serviceTokenDAL: TServiceTokenDALFactory;
   userDAL: TUserDALFactory;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findBySlugs">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
@@ -45,7 +47,8 @@ export const serviceTokenServiceFactory = ({
   projectEnvDAL,
   projectDAL,
   accessTokenQueue,
-  smtpService
+  smtpService,
+  orgDAL
 }: TServiceTokenServiceFactoryDep) => {
   const createServiceToken = async ({
     iv,
@@ -184,7 +187,15 @@ export const serviceTokenServiceFactory = ({
     if (!isMatch) throw new UnauthorizedError({ message: "Invalid service token" });
     await accessTokenQueue.updateServiceTokenStatus(serviceToken.id);
 
-    return { ...serviceToken, lastUsed: new Date(), orgId: project.orgId };
+    const serviceTokenOrgDetails = await orgDAL.findById(project.orgId);
+
+    return {
+      ...serviceToken,
+      lastUsed: new Date(),
+      orgId: project.orgId,
+      parentOrgId: serviceTokenOrgDetails.parentOrgId || serviceTokenOrgDetails.id,
+      rootOrgId: serviceTokenOrgDetails.rootOrgId || serviceTokenOrgDetails.id
+    };
   };
 
   const notifyExpiringTokens = async () => {

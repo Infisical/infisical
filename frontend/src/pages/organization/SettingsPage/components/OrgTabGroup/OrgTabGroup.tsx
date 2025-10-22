@@ -3,6 +3,7 @@ import { useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 
 import { AuditLogStreamsTab } from "../AuditLogStreamTab";
 import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
@@ -19,20 +20,33 @@ export const OrgTabGroup = () => {
   const search = useSearch({
     from: ROUTE_PATHS.Organization.SettingsPage.id
   });
+  const { isSubOrganization } = useOrganization();
+
   const tabs = [
     { name: "General", key: "tab-org-general", component: OrgGeneralTab },
     {
       name: "SSO",
       key: "sso-settings",
-      component: OrgSsoTab
+      component: OrgSsoTab,
+      isHidden: isSubOrganization
     },
     {
       name: "Provisioning",
       key: "provisioning-settings",
-      component: OrgProvisioningTab
+      component: OrgProvisioningTab,
+      isHidden: isSubOrganization
     },
-    { name: "Security", key: "tab-org-security", component: OrgSecurityTab },
-    { name: "Encryption", key: "tab-org-encryption", component: OrgEncryptionTab },
+    {
+      name: "Security",
+      key: "tab-org-security",
+      component: OrgSecurityTab,
+      isHidden: isSubOrganization
+    },
+    {
+      name: "Encryption",
+      key: "tab-org-encryption",
+      component: OrgEncryptionTab
+    },
     {
       name: "Workflow Integrations",
       key: "workflow-integrations",
@@ -57,17 +71,21 @@ export const OrgTabGroup = () => {
   return (
     <Tabs orientation="vertical" value={selectedTab} onValueChange={setSelectedTab}>
       <TabList>
-        {tabs.map((tab) => (
-          <Tab variant="org" value={tab.key} key={tab.key}>
-            {tab.name}
-          </Tab>
-        ))}
+        {tabs
+          .filter((el) => !el.isHidden)
+          .map((tab) => (
+            <Tab variant={isSubOrganization ? "namespace" : "org"} value={tab.key} key={tab.key}>
+              {tab.name}
+            </Tab>
+          ))}
       </TabList>
-      {tabs.map(({ key, component: Component }) => (
-        <TabPanel value={key} key={`tab-panel-${key}`}>
-          <Component />
-        </TabPanel>
-      ))}
+      {tabs
+        .filter((el) => !el.isHidden)
+        .map(({ key, component: Component }) => (
+          <TabPanel value={key} key={`tab-panel-${key}`}>
+            <Component />
+          </TabPanel>
+        ))}
     </Tabs>
   );
 };

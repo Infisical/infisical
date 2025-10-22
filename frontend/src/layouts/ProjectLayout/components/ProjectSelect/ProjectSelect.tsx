@@ -171,9 +171,21 @@ export const ProjectSelect = () => {
                         to: getProjectHomePage(workspace.type, workspace.environments),
                         params: {
                           projectId: workspace.id
+                        },
+                        search: {
+                          subOrganization: currentOrg?.subOrganization?.name
                         }
                       });
-                      window.location.assign(url.to.replaceAll("$projectId", workspace.id));
+                      const urlInstance = new URL(
+                        `${window.location.origin}/${url.to.replaceAll("$projectId", workspace.id)}`
+                      );
+                      if (currentOrg?.subOrganization) {
+                        urlInstance.searchParams.set(
+                          "subOrganization",
+                          currentOrg.subOrganization.name
+                        );
+                      }
+                      window.location.assign(urlInstance);
                     }}
                     icon={
                       currentWorkspace?.id === workspace.id && (

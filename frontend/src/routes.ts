@@ -21,10 +21,7 @@ const organizationRoutes = route("/organization", [
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
-  route("/secret-sharing", [
-    index("organization/SecretSharingPage/route.tsx"),
-    route("/settings", "organization/SecretSharingSettingsPage/route.tsx")
-  ]),
+  route("/secret-sharing", [index("organization/SecretSharingPage/route.tsx")]),
   route("/settings", [
     index("organization/SettingsPage/route.tsx"),
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")

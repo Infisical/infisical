@@ -9,7 +9,11 @@ import nacl from "tweetnacl";
 import naclUtils from "tweetnacl-util";
 
 import { SecretEncryptionAlgo, SecretKeyEncoding } from "@app/db/schemas";
+import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
@@ -106,49 +110,73 @@ const cryptographyFactory = () => {
     }
   };
 
-  const $setFipsModeEnabled = (enabled: boolean, envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">) => {
+  const $setFipsModeEnabled = async (
+    enabled: boolean,
+    hsmService: THsmServiceFactory,
+    kmsRootConfigDAL: TKmsRootConfigDALFactory,
+    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">
+  ) => {
     // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
     if (enabled) {
       crypto.setFips(true);
 
       const appCfg = envCfg || getConfig();
 
-      if (appCfg.ENCRYPTION_KEY) {
-        // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
+      const hsmStatus = await isHsmActiveAndEnabled({
+        hsmService,
+        kmsRootConfigDAL
+      });
 
-        // note(daniel): for some reason this resolves as true for some hex-encoded strings.
-        if (!isBase64(appCfg.ENCRYPTION_KEY)) {
+      // if the encryption strategy is software - user needs to provide an encryption key
+      // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
+      const needsEncryptionKey =
+        hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
+        (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
+
+      // only perform encryption key validation if it's actually required.
+      if (needsEncryptionKey) {
+        if (appCfg.ENCRYPTION_KEY) {
+          // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
+
+          // note(daniel): for some reason this resolves as true for some hex-encoded strings.
+          if (!isBase64(appCfg.ENCRYPTION_KEY)) {
+            throw new CryptographyError({
+              message:
+                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+            });
+          }
+
+          if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
+            throw new CryptographyError({
+              message:
+                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+            });
+          }
+        } else {
           throw new CryptographyError({
             message:
-              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not set.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
           });
         }
-
-        if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
-          throw new CryptographyError({
-            message:
-              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-          });
-        }
-      } else {
-        throw new CryptographyError({
-          message:
-            "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not set.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-        });
       }
     }
     $fipsEnabled = enabled;
     $isInitialized = true;
   };
 
-  const initialize = async (superAdminDAL: TSuperAdminDALFactory, envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">) => {
+  const initialize = async (
+    superAdminDAL: TSuperAdminDALFactory,
+    hsmService: THsmServiceFactory,
+    kmsRootConfigDAL: TKmsRootConfigDALFactory,
+    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">
+  ) => {
     if ($isInitialized) {
       return isFipsModeEnabled();
     }
 
     if (process.env.FIPS_ENABLED !== "true") {
       logger.info("Cryptography module initialized in normal operation mode.");
-      $setFipsModeEnabled(false, envCfg);
+      await $setFipsModeEnabled(false, hsmService, kmsRootConfigDAL, envCfg);
       return false;
     }
 
@@ -158,11 +186,11 @@ const cryptographyFactory = () => {
     if (serverCfg) {
       if (serverCfg.fipsEnabled) {
         logger.info("[FIPS]: Instance is configured for FIPS mode of operation. Continuing startup with FIPS enabled.");
-        $setFipsModeEnabled(true, envCfg);
+        await $setFipsModeEnabled(true, hsmService, kmsRootConfigDAL, envCfg);
         return true;
       }
       logger.info("[FIPS]: Instance age predates FIPS mode inception date. Continuing without FIPS.");
-      $setFipsModeEnabled(false, envCfg);
+      await $setFipsModeEnabled(false, hsmService, kmsRootConfigDAL, envCfg);
       return false;
     }
 
@@ -171,7 +199,7 @@ const cryptographyFactory = () => {
     // TODO(daniel): check if it's an enterprise deployment
 
     // if there is no server cfg, and FIPS_MODE is `true`, its a fresh FIPS deployment. We need to set the fipsEnabled to true.
-    $setFipsModeEnabled(true, envCfg);
+    await $setFipsModeEnabled(true, hsmService, kmsRootConfigDAL, envCfg);
     return true;
   };
 
@@ -258,6 +286,13 @@ const cryptographyFactory = () => {
         const rootEncryptionKey = appCfg.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg.ENCRYPTION_KEY;
 
+        // Sanity check
+        if (!rootEncryptionKey && !encryptionKey) {
+          throw new CryptographyError({
+            message: "Tried to encrypt with instance root encryption key, but no root encryption key is set."
+          });
+        }
+
         if (rootEncryptionKey) {
           const { iv, tag, ciphertext } = encrypt({
             plaintext: data,
@@ -303,6 +338,14 @@ const cryptographyFactory = () => {
         // the or gate is used used in migration
         const rootEncryptionKey = appCfg?.ROOT_ENCRYPTION_KEY || process.env.ROOT_ENCRYPTION_KEY;
         const encryptionKey = appCfg?.ENCRYPTION_KEY || process.env.ENCRYPTION_KEY;
+
+        // Sanity check
+        if (!rootEncryptionKey && !encryptionKey) {
+          throw new CryptographyError({
+            message: "Tried to decrypt with instance root encryption key, but no root encryption key is set."
+          });
+        }
+
         if (rootEncryptionKey && keyEncoding === SecretKeyEncoding.BASE64) {
           const data = symmetric().decrypt({
             key: rootEncryptionKey,

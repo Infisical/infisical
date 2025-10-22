@@ -6,6 +6,7 @@ import { TBasePamResource } from "./base-resource";
 // Resources
 export type TPostgresResource = TBasePamResource & { resourceType: PamResourceType.Postgres } & {
   connectionDetails: TBaseSqlConnectionDetails;
+  rotationAccountCredentials?: TBaseSqlCredentials | null;
 };
 
 // Accounts

@@ -592,7 +592,7 @@ export const superAdminServiceFactory = ({
     });
 
     const { identity, credentials } = await identityDAL.transaction(async (tx) => {
-      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity" }, tx);
+      const newIdentity = await identityDAL.create({ name: "Instance Admin Identity", orgId: organization.id }, tx);
       const membership = await membershipIdentityDAL.create(
         {
           actorIdentityId: newIdentity.id,

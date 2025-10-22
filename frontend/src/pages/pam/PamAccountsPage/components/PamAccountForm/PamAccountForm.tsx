@@ -34,10 +34,11 @@ const CreateForm = ({
 }: CreateFormProps) => {
   const createPamAccount = useCreatePamAccount();
 
-  console.log({ folderId });
-
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
+    >
   ) => {
     try {
       const account = await createPamAccount.mutateAsync({
@@ -64,7 +65,13 @@ const CreateForm = ({
 
   switch (resourceType) {
     case PamResourceType.Postgres:
-      return <PostgresAccountForm onSubmit={onSubmit} />;
+      return (
+        <PostgresAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -74,7 +81,10 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
+    >
   ) => {
     try {
       const updatedAccount = await updatePamAccount.mutateAsync({

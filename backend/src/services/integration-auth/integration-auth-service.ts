@@ -112,7 +112,7 @@ export const integrationAuthServiceFactory = ({
   };
 
   const listOrgIntegrationAuth = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGenericPermission) => {
-    const authorizations = await integrationAuthDAL.getByOrg(actorOrgId as string);
+    const authorizations = await integrationAuthDAL.getByOrg(actorOrgId);
 
     const filteredAuthorizations = await Promise.all(
       authorizations.map(async (auth) => {

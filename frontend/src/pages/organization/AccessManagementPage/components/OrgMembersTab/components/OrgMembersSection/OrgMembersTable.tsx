@@ -109,7 +109,7 @@ export const OrgMembersTable = ({
 }: Props) => {
   const navigate = useNavigate();
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { user } = useUser();
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
@@ -586,6 +586,7 @@ export const OrgMembersTable = ({
                           {isActive &&
                             (status === "invited" || status === "verified") &&
                             email &&
+                            !isSubOrganization &&
                             serverDetails?.emailConfigured && (
                               <OrgPermissionCan
                                 I={OrgPermissionActions.Edit}

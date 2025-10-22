@@ -1,9 +1,19 @@
-import { Controller, useFormContext } from "react-hook-form";
+import { useEffect, useState } from "react";
+import { Controller, useFormContext, useWatch } from "react-hook-form";
 
 import { FormControl, Input } from "@app/components/v2";
+import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control } = useFormContext();
+  const [showPassword, setShowPassword] = useState(false);
+  const password = useWatch({ control, name: "credentials.password" });
+
+  useEffect(() => {
+    if (password === UNCHANGED_PASSWORD_SENTINEL) {
+      setShowPassword(false);
+    }
+  }, [password]);
 
   return (
     <div className="flex gap-2">
@@ -17,7 +27,7 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
             isError={Boolean(error?.message)}
             label="Username"
           >
-            <Input {...field} />
+            <Input {...field} autoComplete="off" />
           </FormControl>
         )}
       />
@@ -33,18 +43,19 @@ export const SqlAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
           >
             <Input
               {...field}
-              type="password"
-              onFocus={(e) => {
-                if (isUpdate && field.value === "******") {
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              onFocus={() => {
+                if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
                   field.onChange("");
                 }
-                e.target.type = "text";
+                setShowPassword(true);
               }}
-              onBlur={(e) => {
+              onBlur={() => {
                 if (isUpdate && field.value === "") {
-                  field.onChange("******");
+                  field.onChange(UNCHANGED_PASSWORD_SENTINEL);
                 }
-                e.target.type = "password";
+                setShowPassword(false);
               }}
             />
           </FormControl>

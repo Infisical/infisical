@@ -7,9 +7,11 @@ import {
   faEllipsisV,
   faFolder,
   faRightToBracket,
+  faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -98,6 +100,12 @@ export const PamAccountRow = ({
                 <span>
                   <HighlightText text={accountPath} highlight={search} />
                 </span>
+              </Badge>
+            )}
+            {account.lastRotatedAt && (
+              <Badge className="flex h-5 w-min items-center gap-1.5 bg-orange/20 whitespace-nowrap text-orange">
+                <FontAwesomeIcon icon={faRotate} />
+                <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
               </Badge>
             )}
           </div>
