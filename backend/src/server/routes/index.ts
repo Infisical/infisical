@@ -261,6 +261,7 @@ import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -2258,7 +2259,13 @@ export const registerRoutes = async (
     pamSessionDAL,
     permissionService,
     projectDAL,
-    userDAL
+    userDAL,
+    auditLogService
+  });
+
+  const pamAccountRotation = pamAccountRotationServiceFactory({
+    queueService,
+    pamAccountService
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -2318,6 +2325,7 @@ export const registerRoutes = async (
   await dailyResourceCleanUp.init();
   await healthAlert.init();
   await pkiSyncCleanup.init();
+  await pamAccountRotation.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
