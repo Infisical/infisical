@@ -94,7 +94,7 @@ export const RelayTab = withPermission(
           replace: true
         });
       }
-    }, [action]);
+    }, [action, handlePopUpOpen, navigate]);
 
     const deleteRelayById = useDeleteRelayById();
 

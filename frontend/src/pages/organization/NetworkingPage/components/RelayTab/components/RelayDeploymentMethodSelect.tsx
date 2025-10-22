@@ -27,21 +27,19 @@ export const RelayDeploymentMethodSelect = ({ onSelect }: Props) => {
   return (
     <div className="grid h-118 grid-cols-4 content-start gap-2">
       {deploymentOptions.map((option) => {
-        const { image, name } = option;
+        const { image, name, method } = option;
 
         return (
           <button
+            key={method}
             type="button"
-            onClick={() => handleResourceSelect(option.method)}
+            onClick={() => handleResourceSelect(method)}
             className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
           >
             <div className="relative">
               <img
                 src={`/images/integrations/${image}`}
-                style={{
-                  width: "50px"
-                }}
-                className="mt-auto"
+                className="mt-auto w-12"
                 alt={`${name} logo`}
               />
             </div>
