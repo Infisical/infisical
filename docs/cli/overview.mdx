@@ -77,9 +77,7 @@ You can use it across various environments, whether it's local development, CI/C
 
     	Add Infisical repository
     	```bash
-    	curl -1sLf \
-    		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh' \
-    		| bash
+    	curl -1sLf     		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.alpine.sh'     		| bash
     	```
 
     	Then install CLI
@@ -94,9 +92,7 @@ You can use it across various environments, whether it's local development, CI/C
 	 <Tab title="RedHat/CentOs/Amazon">
 	 Add Infisical repository
 		```bash
-		curl -1sLf \
-		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' \
-		| sudo -E bash
+		curl -1sLf 		'https://dl.cloudsmith.io/public/infisical/infisical-cli/setup.rpm.sh' 		| sudo -E bash
 		```
 
     	Then install CLI
@@ -113,9 +109,7 @@ You can use it across various environments, whether it's local development, CI/C
 	 	Add Infisical repository 
 			
 		```bash
-		curl -1sLf \
-		'https://artifacts-cli.infisical.com/setup.deb.sh' \
-		| sudo -E bash
+		curl -1sLf 		'https://artifacts-cli.infisical.com/setup.deb.sh' 		| sudo -E bash
 		```
 
     	Then install CLI
@@ -141,7 +135,45 @@ You can use it across various environments, whether it's local development, CI/C
    </Tab>
 </Tabs>
 
+---
+
+## Install a Specific Version
+
+In production or CI environments, it’s best to **pin the Infisical CLI to a specific version** to avoid unexpected updates.  
+Below are the common methods to do so:
+
+### npm (cross-platform)
+```bash
+# Replace <version> with the desired release
+npm install -g @infisical/cli@<version>
+infisical --version
+```
+
+### Homebrew (macOS/Linux)
+> Homebrew keeps only the latest formula. To install a specific version, extract and install from a local tap:
+```bash
+brew tap-new $USER/local
+brew extract --version <version> infisical $USER/local
+brew install $USER/local/infisical@<version>
+infisical --version
+```
+
+### Direct Binary (GitHub Releases)
+> Download the tarball for your OS/architecture from [Infisical CLI Releases](https://github.com/Infisical/cli/releases)
+```bash
+# Example (macOS arm64)
+curl -L -o infisical.tar.gz   https://github.com/Infisical/cli/releases/download/v<version>/infisical_<version>_Darwin_arm64.tar.gz
+tar -xzf infisical.tar.gz
+sudo mv infisical /usr/local/bin/
+infisical --version
+```
+
+> 💡 For CI/CD pipelines, always pin a fixed version and update it manually through PRs or release workflows.
+
+---
+
 ## Quick Usage Guide
 <Card color="#00A300" href="./usage">
   Now that you have the CLI installed on your system, follow this guide to make the best use of it
 </Card>
+
