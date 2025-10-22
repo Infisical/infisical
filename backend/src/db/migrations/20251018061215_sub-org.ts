@@ -41,6 +41,8 @@ export async function up(knex: Knex): Promise<void> {
       [TableName.Identity, TableName.Membership, AccessScope.Organization]
     );
 
+    await knex.raw(`DELETE FROM ?? WHERE "orgId" IS NULL`, [TableName.Identity]);
+
     await knex.schema.alterTable(TableName.Identity, (t) => {
       t.uuid("orgId").notNullable().alter();
     });
