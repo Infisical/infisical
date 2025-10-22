@@ -93,3 +93,8 @@ export type TGetMembershipUserByUserIdDTO = {
     userId: string;
   };
 };
+
+export type TListAvailableUsersDTO = {
+  permission: OrgServiceActor;
+  scopeData: AccessScopeData;
+};

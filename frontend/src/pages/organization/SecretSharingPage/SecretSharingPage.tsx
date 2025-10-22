@@ -4,12 +4,13 @@ import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 
 import { ShareSecretSection } from "./ShareSecretSection";
 
 export const SecretSharingPage = () => {
   const { t } = useTranslation();
-
+  const { isSubOrganization } = useOrganization();
   return (
     <>
       <Helmet>
@@ -20,9 +21,9 @@ export const SecretSharingPage = () => {
         <meta name="og:description" content={String(t("approval.og-description"))} />
       </Helmet>
       <div className="h-full">
-        <div className="container mx-auto h-full w-full max-w-7xl bg-bunker-800 text-white">
+        <div className="mx-auto h-full w-full max-w-8xl bg-bunker-800 text-white">
           <PageHeader
-            scope="org"
+            scope={isSubOrganization ? "namespace" : "org"}
             title="Secret Sharing"
             description="Share secrets securely using a shareable link"
           >

@@ -1,4 +1,4 @@
-import { OrgMembershipRole } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import {
   AuditLogInfo,
   EventType,
@@ -89,13 +89,14 @@ export const externalMigrationServiceFactory = ({
       throw new BadRequestError({ message: "EnvKey migration is not supported when running in FIPS mode." });
     }
 
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor,
+    const { hasRole } = await permissionService.getOrgPermission({
       actorId,
+      actor,
+      orgId: actorOrgId,
       actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.Any
+    });
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
     }
@@ -136,13 +137,14 @@ export const externalMigrationServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TImportVaultDataDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor,
+    const { hasRole } = await permissionService.getOrgPermission({
       actorId,
+      actor,
+      orgId: actorOrgId,
       actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import data" });
@@ -192,13 +194,14 @@ export const externalMigrationServiceFactory = ({
     actorAuthMethod,
     provider
   }: THasCustomVaultMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor,
+    const { hasRole } = await permissionService.getOrgPermission({
       actorId,
+      actor,
+      orgId: actorOrgId,
       actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can check custom migration status" });
@@ -247,13 +250,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const createVaultExternalMigration = async ({ namespace, connectionId, actor }: TCreateVaultExternalMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can configure vault external migration" });
@@ -298,13 +302,14 @@ export const externalMigrationServiceFactory = ({
     connectionId,
     actor
   }: TUpdateVaultExternalMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can update vault external migration" });
@@ -332,13 +337,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const getVaultExternalMigrationConfigs = async ({ actor }: { actor: OrgServiceActor }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault external migration configs" });
@@ -352,13 +358,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const getVaultNamespaces = async ({ actor }: { actor: OrgServiceActor }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault namespaces" });
@@ -380,13 +387,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const getVaultPolicies = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault policies" });
@@ -422,13 +430,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const getVaultMounts = async ({ actor, namespace }: { actor: OrgServiceActor; namespace: string }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault mounts" });
@@ -472,13 +481,14 @@ export const externalMigrationServiceFactory = ({
     namespace: string;
     mountPath: string;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault secret paths" });
@@ -531,13 +541,14 @@ export const externalMigrationServiceFactory = ({
     vaultSecretPath: string;
     auditLogInfo: AuditLogInfo;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can import vault secrets" });
@@ -617,13 +628,14 @@ export const externalMigrationServiceFactory = ({
   };
 
   const deleteVaultExternalMigration = async ({ id, actor }: TDeleteVaultExternalMigrationDTO) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can delete vault external migration configs" });
@@ -653,13 +665,14 @@ export const externalMigrationServiceFactory = ({
     namespace: string;
     authType?: string;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault auth mounts" });
@@ -704,13 +717,14 @@ export const externalMigrationServiceFactory = ({
     namespace: string;
     mountPath: string;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can view vault Kubernetes auth roles" });

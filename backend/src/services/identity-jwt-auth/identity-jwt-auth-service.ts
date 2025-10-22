@@ -3,7 +3,7 @@ import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
 
-import { AccessScope, IdentityAuthMethod, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope, TIdentityJwtAuthsUpdate } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -24,6 +24,7 @@ import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -43,8 +44,9 @@ import {
 } from "./identity-jwt-auth-types";
 
 type TIdentityJwtAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityJwtAuthDAL: TIdentityJwtAuthDALFactory;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -55,6 +57,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
 
 export const identityJwtAuthServiceFactory = ({
+  identityDAL,
   identityJwtAuthDAL,
   membershipIdentityDAL,
   permissionService,
@@ -69,19 +72,12 @@ export const identityJwtAuthServiceFactory = ({
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityJwtAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityJwtAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityJwtAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
@@ -211,12 +207,9 @@ export const identityJwtAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -251,7 +244,7 @@ export const identityJwtAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityJwtAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityJwtAuth, identityAccessToken, identity };
   };
 
   const attachJwtAuth = async ({
@@ -284,6 +277,9 @@ export const identityJwtAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
         message: "Failed to add JWT Auth to already configured identity"
@@ -294,13 +290,14 @@ export const identityJwtAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
@@ -387,6 +384,9 @@ export const identityJwtAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
@@ -403,13 +403,14 @@ export const identityJwtAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
@@ -491,6 +492,9 @@ export const identityJwtAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
@@ -498,13 +502,14 @@ export const identityJwtAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
@@ -539,6 +544,9 @@ export const identityJwtAuthServiceFactory = ({
     if (!identityMembershipOrg) {
       throw new NotFoundError({ message: "Failed to find identity" });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.JWT_AUTH)) {
       throw new BadRequestError({
@@ -546,23 +554,25 @@ export const identityJwtAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(

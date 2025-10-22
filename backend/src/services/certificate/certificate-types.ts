@@ -8,14 +8,26 @@ import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 
 export enum CertStatus {
   ACTIVE = "active",
+  EXPIRED = "expired",
   REVOKED = "revoked"
 }
 
 export enum CertKeyAlgorithm {
   RSA_2048 = "RSA_2048",
+  RSA_3072 = "RSA_3072",
   RSA_4096 = "RSA_4096",
   ECDSA_P256 = "EC_prime256v1",
-  ECDSA_P384 = "EC_secp384r1"
+  ECDSA_P384 = "EC_secp384r1",
+  ECDSA_P521 = "EC_secp521r1"
+}
+
+export enum CertSignatureAlgorithm {
+  RSA_SHA256 = "RSA-SHA256",
+  RSA_SHA384 = "RSA-SHA384",
+  RSA_SHA512 = "RSA-SHA512",
+  ECDSA_SHA256 = "ECDSA-SHA256",
+  ECDSA_SHA384 = "ECDSA-SHA384",
+  ECDSA_SHA512 = "ECDSA-SHA512"
 }
 
 export enum CertKeyUsage {
@@ -37,6 +49,11 @@ export enum CertExtendedKeyUsage {
   EMAIL_PROTECTION = "emailProtection",
   TIMESTAMPING = "timeStamping",
   OCSP_SIGNING = "ocspSigning"
+}
+
+export enum CertSignatureType {
+  RSA = "RSA",
+  ECDSA = "ECDSA"
 }
 
 export const CertExtendedKeyUsageOIDToName: Record<string, CertExtendedKeyUsage> = {
@@ -105,13 +122,48 @@ export type TGetCertificateCredentialsDTO = {
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
 };
 
+export enum CertSubjectAlternativeNameType {
+  DNS_NAME = "dns_name",
+  IP_ADDRESS = "ip_address",
+  EMAIL = "email",
+  URI = "uri"
+}
+
 export enum TAltNameType {
   EMAIL = "email",
   DNS = "dns",
   IP = "ip",
   URL = "url"
 }
+
+export const mapLegacyAltNameType = (legacyType: TAltNameType): CertSubjectAlternativeNameType => {
+  switch (legacyType) {
+    case TAltNameType.EMAIL:
+      return CertSubjectAlternativeNameType.EMAIL;
+    case TAltNameType.DNS:
+      return CertSubjectAlternativeNameType.DNS_NAME;
+    case TAltNameType.IP:
+      return CertSubjectAlternativeNameType.IP_ADDRESS;
+    case TAltNameType.URL:
+      return CertSubjectAlternativeNameType.URI;
+    default:
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      throw new Error(`Unknown legacy alt name type: ${legacyType}`);
+  }
+};
 export type TAltNameMapping = {
   type: TAltNameType;
   value: string;
 };
+
+export enum ACMESANType {
+  DNS = "dns",
+  IP = "ip"
+}
+
+export enum CertificateOrderStatus {
+  PENDING = "pending",
+  PROCESSING = "processing",
+  VALID = "valid",
+  INVALID = "invalid"
+}

@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Outlet, useSearch } from "@tanstack/react-router";
 
 import { NotificationContainer } from "@app/components/notifications";
 import { TooltipProvider } from "@app/components/v2";
@@ -13,6 +14,15 @@ type TRouterContext = {
 };
 
 const RootPage = () => {
+  const subOrganization = useSearch({
+    strict: false,
+    select: (el) => el?.subOrganization
+  });
+
+  useEffect(() => {
+    queryClient.invalidateQueries();
+  }, [subOrganization]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>

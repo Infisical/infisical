@@ -7,6 +7,7 @@ import { Knex } from "knex";
 import {
   AccessScope,
   ActionProjectType,
+  OrganizationActionScope,
   OrgMembershipRole,
   ProjectMembershipRole,
   ServiceTokenScopes
@@ -179,14 +180,15 @@ export const permissionServiceFactory = ({
   //   return minTtl;
   // };
 
-  const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async (
-    type,
-    id,
+  const getOrgPermission: TPermissionServiceFactory["getOrgPermission"] = async ({
+    actor,
+    actorId,
     orgId,
-    authMethod,
-    actorOrgId
-  ) => {
-    if (type !== ActorType.USER && type !== ActorType.IDENTITY) {
+    actorOrgId,
+    scope,
+    actorAuthMethod
+  }) => {
+    if (actor !== ActorType.USER && actor !== ActorType.IDENTITY) {
       throw new BadRequestError({
         message: "Invalid actor provided",
         name: "Get org permission"
@@ -202,10 +204,18 @@ export const permissionServiceFactory = ({
         scope: AccessScope.Organization,
         orgId
       },
-      actorId: id,
-      actorType: type
+      actorId,
+      actorType: actor
     });
     if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+
+    const rootOrgId = permissionData?.[0]?.rootOrgId;
+    const isChild = Boolean(rootOrgId);
+    if (scope === OrganizationActionScope.ParentOrganization && isChild) {
+      throw new ForbiddenRequestError({ message: `Child organization cannot do this operation` });
+    } else if (scope === OrganizationActionScope.ChildOrganization && !isChild) {
+      throw new ForbiddenRequestError({ message: `Parent organization cannot do this operation` });
+    }
 
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles
@@ -227,7 +237,7 @@ export const permissionServiceFactory = ({
       permissionData.some((memberships) => memberships.roles.some((el) => role === (el.customRoleSlug || el.role)));
 
     validateOrgSSO(
-      authMethod,
+      actorAuthMethod,
       permissionData?.[0].orgAuthEnforced,
       Boolean(permissionData?.[0].orgGoogleSsoAuthEnforced),
       Boolean(permissionData?.[0].bypassOrgAuthEnabled),

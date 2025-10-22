@@ -3,11 +3,34 @@ import { z } from "zod";
 
 import { AccessScope, OrgMembershipRole, OrgRolesSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { OrgPermissionSchema } from "@app/ee/services/permission/org-permission";
+import { OrgPermissionSchema, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const INVALID_SUBORG_PERMISSIONS = [
+  OrgPermissionSubjects.Sso,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
+  OrgPermissionSubjects.Billing,
+  OrgPermissionSubjects.SubOrganization
+];
+
+const validateSubOrganizationSubjects = (permissions: unknown) => {
+  const invalidPermissionSubjects = (permissions as { subject: OrgPermissionSubjects }[])
+    .filter((el) => INVALID_SUBORG_PERMISSIONS.includes(el.subject))
+    .map((el) => el.subject);
+  if (invalidPermissionSubjects.length) {
+    const deduplication = Array.from(new Set(invalidPermissionSubjects));
+    throw new BadRequestError({
+      message: `Suborganization contains invalid permission subjects: ${deduplication.join(",")}`
+    });
+  }
+};
 
 export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -37,6 +60,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const isSubOrganization = req.permission.rootOrgId !== req.permission.orgId;
+      if (isSubOrganization) {
+        validateSubOrganizationSubjects(req.body.permissions);
+      }
+
       const stringifiedPermissions = JSON.stringify(packRules(req.body.permissions));
       const role = await server.services.role.createRole({
         permission: req.permission,
@@ -133,6 +161,11 @@ export const registerOrgRoleRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const isSubOrganization = req.permission.rootOrgId !== req.permission.orgId;
+      if (isSubOrganization && req.body.permissions) {
+        validateSubOrganizationSubjects(req.body.permissions);
+      }
+
       const stringifiedPermissions = req.body.permissions ? JSON.stringify(packRules(req.body.permissions)) : undefined;
       const role = await server.services.role.updateRole({
         permission: req.permission,

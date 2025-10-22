@@ -2,6 +2,7 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useOrganization } from "@app/context";
 
 import { GatewayTab } from "../GatewayTab/GatewayTab";
 import { RelayTab } from "../RelayTab/RelayTab";
@@ -27,11 +28,13 @@ export const NetworkingTabGroup = () => {
     });
   };
 
+  const { isSubOrganization } = useOrganization();
+
   return (
-    <Tabs value={selectedTab} onValueChange={handleTabChange}>
+    <Tabs orientation="vertical" value={selectedTab} onValueChange={handleTabChange}>
       <TabList>
         {tabs.map((tab) => (
-          <Tab variant="org" value={tab.key} key={tab.key}>
+          <Tab variant={isSubOrganization ? "namespace" : "org"} value={tab.key} key={tab.key}>
             {tab.name}
           </Tab>
         ))}

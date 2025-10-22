@@ -3,6 +3,7 @@ import { STSServiceException } from "@aws-sdk/client-sts";
 import { ForbiddenError } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TKmsKeyDALFactory } from "@app/services/kms/kms-key-dal";
@@ -51,13 +52,14 @@ export const externalKmsServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TCreateExternalKmsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Kms);
     const plan = await licenseService.getPlan(actorOrgId);
@@ -154,13 +156,14 @@ export const externalKmsServiceFactory = ({
     actorAuthMethod
   }: TUpdateExternalKmsDTO) => {
     const kmsDoc = await kmsDAL.findById(kmsId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      kmsDoc.orgId,
+      orgId: kmsDoc.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Kms);
 
     const plan = await licenseService.getPlan(kmsDoc.orgId);
@@ -257,13 +260,14 @@ export const externalKmsServiceFactory = ({
 
   const deleteById = async ({ actor, id: kmsId, actorId, actorOrgId, actorAuthMethod }: TDeleteExternalKmsDTO) => {
     const kmsDoc = await kmsDAL.findById(kmsId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      kmsDoc.orgId,
+      orgId: kmsDoc.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
@@ -278,13 +282,14 @@ export const externalKmsServiceFactory = ({
   };
 
   const list = async ({ actor, actorId, actorOrgId, actorAuthMethod }: TListExternalKmsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDocs = await externalKmsDAL.find({ orgId: actorOrgId });
@@ -294,13 +299,14 @@ export const externalKmsServiceFactory = ({
 
   const findById = async ({ actor, actorId, actorOrgId, actorAuthMethod, id: kmsId }: TGetExternalKmsByIdDTO) => {
     const kmsDoc = await kmsDAL.findById(kmsId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      kmsDoc.orgId,
+      orgId: kmsDoc.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
@@ -342,13 +348,14 @@ export const externalKmsServiceFactory = ({
     name: kmsName
   }: TGetExternalKmsBySlugDTO) => {
     const kmsDoc = await kmsDAL.findOne({ name: kmsName, orgId: actorOrgId });
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      kmsDoc.orgId,
+      orgId: kmsDoc.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Kms);
 
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });

@@ -79,7 +79,7 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretManager:
       return "/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/subscribers" as const;
+      return "/projects/cert-management/$projectId/policies" as const;
     case ProjectType.SecretScanning:
       return `/projects/${type}/$projectId/data-sources` as const;
     case ProjectType.PAM:

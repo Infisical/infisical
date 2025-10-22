@@ -13,7 +13,7 @@ description: "Relay-related commands for Infisical"
     ```bash
     # Install systemd service
     sudo infisical relay systemd install --host=<host> --name=<name> --token=<token>
-    
+
     # Uninstall systemd service
     sudo infisical relay systemd uninstall
     ```
@@ -26,6 +26,7 @@ Relay-related commands for Infisical that provide identity-aware relay infrastru
 
 ## Subcommands & flags
 
+<AccordionGroup>
 <Accordion title="infisical relay start" defaultOpen="true">
   Run the Infisical relay component. The relay handles network traffic routing between Infisical and your gateways.
 
@@ -35,6 +36,7 @@ infisical relay start --host=<host> --name=<name> --auth-method=<auth-method>
 
 ### Flags
 
+  <AccordionGroup>
   <Accordion title="--host">
     The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
 
@@ -57,6 +59,7 @@ infisical relay start --host=<host> --name=<name> --auth-method=<auth-method>
     ```
 
   </Accordion>
+  </AccordionGroup>
 
 ### Authentication
 
@@ -280,6 +283,7 @@ infisical relay systemd <subcommand>
 
 ### Subcommands
 
+<AccordionGroup>
 <Accordion title="install">
   Install and enable systemd service for the relay. Must be run with sudo on Linux systems.
 
@@ -289,6 +293,7 @@ sudo infisical relay systemd install --host=<host> --name=<name> --token=<token>
 
 #### Flags
 
+<AccordionGroup>
 <Accordion title="--host">
   The host (IP address or hostname) of the instance where the relay is deployed. This must be a static public IP or resolvable hostname that gateways can reach.
 
@@ -331,6 +336,7 @@ sudo infisical relay systemd install --domain=http://localhost:8080 --token=<tok
 ```
 
 </Accordion>
+</AccordionGroup>
 
 #### Examples
 
@@ -386,5 +392,7 @@ sudo infisical relay systemd uninstall
 - Cleans up the service configuration
 
 </Accordion>
+</AccordionGroup>
 
 </Accordion>
+</AccordionGroup>

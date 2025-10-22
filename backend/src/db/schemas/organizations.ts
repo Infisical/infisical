@@ -38,7 +38,9 @@ export const OrganizationsSchema = z.object({
   maxSharedSecretLifetime: z.number().default(2592000).nullable().optional(),
   maxSharedSecretViewLimit: z.number().nullable().optional(),
   googleSsoAuthEnforced: z.boolean().default(false),
-  googleSsoAuthLastUsed: z.date().nullable().optional()
+  googleSsoAuthLastUsed: z.date().nullable().optional(),
+  parentOrgId: z.string().uuid().nullable().optional(),
+  rootOrgId: z.string().uuid().nullable().optional()
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

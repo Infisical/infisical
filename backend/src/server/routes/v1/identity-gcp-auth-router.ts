@@ -35,12 +35,12 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityGcpAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityGcpAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityGcpAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_GCP_AUTH,
           metadata: {

@@ -7,7 +7,8 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -18,7 +19,10 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
   const projectId = currentProject.id;
+
+  const canCreateLegacySubscribers = subscription.pkiLegacyTemplates;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -100,23 +104,25 @@ export const PkiSubscriberSection = () => {
               />
             </span>
           </a>
-          <ProjectPermissionCan
-            I={ProjectPermissionPkiSubscriberActions.Create}
-            a={ProjectPermissionSub.PkiSubscribers}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="primary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("pkiSubscriber")}
-                isDisabled={!isAllowed}
-                className="ml-4"
-              >
-                Add Subscriber
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          {canCreateLegacySubscribers && (
+            <ProjectPermissionCan
+              I={ProjectPermissionPkiSubscriberActions.Create}
+              a={ProjectPermissionSub.PkiSubscribers}
+            >
+              {(isAllowed) => (
+                <Button
+                  colorSchema="primary"
+                  type="submit"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("pkiSubscriber")}
+                  isDisabled={!isAllowed}
+                  className="ml-4"
+                >
+                  Add Subscriber
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          )}
         </div>
       </div>
       <PkiSubscribersTable handlePopUpOpen={handlePopUpOpen} />

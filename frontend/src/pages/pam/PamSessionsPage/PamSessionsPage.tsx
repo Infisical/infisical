@@ -5,6 +5,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { PamSessionSection } from "./components/PamSessionSection";
 
@@ -21,10 +22,10 @@ export const PamSessionPage = () => {
         a={ProjectPermissionSub.PamSessions}
       >
         <div className="h-full bg-bunker-800">
-          <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-            <div className="mx-auto mb-6 w-full max-w-7xl">
+          <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+            <div className="mx-auto mb-6 w-full max-w-8xl">
               <PageHeader
-                scope="project"
+                scope={ProjectType.PAM}
                 title="Sessions"
                 description="Filter and search through account sessions."
               />

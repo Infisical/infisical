@@ -319,7 +319,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       }
     },
     handler: async (req) => {
-      const { identityTokenAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityTokenAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityTokenAuth.createTokenAuthToken({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -332,7 +332,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.CREATE_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {

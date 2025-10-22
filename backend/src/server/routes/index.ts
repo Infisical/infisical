@@ -131,6 +131,7 @@ import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-
 import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
 import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
@@ -167,11 +168,19 @@ import { externalCertificateAuthorityDALFactory } from "@app/services/certificat
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
 import { internalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { certificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
+import { certificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
+import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
 import { externalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
 import { externalMigrationQueueFactory } from "@app/services/external-migration/external-migration-queue";
@@ -560,11 +569,10 @@ export const registerRoutes = async (
     orgDAL,
     licenseDAL,
     keyStore,
-    identityOrgMembershipDAL,
     projectDAL
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -584,6 +592,7 @@ export const registerRoutes = async (
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
@@ -904,6 +913,15 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     additionalPrivilegeDAL
   });
+
+  const subOrgService = subOrgServiceFactory({
+    licenseService,
+    membershipDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService
+  });
+
   const signupService = authSignupServiceFactory({
     tokenService,
     smtpService,
@@ -1036,6 +1054,10 @@ export const registerRoutes = async (
   const certificateAuthorityCrlDAL = certificateAuthorityCrlDALFactory(db);
   const certificateTemplateDAL = certificateTemplateDALFactory(db);
   const certificateTemplateEstConfigDAL = certificateTemplateEstConfigDALFactory(db);
+  const certificateTemplateV2DAL = certificateTemplateV2DALFactory(db);
+  const certificateProfileDAL = certificateProfileDALFactory(db);
+  const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
+  const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -1118,6 +1140,21 @@ export const registerRoutes = async (
     kmsService,
     projectDAL,
     licenseService
+  });
+
+  const certificateTemplateV2Service = certificateTemplateV2ServiceFactory({
+    certificateTemplateV2DAL,
+    permissionService
+  });
+
+  const certificateProfileService = certificateProfileServiceFactory({
+    certificateProfileDAL,
+    certificateTemplateV2DAL,
+    apiEnrollmentConfigDAL,
+    estEnrollmentConfigDAL,
+    permissionService,
+    kmsService,
+    projectDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
@@ -1567,10 +1604,12 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     accessTokenQueue,
-    smtpService
+    smtpService,
+    orgDAL
   });
 
   const identityService = identityServiceFactory({
+    additionalPrivilegeDAL,
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
@@ -1601,10 +1640,12 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     accessTokenQueue,
     identityDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
+    identityDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1614,6 +1655,7 @@ export const registerRoutes = async (
   });
 
   const identityUaService = identityUaServiceFactory({
+    identityDAL,
     permissionService,
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
@@ -1625,6 +1667,7 @@ export const registerRoutes = async (
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    identityDAL,
     identityKubernetesAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1638,6 +1681,7 @@ export const registerRoutes = async (
     membershipIdentityDAL
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
+    identityDAL,
     identityGcpAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1647,6 +1691,7 @@ export const registerRoutes = async (
   });
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityAliCloudAuthDAL,
@@ -1656,6 +1701,7 @@ export const registerRoutes = async (
   });
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     identityTlsCertAuthDAL,
     licenseService,
@@ -1665,6 +1711,7 @@ export const registerRoutes = async (
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityAwsAuthDAL,
@@ -1674,6 +1721,7 @@ export const registerRoutes = async (
   });
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
+    identityDAL,
     identityAzureAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1683,6 +1731,7 @@ export const registerRoutes = async (
   });
 
   const identityOciAuthService = identityOciAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityOciAuthDAL,
@@ -1706,6 +1755,7 @@ export const registerRoutes = async (
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
+    identityDAL,
     identityOidcAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1716,6 +1766,7 @@ export const registerRoutes = async (
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
+    identityDAL,
     identityJwtAuthDAL,
     orgDAL,
     permissionService,
@@ -2086,6 +2137,27 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
+  const certificateV3Service = certificateV3ServiceFactory({
+    certificateDAL,
+    certificateAuthorityDAL,
+    certificateProfileDAL,
+    certificateTemplateV2Service,
+    internalCaService: internalCertificateAuthorityService,
+    permissionService
+  });
+
+  const certificateEstV3Service = certificateEstV3ServiceFactory({
+    internalCertificateAuthorityService,
+    certificateTemplateV2Service,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
+    projectDAL,
+    kmsService,
+    licenseService,
+    certificateProfileDAL,
+    estEnrollmentConfigDAL
+  });
+
   const pkiSubscriberService = pkiSubscriberServiceFactory({
     pkiSubscriberDAL,
     certificateAuthorityDAL,
@@ -2248,6 +2320,7 @@ export const registerRoutes = async (
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
+    subOrganization: subOrgService,
     oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,
@@ -2296,6 +2369,8 @@ export const registerRoutes = async (
     auditLog: auditLogService,
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
+    certificateV3: certificateV3Service,
+    certificateEstV3: certificateEstV3Service,
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,
     sshHost: sshHostService,
@@ -2303,6 +2378,8 @@ export const registerRoutes = async (
     certificateAuthority: certificateAuthorityService,
     internalCertificateAuthority: internalCertificateAuthorityService,
     certificateTemplate: certificateTemplateService,
+    certificateTemplateV2: certificateTemplateV2Service,
+    certificateProfile: certificateProfileService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
     pit: pitService,

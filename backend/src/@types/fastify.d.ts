@@ -48,6 +48,7 @@ import { TSshCertificateAuthorityServiceFactory } from "@app/ee/services/ssh/ssh
 import { TSshCertificateTemplateServiceFactory } from "@app/ee/services/ssh-certificate-template/ssh-certificate-template-service";
 import { TSshHostServiceFactory } from "@app/ee/services/ssh-host/ssh-host-service";
 import { TSshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { TSubOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { TTrustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-types";
 import { TAuthMode } from "@app/server/plugins/auth/inject-identity";
 import { TAdditionalPrivilegeServiceFactory } from "@app/services/additional-privilege/additional-privilege-service";
@@ -61,7 +62,11 @@ import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-se
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 import { TCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
+import { TCertificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
+import { TCertificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
 import { TCertificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
+import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { TConvertorServiceFactory } from "@app/services/convertor/convertor-service";
 import { TExternalGroupOrgRoleMappingServiceFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-service";
@@ -178,6 +183,8 @@ declare module "fastify" {
       type: ActorType;
       id: string;
       orgId: string;
+      parentOrgId: string;
+      rootOrgId: string;
     };
     rateLimits: RateLimitConfiguration;
     // passport data
@@ -262,7 +269,10 @@ declare module "fastify" {
       auditLog: TAuditLogServiceFactory;
       auditLogStream: TAuditLogStreamServiceFactory;
       certificate: TCertificateServiceFactory;
+      certificateV3: TCertificateV3ServiceFactory;
       certificateTemplate: TCertificateTemplateServiceFactory;
+      certificateTemplateV2: TCertificateTemplateV2ServiceFactory;
+      certificateProfile: TCertificateProfileServiceFactory;
       sshCertificateAuthority: TSshCertificateAuthorityServiceFactory;
       sshCertificateTemplate: TSshCertificateTemplateServiceFactory;
       sshHost: TSshHostServiceFactory;
@@ -270,6 +280,7 @@ declare module "fastify" {
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
+      certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
       pkiSync: TPkiSyncServiceFactory;
@@ -327,6 +338,7 @@ declare module "fastify" {
       additionalPrivilege: TAdditionalPrivilegeServiceFactory;
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
+      subOrganization: TSubOrgServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

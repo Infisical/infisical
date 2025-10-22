@@ -68,7 +68,7 @@ enum RolesOrderBy {
 
 export const OrgRoleTable = () => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -200,7 +200,9 @@ export const OrgRoleTable = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Organization Roles</p>
+        <p className="text-xl font-medium text-mineshaft-100">
+          {isSubOrganization ? "Sub-" : ""}Organization Roles
+        </p>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button

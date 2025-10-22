@@ -3,7 +3,7 @@ title: "Networking"
 description: "Network configuration and firewall requirements for Infisical Gateway"
 ---
 
-The Infisical Gateway requires outbound network connectivity to establish secure communication with Infisical's relay infrastructure. 
+The Infisical Gateway requires outbound network connectivity to establish secure communication with Infisical's relay infrastructure.
 This page outlines the required ports, protocols, and firewall configurations needed for optimal gateway usage.
 
 ## Network Architecture
@@ -67,11 +67,11 @@ The gateway uses QUIC (Quick UDP Internet Connections) for primary communication
 ## Understanding Firewall Behavior with UDP
 
 Unlike TCP connections, UDP is a stateless protocol, and depending on your organization's firewall configuration, you may need to adjust network rules accordingly.
-When the gateway sends UDP packets to a relay server, the return responses need to be allowed back through the firewall. 
-Modern firewalls handle this through "connection tracking" (also called "stateful inspection"), but the behavior can vary depending on your firewall configuration. 
+When the gateway sends UDP packets to a relay server, the return responses need to be allowed back through the firewall.
+Modern firewalls handle this through "connection tracking" (also called "stateful inspection"), but the behavior can vary depending on your firewall configuration.
 
 
-### Connection Tracking 
+### Connection Tracking
 
 Modern firewalls automatically track UDP connections and allow return responses. This is the preferred configuration as it:
 - Automatically handles return responses
@@ -100,6 +100,7 @@ Configure security groups to allow:
 
 ## Frequently Asked Questions
 
+<AccordionGroup>
 <Accordion title="What happens if there is a network interruption?">
 The gateway is designed to handle network interruptions gracefully:
 
@@ -139,7 +140,7 @@ This design maintains security by avoiding the need for inbound firewall rules t
 If your firewall has strict UDP restrictions:
 
 1. **Work with your network team** to allow outbound UDP to the specific relay IP addresses
-2. **Use explicit IP whitelisting** if connection tracking is disabled  
+2. **Use explicit IP whitelisting** if connection tracking is disabled
 3. **Consider network policy exceptions** for the gateway host
 4. **Monitor firewall logs** to identify which specific rules are blocking traffic
 
@@ -161,8 +162,9 @@ No, relay servers cannot decrypt any traffic passing through them:
 
 - **End-to-end encryption**: All traffic between the gateway and Infisical Cloud is encrypted using mutual TLS with certificate pinning
 - **Relay acts as a tunnel**: The relay server only forwards encrypted packets - it has no access to encryption keys
-- **No data storage**: Relay servers do not store any traffic or network-identifiable information  
+- **No data storage**: Relay servers do not store any traffic or network-identifiable information
 - **Certificate isolation**: Each organization has its own private PKI system, ensuring complete tenant isolation
 
 The relay infrastructure is designed as a secure forwarding mechanism, similar to a VPN tunnel, where the relay provider cannot see the contents of the traffic flowing through it.
 </Accordion>
+</AccordionGroup>

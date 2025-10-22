@@ -2,6 +2,7 @@ import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { z } from "zod";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -68,13 +69,14 @@ export const gatewayServiceFactory = ({
           "Gateway handshake failed due to organization plan restrictions. Please upgrade your instance to Infisical's Enterprise plan."
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
+    const { permission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
       actorId,
       orgId,
       actorAuthMethod,
-      orgId
-    );
+      actorOrgId: orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.CreateGateways,
       OrgPermissionSubjects.Gateway
@@ -480,13 +482,14 @@ export const gatewayServiceFactory = ({
   };
 
   const listGateways = async ({ orgPermission }: TListGatewaysDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.ListGateways,
       OrgPermissionSubjects.Gateway
@@ -501,13 +504,14 @@ export const gatewayServiceFactory = ({
   };
 
   const getGatewayById = async ({ orgPermission, id }: TGetGatewayByIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.ListGateways,
       OrgPermissionSubjects.Gateway
@@ -521,13 +525,14 @@ export const gatewayServiceFactory = ({
   };
 
   const updateGatewayById = async ({ orgPermission, id, name }: TUpdateGatewayByIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.EditGateways,
       OrgPermissionSubjects.Gateway
@@ -542,13 +547,14 @@ export const gatewayServiceFactory = ({
   };
 
   const deleteGatewayById = async ({ orgPermission, id }: TGetGatewayByIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.DeleteGateways,
       OrgPermissionSubjects.Gateway

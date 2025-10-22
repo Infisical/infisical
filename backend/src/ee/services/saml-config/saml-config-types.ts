@@ -37,7 +37,7 @@ export type TGetSamlCfgDTO =
       actor: ActorType;
       actorId: string;
       actorAuthMethod: ActorAuthMethod;
-      actorOrgId: string | undefined;
+      actorOrgId: string;
     }
   | {
       type: "orgSlug";

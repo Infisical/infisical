@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TPamAccounts, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamResources } from "@app/db/schemas";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -459,13 +459,14 @@ export const pamAccountServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      project.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.CreateGateways,

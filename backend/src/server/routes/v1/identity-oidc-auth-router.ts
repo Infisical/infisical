@@ -59,7 +59,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req) => {
-      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg, oidcTokenData } =
+      const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
         await server.services.identityOidcAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -67,7 +67,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
           metadata: {

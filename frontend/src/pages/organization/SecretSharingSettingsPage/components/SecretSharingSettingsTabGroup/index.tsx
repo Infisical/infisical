@@ -1,1 +1,0 @@
-export { SecretSharingSettingsTabGroup } from "./SecretSharingSettingsTabGroup";
