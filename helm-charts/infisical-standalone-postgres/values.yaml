@@ -103,6 +103,25 @@ infisical:
       # -- CPU request for Infisical container
       cpu: 350m
 
+  # -- Additional volumes to mount to the Infisical pod
+  # Use this to mount custom CA certificates for PostgreSQL TLS connections
+  # Example: Mount a root CA certificate from a secret to verify PostgreSQL server certificate
+  extraVolumes: []
+    # - name: postgres-ca-cert
+    #   secret:
+    #     secretName: postgres-ca-certificate
+    #     items:
+    #       - key: ca.crt
+    #         path: postgres-ca.crt
+
+  # -- Volume mount points for the additional volumes
+  # Use this to specify where CA certificates should be mounted in the container
+  # Example: Mount the PostgreSQL CA certificate to be referenced in connection string
+  extraVolumeMounts: []
+    # - name: postgres-ca-cert
+    #   mountPath: /etc/postgres-certs
+    #   readOnly: true
+
 ingress:
   # -- Enable or disable ingress configuration
   enabled: true
@@ -157,6 +176,33 @@ postgresql:
       # -- Key name in the Kubernetes secret that holds the connection string
       key: ""
 
+  customURIParameters:
+    # -- Set to true if using custom URI parameters for PostgreSQL connection
+    enabled: false
+    # -- Hostname for PostgreSQL connection
+    host: ""
+    # -- Port for PostgreSQL connection. Default is 5432
+    port: 5432
+    # -- Database name for PostgreSQL connection
+    database: ""
+
+      # -- Database Username
+    username: ""
+    # -- Database Password
+    passwordSecret:
+      # -- Kubernetes secret name containing the PostgreSQL password
+      name: ""
+      # -- Key name in the Kubernetes secret that holds the PostgreSQL password
+      key: ""
+
+    ssl:
+      # -- Set to true if using SSL for PostgreSQL connection
+      enabled: false
+      # -- SSL mode for PostgreSQL connection. Default is "verify-ca"
+      mode: "verify-ca"
+      # -- Path to the Root CA certificate file for SSL connection
+      rootCertPath: ""
+
 redis:
   # -- Enables an in-cluster Redis deployment
   enabled: true
@@ -184,3 +230,18 @@ redis:
 
   # -- Redis deployment type (e.g., standalone or cluster)
   architecture: standalone
+
+  # -- Build a custom Redis connection string from parameters
+  customURIParameters:
+    # -- Set to true if using custom URI parameters for Redis connection
+    enabled: false
+    # -- Redis host
+    host: ""
+    # -- Port for Redis connection. Default is 6379
+    port: 6379
+    # -- Secret containing Redis password
+    passwordSecret:
+      # -- Kubernetes secret name containing the Redis password
+      name: ""
+      # -- Key name in the Kubernetes secret that holds the Redis password
+      key: ""

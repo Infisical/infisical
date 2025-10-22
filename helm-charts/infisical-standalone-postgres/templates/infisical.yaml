@@ -68,6 +68,16 @@ spec:
         ports: 
         - containerPort: 8080
         env:
+        {{- if .Values.postgresql.customURIParameters.enabled }}
+        {{- $pgParams := .Values.postgresql.customURIParameters }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $pgParams.passwordSecret.name }}
+              key: {{ $pgParams.passwordSecret.key }}
+        - name: DB_CONNECTION_URI
+          value: {{ include "infisical.customPostgresDBConnectionString" . }}
+        {{- end }}
         {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
         - name: DB_CONNECTION_URI
           valueFrom:
@@ -78,6 +88,16 @@ spec:
         {{- if .Values.postgresql.enabled }}
         - name: DB_CONNECTION_URI
           value: {{ include "infisical.postgresDBConnectionString" . }}
+        {{- end }}
+        {{- if .Values.redis.customURIParameters.enabled }}
+        {{- $redisParams := .Values.redis.customURIParameters }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $redisParams.passwordSecret.name }}
+              key: {{ $redisParams.passwordSecret.key }}
+        - name: REDIS_URL
+          value: {{ include "infisical.customRedisConnectionString" . }}
         {{- end }}
         {{- if .Values.redis.enabled }}
         - name: REDIS_URL
