@@ -46,7 +46,7 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
 
-import { DeployRelayModal } from "../GatewayTab/components/DeployRelayModal";
+import { RelayDeployModal } from "./components/RelayDeployModal";
 
 const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
@@ -258,7 +258,7 @@ export const RelayTab = withPermission(
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteRelay()}
             />
-            <DeployRelayModal
+            <RelayDeployModal
               isOpen={popUp.deployRelay.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployRelay", isOpen)}
             />

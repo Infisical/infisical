@@ -48,8 +48,8 @@ import { usePopUp } from "@app/hooks";
 import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways";
 import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
-import { DeployGatewayModal } from "./components/DeployGatewayModal";
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
 const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
@@ -269,7 +269,7 @@ export const GatewayTab = withPermission(
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteGateway()}
             />
-            <DeployGatewayModal
+            <GatewayDeployModal
               isOpen={popUp.deployGateway.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
