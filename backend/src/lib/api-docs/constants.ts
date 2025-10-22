@@ -2332,6 +2332,9 @@ export const AppConnections = {
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
     },
+    NORTHFLANK: {
+      apiToken: "The API token used to authenticate with Northflank."
+    },
     CHECKLY: {
       apiKey: "The API key used to authenticate with Checkly."
     },

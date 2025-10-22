@@ -50,6 +50,7 @@ import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/type
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
+import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -121,6 +122,7 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
+  [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
   [AppConnection.LaravelForge]: {
@@ -162,6 +164,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };

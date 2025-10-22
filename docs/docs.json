@@ -130,6 +130,7 @@
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
+                      "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/okta",
                       "integrations/app-connections/oracledb",
@@ -1839,6 +1840,18 @@
                       "api-reference/endpoints/app-connections/netlify/create",
                       "api-reference/endpoints/app-connections/netlify/update",
                       "api-reference/endpoints/app-connections/netlify/delete"
+                    ]
+                  },
+                  {
+                    "group": "Northflank",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/northflank/list",
+                      "api-reference/endpoints/app-connections/northflank/available",
+                      "api-reference/endpoints/app-connections/northflank/get-by-id",
+                      "api-reference/endpoints/app-connections/northflank/get-by-name",
+                      "api-reference/endpoints/app-connections/northflank/create",
+                      "api-reference/endpoints/app-connections/northflank/update",
+                      "api-reference/endpoints/app-connections/northflank/delete"
                     ]
                   },
                   {
