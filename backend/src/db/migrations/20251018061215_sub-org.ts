@@ -3,6 +3,7 @@ import { Knex } from "knex";
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
 
 import { AccessScope, TableName } from "../schemas";
+import { chunkArray } from "@app/lib/fn";
 
 export async function up(knex: Knex): Promise<void> {
   const hasParentOrgId = await knex.schema.hasColumn(TableName.Organization, "parentOrgId");
@@ -29,19 +30,38 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
     });
 
-    await knex.raw(
-      `
-  UPDATE ?? AS identity
-  SET "orgId" = membership."scopeOrgId"
-  FROM ?? AS membership
-  WHERE 
-    membership."actorIdentityId" = identity."id"
-    AND membership."scope" = ?
-`,
-      [TableName.Identity, TableName.Membership, AccessScope.Organization]
-    );
+    const identityMemberships = await knex(TableName.Membership)
+      .where({
+        scope: AccessScope.Organization
+      })
+      .whereNotNull("actorIdentityId")
+      .select("actorIdentityId", "scopeOrgId");
 
-    await knex.raw(`DELETE FROM ?? WHERE "orgId" IS NULL`, [TableName.Identity]);
+    const identityToOrgMapping: Record<string, string> = {};
+    identityMemberships.forEach((el) => {
+      if (el.actorIdentityId) {
+        identityToOrgMapping[el.actorIdentityId] = el.scopeOrgId;
+      }
+    });
+
+    const batchMemberships = chunkArray(identityMemberships, 500);
+    for await (const membership of batchMemberships) {
+      const identityIds = membership.map((el) => el.actorIdentityId).filter(Boolean) as string[];
+      if (identityIds.length) {
+        const identities = await knex(TableName.Identity).whereIn("id", identityIds).select("*");
+        await knex(TableName.Identity)
+          .insert(
+            identities.map((el) => ({
+              ...el,
+              orgId: identityToOrgMapping[el.id]
+            }))
+          )
+          .onConflict("id")
+          .merge();
+      }
+    }
+
+    await knex(TableName.Identity).whereNull("orgId").delete();
 
     await knex.schema.alterTable(TableName.Identity, (t) => {
       t.uuid("orgId").notNullable().alter();
