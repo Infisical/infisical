@@ -140,8 +140,8 @@ export const OrgMembersSection = () => {
       });
 
       createNotification({
-        text: "Successfully removed users from organization",
-        type: "success"
+        text: selectedMembers.length === 1 && members.length === 1 ? "At least one member must remain in the organization" : "Successfully removed users from organization",
+        type: selectedMembers.length === 1 && members.length === 1 ? "error" : "success"
       });
 
       setSelectedMemberIds([]);
