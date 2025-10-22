@@ -51,4 +51,3 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
     }
   });
 };
-

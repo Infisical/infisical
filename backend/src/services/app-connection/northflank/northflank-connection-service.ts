@@ -19,7 +19,7 @@ export const northflankConnectionService = (getAppConnection: TGetAppConnectionF
 
       return projects;
     } catch (error) {
-      logger.error(error, "Failed to establish connection with Northflank");
+      logger.error({ error, connectionId, actor: actor.type }, "Failed to establish connection with Northflank");
       return [];
     }
   };
@@ -28,4 +28,3 @@ export const northflankConnectionService = (getAppConnection: TGetAppConnectionF
     listProjects
   };
 };
-

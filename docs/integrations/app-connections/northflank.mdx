@@ -17,11 +17,11 @@ Infisical supports the use of [API Tokens](https://northflank.com/docs/v1/api/us
 
     ![Create API Role](/images/app-connections/northflank/step-1.png)
 
-    Click in **Create API role**.
+    Click on **Create API role**.
 
     ![Create API Role](/images/app-connections/northflank/step-2.png)
 
-    Select all the projects you want this role to have access, or leave this unchecked if you want to give access to all project.
+    Select all the projects you want this role to have access to, or leave this unchecked if you want to give access to all projects.
 
     ![Create API Role](/images/app-connections/northflank/step-3.png)
 
@@ -32,7 +32,7 @@ Infisical supports the use of [API Tokens](https://northflank.com/docs/v1/api/us
     Scroll to the bottom and save the API role.
   </Step>
   <Step title="Create an API Token">
-    Click on the **API** -> **Tokens** menu on the left and then in the **Create API token** button.
+    Click on the **API** -> **Tokens** menu on the left and then click the **Create API token** button.
 
     ![Create API Token](/images/app-connections/northflank/step-5.png)
 
@@ -84,7 +84,7 @@ Infisical supports the use of [API Tokens](https://northflank.com/docs/v1/api/us
 
     ```bash Request
     curl    --request POST \
-            --url http://localhost:8080/api/v1/app-connections/northflank \
+            --url https://app.infisical.com/api/v1/app-connections/northflank \
             --header 'Content-Type: application/json' \
             --data '{
                 "name": "my-northflank-connection",
@@ -104,7 +104,7 @@ Infisical supports the use of [API Tokens](https://northflank.com/docs/v1/api/us
           "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
           "name": "my-northflank-connection",
           "description": null,
-          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "projectId": "abcdef12-3456-7890-abcd-ef1234567890",
           "version": 1,
           "orgId": "abcdef12-3456-7890-abcd-ef1234567890",
           "createdAt": "2025-01-23T10:15:00.000Z",
@@ -112,7 +112,6 @@ Infisical supports the use of [API Tokens](https://northflank.com/docs/v1/api/us
           "isPlatformManagedCredentials": false,
           "credentialsHash": "d41d8cd98f00b204e9800998ecf8427e",
           "gatewayId":null,
-          "projectId":"abcdef12-3456-7890-abcd-ef1234567890"
           "app": "northflank",
           "method": "api-token",
           "credentials": {}

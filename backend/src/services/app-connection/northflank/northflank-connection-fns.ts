@@ -50,15 +50,12 @@ export const listProjects = async (appConnection: TNorthflankConnection): Promis
       data: {
         data: { projects }
       }
-    } = await request.get<{ data: { projects: TNorthflankProject[] } }>(
-      `${NORTHFLANK_API_URL}/v1/projects`,
-      {
-        headers: {
-          Authorization: `Bearer ${credentials.apiToken}`,
-          Accept: "application/json"
-        }
+    } = await request.get<{ data: { projects: TNorthflankProject[] } }>(`${NORTHFLANK_API_URL}/v1/projects`, {
+      headers: {
+        Authorization: `Bearer ${credentials.apiToken}`,
+        Accept: "application/json"
       }
-    );
+    });
 
     return projects;
   } catch (error: unknown) {
@@ -74,4 +71,3 @@ export const listProjects = async (appConnection: TNorthflankConnection): Promis
     });
   }
 };
-

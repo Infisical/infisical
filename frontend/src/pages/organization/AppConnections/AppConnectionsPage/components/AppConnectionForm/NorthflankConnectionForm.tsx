@@ -13,8 +13,8 @@ import {
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
-  TNorthflankConnection,
-  NorthflankConnectionMethod
+  NorthflankConnectionMethod,
+  TNorthflankConnection
 } from "@app/hooks/api/appConnections/types/northflank-connection";
 
 import {
@@ -86,7 +86,7 @@ export const NorthflankConnectionForm = ({ appConnection, onSubmit }: Props) => 
                 {Object.values(NorthflankConnectionMethod).map((method) => {
                   return (
                     <SelectItem value={method} key={method}>
-                      {getAppConnectionMethodDetails(method).name}{" "}
+                      {getAppConnectionMethodDetails(method).name}
                     </SelectItem>
                   );
                 })}
@@ -133,4 +133,3 @@ export const NorthflankConnectionForm = ({ appConnection, onSubmit }: Props) => 
     </FormProvider>
   );
 };
-

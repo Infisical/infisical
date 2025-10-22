@@ -11,11 +11,7 @@ import {
 import { NorthflankConnectionMethod } from "./northflank-connection-enums";
 
 export const NorthflankConnectionApiTokenCredentialsSchema = z.object({
-  apiToken: z
-    .string()
-    .trim()
-    .min(1, "API Token required")
-    .describe(AppConnections.CREDENTIALS.NORTHFLANK.apiToken)
+  apiToken: z.string().trim().min(1, "API Token required").describe(AppConnections.CREDENTIALS.NORTHFLANK.apiToken)
 });
 
 const BaseNorthflankConnectionSchema = BaseAppConnectionSchema.extend({
@@ -36,9 +32,9 @@ export const SanitizedNorthflankConnectionSchema = z.discriminatedUnion("method"
 
 export const ValidateNorthflankConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
-    method: z.literal(NorthflankConnectionMethod.ApiToken).describe(
-      AppConnections.CREATE(AppConnection.Northflank).method
-    ),
+    method: z
+      .literal(NorthflankConnectionMethod.ApiToken)
+      .describe(AppConnections.CREATE(AppConnection.Northflank).method),
     credentials: NorthflankConnectionApiTokenCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.Northflank).credentials
     )
@@ -62,4 +58,3 @@ export const NorthflankConnectionListItemSchema = z.object({
   app: z.literal(AppConnection.Northflank),
   methods: z.nativeEnum(NorthflankConnectionMethod).array()
 });
-
