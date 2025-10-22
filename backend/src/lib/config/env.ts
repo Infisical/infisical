@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { QueueWorkerProfile } from "@app/lib/types";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
@@ -8,6 +9,7 @@ import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 export const GITLAB_URL = "https://gitlab.com";
 
@@ -363,11 +365,6 @@ const envSchema = z
     /* INTERNAL ----------------------------------------------------------------------------- */
     INTERNAL_REGION: zpStr(z.enum(["us", "eu"]).optional())
   })
-  // To ensure that basic encryption is always possible.
-  .refine(
-    (data) => Boolean(data.ENCRYPTION_KEY) || Boolean(data.ROOT_ENCRYPTION_KEY),
-    "Either ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY must be defined."
-  )
   .refine(
     (data) => Boolean(data.REDIS_URL) || Boolean(data.REDIS_SENTINEL_HOSTS) || Boolean(data.REDIS_CLUSTER_HOSTS),
     "Either REDIS_URL, REDIS_SENTINEL_HOSTS or REDIS_CLUSTER_HOSTS  must be defined."
@@ -453,7 +450,12 @@ export const getConfig = () => envCfg;
 export const getOriginalConfig = () => originalEnvConfig;
 
 // cannot import singleton logger directly as it needs config to load various transport
-export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logger?: CustomLogger) => {
+export const initEnvConfig = async (
+  hsmService: THsmServiceFactory,
+  kmsRootConfigDAL: TKmsRootConfigDALFactory,
+  superAdminDAL?: TSuperAdminDALFactory,
+  logger?: CustomLogger
+) => {
   const parsedEnv = envSchema.safeParse(process.env);
   if (!parsedEnv.success) {
     (logger ?? console).error("Invalid environment variables. Check the error below");
@@ -469,7 +471,7 @@ export const initEnvConfig = async (superAdminDAL?: TSuperAdminDALFactory, logge
   }
 
   if (superAdminDAL) {
-    const fipsEnabled = await crypto.initialize(superAdminDAL);
+    const fipsEnabled = await crypto.initialize(superAdminDAL, hsmService, kmsRootConfigDAL);
 
     if (fipsEnabled) {
       const newEnvCfg = {
@@ -529,6 +531,22 @@ export const getDatabaseCredentials = (logger?: CustomLogger) => {
       dbRootCert: el.DB_ROOT_CERT,
       dbConnectionUri: el.DB_CONNECTION_URI
     }))
+  };
+};
+
+export const getHsmConfig = (logger?: CustomLogger) => {
+  const parsedEnv = envSchema.safeParse(process.env);
+  if (!parsedEnv.success) {
+    (logger ?? console).error("Invalid environment variables. Check the error below");
+    (logger ?? console).error(parsedEnv.error.issues);
+    process.exit(-1);
+  }
+  return {
+    isHsmConfigured: parsedEnv.data.isHsmConfigured,
+    HSM_PIN: parsedEnv.data.HSM_PIN,
+    HSM_SLOT: parsedEnv.data.HSM_SLOT,
+    HSM_LIB_PATH: parsedEnv.data.HSM_LIB_PATH,
+    HSM_KEY_LABEL: parsedEnv.data.HSM_KEY_LABEL
   };
 };
 

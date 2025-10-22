@@ -1,8 +1,14 @@
 import * as pkcs11js from "pkcs11js";
 
 import { TEnvConfig } from "@app/lib/config/env";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { KMS_ROOT_CONFIG_UUID } from "@app/services/kms/kms-fns";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 
+import { TLicenseServiceFactory } from "../license/license-service";
+import { THsmServiceFactory } from "./hsm-service";
 import { HsmModule } from "./hsm-types";
 
 export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured" | "HSM_LIB_PATH">) => {
@@ -25,10 +31,9 @@ export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured
 
       logger.info("PKCS#11 module initialized");
     } catch (error) {
-      logger.error(error, "Failed to initialize PKCS#11 module");
-
       if ((error as { message?: string })?.message === "CKR_CRYPTOKI_ALREADY_INITIALIZED") {
         logger.info("Skipping HSM initialization because it's already initialized.");
+        isInitialized = true;
       } else {
         logger.error(error, "Failed to initialize PKCS#11 module");
         throw error;
@@ -58,5 +63,38 @@ export const initializeHsmModule = (envConfig: Pick<TEnvConfig, "isHsmConfigured
     initialize,
     finalize,
     getModule
+  };
+};
+
+export const isHsmActiveAndEnabled = async ({
+  hsmService,
+  kmsRootConfigDAL,
+  licenseService
+}: {
+  hsmService: Pick<THsmServiceFactory, "isActive">;
+  kmsRootConfigDAL: Pick<TKmsRootConfigDALFactory, "findById">;
+  licenseService?: Pick<TLicenseServiceFactory, "onPremFeatures">;
+}) => {
+  const isHsmConfigured = await hsmService.isActive();
+
+  // null if the root kms config does not exist
+  let rootKmsConfigEncryptionStrategy: RootKeyEncryptionStrategy | null = null;
+
+  const rootKmsConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID).catch(() => null);
+
+  rootKmsConfigEncryptionStrategy = (rootKmsConfig?.encryptionStrategy || null) as RootKeyEncryptionStrategy | null;
+  if (
+    rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM &&
+    licenseService &&
+    !licenseService.onPremFeatures.hsm
+  ) {
+    throw new BadRequestError({
+      message: "Your license does not include HSM integration. Please upgrade to the Enterprise plan to use HSM."
+    });
+  }
+
+  return {
+    rootKmsConfigEncryptionStrategy,
+    isHsmConfigured
   };
 };
