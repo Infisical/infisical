@@ -16,6 +16,6 @@ export const BaseSqlResourceConnectionDetailsSchema = z.object({
 
 // Accounts
 export const BaseSqlAccountCredentialsSchema = z.object({
-  username: z.string().trim().min(1),
-  password: z.string().trim().min(1)
+  username: z.string().trim().min(1).max(63),
+  password: z.string().trim().min(1).max(256)
 });
