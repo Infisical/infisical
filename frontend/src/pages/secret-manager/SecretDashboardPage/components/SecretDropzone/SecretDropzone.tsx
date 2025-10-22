@@ -69,7 +69,7 @@ type SecretMatrixMap = {
   comment: number | null;
 };
 
-const popupKeys = ["importSecEnv", "confirmUpload", "pasteSecEnv", "importMatrixMap"] as const;
+const popupKeys = ["importSecEnv", "pasteSecEnv", "importMatrixMap"] as const;
 
 const MatrixImportModalTableRow = ({
   importSecretMatrixMap,
@@ -165,7 +165,6 @@ export const SecretDropzone = ({
 
   // hide copy secrets from board due to import folders feature
   const shouldRenderCopySecrets = false;
-  const [isSubmitting, setIsSubmitting] = useToggle();
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -174,6 +173,81 @@ export const SecretDropzone = ({
       setDragActive.on();
     } else if (e.type === "dragleave") {
       setDragActive.off();
+    }
+  };
+
+  const handleSaveSecrets = async (data: TSecOverwriteOpt) => {
+    const { update, create, existingSecrets } = data;
+
+    try {
+      const context: BatchContext = {
+        projectId,
+        environment,
+        secretPath
+      };
+
+      const existingSecretsMap = existingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
+        (prev, curr) => ({ ...prev, [curr.key]: curr }),
+        {}
+      );
+
+      const totalCount = Object.keys(create || {}).length + Object.keys(update || {}).length;
+
+      if (Object.keys(create || {}).length) {
+        Object.entries(create).forEach(([secretKey, secData]) => {
+          const createChange: PendingSecretCreate = {
+            id: secretKey,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Create,
+            secretKey,
+            secretValue: secData.value,
+            secretComment: secData.comments.join("\n") || undefined,
+            tags: [],
+            secretMetadata: []
+          };
+          addPendingChange(createChange, context);
+        });
+      }
+
+      if (Object.keys(update || {}).length) {
+        Object.entries(update).forEach(([secretKey, secData]) => {
+          const existingSecret = existingSecretsMap[secretKey];
+
+          if (!existingSecret) {
+            console.warn(`Existing secret not found for key: ${secretKey}`);
+            return;
+          }
+
+          const updateChange: PendingSecretUpdate = {
+            id: existingSecret.id,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Update,
+            secretKey,
+            secretValue: secData.value,
+            secretComment: secData.comments.join("\n") || undefined,
+            existingSecret,
+            originalValue: existingSecret.value || "",
+            originalComment: existingSecret.comment || "",
+            originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding || false,
+            originalTags: existingSecret.tags || [],
+            originalSecretMetadata: existingSecret.secretMetadata || []
+          };
+          addPendingChange(updateChange, context);
+        });
+      }
+
+      createNotification({
+        type: "success",
+        text: `Successfully imported ${totalCount} secret${totalCount > 1 ? "s" : ""}.`
+      });
+    } catch (err) {
+      console.log(err);
+      createNotification({
+        type: "error",
+        text: "Failed to import secrets"
+      });
     }
   };
 
@@ -218,7 +292,7 @@ export const SecretDropzone = ({
         }
       });
 
-      handlePopUpOpen("confirmUpload", {
+      await handleSaveSecrets({
         update: updateSecrets,
         create: createSecrets,
         existingSecrets: relevantExistingSecrets
@@ -229,7 +303,6 @@ export const SecretDropzone = ({
         text: "Failed to check for secret conflicts",
         type: "error"
       });
-      handlePopUpClose("confirmUpload");
     } finally {
       setIsLoading.off();
     }
@@ -334,86 +407,6 @@ export const SecretDropzone = ({
     parseFile(e.target?.files?.[0]);
   };
 
-  const handleSaveSecrets = async () => {
-    const { update, create, existingSecrets } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
-
-    try {
-      setIsSubmitting.on();
-
-      const context: BatchContext = {
-        projectId,
-        environment,
-        secretPath
-      };
-
-      const existingSecretsMap = existingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
-        (prev, curr) => ({ ...prev, [curr.key]: curr }),
-        {}
-      );
-
-      if (Object.keys(create || {}).length) {
-        Object.entries(create).forEach(([secretKey, secData]) => {
-          const createChange: PendingSecretCreate = {
-            id: secretKey,
-            timestamp: Date.now(),
-            resourceType: "secret",
-            type: PendingAction.Create,
-            secretKey,
-            secretValue: secData.value,
-            secretComment: secData.comments.join("\n") || undefined,
-            tags: [],
-            secretMetadata: []
-          };
-          addPendingChange(createChange, context);
-        });
-      }
-
-      if (Object.keys(update || {}).length) {
-        Object.entries(update).forEach(([secretKey, secData]) => {
-          const existingSecret = existingSecretsMap[secretKey];
-
-          if (!existingSecret) {
-            console.warn(`Existing secret not found for key: ${secretKey}`);
-            return;
-          }
-
-          const updateChange: PendingSecretUpdate = {
-            id: existingSecret.id,
-            timestamp: Date.now(),
-            resourceType: "secret",
-            type: PendingAction.Update,
-            secretKey,
-            secretValue: secData.value,
-            secretComment: secData.comments.join("\n") || undefined,
-            existingSecret,
-            originalValue: existingSecret.value || "",
-            originalComment: existingSecret.comment || "",
-            originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding || false,
-            originalTags: existingSecret.tags || [],
-            originalSecretMetadata: existingSecret.secretMetadata || []
-          };
-          addPendingChange(updateChange, context);
-        });
-      }
-
-      handlePopUpClose("confirmUpload");
-    } catch (err) {
-      console.log(err);
-    } finally {
-      setIsSubmitting.off();
-    }
-  };
-
-  const createSecretCount = Object.keys(
-    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
-  ).length;
-
-  const updateSecretCount = Object.keys(
-    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.update || {}
-  ).length;
-
-  const isNonConflictingUpload = !updateSecretCount;
-
   return (
     <div>
       <div
@@ -517,58 +510,6 @@ export const SecretDropzone = ({
           </div>
         )}
       </div>
-      <Modal
-        isOpen={popUp?.confirmUpload?.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("confirmUpload", open)}
-      >
-        <ModalContent
-          title="Confirm Secret Upload"
-          footerContent={[
-            <Button
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-              colorSchema={isNonConflictingUpload ? "primary" : "danger"}
-              key="overwrite-btn"
-              onClick={handleSaveSecrets}
-            >
-              {isNonConflictingUpload ? "Upload" : "Overwrite"}
-            </Button>,
-            <Button
-              key="keep-old-btn"
-              className="ml-4"
-              onClick={() => handlePopUpClose("confirmUpload")}
-              variant="outline_bg"
-              isDisabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          ]}
-        >
-          {isNonConflictingUpload ? (
-            <div>
-              Are you sure you want to import {createSecretCount} secret
-              {createSecretCount > 1 ? "s" : ""} to this environment?
-            </div>
-          ) : (
-            <div className="flex flex-col text-gray-300">
-              <div>Your project already contains the following {updateSecretCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
-                {Object.keys((popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update || {})
-                  ?.map((key) => key)
-                  .join(", ")}
-              </div>
-              <div className="mt-6">
-                Are you sure you want to overwrite these secrets
-                {createSecretCount > 0
-                  ? ` and import ${createSecretCount} new
-                one${createSecretCount > 1 ? "s" : ""}`
-                  : ""}
-                ? These will be applied when you commit your changes.
-              </div>
-            </div>
-          )}
-        </ModalContent>
-      </Modal>
 
       {/* Matrix Import Modal */}
       <Modal
