@@ -1,9 +1,9 @@
 import { Knex } from "knex";
 
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
+import { chunkArray } from "@app/lib/fn";
 
 import { AccessScope, TableName } from "../schemas";
-import { chunkArray } from "@app/lib/fn";
 
 export async function up(knex: Knex): Promise<void> {
   const hasParentOrgId = await knex.schema.hasColumn(TableName.Organization, "parentOrgId");
