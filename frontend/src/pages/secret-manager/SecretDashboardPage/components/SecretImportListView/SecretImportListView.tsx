@@ -130,7 +130,7 @@ export const SecretImportListView = ({
   const [items, setItems] = useState(secretImports ?? []);
 
   const getImportReplicatedFolder = (importPath: string) => {
-    if (!importPath.includes("/__reserve_replication_")) return importPath;
+    if (!importPath.includes("/__reserve_replication_")) return undefined;
     const cleanImportPath = importPath.split("/__reserve_replication_")[1];
     const replicatedFolder = items?.find(({ id }) => id === cleanImportPath);
     return replicatedFolder;
