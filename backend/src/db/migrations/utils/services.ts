@@ -9,7 +9,6 @@ import { permissionServiceFactory } from "@app/ee/services/permission/permission
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError } from "@app/lib/errors";
 import { identityDALFactory } from "@app/services/identity/identity-dal";
-import { identityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
 import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
@@ -57,7 +56,6 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
   const userDAL = userDALFactory(db);
   const identityDAL = identityDALFactory(db);
   const serviceTokenDAL = serviceTokenDALFactory(db);
-  const identityOrgMembershipDAL = identityOrgDALFactory(db);
   const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
@@ -78,7 +76,6 @@ export const getMigrationEncryptionServices = async ({ envConfig, db, keyStore }
     orgDAL,
     licenseDAL,
     keyStore,
-    identityOrgMembershipDAL,
     projectDAL,
     envConfig
   });
