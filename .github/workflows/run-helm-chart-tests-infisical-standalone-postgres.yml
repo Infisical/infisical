@@ -29,7 +29,6 @@ jobs:
         run: |
           helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
           helm repo add bitnami https://charts.bitnami.com/bitnami
-          helm repo add stakater https://stakater.github.io/stakater-charts
           helm repo update
 
       - name: Set up chart-testing

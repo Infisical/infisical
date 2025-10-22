@@ -2,8 +2,6 @@
 Changes:
 * Updated the default `infisical.image.tag` value to `v0.151.0`.
 * `autoDatabaseSchemaMigration` has been fully removed as all newer versions of Infisical automatically run migrations as apart of the startup process.
-* Added automatic reloading support for the Infisical deployment when the `infisical.kubeSecretRef` kubernetes secret changes.
-  * Configurable by `infisical.redeployOnSecretChange: true|false`. Defaults to `false`.
 
 ## 1.7.1 (October 10, 2025)
 
