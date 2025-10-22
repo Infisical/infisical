@@ -406,7 +406,11 @@ The login command supports a number of flags that you can use for different auth
     ```
 
     #### Description
-    Email address for direct user login. Must be used together with `--password` for non-interactive authentication.
+    User email address. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--password` flag.
+
+    <Tip>
+      You can omit the **--method=user** if you want as it's the default method.
+    </Tip>
 
     <Tip>
       The `email` flag can be substituted with the `INFISICAL_EMAIL` environment variable.
@@ -419,11 +423,15 @@ The login command supports a number of flags that you can use for different auth
     ```
 
     #### Description
-    Password for direct user login. Must be used together with `--email` for non-interactive authentication.
+    User password. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` flag.
 
     <Warning>
       For security in CI/CD environments, prefer using the `INFISICAL_PASSWORD` environment variable instead of passing the password as a command-line flag.
     </Warning>
+
+    <Tip>
+      You can omit the **--method=user** if you want as it's the default method.
+    </Tip>
 
     <Tip>
       The `password` flag can be substituted with the `INFISICAL_PASSWORD` environment variable.
