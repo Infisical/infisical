@@ -28,4 +28,3 @@ export type TNorthflankProject = {
   id: string;
   name: string;
 };
-

@@ -1,18 +1,22 @@
+import { logger } from "@app/lib/logger";
 import { TSecretMap, TSecretSyncWithCredentials } from "@app/services/secret-sync/secret-sync-types";
 
 export const NorthflankSyncFns = {
   syncSecrets: async (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     // TODO: Will be implemented in the follow up PR
+    logger.error({ secretSync, secretMap }, "Northflank secret sync not yet implemented");
     throw new Error("Northflank secret sync not yet implemented");
   },
 
   getSecrets: async (secretSync: TSecretSyncWithCredentials): Promise<TSecretMap> => {
     // TODO: Will be implemented in the follow up PR
+    logger.error({ secretSync }, "Northflank secret retrieval not yet implemented");
     throw new Error("Northflank secret retrieval not yet implemented");
   },
 
   removeSecrets: async (secretSync: TSecretSyncWithCredentials, secretMap: TSecretMap): Promise<void> => {
     // TODO: Will be implemented in the follow up PR
+    logger.error({ secretSync, secretMap }, "Northflank secret removal not yet implemented");
     throw new Error("Northflank secret removal not yet implemented");
   }
 };

@@ -11,4 +11,3 @@ export type TNorthflankConnection = TRootAppConnection & { app: AppConnection.No
     apiToken: string;
   };
 };
-

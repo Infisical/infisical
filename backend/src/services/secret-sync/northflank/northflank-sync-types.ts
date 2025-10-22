@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import { TNorthflankConnection } from "@app/services/app-connection/northflank";
 
-import { CreateNorthflankSyncSchema, NorthflankSyncListItemSchema, NorthflankSyncSchema } from "./northflank-sync-schemas";
+import {
+  CreateNorthflankSyncSchema,
+  NorthflankSyncListItemSchema,
+  NorthflankSyncSchema
+} from "./northflank-sync-schemas";
 
 export type TNorthflankSyncListItem = z.infer<typeof NorthflankSyncListItemSchema>;
 
