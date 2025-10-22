@@ -122,36 +122,37 @@ const cryptographyFactory = () => {
 
       const appCfg = envCfg || getConfig();
 
-      if (appCfg.ENCRYPTION_KEY) {
-        // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
+      const hsmStatus = await isHsmActiveAndEnabled({
+        hsmService,
+        kmsRootConfigDAL
+      });
 
-        // note(daniel): for some reason this resolves as true for some hex-encoded strings.
-        if (!isBase64(appCfg.ENCRYPTION_KEY)) {
-          throw new CryptographyError({
-            message:
-              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-          });
-        }
+      // if the encryption strategy is software - user needs to provide an encryption key
+      // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
+      const needsEncryptionKey =
+        hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
+        (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
 
-        if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
-          throw new CryptographyError({
-            message:
-              "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
-          });
-        }
-      } else {
-        const hsmStatus = await isHsmActiveAndEnabled({
-          hsmService,
-          kmsRootConfigDAL
-        });
+      // only perform encryption key validation if it's actually required.
+      if (needsEncryptionKey) {
+        if (appCfg.ENCRYPTION_KEY) {
+          // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
 
-        // if the encryption strategy is software - user needs to provide an encryption key
-        // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
-        const needsEncryptionKey =
-          hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
-          (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
+          // note(daniel): for some reason this resolves as true for some hex-encoded strings.
+          if (!isBase64(appCfg.ENCRYPTION_KEY)) {
+            throw new CryptographyError({
+              message:
+                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+            });
+          }
 
-        if (needsEncryptionKey) {
+          if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
+            throw new CryptographyError({
+              message:
+                "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
+            });
+          }
+        } else {
           throw new CryptographyError({
             message:
               "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not set.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
