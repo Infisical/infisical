@@ -87,5 +87,5 @@ export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
 export const extractPrincipalArn = (arn: string) => {
   const entity = extractPrincipalArnEntity(arn);
 
-  return `arn:aws:${entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}${entity.SessionInfo ? `/${entity.SessionInfo}` : ""}`;
+  return `arn:aws:${entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
