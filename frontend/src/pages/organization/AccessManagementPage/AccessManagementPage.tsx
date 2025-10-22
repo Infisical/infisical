@@ -24,7 +24,7 @@ import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
   const { permission } = useOrgPermission();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const navigate = useNavigate({
     from: ROUTE_PATHS.Organization.AccessControlPage.path
@@ -82,7 +82,7 @@ export const AccessManagementPage = () => {
       </Helmet>
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
-          scope="org"
+          scope={isSubOrganization ? "namespace" : "org"}
           title="Access Control"
           description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
         />
@@ -116,7 +116,11 @@ export const AccessManagementPage = () => {
             {tabSections
               .filter((el) => !el.isHidden)
               .map((el) => (
-                <Tab variant="org" value={el.key} key={`org-access-tab-${el.key}`}>
+                <Tab
+                  variant={isSubOrganization ? "namespace" : "org"}
+                  value={el.key}
+                  key={`org-access-tab-${el.key}`}
+                >
                   {el.label}
                 </Tab>
               ))}

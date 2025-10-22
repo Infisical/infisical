@@ -3,7 +3,12 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 import RE2 from "re2";
 
-import { AccessScope, IdentityAuthMethod, TIdentityKubernetesAuthsUpdate } from "@app/db/schemas";
+import {
+  AccessScope,
+  IdentityAuthMethod,
+  OrganizationActionScope,
+  TIdentityKubernetesAuthsUpdate
+} from "@app/db/schemas";
 import { TGatewayDALFactory } from "@app/ee/services/gateway/gateway-dal";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2DALFactory } from "@app/ee/services/gateway-v2/gateway-v2-dal";
@@ -21,13 +26,20 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { GatewayHttpProxyActions, GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TKmsServiceFactory } from "../kms/kms-service";
@@ -48,12 +60,13 @@ import {
 } from "./identity-kubernetes-auth-types";
 
 type TIdentityKubernetesAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityKubernetesAuthDAL: Pick<
     TIdentityKubernetesAuthDALFactory,
     "create" | "findOne" | "transaction" | "updateById" | "delete"
   >;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
-  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "updateById" | "getIdentityById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -69,6 +82,7 @@ export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKu
 const GATEWAY_AUTH_DEFAULT_HOST = "https://kubernetes.default.svc.cluster.local";
 
 export const identityKubernetesAuthServiceFactory = ({
+  identityDAL,
   identityKubernetesAuthDAL,
   membershipIdentityDAL,
   identityAccessTokenDAL,
@@ -175,19 +189,12 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityKubernetesAuth.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new NotFoundError({
-        message: `Identity organization membership for identity with ID '${identityKubernetesAuth.identityId}' not found`
-      });
-    }
+    const identity = await identityDAL.findById(identityKubernetesAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
+      orgId: identity.orgId
     });
 
     let caCert = "";
@@ -430,12 +437,9 @@ export const identityKubernetesAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityKubernetesAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.KUBERNETES_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -475,7 +479,7 @@ export const identityKubernetesAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityKubernetesAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityKubernetesAuth, identityAccessToken, identity };
   };
 
   const attachKubernetesAuth = async ({
@@ -508,6 +512,9 @@ export const identityKubernetesAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
@@ -519,13 +526,14 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -560,13 +568,14 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        identityMembershipOrg.scopeOrgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
@@ -633,6 +642,9 @@ export const identityKubernetesAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
@@ -650,13 +662,14 @@ export const identityKubernetesAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -692,13 +705,14 @@ export const identityKubernetesAuthServiceFactory = ({
         isGatewayV1 = false;
       }
 
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        identityMembershipOrg.scopeOrgId,
+        orgId: identityMembershipOrg.scopeOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionGatewayActions.AttachGateways,
         OrgPermissionSubjects.Gateway
@@ -779,6 +793,9 @@ export const identityKubernetesAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -791,13 +808,14 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -841,28 +859,33 @@ export const identityKubernetesAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.KUBERNETES_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have kubernetes auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,

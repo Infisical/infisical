@@ -3,7 +3,7 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrgMembershipRole, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -73,13 +73,14 @@ export const gatewayV2ServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: ActorType.IDENTITY,
       actorId,
       orgId,
       actorAuthMethod,
-      orgId
-    );
+      actorOrgId: orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.CreateGateways,
@@ -258,13 +259,14 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const listGateways = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.ListGateways,
@@ -815,13 +817,14 @@ export const gatewayV2ServiceFactory = ({
       throw new NotFoundError({ message: `Gateway ${id} not found` });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      gateway.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: gateway.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.DeleteGateways,
@@ -845,13 +848,14 @@ export const gatewayV2ServiceFactory = ({
   };
 
   const getPamSessionKey = async ({ orgPermission }: { orgPermission: OrgServiceActor }) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.CreateGateways,

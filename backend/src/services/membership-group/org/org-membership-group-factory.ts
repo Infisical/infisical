@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
   constructPermissionErrorMessage,
@@ -45,13 +45,14 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onUpdateMembershipGroupGuard: TMembershipGroupScopeFactory["onUpdateMembershipGroupGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
       dto.data.roles.map((el) => el.role),
@@ -89,26 +90,28 @@ export const newOrgMembershipGroupFactory = ({
   };
 
   const onListMembershipGroupGuard: TMembershipGroupScopeFactory["onListMembershipGroupGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   };
 
   const onGetMembershipGroupByGroupIdGuard: TMembershipGroupScopeFactory["onGetMembershipGroupByGroupIdGuard"] = async (
     dto
   ) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
   };
 

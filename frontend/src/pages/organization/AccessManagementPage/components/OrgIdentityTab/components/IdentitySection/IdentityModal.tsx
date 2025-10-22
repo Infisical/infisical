@@ -53,6 +53,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: roles } = useGetOrgRoles(orgId);
+  const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
@@ -113,6 +114,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: string;
         role: string;
         hasDeleteProtection: boolean;
+        orgId: string;
       };
 
       if (identity) {
@@ -196,16 +198,23 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            defaultValue=""
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Machine 1" />
-              </FormControl>
-            )}
-          />
+          {isOrgIdentity && (
+            <Controller
+              control={control}
+              defaultValue=""
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="mb-4"
+                  label="Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="Machine 1" />
+                </FormControl>
+              )}
+            />
+          )}
           <Controller
             control={control}
             name="role"
@@ -214,7 +223,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                 label={`${popUp?.identity?.data ? "Update" : ""} Role`}
                 errorText={error?.message}
                 isError={Boolean(error)}
-                className="mt-4"
               >
                 <FilterableSelect
                   placeholder="Select role..."
@@ -227,24 +235,26 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="hasDeleteProtection"
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl errorText={error?.message} isError={Boolean(error)}>
-                <Switch
-                  className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                  containerClassName="flex-row-reverse w-fit"
-                  id="delete-protection-enabled"
-                  thumbClassName="bg-mineshaft-800"
-                  onCheckedChange={onChange}
-                  isChecked={value}
-                >
-                  <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
-                </Switch>
-              </FormControl>
-            )}
-          />
+          {isOrgIdentity && (
+            <Controller
+              control={control}
+              name="hasDeleteProtection"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <FormControl errorText={error?.message} isError={Boolean(error)}>
+                  <Switch
+                    className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                    containerClassName="flex-row-reverse w-fit"
+                    id="delete-protection-enabled"
+                    thumbClassName="bg-mineshaft-800"
+                    onCheckedChange={onChange}
+                    isChecked={value}
+                  >
+                    <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
+                  </Switch>
+                </FormControl>
+              )}
+            />
+          )}
           <div>
             <FormLabel label="Metadata" />
           </div>

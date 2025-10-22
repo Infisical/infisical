@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -15,6 +15,7 @@ import { isCustomOrgRole } from "@app/services/org/org-role-fns";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TMembershipUserDALFactory } from "../membership-user-dal";
 import { TMembershipUserScopeFactory } from "../membership-user-types";
 
 type TOrgMembershipUserScopeFactoryDep = {
@@ -25,6 +26,7 @@ type TOrgMembershipUserScopeFactoryDep = {
   orgDAL: Pick<TOrgDALFactory, "findById">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find">;
 };
 
 export const newOrgMembershipUserFactory = ({
@@ -33,7 +35,8 @@ export const newOrgMembershipUserFactory = ({
   userDAL,
   orgDAL,
   smtpService,
-  licenseService
+  licenseService,
+  membershipUserDAL
 }: TOrgMembershipUserScopeFactoryDep): TMembershipUserScopeFactory => {
   const getScopeField: TMembershipUserScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Organization) {
@@ -51,14 +54,18 @@ export const newOrgMembershipUserFactory = ({
 
   const isCustomRole: TMembershipUserScopeFactory["isCustomRole"] = (role: string) => isCustomOrgRole(role);
 
-  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+  const onCreateMembershipUserGuard: TMembershipUserScopeFactory["onCreateMembershipUserGuard"] = async (
+    dto,
+    newMembers
+  ) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
 
     const plan = await licenseService.getPlan(dto.permission.orgId);
@@ -76,6 +83,25 @@ export const newOrgMembershipUserFactory = ({
         name: "InviteUser",
         message: "Failed to invite user due to org-level auth enforced for organization"
       });
+    }
+
+    if (org.rootOrgId) {
+      const rootOrgMembership = await membershipUserDAL.find({
+        scope: AccessScope.Organization,
+        $in: {
+          actorUserId: newMembers.map((el) => el.id)
+        },
+        scopeOrgId: org.rootOrgId
+      });
+      if (rootOrgMembership.length !== newMembers.length) {
+        const emails = newMembers
+          .filter((user) => !rootOrgMembership.find((i) => i.actorUserId === user.id))
+          .map((el) => el.email)
+          .join(",");
+        throw new BadRequestError({
+          message: `Users with email ${emails}  doesn't have membership in root organization`
+        });
+      }
     }
   };
 
@@ -95,87 +121,103 @@ export const newOrgMembershipUserFactory = ({
 
     const signUpTokens: { email: string; link: string }[] = [];
     const orgDetails = await orgDAL.findById(dto.permission.orgId);
+    if (orgDetails.rootOrgId) {
+      const emails = newUsers.map((el) => el.email).filter(Boolean);
+      await smtpService.sendMail({
+        template: SmtpTemplates.SubOrgInvite,
+        subjectLine: "Infisical sub-organization invitation",
+        recipients: emails as string[],
+        substitutions: {
+          subOrganizationName: orgDetails.slug,
+          callback_url: `${appCfg.SITE_URL}/organization/projects?subOrganization=${orgDetails.slug}`
+        }
+      });
+    } else {
+      await Promise.allSettled(
+        newUsers.map(async (el) => {
+          const token = await tokenService.createTokenForUser({
+            type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
+            userId: el.id,
+            orgId: dto.permission.orgId
+          });
 
-    await Promise.allSettled(
-      newUsers.map(async (el) => {
-        const token = await tokenService.createTokenForUser({
-          type: TokenType.TOKEN_EMAIL_ORG_INVITATION,
-          userId: el.id,
-          orgId: dto.permission.orgId
-        });
+          if (el.email) {
+            if (!appCfg.isSmtpConfigured) {
+              signUpTokens.push({
+                email: el.email,
+                link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+              });
+            }
 
-        if (el.email) {
-          if (!appCfg.isSmtpConfigured) {
-            signUpTokens.push({
-              email: el.email,
-              link: `${appCfg.SITE_URL}/signupinvite?token=${token}&to=${el.email}&organization_id=${dto.permission.orgId}`
+            await smtpService.sendMail({
+              template: SmtpTemplates.OrgInvite,
+              subjectLine: "Infisical organization invitation",
+              recipients: [el.email],
+              substitutions: {
+                inviterFirstName: actorDetails?.firstName,
+                inviterUsername: actorDetails?.email,
+                organizationName: orgDetails?.name,
+                email: el.email,
+                organizationId: orgDetails?.id.toString(),
+                token,
+                callback_url: `${appCfg.SITE_URL}/signupinvite`
+              }
             });
           }
-
-          await smtpService.sendMail({
-            template: SmtpTemplates.OrgInvite,
-            subjectLine: "Infisical organization invitation",
-            recipients: [el.email],
-            substitutions: {
-              inviterFirstName: actorDetails?.firstName,
-              inviterUsername: actorDetails?.email,
-              organizationName: orgDetails?.name,
-              email: el.email,
-              organizationId: orgDetails?.id.toString(),
-              token,
-              callback_url: `${appCfg.SITE_URL}/signupinvite`
-            }
-          });
-        }
-      })
-    );
+        })
+      );
+    }
 
     return { signUpTokens };
   };
 
   const onUpdateMembershipUserGuard: TMembershipUserScopeFactory["onUpdateMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Member);
   };
 
   const onDeleteMembershipUserGuard: TMembershipUserScopeFactory["onDeleteMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Member);
   };
 
   const onListMembershipUserGuard: TMembershipUserScopeFactory["onListMembershipUserGuard"] = async (dto) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   };
 
   const onGetMembershipUserByUserIdGuard: TMembershipUserScopeFactory["onGetMembershipUserByUserIdGuard"] = async (
     dto
   ) => {
-    const { permission } = await permissionService.getOrgPermission(
-      dto.permission.type,
-      dto.permission.id,
-      dto.permission.orgId,
-      dto.permission.authMethod,
-      dto.permission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: dto.permission.type,
+      actorId: dto.permission.id,
+      orgId: dto.permission.orgId,
+      actorAuthMethod: dto.permission.authMethod,
+      actorOrgId: dto.permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
   };
 

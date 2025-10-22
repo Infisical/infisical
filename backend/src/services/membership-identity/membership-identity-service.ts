@@ -6,6 +6,7 @@ import { ms } from "@app/lib/ms";
 import { SearchResourceOperators } from "@app/lib/search-resource/search";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TRoleDALFactory } from "../role/role-dal";
@@ -31,6 +32,7 @@ type TMembershipIdentityServiceFactoryDep = {
   >;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
 };
 
 export type TMembershipIdentityServiceFactory = ReturnType<typeof membershipIdentityServiceFactory>;
@@ -41,12 +43,14 @@ export const membershipIdentityServiceFactory = ({
   membershipRoleDAL,
   permissionService,
   orgDAL,
-  additionalPrivilegeDAL
+  additionalPrivilegeDAL,
+  identityDAL
 }: TMembershipIdentityServiceFactoryDep) => {
   const scopeFactory = {
     [AccessScope.Organization]: newOrgMembershipIdentityFactory({
       orgDAL,
-      permissionService
+      permissionService,
+      identityDAL
     }),
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
@@ -305,7 +309,7 @@ export const membershipIdentityServiceFactory = ({
               [SearchResourceOperators.$contains]: dto.data.identityName
             }
           : undefined,
-        role: dto.data.roles.length
+        role: dto.data?.roles?.length
           ? {
               [SearchResourceOperators.$in]: dto.data.roles
             }
@@ -329,11 +333,29 @@ export const membershipIdentityServiceFactory = ({
     return membership;
   };
 
+  const listAvailableIdentities = async (dto: TListMembershipIdentityDTO) => {
+    const { scopeData } = dto;
+    const factory = scopeFactory[scopeData.scope];
+
+    await factory.onListMembershipIdentityGuard(dto);
+
+    const organizationDetails = await orgDAL.findById(dto.scopeData.orgId);
+    if (!organizationDetails.rootOrgId) return { identities: [] };
+
+    const identities = await membershipIdentityDAL.listAvailableIdentities(
+      organizationDetails.id,
+      organizationDetails.rootOrgId
+    );
+
+    return { identities };
+  };
+
   return {
     createMembership,
     updateMembership,
     deleteMembership,
     listMemberships,
-    getMembershipByIdentityId
+    getMembershipByIdentityId,
+    listAvailableIdentities
   };
 };

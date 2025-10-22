@@ -46,7 +46,7 @@ const Page = withPermission(
     });
     const membershipId = search.membershipId as string;
     const { user } = useUser();
-    const { currentOrg } = useOrganization();
+    const { currentOrg, isSubOrganization } = useOrganization();
 
     const userId = user?.id || "";
     const orgId = currentOrg?.id || "";
@@ -131,7 +131,7 @@ const Page = withPermission(
               Users
             </Link>
             <PageHeader
-              scope="org"
+              scope={isSubOrganization ? "namespace" : "org"}
               title={
                 membership.user.firstName || membership.user.lastName
                   ? `${membership.user.firstName} ${membership.user.lastName ?? ""}`.trim()
@@ -140,7 +140,7 @@ const Page = withPermission(
                     membership.inviteEmail ??
                     "Unknown User")
               }
-              description="Organization User Membership"
+              description={`${isSubOrganization ? "Sub-" : ""}Organization User Membership`}
             >
               <div>
                 {userId !== membership.user.id && (

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -13,6 +13,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import {
   BadRequestError,
+  ForbiddenRequestError,
   NotFoundError,
   PermissionBoundaryError,
   RateLimitError,
@@ -22,6 +23,7 @@ import { checkIPAgainstBlocklist, extractIPDetails, isValidIpOrCidr, TIp } from 
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
@@ -42,6 +44,7 @@ import {
 } from "./identity-ua-types";
 
 type TIdentityUaServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityUaDAL: TIdentityUaDALFactory;
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
@@ -70,7 +73,8 @@ export const identityUaServiceFactory = ({
   permissionService,
   licenseService,
   orgDAL,
-  keyStore
+  keyStore,
+  identityDAL
 }: TIdentityUaServiceFactoryDep) => {
   const login = async (clientId: string, clientSecret: string, ip: string) => {
     const identityUa = await identityUaDAL.findOne({ clientId });
@@ -97,16 +101,6 @@ export const identityUaServiceFactory = ({
     if (lockout && lockout.lockedOut) {
       throw new UnauthorizedError({
         message: "This identity auth method is temporarily locked, please try again later"
-      });
-    }
-
-    const identityMembershipOrg = await membershipIdentityDAL.findOne({
-      actorIdentityId: identityUa.identityId,
-      scope: AccessScope.Organization
-    });
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({
-        message: "Invalid credentials"
       });
     }
 
@@ -227,10 +221,11 @@ export const identityUaServiceFactory = ({
             accessTokenMaxTTL: 1000000000
           };
 
+    const identity = await identityDAL.findById(identityUa.identityId);
     const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
       const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
-      await membershipIdentityDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
           lastLoginTime: new Date()
@@ -276,7 +271,7 @@ export const identityUaServiceFactory = ({
       identityUa,
       validClientSecretInfo,
       identityAccessToken,
-      identityMembershipOrg,
+      identity,
       ...accessTokenTTLParams
     };
   };
@@ -315,18 +310,23 @@ export const identityUaServiceFactory = ({
         message: "Failed to add universal auth to already configured identity"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (accessTokenMaxTTL > 0 && accessTokenTTL > accessTokenMaxTTL) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
+
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -423,6 +423,10 @@ export const identityUaServiceFactory = ({
       });
     }
 
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
     if (
       (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL) > 0 &&
       (accessTokenTTL || uaIdentityAuth.accessTokenMaxTTL) > (accessTokenMaxTTL || uaIdentityAuth.accessTokenMaxTTL)
@@ -430,13 +434,14 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
@@ -512,14 +517,18 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
     return { ...uaIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
@@ -545,22 +554,27 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
@@ -611,23 +625,28 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
@@ -692,23 +711,28 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission(
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
-
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
@@ -761,6 +785,9 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     const identityUa = await identityUaDAL.findOne({ identityId });
     if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -768,22 +795,24 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
       shouldUseNewPrivilegeSystem,
@@ -828,6 +857,9 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     const identityUa = await identityUaDAL.findOne({ identityId });
     if (!identityUa) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
@@ -835,22 +867,24 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identity.id,
-      identityMembershipOrg.scopeOrgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
@@ -900,14 +934,18 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.scopeOrgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
     const deleted = await keyStore.deleteItems({

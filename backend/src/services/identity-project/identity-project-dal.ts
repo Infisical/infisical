@@ -25,11 +25,12 @@ import { buildAuthMethods } from "../identity/identity-fns";
 export type TIdentityProjectDALFactory = ReturnType<typeof identityProjectDALFactory>;
 
 export const identityProjectDALFactory = (db: TDbClient) => {
-  const findByIdentityId = async (identityId: string, tx?: Knex) => {
+  const findByIdentityId = async (identityId: string, orgId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Membership)
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
         .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .join(TableName.Project, `${TableName.Membership}.scopeProjectId`, `${TableName.Project}.id`)
         .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)

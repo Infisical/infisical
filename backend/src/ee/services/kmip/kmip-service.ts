@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
 import { isValidIp } from "@app/lib/ip";
@@ -401,13 +401,14 @@ export const kmipServiceFactory = ({
   };
 
   const setupOrgKmip = async ({ caKeyAlgorithm, actorOrgId, actor, actorId, actorAuthMethod }: TSetupOrgKmipDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Setup, OrgPermissionSubjects.Kmip);
 
     const kmipConfig = await kmipOrgConfigDAL.findOne({
@@ -566,7 +567,14 @@ export const kmipServiceFactory = ({
   };
 
   const getOrgKmip = async ({ actorOrgId, actor, actorId, actorAuthMethod }: TGetOrgKmipDTO) => {
-    await permissionService.getOrgPermission(actor, actorId, actorOrgId, actorAuthMethod, actorOrgId);
+    await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
 
     const kmipConfig = await kmipOrgConfigDAL.findOne({
       orgId: actorOrgId
@@ -759,13 +767,14 @@ export const kmipServiceFactory = ({
     keyAlgorithm,
     hostnamesOrIps
   }: TRegisterServerDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionKmipActions.Proxy, OrgPermissionSubjects.Kmip);
 

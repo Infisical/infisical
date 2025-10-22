@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import {
@@ -68,13 +69,14 @@ export const identityAuthTemplateServiceFactory = ({
     templateFields: Record<string, unknown>;
   } & Omit<TOrgPermission, "orgId">) => {
     await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -113,13 +115,14 @@ export const identityAuthTemplateServiceFactory = ({
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      template.orgId,
+      orgId: template.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.EditTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -227,13 +230,14 @@ export const identityAuthTemplateServiceFactory = ({
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      template.orgId,
+      orgId: template.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.DeleteTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -282,13 +286,14 @@ export const identityAuthTemplateServiceFactory = ({
       throw new NotFoundError({ message: "Template not found" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      template.orgId,
+      orgId: template.orgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -316,13 +321,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TListIdentityAuthTemplatesDTO) => {
     await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -352,13 +358,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TGetTemplatesByAuthMethodDTO) => {
     await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.AttachTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -385,13 +392,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TFindTemplateUsagesDTO) => {
     await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.ListTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate
@@ -415,13 +423,14 @@ export const identityAuthTemplateServiceFactory = ({
     actorOrgId
   }: TUnlinkTemplateUsageDTO) => {
     await $checkPlan(actorOrgId);
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionMachineIdentityAuthTemplateActions.UnlinkTemplates,
       OrgPermissionSubjects.MachineIdentityAuthTemplate

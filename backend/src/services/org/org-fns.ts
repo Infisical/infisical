@@ -13,7 +13,7 @@ import { TMembershipUserDALFactory } from "../membership-user/membership-user-da
 type TDeleteOrgMemberships = {
   orgMembershipIds: string[];
   orgId: string;
-  orgDAL: Pick<TOrgDALFactory, "transaction">;
+  orgDAL: Pick<TOrgDALFactory, "transaction" | "find">;
   userGroupMembershipDAL: Pick<TUserGroupMembershipDALFactory, "delete">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "delete" | "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "delete">;
@@ -34,19 +34,9 @@ export const deleteOrgMembershipsFn = async ({
   userId,
   membershipUserDAL,
   userGroupMembershipDAL,
-  membershipRoleDAL,
   additionalPrivilegeDAL
 }: TDeleteOrgMemberships) => {
   const deletedMemberships = await orgDAL.transaction(async (tx) => {
-    await membershipRoleDAL.delete(
-      {
-        $in: {
-          membershipId: orgMembershipIds
-        }
-      },
-      tx
-    );
-
     const orgMemberships = await membershipUserDAL.delete(
       {
         scopeOrgId: orgId,
@@ -83,12 +73,13 @@ export const deleteOrgMembershipsFn = async ({
     );
 
     // Get all the project memberships of the users in the organization
+    const childOrgs = await orgDAL.find({ rootOrgId: orgId }, { tx });
 
     // Delete all the project memberships of the users in the organization
     const otherMemberships = await membershipUserDAL.delete(
       {
-        scopeOrgId: orgId,
         $in: {
+          scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id)),
           actorUserId: membershipUserIds
         }
       },
@@ -96,7 +87,9 @@ export const deleteOrgMembershipsFn = async ({
     );
 
     const orgGroups = await membershipUserDAL.find({
-      scopeOrgId: orgId,
+      $in: {
+        scopeOrgId: [orgId].concat(childOrgs.map((el) => el.id))
+      },
       $notNull: ["actorGroupId"]
     });
 

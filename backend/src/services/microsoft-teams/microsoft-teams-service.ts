@@ -9,6 +9,7 @@ import {
 import { CronJob } from "cron";
 import { FastifyReply, FastifyRequest } from "fastify";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
@@ -208,13 +209,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      microsoftTeamsIntegration.orgId,
+      orgId: microsoftTeamsIntegration.orgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
@@ -282,13 +284,14 @@ export const microsoftTeamsServiceFactory = ({
     description,
     redirectUri
   }: TCreateMicrosoftTeamsIntegrationDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
@@ -393,13 +396,14 @@ export const microsoftTeamsServiceFactory = ({
     });
   };
   const getClientId = async ({ actorId, actor, actorOrgId, actorAuthMethod }: TGetClientIdDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
@@ -427,13 +431,14 @@ export const microsoftTeamsServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TGetMicrosoftTeamsIntegrationByOrgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
@@ -463,13 +468,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      microsoftTeamsIntegration.orgId,
+      orgId: microsoftTeamsIntegration.orgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
@@ -495,13 +501,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      microsoftTeamsIntegration.orgId,
+      orgId: microsoftTeamsIntegration.orgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
@@ -549,13 +556,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      microsoftTeamsIntegration.orgId,
+      orgId: microsoftTeamsIntegration.orgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
@@ -577,13 +585,14 @@ export const microsoftTeamsServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      microsoftTeamsIntegration.orgId,
+      orgId: microsoftTeamsIntegration.orgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 

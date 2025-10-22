@@ -35,7 +35,7 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   });
 
   const { user } = useUser();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
 
@@ -214,7 +214,8 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
             <p className="text-sm text-mineshaft-300">-</p>
           )}
         </div>
-        {membership.isActive &&
+        {!isSubOrganization &&
+          membership.isActive &&
           (membership.status === "invited" || membership.status === "verified") &&
           membership.user.email &&
           serverDetails?.emailConfigured && (

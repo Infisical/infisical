@@ -25,6 +25,7 @@ import { OrgPermissionKmipRow } from "./OrgPermissionKmipRow";
 import { OrgPermissionMachineIdentityAuthTemplateRow } from "./OrgPermissionMachineIdentityAuthTemplateRow";
 import { OrgRelayPermissionRow } from "./OrgPermissionRelayRow";
 import { OrgPermissionSecretShareRow } from "./OrgPermissionSecretShareRow";
+import { OrgPermissionSubOrgRow } from "./OrgPermissionSubOrgRow";
 import { OrgRoleWorkspaceRow } from "./OrgRoleWorkspaceRow";
 import { RolePermissionRow } from "./RolePermissionRow";
 
@@ -76,8 +77,18 @@ type Props = {
   roleId: string;
 };
 
+const INVALID_SUBORG_PERMISSIONS = [
+  OrgPermissionSubjects.Sso,
+  OrgPermissionSubjects.Ldap,
+  OrgPermissionSubjects.Scim,
+  OrgPermissionSubjects.GithubOrgSync,
+  OrgPermissionSubjects.GithubOrgSyncManual,
+  OrgPermissionSubjects.Billing,
+  OrgPermissionSubjects.SubOrganization
+];
+
 export const RolePermissionsSection = ({ roleId }: Props) => {
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isRootOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
 
   const { data: role } = useGetOrgRole(orgId, roleId);
@@ -152,7 +163,11 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
         <TableContainer>
           <Table>
             <TBody>
-              {SIMPLE_PERMISSION_OPTIONS.map((permission) => {
+              {SIMPLE_PERMISSION_OPTIONS.filter((el) =>
+                isRootOrganization
+                  ? true
+                  : !INVALID_SUBORG_PERMISSIONS.includes(el.formName as OrgPermissionSubjects)
+              ).map((permission) => {
                 return (
                   <RolePermissionRow
                     title={permission.title}
@@ -194,11 +209,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 setValue={setValue}
                 isEditable={isCustomRole}
               />
-              <OrgPermissionBillingRow
-                control={control}
-                setValue={setValue}
-                isEditable={isCustomRole}
-              />
+              {isRootOrganization && (
+                <OrgPermissionBillingRow
+                  control={control}
+                  setValue={setValue}
+                  isEditable={isCustomRole}
+                />
+              )}
               <OrgPermissionSecretShareRow
                 control={control}
                 setValue={setValue}
@@ -224,6 +241,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
                 setValue={setValue}
                 isEditable={isCustomRole}
               />
+              {isRootOrganization && (
+                <OrgPermissionSubOrgRow
+                  control={control}
+                  setValue={setValue}
+                  isEditable={isCustomRole}
+                />
+              )}
             </TBody>
           </Table>
         </TableContainer>
