@@ -25,7 +25,7 @@ export const GatewayDeploymentMethodSelect = ({ onSelect }: Props) => {
   };
 
   return (
-    <div className="grid h-118 grid-cols-4 content-start gap-2">
+    <div className="grid h-fit grid-cols-4 content-start gap-2">
       {deploymentOptions.map((option) => {
         const { image, name, method } = option;
 

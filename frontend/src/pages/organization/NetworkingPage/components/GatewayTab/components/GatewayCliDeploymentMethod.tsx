@@ -208,7 +208,7 @@ export const GatewayCliDeploymentMethod = () => {
         placeholder="Enter gateway name..."
         isError={Boolean(errors.name)}
       />
-      {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
+      {errors.name && <p className="mt-1 text-sm text-red">{errors.name}</p>}
 
       <FormLabel label="Relay" tooltipText="The relay to use with your gateway." className="mt-4" />
       <FilterableSelect
@@ -236,7 +236,7 @@ export const GatewayCliDeploymentMethod = () => {
         getOptionValue={(option) => option.id}
         components={{ Option: RelayOption }}
       />
-      {errors.relay && <p className="mt-1 text-sm text-red-500">{errors.relay}</p>}
+      {errors.relay && <p className="mt-1 text-sm text-red">{errors.relay}</p>}
 
       <FormLabel
         label="Instance Domain"
@@ -249,9 +249,7 @@ export const GatewayCliDeploymentMethod = () => {
         placeholder="https://app.infisical.com"
         isError={Boolean(errors.instanceDomain)}
       />
-      {errors.instanceDomain && (
-        <p className="mt-1 text-sm text-red-500">{errors.instanceDomain}</p>
-      )}
+      {errors.instanceDomain && <p className="mt-1 text-sm text-red">{errors.instanceDomain}</p>}
 
       <FormLabel
         label="Identity"
@@ -274,7 +272,7 @@ export const GatewayCliDeploymentMethod = () => {
         getOptionValue={(option) => option.id}
         getOptionLabel={(option) => option.name}
       />
-      {errors.identity && <p className="mt-1 text-sm text-red-500">{errors.identity}</p>}
+      {errors.identity && <p className="mt-1 text-sm text-red">{errors.identity}</p>}
 
       <div className="mt-6 flex items-center">
         <Button
