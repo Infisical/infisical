@@ -55,7 +55,7 @@ export const validatePrincipalArns = z
     },
     {
       message:
-        "Each ARN must be in the format of 'arn:aws:iam::123456789012:user/UserName', 'arn:aws:iam::123456789012:role/RoleName', or 'arn:aws:iam::123456789012:*,', 'arn:aws:sts::123456789012:assumed-role/RoleName'."
+        "Each ARN must be in the format of 'arn:aws:iam::123456789012:user/UserName', 'arn:aws:iam::123456789012:role/RoleName', or 'arn:aws:iam::123456789012:*', 'arn:aws:sts::123456789012:assumed-role/RoleName'."
     }
   )
   // Transform to normalize the spaces around commas
