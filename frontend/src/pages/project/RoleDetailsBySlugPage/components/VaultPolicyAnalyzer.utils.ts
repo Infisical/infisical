@@ -56,13 +56,35 @@ const canTranslateBlock = (
     return { canTranslate: true };
   }
 
+  // Check for common non-KV system paths
+  if (path.startsWith("auth/")) {
+    return {
+      canTranslate: false,
+      reason: "Authentication paths (auth/*) cannot be translated"
+    };
+  }
+
+  if (path.startsWith("sys/")) {
+    return {
+      canTranslate: false,
+      reason: "System paths (sys/*) cannot be translated"
+    };
+  }
+
+  if (path.startsWith("identity/")) {
+    return {
+      canTranslate: false,
+      reason: "Identity paths (identity/*) cannot be translated"
+    };
+  }
+
   const sortedMounts = [...mounts].sort((a, b) => b.path.length - a.path.length);
   const mount = sortedMounts.find((m) => path.startsWith(m.path));
 
   if (!mount) {
     return {
       canTranslate: false,
-      reason: "KV mount path not found in your Vault configuration"
+      reason: "Mount path not found (only KV secret engines are supported)"
     };
   }
 
