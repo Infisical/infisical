@@ -6,7 +6,7 @@ import { z } from "zod";
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TPostgresResource } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
-import { BaseSqlAccountSchema } from "@app/pages/pam/PamAccountsPage/components/PamAccountForm/shared/sql-account-schemas";
+import { BaseSqlRotationAccountSchema } from "@app/pages/pam/PamAccountsPage/components/PamAccountForm/shared/sql-account-schemas";
 
 import { BaseSqlResourceSchema } from "./shared/sql-resource-schemas";
 import { SqlResourceFields } from "./shared/SqlResourceFields";
@@ -21,7 +21,7 @@ type Props = {
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.Postgres),
   connectionDetails: BaseSqlResourceSchema,
-  rotationAccountCredentials: BaseSqlAccountSchema.nullable().optional()
+  rotationAccountCredentials: BaseSqlRotationAccountSchema.nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { faTimes } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
   Accordion,
@@ -44,7 +46,18 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                   isError={Boolean(error?.message)}
                   label="Username"
                 >
-                  <Input {...field} autoComplete="off" />
+                  <div className="relative">
+                    <Input {...field} autoComplete="off" />
+                    {field.value && (
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
+                        onClick={() => field.onChange("")}
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+                      </button>
+                    )}
+                  </div>
                 </FormControl>
               )}
             />
@@ -58,23 +71,34 @@ export const SqlRotateAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
                   isError={Boolean(error?.message)}
                   label="Password"
                 >
-                  <Input
-                    {...field}
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="new-password"
-                    onFocus={() => {
-                      if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
-                        field.onChange("");
-                      }
-                      setShowPassword(true);
-                    }}
-                    onBlur={() => {
-                      if (isUpdate && field.value === "") {
-                        field.onChange(UNCHANGED_PASSWORD_SENTINEL);
-                      }
-                      setShowPassword(false);
-                    }}
-                  />
+                  <div className="relative">
+                    <Input
+                      {...field}
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="new-password"
+                      onFocus={() => {
+                        if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
+                          field.onChange("");
+                        }
+                        setShowPassword(true);
+                      }}
+                      onBlur={() => {
+                        if (isUpdate && field.value === "") {
+                          field.onChange(UNCHANGED_PASSWORD_SENTINEL);
+                        }
+                        setShowPassword(false);
+                      }}
+                    />
+                    {field.value && (
+                      <button
+                        type="button"
+                        className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3"
+                        onClick={() => field.onChange("")}
+                      >
+                        <FontAwesomeIcon icon={faTimes} className="text-gray-500" />
+                      </button>
+                    )}
+                  </div>
                 </FormControl>
               )}
             />

@@ -3,13 +3,13 @@ import { z } from "zod";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { QueueWorkerProfile } from "@app/lib/types";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { BadRequestError } from "../errors";
 import { removeTrailingSlash } from "../fn";
 import { CustomLogger } from "../logger/logger";
 import { zpStr } from "../zod";
-import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 
 export const GITLAB_URL = "https://gitlab.com";
 
