@@ -9,22 +9,93 @@ infisical login
 
 ### Description
 
-The CLI uses authentication to verify your identity. When you enter the correct email and password for your account, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI.
+The CLI uses authentication to verify your identity. You can authenticate using:
+- **Browser Login** (default): Opens a browser for authentication
+- **Direct Login**: Provide email and password via flags or environment variables for non-interactive workflows
+- **Interactive CLI Login**: Use the `--interactive` flag to enter credentials via CLI prompts
+
+When authenticated, a token is generated and saved in your system Keyring to allow you to make future interactions with the CLI.
 
 To change where the login credentials are stored, visit the [vaults command](./vault).
 
 If you have added multiple users, you can switch between the users by using the [user command](./user).
 
     <Info>
-      When you authenticate with **any other method than `user`**, an access token will be printed to the console upon successful login. This token can be used to authenticate with the Infisical API and the CLI by passing it in the `--token` flag when applicable.
-
-      Use flag `--plain` along with `--silent` to print only the token in plain text when using a machine identity auth method.
-
+      **JWT Token Output:**
+      - For **user authentication** with the `--plain --silent` flags: outputs only the JWT access token (useful for scripting)
+      - For **machine identity authentication**: an access token is always printed to the console
+      
+      Use the `--plain` flag to print only the token in plain text and the `--silent` flag to disable update alerts.
+      
+      Both flags are ideal for capturing the token in environment variables or CI/CD pipelines.
     </Info>
 
 ### Authentication Methods
 
-The Infisical CLI supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+The Infisical CLI supports two main categories of authentication: User Authentication and Machine Identity Authentication.
+
+#### User Authentication
+
+User authentication is designed for individual developers and supports multiple login flows.
+
+<AccordionGroup>
+<Accordion title="User">
+  The User authentication method allows you to log in with your email and password. This method supports three different login flows:
+
+  - **Browser Login** (default): Opens a browser for authentication
+  - **Direct Login**: Provide credentials via flags or environment variables for CI/CD
+  - **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
+
+  <ParamField query="Flags">
+    <Expandable title="properties">
+        <ParamField query="email" type="string" optional>
+          Your email address. Required for direct login along with `--password`.
+        </ParamField>
+        <ParamField query="password" type="string" optional>
+          Your password. Required for direct login along with `--email`.
+        </ParamField>
+        <ParamField query="interactive" type="boolean" optional>
+          Force interactive CLI login instead of browser-based authentication.
+        </ParamField>
+        <ParamField query="plain" type="boolean" optional>
+          Output only the JWT token (useful for scripting and CI/CD).
+        </ParamField>
+    </Expandable>
+  </ParamField>
+
+  <AccordionGroup>
+      <Accordion title="Browser Login (Default)">
+        ```bash
+        infisical login
+        ```
+      </Accordion>
+      <Accordion title="Direct Login (CI/CD)">
+        ```bash
+        infisical login --email=user@example.com --password=your-password
+        
+        # Or using environment variables
+        export INFISICAL_EMAIL="user@example.com"
+        export INFISICAL_PASSWORD="your-password"
+        infisical login
+        ```
+      </Accordion>
+      <Accordion title="Interactive CLI Login">
+        ```bash
+        infisical login --interactive
+        ```
+      </Accordion>
+      <Accordion title="Plain Token Output (Useful for scripting and CI/CD)">
+        ```bash
+        export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --plain --silent)
+        ```
+      </Accordion>
+    </AccordionGroup>
+</Accordion>
+</AccordionGroup>
+
+#### Machine Identity Authentication
+
+Machine identity authentication methods are designed for automated systems, services, and CI/CD pipelines.
 
 <AccordionGroup>
 <Accordion title="Universal Auth">
@@ -237,7 +308,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
         Run the `login` command with the following flags to obtain an access token:
 
       ```bash
-        infisical login --method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
+        infisical login --method=jwt-auth --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
       ```
       </Step>
     </Steps>
@@ -262,7 +333,8 @@ The login command supports a number of flags that you can use for different auth
     - `gcp-id-token`: Login using a GCP ID token native auth.
     - `gcp-iam`: Login using a GCP IAM.
     - `aws-iam`: Login using an AWS IAM native auth.
-    - `oidc-auth`: Login using oidc auth.
+    - `oidc-auth`: Login using OIDC auth.
+    - `jwt-auth`: Login using a plain JWT token.
 
   </Accordion>
   <Accordion title="--client-id">
@@ -330,22 +402,153 @@ The login command supports a number of flags that you can use for different auth
     </Tip>
 
   </Accordion>
-</AccordionGroup>
-
-  <Accordion title="--oidc-jwt">
+  <Accordion title="--email">
     ```bash
-    infisical login --oidc-jwt=<oidc-jwt-token>
+    infisical login --email=<email> --password=<password>
     ```
 
     #### Description
-    The JWT provided by an identity provider for OIDC authentication.
+    User email address. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--password` flag.
 
     <Tip>
-    The `oidc-jwt` flag can be substituted with the `INFISICAL_OIDC_AUTH_JWT` environment variable.
+      You can omit the **--method=user** if you want as it's the default method.
+    </Tip>
+
+    <Tip>
+      The `email` flag can be substituted with the `INFISICAL_EMAIL` environment variable.
     </Tip>
 
   </Accordion>
+  <Accordion title="--password">
+    ```bash
+    infisical login --email=<email> --password=<password>
+    ```
 
+    #### Description
+    User password. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` flag.
+
+    <Warning>
+      For security in CI/CD environments, prefer using the `INFISICAL_PASSWORD` environment variable instead of passing the password as a command-line flag.
+    </Warning>
+
+    <Tip>
+      You can omit the **--method=user** if you want as it's the default method.
+    </Tip>
+
+    <Tip>
+      The `password` flag can be substituted with the `INFISICAL_PASSWORD` environment variable.
+    </Tip>
+
+  </Accordion>
+  <Accordion title="--interactive">
+    ```bash
+    infisical login --interactive
+    ```
+
+    #### Description
+    Forces interactive CLI login where you'll be prompted to enter your email and password in the terminal, instead of opening a browser.
+
+  </Accordion>
+  <Accordion title="--plain">
+    ```bash
+    infisical login --email=<email> --password=<password> --plain
+    ```
+
+    #### Description
+    When used with direct user login or machine identity authentication, outputs only the JWT access token without any additional formatting. This is useful for scripting and CI/CD pipelines where you need to capture the token.
+
+    ```bash
+    # Example: Capture token in a variable
+    export INFISICAL_TOKEN=$(infisical login --email=<email> --password=<password> --plain --silent)
+    ```
+
+    <Tip>
+      Use it alongside the `silent` flag to disable all messages in the console except from the access token.
+    </Tip>
+
+  </Accordion>
+  <Accordion title="--jwt">
+    ```bash
+    infisical login --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
+    ```
+
+    #### Description
+    The JWT provided by an identity provider for OIDC or plain JWT authentication. This is required if the `--method` flag is set to `oidc-auth` or `jwt-auth`.
+
+    <Tip>
+    The `jwt` flag can be substituted with the `INFISICAL_JWT` environment variable.
+    </Tip>
+
+  </Accordion>
+  </AccordionGroup>
+
+### User Authentication Examples
+
+The following examples demonstrate different ways to authenticate as a user with the Infisical CLI.
+
+<AccordionGroup>
+  <Accordion title="Browser Login (Default)">
+    By default, running `infisical login` without any flags opens your browser for authentication.
+
+    ```bash
+    # Opens browser for authentication
+    infisical login
+    ```
+
+    The browser will open to the Infisical login page, and upon successful authentication, the CLI will be automatically authenticated.
+
+  </Accordion>
+
+  <Accordion title="Direct Login (Non-Interactive)">
+    Direct login is ideal for CI/CD pipelines and automation scripts where browser-based authentication is not possible.
+
+    #### Using Command-Line Flags
+
+    ```bash
+    # Basic direct login (defaults to US Cloud)
+    infisical login --email user@example.com --password "your-password"
+
+    # EU Cloud (Custom domain)
+    infisical login --email user@example.com --password "your-password" --domain https://eu.infisical.com
+
+    # Output only JWT token for scripting
+    export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --plain --silent)
+    ```
+
+    #### Using Environment Variables (Recommended for CI/CD)
+
+    ```bash
+    # Set credentials as environment variables
+    export INFISICAL_EMAIL="user@example.com"
+    export INFISICAL_PASSWORD="your-password"
+
+    # Login without additional flags
+    infisical login
+
+    # Or with plain output for token capture
+    export INFISICAL_TOKEN=$(infisical login --plain --silent)
+    ```
+  </Accordion>
+
+  <Accordion title="Interactive CLI Login">
+    Interactive login prompts you to enter credentials in the terminal instead of opening a browser.
+
+    ```bash
+    # Force interactive CLI login
+    infisical login --interactive
+    ```
+
+    You'll be prompted to enter:
+    - Email address
+    - Password
+
+  </Accordion>
+
+</AccordionGroup>
+
+<Tip>
+If you have SSO enabled, we recommend using the default browser login.
+</Tip>
 
 ### Machine Identity Authentication Quick Start
 
@@ -367,9 +570,9 @@ In this example we'll be using the `universal-auth` method to login to obtain an
         ```
     </Step>
 
-      <Step title="Fetch all secrets from an evironment">
+      <Step title="Fetch all secrets from an environment">
         ```bash
-          infisical secrets --projectId=<your-project-id --env=dev --recursive
+          infisical secrets --projectId=<your-project-id> --env=dev --recursive
         ```
 
         This command will fetch all secrets from the `dev` environment in your project, including all secrets in subfolders.
