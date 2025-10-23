@@ -41,7 +41,7 @@ resource "aws_security_group" "infisical_relay_sg" {
   description = "Allows inbound traffic for Infisical Relay and SSH"
   vpc_id      = "vpc-0c71f9c5709d88d18" # Change to your VPC ID
 
-  # Inbound: Platform-to-relay communication (TLS)
+  # Inbound: Allows the Infisical platform to securely communicate with the Relay server.
   ingress {
     from_port   = 8443
     to_port     = 8443
@@ -49,7 +49,7 @@ resource "aws_security_group" "infisical_relay_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Inbound: SSH reverse tunnel from gateways
+  # Inbound: Allows Infisical Gateway to securely communicate via the Relay.
   ingress {
     from_port   = 2222
     to_port     = 2222
@@ -57,7 +57,7 @@ resource "aws_security_group" "infisical_relay_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Inbound: SSH access for administration
+  # Inbound: Allows secure shell (SSH) access for administration.
   ingress {
     from_port   = 22
     to_port     = 22
@@ -65,7 +65,7 @@ resource "aws_security_group" "infisical_relay_sg" {
     cidr_blocks = ["0.0.0.0/0"] # Restrict this to your IP in production
   }
 
-  # Outbound: All traffic
+  # Outbound: Allows the Relay server to make necessary outbound connections.
   egress {
     from_port   = 0
     to_port     = 0
