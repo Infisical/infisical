@@ -158,7 +158,7 @@ export const identityAwsAuthServiceFactory = ({
           // considers exact matches + wildcard matches
           // heavily validated in router
           const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
-          return regex.test(formattedArn);
+          return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
         });
 
       if (!isArnAllowed) {
