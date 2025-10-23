@@ -4,7 +4,6 @@ import { request } from "@app/lib/config/request";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { SecretSyncError } from "../secret-sync-errors";
 import { TNorthflankSyncWithCredentials } from "./northflank-sync-types";
 
 const NORTHFLANK_API_URL = "https://api.northflank.com";
@@ -79,10 +78,7 @@ const getNorthflankSecrets = async (secretSync: TNorthflankSyncWithCredentials):
 
     return variables;
   } catch (error: unknown) {
-    throw new SecretSyncError({
-      error,
-      message: `Failed to fetch Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`
-    });
+    throw new Error(`Failed to fetch Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`);
   }
 };
 
@@ -113,10 +109,7 @@ const updateNorthflankSecrets = async (
       }
     );
   } catch (error: unknown) {
-    throw new SecretSyncError({
-      error,
-      message: `Failed to update Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`
-    });
+    throw new Error(`Failed to update Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`);
   }
 };
 
