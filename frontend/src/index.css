@@ -37,12 +37,26 @@
 }
 
 @theme {
-  /*legacy color schema */
   /* Fonts */
   --font-inter: "Inter", sans-serif;
+  --max-width-8xl: 88rem; /* 1408px */
+
+  /* Colors v2 */
+  --color-background: #19191c;
+  --color-foreground: white;
+  --color-success: #2ecc71;
+  --color-info: #34c2db;
+  --color-warning: #f1c40f;
+  --color-danger: #e74c3c;
+  --color-org: #30B3FF;
+  --color-sub-org: #96ff59;
+  --color-project: #e0ed34;
+  --color-neutral: #adaeb0;
+
+  /*legacy color schema */
   --color-org-v1: #30B3FF;
   --color-namespace-v1: #96ff59;
-  --max-width-8xl: 88rem; /* 1408px */
+
   /* Primary */
   --color-primary-50: #fffff5;
   --color-primary-100: #fcfce8;
