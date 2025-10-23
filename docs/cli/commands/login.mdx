@@ -308,7 +308,7 @@ Machine identity authentication methods are designed for automated systems, serv
         Run the `login` command with the following flags to obtain an access token:
 
       ```bash
-        infisical login --method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id>
+        infisical login --method=jwt-auth --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
       ```
       </Step>
     </Steps>
@@ -333,7 +333,8 @@ The login command supports a number of flags that you can use for different auth
     - `gcp-id-token`: Login using a GCP ID token native auth.
     - `gcp-iam`: Login using a GCP IAM.
     - `aws-iam`: Login using an AWS IAM native auth.
-    - `oidc-auth`: Login using oidc auth.
+    - `oidc-auth`: Login using OIDC auth.
+    - `jwt-auth`: Login using a plain JWT token.
 
   </Accordion>
   <Accordion title="--client-id">
@@ -466,16 +467,16 @@ The login command supports a number of flags that you can use for different auth
     </Tip>
 
   </Accordion>
-  <Accordion title="--oidc-jwt">
+  <Accordion title="--jwt">
     ```bash
-    infisical login --oidc-jwt=<oidc-jwt-token>
+    infisical login --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
     ```
 
     #### Description
-    The JWT provided by an identity provider for OIDC authentication.
+    The JWT provided by an identity provider for OIDC or plain JWT authentication. This is required if the `--method` flag is set to `oidc-auth` or `jwt-auth`.
 
     <Tip>
-    The `oidc-jwt` flag can be substituted with the `INFISICAL_OIDC_AUTH_JWT` environment variable.
+    The `jwt` flag can be substituted with the `INFISICAL_JWT` environment variable.
     </Tip>
 
   </Accordion>
