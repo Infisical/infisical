@@ -65,11 +65,11 @@ resource "aws_security_group" "infisical_relay_sg" {
     cidr_blocks = ["0.0.0.0/0"] # Restrict this to your IP in production
   }
 
-  # Outbound: Allows the Relay server to make necessary outbound connections.
+  # Outbound: Allows the Relay server to make necessary outbound connections to the Infisical platform.
   egress {
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -106,10 +106,11 @@ module "infisical_relay_instance" {
     apt-get update && apt-get install -y infisical
 
     # Install the relay as a systemd service.
-    # This example uses a Machine Identity token for authentication (--token).
-    # For other authentication methods, see https://infisical.com/docs/cli/commands/relay#available-authentication-methods
+    # This example uses a Machine Identity token for authentication via the INFISICAL_TOKEN environment variable.
+    #
+    # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
+    export INFISICAL_TOKEN="your-machine-identity-token"
     sudo infisical relay systemd install \
-      --token "your-machine-identity-token" \
       --name "my-relay-example" \
       --domain "https://app.infisical.com" \
       --host "${aws_eip.infisical_relay_eip.public_ip}"
@@ -138,7 +139,7 @@ The provided security group rules are open to the internet (`0.0.0.0/0`) for sim
     - `region` in the `provider` block.
     - `vpc_id` in the `aws_security_group` resource.
     - `ami` and `subnet_id` in the `infisical_relay_instance` module.
-    - The authentication flag and value in the `user_data` script (e.g., `--token "your-machine-identity-token"`).
+    - The `INFISICAL_TOKEN` environment variable in the `user_data` script (e.g., `export INFISICAL_TOKEN="your-machine-identity-token"`).
     - The `--domain` in the `user_data` script if you are self-hosting Infisical.
 3.  **Apply the configuration:** Run the following Terraform commands in your terminal:
     ```bash
