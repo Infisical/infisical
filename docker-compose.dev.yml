@@ -77,6 +77,7 @@ services:
       - TELEMETRY_ENABLED=false
     volumes:
       - ./backend/src:/app/src
+      - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -198,3 +199,5 @@ volumes:
   ldap_data:
   ldap_config:
   grafana_storage:
+  softhsm_tokens:
+    driver: local

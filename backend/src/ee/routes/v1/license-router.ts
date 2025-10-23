@@ -58,7 +58,7 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       const plan = await server.services.license.getOrgPlan({
         actorId: req.permission.id,
         actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
+        actorOrgId: req.permission.rootOrgId,
         actorAuthMethod: req.permission.authMethod,
         orgId: req.params.organizationId,
         refreshCache: req.query.refreshCache

@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -52,7 +52,7 @@ export const ProjectsPage = () => {
   ] as const);
 
   const { subscription } = useSubscription();
-
+  const { isSubOrganization } = useOrganization();
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
@@ -64,7 +64,7 @@ export const ProjectsPage = () => {
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
       <PageHeader
-        scope="org"
+        scope={isSubOrganization ? "namespace" : "org"}
         title="Overview"
         description="Your team's complete security toolkit - organized and ready when you need them."
       />

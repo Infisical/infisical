@@ -33,6 +33,7 @@ import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-rou
 import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
+import { registerOrgIdentityMembershipRouter } from "./identity-org-membership-router";
 import { registerIdentityProjectRouter } from "./identity-project-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
@@ -90,6 +91,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
   await server.register(registerOrgRouter, { prefix: "/organization" });
+  await server.register(registerOrgIdentityMembershipRouter, { prefix: "/organization" });
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });

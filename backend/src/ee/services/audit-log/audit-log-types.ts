@@ -173,6 +173,9 @@ export enum EventType {
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
 
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
   GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
@@ -529,6 +532,8 @@ export enum EventType {
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -618,6 +623,22 @@ interface GetSecretsEvent {
     environment: string;
     secretPath: string;
     numberOfSecrets: number;
+  };
+}
+
+interface CreateSubOrganizationEvent {
+  type: EventType.CREATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    organizationId: string;
+  };
+}
+
+interface UpdateSubOrganizationEvent {
+  type: EventType.UPDATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    organizationId: string;
   };
 }
 
@@ -3931,6 +3952,8 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
+    rotationEnabled: boolean;
+    rotationIntervalSeconds?: number | null;
   };
 }
 
@@ -3942,6 +3965,8 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
+    rotationEnabled?: boolean;
+    rotationIntervalSeconds?: number | null;
   };
 }
 
@@ -3952,6 +3977,27 @@ interface PamAccountDeleteEvent {
     accountId: string;
     resourceId: string;
     resourceType: string;
+  };
+}
+
+interface PamAccountCredentialRotationEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
+interface PamAccountCredentialRotationFailedEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+    errorMessage: string;
   };
 }
 
@@ -4014,6 +4060,8 @@ interface DisableCertificateRenewalConfigEvent {
 }
 
 export type Event =
+  | CreateSubOrganizationEvent
+  | UpdateSubOrganizationEvent
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent
@@ -4370,6 +4418,8 @@ export type Event =
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
+  | PamAccountCredentialRotationEvent
+  | PamAccountCredentialRotationFailedEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

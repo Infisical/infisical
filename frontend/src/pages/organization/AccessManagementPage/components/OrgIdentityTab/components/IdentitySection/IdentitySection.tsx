@@ -1,10 +1,15 @@
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowUpRightFromSquare,
+  faBookOpen,
+  faLink,
+  faPlus
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -19,6 +24,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
 import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
+import { IdentityLinkForm } from "./IdentityLinkForm";
 import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
@@ -27,7 +33,7 @@ import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal
 export const IdentitySection = withPermission(
   () => {
     const { subscription } = useSubscription();
-    const { currentOrg } = useOrganization();
+    const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
 
     const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
@@ -43,7 +49,8 @@ export const IdentitySection = withPermission(
       "createTemplate",
       "editTemplate",
       "deleteTemplate",
-      "viewUsages"
+      "viewUsages",
+      "linkIdentity"
     ] as const);
 
     const isMoreIdentitiesAllowed = subscription?.identityLimit
@@ -105,8 +112,8 @@ export const IdentitySection = withPermission(
     return (
       <div>
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-1">
+          <div className="mb-4 flex w-full items-center gap-4">
+            <div className="flex flex-1 items-center gap-1">
               <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/identities/overview"
@@ -123,6 +130,26 @@ export const IdentitySection = withPermission(
                 </div>
               </a>
             </div>
+            {isSubOrganization && (
+              <OrgPermissionCan
+                I={OrgPermissionIdentityActions.Create}
+                a={OrgPermissionSubjects.Identity}
+              >
+                {(isAllowed) => (
+                  <Button
+                    variant="plain"
+                    colorSchema="secondary"
+                    leftIcon={<FontAwesomeIcon icon={faLink} />}
+                    onClick={() => {
+                      handlePopUpOpen("linkIdentity");
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    Link Identity
+                  </Button>
+                )}
+              </OrgPermissionCan>
+            )}
             <OrgPermissionCan
               I={OrgPermissionIdentityActions.Create}
               a={OrgPermissionSubjects.Identity}
@@ -210,16 +237,18 @@ export const IdentitySection = withPermission(
               ?.name || ""
           }
         />
-        {/* <IdentityAuthMethodModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        /> */}
-        {/* <IdentityUniversalAuthClientSecretModal
-          popUp={popUp}
-          handlePopUpOpen={handlePopUpOpen}
-          handlePopUpToggle={handlePopUpToggle}
-        /> */}
+        <Modal
+          isOpen={popUp.linkIdentity.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("linkIdentity", isOpen)}
+        >
+          <ModalContent
+            title="Assign Existing Identity"
+            subTitle="Assign an existing identity from your root organization to the sub organization. The identity will continue to be managed at its original scope."
+            bodyClassName="overflow-visible"
+          >
+            <IdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
+          </ModalContent>
+        </Modal>
         <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}

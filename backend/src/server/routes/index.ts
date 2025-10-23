@@ -46,8 +46,8 @@ import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/gi
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { HsmModule } from "@app/ee/services/hsm/hsm-types";
+import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { identityAuthTemplateDALFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-dal";
 import { identityAuthTemplateServiceFactory } from "@app/ee/services/identity-auth-template/identity-auth-template-service";
 import { kmipClientCertificateDALFactory } from "@app/ee/services/kmip/kmip-client-certificate-dal";
@@ -131,12 +131,14 @@ import { sshHostLoginUserDALFactory } from "@app/ee/services/ssh-host/ssh-login-
 import { sshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { sshHostGroupMembershipDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-membership-dal";
 import { sshHostGroupServiceFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-service";
+import { subOrgServiceFactory } from "@app/ee/services/sub-org/sub-org-service";
 import { trustedIpDALFactory } from "@app/ee/services/trusted-ip/trusted-ip-dal";
 import { trustedIpServiceFactory } from "@app/ee/services/trusted-ip/trusted-ip-service";
 import { keyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TQueueServiceFactory } from "@app/queue";
 import { readLimit } from "@app/server/config/rateLimiter";
@@ -236,8 +238,9 @@ import { integrationAuthDALFactory } from "@app/services/integration-auth/integr
 import { integrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { internalKmsDALFactory } from "@app/services/kms/internal-kms-dal";
 import { kmskeyDALFactory } from "@app/services/kms/kms-key-dal";
-import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { kmsServiceFactory } from "@app/services/kms/kms-service";
+import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { membershipDALFactory } from "@app/services/membership/membership-dal";
 import { membershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 import { membershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
@@ -255,11 +258,11 @@ import { userNotificationDALFactory } from "@app/services/notification/user-noti
 import { offlineUsageReportDALFactory } from "@app/services/offline-usage-report/offline-usage-report-dal";
 import { offlineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
 import { incidentContactDALFactory } from "@app/services/org/incident-contacts-dal";
-import { orgBotDALFactory } from "@app/services/org/org-bot-dal";
 import { orgDALFactory } from "@app/services/org/org-dal";
 import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
+import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -364,20 +367,22 @@ export const registerRoutes = async (
     auditLogDb,
     superAdminDAL,
     db,
-    hsmModule,
     smtp: smtpService,
     queue: queueService,
     keyStore,
-    envConfig
+    envConfig,
+    hsmService,
+    kmsRootConfigDAL
   }: {
     auditLogDb?: Knex;
     superAdminDAL: TSuperAdminDALFactory;
     db: Knex;
-    hsmModule: HsmModule;
     smtp: TSmtpService;
     queue: TQueueServiceFactory;
     keyStore: TKeyStoreFactory;
     envConfig: TEnvConfig;
+    hsmService: THsmServiceFactory;
+    kmsRootConfigDAL: TKmsRootConfigDALFactory;
   }
 ) => {
   const appCfg = getConfig();
@@ -392,7 +397,6 @@ export const registerRoutes = async (
   const authTokenDAL = tokenDALFactory(db);
   const orgDAL = orgDALFactory(db);
   const orgMembershipDAL = orgMembershipDALFactory(db);
-  const orgBotDAL = orgBotDALFactory(db);
   const incidentContactDAL = incidentContactDALFactory(db);
   const rateLimitDAL = rateLimitDALFactory(db);
   const apiKeyDAL = apiKeyDALFactory(db);
@@ -509,7 +513,6 @@ export const registerRoutes = async (
   const kmsDAL = kmskeyDALFactory(db);
   const internalKmsDAL = internalKmsDALFactory(db);
   const externalKmsDAL = externalKmsDALFactory(db);
-  const kmsRootConfigDAL = kmsRootConfigDALFactory(db);
 
   const slackIntegrationDAL = slackIntegrationDALFactory(db);
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
@@ -569,11 +572,11 @@ export const registerRoutes = async (
     orgDAL,
     licenseDAL,
     keyStore,
-    identityOrgMembershipDAL,
-    projectDAL
+    projectDAL,
+    envConfig
   });
 
-  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL });
+  const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
 
   const membershipUserService = membershipUserServiceFactory({
     licenseService,
@@ -593,6 +596,7 @@ export const registerRoutes = async (
   });
 
   const membershipIdentityService = membershipIdentityServiceFactory({
+    identityDAL,
     membershipIdentityDAL,
     membershipRoleDAL,
     orgDAL,
@@ -622,11 +626,6 @@ export const registerRoutes = async (
     membershipDAL,
     orgDAL,
     permissionService
-  });
-
-  const hsmService = hsmServiceFactory({
-    hsmModule,
-    envConfig
   });
 
   const kmsService = kmsServiceFactory({
@@ -901,7 +900,6 @@ export const registerRoutes = async (
     smtpService,
     userDAL,
     groupDAL,
-    orgBotDAL,
     oidcConfigDAL,
     ldapConfigDAL,
     loginService,
@@ -913,6 +911,15 @@ export const registerRoutes = async (
     userGroupMembershipDAL,
     additionalPrivilegeDAL
   });
+
+  const subOrgService = subOrgServiceFactory({
+    licenseService,
+    membershipDAL,
+    membershipRoleDAL,
+    orgDAL,
+    permissionService
+  });
+
   const signupService = authSignupServiceFactory({
     tokenService,
     smtpService,
@@ -1595,10 +1602,12 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     accessTokenQueue,
-    smtpService
+    smtpService,
+    orgDAL
   });
 
   const identityService = identityServiceFactory({
+    additionalPrivilegeDAL,
     permissionService,
     identityDAL,
     identityOrgMembershipDAL,
@@ -1629,10 +1638,12 @@ export const registerRoutes = async (
     identityAccessTokenDAL,
     accessTokenQueue,
     identityDAL,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityTokenAuthService = identityTokenAuthServiceFactory({
+    identityDAL,
     identityTokenAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1642,6 +1653,7 @@ export const registerRoutes = async (
   });
 
   const identityUaService = identityUaServiceFactory({
+    identityDAL,
     permissionService,
     identityAccessTokenDAL,
     identityUaClientSecretDAL,
@@ -1653,6 +1665,7 @@ export const registerRoutes = async (
   });
 
   const identityKubernetesAuthService = identityKubernetesAuthServiceFactory({
+    identityDAL,
     identityKubernetesAuthDAL,
     identityAccessTokenDAL,
     permissionService,
@@ -1666,6 +1679,7 @@ export const registerRoutes = async (
     membershipIdentityDAL
   });
   const identityGcpAuthService = identityGcpAuthServiceFactory({
+    identityDAL,
     identityGcpAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1675,6 +1689,7 @@ export const registerRoutes = async (
   });
 
   const identityAliCloudAuthService = identityAliCloudAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityAliCloudAuthDAL,
@@ -1684,6 +1699,7 @@ export const registerRoutes = async (
   });
 
   const identityTlsCertAuthService = identityTlsCertAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     identityTlsCertAuthDAL,
     licenseService,
@@ -1693,6 +1709,7 @@ export const registerRoutes = async (
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityAwsAuthDAL,
@@ -1702,6 +1719,7 @@ export const registerRoutes = async (
   });
 
   const identityAzureAuthService = identityAzureAuthServiceFactory({
+    identityDAL,
     identityAzureAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1711,6 +1729,7 @@ export const registerRoutes = async (
   });
 
   const identityOciAuthService = identityOciAuthServiceFactory({
+    identityDAL,
     identityAccessTokenDAL,
     orgDAL,
     identityOciAuthDAL,
@@ -1734,6 +1753,7 @@ export const registerRoutes = async (
   });
 
   const identityOidcAuthService = identityOidcAuthServiceFactory({
+    identityDAL,
     identityOidcAuthDAL,
     orgDAL,
     identityAccessTokenDAL,
@@ -1744,6 +1764,7 @@ export const registerRoutes = async (
   });
 
   const identityJwtAuthService = identityJwtAuthServiceFactory({
+    identityDAL,
     identityJwtAuthDAL,
     orgDAL,
     permissionService,
@@ -2249,7 +2270,13 @@ export const registerRoutes = async (
     pamSessionDAL,
     permissionService,
     projectDAL,
-    userDAL
+    userDAL,
+    auditLogService
+  });
+
+  const pamAccountRotation = pamAccountRotationServiceFactory({
+    queueService,
+    pamAccountService
   });
 
   const pamSessionService = pamSessionServiceFactory({
@@ -2283,17 +2310,39 @@ export const registerRoutes = async (
   // Start HSM service if it's configured/enabled.
   await hsmService.startService();
 
+  const hsmStatus = await isHsmActiveAndEnabled({
+    hsmService,
+    kmsRootConfigDAL,
+    licenseService
+  });
+
+  // if the encryption strategy is software - user needs to provide an encryption key
+  // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
+  const needsEncryptionKey =
+    hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
+    (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
+
+  if (needsEncryptionKey) {
+    if (!envConfig.ROOT_ENCRYPTION_KEY && !envConfig.ENCRYPTION_KEY) {
+      throw new BadRequestError({
+        message:
+          "Root KMS encryption strategy is set to software. Please set the ENCRYPTION_KEY environment variable and restart your deployment.\nYou can enable HSM encryption in the Server Console."
+      });
+    }
+  }
+
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.init();
   await healthAlert.init();
   await pkiSyncCleanup.init();
+  await pamAccountRotation.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await certificateV3Queue.startDailyAutoRenewalJob();
-  await kmsService.startService();
+  await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
   await eventBusService.init();
@@ -2308,6 +2357,7 @@ export const registerRoutes = async (
     groupProject: groupProjectService,
     permission: permissionService,
     org: orgService,
+    subOrganization: subOrgService,
     oidc: oidcService,
     apiKey: apiKeyService,
     authToken: tokenService,

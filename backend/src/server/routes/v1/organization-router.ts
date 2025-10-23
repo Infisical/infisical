@@ -2,6 +2,7 @@ import RE2 from "re2";
 import { z } from "zod";
 
 import {
+  AccessScope,
   AuditLogsSchema,
   GroupsSchema,
   IncidentContactsSchema,
@@ -59,7 +60,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitizedOrganizationSchema
+          organization: sanitizedOrganizationSchema.extend({
+            subOrganization: z
+              .object({
+                id: z.string(),
+                name: z.string()
+              })
+              .optional()
+          })
         })
       }
     },
@@ -69,6 +77,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.id,
         req.params.organizationId,
         req.permission.authMethod,
+        req.permission.rootOrgId,
         req.permission.orgId
       );
       return { organization };
@@ -465,6 +474,70 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       });
 
       return { groups };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/users/available",
+    schema: {
+      response: {
+        200: z.object({
+          users: z
+            .object({
+              id: z.string().uuid(),
+              username: z.string(),
+              email: z.string().nullable().optional(),
+              firstName: z.string().nullable().optional(),
+              lastName: z.string().nullable().optional()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { users } = await server.services.membershipUser.listAvailableUsers({
+        permission: req.permission,
+        scopeData: {
+          orgId: req.permission.orgId,
+          scope: AccessScope.Organization
+        },
+        data: {}
+      });
+
+      return { users };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/identities/available",
+    schema: {
+      response: {
+        200: z.object({
+          identities: z
+            .object({
+              id: z.string().uuid(),
+              name: z.string(),
+              hasDeleteProtection: z.boolean()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
+        permission: req.permission,
+        scopeData: {
+          orgId: req.permission.orgId,
+          scope: AccessScope.Organization
+        },
+        data: {}
+      });
+
+      return { identities };
     }
   });
 };

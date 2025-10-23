@@ -1,7 +1,10 @@
 import { Knex } from "knex";
 
-import { initEnvConfig } from "@app/lib/config/env";
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger, logger } from "@app/lib/logger";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AuthMethod } from "../../services/auth/auth-type";
@@ -17,7 +20,21 @@ export async function seed(knex: Knex): Promise<void> {
   initLogger();
 
   const superAdminDAL = superAdminDALFactory(knex);
-  await initEnvConfig(superAdminDAL, logger);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+
+  const hsmConfig = getHsmConfig(logger);
+
+  const hsmModule = initializeHsmModule(hsmConfig);
+  hsmModule.initialize();
+
+  const hsmService = hsmServiceFactory({
+    hsmModule: hsmModule.getModule(),
+    envConfig: hsmConfig
+  });
+
+  await hsmService.startService();
+
+  await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
   await knex(TableName.SuperAdmin).insert([
     // eslint-disable-next-line

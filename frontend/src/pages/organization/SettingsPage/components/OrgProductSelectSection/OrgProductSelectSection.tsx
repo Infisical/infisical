@@ -50,7 +50,7 @@ export const OrgProductSelectSection = () => {
         }));
       }
     });
-  }, [currentOrg]);
+  }, [currentOrg?.id]);
 
   const onProductToggle = async (value: boolean, key: string) => {
     setIsLoading(true);

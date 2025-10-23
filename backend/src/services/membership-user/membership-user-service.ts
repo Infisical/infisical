@@ -40,7 +40,7 @@ import { newProjectMembershipUserFactory } from "./project/project-membership-us
 type TMembershipUserServiceFactoryDep = {
   membershipUserDAL: TMembershipUserDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
-  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "transaction" | "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   userDAL: TUserDALFactory;
   permissionService: Pick<
@@ -83,7 +83,8 @@ export const membershipUserServiceFactory = ({
       orgDAL,
       tokenService,
       userDAL,
-      userGroupMembershipDAL
+      userGroupMembershipDAL,
+      membershipUserDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipUserFactory({}),
     [AccessScope.Project]: newProjectMembershipUserFactory({
@@ -404,7 +405,7 @@ export const membershipUserServiceFactory = ({
     const membershipDoc = await membershipUserDAL.transaction(async (tx) => {
       if (dto.scopeData.scope === AccessScope.Organization) {
         const [doc] = await deleteOrgMembershipsFn({
-          orgMembershipIds: [],
+          orgMembershipIds: [existingMembership.id],
           orgId: dto.permission.orgId,
           orgDAL,
           projectKeyDAL,
@@ -471,11 +472,26 @@ export const membershipUserServiceFactory = ({
     return membership;
   };
 
+  // Should only be used for sub organization as of now
+  const listAvailableUsers = async (dto: TListMembershipUserDTO) => {
+    const { scopeData } = dto;
+    const factory = scopeFactory[scopeData.scope];
+
+    await factory.onListMembershipUserGuard(dto);
+
+    const organizationDetails = await orgDAL.findById(dto.scopeData.orgId);
+    if (!organizationDetails.rootOrgId) return { users: [] };
+
+    const users = await membershipUserDAL.listAvailableUsers(organizationDetails.id, organizationDetails.rootOrgId);
+    return { users };
+  };
+
   return {
     createMembership,
     updateMembership,
     deleteMembership,
     listMemberships,
-    getMembershipByUserId
+    getMembershipByUserId,
+    listAvailableUsers
   };
 };

@@ -56,7 +56,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }
     },
     handler: async (req) => {
-      const { identityKubernetesAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityKubernetesAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityKubernetesAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -64,7 +64,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
           metadata: {

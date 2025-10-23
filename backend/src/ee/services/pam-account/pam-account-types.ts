@@ -1,7 +1,10 @@
 import { TPamAccount } from "../pam-resource/pam-resource-types";
 
 // DTOs
-export type TCreateAccountDTO = Pick<TPamAccount, "name" | "description" | "credentials" | "folderId" | "resourceId">;
+export type TCreateAccountDTO = Pick<
+  TPamAccount,
+  "name" | "description" | "credentials" | "folderId" | "resourceId" | "rotationEnabled" | "rotationIntervalSeconds"
+>;
 
 export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "resourceId">> & {
   accountId: string;

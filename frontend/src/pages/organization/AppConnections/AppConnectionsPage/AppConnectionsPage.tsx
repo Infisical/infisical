@@ -3,6 +3,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
@@ -12,6 +13,8 @@ import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppC
 
 export const AppConnectionsPage = withPermission(
   () => {
+    const { isSubOrganization } = useOrganization();
+
     return (
       <div className="bg-bunker-800">
         <Helmet>
@@ -22,7 +25,7 @@ export const AppConnectionsPage = withPermission(
         <div className="flex w-full justify-center bg-bunker-800 text-white">
           <div className="w-full max-w-8xl">
             <PageHeader
-              scope="org"
+              scope={isSubOrganization ? "namespace" : "org"}
               className="w-full"
               title="App Connections"
               description="Manage organization App Connections"

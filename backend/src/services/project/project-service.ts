@@ -5,6 +5,7 @@ import slugify from "@sindresorhus/slugify";
 import {
   AccessScope,
   ActionProjectType,
+  OrganizationActionScope,
   ProjectMembershipRole,
   ProjectType,
   ProjectVersion,
@@ -245,13 +246,14 @@ export const projectServiceFactory = ({
     type = ProjectType.SecretManager
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      organization.id,
+      orgId: organization.id,
       actorAuthMethod,
       actorOrgId
-    );
+    });
 
     if (
       permission.cannot(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace) &&
@@ -513,13 +515,14 @@ export const projectServiceFactory = ({
         : await projectDAL.findUserProjects(actorId, actorOrgId, type);
 
     if (includeRoles) {
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
         actor,
         actorId,
-        actorOrgId,
+        orgId: actorOrgId,
         actorAuthMethod,
         actorOrgId
-      );
+      });
 
       // `includeRoles` is specifically used by organization admins when inviting new users to the organizations to avoid looping redundant api calls.
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Member);
@@ -1822,13 +1825,14 @@ export const projectServiceFactory = ({
     projectIds
   }: TSearchProjectsDTO) => {
     // check user belong to org
-    await permissionService.getOrgPermission(
-      permission.type,
-      permission.id,
-      permission.orgId,
-      permission.authMethod,
-      permission.orgId
-    );
+    await permissionService.getOrgPermission({
+      actor: permission.type,
+      actorId: permission.id,
+      orgId: permission.orgId,
+      actorAuthMethod: permission.authMethod,
+      scope: OrganizationActionScope.Any,
+      actorOrgId: permission.orgId
+    });
 
     return projectDAL.searchProjects({
       limit,
@@ -1846,13 +1850,14 @@ export const projectServiceFactory = ({
 
   const requestProjectAccess = async ({ permission, comment, projectId }: TProjectAccessRequestDTO) => {
     // check user belong to org
-    await permissionService.getOrgPermission(
-      permission.type,
-      permission.id,
-      permission.orgId,
-      permission.authMethod,
-      permission.orgId
-    );
+    await permissionService.getOrgPermission({
+      actor: permission.type,
+      actorId: permission.id,
+      orgId: permission.orgId,
+      actorAuthMethod: permission.authMethod,
+      actorOrgId: permission.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     const projectMember = await permissionService
       .getProjectPermission({
