@@ -21,23 +21,25 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   identityId: string;
+  isOrgIdentity?: boolean;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["identity", "identityAuthMethod", "deleteIdentity"]>,
     data?: object
   ) => void;
 };
 
-export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) => {
+export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdentity }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
+  const { isSubOrganization } = useOrganization();
 
   const { data } = useGetIdentityById(identityId);
   return data ? (
@@ -75,6 +77,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
                     handlePopUpOpen("identity", {
                       identityId,
                       name: data.identity.name,
+                      orgId: data.identity.orgId,
                       hasDeleteProtection: data.identity.hasDeleteProtection,
                       role: data.role,
                       customRole: data.customRole,
@@ -140,24 +143,38 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen }: Props) =
           <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{data.identity.name}</p>
         </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
-          <p className="text-sm text-mineshaft-300">
-            {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
-          <p className="text-sm text-mineshaft-300">
-            {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
-          <p className="text-sm text-mineshaft-300">
-            {data.identity.hasDeleteProtection ? "On" : "Off"}
-          </p>
-        </div>
+        {isSubOrganization && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-mineshaft-300">Managed By</p>
+            <p className="text-sm text-mineshaft-300">
+              {isOrgIdentity ? "Organization" : "Root Organization"}
+            </p>
+          </div>
+        )}
+        {isOrgIdentity && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
+            <p className="text-sm text-mineshaft-300">
+              {data.lastLoginAuthMethod ? identityAuthToNameMap[data.lastLoginAuthMethod] : "-"}
+            </p>
+          </div>
+        )}
+        {isOrgIdentity && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
+            <p className="text-sm text-mineshaft-300">
+              {data.lastLoginTime ? format(data.lastLoginTime, "PPpp") : "-"}
+            </p>
+          </div>
+        )}
+        {isOrgIdentity && (
+          <div className="mb-4">
+            <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
+            <p className="text-sm text-mineshaft-300">
+              {data.identity.hasDeleteProtection ? "On" : "Off"}
+            </p>
+          </div>
+        )}
         <div className="mb-4">
           <p className="text-sm font-medium text-mineshaft-300">Organization Role</p>
           <p className="text-sm text-mineshaft-300">{data.role}</p>

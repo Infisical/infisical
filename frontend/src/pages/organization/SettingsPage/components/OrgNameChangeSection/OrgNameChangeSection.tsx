@@ -41,21 +41,19 @@ export const OrgNameChangeSection = (): JSX.Element => {
   const [isFormInitialized, setIsFormInitialized] = useState(false);
 
   useEffect(() => {
-    if (currentOrg) {
-      reset({
-        name: currentOrg.name,
-        slug: currentOrg.slug,
-        ...(canReadOrgRoles &&
-          roles?.length && {
-            // will always be present, can't remove role if default
-            defaultMembershipRole: isCustomOrgRole(currentOrg.defaultMembershipRole)
-              ? roles?.find((role) => currentOrg.defaultMembershipRole === role.id)?.slug || ""
-              : currentOrg.defaultMembershipRole
-          })
-      });
-      setIsFormInitialized(true);
-    }
-  }, [currentOrg, roles]);
+    reset({
+      name: currentOrg.name,
+      slug: currentOrg.slug,
+      ...(canReadOrgRoles &&
+        roles?.length && {
+          // will always be present, can't remove role if default
+          defaultMembershipRole: isCustomOrgRole(currentOrg.defaultMembershipRole)
+            ? roles?.find((role) => currentOrg.defaultMembershipRole === role.id)?.slug || ""
+            : currentOrg.defaultMembershipRole
+        })
+    });
+    setIsFormInitialized(true);
+  }, [roles]);
 
   const onFormSubmit = async ({ name, slug, defaultMembershipRole }: FormData) => {
     try {

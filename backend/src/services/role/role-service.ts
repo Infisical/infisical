@@ -1,7 +1,7 @@
 import { packRules } from "@casl/ability/extra";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, ActionProjectType, TableName } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, OrganizationActionScope, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
@@ -214,13 +214,14 @@ export const roleServiceFactory = ({
 
   const getUserPermission = async (dto: TGetUserPermissionDTO) => {
     if (dto.scopeData.scope === AccessScope.Organization) {
-      const { permission, memberships } = await permissionService.getOrgPermission(
-        dto.permission.type,
-        dto.permission.id,
-        dto.permission.orgId,
-        dto.permission.authMethod,
-        dto.permission.orgId
-      );
+      const { permission, memberships } = await permissionService.getOrgPermission({
+        actorId: dto.permission.id,
+        actor: dto.permission.type,
+        orgId: dto.permission.orgId,
+        actorOrgId: dto.permission.orgId,
+        actorAuthMethod: dto.permission.authMethod,
+        scope: OrganizationActionScope.Any
+      });
       return { permissions: packRules(permission.rules), memberships, assumedPrivilegeDetails: undefined };
     }
 

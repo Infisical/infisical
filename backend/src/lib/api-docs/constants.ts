@@ -33,6 +33,7 @@ export enum ApiDocsTags {
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
+  SubOrganizations = "Sub Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
   ProjectGroups = "Project Groups",
@@ -57,6 +58,7 @@ export enum ApiDocsTags {
   PkiCertificateAuthorities = "PKI Certificate Authorities",
   PkiCertificates = "PKI Certificates",
   PkiCertificateTemplates = "PKI Certificate Templates",
+  PkiCertificateProfiles = "PKI Certificate Profiles",
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiSubscribers = "PKI Subscribers",
@@ -713,6 +715,21 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  }
+} as const;
+
+export const SUB_ORGANIZATIONS = {
+  CREATE: {
+    name: "The name of the sub organization to create."
+  },
+  UPDATE: {
+    name: "The name of the sub organization to update.",
+    subOrgId: "The id of the sub organization to update."
+  },
+  LIST: {
+    limit: "The number of sub organizations to return.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th sub organization.",
+    isAccessible: "Filter to only return sub organizations that the actor has access to."
   }
 } as const;
 

@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { AccessScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, ProjectMembershipRole, ProjectVersion } from "@app/db/schemas";
 import { OrgPermissionAdminConsoleAction, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -44,13 +44,14 @@ export const orgAdminServiceFactory = ({
     actorOrgId,
     actorAuthMethod
   }: TListOrgProjectsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionAdminConsoleAction.AccessAllProjects,
       OrgPermissionSubjects.AdminConsole
@@ -76,13 +77,14 @@ export const orgAdminServiceFactory = ({
     actorAuthMethod,
     projectId
   }: TAccessProjectDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
       actor,
       actorId,
-      actorOrgId,
+      orgId: actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionAdminConsoleAction.AccessAllProjects,
       OrgPermissionSubjects.AdminConsole

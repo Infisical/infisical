@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { packRules } from "@casl/ability/extra";
 
-import { ProjectType, TProjectTemplates } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectType, TProjectTemplates } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -59,13 +59,14 @@ export const projectTemplateServiceFactory = ({
         message: "Failed to access project templates due to plan restriction. Upgrade plan to access project templates."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
@@ -97,13 +98,14 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with Name "${name}"` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      projectTemplate.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: projectTemplate.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
@@ -125,13 +127,14 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      projectTemplate.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: projectTemplate.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.ProjectTemplates);
 
@@ -152,13 +155,14 @@ export const projectTemplateServiceFactory = ({
         message: "Failed to create project template due to plan restriction. Upgrade plan to access project templates."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.ProjectTemplates);
 
@@ -213,13 +217,14 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      projectTemplate.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: projectTemplate.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.ProjectTemplates);
     if (projectTemplate.type !== ProjectType.SecretManager && environments)
@@ -272,13 +277,14 @@ export const projectTemplateServiceFactory = ({
 
     if (!projectTemplate) throw new NotFoundError({ message: `Could not find project template with ID ${id}` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      projectTemplate.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: projectTemplate.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.ProjectTemplates);
 

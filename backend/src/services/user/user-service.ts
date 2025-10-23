@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { AccessScope } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto";
@@ -458,13 +458,14 @@ export const userServiceFactory = ({
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
     if (user.id !== actorId) {
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
         actor,
         actorId,
-        actorOrgId,
+        orgId: actorOrgId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
     }
 

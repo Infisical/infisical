@@ -1,1 +1,0 @@
-export { SecretSharingAllowShareToAnyone } from "./SecretSharingAllowShareToAnyone";

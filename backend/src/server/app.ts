@@ -15,12 +15,13 @@ import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
-import { HsmModule } from "@app/ee/services/hsm/hsm-types";
+import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TQueueServiceFactory } from "@app/queue";
+import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
@@ -42,16 +43,16 @@ type TMain = {
   logger?: CustomLogger;
   queue: TQueueServiceFactory;
   keyStore: TKeyStoreFactory;
-  hsmModule: HsmModule;
   redis: Redis | Cluster;
   envConfig: TEnvConfig;
   superAdminDAL: TSuperAdminDALFactory;
+  hsmService: THsmServiceFactory;
+  kmsRootConfigDAL: TKmsRootConfigDALFactory;
 };
 
 // Run the server!
 export const main = async ({
   db,
-  hsmModule,
   auditLogDb,
   smtp,
   logger,
@@ -59,7 +60,9 @@ export const main = async ({
   keyStore,
   redis,
   envConfig,
-  superAdminDAL
+  superAdminDAL,
+  hsmService,
+  kmsRootConfigDAL
 }: TMain) => {
   const appCfg = getConfig();
 
@@ -148,9 +151,10 @@ export const main = async ({
       db,
       auditLogDb,
       keyStore,
-      hsmModule,
+      hsmService,
       envConfig,
-      superAdminDAL
+      superAdminDAL,
+      kmsRootConfigDAL
     });
 
     await server.register(registerServeUI, {

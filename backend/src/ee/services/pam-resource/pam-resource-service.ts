@@ -10,10 +10,16 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
+import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
-import { decryptResource, encryptResourceConnectionDetails, listResourceOptions } from "./pam-resource-fns";
+import {
+  decryptResource,
+  decryptResourceConnectionDetails,
+  encryptResourceConnectionDetails,
+  listResourceOptions
+} from "./pam-resource-fns";
 import { TCreateResourceDTO, TUpdateResourceDTO } from "./pam-resource-types";
 
 type TPamResourceServiceFactoryDep = {
@@ -61,7 +67,7 @@ export const pamResourceServiceFactory = ({
   };
 
   const create = async (
-    { resourceType, connectionDetails, gatewayId, name, projectId }: TCreateResourceDTO,
+    { resourceType, connectionDetails, gatewayId, name, projectId, rotationAccountCredentials }: TCreateResourceDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -88,26 +94,42 @@ export const pamResourceServiceFactory = ({
       gatewayId,
       gatewayV2Service
     );
-    const validatedConnectionDetails = await factory.validateConnection();
 
+    const validatedConnectionDetails = await factory.validateConnection();
     const encryptedConnectionDetails = await encryptResourceConnectionDetails({
       connectionDetails: validatedConnectionDetails,
       projectId,
       kmsService
     });
 
+    let encryptedRotationAccountCredentials: Buffer | null = null;
+
+    if (rotationAccountCredentials) {
+      const validatedRotationAccountCredentials = await factory.validateAccountCredentials(rotationAccountCredentials);
+
+      encryptedRotationAccountCredentials = await encryptAccountCredentials({
+        credentials: validatedRotationAccountCredentials,
+        projectId,
+        kmsService
+      });
+    }
+
     const resource = await pamResourceDAL.create({
       resourceType,
       encryptedConnectionDetails,
       gatewayId,
       name,
-      projectId
+      projectId,
+      encryptedRotationAccountCredentials
     });
 
     return decryptResource(resource, projectId, kmsService);
   };
 
-  const updateById = async ({ connectionDetails, resourceId, name }: TUpdateResourceDTO, actor: OrgServiceActor) => {
+  const updateById = async (
+    { connectionDetails, resourceId, name, rotationAccountCredentials }: TUpdateResourceDTO,
+    actor: OrgServiceActor
+  ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
     if (!orgLicensePlan.pam) {
       throw new BadRequestError({
@@ -149,6 +171,60 @@ export const pamResourceServiceFactory = ({
         kmsService
       });
       updateDoc.encryptedConnectionDetails = encryptedConnectionDetails;
+    }
+
+    if (rotationAccountCredentials !== undefined) {
+      updateDoc.encryptedRotationAccountCredentials = null;
+
+      if (rotationAccountCredentials) {
+        const decryptedConnectionDetails =
+          connectionDetails ??
+          (await decryptResourceConnectionDetails({
+            encryptedConnectionDetails: resource.encryptedConnectionDetails,
+            projectId: resource.projectId,
+            kmsService
+          }));
+
+        const factory = PAM_RESOURCE_FACTORY_MAP[resource.resourceType as PamResource](
+          resource.resourceType as PamResource,
+          decryptedConnectionDetails,
+          resource.gatewayId,
+          gatewayV2Service
+        );
+
+        // Logic to prevent overwriting unedited censored values
+        const finalCredentials = { ...rotationAccountCredentials };
+        if (
+          resource.encryptedRotationAccountCredentials &&
+          rotationAccountCredentials.password === "__INFISICAL_UNCHANGED__"
+        ) {
+          const decryptedCredentials = await decryptAccountCredentials({
+            encryptedCredentials: resource.encryptedRotationAccountCredentials,
+            projectId: resource.projectId,
+            kmsService
+          });
+
+          finalCredentials.password = decryptedCredentials.password;
+        }
+
+        try {
+          const validatedRotationAccountCredentials = await factory.validateAccountCredentials(finalCredentials);
+
+          updateDoc.encryptedRotationAccountCredentials = await encryptAccountCredentials({
+            credentials: validatedRotationAccountCredentials,
+            projectId: resource.projectId,
+            kmsService
+          });
+        } catch (err) {
+          if (err instanceof BadRequestError) {
+            throw new BadRequestError({
+              message: `Rotation Account Error: ${err.message}`
+            });
+          }
+
+          throw err;
+        }
+      }
     }
 
     // If nothing was updated, return the fetched resource

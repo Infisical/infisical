@@ -64,7 +64,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
         throw new BadRequestError({ message: "Missing TLS certificate in header" });
       }
 
-      const { identityTlsCertAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityTlsCertAuth.login({
           identityId: req.body.identityId,
           clientCertificate: clientCertificate as string
@@ -72,7 +72,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_TLS_CERT_AUTH,
           metadata: {

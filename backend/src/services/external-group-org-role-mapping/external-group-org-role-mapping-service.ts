@@ -1,5 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
+import { OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -26,13 +27,14 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
   roleDAL
 }: TExternalGroupOrgRoleMappingServiceFactoryDep) => {
   const listExternalGroupOrgRoleMappings = async (actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Scim);
@@ -48,13 +50,14 @@ export const externalGroupOrgRoleMappingServiceFactory = ({
     dto: TSyncExternalGroupOrgMembershipRoleMappingsDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     // TODO: will need to change if we add support for ldap, oidc, etc.
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);

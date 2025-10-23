@@ -1,8 +1,11 @@
 import { Knex } from "knex";
 
-import { initEnvConfig } from "@app/lib/config/env";
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { AccessScope, IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
@@ -15,7 +18,20 @@ export async function seed(knex: Knex): Promise<void> {
   initLogger();
 
   const superAdminDAL = superAdminDALFactory(knex);
-  await initEnvConfig(superAdminDAL, logger);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const hsmConfig = getHsmConfig(logger);
+
+  const hsmModule = initializeHsmModule(hsmConfig);
+  hsmModule.initialize();
+
+  const hsmService = hsmServiceFactory({
+    hsmModule: hsmModule.getModule(),
+    envConfig: hsmConfig
+  });
+
+  await hsmService.startService();
+
+  await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
   // Inserts seed entries
   await knex(TableName.Identity).insert([
@@ -24,7 +40,8 @@ export async function seed(knex: Knex): Promise<void> {
       // @ts-ignore
       id: seedData1.machineIdentity.id,
       name: seedData1.machineIdentity.name,
-      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: seedData1.organization.id
     }
   ]);
   const identityUa = await knex(TableName.IdentityUniversalAuth)

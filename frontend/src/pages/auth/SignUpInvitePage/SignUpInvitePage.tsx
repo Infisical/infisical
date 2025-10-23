@@ -138,7 +138,7 @@ export const SignupInvitePage = () => {
 
   // Step 4 of the sign up process (download the emergency kit pdf)
   const stepConfirmEmail = (
-    <div className="mx-1 mb-36 flex h-7/12 w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
+    <div className="mx-1 mt-14 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
       <p className="mb-2 flex justify-center text-center text-4xl font-medium text-primary-100">
         Confirm your email
       </p>
@@ -179,7 +179,7 @@ export const SignupInvitePage = () => {
 
   // Because this is the invite signup - we directly go to the last step of signup (email is already verified)
   const main = (
-    <div className="mx-auto mb-32 h-7/12 w-max rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-8 py-10 drop-shadow-xl md:mb-16">
+    <div className="mx-auto mt-14 mb-32 w-max rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-8 py-10 drop-shadow-xl md:mb-16">
       <p className="mx-8 mb-6 flex justify-center bg-linear-to-tr from-mineshaft-300 to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
         Almost there!
       </p>

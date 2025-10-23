@@ -2,13 +2,13 @@ interface PrincipalArnEntity {
   Partition: string;
   Service: "iam" | "sts";
   AccountNumber: string;
-  Type: "user" | "role" | "instance-profile";
+  Type: "user" | "role" | "instance-profile" | "assumed-role";
   Path: string;
   FriendlyName: string;
   SessionInfo: string; // Only populated for assumed-role
 }
 
-export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
+export const extractPrincipalArnEntity = (arn: string, formatAsIamRole: boolean = false): PrincipalArnEntity => {
   // split the ARN into parts using ":" as the delimiter
   const fullParts = arn.split(":");
   if (fullParts.length !== 6) {
@@ -49,7 +49,7 @@ export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
       }
       // assumed roles use a special format where the friendly name is the role name
       const [roleName, sessionId] = rest;
-      finalType = "role"; // treat assumed role case as role
+      finalType = formatAsIamRole ? "role" : "assumed-role";
       friendlyName = roleName;
       sessionInfo = sessionId;
       break;
@@ -84,8 +84,8 @@ export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
  * - arn:aws:iam::123456789012:user/MyUserName
  * - arn:aws:iam::123456789012:role/MyRoleName
  */
-export const extractPrincipalArn = (arn: string) => {
-  const entity = extractPrincipalArnEntity(arn);
+export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = false) => {
+  const entity = extractPrincipalArnEntity(arn, formatAsIamRole);
 
-  return `arn:aws:iam::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
+  return `arn:aws:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };

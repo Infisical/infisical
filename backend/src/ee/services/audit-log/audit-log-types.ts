@@ -173,6 +173,9 @@ export enum EventType {
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
 
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
   GET_IDENTITY_TOKEN_AUTH = "get-identity-token-auth",
@@ -352,9 +355,18 @@ export enum EventType {
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
   GET_CERTIFICATE_TEMPLATE = "get-certificate-template",
+  LIST_CERTIFICATE_TEMPLATES = "list-certificate-templates",
   CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "create-certificate-template-est-config",
   UPDATE_CERTIFICATE_TEMPLATE_EST_CONFIG = "update-certificate-template-est-config",
   GET_CERTIFICATE_TEMPLATE_EST_CONFIG = "get-certificate-template-est-config",
+  CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
+  UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
+  DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
+  GET_CERTIFICATE_PROFILE = "get-certificate-profile",
+  LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
+  SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
+  ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -515,6 +527,8 @@ export enum EventType {
   PAM_ACCOUNT_CREATE = "pam-account-create",
   PAM_ACCOUNT_UPDATE = "pam-account-update",
   PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION = "pam-account-credential-rotation",
+  PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED = "pam-account-credential-rotation-failed",
   PAM_RESOURCE_LIST = "pam-resource-list",
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
@@ -604,6 +618,22 @@ interface GetSecretsEvent {
     environment: string;
     secretPath: string;
     numberOfSecrets: number;
+  };
+}
+
+interface CreateSubOrganizationEvent {
+  type: EventType.CREATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    organizationId: string;
+  };
+}
+
+interface UpdateSubOrganizationEvent {
+  type: EventType.UPDATE_SUB_ORGANIZATION;
+  metadata: {
+    name: string;
+    organizationId: string;
   };
 }
 
@@ -2512,46 +2542,6 @@ interface LoadProjectKmsBackupEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
-interface CreateCertificateTemplate {
-  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    caId: string;
-    pkiCollectionId?: string;
-    name: string;
-    commonName: string;
-    subjectAlternativeName: string;
-    ttl: string;
-  };
-}
-
-interface GetCertificateTemplate {
-  type: EventType.GET_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
-interface UpdateCertificateTemplate {
-  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-    caId: string;
-    pkiCollectionId?: string;
-    name: string;
-    commonName: string;
-    subjectAlternativeName: string;
-    ttl: string;
-  };
-}
-
-interface DeleteCertificateTemplate {
-  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
-  metadata: {
-    certificateTemplateId: string;
-  };
-}
-
 interface OrgAdminAccessProjectEvent {
   type: EventType.ORG_ADMIN_ACCESS_PROJECT;
   metadata: {
@@ -2595,6 +2585,138 @@ interface GetCertificateTemplateEstConfig {
   type: EventType.GET_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
     certificateTemplateId: string;
+  };
+}
+
+interface CreateCertificateTemplate {
+  type: EventType.CREATE_CERTIFICATE_TEMPLATE;
+  metadata:
+    | {
+        certificateTemplateId: string;
+        name: string;
+        projectId: string;
+      }
+    | {
+        certificateTemplateId: string;
+        caId: string;
+        pkiCollectionId: string;
+        name: string;
+        commonName: string;
+        subjectAlternativeName: string;
+        ttl: string;
+        projectId: string;
+      };
+}
+
+interface UpdateCertificateTemplate {
+  type: EventType.UPDATE_CERTIFICATE_TEMPLATE;
+  metadata:
+    | {
+        certificateTemplateId: string;
+        name: string;
+      }
+    | {
+        certificateTemplateId: string;
+        caId: string;
+        pkiCollectionId: string;
+        name: string;
+        commonName: string;
+        subjectAlternativeName: string;
+        ttl: string;
+        projectId: string;
+      };
+}
+
+interface DeleteCertificateTemplate {
+  type: EventType.DELETE_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    name: string;
+  };
+}
+
+interface GetCertificateTemplate {
+  type: EventType.GET_CERTIFICATE_TEMPLATE;
+  metadata: {
+    certificateTemplateId: string;
+    name: string;
+  };
+}
+
+interface ListCertificateTemplates {
+  type: EventType.LIST_CERTIFICATE_TEMPLATES;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface CreateCertificateProfile {
+  type: EventType.CREATE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+    projectId: string;
+    enrollmentType: string;
+  };
+}
+
+interface UpdateCertificateProfile {
+  type: EventType.UPDATE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+  };
+}
+
+interface DeleteCertificateProfile {
+  type: EventType.DELETE_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+  };
+}
+
+interface GetCertificateProfile {
+  type: EventType.GET_CERTIFICATE_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    name: string;
+  };
+}
+
+interface ListCertificateProfiles {
+  type: EventType.LIST_CERTIFICATE_PROFILES;
+  metadata: {
+    projectId: string;
+  };
+}
+
+interface IssueCertificateFromProfile {
+  type: EventType.ISSUE_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    commonName: string;
+    profileName: string;
+  };
+}
+
+interface SignCertificateFromProfile {
+  type: EventType.SIGN_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    profileName: string;
+    commonName: string;
+  };
+}
+
+interface OrderCertificateFromProfile {
+  type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
+  metadata: {
+    certificateProfileId: string;
+    orderId: string;
+    profileName: string;
   };
 }
 
@@ -3795,6 +3917,8 @@ interface PamAccountCreateEvent {
     folderId?: string | null;
     name: string;
     description?: string | null;
+    rotationEnabled: boolean;
+    rotationIntervalSeconds?: number | null;
   };
 }
 
@@ -3806,6 +3930,8 @@ interface PamAccountUpdateEvent {
     resourceType: string;
     name?: string;
     description?: string | null;
+    rotationEnabled?: boolean;
+    rotationIntervalSeconds?: number | null;
   };
 }
 
@@ -3816,6 +3942,27 @@ interface PamAccountDeleteEvent {
     accountId: string;
     resourceId: string;
     resourceType: string;
+  };
+}
+
+interface PamAccountCredentialRotationEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+  };
+}
+
+interface PamAccountCredentialRotationFailedEvent {
+  type: EventType.PAM_ACCOUNT_CREDENTIAL_ROTATION_FAILED;
+  metadata: {
+    accountName: string;
+    accountId: string;
+    resourceId: string;
+    resourceType: string;
+    errorMessage: string;
   };
 }
 
@@ -3863,6 +4010,8 @@ interface PamResourceDeleteEvent {
 }
 
 export type Event =
+  | CreateSubOrganizationEvent
+  | UpdateSubOrganizationEvent
   | GetSecretsEvent
   | GetSecretEvent
   | CreateSecretEvent
@@ -4051,13 +4200,22 @@ export type Event =
   | LoadProjectKmsBackupEvent
   | OrgAdminAccessProjectEvent
   | OrgAdminBypassSSOEvent
-  | CreateCertificateTemplate
-  | UpdateCertificateTemplate
-  | GetCertificateTemplate
-  | DeleteCertificateTemplate
   | CreateCertificateTemplateEstConfig
   | UpdateCertificateTemplateEstConfig
   | GetCertificateTemplateEstConfig
+  | CreateCertificateTemplate
+  | UpdateCertificateTemplate
+  | DeleteCertificateTemplate
+  | GetCertificateTemplate
+  | ListCertificateTemplates
+  | CreateCertificateProfile
+  | UpdateCertificateProfile
+  | DeleteCertificateProfile
+  | GetCertificateProfile
+  | ListCertificateProfiles
+  | IssueCertificateFromProfile
+  | SignCertificateFromProfile
+  | OrderCertificateFromProfile
   | GetAzureAdCsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration
@@ -4209,6 +4367,8 @@ export type Event =
   | PamAccountCreateEvent
   | PamAccountUpdateEvent
   | PamAccountDeleteEvent
+  | PamAccountCredentialRotationEvent
+  | PamAccountCredentialRotationFailedEvent
   | PamResourceListEvent
   | PamResourceGetEvent
   | PamResourceCreateEvent

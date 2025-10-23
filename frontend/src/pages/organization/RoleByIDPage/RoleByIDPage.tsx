@@ -1,8 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
+import { faChevronLeft, faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -30,7 +30,7 @@ export const Page = () => {
     from: ROUTE_PATHS.Organization.RoleByIDPage.id
   });
   const roleId = params.roleId as string;
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgRole(orgId, roleId);
   const { mutateAsync: deleteOrgRole } = useDeleteOrgRole();
@@ -77,20 +77,26 @@ export const Page = () => {
   const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
+        <div className="mx-auto w-full max-w-8xl">
+          <Link
+            to="/organization/access-management"
+            search={{
+              selectedTab: OrgAccessControlTabSections.Roles
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Roles
+          </Link>
           <PageHeader
-            scope="org"
-            title={
-              <div className="flex flex-col">
-                <div>
-                  <span>{data.name}</span>
-                  <p className="text-sm leading-3 font-normal text-mineshaft-400 normal-case">
-                    {data.slug} {data.description && `- ${data.description}`}
-                  </p>
-                </div>
-              </div>
+            scope={isSubOrganization ? "namespace" : "org"}
+            title={data.name}
+            description={
+              <>
+                {data.slug} {data.description && `- ${data.description}`}
+              </>
             }
           >
             {isCustomRole && (

@@ -21,10 +21,7 @@ const organizationRoutes = route("/organization", [
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
-  route("/secret-sharing", [
-    index("organization/SecretSharingPage/route.tsx"),
-    route("/settings", "organization/SecretSharingSettingsPage/route.tsx")
-  ]),
+  route("/secret-sharing", [index("organization/SecretSharingPage/route.tsx")]),
   route("/settings", [
     index("organization/SettingsPage/route.tsx"),
     route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
@@ -40,7 +37,7 @@ const organizationRoutes = route("/organization", [
       "organization/AppConnections/OauthCallbackPage/route.tsx"
     )
   ]),
-  route("/networking", [index("organization/NetworkingPage/route.tsx")])
+  route("/networking", "organization/NetworkingPage/route.tsx")
 ]);
 
 const secretManagerRoutes = route("/projects/secret-management/$projectId", [
@@ -301,6 +298,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
 
 const certManagerRoutes = route("/projects/cert-management/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
+    route("/policies", "cert-manager/PoliciesPage/route.tsx"),
     route("/subscribers", [
       index("cert-manager/PkiSubscribersPage/route.tsx"),
       route("/$subscriberName", "cert-manager/PkiSubscriberDetailsByIDPage/route.tsx")

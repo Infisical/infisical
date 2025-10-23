@@ -33,10 +33,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organization/secret-sharing",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"
     ),
-    SecretSharingSettings: setRoute(
-      "/organization/secret-sharing/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings"
-    ),
     SettingsPage: setRoute(
       "/organization/settings",
       "/_authenticate/_inject-org-details/_org-layout/organization/settings/"
@@ -66,7 +62,11 @@ export const ROUTE_PATHS = Object.freeze({
         "/organization/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
       )
-    }
+    },
+    NetworkingPage: setRoute(
+      "/organization/networking",
+      "/_authenticate/_inject-org-details/_org-layout/organization/networking"
+    )
   },
   SecretManager: {
     ApprovalPage: setRoute(

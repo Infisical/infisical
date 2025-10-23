@@ -3,10 +3,11 @@ import { Knex } from "knex";
 import { AccessScope, TAuthTokens, TAuthTokenSessions } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 
 import { AuthModeJwtTokenPayload, AuthModeRefreshJwtTokenPayload, AuthTokenType } from "../auth/auth-type";
 import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TUserDALFactory } from "../user/user-dal";
 import { TTokenDALFactory } from "./auth-token-dal";
 import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenForUserDTO } from "./auth-token-types";
@@ -14,6 +15,7 @@ import { TCreateTokenForUserDTO, TIssueAuthTokenDTO, TokenType, TValidateTokenFo
 type TAuthTokenServiceFactoryDep = {
   tokenDAL: TTokenDALFactory;
   userDAL: Pick<TUserDALFactory, "findById" | "transaction">;
+  orgDAL: Pick<TOrgDALFactory, "findOne">;
   membershipUserDAL: Pick<TMembershipUserDALFactory, "findOne">;
 };
 
@@ -80,7 +82,7 @@ export const getTokenConfig = (tokenType: TokenType) => {
   }
 };
 
-export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL }: TAuthTokenServiceFactoryDep) => {
+export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgDAL }: TAuthTokenServiceFactoryDep) => {
   const createTokenForUser = async ({ type, userId, orgId, aliasId, payload }: TCreateTokenForUserDTO) => {
     const { token, ...tkCfg } = getTokenConfig(type);
     const appCfg = getConfig();
@@ -194,7 +196,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL }: TA
   };
 
   // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload, subOrganizationSelector?: string) => {
     const session = await tokenDAL.findOneTokenSession({
       id: token.tokenVersionId,
       userId: token.userId
@@ -207,22 +209,56 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL }: TA
     const user = await userDAL.findById(session.userId);
     if (!user || !user.isAccepted) throw new NotFoundError({ message: `User with ID '${session.userId}' not found` });
 
+    let orgId = "";
+    let rootOrgId = "";
+    let parentOrgId = "";
     if (token.organizationId) {
-      const orgMembership = await membershipUserDAL.findOne({
-        actorUserId: user.id,
-        scopeOrgId: token.organizationId,
-        scope: AccessScope.Organization
-      });
+      if (subOrganizationSelector) {
+        const subOrganization = await orgDAL.findOne({
+          rootOrgId: token.organizationId,
+          slug: subOrganizationSelector
+        });
+        if (!subOrganization)
+          throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
 
-      if (!orgMembership) {
-        throw new ForbiddenRequestError({ message: "User not member of organization" });
-      }
-      if (!orgMembership.isActive) {
-        throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+        const orgMembership = await membershipUserDAL.findOne({
+          actorUserId: user.id,
+          scopeOrgId: subOrganization.id,
+          scope: AccessScope.Organization
+        });
+
+        if (!orgMembership) {
+          throw new ForbiddenRequestError({ message: "User not member of organization" });
+        }
+
+        if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+        }
+        orgId = subOrganization.id;
+        rootOrgId = token.organizationId;
+        parentOrgId = subOrganization.parentOrgId as string;
+      } else {
+        const orgMembership = await membershipUserDAL.findOne({
+          actorUserId: user.id,
+          scopeOrgId: token.organizationId,
+          scope: AccessScope.Organization
+        });
+
+        if (!orgMembership) {
+          throw new ForbiddenRequestError({ message: "User not member of organization" });
+        }
+
+        if (!orgMembership.isActive) {
+          throw new ForbiddenRequestError({ message: "User organization membership is inactive" });
+        }
+
+        orgId = token.organizationId;
+        rootOrgId = token.organizationId;
+        parentOrgId = token.organizationId;
       }
     }
 
-    return { user, tokenVersionId: token.tokenVersionId, orgId: token.organizationId };
+    return { user, tokenVersionId: token.tokenVersionId, orgId, rootOrgId, parentOrgId };
   };
 
   return {

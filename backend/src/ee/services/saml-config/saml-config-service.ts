@@ -5,6 +5,7 @@ import RE2 from "re2";
 
 import {
   AccessScope,
+  OrganizationActionScope,
   OrgMembershipRole,
   OrgMembershipStatus,
   TableName,
@@ -83,7 +84,7 @@ type TSamlConfigServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -182,6 +183,22 @@ export const samlConfigServiceFactory = ({
             transaction
           );
           orgGroupsMap.set(groupName, newGroup);
+          const orgMembership = await membershipGroupDAL.create(
+            {
+              actorGroupId: newGroup.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: orgId
+            },
+            transaction
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: orgMembership.id,
+              role: OrgMembershipRole.NoAccess,
+              customRoleId: null
+            },
+            transaction
+          );
         }
       }
 
@@ -251,7 +268,14 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync
   }) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
     const plan = await licenseService.getPlan(orgId);
@@ -317,7 +341,14 @@ export const samlConfigServiceFactory = ({
     authProvider,
     enableGroupSync
   }) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
     const plan = await licenseService.getPlan(orgId);
     if (!plan.samlSSO)
@@ -393,7 +424,7 @@ export const samlConfigServiceFactory = ({
         });
       }
     } else if (dto.type === "orgSlug") {
-      const org = await orgDAL.findOne({ slug: dto.orgSlug });
+      const org = await orgDAL.findOne({ slug: dto.orgSlug, rootOrgId: null });
       if (!org) {
         throw new NotFoundError({
           message: `Organization with slug '${dto.orgSlug}' not found`
@@ -424,13 +455,14 @@ export const samlConfigServiceFactory = ({
 
     // when dto is type id means it's internally used
     if (dto.type === "org") {
-      const { permission } = await permissionService.getOrgPermission(
-        dto.actor,
-        dto.actorId,
-        samlConfig.orgId,
-        dto.actorAuthMethod,
-        dto.actorOrgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.ParentOrganization,
+        actor: dto.actor,
+        actorId: dto.actorId,
+        orgId: samlConfig.orgId,
+        actorAuthMethod: dto.actorAuthMethod,
+        actorOrgId: dto.actorOrgId
+      });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
     }
     const { decryptor } = await kmsService.createCipherPairWithDataKey({

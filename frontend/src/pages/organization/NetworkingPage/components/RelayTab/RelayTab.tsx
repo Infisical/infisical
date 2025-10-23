@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
@@ -7,15 +7,18 @@ import {
   faEllipsisV,
   faInfoCircle,
   faMagnifyingGlass,
+  faPlus,
   faSearch,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -41,6 +45,8 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
+
+import { RelayDeployModal } from "./components/RelayDeployModal";
 
 const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
@@ -66,7 +72,29 @@ export const RelayTab = withPermission(
     const [search, setSearch] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
 
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteRelay"] as const);
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+      "deleteRelay",
+      "deployRelay"
+    ] as const);
+
+    const action = useSearch({
+      from: ROUTE_PATHS.Organization.NetworkingPage.id,
+      select: (s) => s.action
+    });
+
+    const navigate = useNavigate({
+      from: ROUTE_PATHS.Organization.NetworkingPage.path
+    });
+
+    useEffect(() => {
+      if (action === "deploy-relay") {
+        handlePopUpOpen("deployRelay");
+        navigate({
+          search: (prev) => ({ ...prev, action: undefined }),
+          replace: true
+        });
+      }
+    }, [action, handlePopUpOpen, navigate]);
 
     const deleteRelayById = useDeleteRelayById();
 
@@ -87,8 +115,8 @@ export const RelayTab = withPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex grow items-center gap-2">
             <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
@@ -104,6 +132,14 @@ export const RelayTab = withPermission(
                 />
               </div>
             </a>
+            <div className="flex grow" />
+            <Button
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handlePopUpOpen("deployRelay")}
+            >
+              Deploy Relay
+            </Button>
           </div>
         </div>
         <p className="mb-4 text-sm text-mineshaft-400">
@@ -221,6 +257,10 @@ export const RelayTab = withPermission(
               onChange={(isOpen) => handlePopUpToggle("deleteRelay", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteRelay()}
+            />
+            <RelayDeployModal
+              isOpen={popUp.deployRelay.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("deployRelay", isOpen)}
             />
           </TableContainer>
         </div>

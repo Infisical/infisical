@@ -2,7 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { AccessScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -118,13 +118,14 @@ export const oidcConfigServiceFactory = ({
     }
 
     if (dto.type === "external") {
-      const { permission } = await permissionService.getOrgPermission(
-        dto.actor,
-        dto.actorId,
-        dto.organizationId,
-        dto.actorAuthMethod,
-        dto.actorOrgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: dto.actorId,
+        actor: dto.actor,
+        orgId: dto.organizationId,
+        actorOrgId: dto.actorOrgId,
+        actorAuthMethod: dto.actorAuthMethod,
+        scope: OrganizationActionScope.ParentOrganization
+      });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
     }
 
@@ -508,13 +509,14 @@ export const oidcConfigServiceFactory = ({
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
+    const { permission } = await permissionService.getOrgPermission({
       actorId,
-      org.id,
+      actor,
+      orgId: org.id,
+      actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.ParentOrganization
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
@@ -602,13 +604,14 @@ export const oidcConfigServiceFactory = ({
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
+    const { permission } = await permissionService.getOrgPermission({
       actorId,
-      org.id,
+      actor,
+      orgId: org.id,
+      actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.ParentOrganization
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
@@ -764,7 +767,14 @@ export const oidcConfigServiceFactory = ({
   };
 
   const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
-    await permissionService.getOrgPermission(ActorType.USER, actor.id, orgId, actor.authMethod, actor.orgId);
+    await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId,

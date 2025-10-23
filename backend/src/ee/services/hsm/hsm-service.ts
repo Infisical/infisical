@@ -25,6 +25,8 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
   const AES_KEY_SIZE = 256;
   const HMAC_KEY_SIZE = 256;
 
+  let pkcs11TestPassed = false;
+
   const $withSession = async <T>(callbackWithSession: SessionCallback<T>): Promise<T> => {
     const RETRY_INTERVAL = 200; // 200ms between attempts
     const MAX_TIMEOUT = 90_000; // 90 seconds maximum total time
@@ -363,7 +365,9 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
       return false;
     }
 
-    let pkcs11TestPassed = false;
+    if (pkcs11TestPassed) {
+      return true;
+    }
 
     try {
       pkcs11TestPassed = await $withSession($testPkcs11Module);
@@ -371,7 +375,7 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
       logger.error(err, "HSM: Error testing PKCS#11 module");
     }
 
-    return envConfig.isHsmConfigured && isInitialized && pkcs11TestPassed;
+    return pkcs11TestPassed;
   };
 
   const startService = async () => {
@@ -460,10 +464,23 @@ export const hsmServiceFactory = ({ hsmModule: { isInitialized, pkcs11 }, envCon
     }
   };
 
+  const randomBytes = async (length: number) => {
+    if (!pkcs11 || !isInitialized) {
+      throw new Error("PKCS#11 module is not initialized");
+    }
+
+    const randomData = await $withSession((sessionHandle) =>
+      pkcs11.C_GenerateRandom(sessionHandle, Buffer.alloc(length))
+    );
+
+    return randomData;
+  };
+
   return {
     encrypt,
     startService,
     isActive,
-    decrypt
+    decrypt,
+    randomBytes
   };
 };

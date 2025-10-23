@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { ActionProjectType } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
@@ -102,13 +102,14 @@ export const pamSessionServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      project.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionGatewayActions.CreateGateways,
@@ -142,13 +143,14 @@ export const pamSessionServiceFactory = ({
     const project = await projectDAL.findById(session.projectId);
     if (!project) throw new NotFoundError({ message: `Project with ID '${session.projectId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      project.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: project.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.Any
+    });
 
     if (actor.type === ActorType.IDENTITY) {
       ForbiddenError.from(permission).throwUnlessCan(

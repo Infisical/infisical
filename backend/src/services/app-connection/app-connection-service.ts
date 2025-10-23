@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, TAppConnections } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
@@ -215,13 +215,14 @@ export const appConnectionServiceFactory = ({
         )
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission(
-        actor.type,
-        actor.id,
-        actor.orgId,
-        actor.authMethod,
-        actor.orgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: actor.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Read,
@@ -268,13 +269,14 @@ export const appConnectionServiceFactory = ({
         subject(ProjectPermissionSub.AppConnections, { connectionId })
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission(
-        actor.type,
-        actor.id,
-        appConnection.orgId,
-        actor.authMethod,
-        actor.orgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Read,
@@ -318,13 +320,14 @@ export const appConnectionServiceFactory = ({
         subject(ProjectPermissionSub.AppConnections, { connectionId: appConnection.id })
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission(
-        actor.type,
-        actor.id,
-        appConnection.orgId,
-        actor.authMethod,
-        actor.orgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Read,
@@ -342,13 +345,14 @@ export const appConnectionServiceFactory = ({
     { method, app, credentials, gatewayId, projectId, ...params }: TCreateAppConnectionDTO,
     actor: OrgServiceActor
   ) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (projectId) {
       const project = await projectDAL.findProjectById(projectId);
@@ -477,13 +481,14 @@ export const appConnectionServiceFactory = ({
       "Failed to update app connection due to plan restriction. Upgrade plan to access enterprise app connections."
     );
 
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      appConnection.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: appConnection.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     if (appConnection.projectId) {
       const { permission } = await permissionService.getProjectPermission({
@@ -635,13 +640,14 @@ export const appConnectionServiceFactory = ({
         subject(ProjectPermissionSub.AppConnections, { connectionId })
       );
     } else {
-      const { permission } = await permissionService.getOrgPermission(
-        actor.type,
-        actor.id,
-        appConnection.orgId,
-        actor.authMethod,
-        actor.orgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
 
       ForbiddenError.from(permission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Delete,
@@ -704,13 +710,14 @@ export const appConnectionServiceFactory = ({
         subject(ProjectPermissionSub.AppConnections, { connectionId })
       );
     } else {
-      const { permission: orgPermission } = await permissionService.getOrgPermission(
-        actor.type,
-        actor.id,
-        appConnection.orgId,
-        actor.authMethod,
-        actor.orgId
-      );
+      const { permission: orgPermission } = await permissionService.getOrgPermission({
+        actorId: actor.id,
+        actor: actor.type,
+        orgId: appConnection.orgId,
+        actorOrgId: actor.orgId,
+        actorAuthMethod: actor.authMethod,
+        scope: OrganizationActionScope.Any
+      });
 
       ForbiddenError.from(orgPermission).throwUnlessCan(
         OrgPermissionAppConnectionActions.Connect,
@@ -747,13 +754,14 @@ export const appConnectionServiceFactory = ({
   };
 
   const listAvailableAppConnectionsForUser = async (app: AppConnection, actor: OrgServiceActor, projectId?: string) => {
-    const { permission: orgPermission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission: orgPermission } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: actor.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     let availableProjectConnections: TAppConnections[] = [];
 
@@ -805,13 +813,14 @@ export const appConnectionServiceFactory = ({
 
     if (!appConnection) throw new NotFoundError({ message: `Could not find App Connection with ID ${connectionId}` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      appConnection.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: actor.id,
+      actor: actor.type,
+      orgId: appConnection.orgId,
+      actorOrgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      scope: OrganizationActionScope.Any
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionAppConnectionActions.Read,

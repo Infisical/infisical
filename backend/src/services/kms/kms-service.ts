@@ -12,6 +12,7 @@ import {
   TExternalKmsProviderFns
 } from "@app/ee/services/external-kms/providers/model";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { THsmStatus } from "@app/ee/services/hsm/hsm-types";
 import { KeyStorePrefixes, PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { symmetricCipherService, SymmetricKeyAlgorithm } from "@app/lib/crypto/cipher";
@@ -1077,17 +1078,22 @@ export const kmsServiceFactory = ({
     return { id, name, orgId, isExternal };
   };
 
-  const startService = async () => {
+  const startService = async (hsmStatus: THsmStatus) => {
     const kmsRootConfig = await kmsRootConfigDAL.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.KmsRootKeyInit]);
       // check if KMS root key was already generated and saved in DB
       const existingRootConfig = await kmsRootConfigDAL.findById(KMS_ROOT_CONFIG_UUID);
       if (existingRootConfig) return existingRootConfig;
 
-      logger.info("KMS: Generating new ROOT Key");
-      const newRootKey = crypto.randomBytes(32);
-      const encryptedRootKey = await $encryptRootKey(newRootKey, RootKeyEncryptionStrategy.Software).catch((err) => {
-        logger.error({ hsmEnabled: hsmService.isActive() }, "KMS: Failed to encrypt ROOT Key");
+      const isHsmActive = hsmStatus.isHsmConfigured;
+
+      logger.info(`KMS: Generating new ROOT Key with ${isHsmActive ? "HSM" : "software"} encryption`);
+      const newRootKey = isHsmActive ? await hsmService.randomBytes(32) : crypto.randomBytes(32);
+
+      const encryptionStrategy = isHsmActive ? RootKeyEncryptionStrategy.HSM : RootKeyEncryptionStrategy.Software;
+
+      const encryptedRootKey = await $encryptRootKey(newRootKey, encryptionStrategy).catch((err) => {
+        logger.error({ hsmEnabled: isHsmActive, encryptionStrategy }, "KMS: Failed to encrypt ROOT Key");
         throw err;
       });
 
@@ -1095,7 +1101,7 @@ export const kmsServiceFactory = ({
         // @ts-expect-error id is kept as fixed for idempotence and to avoid race condition
         id: KMS_ROOT_CONFIG_UUID,
         encryptedRootKey,
-        encryptionStrategy: RootKeyEncryptionStrategy.Software
+        encryptionStrategy
       });
       return newRootConfig;
     });
@@ -1115,6 +1121,15 @@ export const kmsServiceFactory = ({
 
     if (kmsRootConfig.encryptionStrategy === strategy) {
       return;
+    }
+
+    if (strategy === RootKeyEncryptionStrategy.Software) {
+      if (!envConfig.ROOT_ENCRYPTION_KEY && !envConfig.ENCRYPTION_KEY) {
+        throw new BadRequestError({
+          message:
+            "Root KMS encryption strategy is set to software. Please set the ENCRYPTION_KEY environment variable and restart your deployment before trying to update the encryption strategy to software mode."
+        });
+      }
     }
 
     const decryptedRootKey = await $decryptRootKey(kmsRootConfig);

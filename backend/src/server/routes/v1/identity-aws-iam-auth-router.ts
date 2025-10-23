@@ -40,12 +40,12 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityAwsAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityAwsAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityAwsAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_AWS_AUTH,
           metadata: {
