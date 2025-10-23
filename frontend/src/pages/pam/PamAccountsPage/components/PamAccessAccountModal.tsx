@@ -38,7 +38,16 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
       "years"
     ];
 
-    if (unit === "M" || dayOrLargerUnits.includes(unit.toLowerCase())) {
+    console.log({ unit, duration });
+
+    // ms library does not handle months (M) so we do it separately
+    if (unit === "M") {
+      const value = parseInt(duration, 10);
+      if (!isNaN(value) && value > 0) {
+        const hours = value * 30 * 24;
+        return `${hours}h`;
+      }
+    } else if (dayOrLargerUnits.includes(unit.toLowerCase())) {
       const valueInMs = ms(duration);
       const oneHourInMs = 1000 * 60 * 60;
 
