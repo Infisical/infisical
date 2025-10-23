@@ -1,6 +1,6 @@
 import { Knex } from "knex";
 
-import { AccessScope, OrgMembershipRole, TableName } from "../schemas";
+import { AccessScope, TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasGroupsTable = await knex.schema.hasTable(TableName.Groups);
@@ -12,7 +12,12 @@ export async function up(knex: Knex): Promise<void> {
   }
 
   const groupsWithoutMembership = await knex
-    .select(`${TableName.Groups}.id`, `${TableName.Groups}.orgId`)
+    .select(
+      `${TableName.Groups}.id`,
+      `${TableName.Groups}.orgId`,
+      `${TableName.Groups}.role`,
+      `${TableName.Groups}.roleId`
+    )
     .from(TableName.Groups)
     .leftJoin(TableName.Membership, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
     .whereNull(`${TableName.Membership}.actorGroupId`);
@@ -27,11 +32,14 @@ export async function up(knex: Knex): Promise<void> {
 
     const insertedMemberships = await knex(TableName.Membership).insert(membershipInserts).returning("*");
 
-    const membershipRoleInserts = insertedMemberships.map((membership) => ({
-      membershipId: membership.id,
-      role: OrgMembershipRole.NoAccess,
-      customRoleId: null
-    }));
+    const membershipRoleInserts = insertedMemberships.map((membership, index) => {
+      const group = groupsWithoutMembership[index];
+      return {
+        membershipId: membership.id,
+        role: group.role,
+        customRoleId: group.roleId
+      };
+    });
 
     await knex(TableName.MembershipRole).insert(membershipRoleInserts);
   }
