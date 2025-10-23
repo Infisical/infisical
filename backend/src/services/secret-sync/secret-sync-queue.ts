@@ -63,6 +63,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { SecretNameSchema } from "@app/server/lib/schemas";
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -407,6 +408,14 @@ export const secretSyncQueueFactory = ({
     });
 
     if (!Object.keys(importedSecrets).length) return {};
+
+    for (const [key] of Object.entries(importedSecrets)) {
+      const result = SecretNameSchema.safeParse(key);
+      if (!result.success) {
+        const errorMessage = result.error.issues[0]?.message || "Invalid secret name";
+        throw new Error(`Invalid secret name "${key}": ${errorMessage}`);
+      }
+    }
 
     const importedSecretMap: TSecretMap = {};
 
