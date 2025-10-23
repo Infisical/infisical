@@ -111,7 +111,7 @@ module "infisical_relay_instance" {
     sudo infisical relay systemd install \
       --token "your-machine-identity-token" \
       --name "my-relay-example" \
-      --domain "https://app.infisical.com" \ # If you are self-hosting Infisical, change this to your instance's domain
+      --domain "https://app.infisical.com" \
       --host "${aws_eip.infisical_relay_eip.public_ip}"
 
     # Start and enable the service to run on boot
