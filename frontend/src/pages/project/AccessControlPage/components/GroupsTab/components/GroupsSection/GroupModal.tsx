@@ -160,7 +160,7 @@ export const GroupModal = ({ popUp, handlePopUpToggle }: Props) => {
       isOpen={popUp?.group?.isOpen}
       onOpenChange={(isOpen) => handlePopUpToggle("group", isOpen)}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Add Group to Project">
+      <ModalContent title="Add Group to Project">
         <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>
