@@ -18,38 +18,14 @@ const badgeVariants = cva(
         false: "w-fit shrink-0 whitespace-nowrap overflow-hidden"
       },
       variant: {
-        neutral: [
-          "border-neutral/75 bg-neutral/30 text-neutral",
-          "[a&,button&]:hover:bg-neutral/40 [a&,button&]:hover:border-neutral"
-        ],
-        success: [
-          "border-success/75 bg-success/30 text-success",
-          "[a&,button&]:hover:bg-success/40 [a&,button&]:hover:border-success"
-        ],
-        info: [
-          "border-info/75 bg-info/30 text-info",
-          "[a&,button&]:hover:bg-info/40 [a&,button&]:hover:border-info"
-        ],
-        warning: [
-          "border-warning/75 bg-warning/30 text-warning",
-          "[a&,button&]:hover:bg-warning/40 [a&,button&]:hover:border-warning"
-        ],
-        danger: [
-          "border-danger/75 bg-danger/30 text-danger",
-          "[a&,button&]:hover:bg-danger/40 [a&,button&]:hover:border-danger"
-        ],
-        project: [
-          "border-project/75 bg-project/30 text-project",
-          "[a&,button&]:hover:bg-project/40 [a&,button&]:hover:border-project"
-        ],
-        org: [
-          "border-org/75 bg-org/30 text-org",
-          "[a&,button&]:hover:bg-org/40 [a&,button&]:hover:border-org"
-        ],
-        "sub-org": [
-          "border-sub-org/75 bg-sub-org/30 text-sub-org",
-          "[a&,button&]:hover:bg-sub-org/40 [a&,button&]:hover:border-sub-org"
-        ]
+        neutral: "bg-neutral/30 text-neutral [a&,button&]:hover:bg-neutral/40",
+        success: "bg-success/30 text-success [a&,button&]:hover:bg-success/40",
+        info: "bg-info/30 text-info [a&,button&]:hover:bg-info/40",
+        warning: "bg-warning/30 text-warning [a&,button&]:hover:bg-warning/40",
+        danger: "bg-danger/30 text-danger [a&,button&]:hover:bg-danger/40",
+        project: "bg-project/30 text-project [a&,button&]:hover:bg-project/40",
+        org: "bg-org/30 text-org [a&,button&]:hover:bg-org/40",
+        "sub-org": "bg-sub-org/30 text-sub-org [a&,button&]:hover:bg-sub-org/40"
       }
     },
     defaultVariants: {
