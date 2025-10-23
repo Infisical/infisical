@@ -16,6 +16,7 @@ import { AppConnection } from "../app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "../app-connection/app-connection-fns";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import {
+  convertVaultValueToString,
   getHCVaultAuthMounts,
   getHCVaultKubernetesAuthRoles,
   getHCVaultSecretsForPath,
@@ -592,7 +593,7 @@ export const externalMigrationServiceFactory = ({
         projectId,
         secrets: Object.entries(vaultSecrets).map(([secretKey, secretValue]) => ({
           secretKey,
-          secretValue
+          secretValue: convertVaultValueToString(secretValue)
         }))
       });
 
