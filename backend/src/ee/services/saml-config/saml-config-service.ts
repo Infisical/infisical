@@ -84,7 +84,7 @@ type TSamlConfigServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findById" | "findProjectGhostUser">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "delete" | "findLatestProjectKey" | "insertMany">;
-  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "create">;
 };
 
 export const samlConfigServiceFactory = ({
@@ -183,6 +183,14 @@ export const samlConfigServiceFactory = ({
             transaction
           );
           orgGroupsMap.set(groupName, newGroup);
+          await membershipGroupDAL.create(
+            {
+              actorGroupId: newGroup.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: orgId
+            },
+            transaction
+          );
         }
       }
 
