@@ -183,11 +183,19 @@ export const samlConfigServiceFactory = ({
             transaction
           );
           orgGroupsMap.set(groupName, newGroup);
-          await membershipGroupDAL.create(
+          const orgMembership = await membershipGroupDAL.create(
             {
               actorGroupId: newGroup.id,
               scope: AccessScope.Organization,
               scopeOrgId: orgId
+            },
+            transaction
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: orgMembership.id,
+              role: OrgMembershipRole.NoAccess,
+              customRoleId: null
             },
             transaction
           );
