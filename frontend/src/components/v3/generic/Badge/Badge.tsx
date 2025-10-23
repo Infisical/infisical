@@ -39,7 +39,7 @@ type TBadgeProps = VariantProps<typeof badgeVariants> &
     asChild?: boolean;
   };
 
-const Badge = forwardRef<HTMLButtonElement | HTMLSpanElement | HTMLAnchorElement, TBadgeProps>(
+const Badge = forwardRef<HTMLSpanElement, TBadgeProps>(
   ({ className, variant, asChild = false, isTruncatable = false, ...props }, ref): JSX.Element => {
     const Comp = asChild ? Slot : "span";
     return (

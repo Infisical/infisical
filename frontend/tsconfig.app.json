@@ -32,6 +32,6 @@
     "./src/**/*.ts",
     "./src/**/*.tsx",
     "./.storybook/**/*.ts",
-    "./.storybook/**/*.tsx",
+    "./.storybook/**/*.tsx"
   ],
 }

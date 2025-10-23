@@ -222,7 +222,7 @@ export const AsExternalLink: Story = {
     variant: "info",
     asChild: true,
     children: (
-      <a href="https://infisical.com/">
+      <a target="_blank" rel="noopener noreferrer" href="https://infisical.com/">
         Link <ExternalLinkIcon />
       </a>
     )
@@ -263,7 +263,7 @@ export const AsButton: Story = {
     variant: "org",
     asChild: true,
     children: (
-      <button type="button" onClick={() => alert("button clicked")}>
+      <button type="button" onClick={() => console.log("click")}>
         <GlobeIcon />
         Organization
         <ChevronsUpDownIcon />

@@ -1,20 +1,11 @@
 import type { Preview } from "@storybook/react-vite";
 
-import { RouterDecorator } from "./decorators";
+import { DocumentDecorator, RouterDecorator } from "./decorators";
 
 import "../src/index.css";
 
 const preview: Preview = {
-  decorators: [
-    (Story) => {
-      const root = document.getElementsByTagName("html")[0];
-
-      root.setAttribute("class", "overflow-visible");
-
-      return <Story />;
-    },
-    RouterDecorator
-  ],
+  decorators: [DocumentDecorator, RouterDecorator],
   parameters: {
     controls: {
       matchers: {
