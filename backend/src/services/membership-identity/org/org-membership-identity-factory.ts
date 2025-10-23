@@ -60,6 +60,10 @@ export const newOrgMembershipIdentityFactory = ({
       throw new BadRequestError({ message: "Only identities from parent organization can be invited" });
     }
 
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
+    }
+
     const permissionRoles = await permissionService.getOrgPermissionByRoles(
       dto.data.roles.map((el) => el.role),
       dto.permission.orgId
@@ -129,6 +133,11 @@ export const newOrgMembershipIdentityFactory = ({
           });
       }
     }
+
+    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
+    }
   };
 
   const onDeleteMembershipIdentityGuard: TMembershipIdentityScopeFactory["onDeleteMembershipIdentityGuard"] = async (
@@ -152,6 +161,10 @@ export const newOrgMembershipIdentityFactory = ({
 
     if (identityDetails.orgId === dto.permission.orgId) {
       throw new BadRequestError({ message: "Identity cannot exist as orphan" });
+    }
+
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: "Failed to create organization membership for a project scoped identity" });
     }
   };
 

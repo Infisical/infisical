@@ -55,7 +55,8 @@ export const membershipIdentityServiceFactory = ({
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
       orgDAL,
-      permissionService
+      permissionService,
+      identityDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
   };
