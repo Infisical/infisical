@@ -1,0 +1,150 @@
+---
+title: "Terraform"
+description: "How to deploy Infisical Relay Servers using Terraform"
+---
+
+This guide walks you through deploying an Infisical Relay server using Terraform. Select a provider below for specific instructions.
+
+<Tabs>
+<Tab title="AWS EC2">
+The provided configuration automates the creation of the EC2 instance, sets up the necessary security group rules, and uses a startup script to install and configure the Infisical Relay service.
+
+### Prerequisites
+
+Before you start, make sure you have the following:
+- An AWS account with permissions to create EC2 instances, Security Groups, and Elastic IPs.
+- An existing VPC and Subnet ID in your desired AWS region.
+- The AMI ID for your chosen OS (this guide uses an Ubuntu 22.04 LTS AMI).
+- Credentials for the Infisical Relay to authenticate with your Infisical instance. This guide uses a Machine Identity token, but other methods are available. You can find a full list of authentication options [here](/cli/commands/relay#available-authentication-methods).
+
+### Terraform Configuration
+
+Here is the complete Terraform configuration to deploy the Infisical Relay.
+
+```terraform
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "us-west-2" # Change to your desired AWS region
+}
+
+# Security Group for the Infisical Relay instance
+resource "aws_security_group" "infisical_relay_sg" {
+  name        = "infisical-relay-sg"
+  description = "Allows inbound traffic for Infisical Relay and SSH"
+  vpc_id      = "vpc-0c71f9c5709d88d18" # Change to your VPC ID
+
+  # Inbound: Platform-to-relay communication (TLS)
+  ingress {
+    from_port   = 8443
+    to_port     = 8443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Inbound: SSH reverse tunnel from gateways
+  ingress {
+    from_port   = 2222
+    to_port     = 2222
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Inbound: SSH access for administration
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Restrict this to your IP in production
+  }
+
+  # Outbound: All traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "infisical-relay-sg"
+  }
+}
+
+# Elastic IP for a static public IP address
+resource "aws_eip" "infisical_relay_eip" {
+  tags = {
+    Name = "infisical-relay-eip"
+  }
+}
+
+# EC2 instance to run Infisical Relay
+module "infisical_relay_instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "~> 5.6"
+
+  name          = "infisical-relay-example"
+  ami           = "ami-065778886ef8ec7c8" # Change to your desired AMI ID
+  instance_type = "t3.micro"
+  subnet_id     = "subnet-0fd2337a1c604a494" # Change to your Subnet ID
+
+  vpc_security_group_ids      = [aws_security_group.infisical_relay_sg.id]
+  associate_public_ip_address = false # We are using an Elastic IP instead
+
+  user_data = <<-EOT
+    #!/bin/bash
+    set -e
+    # Install Infisical CLI
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+    apt-get update && apt-get install -y infisical
+
+    # Install the relay as a systemd service.
+    # This example uses a Machine Identity token for authentication (--token).
+    # For other authentication methods, see https://infisical.com/docs/cli/commands/relay#available-authentication-methods
+    sudo infisical relay systemd install \
+      --token "your-machine-identity-token" \
+      --name "my-relay-example" \
+      --domain "https://app.infisical.com" \ # If you are self-hosting Infisical, change this to your instance's domain
+      --host "${aws_eip.infisical_relay_eip.public_ip}"
+
+    # Start and enable the service to run on boot
+    sudo systemctl start infisical-relay
+    sudo systemctl enable infisical-relay
+  EOT
+}
+
+# Associate the Elastic IP with the EC2 instance
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = module.infisical_relay_instance.id
+  allocation_id = aws_eip.infisical_relay_eip.id
+}
+```
+
+<Warning>
+The provided security group rules are open to the internet (`0.0.0.0/0`) for simplicity. In a production environment, you should restrict the `cidr_blocks` to known IP addresses for enhanced security, especially for the SSH port (22).
+</Warning>
+
+### How to Deploy
+
+1.  **Save the configuration:** Save the code above to a file named `main.tf`.
+2.  **Customize values:** Update the placeholder values in `main.tf` to match your AWS environment and Infisical credentials. You'll need to replace:
+    - `region` in the `provider` block.
+    - `vpc_id` in the `aws_security_group` resource.
+    - `ami` and `subnet_id` in the `infisical_relay_instance` module.
+    - The authentication flag and value in the `user_data` script (e.g., `--token "your-machine-identity-token"`).
+    - The `--domain` in the `user_data` script if you are self-hosting Infisical.
+3.  **Apply the configuration:** Run the following Terraform commands in your terminal:
+    ```bash
+    terraform init
+    terraform plan
+    terraform apply
+    ```
+</Tab>
+</Tabs>
