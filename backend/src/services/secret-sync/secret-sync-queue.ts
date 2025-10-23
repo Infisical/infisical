@@ -11,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -63,7 +64,6 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
-import { SecretNameSchema } from "@app/server/lib/schemas";
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -409,12 +409,21 @@ export const secretSyncQueueFactory = ({
 
     if (!Object.keys(importedSecrets).length) return {};
 
+    let invalidNameCount = 0;
+    let errorMessage = "";
+
     for (const [key] of Object.entries(importedSecrets)) {
       const result = SecretNameSchema.safeParse(key);
       if (!result.success) {
-        const errorMessage = result.error.issues[0]?.message || "Invalid secret name";
-        throw new Error(`Invalid secret name "${key}": ${errorMessage}`);
+        invalidNameCount += 1;
+        if (errorMessage === "") errorMessage = result.error.issues[0]?.message;
       }
+    }
+
+    if (invalidNameCount > 0) {
+      throw new Error(
+        `Found ${invalidNameCount} invalid secret name${invalidNameCount === 1 ? "" : "s"}. ${errorMessage}`
+      );
     }
 
     const importedSecretMap: TSecretMap = {};
