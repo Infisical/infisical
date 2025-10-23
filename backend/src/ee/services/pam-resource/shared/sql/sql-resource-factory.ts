@@ -1,5 +1,6 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
+import { DatabaseError } from "pg";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -93,7 +94,7 @@ const makeSqlConnection = (
           try {
             await client.raw(SIMPLE_QUERY);
           } catch (error) {
-            if (error instanceof BadRequestError) {
+            if (error instanceof DatabaseError) {
               // Hacky way to know if we successfully hit the database.
               // TODO: potentially two approaches to solve the problem.
               //       1. change the work flow, add account first then resource
