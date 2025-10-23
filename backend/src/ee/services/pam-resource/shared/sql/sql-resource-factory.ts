@@ -115,7 +115,7 @@ const makeSqlConnection = (
         },
         rotateCredentials: async (currentCredentials) => {
           const newPassword = alphaNumericNanoId(32);
-          await client.raw(`ALTER USER ?? WITH PASSWORD ?'`, [currentCredentials.username, newPassword]);
+          await client.raw(`ALTER USER ?? WITH PASSWORD ?`, [currentCredentials.username, newPassword]);
           return { username: currentCredentials.username, password: newPassword };
         },
         close: () => client.destroy()
