@@ -316,9 +316,9 @@ export const RelayCliDeploymentMethod = () => {
                 content={
                   <>
                     Token authentication will be automatically enabled for the selected identity if
-                    it isn't already configured. By default, it will be configured to allow all IP
-                    addresses with a token TTL of 30 days. You can manage these settings in Access
-                    Control.
+                    it isn&apos;t already configured. By default, it will be configured to allow all
+                    IP addresses with a token TTL of 30 days. You can manage these settings in
+                    Access Control.
                     <br />
                     <br />A token will automatically be generated to be used with the CLI command.
                   </>
