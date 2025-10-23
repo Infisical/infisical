@@ -49,10 +49,13 @@ User authentication is designed for individual developers and supports multiple 
   <ParamField query="Flags">
     <Expandable title="properties">
         <ParamField query="email" type="string" optional>
-          Your email address. Required for direct login along with `--password`.
+          Your email address. Required for direct login along with `--password` and `--organization-id`.
         </ParamField>
         <ParamField query="password" type="string" optional>
-          Your password. Required for direct login along with `--email`.
+          Your password. Required for direct login along with `--email` and `--organization-id`.
+        </ParamField>
+        <ParamField query="organization-id" type="string" optional>
+          Your organization id. Required for direct login along with `--password` and `--email`.
         </ParamField>
         <ParamField query="interactive" type="boolean" optional>
           Force interactive CLI login instead of browser-based authentication.
@@ -71,11 +74,12 @@ User authentication is designed for individual developers and supports multiple 
       </Accordion>
       <Accordion title="Direct Login (CI/CD)">
         ```bash
-        infisical login --email=user@example.com --password=your-password
+        infisical login --email=user@example.com --password=your-password --organization-id=your-organization-id
         
         # Or using environment variables
         export INFISICAL_EMAIL="user@example.com"
         export INFISICAL_PASSWORD="your-password"
+        export INFISICAL_ORGANIZATION_ID="your-organization-id"
         infisical login
         ```
       </Accordion>
@@ -86,7 +90,7 @@ User authentication is designed for individual developers and supports multiple 
       </Accordion>
       <Accordion title="Plain Token Output (Useful for scripting and CI/CD)">
         ```bash
-        export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --plain --silent)
+        export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --organization-id=your-organization-id --plain --silent)
         ```
       </Accordion>
     </AccordionGroup>
@@ -404,11 +408,11 @@ The login command supports a number of flags that you can use for different auth
   </Accordion>
   <Accordion title="--email">
     ```bash
-    infisical login --email=<email> --password=<password>
+    infisical login --email=<email> --password=<password> --organization-id=<organization-id>
     ```
 
     #### Description
-    User email address. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--password` flag.
+    User email address. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--password` and `--organization-id` flag.
 
     <Tip>
       You can omit the **--method=user** if you want as it's the default method.
@@ -421,11 +425,11 @@ The login command supports a number of flags that you can use for different auth
   </Accordion>
   <Accordion title="--password">
     ```bash
-    infisical login --email=<email> --password=<password>
+    infisical login --email=<email> --password=<password> --organization-id=<organization-id>
     ```
 
     #### Description
-    User password. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` flag.
+    User password. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` and `--organization-id` flag.
 
     <Warning>
       For security in CI/CD environments, prefer using the `INFISICAL_PASSWORD` environment variable instead of passing the password as a command-line flag.
@@ -440,18 +444,35 @@ The login command supports a number of flags that you can use for different auth
     </Tip>
 
   </Accordion>
+    <Accordion title="--organization-id">
+    ```bash
+    infisical login --email=<email> --password=<password> --organization-id=<organization-id>
+    ```
+
+    #### Description
+    User organization id. Required if you want to do a non-interactive login when the **--method** flag is set to **user**. Must be used together with the `--email` and `--password` flag.
+
+    <Tip>
+      You can omit the **--method=user** if you want as it's the default method.
+    </Tip>
+
+    <Tip>
+      The `organization-id` flag can be substituted with the `INFISICAL_ORGANIZATION_ID` environment variable.
+    </Tip>
+
+  </Accordion>
   <Accordion title="--interactive">
     ```bash
     infisical login --interactive
     ```
 
     #### Description
-    Forces interactive CLI login where you'll be prompted to enter your email and password in the terminal, instead of opening a browser.
+    Forces interactive CLI login where you'll be prompted to enter your email, password, and select your organization in the terminal, instead of opening a browser.
 
   </Accordion>
   <Accordion title="--plain">
     ```bash
-    infisical login --email=<email> --password=<password> --plain
+    infisical login --email=<email> --password=<password> --organization-id=<organization-id> --plain
     ```
 
     #### Description
@@ -459,7 +480,7 @@ The login command supports a number of flags that you can use for different auth
 
     ```bash
     # Example: Capture token in a variable
-    export INFISICAL_TOKEN=$(infisical login --email=<email> --password=<password> --plain --silent)
+    export INFISICAL_TOKEN=$(infisical login --email=<email> --password=<password> --organization-id=<organization-id> --plain --silent)
     ```
 
     <Tip>
@@ -506,13 +527,13 @@ The following examples demonstrate different ways to authenticate as a user with
 
     ```bash
     # Basic direct login (defaults to US Cloud)
-    infisical login --email user@example.com --password "your-password"
+    infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
     # EU Cloud (Custom domain)
-    infisical login --email user@example.com --password "your-password" --domain https://eu.infisical.com
+    infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --domain https://eu.infisical.com
 
     # Output only JWT token for scripting
-    export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --plain --silent)
+    export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --plain --silent)
     ```
 
     #### Using Environment Variables (Recommended for CI/CD)
@@ -521,6 +542,7 @@ The following examples demonstrate different ways to authenticate as a user with
     # Set credentials as environment variables
     export INFISICAL_EMAIL="user@example.com"
     export INFISICAL_PASSWORD="your-password"
+    export INFISICAL_ORGANIZATION_ID="your-organization-id"
 
     # Login without additional flags
     infisical login
@@ -541,6 +563,8 @@ The following examples demonstrate different ways to authenticate as a user with
     You'll be prompted to enter:
     - Email address
     - Password
+
+    After the prompt, you will be shown a list of organizations to choose from.
 
   </Accordion>
 
