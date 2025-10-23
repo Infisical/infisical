@@ -1,3 +1,5 @@
+import { AxiosError } from "axios";
+
 import { request } from "@app/lib/config/request";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
@@ -6,6 +8,46 @@ import { SecretSyncError } from "../secret-sync-errors";
 import { TNorthflankSyncWithCredentials } from "./northflank-sync-types";
 
 const NORTHFLANK_API_URL = "https://api.northflank.com";
+
+const buildNorthflankAPIErrorMessage = (error: unknown): string => {
+  let errorMessage = "Northflank API returned an error.";
+
+  if (error && typeof error === "object" && "response" in error) {
+    const axiosError = error as AxiosError;
+
+    if (axiosError.response?.data) {
+      // This is the shape of the error response from the Northflank API
+      const responseData = axiosError.response.data as {
+        error?: { message?: string; details?: Record<string, string[]> };
+        message?: string;
+      };
+      const errorParts = [];
+
+      if (responseData.error?.message) {
+        errorParts.push(responseData.error.message);
+      } else if (responseData.message) {
+        errorParts.push(responseData.message);
+      }
+
+      if (responseData.error?.details) {
+        const { details } = responseData.error;
+
+        // Flatten the details object into a string
+        Object.entries(details).forEach(([field, fieldErrors]) => {
+          if (Array.isArray(fieldErrors)) {
+            fieldErrors.forEach((fieldError) => errorParts.push(`${field}: ${fieldError}`));
+          } else {
+            errorParts.push(`${field}: ${String(fieldErrors)}`);
+          }
+        });
+      }
+
+      errorMessage += ` ${errorParts.join(". ")}`;
+    }
+  }
+
+  return errorMessage;
+};
 
 const getNorthflankSecrets = async (secretSync: TNorthflankSyncWithCredentials): Promise<Record<string, string>> => {
   const {
@@ -39,7 +81,7 @@ const getNorthflankSecrets = async (secretSync: TNorthflankSyncWithCredentials):
   } catch (error: unknown) {
     throw new SecretSyncError({
       error,
-      message: "Failed to fetch Northflank secrets"
+      message: `Failed to fetch Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`
     });
   }
 };
@@ -73,7 +115,7 @@ const updateNorthflankSecrets = async (
   } catch (error: unknown) {
     throw new SecretSyncError({
       error,
-      message: "Failed to update Northflank secrets"
+      message: `Failed to update Northflank secrets. ${buildNorthflankAPIErrorMessage(error)}`
     });
   }
 };
