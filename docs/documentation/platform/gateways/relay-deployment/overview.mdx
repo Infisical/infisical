@@ -1,6 +1,6 @@
 ---
-title: "CLI"
-description: "How to deploy Infisical Relay Servers using the CLI"
+title: "Overview"
+description: "How to deploy Infisical Relay Servers"
 ---
 
 Infisical Relay is a secure routing layer that allows Infisical to connect to your private network resources, such as databases or internal APIs, without exposing them to the public internet.
@@ -107,13 +107,8 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
     </AccordionGroup>
    </Step>
 
-   <Step title="Install the Infisical CLI">
-    Install the Infisical CLI on the server where you plan to deploy the relay. The CLI is required for relay installation and management.
-
-   See the [CLI Installation Guide](/cli/overview) for instructions.
-
-    This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
-
+   <Step title="Provision a Server">
+    Provision a server or virtual machine where you plan to deploy the relay. This server must have a static IP address or DNS name to be identifiable by the Infisical platform.
    </Step>
 
    <Step title="Configure Network & Firewall">
@@ -133,6 +128,8 @@ To successfully deploy an Infisical Relay for use, follow these steps in order.
   </Step>
 
    <Step title="Select a Deployment Method">
+      You can deploy the Infisical Relay in various ways. This guide provides a manual setup example using the Infisical CLI. For an infrastructure-as-code approach, see our [Terraform guide](/documentation/platform/gateways/relay-deployment/terraform).
+
       The Infisical CLI is used to install and start the relay in your chosen environment. The CLI provides commands for both production and development scenarios, and supports a variety of options/flags to configure your deployment.
 
       To view all available flags and equivalent environment variables for relay deployment, see the [Relay CLI Command Reference](/cli/commands/relay).
