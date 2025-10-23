@@ -343,4 +343,138 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       return data;
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/:certificateId/renew",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        certificateId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim(),
+          issuingCaCertificate: z.string().trim(),
+          certificateChain: z.string().trim(),
+          privateKey: z.string().trim().optional(),
+          serialNumber: z.string().trim(),
+          certificateId: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const data = await server.services.certificateV3.renewCertificate({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        certificateId: req.params.certificateId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: data.projectId,
+        event: {
+          type: EventType.RENEW_CERTIFICATE,
+          metadata: {
+            originalCertificateId: req.params.certificateId,
+            newCertificateId: data.certificateId,
+            profileName: data.profileName
+          }
+        }
+      });
+
+      return data;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:certificateId/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        certificateId: z.string().uuid()
+      }),
+      body: z.object({
+        renewBeforeDays: z.number().int().min(1).max(30).optional(),
+        disableAutoRenewal: z.boolean().optional()
+      }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          renewBeforeDays: z.number().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      if (req.body.disableAutoRenewal === true) {
+        const data = await server.services.certificateV3.disableRenewalConfig({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          certificateId: req.params.certificateId
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: data.projectId,
+          event: {
+            type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
+            metadata: {
+              certificateId: req.params.certificateId
+            }
+          }
+        });
+
+        return {
+          message: "Auto-renewal disabled successfully"
+        };
+      }
+
+      if (req.body.renewBeforeDays !== undefined) {
+        const data = await server.services.certificateV3.updateRenewalConfig({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          certificateId: req.params.certificateId,
+          renewBeforeDays: req.body.renewBeforeDays
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: data.projectId,
+          event: {
+            type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG,
+            metadata: {
+              certificateId: req.params.certificateId,
+              renewBeforeDays: req.body.renewBeforeDays.toString()
+            }
+          }
+        });
+
+        return {
+          message: "Certificate configuration updated successfully",
+          renewBeforeDays: data.renewBeforeDays
+        };
+      }
+
+      return {
+        message: "No configuration changes requested"
+      };
+    }
+  });
 };

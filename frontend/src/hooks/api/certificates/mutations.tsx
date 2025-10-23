@@ -9,7 +9,10 @@ import {
   TDeleteCertDTO,
   TImportCertificateDTO,
   TImportCertificateResponse,
-  TRevokeCertDTO
+  TRenewCertificateDTO,
+  TRenewCertificateResponse,
+  TRevokeCertDTO,
+  TUpdateRenewalConfigDTO
 } from "./types";
 
 export const useDeleteCert = () => {
@@ -73,6 +76,60 @@ export const useImportCertificate = () => {
     onSuccess: (_, { projectSlug }) => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+    }
+  });
+};
+
+export const useRenewCertificate = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TRenewCertificateResponse, object, TRenewCertificateDTO>({
+    mutationFn: async ({ certificateId }) => {
+      const { data } = await apiRequest.post<TRenewCertificateResponse>(
+        `/api/v3/certificates/${certificateId}/renew`,
+        {}
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["certificate-profiles", "list"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
+      });
+      if (data.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.forProjectCertificates(data.projectId)
+        });
+      }
+    }
+  });
+};
+
+export const useUpdateRenewalConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { message: string; renewBeforeDays?: number },
+    object,
+    TUpdateRenewalConfigDTO & { disableAutoRenewal?: boolean }
+  >({
+    mutationFn: async ({ certificateId, renewBeforeDays, disableAutoRenewal }) => {
+      const { data } = await apiRequest.patch<{ message: string; renewBeforeDays?: number }>(
+        `/api/v3/certificates/${certificateId}/config`,
+        { renewBeforeDays, disableAutoRenewal }
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
       });
     }
   });

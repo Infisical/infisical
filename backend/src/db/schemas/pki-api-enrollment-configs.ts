@@ -10,7 +10,7 @@ import { TImmutableDBKeys } from "./models";
 export const PkiApiEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
   autoRenew: z.boolean().default(false).nullable().optional(),
-  autoRenewDays: z.number().nullable().optional(),
+  renewBeforeDays: z.number().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });

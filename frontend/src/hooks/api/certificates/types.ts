@@ -4,6 +4,7 @@ export type TCertificate = {
   id: string;
   caId: string;
   certificateTemplateId?: string;
+  profileId?: string;
   status: CertStatus;
   friendlyName: string;
   commonName: string;
@@ -13,6 +14,11 @@ export type TCertificate = {
   notAfter: string;
   keyUsages: CertKeyUsage[];
   extendedKeyUsages: CertExtendedKeyUsage[];
+  renewBeforeDays?: number;
+  renewedBy?: string;
+  renewedFromId?: string;
+  renewedById?: string;
+  renewalError?: string;
 };
 
 export type TDeleteCertDTO = {
@@ -42,4 +48,24 @@ export type TImportCertificateResponse = {
   certificateChain: string;
   privateKey: string;
   serialNumber: string;
+};
+
+export type TRenewCertificateDTO = {
+  certificateId: string;
+};
+
+export type TRenewCertificateResponse = {
+  certificate: string;
+  issuingCaCertificate: string;
+  certificateChain: string;
+  privateKey?: string;
+  serialNumber: string;
+  certificateId: string;
+  projectId: string;
+};
+
+export type TUpdateRenewalConfigDTO = {
+  certificateId: string;
+  renewBeforeDays?: number;
+  projectSlug: string;
 };

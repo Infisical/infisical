@@ -175,6 +175,7 @@ import { certificateTemplateEstConfigDALFactory } from "@app/services/certificat
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { certificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
 import { certificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
@@ -2122,6 +2123,16 @@ export const registerRoutes = async (
     permissionService
   });
 
+  const certificateV3Queue = certificateV3QueueServiceFactory({
+    queueService,
+    certificateDAL,
+    certificateAuthorityDAL,
+    certificateProfileDAL,
+    projectDAL,
+    certificateV3Service,
+    auditLogService
+  });
+
   const certificateEstV3Service = certificateEstV3ServiceFactory({
     internalCertificateAuthorityService,
     certificateTemplateV2Service,
@@ -2281,6 +2292,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
+  await certificateV3Queue.startDailyAutoRenewalJob();
   await kmsService.startService();
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();

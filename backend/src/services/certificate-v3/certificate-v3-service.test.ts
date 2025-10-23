@@ -7,10 +7,11 @@ import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { ACMESANType, CertificateOrderStatus } from "@app/services/certificate/certificate-types";
+import { ACMESANType, CertificateOrderStatus, CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   CertExtendedKeyUsageType,
@@ -28,8 +29,9 @@ import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./cer
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
 
-  const mockCertificateDAL: Pick<TCertificateDALFactory, "findOne" | "updateById"> = {
+  const mockCertificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById"> = {
     findOne: vi.fn(),
+    findById: vi.fn(),
     updateById: vi.fn()
   };
 
@@ -1458,6 +1460,598 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe("renewCertificate", () => {
+    const mockOriginalCert = {
+      id: "cert-123",
+      status: CertStatus.ACTIVE,
+      serialNumber: "123456",
+      friendlyName: "Test Certificate",
+      commonName: "test.example.com",
+      notBefore: new Date("2024-01-01"),
+      notAfter: new Date("2024-02-01"), // 31 days
+      revokedAt: null,
+      renewedById: null,
+      profileId: "profile-123",
+      renewBeforeDays: 7,
+      caId: "ca-123",
+      pkiSubscriberId: null,
+      keyUsages: ["digital_signature", "key_agreement"],
+      extendedKeyUsages: ["server_auth"],
+      altNames: "test.example.com,api.example.com",
+      projectId: "project-123",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      certificateTemplateId: "template-123",
+      revocationReason: null,
+      caCertId: null,
+      renewedFromId: null,
+      renewalError: null,
+      keyAlgorithm: "RSA_2048",
+      signatureAlgorithm: "RSA-SHA256"
+    };
+
+    const mockProfile = {
+      id: "profile-123",
+      projectId: "project-123",
+      enrollmentType: EnrollmentType.API,
+      caId: "ca-123",
+      certificateTemplateId: "template-123",
+      apiConfig: {
+        id: "api-config-123",
+        autoRenew: true,
+        renewBeforeDays: 14
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      slug: "test-profile",
+      description: "Test profile"
+    };
+
+    const mockCA = {
+      id: "ca-123",
+      projectId: "project-123",
+      status: CaStatus.ACTIVE,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      enableDirectIssuance: true,
+      name: "Test CA",
+      requireTemplateForIssuance: false,
+      externalCa: undefined,
+      parentCaId: null,
+      type: "ROOT",
+      friendlyName: "Test CA",
+      organization: "Test Org",
+      ou: "Test OU",
+      country: "US",
+      province: "CA",
+      locality: "SF",
+      commonName: "Test CA",
+      keyAlgorithm: "RSA_2048",
+      notAfter: "2025-01-01T00:00:00Z",
+      notBefore: "2024-01-01T00:00:00Z",
+      maxPathLength: -1,
+      activeCaCertId: "cert-123",
+      dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
+      serialNumber: "123456789",
+      internalCa: {
+        id: "internal-ca-123",
+        parentCaId: null,
+        type: "ROOT",
+        friendlyName: "Test CA",
+        organization: "Test Org",
+        ou: "Test OU",
+        country: "US",
+        province: "CA",
+        locality: "SF",
+        commonName: "Test CA",
+        keyAlgorithm: "RSA_2048",
+        notAfter: "2025-01-01T00:00:00Z",
+        notBefore: "2024-01-01T00:00:00Z",
+        maxPathLength: -1,
+        activeCaCertId: "cert-123",
+        dn: "CN=Test CA,O=Test Org,OU=Test OU,C=US",
+        serialNumber: "123456789"
+      }
+    };
+
+    const mockTemplate = {
+      id: "template-123",
+      projectId: "project-123",
+      name: "Test Template",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      algorithms: {
+        signature: ["SHA256-RSA", "SHA384-RSA"],
+        keyType: ["RSA_2048", "RSA_4096"]
+      }
+    };
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+
+      // Mock current date to be within renewal window
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2024-01-26")); // 6 days before cert expires, within renewal window
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("should successfully renew eligible certificate", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+        certificate: "renewed-cert",
+        certificateChain: "renewed-chain",
+        issuingCaCertificate: "issuing-ca",
+        privateKey: "private-key",
+        serialNumber: "789012",
+        ca: mockCA
+      });
+
+      const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
+      vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
+
+      const result = await service.renewCertificate({
+        certificateId: "cert-123",
+        ...mockActor
+      });
+
+      expect(result).toHaveProperty("certificate", "renewed-cert");
+      expect(result).toHaveProperty("certificateId", "cert-456");
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-456", {
+        profileId: "profile-123",
+        renewBeforeDays: 14,
+        renewedFromId: "cert-123"
+      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewedById: "cert-456",
+        renewalError: null
+      });
+    });
+
+    it("should validate certificate against current template during renewal", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+        isValid: false,
+        errors: ["Subject alternative name not allowed"],
+        warnings: []
+      });
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(
+        "Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template"
+      );
+
+      // Should store template validation error
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewalError: "Template validation failed: Subject alternative name not allowed"
+      });
+    });
+
+    it("should reject renewal if certificate is not from a profile", async () => {
+      const certWithoutProfile = { ...mockOriginalCert, profileId: null };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(certWithoutProfile);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Only certificates issued from a profile can be renewed");
+    });
+
+    it("should reject renewal if certificate is already renewed", async () => {
+      const alreadyRenewedCert = { ...mockOriginalCert, renewedById: "cert-456" };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(alreadyRenewedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate has already been renewed");
+    });
+
+    it("should reject renewal if certificate is expired", async () => {
+      const expiredCert = {
+        ...mockOriginalCert,
+        notAfter: new Date("2024-01-20") // Expired 6 days ago
+      };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(expiredCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate is already expired");
+    });
+
+    it("should reject renewal if certificate is revoked", async () => {
+      const revokedCert = {
+        ...mockOriginalCert,
+        revokedAt: new Date("2024-01-15")
+      };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(revokedCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate is revoked and cannot be renewed");
+    });
+
+    it("should reject renewal if CA is inactive", async () => {
+      const inactiveCA = { ...mockCA, status: CaStatus.DISABLED };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(inactiveCA);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("Certificate is not eligible for renewal: Certificate Authority is disabled, must be active");
+    });
+
+    it("should reject renewal if new certificate would outlive CA", async () => {
+      const shortLivedCA = {
+        ...mockCA,
+        internalCa: {
+          ...mockCA.internalCa,
+          notAfter: "2024-01-28T00:00:00Z"
+        }
+      };
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(shortLivedCA);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("New certificate would expire");
+    });
+
+    it("should allow manual renewal outside window (manual renewal always bypasses window)", async () => {
+      vi.setSystemTime(new Date("2024-01-15")); // 17 days before expiry, outside 7-day window
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
+      vi.mocked(mockInternalCaService.issueCertFromCa).mockResolvedValue({
+        certificate: "renewed-cert",
+        certificateChain: "renewed-chain",
+        issuingCaCertificate: "issuing-ca",
+        privateKey: "private-key",
+        serialNumber: "789012",
+        ca: mockCA
+      });
+
+      const newCert = { ...mockOriginalCert, id: "cert-456", serialNumber: "789012" };
+      vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
+
+      const result = await service.renewCertificate({
+        certificateId: "cert-123",
+        ...mockActor
+      });
+
+      expect(result).toHaveProperty("certificate", "renewed-cert");
+    });
+  });
+
+  describe("updateRenewalConfig", () => {
+    it("should update renewal configuration successfully", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedById: null,
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-02-01"),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.API,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
+
+      const result = await service.updateRenewalConfig({
+        actor: ActorType.USER,
+        actorId: "user-123",
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: "org-123",
+        certificateId: "cert-123",
+        renewBeforeDays: 7
+      });
+
+      expect(result).toEqual({
+        projectId: "project-123",
+        renewBeforeDays: 7
+      });
+
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewBeforeDays: 7
+      });
+    });
+
+    it("should reject update if certificate is not from profile", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: null,
+        renewedById: null,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate was not issued from a profile");
+    });
+
+    it("should reject update if certificate is already renewed", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedById: "cert-456",
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null,
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-02-01")
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.API,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 7
+        })
+      ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate has already been renewed");
+    });
+
+    it("should reject update if renewBeforeDays >= certificate TTL", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        renewedById: null,
+        notBefore: new Date("2026-01-01"),
+        notAfter: new Date("2026-01-08"),
+        projectId: "project-123",
+        status: CertStatus.ACTIVE,
+        revokedAt: null
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.API,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 8 // Greater than 7-day TTL
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.updateRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123",
+          renewBeforeDays: 8
+        })
+      ).rejects.toThrow("Invalid renewal configuration: renewal threshold exceeds certificate validity period");
+    });
+  });
+
+  describe("disableRenewalConfig", () => {
+    it("should disable renewal configuration successfully", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: "profile-123",
+        projectId: "project-123"
+      };
+
+      const mockProfile = {
+        id: "profile-123",
+        enrollmentType: EnrollmentType.API,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
+
+      const result = await service.disableRenewalConfig({
+        actor: ActorType.USER,
+        actorId: "user-123",
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: "org-123",
+        certificateId: "cert-123"
+      });
+
+      expect(result).toEqual({
+        projectId: "project-123"
+      });
+
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
+        renewBeforeDays: null
+      });
+    });
+
+    it("should reject disable if certificate is not from profile", async () => {
+      const mockCert = {
+        id: "cert-123",
+        profileId: null,
+        projectId: "project-123"
+      };
+
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
+
+      await expect(
+        service.disableRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123"
+        })
+      ).rejects.toThrow(BadRequestError);
+
+      await expect(
+        service.disableRenewalConfig({
+          actor: ActorType.USER,
+          actorId: "user-123",
+          actorAuthMethod: AuthMethod.EMAIL,
+          actorOrgId: "org-123",
+          certificateId: "cert-123"
+        })
+      ).rejects.toThrow("Certificate is not eligible for auto-renewal: certificate was not issued from a profile");
     });
   });
 });

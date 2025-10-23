@@ -1,9 +1,11 @@
 import { ForbiddenError } from "@casl/ability";
 import { randomUUID } from "crypto";
+import RE2 from "re2";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -11,15 +13,18 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import {
+  CertExtendedKeyUsage,
   CertificateOrderStatus,
   CertKeyAlgorithm,
-  CertSignatureAlgorithm
+  CertKeyUsage,
+  CertSignatureAlgorithm,
+  CertStatus
 } from "@app/services/certificate/certificate-types";
 import {
   TCertificateAuthorityDALFactory,
   TCertificateAuthorityWithAssociatedCa
 } from "@app/services/certificate-authority/certificate-authority-dal";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -30,7 +35,9 @@ import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
   buildSubjectAlternativeNamesFromTemplate,
+  convertExtendedKeyUsageArrayFromLegacy,
   convertExtendedKeyUsageArrayToLegacy,
+  convertKeyUsageArrayFromLegacy,
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi
@@ -38,13 +45,18 @@ import {
 import {
   TCertificateFromProfileResponse,
   TCertificateOrderResponse,
+  TDisableRenewalConfigDTO,
+  TDisableRenewalResponse,
   TIssueCertificateFromProfileDTO,
   TOrderCertificateFromProfileDTO,
-  TSignCertificateFromProfileDTO
+  TRenewalConfigResponse,
+  TRenewCertificateDTO,
+  TSignCertificateFromProfileDTO,
+  TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
 
 type TCertificateV3ServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   certificateTemplateV2Service: Pick<
@@ -93,6 +105,77 @@ const validateProfileAndPermissions = async (
   );
 
   return profile;
+};
+
+const validateRenewalEligibility = (
+  certificate: {
+    id: string;
+    status: string;
+    notBefore: Date;
+    notAfter: Date;
+    revokedAt?: Date | null;
+    renewedById?: string | null;
+    profileId?: string | null;
+    caId?: string | null;
+    pkiSubscriberId?: string | null;
+  },
+  ca: TCertificateAuthorityWithAssociatedCa
+) => {
+  const errors: string[] = [];
+
+  if (certificate.status !== CertStatus.ACTIVE) {
+    errors.push(`Certificate status is ${certificate.status}, must be ${CertStatus.ACTIVE}`);
+  }
+
+  const now = new Date();
+  if (certificate.notAfter <= now) {
+    errors.push("Certificate is already expired");
+  }
+
+  if (certificate.revokedAt) {
+    errors.push("Certificate is revoked and cannot be renewed");
+  }
+
+  const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+  const isInternalCa = caType === CaType.INTERNAL;
+  const isConnectedExternalCa = caType === CaType.ACME || caType === CaType.AZURE_AD_CS;
+  const isImportedCertificate = certificate.pkiSubscriberId != null && !certificate.profileId;
+
+  if (!isInternalCa && !isConnectedExternalCa) {
+    errors.push(`CA type ${String(caType)} does not support renewal`);
+  }
+
+  if (isImportedCertificate) {
+    errors.push("Externally imported certificates cannot be renewed");
+  }
+
+  if (ca.status !== CaStatus.ACTIVE) {
+    errors.push(`Certificate Authority is ${ca.status}, must be ${CaStatus.ACTIVE}`);
+  }
+
+  if (certificate.renewedById) {
+    errors.push("Certificate has already been renewed");
+  }
+
+  const certificateTtlInDays = Math.ceil(
+    (certificate.notAfter.getTime() - certificate.notBefore.getTime()) / (24 * 60 * 60 * 1000)
+  );
+
+  if (ca.internalCa?.notAfter) {
+    const caExpiryDate = new Date(ca.internalCa.notAfter);
+    const proposedCertExpiryDate = new Date(now.getTime() + certificateTtlInDays * 24 * 60 * 60 * 1000);
+
+    if (proposedCertExpiryDate > caExpiryDate) {
+      errors.push(
+        `New certificate would expire (${proposedCertExpiryDate.toISOString()}) after its issuing CA (${caExpiryDate.toISOString()})`
+      );
+    }
+  }
+
+  return {
+    isEligible: errors.length === 0,
+    errors
+  };
 };
 
 const validateCaSupport = (ca: TCertificateAuthorityWithAssociatedCa, operation: string) => {
@@ -153,6 +236,63 @@ const extractCertificateFromBuffer = (certData: Buffer | { rawData: Buffer } | s
     return bufferToString(certData.rawData);
   }
   return bufferToString(certData as unknown as Buffer);
+};
+
+const parseKeyUsages = (keyUsages: unknown): CertKeyUsage[] => {
+  if (!keyUsages) return [];
+  if (Array.isArray(keyUsages)) return keyUsages as CertKeyUsage[];
+  return (keyUsages as string).split(",").map((usage) => usage.trim() as CertKeyUsage);
+};
+
+const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsage[] => {
+  if (!extendedKeyUsages) return [];
+  if (Array.isArray(extendedKeyUsages)) return extendedKeyUsages as CertExtendedKeyUsage[];
+  return (extendedKeyUsages as string).split(",").map((usage) => usage.trim() as CertExtendedKeyUsage);
+};
+
+const isValidRenewalTiming = (renewBeforeDays: number, certificateExpiryDate: Date): boolean => {
+  const renewalDate = new Date(certificateExpiryDate.getTime() - renewBeforeDays * 24 * 60 * 60 * 1000);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+
+  return renewalDate >= tomorrow;
+};
+
+const calculateRenewalThreshold = (
+  profileRenewBeforeDays: number | undefined,
+  certificateTtlInDays: number
+): number | undefined => {
+  if (!profileRenewBeforeDays) {
+    return undefined;
+  }
+
+  if (certificateTtlInDays > profileRenewBeforeDays) {
+    return profileRenewBeforeDays;
+  }
+
+  return Math.max(1, certificateTtlInDays - 1);
+};
+
+const parseTtlToDays = (ttl: string): number => {
+  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
+  if (!match) {
+    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
+  }
+
+  const [, value, unit] = match;
+  const numValue = parseInt(value, 10);
+
+  switch (unit) {
+    case "d":
+      return numValue;
+    case "h":
+      return Math.ceil(numValue / 24);
+    case "m":
+      return Math.ceil(numValue / (24 * 60));
+    default:
+      throw new BadRequestError({ message: `Unsupported TTL unit: ${unit}` });
+  }
 };
 
 export const certificateV3ServiceFactory = ({
@@ -274,7 +414,16 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
     }
 
-    await certificateDAL.updateById(cert.id, { profileId });
+    const certificateTtlInDays = parseTtlToDays(certificateRequest.validity.ttl);
+    const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+
+    const finalRenewBeforeDays =
+      renewBeforeDays && isValidRenewalTiming(renewBeforeDays, new Date(cert.notAfter)) ? renewBeforeDays : undefined;
+
+    await certificateDAL.updateById(cert.id, {
+      profileId,
+      renewBeforeDays: finalRenewBeforeDays
+    });
 
     return {
       certificate: bufferToString(certificate),
@@ -371,7 +520,16 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
     }
 
-    await certificateDAL.updateById(cert.id, { profileId });
+    const certificateTtlInDays = parseTtlToDays(validity.ttl);
+    const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+
+    const finalRenewBeforeDays =
+      renewBeforeDays && isValidRenewalTiming(renewBeforeDays, new Date(cert.notAfter)) ? renewBeforeDays : undefined;
+
+    await certificateDAL.updateById(cert.id, {
+      profileId,
+      renewBeforeDays: finalRenewBeforeDays
+    });
 
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
     const certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
@@ -479,9 +637,341 @@ export const certificateV3ServiceFactory = ({
     });
   };
 
+  const renewCertificate = async ({
+    certificateId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    internal = false
+  }: TRenewCertificateDTO & { internal?: boolean }): Promise<TCertificateFromProfileResponse> => {
+    const originalCert = await certificateDAL.findById(certificateId);
+    if (!originalCert) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    if (!originalCert.profileId) {
+      throw new ForbiddenRequestError({
+        message: "Only certificates issued from a profile can be renewed"
+      });
+    }
+
+    const originalSignatureAlgorithm = originalCert.signatureAlgorithm as CertSignatureAlgorithm;
+    const originalKeyAlgorithm = originalCert.keyAlgorithm as CertKeyAlgorithm;
+
+    if (!originalSignatureAlgorithm || !originalKeyAlgorithm) {
+      throw new BadRequestError({
+        message:
+          "Original certificate does not have algorithm information stored. Cannot renew certificate issued before algorithm tracking was implemented."
+      });
+    }
+
+    const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    if (profile.enrollmentType !== "api") {
+      throw new ForbiddenRequestError({
+        message: "Certificate is not eligible for renewal: EST certificates cannot be renewed through this endpoint"
+      });
+    }
+
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+    if (!ca) {
+      throw new NotFoundError({ message: "Certificate Authority not found" });
+    }
+
+    const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
+    if (!eligibilityCheck.isEligible) {
+      throw new BadRequestError({
+        message: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
+      });
+    }
+
+    if (!internal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        ProjectPermissionSub.CertificateProfiles
+      );
+    }
+
+    validateCaSupport(ca, "direct certificate issuance");
+
+    const template = await certificateTemplateV2Service.getTemplateV2ById({
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
+      templateId: profile.certificateTemplateId,
+      internal
+    });
+
+    if (!template) {
+      throw new NotFoundError({ message: "Certificate template not found for this profile" });
+    }
+
+    const originalTtlInDays = Math.ceil(
+      (new Date(originalCert.notAfter).getTime() - new Date(originalCert.notBefore).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const ttl = `${originalTtlInDays}d`;
+
+    const certificateRequest = {
+      commonName: originalCert.commonName || undefined,
+      keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
+      extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(parseExtendedKeyUsages(originalCert.extendedKeyUsages)),
+      subjectAlternativeNames: originalCert.altNames
+        ? originalCert.altNames.split(",").map((san) => {
+            const trimmed = san.trim();
+            const isIp =
+              new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$").test(trimmed) ||
+              new RE2("^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$").test(trimmed);
+            return {
+              type: isIp ? CertSubjectAlternativeNameType.IP_ADDRESS : CertSubjectAlternativeNameType.DNS_NAME,
+              value: trimmed
+            };
+          })
+        : [],
+      validity: {
+        ttl
+      }
+    };
+
+    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+      profile.certificateTemplateId,
+      certificateRequest
+    );
+
+    if (!validationResult.isValid) {
+      await certificateDAL.updateById(originalCert.id, {
+        renewalError: `Template validation failed: ${validationResult.errors.join(", ")}`
+      });
+
+      throw new BadRequestError({
+        message: `Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template: ${validationResult.errors.join(", ")}`
+      });
+    }
+
+    validateAlgorithmCompatibility(ca, template);
+    const notBefore = new Date();
+    const notAfter = new Date(Date.now() + parseTtlToDays(ttl) * 24 * 60 * 60 * 1000);
+
+    const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
+      await internalCaService.issueCertFromCa({
+        caId: ca.id,
+        friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
+        commonName: originalCert.commonName || "",
+        altNames: originalCert.altNames || "",
+        ttl,
+        notBefore: normalizeDateForApi(notBefore),
+        notAfter: normalizeDateForApi(notAfter),
+        keyUsages: parseKeyUsages(originalCert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
+        signatureAlgorithm: originalSignatureAlgorithm,
+        keyAlgorithm: originalKeyAlgorithm,
+        isFromProfile: true,
+        actor,
+        actorId,
+        actorAuthMethod,
+        actorOrgId,
+        internal
+      });
+
+    const newCert = await certificateDAL.findOne({ serialNumber, caId: ca.id });
+    if (!newCert) {
+      throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
+    }
+
+    const certificateTtlInDays = parseTtlToDays(ttl);
+    const finalRenewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+
+    await certificateDAL.updateById(newCert.id, {
+      profileId: originalCert.profileId,
+      renewBeforeDays: finalRenewBeforeDays,
+      renewedFromId: originalCert.id
+    });
+
+    await certificateDAL.updateById(originalCert.id, {
+      renewedById: newCert.id,
+      renewalError: null
+    });
+
+    const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
+    const certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
+
+    return {
+      certificate: certificateString,
+      issuingCaCertificate: extractCertificateFromBuffer(issuingCaCertificate as unknown as Buffer),
+      certificateChain: certificateChainString,
+      serialNumber,
+      certificateId: newCert.id,
+      projectId: profile.projectId,
+      profileName: profile.slug
+    };
+  };
+
+  const updateRenewalConfig = async ({
+    certificateId,
+    renewBeforeDays,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TUpdateRenewalConfigDTO): Promise<TRenewalConfigResponse> => {
+    const certificate = await certificateDAL.findById(certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: certificate.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Edit,
+      ProjectPermissionSub.Certificates
+    );
+
+    if (!certificate.profileId) {
+      throw new BadRequestError({
+        message: "Certificate is not eligible for auto-renewal: certificate was not issued from a profile"
+      });
+    }
+
+    const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    if (profile.enrollmentType !== "api") {
+      throw new ForbiddenRequestError({
+        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+      });
+    }
+
+    if (certificate.status !== CertStatus.ACTIVE) {
+      throw new BadRequestError({
+        message: `Certificate is not eligible for auto-renewal: certificate status is ${certificate.status}, must be active`
+      });
+    }
+
+    const now = new Date();
+    if (certificate.notAfter <= now) {
+      throw new BadRequestError({
+        message: "Certificate is not eligible for auto-renewal: certificate has expired"
+      });
+    }
+
+    if (certificate.revokedAt) {
+      throw new BadRequestError({
+        message: "Certificate is not eligible for auto-renewal: certificate has been revoked"
+      });
+    }
+
+    if (certificate.renewedById) {
+      throw new BadRequestError({
+        message: "Certificate is not eligible for auto-renewal: certificate has already been renewed"
+      });
+    }
+
+    const certificateTtlInDays = Math.ceil(
+      (new Date(certificate.notAfter).getTime() - new Date(certificate.notBefore).getTime()) / (24 * 60 * 60 * 1000)
+    );
+
+    if (renewBeforeDays >= certificateTtlInDays) {
+      throw new BadRequestError({
+        message: "Invalid renewal configuration: renewal threshold exceeds certificate validity period"
+      });
+    }
+
+    if (!isValidRenewalTiming(renewBeforeDays, new Date(certificate.notAfter))) {
+      throw new BadRequestError({
+        message: "Invalid renewal configuration: renewal would be triggered immediately or in the past"
+      });
+    }
+
+    await certificateDAL.updateById(certificateId, {
+      renewBeforeDays
+    });
+
+    return {
+      projectId: certificate.projectId,
+      renewBeforeDays
+    };
+  };
+
+  const disableRenewalConfig = async ({
+    certificateId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TDisableRenewalConfigDTO): Promise<TDisableRenewalResponse> => {
+    const certificate = await certificateDAL.findById(certificateId);
+    if (!certificate) {
+      throw new NotFoundError({ message: "Certificate not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: certificate.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Edit,
+      ProjectPermissionSub.Certificates
+    );
+
+    if (!certificate.profileId) {
+      throw new BadRequestError({
+        message: "Certificate is not eligible for auto-renewal: certificate was not issued from a profile"
+      });
+    }
+
+    const profile = await certificateProfileDAL.findByIdWithConfigs(certificate.profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    if (profile.enrollmentType !== "api") {
+      throw new ForbiddenRequestError({
+        message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+      });
+    }
+
+    await certificateDAL.updateById(certificateId, {
+      renewBeforeDays: null
+    });
+
+    return {
+      projectId: certificate.projectId
+    };
+  };
+
   return {
     issueCertificateFromProfile,
     signCertificateFromProfile,
-    orderCertificateFromProfile
+    orderCertificateFromProfile,
+    renewCertificate,
+    updateRenewalConfig,
+    disableRenewalConfig
   };
 };

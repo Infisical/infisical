@@ -97,3 +97,25 @@ export type TCertificateOrderResponse = {
   projectId: string;
   profileName: string;
 };
+
+export type TRenewCertificateDTO = {
+  certificateId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateRenewalConfigDTO = {
+  certificateId: string;
+  renewBeforeDays: number;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDisableRenewalConfigDTO = {
+  certificateId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRenewalConfigResponse = {
+  projectId: string;
+  renewBeforeDays: number;
+};
+
+export type TDisableRenewalResponse = {
+  projectId: string;
+};

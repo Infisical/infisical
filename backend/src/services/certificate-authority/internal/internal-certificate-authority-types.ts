@@ -139,6 +139,7 @@ export type TIssueCertFromCaDTO = {
   signatureAlgorithm?: CertSignatureAlgorithm;
   keyAlgorithm?: CertKeyAlgorithm;
   isFromProfile?: boolean;
+  internal?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =

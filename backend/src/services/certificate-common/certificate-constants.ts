@@ -175,6 +175,14 @@ export enum CertSignatureAlgorithm {
   ECDSA_SHA512 = "ECDSA-SHA512"
 }
 
+export const CERTIFICATE_RENEWAL_CONFIG = {
+  MIN_RENEW_BEFORE_DAYS: 1,
+  MAX_RENEW_BEFORE_DAYS: 30,
+  QUEUE_BATCH_SIZE: 100,
+  DAILY_CRON_SCHEDULE: "0 0 * * *",
+  QUEUE_START_DELAY_MS: 5000
+} as const;
+
 export const SAN_TYPE_OPTIONS = Object.values(CertSubjectAlternativeNameType);
 export const KEY_USAGE_OPTIONS = Object.values(CertKeyUsageType);
 export const EXTENDED_KEY_USAGE_OPTIONS = Object.values(CertExtendedKeyUsageType);
