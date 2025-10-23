@@ -84,7 +84,7 @@ User authentication is designed for individual developers and supports multiple 
         infisical login --interactive
         ```
       </Accordion>
-      <Accordion title="Plain Token Output (for scripting)">
+      <Accordion title="Plain Token Output (Useful for scripting and CI/CD)">
         ```bash
         export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --plain --silent)
         ```
@@ -504,13 +504,10 @@ The following examples demonstrate different ways to authenticate as a user with
     #### Using Command-Line Flags
 
     ```bash
-    # Basic direct login
+    # Basic direct login (defaults to US Cloud)
     infisical login --email user@example.com --password "your-password"
 
-    # With custom domain (US Cloud)
-    infisical login --email user@example.com --password "your-password" --domain https://app.infisical.com
-
-    # With custom domain (EU Cloud)
+    # EU Cloud (Custom domain)
     infisical login --email user@example.com --password "your-password" --domain https://eu.infisical.com
 
     # Output only JWT token for scripting
@@ -523,7 +520,6 @@ The following examples demonstrate different ways to authenticate as a user with
     # Set credentials as environment variables
     export INFISICAL_EMAIL="user@example.com"
     export INFISICAL_PASSWORD="your-password"
-    export INFISICAL_API_URL="https://app.infisical.com/api"
 
     # Login without additional flags
     infisical login
