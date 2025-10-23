@@ -34,6 +34,15 @@ export interface SqlResourceConnection {
   validate: (connectOnly: boolean) => Promise<void>;
 
   /**
+   * Rotate password and return the new credentials.
+   *
+   * @param currentCredentials the current credentials to rotate
+   *
+   * @returns Promise to be resolved with the new credentials
+   */
+  rotateCredentials: (currentCredentials: TSqlAccountCredentials) => Promise<TSqlAccountCredentials>;
+
+  /**
    * Close the connection.
    *
    * @returns Promise for closing the connection
@@ -103,6 +112,11 @@ const makeSqlConnection = (
             });
           }
         },
+        rotateCredentials: async (currentCredentials) => {
+          const newPassword = alphaNumericNanoId(32);
+          await client.raw(`ALTER USER ?? WITH PASSWORD ?'`, [currentCredentials.username, newPassword]);
+          return { username: currentCredentials.username, password: newPassword };
+        },
         close: () => client.destroy()
       };
     }
@@ -147,6 +161,12 @@ const makeSqlConnection = (
           } finally {
             await client?.end();
           }
+        },
+        rotateCredentials: async (currentCredentials) => {
+          // TODO: the pwd rotation for MySQL is not supported yet
+          throw new BadRequestError({
+            message: "Unsupported operation"
+          });
         },
         close: async () => {}
       };
@@ -269,9 +289,7 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     currentCredentials
   ) => {
     try {
-      const newPassword = alphaNumericNanoId(32);
-
-      await executeWithGateway(
+      return await executeWithGateway(
         {
           connectionDetails,
           gatewayId,
@@ -280,20 +298,8 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
           password: rotationAccountCredentials.password
         },
         gatewayV2Service,
-        async (client) => {
-          switch (resourceType) {
-            case PamResource.Postgres:
-              await client.raw(`ALTER USER ?? WITH PASSWORD '${newPassword}'`, [currentCredentials.username]);
-              break;
-            default:
-              throw new BadRequestError({
-                message: `Password rotation for ${resourceType as PamResource} is not supported.`
-              });
-          }
-        }
+        (client) => client.rotateCredentials(currentCredentials)
       );
-
-      return { username: currentCredentials.username, password: newPassword };
     } catch (error) {
       if (error instanceof BadRequestError) {
         if (error.message === `password authentication failed for user "${rotationAccountCredentials.username}"`) {
