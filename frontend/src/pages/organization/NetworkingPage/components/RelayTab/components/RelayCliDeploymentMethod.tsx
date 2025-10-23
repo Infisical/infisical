@@ -1,17 +1,19 @@
 import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
-import { faCopy, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
   Button,
+  Checkbox,
   FilterableSelect,
   FormLabel,
   IconButton,
   Input,
-  ModalClose
+  ModalClose,
+  Tooltip
 } from "@app/components/v2";
 import {
   OrgPermissionIdentityActions,
@@ -19,7 +21,6 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
-
 import {
   useAddIdentityTokenAuth,
   useCreateTokenIdentityTokenAuth,
@@ -56,7 +57,7 @@ export const RelayCliDeploymentMethod = () => {
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  const [addTokenManually, setAddTokenManually] = useState(false);
+  const [autogenerateToken, setAutogenerateToken] = useState(true);
   const [step, setStep] = useState<"form" | "command">("form");
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
@@ -104,7 +105,7 @@ export const RelayCliDeploymentMethod = () => {
   const handleGenerateCommand = async () => {
     setFormErrors([]);
 
-    if (canCreateToken) {
+    if (canCreateToken && autogenerateToken) {
       const validation = formSchemaWithIdentity.safeParse({ name, host, instanceDomain, identity });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
@@ -244,8 +245,8 @@ export const RelayCliDeploymentMethod = () => {
       {errors.host && <p className="mt-1 text-sm text-red">{errors.host}</p>}
 
       <FormLabel
-        label="Instance Domain"
-        tooltipText="The domain of the infisical instance that's accessible by the relay."
+        label="Infisical Instance Host Address"
+        tooltipText="The host address of the infisical instance that's accessible by the relay."
         className="mt-4"
       />
       <Input
@@ -256,7 +257,7 @@ export const RelayCliDeploymentMethod = () => {
       />
       {errors.instanceDomain && <p className="mt-1 text-sm text-red">{errors.instanceDomain}</p>}
 
-      {canCreateToken && !addTokenManually ? (
+      {canCreateToken && autogenerateToken ? (
         <>
           <FormLabel
             label="Identity"
@@ -279,15 +280,6 @@ export const RelayCliDeploymentMethod = () => {
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
           />
-          <p className="mt-1 text-xs text-yellow">
-            Selecting an identity will automatically enable token auth and generate a token.{" "}
-            <button
-              onClick={() => setAddTokenManually(true)}
-              className="cursor-pointer underline transition-opacity hover:opacity-70"
-            >
-              Add token manually
-            </button>
-          </p>
           {errors.identity && <p className="mt-1 text-sm text-red">{errors.identity}</p>}
         </>
       ) : (
@@ -303,16 +295,40 @@ export const RelayCliDeploymentMethod = () => {
             placeholder="Enter identity token..."
             isError={Boolean(errors.identityToken)}
           />
-          {canCreateToken && (
-            <button
-              onClick={() => setAddTokenManually(false)}
-              className="mt-1 cursor-pointer text-xs text-mineshaft-400 underline transition-opacity hover:opacity-70"
-            >
-              Autogenerate token for identity
-            </button>
-          )}
           {errors.identityToken && <p className="mt-1 text-sm text-red">{errors.identityToken}</p>}
         </>
+      )}
+
+      {canCreateToken && (
+        <div className="mt-2">
+          <Checkbox
+            isChecked={autogenerateToken}
+            onCheckedChange={(e) => {
+              setAutogenerateToken(Boolean(e));
+            }}
+            id="autogenerate-token"
+            className="mr-2"
+          >
+            <div className="flex items-center">
+              <span>Automatically enable token auth and generate a token for identity</span>
+              <Tooltip
+                className="max-w-md"
+                content={
+                  <>
+                    Token authentication will be automatically enabled for the selected identity if
+                    it isn't already configured. By default, it will be configured to allow all IP
+                    addresses with a token TTL of 30 days. You can manage these settings in Access
+                    Control.
+                    <br />
+                    <br />A token will automatically be generated to be used with the CLI command.
+                  </>
+                }
+              >
+                <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="mt-0.5 ml-1" />
+              </Tooltip>
+            </div>
+          </Checkbox>
+        </div>
       )}
 
       <div className="mt-6 flex items-center">
