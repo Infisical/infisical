@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -10,8 +11,18 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 const NorthflankSyncDestinationConfigSchema = z.object({
-  // TODO: Will be implemented in the follow up secret sync PR
-  placeholder: z.string().optional()
+  projectId: z
+    .string()
+    .trim()
+    .min(1, "Project ID is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.NORTHFLANK.projectId),
+  projectName: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.NORTHFLANK.projectName),
+  secretGroupId: z
+    .string()
+    .trim()
+    .min(1, "Secret Group ID is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.NORTHFLANK.secretGroupId),
+  secretGroupName: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.NORTHFLANK.secretGroupName)
 });
 
 const NorthflankSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };

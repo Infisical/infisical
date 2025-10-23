@@ -28,6 +28,7 @@ export enum SecretSync {
   Checkly = "checkly",
   DigitalOceanAppPlatform = "digital-ocean-app-platform",
   Netlify = "netlify",
+  Northflank = "northflank",
   Bitbucket = "bitbucket",
   LaravelForge = "laravel-forge"
 }

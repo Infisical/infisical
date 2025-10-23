@@ -5,7 +5,12 @@ import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 
 import { NorthflankConnectionMethod } from "./northflank-connection-enums";
-import { TNorthflankConnection, TNorthflankConnectionConfig, TNorthflankProject } from "./northflank-connection-types";
+import {
+  TNorthflankConnection,
+  TNorthflankConnectionConfig,
+  TNorthflankProject,
+  TNorthflankSecretGroup
+} from "./northflank-connection-types";
 
 const NORTHFLANK_API_URL = "https://api.northflank.com";
 
@@ -67,6 +72,42 @@ export const listProjects = async (appConnection: TNorthflankConnection): Promis
 
     throw new BadRequestError({
       message: "Unable to list Northflank projects",
+      error
+    });
+  }
+};
+
+export const listSecretGroups = async (
+  appConnection: TNorthflankConnection,
+  projectId: string
+): Promise<TNorthflankSecretGroup[]> => {
+  const { credentials } = appConnection;
+
+  try {
+    const {
+      data: {
+        data: { secrets }
+      }
+    } = await request.get<{ data: { secrets: TNorthflankSecretGroup[] } }>(
+      `${NORTHFLANK_API_URL}/v1/projects/${projectId}/secrets`,
+      {
+        headers: {
+          Authorization: `Bearer ${credentials.apiToken}`,
+          Accept: "application/json"
+        }
+      }
+    );
+
+    return secrets;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list Northflank secret groups: ${error.message || "Unknown error"}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list Northflank secret groups",
       error
     });
   }

@@ -555,6 +555,7 @@
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
+                      "integrations/secret-syncs/northflank",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
@@ -2310,6 +2311,20 @@
                       "api-reference/endpoints/secret-syncs/netlify/delete",
                       "api-reference/endpoints/secret-syncs/netlify/sync-secrets",
                       "api-reference/endpoints/secret-syncs/netlify/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Northflank",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/northflank/list",
+                      "api-reference/endpoints/secret-syncs/northflank/get-by-id",
+                      "api-reference/endpoints/secret-syncs/northflank/get-by-name",
+                      "api-reference/endpoints/secret-syncs/northflank/create",
+                      "api-reference/endpoints/secret-syncs/northflank/update",
+                      "api-reference/endpoints/secret-syncs/northflank/delete",
+                      "api-reference/endpoints/secret-syncs/northflank/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/northflank/import-secrets",
+                      "api-reference/endpoints/secret-syncs/northflank/remove-secrets"
                     ]
                   },
                   {

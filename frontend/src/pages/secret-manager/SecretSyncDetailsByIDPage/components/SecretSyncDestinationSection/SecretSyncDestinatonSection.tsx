@@ -33,6 +33,7 @@ import { HerokuSyncDestinationSection } from "./HerokuSyncDestinationSection";
 import { HumanitecSyncDestinationSection } from "./HumanitecSyncDestinationSection";
 import { LaravelForgeSyncDestinationSection } from "./LaravelForgeSyncDestinationSection";
 import { NetlifySyncDestinationSection } from "./NetlifySyncDestinationSection";
+import { NorthflankSyncDestinationSection } from "./NorthflankSyncDestinationSection";
 import { OCIVaultSyncDestinationSection } from "./OCIVaultSyncDestinationSection";
 import { RailwaySyncDestinationSection } from "./RailwaySyncDestinationSection";
 import { RenderSyncDestinationSection } from "./RenderSyncDestinationSection";
@@ -145,6 +146,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.Netlify:
       DestinationComponents = <NetlifySyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Northflank:
+      DestinationComponents = <NorthflankSyncDestinationSection secretSync={secretSync} />;
       break;
     case SecretSync.Bitbucket:
       DestinationComponents = <BitbucketSyncDestinationSection secretSync={secretSync} />;

@@ -50,4 +50,38 @@ export const registerNorthflankConnectionRouter = async (server: FastifyZodProvi
       return { projects };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: `/:connectionId/projects/:projectId/secret-groups`,
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        connectionId: z.string().uuid(),
+        projectId: z.string()
+      }),
+      response: {
+        200: z.object({
+          secretGroups: z
+            .object({
+              name: z.string(),
+              id: z.string()
+            })
+            .array()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { connectionId, projectId } = req.params;
+      const secretGroups = await server.services.appConnection.northflank.listSecretGroups(
+        connectionId,
+        projectId,
+        req.permission
+      );
+      return { secretGroups };
+    }
+  });
 };

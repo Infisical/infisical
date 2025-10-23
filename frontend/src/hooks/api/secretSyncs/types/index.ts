@@ -23,6 +23,7 @@ import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
+import { TNorthflankSync } from "./northflank-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -70,6 +71,7 @@ export type TSecretSync =
   | TSupabaseSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
+  | TNorthflankSync
   | TBitbucketSync
   | TLaravelForgeSync;
 
