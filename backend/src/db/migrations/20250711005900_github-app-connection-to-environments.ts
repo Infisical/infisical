@@ -2,19 +2,23 @@ import { Knex } from "knex";
 
 import { inMemoryKeyStore } from "@app/keystore/memory";
 import { selectAllTableCols } from "@app/lib/knex";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { TableName } from "../schemas";
-import { getMigrationEnvConfig } from "./utils/env-config";
-import { getMigrationEncryptionServices } from "./utils/services";
+import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
+import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
 
 export async function up(knex: Knex) {
   const existingSuperAdminsWithGithubConnection = await knex(TableName.SuperAdmin)
     .select(selectAllTableCols(TableName.SuperAdmin))
     .whereNotNull(`${TableName.SuperAdmin}.encryptedGitHubAppConnectionClientId`);
 
+  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
+
   const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
   const keyStore = inMemoryKeyStore();
   const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
 

@@ -4,16 +4,18 @@ import { inMemoryKeyStore } from "@app/keystore/memory";
 import { crypto, SymmetricKeySize } from "@app/lib/crypto/cryptography";
 import { selectAllTableCols } from "@app/lib/knex";
 import { initLogger } from "@app/lib/logger";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { SecretKeyEncoding, TableName } from "../schemas";
-import { getMigrationEnvConfig } from "./utils/env-config";
+import { getMigrationEnvConfig, getMigrationHsmConfig } from "./utils/env-config";
 import { createCircularCache } from "./utils/ring-buffer";
-import { getMigrationEncryptionServices } from "./utils/services";
+import { getMigrationEncryptionServices, getMigrationHsmService } from "./utils/services";
 
 const BATCH_SIZE = 500;
-const reencryptSamlConfig = async (knex: Knex) => {
+const reencryptSamlConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
   const hasEncryptedEntrypointColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlEntryPoint");
   const hasEncryptedIssuerColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlIssuer");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.SamlConfig, "encryptedSamlCertificate");
@@ -28,10 +30,6 @@ const reencryptSamlConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
@@ -159,7 +157,7 @@ const reencryptSamlConfig = async (knex: Knex) => {
   }
 };
 
-const reencryptLdapConfig = async (knex: Knex) => {
+const reencryptLdapConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
   const hasEncryptedLdapBindDNColum = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindDN");
   const hasEncryptedLdapBindPassColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapBindPass");
   const hasEncryptedCertificateColumn = await knex.schema.hasColumn(TableName.LdapConfig, "encryptedLdapCaCertificate");
@@ -194,10 +192,6 @@ const reencryptLdapConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
@@ -323,7 +317,7 @@ const reencryptLdapConfig = async (knex: Knex) => {
   }
 };
 
-const reencryptOidcConfig = async (knex: Knex) => {
+const reencryptOidcConfig = async (knex: Knex, kmsService: TKmsServiceFactory) => {
   const hasEncryptedOidcClientIdColumn = await knex.schema.hasColumn(TableName.OidcConfig, "encryptedOidcClientId");
   const hasEncryptedOidcClientSecretColumn = await knex.schema.hasColumn(
     TableName.OidcConfig,
@@ -354,10 +348,6 @@ const reencryptOidcConfig = async (knex: Knex) => {
   }
 
   initLogger();
-  const superAdminDAL = superAdminDALFactory(knex);
-  const envConfig = await getMigrationEnvConfig(superAdminDAL);
-  const keyStore = inMemoryKeyStore();
-  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
   const orgEncryptionRingBuffer =
     createCircularCache<Awaited<ReturnType<(typeof kmsService)["createCipherPairWithDataKey"]>>>(25);
 
@@ -462,9 +452,18 @@ const reencryptOidcConfig = async (knex: Knex) => {
 };
 
 export async function up(knex: Knex): Promise<void> {
-  await reencryptSamlConfig(knex);
-  await reencryptLdapConfig(knex);
-  await reencryptOidcConfig(knex);
+  initLogger();
+
+  const { hsmService } = await getMigrationHsmService({ envConfig: getMigrationHsmConfig() });
+  const superAdminDAL = superAdminDALFactory(knex);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const envConfig = await getMigrationEnvConfig(superAdminDAL, hsmService, kmsRootConfigDAL);
+  const keyStore = inMemoryKeyStore();
+  const { kmsService } = await getMigrationEncryptionServices({ envConfig, keyStore, db: knex });
+
+  await reencryptSamlConfig(knex, kmsService);
+  await reencryptLdapConfig(knex, kmsService);
+  await reencryptOidcConfig(knex, kmsService);
 }
 
 const dropSamlConfigColumns = async (knex: Knex) => {

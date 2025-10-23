@@ -18,7 +18,7 @@ export type TPamAccountCredentials = TPostgresAccountCredentials;
 // Resource DTOs
 export type TCreateResourceDTO = Pick<
   TPamResource,
-  "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"
+  "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId" | "rotationAccountCredentials"
 >;
 
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
@@ -30,6 +30,10 @@ export type TPamResourceFactoryValidateConnection<T extends TPamResourceConnecti
 export type TPamResourceFactoryValidateAccountCredentials<C extends TPamAccountCredentials> = (
   credentials: C
 ) => Promise<C>;
+export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCredentials> = (
+  rotationAccountCredentials: C,
+  currentCredentials: C
+) => Promise<C>;
 
 export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
   resourceType: PamResource,
@@ -39,4 +43,5 @@ export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C exten
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
+  rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
 };

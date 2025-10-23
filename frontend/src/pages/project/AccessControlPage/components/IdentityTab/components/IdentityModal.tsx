@@ -1,11 +1,16 @@
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { components, OptionProps } from "react-select";
+import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
+import { faGlobe } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
+  Badge,
   Button,
   FilterableSelect,
   FormControl,
@@ -24,7 +29,7 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
-  identity: z.object({ name: z.string(), id: z.string() }),
+  identity: z.object({ name: z.string(), id: z.string(), isManagedByRootOrg: z.boolean() }),
   role: z.object({ name: z.string(), slug: z.string() })
 });
 
@@ -33,6 +38,29 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   popUp: UsePopUpState<["identity"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
+};
+
+const Option = ({
+  isSelected,
+  children,
+  ...props
+}: OptionProps<{ name: string; id: string; isManagedByRootOrg: boolean }>) => {
+  return (
+    <components.Option isSelected={isSelected} {...props}>
+      <div className="flex flex-row items-center justify-between">
+        <p className="truncate">{children}</p>
+        {props.data.isManagedByRootOrg && (
+          <Badge variant="org" className="ml-auto cursor-pointer">
+            <FontAwesomeIcon icon={faGlobe} />
+            Managed by Root Org
+          </Badge>
+        )}
+        {isSelected && (
+          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
+        )}
+      </div>
+    </components.Option>
+  );
 };
 
 const Content = ({ popUp, handlePopUpToggle }: Props) => {
@@ -131,9 +159,15 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
               value={value}
               onChange={onChange}
               placeholder="Select identity..."
-              options={filteredIdentityMembershipOrgs.map((membership) => membership.identity)}
+              options={filteredIdentityMembershipOrgs.map((membership) => ({
+                ...membership.identity,
+                isManagedByRootOrg: membership.identity.orgId !== currentOrg.id
+              }))}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
+              components={{
+                Option
+              }}
             />
           </FormControl>
         )}

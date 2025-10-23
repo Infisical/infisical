@@ -20,7 +20,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
 import { useGetGroupById } from "@app/hooks/api/groups/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -44,6 +44,8 @@ const Page = () => {
   const groupId = params.groupId as string;
 
   const { data, isPending } = useGetGroupById(groupId);
+
+  const { isSubOrganization } = useOrganization();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -95,7 +97,11 @@ const Page = () => {
             <FontAwesomeIcon icon={faChevronLeft} />
             Groups
           </Link>
-          <PageHeader scope="org" description="Organization Group" title={data.group.name}>
+          <PageHeader
+            scope={isSubOrganization ? "namespace" : "org"}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Group`}
+            title={data.group.name}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">

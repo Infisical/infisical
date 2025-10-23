@@ -24,7 +24,7 @@ const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: Ico
   [ProjectType.KMS]: { label: "Project", icon: faCube },
   [ProjectType.PAM]: { label: "Project", icon: faCube },
   [ProjectType.SecretScanning]: { label: "Project", icon: faCube },
-  namespace: { label: "Namespace", icon: faCubes },
+  namespace: { label: "Sub-Organization", icon: faCubes },
   instance: { label: "Server", icon: faServer }
 };
 

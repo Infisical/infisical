@@ -5,7 +5,7 @@ export type TGenericPermission = {
   actor: ActorType;
   actorId: string;
   actorAuthMethod: ActorAuthMethod;
-  actorOrgId: string | undefined;
+  actorOrgId: string;
 };
 
 /**
@@ -74,6 +74,15 @@ export enum OrderByDirection {
 }
 
 export type OrgServiceActor = {
+  type: ActorType;
+  id: string;
+  authMethod: ActorAuthMethod;
+  orgId: string;
+  rootOrgId: string;
+  parentOrgId: string;
+};
+
+export type ProjectServiceActor = {
   type: ActorType;
   id: string;
   authMethod: ActorAuthMethod;

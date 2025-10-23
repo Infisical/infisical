@@ -3,6 +3,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faCheck, faCopy, faRedo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -36,6 +37,10 @@ export const RequestSecretForm = () => {
   const [, isCopyingSecret, setCopyTextSecret] = useTimedReset<string>({
     initialState: "Copy to clipboard"
   });
+  const subOrganization = useSearch({
+    strict: false,
+    select: (el) => el?.subOrganization
+  });
 
   const { mutateAsync: createSecretRequest } = useCreateSecretRequest();
 
@@ -58,12 +63,15 @@ export const RequestSecretForm = () => {
         expiresAt
       });
 
-      const link = `${window.location.origin}/secret-request/secret/${id}`;
+      const link = new URL(`${window.location.origin}/secret-request/secret/${id}`);
+      if (subOrganization) {
+        link.searchParams.set("subOrganization", subOrganization);
+      }
 
-      setSecretLink(link);
+      setSecretLink(link.toString());
       reset();
 
-      navigator.clipboard.writeText(link);
+      navigator.clipboard.writeText(link.toString());
       setCopyTextSecret("secret");
 
       createNotification({

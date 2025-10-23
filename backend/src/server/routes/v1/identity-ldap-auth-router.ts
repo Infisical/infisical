@@ -162,13 +162,13 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       const { identityId, user } = req.passportMachineIdentity;
 
-      const { accessToken, identityLdapAuth, identityMembershipOrg } = await server.services.identityLdapAuth.login({
+      const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
         identityId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg.scopeOrgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_LDAP_AUTH,
           metadata: {

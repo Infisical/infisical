@@ -49,9 +49,6 @@ RUN rm -fr ${SOFTHSM2_SOURCES}
 # Install pkcs11-tool
 RUN apt-get install -y opensc
 
-RUN mkdir -p /etc/softhsm2/tokens && \
-    softhsm2-util --init-token --slot 0 --label "auth-app" --pin 1234 --so-pin 0000
-
 # ? App setup
 
 # Install Infisical CLI
@@ -64,10 +61,14 @@ WORKDIR /app
 COPY package.json package.json
 COPY package-lock.json package-lock.json
 
+COPY dev-entrypoint.sh dev-entrypoint.sh
+RUN chmod +x dev-entrypoint.sh
+
 RUN npm install
 
 COPY . .
 
 ENV HOST=0.0.0.0
 
+ENTRYPOINT ["/app/dev-entrypoint.sh"]
 CMD ["npm", "run", "dev:docker"]
