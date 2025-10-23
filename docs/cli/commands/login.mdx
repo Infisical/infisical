@@ -22,10 +22,12 @@ If you have added multiple users, you can switch between the users by using the 
 
     <Info>
       **JWT Token Output:**
-      - For **user authentication** with the `--plain` flag: outputs only the JWT access token (useful for scripting)
+      - For **user authentication** with the `--plain --silent` flags: outputs only the JWT access token (useful for scripting)
       - For **machine identity authentication**: an access token is always printed to the console
       
-      Use the `--plain` flag to print only the token in plain text, which is ideal for capturing in environment variables or CI/CD pipelines.
+      Use the `--plain` flag to print only the token in plain text and the `--silent` flag to disable update alerts.
+      
+      Both flags are ideal for capturing the token in environment variables or CI/CD pipelines.
     </Info>
 
 ### Authentication Methods
@@ -61,34 +63,33 @@ User authentication is designed for individual developers and supports multiple 
     </Expandable>
   </ParamField>
 
-  <Steps>
-    <Step title="Choose your login method">
-      **Browser Login (Default)**
-      ```bash
-      infisical login
-      ```
-
-      **Direct Login (CI/CD)**
-      ```bash
-      infisical login --email=user@example.com --password=your-password
-      
-      # Or using environment variables
-      export INFISICAL_EMAIL="user@example.com"
-      export INFISICAL_PASSWORD="your-password"
-      infisical login
-      ```
-
-      **Interactive CLI Login**
-      ```bash
-      infisical login --interactive
-      ```
-
-      **Plain Token Output (for scripting)**
-      ```bash
-      export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --plain)
-      ```
-    </Step>
-  </Steps>
+  <AccordionGroup>
+      <Accordion title="Browser Login (Default)">
+        ```bash
+        infisical login
+        ```
+      </Accordion>
+      <Accordion title="Direct Login (CI/CD)">
+        ```bash
+        infisical login --email=user@example.com --password=your-password
+        
+        # Or using environment variables
+        export INFISICAL_EMAIL="user@example.com"
+        export INFISICAL_PASSWORD="your-password"
+        infisical login
+        ```
+      </Accordion>
+      <Accordion title="Interactive CLI Login">
+        ```bash
+        infisical login --interactive
+        ```
+      </Accordion>
+      <Accordion title="Plain Token Output (for scripting)">
+        ```bash
+        export INFISICAL_TOKEN=$(infisical login --email=user@example.com --password=your-password --plain --silent)
+        ```
+      </Accordion>
+    </AccordionGroup>
 </Accordion>
 </AccordionGroup>
 
@@ -457,8 +458,12 @@ The login command supports a number of flags that you can use for different auth
 
     ```bash
     # Example: Capture token in a variable
-    export INFISICAL_TOKEN=$(infisical login --email=<email> --password=<password> --plain)
+    export INFISICAL_TOKEN=$(infisical login --email=<email> --password=<password> --plain --silent)
     ```
+
+    <Tip>
+      Use it alongside the `silent` flag to disable all messages in the console except from the access token.
+    </Tip>
 
   </Accordion>
   <Accordion title="--oidc-jwt">
@@ -481,6 +486,18 @@ The login command supports a number of flags that you can use for different auth
 The following examples demonstrate different ways to authenticate as a user with the Infisical CLI.
 
 <AccordionGroup>
+  <Accordion title="Browser Login (Default)">
+    By default, running `infisical login` without any flags opens your browser for authentication.
+
+    ```bash
+    # Opens browser for authentication
+    infisical login
+    ```
+
+    The browser will open to the Infisical login page, and upon successful authentication, the CLI will be automatically authenticated.
+
+  </Accordion>
+
   <Accordion title="Direct Login (Non-Interactive)">
     Direct login is ideal for CI/CD pipelines and automation scripts where browser-based authentication is not possible.
 
@@ -497,7 +514,7 @@ The following examples demonstrate different ways to authenticate as a user with
     infisical login --email user@example.com --password "your-password" --domain https://eu.infisical.com
 
     # Output only JWT token for scripting
-    export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --plain)
+    export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --plain --silent)
     ```
 
     #### Using Environment Variables (Recommended for CI/CD)
@@ -512,7 +529,7 @@ The following examples demonstrate different ways to authenticate as a user with
     infisical login
 
     # Or with plain output for token capture
-    export INFISICAL_TOKEN=$(infisical login --plain)
+    export INFISICAL_TOKEN=$(infisical login --plain --silent)
     ```
   </Accordion>
 
@@ -530,18 +547,11 @@ The following examples demonstrate different ways to authenticate as a user with
 
   </Accordion>
 
-  <Accordion title="Browser Login (Default)">
-    By default, running `infisical login` without any flags opens your browser for authentication.
-
-    ```bash
-    # Opens browser for authentication
-    infisical login
-    ```
-
-    The browser will open to the Infisical login page, and upon successful authentication, the CLI will be automatically authenticated.
-
-  </Accordion>
 </AccordionGroup>
+
+<Tip>
+If you have SSO enabled, we recommend using the default browser login.
+</Tip>
 
 ### Machine Identity Authentication Quick Start
 
