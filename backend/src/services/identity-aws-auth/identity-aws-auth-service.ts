@@ -162,7 +162,9 @@ export const identityAwsAuthServiceFactory = ({
         });
 
       if (!isArnAllowed) {
-        logger.info({ formattedArn, rawArn: Arn }, "Access denied: AWS principal ARN not allowed");
+        logger.error(
+          `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
+        );
 
         throw new UnauthorizedError({
           message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`
