@@ -38,8 +38,6 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
       "years"
     ];
 
-    console.log({ unit, duration });
-
     // ms library does not handle months (M) so we do it separately
     if (unit === "M") {
       const value = parseInt(duration, 10);
