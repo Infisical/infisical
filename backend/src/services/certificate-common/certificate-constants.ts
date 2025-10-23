@@ -175,6 +175,36 @@ export enum CertSignatureAlgorithm {
   ECDSA_SHA512 = "ECDSA-SHA512"
 }
 
+export enum CertificateRenewalErrorType {
+  TEMPLATE_VALIDATION_FAILED = "TEMPLATE_VALIDATION_FAILED",
+  CA_NOT_FOUND = "CA_NOT_FOUND",
+  CA_INACTIVE = "CA_INACTIVE",
+  CERTIFICATE_OUTLIVES_CA = "CERTIFICATE_OUTLIVES_CA",
+  TTL_TOO_SHORT = "TTL_TOO_SHORT",
+  NOT_ELIGIBLE = "NOT_ELIGIBLE",
+  VALIDITY_EXCEEDS_MAXIMUM = "VALIDITY_EXCEEDS_MAXIMUM",
+  NOT_ALLOWED_BY_TEMPLATE = "NOT_ALLOWED_BY_TEMPLATE",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR"
+}
+
+export const CERTIFICATE_RENEWAL_ERROR_MESSAGES = {
+  [CertificateRenewalErrorType.TEMPLATE_VALIDATION_FAILED]:
+    "Auto-renewal failed: certificate template policy has changed and this certificate no longer meets the requirements",
+  [CertificateRenewalErrorType.CA_NOT_FOUND]:
+    "Auto-renewal failed: Certificate Authority for this certificate is no longer available",
+  [CertificateRenewalErrorType.CA_INACTIVE]: "Auto-renewal failed: Certificate Authority is currently inactive",
+  [CertificateRenewalErrorType.CERTIFICATE_OUTLIVES_CA]:
+    "Auto-renewal failed: certificate would outlive the Certificate Authority",
+  [CertificateRenewalErrorType.TTL_TOO_SHORT]:
+    "Auto-renewal failed: certificate validity period is too short for the renewal threshold",
+  [CertificateRenewalErrorType.NOT_ELIGIBLE]: "Auto-renewal failed: certificate is not eligible for automatic renewal",
+  [CertificateRenewalErrorType.VALIDITY_EXCEEDS_MAXIMUM]:
+    "Auto-renewal failed: certificate validity period exceeds the maximum allowed by the profile template",
+  [CertificateRenewalErrorType.NOT_ALLOWED_BY_TEMPLATE]:
+    "Auto-renewal failed: certificate settings are no longer allowed by the profile template",
+  [CertificateRenewalErrorType.UNKNOWN_ERROR]: "Auto-renewal failed: an unexpected error occurred"
+} as const;
+
 export const CERTIFICATE_RENEWAL_CONFIG = {
   MIN_RENEW_BEFORE_DAYS: 1,
   MAX_RENEW_BEFORE_DAYS: 30,

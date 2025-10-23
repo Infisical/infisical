@@ -67,5 +67,6 @@ export type TRenewCertificateResponse = {
 export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays?: number;
+  disableAutoRenewal?: boolean;
   projectSlug: string;
 };

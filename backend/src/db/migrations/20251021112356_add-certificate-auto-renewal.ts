@@ -5,8 +5,7 @@ import { TableName } from "../schemas";
 export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.PkiApiEnrollmentConfig, "autoRenewDays")) {
     await knex.schema.alterTable(TableName.PkiApiEnrollmentConfig, (t) => {
-      t.dropColumn("autoRenewDays");
-      t.integer("renewBeforeDays");
+      t.renameColumn("autoRenewDays", "renewBeforeDays");
     });
   }
 
@@ -46,8 +45,7 @@ export async function down(knex: Knex): Promise<void> {
 
   if (await knex.schema.hasColumn(TableName.PkiApiEnrollmentConfig, "renewBeforeDays")) {
     await knex.schema.alterTable(TableName.PkiApiEnrollmentConfig, (t) => {
-      t.dropColumn("renewBeforeDays");
-      t.integer("autoRenewDays");
+      t.renameColumn("renewBeforeDays", "autoRenewDays");
     });
   }
 }

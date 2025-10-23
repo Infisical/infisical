@@ -1646,7 +1646,7 @@ describe("CertificateV3Service", () => {
           ...mockActor
         })
       ).rejects.toThrow(
-        "Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template"
+        "Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template: Subject alternative name not allowed"
       );
 
       // Should store template validation error
@@ -1788,7 +1788,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("New certificate would expire");
+      ).rejects.toThrow(/New certificate would expire \(.+\) after its issuing CA \(.+\)/);
     });
 
     it("should allow manual renewal outside window (manual renewal always bypasses window)", async () => {

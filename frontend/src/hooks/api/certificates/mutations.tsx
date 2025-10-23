@@ -115,7 +115,7 @@ export const useUpdateRenewalConfig = () => {
   return useMutation<
     { message: string; renewBeforeDays?: number },
     object,
-    TUpdateRenewalConfigDTO & { disableAutoRenewal?: boolean }
+    TUpdateRenewalConfigDTO
   >({
     mutationFn: async ({ certificateId, renewBeforeDays, disableAutoRenewal }) => {
       const { data } = await apiRequest.patch<{ message: string; renewBeforeDays?: number }>(

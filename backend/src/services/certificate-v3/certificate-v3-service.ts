@@ -733,8 +733,9 @@ export const certificateV3ServiceFactory = ({
         ? originalCert.altNames.split(",").map((san) => {
             const trimmed = san.trim();
             const isIp =
-              new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$").test(trimmed) ||
-              new RE2("^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$").test(trimmed);
+              trimmed.length <= 45 &&
+              (new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$").test(trimmed) ||
+                new RE2("^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$").test(trimmed));
             return {
               type: isIp ? CertSubjectAlternativeNameType.IP_ADDRESS : CertSubjectAlternativeNameType.DNS_NAME,
               value: trimmed

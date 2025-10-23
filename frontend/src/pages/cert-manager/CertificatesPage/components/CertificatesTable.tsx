@@ -91,9 +91,13 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
     return { text: "Due Now", variant: "danger" as const };
   }
 
-  const daysUntilRenewal = Math.ceil(
+  const daysUntilRenewal = Math.floor(
     (renewalDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
   );
+
+  if (daysUntilRenewal === 0) {
+    return { text: "Renews today", variant: "primary" as const };
+  }
 
   if (daysUntilRenewal <= 7) {
     return { text: `Renews in ${daysUntilRenewal}d`, variant: "primary" as const };
@@ -204,6 +208,14 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
             data?.certificates.map((certificate) => {
               const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
               const autoRenewalInfo = getAutoRenewalInfo(certificate);
+
+              const isRevoked = certificate.status === CertStatus.REVOKED;
+              const isExpired = new Date(certificate.notAfter) < new Date();
+              const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
+              const hasFailed = Boolean(certificate.renewalError);
+              const isAutoRenewalEnabled = Boolean(
+                certificate.renewBeforeDays && certificate.renewBeforeDays > 0
+              );
               return (
                 <Tr className="h-10" key={`certificate-${certificate.id}`}>
                   <Td>{certificate.commonName}</Td>
@@ -297,10 +309,6 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         </ProjectPermissionCan>
                         {/* Manage auto renewal option - not shown for failed renewals */}
                         {(() => {
-                          const isRevoked = certificate.status === CertStatus.REVOKED;
-                          const isExpired = new Date(certificate.notAfter) < new Date();
-                          const hasFailed = Boolean(certificate.renewalError);
-                          const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
                           const canManageRenewal =
                             certificate.profileId &&
                             !certificate.renewedById &&
@@ -317,10 +325,6 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               a={ProjectPermissionSub.Certificates}
                             >
                               {(isAllowed) => {
-                                const isAutoRenewalEnabled = Boolean(
-                                  certificate.renewBeforeDays && certificate.renewBeforeDays > 0
-                                );
-
                                 return (
                                   <DropdownMenuItem
                                     className={twMerge(
@@ -329,10 +333,17 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                     )}
                                     onClick={async () => {
                                       const notAfterDate = new Date(certificate.notAfter);
-                                      const notBeforeDate = new Date(certificate.notBefore);
-                                      const ttlDays = Math.ceil(
-                                        (notAfterDate.getTime() - notBeforeDate.getTime()) /
-                                          (24 * 60 * 60 * 1000)
+                                      const notBeforeDate = certificate.notBefore
+                                        ? new Date(certificate.notBefore)
+                                        : new Date(
+                                            notAfterDate.getTime() - 365 * 24 * 60 * 60 * 1000
+                                          );
+                                      const ttlDays = Math.max(
+                                        1,
+                                        Math.ceil(
+                                          (notAfterDate.getTime() - notBeforeDate.getTime()) /
+                                            (24 * 60 * 60 * 1000)
+                                        )
                                       );
                                       handlePopUpOpen("manageRenewal", {
                                         certificateId: certificate.id,
@@ -360,12 +371,6 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         })()}
                         {/* Disable auto renewal option - only shown when auto renewal is active */}
                         {(() => {
-                          const isRevoked = certificate.status === CertStatus.REVOKED;
-                          const isExpired = new Date(certificate.notAfter) < new Date();
-                          const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
-                          const isAutoRenewalEnabled = Boolean(
-                            certificate.renewBeforeDays && certificate.renewBeforeDays > 0
-                          );
                           const canDisableRenewal =
                             certificate.profileId &&
                             !certificate.renewedById &&
@@ -404,8 +409,6 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         })()}
                         {/* Manual renewal action for profile-issued certificates that are not revoked/expired (including failed ones) */}
                         {(() => {
-                          const isRevoked = certificate.status === CertStatus.REVOKED;
-                          const isExpired = new Date(certificate.notAfter) < new Date();
                           const canRenew =
                             certificate.profileId &&
                             !certificate.renewedById &&

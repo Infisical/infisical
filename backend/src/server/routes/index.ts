@@ -2147,9 +2147,6 @@ export const registerRoutes = async (
   const certificateV3Queue = certificateV3QueueServiceFactory({
     queueService,
     certificateDAL,
-    certificateAuthorityDAL,
-    certificateProfileDAL,
-    projectDAL,
     certificateV3Service,
     auditLogService
   });

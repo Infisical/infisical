@@ -1,8 +1,12 @@
 import RE2 from "re2";
 
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+
 import { CertExtendedKeyUsage, CertKeyUsage } from "../certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
+  CERTIFICATE_RENEWAL_ERROR_MESSAGES,
+  CertificateRenewalErrorType,
   CertKeyUsageType,
   mapExtendedKeyUsageToLegacy,
   mapKeyUsageToLegacy,
@@ -195,4 +199,75 @@ export const convertExtendedKeyUsageArrayToLegacy = (
   usages?: CertExtendedKeyUsageType[]
 ): CertExtendedKeyUsage[] | undefined => {
   return usages?.map(convertToLegacyExtendedKeyUsage);
+};
+
+export const categorizeCertificateRenewalError = (error: unknown): string => {
+  if (!error) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.UNKNOWN_ERROR];
+  }
+
+  const errorMessage = error instanceof Error ? error.message : String(error);
+
+  if (error instanceof NotFoundError) {
+    if (errorMessage.includes("Certificate Authority")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CA_NOT_FOUND];
+    }
+    if (errorMessage.includes("Certificate template")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.TEMPLATE_VALIDATION_FAILED];
+    }
+  }
+
+  if (error instanceof BadRequestError) {
+    if (errorMessage.includes("Certificate Authority is") && errorMessage.includes("must be ACTIVE")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CA_INACTIVE];
+    }
+    if (errorMessage.includes("would expire") && errorMessage.includes("after its issuing CA")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CERTIFICATE_OUTLIVES_CA];
+    }
+    if (errorMessage.includes("TTL") && errorMessage.includes("must be greater than renewal threshold")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.TTL_TOO_SHORT];
+    }
+    if (errorMessage.includes("not eligible for renewal")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.NOT_ELIGIBLE];
+    }
+    if (errorMessage.includes("Requested validity period exceeds maximum allowed duration")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.VALIDITY_EXCEEDS_MAXIMUM];
+    }
+    if (errorMessage.includes("not allowed by template policy")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.NOT_ALLOWED_BY_TEMPLATE];
+    }
+  }
+
+  if (error instanceof ForbiddenRequestError) {
+    if (errorMessage.includes("Template validation failed")) {
+      return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.TEMPLATE_VALIDATION_FAILED];
+    }
+  }
+
+  if (errorMessage.includes("Template validation failed")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.TEMPLATE_VALIDATION_FAILED];
+  }
+  if (errorMessage.includes("Certificate Authority") && errorMessage.includes("not found")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CA_NOT_FOUND];
+  }
+  if (errorMessage.includes("Certificate Authority is") && errorMessage.includes("must be ACTIVE")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CA_INACTIVE];
+  }
+  if (errorMessage.includes("would expire") && errorMessage.includes("after its issuing CA")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.CERTIFICATE_OUTLIVES_CA];
+  }
+  if (errorMessage.includes("TTL") && errorMessage.includes("must be greater than renewal threshold")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.TTL_TOO_SHORT];
+  }
+  if (errorMessage.includes("not eligible for renewal")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.NOT_ELIGIBLE];
+  }
+  if (errorMessage.includes("Requested validity period exceeds maximum allowed duration")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.VALIDITY_EXCEEDS_MAXIMUM];
+  }
+  if (errorMessage.includes("not allowed by template policy")) {
+    return CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.NOT_ALLOWED_BY_TEMPLATE];
+  }
+
+  return `${CERTIFICATE_RENEWAL_ERROR_MESSAGES[CertificateRenewalErrorType.UNKNOWN_ERROR]}: ${errorMessage}`;
 };

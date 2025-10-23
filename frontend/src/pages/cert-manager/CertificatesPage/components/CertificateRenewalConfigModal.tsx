@@ -8,14 +8,21 @@ import { useProject } from "@app/context";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const formSchema = z.object({
-  renewBeforeDays: z
-    .number()
-    .min(1, "Renewal days must be at least 1")
-    .max(365, "Renewal days cannot exceed 365")
-});
+const createFormSchema = (ttlDays: number) =>
+  z.object({
+    renewBeforeDays: z
+      .number()
+      .min(1, "Renewal days must be at least 1")
+      .max(365, "Renewal days cannot exceed 365")
+      .refine(
+        (value) => value < ttlDays,
+        (value) => ({
+          message: `Renewal days (${value}) must be less than certificate TTL (${ttlDays} days)`
+        })
+      )
+  });
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof createFormSchema>>;
 
 type Props = {
   popUp: UsePopUpState<["configureRenewal"]>;
@@ -37,6 +44,8 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
     ttlDays: number;
   };
 
+  const formSchema = createFormSchema(certificateData.ttlDays);
+
   const {
     control,
     handleSubmit,
@@ -45,7 +54,7 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      renewBeforeDays: certificateData?.renewBeforeDays || 7
+      renewBeforeDays: certificateData?.renewBeforeDays || 1
     }
   });
 
@@ -53,14 +62,6 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
 
   const onSubmit = async (data: FormData) => {
     try {
-      if (data.renewBeforeDays >= certificateData.ttlDays) {
-        createNotification({
-          text: `Renewal days (${data.renewBeforeDays}) must be less than certificate TTL (${certificateData.ttlDays} days)`,
-          type: "error"
-        });
-        return;
-      }
-
       if (!currentProject?.slug) {
         createNotification({
           text: "Project not found",
@@ -144,7 +145,7 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
             {renewBeforeDays && certificateData?.ttlDays && (
               <div className="mt-2 rounded bg-primary-900/20 p-2">
                 <p className="text-sm text-primary-300">
-                  {renewBeforeDays >= (certificateData.ttlDays || 0)
+                  {renewBeforeDays >= certificateData.ttlDays
                     ? "⚠️ Renewal days must be less than certificate TTL"
                     : `✓ Certificate will be renewed ${renewBeforeDays} days before expiration`}
                 </p>

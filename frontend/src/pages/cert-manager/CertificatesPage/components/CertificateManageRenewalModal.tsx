@@ -13,23 +13,90 @@ const DEFAULT_RENEWAL_BEFORE_DAYS = 20;
 const MIN_RENEWAL_BEFORE_DAYS = 1;
 const MAX_RENEWAL_BEFORE_DAYS = 30;
 
-const formSchema = z
-  .object({
+const createFormSchema = (ttlDays: number, notAfter: string) =>
+  z.object({
     renewBeforeDays: z
       .number()
       .min(MIN_RENEWAL_BEFORE_DAYS, `Renewal days must be at least ${MIN_RENEWAL_BEFORE_DAYS}`)
       .max(MAX_RENEWAL_BEFORE_DAYS, `Renewal days cannot exceed ${MAX_RENEWAL_BEFORE_DAYS}`)
-  })
-  .refine(() => {
-    return true;
-  }, "Invalid renewal configuration");
+      .refine(
+        (value) => value < ttlDays,
+        (value) => ({
+          message: `Renewal days (${value}) must be less than certificate TTL (${ttlDays} days)`
+        })
+      )
+      .refine(
+        (value) => {
+          const expiryDate = new Date(notAfter);
+          const renewalDate = new Date(expiryDate.getTime() - value * 24 * 60 * 60 * 1000);
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          tomorrow.setHours(0, 0, 0, 0);
+          return renewalDate >= tomorrow;
+        },
+        () => ({
+          message: "Renewals can only be scheduled from tomorrow onwards."
+        })
+      )
+  });
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof createFormSchema>>;
 
 type Props = {
   popUp: UsePopUpState<["manageRenewal"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["manageRenewal"]>, state?: boolean) => void;
 };
+
+const RenewalConfigForm = ({
+  control,
+  errors,
+  onSubmit,
+  isLoading,
+  buttonText,
+  onCancel
+}: {
+  control: any;
+  errors: { renewBeforeDays?: { message?: string } };
+  onSubmit: (e?: React.BaseSyntheticEvent) => Promise<void>;
+  isLoading: boolean;
+  buttonText: string;
+  onCancel: () => void;
+}) => (
+  <form onSubmit={onSubmit}>
+    <FormControl
+      label="Renewal Days Before Expiration"
+      errorText={errors.renewBeforeDays?.message}
+      className="mb-6"
+    >
+      <Controller
+        control={control}
+        name="renewBeforeDays"
+        render={({ field }) => (
+          <Input
+            {...field}
+            type="number"
+            min={MIN_RENEWAL_BEFORE_DAYS}
+            max={MAX_RENEWAL_BEFORE_DAYS}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10);
+              field.onChange(value);
+            }}
+            placeholder="Enter days before expiration"
+          />
+        )}
+      />
+    </FormControl>
+
+    <div className="flex justify-end gap-3">
+      <Button type="button" colorSchema="secondary" variant="plain" onClick={onCancel}>
+        Cancel
+      </Button>
+      <Button type="submit" colorSchema="primary" isLoading={isLoading} isDisabled={isLoading}>
+        {buttonText}
+      </Button>
+    </div>
+  </form>
+);
 
 export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
@@ -41,7 +108,7 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
     commonName: string;
     profileId: string;
     renewBeforeDays?: number;
-    ttlDays: number;
+    ttlDays?: number;
     notAfter: string;
     renewalError?: string;
     renewedFromId?: string;
@@ -53,6 +120,11 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   );
 
   const hasRenewalError = Boolean(certificateData?.renewalError);
+
+  const formSchema = createFormSchema(
+    certificateData?.ttlDays || 365,
+    certificateData?.notAfter || ""
+  );
 
   const {
     control,
@@ -84,30 +156,6 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
         return;
       }
 
-      if (data.renewBeforeDays >= certificateData.ttlDays) {
-        createNotification({
-          text: `Renewal days (${data.renewBeforeDays}) must be less than certificate TTL (${certificateData.ttlDays} days)`,
-          type: "error"
-        });
-        return;
-      }
-
-      const expiryDate = new Date(certificateData.notAfter);
-      const renewalDate = new Date(
-        expiryDate.getTime() - data.renewBeforeDays * 24 * 60 * 60 * 1000
-      );
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0, 0, 0, 0);
-
-      if (renewalDate < tomorrow) {
-        createNotification({
-          text: "The renewal date cannot be set to today or any past date. Renewals can only be scheduled from tomorrow onwards.",
-          type: "error"
-        });
-        return;
-      }
-
       await updateRenewalConfig({
         certificateId: certificateData.certificateId,
         renewBeforeDays: data.renewBeforeDays,
@@ -133,8 +181,6 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
     }
   };
 
-  const isLoading = isUpdatingConfig;
-
   const getModalTitle = () => {
     if (hasRenewalError) {
       return `Fix Auto-Renewal: ${certificateData?.commonName || ""}`;
@@ -145,6 +191,10 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
     return `Enable Auto-Renewal for ${certificateData?.commonName || ""}`;
   };
 
+  if (!certificateData) {
+    return null;
+  }
+
   return (
     <Modal
       isOpen={popUp?.manageRenewal?.isOpen}
@@ -153,7 +203,6 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
       }}
     >
       <ModalContent title={getModalTitle()}>
-        {/* Show renewal error if present */}
         {hasRenewalError && (
           <div className="mb-6 rounded-md border border-red-600 bg-red-900/20 p-4">
             <div className="flex items-start gap-3">
@@ -173,100 +222,26 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
           </div>
         )}
 
-        {/* Configuration form - shown for all cases except when enabled and no error */}
         {(!isAutoRenewalEnabled || hasRenewalError) && (
-          <form onSubmit={handleSubmit(onUpdateRenewal)}>
-            <FormControl
-              label="Renewal Days Before Expiration"
-              errorText={errors.renewBeforeDays?.message}
-              className="mb-6"
-            >
-              <Controller
-                control={control}
-                name="renewBeforeDays"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="number"
-                    min={MIN_RENEWAL_BEFORE_DAYS}
-                    max={MAX_RENEWAL_BEFORE_DAYS}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value, 10);
-                      field.onChange(value);
-                    }}
-                    placeholder="Enter days before expiration"
-                  />
-                )}
-              />
-            </FormControl>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("manageRenewal", false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                colorSchema="primary"
-                isLoading={isUpdatingConfig}
-                isDisabled={isLoading}
-              >
-                {isAutoRenewalEnabled ? "Update Configuration" : "Enable Auto-Renewal"}
-              </Button>
-            </div>
-          </form>
+          <RenewalConfigForm
+            control={control}
+            errors={errors}
+            onSubmit={handleSubmit(onUpdateRenewal)}
+            isLoading={isUpdatingConfig}
+            buttonText={isAutoRenewalEnabled ? "Update Configuration" : "Enable Auto-Renewal"}
+            onCancel={() => handlePopUpToggle("manageRenewal", false)}
+          />
         )}
 
-        {/* Show edit form for enabled auto-renewal without errors */}
         {isAutoRenewalEnabled && !hasRenewalError && (
-          <form onSubmit={handleSubmit(onUpdateRenewal)}>
-            <FormControl
-              label="Renewal Days Before Expiration"
-              errorText={errors.renewBeforeDays?.message}
-              className="mb-6"
-            >
-              <Controller
-                control={control}
-                name="renewBeforeDays"
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="number"
-                    min={MIN_RENEWAL_BEFORE_DAYS}
-                    max={MAX_RENEWAL_BEFORE_DAYS}
-                    onChange={(e) => {
-                      const value = parseInt(e.target.value, 10);
-                      field.onChange(value);
-                    }}
-                    placeholder="Enter days before expiration"
-                  />
-                )}
-              />
-            </FormControl>
-
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                colorSchema="secondary"
-                variant="plain"
-                onClick={() => handlePopUpToggle("manageRenewal", false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                colorSchema="primary"
-                isLoading={isUpdatingConfig}
-                isDisabled={isLoading}
-              >
-                Update Configuration
-              </Button>
-            </div>
-          </form>
+          <RenewalConfigForm
+            control={control}
+            errors={errors}
+            onSubmit={handleSubmit(onUpdateRenewal)}
+            isLoading={isUpdatingConfig}
+            buttonText="Update Configuration"
+            onCancel={() => handlePopUpToggle("manageRenewal", false)}
+          />
         )}
       </ModalContent>
     </Modal>

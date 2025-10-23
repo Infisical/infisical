@@ -114,12 +114,55 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCertificatesEligibleForRenewal = async ({
+    limit,
+    offset
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<TCertificates[]> => {
+    try {
+      const now = new Date();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      const certs = (await db
+        .replicaNode()(TableName.Certificate)
+        .select(`${TableName.Certificate}.*`)
+        .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
+        .whereNull(`${TableName.Certificate}.renewedById`)
+        .whereNull(`${TableName.Certificate}.renewalError`)
+        .whereNull(`${TableName.Certificate}.revokedAt`)
+        .whereNotNull(`${TableName.Certificate}.profileId`)
+        .whereNotNull(`${TableName.Certificate}.notAfter`)
+        .where(`${TableName.Certificate}.notAfter`, ">", now)
+        .where((queryBuilder) => {
+          void queryBuilder.where((subQuery) => {
+            void subQuery
+              .whereNotNull(`${TableName.Certificate}.renewBeforeDays`)
+              .where(`${TableName.Certificate}.renewBeforeDays`, ">", 0)
+              .whereRaw(
+                `"${TableName.Certificate}"."notAfter" - INTERVAL '1 day' * "${TableName.Certificate}"."renewBeforeDays" <= ?`,
+                [endOfDay]
+              );
+          });
+        })
+        .limit(limit)
+        .offset(offset)
+        .orderBy(`${TableName.Certificate}.notAfter`, "asc")) as TCertificates[];
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificates eligible for renewal" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
     countCertificatesForPkiSubscriber,
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
-    findExpiredSyncedCertificates
+    findExpiredSyncedCertificates,
+    findCertificatesEligibleForRenewal
   };
 };

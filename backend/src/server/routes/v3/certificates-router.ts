@@ -406,10 +406,14 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       params: z.object({
         certificateId: z.string().uuid()
       }),
-      body: z.object({
-        renewBeforeDays: z.number().int().min(1).max(30).optional(),
-        disableAutoRenewal: z.boolean().optional()
-      }),
+      body: z
+        .object({
+          renewBeforeDays: z.number().int().min(1).max(30).optional(),
+          disableAutoRenewal: z.boolean().optional()
+        })
+        .refine((data) => !(data.renewBeforeDays !== undefined && data.disableAutoRenewal === true), {
+          message: "Cannot specify both renewBeforeDays and disableAutoRenewal"
+        }),
       response: {
         200: z.object({
           message: z.string(),
