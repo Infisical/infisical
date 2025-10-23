@@ -43,7 +43,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     // ms library does not handle months (M) so we do it separately
     if (unit === "M") {
       const value = parseInt(duration, 10);
-      if (!isNaN(value) && value > 0) {
+      if (!Number.isNaN(value) && value > 0) {
         const hours = value * 30 * 24;
         return `${hours}h`;
       }
