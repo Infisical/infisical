@@ -183,15 +183,7 @@
                       "documentation/platform/gateways/relay-deployment/terraform"
                     ]
                   },
-                  "documentation/platform/gateways/security",
-                  {
-                    "group": "Gateway (Deprecated)",
-                    "pages": [
-                      "documentation/platform/gateways-deprecated/overview",
-                      "documentation/platform/gateways-deprecated/gateway-security",
-                      "documentation/platform/gateways-deprecated/networking"
-                    ]
-                  }
+                  "documentation/platform/gateways/security"
                 ]
               }
             ]
