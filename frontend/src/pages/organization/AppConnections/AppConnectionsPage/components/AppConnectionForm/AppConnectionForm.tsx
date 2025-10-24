@@ -96,7 +96,7 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
     case AppConnection.AWS:
       return <AwsConnectionForm onSubmit={onSubmit} />;
     case AppConnection.GitHub:
-      return <GitHubConnectionForm projectId={projectId} />;
+      return <GitHubConnectionForm projectId={projectId} onSubmit={onSubmit} />;
     case AppConnection.GitHubRadar:
       return <GitHubRadarConnectionForm projectId={projectId} />;
     case AppConnection.GCP:
@@ -213,7 +213,11 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <AwsConnectionForm appConnection={appConnection} onSubmit={onSubmit} />;
     case AppConnection.GitHub:
       return (
-        <GitHubConnectionForm appConnection={appConnection} projectId={appConnection.projectId} />
+        <GitHubConnectionForm
+          appConnection={appConnection}
+          projectId={appConnection.projectId}
+          onSubmit={onSubmit}
+        />
       );
     case AppConnection.GitHubRadar:
       return (

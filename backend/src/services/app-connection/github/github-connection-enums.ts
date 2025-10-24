@@ -1,4 +1,5 @@
 export enum GitHubConnectionMethod {
   OAuth = "oauth",
-  App = "github-app"
+  App = "github-app",
+  Pat = "pat"
 }

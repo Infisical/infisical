@@ -3,7 +3,8 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum GitHubConnectionMethod {
   App = "github-app",
-  OAuth = "oauth"
+  OAuth = "oauth",
+  Pat = "pat"
 }
 
 export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub } & (
@@ -20,6 +21,14 @@ export type TGitHubConnection = TRootAppConnection & { app: AppConnection.GitHub
         credentials: {
           code: string;
           installationId: string;
+          instanceType?: "cloud" | "server";
+          host?: string;
+        };
+      }
+    | {
+        method: GitHubConnectionMethod.Pat;
+        credentials: {
+          personalAccessToken: string;
           instanceType?: "cloud" | "server";
           host?: string;
         };
