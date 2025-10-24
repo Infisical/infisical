@@ -7,7 +7,6 @@ import { PamResourceType, TMySQLAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
-import { rotateAccountFieldsSchema } from "./RotateAccountFields";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
 
@@ -18,7 +17,7 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.shape).extend({
+const formSchema = genericAccountFieldsSchema.extend({
   credentials: BaseSqlAccountSchema
 });
 

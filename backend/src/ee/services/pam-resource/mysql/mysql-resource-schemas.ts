@@ -58,11 +58,19 @@ export const MySQLAccountSchema = BasePamAccountSchema.extend({
   credentials: MySQLAccountCredentialsSchema
 });
 
-export const CreateMySQLAccountSchema = BaseCreatePamAccountSchema.extend({
+export const CreateMySQLAccountSchema = BaseCreatePamAccountSchema.omit({
+  // We don't support pwd rotation for mysql yet
+  rotationEnabled: true,
+  rotationIntervalSeconds: true
+}).extend({
   credentials: MySQLAccountCredentialsSchema
 });
 
-export const UpdateMySQLAccountSchema = BaseUpdatePamAccountSchema.extend({
+export const UpdateMySQLAccountSchema = BaseUpdatePamAccountSchema.omit({
+  // We don't support pwd rotation for mysql yet
+  rotationEnabled: true,
+  rotationIntervalSeconds: true
+}).extend({
   credentials: MySQLAccountCredentialsSchema.optional()
 });
 
