@@ -142,7 +142,7 @@ export const identityServiceFactory = ({
       if (metadata && metadata.length) {
         const rowsToInsert = metadata.map(({ key, value }) => ({
           identityId: newIdentity.id,
-          orgId,
+          orgId: newIdentity.orgId,
           key,
           value
         }));
@@ -243,13 +243,13 @@ export const identityServiceFactory = ({
         value: string;
       }> = [];
 
-      if (metadata) {
-        await identityMetadataDAL.delete({ orgId: identityOrgMembership.scopeOrgId, identityId: id }, tx);
+      if (metadata && identityDetails.orgId === actorOrgId) {
+        await identityMetadataDAL.delete({ orgId: newIdentity.orgId, identityId: id }, tx);
 
         if (metadata.length) {
           const rowsToInsert = metadata.map(({ key, value }) => ({
             identityId: newIdentity.id,
-            orgId: identityOrgMembership.scopeOrgId,
+            orgId: newIdentity.orgId,
             key,
             value
           }));
@@ -340,7 +340,7 @@ export const identityServiceFactory = ({
     if (identityOrgMembership.identity.hasDeleteProtection)
       throw new BadRequestError({ message: "Identity has delete protection" });
 
-    if (identityOrgMembership.identity.identityOrgId === actorOrgId) {
+    if (identityOrgMembership.identity.orgId === actorOrgId) {
       const deletedIdentity = await identityDAL.deleteById(id);
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };

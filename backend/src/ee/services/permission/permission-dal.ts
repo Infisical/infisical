@@ -204,9 +204,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
               .on(`${TableName.Membership}.actorUserId`, `${TableName.IdentityMetadata}.userId`)
               .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
           } else if (actorType === ActorType.IDENTITY) {
-            void queryBuilder
-              .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-              .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+            void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
           }
         })
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
@@ -667,9 +665,7 @@ export const permissionDALFactory = (db: TDbClient): TPermissionDALFactory => {
         })
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder
-            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
