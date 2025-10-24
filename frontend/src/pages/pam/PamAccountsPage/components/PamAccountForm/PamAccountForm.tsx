@@ -8,6 +8,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 
 type FormProps = {
@@ -35,10 +36,7 @@ const CreateForm = ({
   const createPamAccount = useCreatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<
-      TPamAccount,
-      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
-    >
+    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
   ) => {
     try {
       const account = await createPamAccount.mutateAsync({
@@ -72,6 +70,10 @@ const CreateForm = ({
           resourceType={resourceType}
         />
       );
+    case PamResourceType.MySQL:
+      return (
+        <MySQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -81,10 +83,7 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
 
   const onSubmit = async (
-    formData: DiscriminativePick<
-      TPamAccount,
-      "name" | "description" | "credentials" | "rotationEnabled" | "rotationIntervalSeconds"
-    >
+    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
   ) => {
     try {
       const updatedAccount = await updatePamAccount.mutateAsync({
@@ -110,6 +109,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   switch (account.resource.resourceType) {
     case PamResourceType.Postgres:
       return <PostgresAccountForm account={account} onSubmit={onSubmit} />;
+    case PamResourceType.MySQL:
+      return <MySQLAccountForm account={account} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

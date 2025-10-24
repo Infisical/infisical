@@ -4,6 +4,11 @@ import {
   SanitizedPostgresResourceSchema,
   UpdatePostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import {
+  CreateMySQLResourceSchema,
+  MySQLResourceSchema,
+  UpdateMySQLResourceSchema
+} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 
 import { registerPamResourceEndpoints } from "./pam-resource-endpoints";
 
@@ -15,6 +20,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedPostgresResourceSchema,
       createResourceSchema: CreatePostgresResourceSchema,
       updateResourceSchema: UpdatePostgresResourceSchema
+    });
+  },
+  [PamResource.MySQL]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.MySQL,
+      resourceResponseSchema: MySQLResourceSchema,
+      createResourceSchema: CreateMySQLResourceSchema,
+      updateResourceSchema: UpdateMySQLResourceSchema
     });
   }
 };
