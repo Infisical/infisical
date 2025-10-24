@@ -115,7 +115,13 @@ const makeSqlConnection = (
         },
         rotateCredentials: async (currentCredentials) => {
           const newPassword = alphaNumericNanoId(32);
-          await client.raw(`ALTER USER ?? WITH PASSWORD ?`, [currentCredentials.username, newPassword]);
+          // Note: The generated random password is not really going to make SQL Injection possible.
+          //       The reason we are not using parameters binding is that the "ALTER USER" syntax is DDL,
+          //       parameters binding is not supported. But just in case if the this code got copied
+          //       around and repurposed, let's just do some naive escaping regardless
+          await client.raw(`ALTER USER :username: WITH PASSWORD '${newPassword.replace(/'/g, "''")}'`, {
+            username: currentCredentials.username
+          });
           return { username: currentCredentials.username, password: newPassword };
         },
         close: () => client.destroy()
