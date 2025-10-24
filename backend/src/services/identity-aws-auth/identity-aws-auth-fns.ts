@@ -8,7 +8,7 @@ interface PrincipalArnEntity {
   SessionInfo: string; // Only populated for assumed-role
 }
 
-export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
+export const extractPrincipalArnEntity = (arn: string, formatAsIamRole: boolean = false): PrincipalArnEntity => {
   // split the ARN into parts using ":" as the delimiter
   const fullParts = arn.split(":");
   if (fullParts.length !== 6) {
@@ -49,7 +49,7 @@ export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
       }
       // assumed roles use a special format where the friendly name is the role name
       const [roleName, sessionId] = rest;
-      finalType = "assumed-role";
+      finalType = formatAsIamRole ? "role" : "assumed-role";
       friendlyName = roleName;
       sessionInfo = sessionId;
       break;
@@ -83,9 +83,11 @@ export const extractPrincipalArnEntity = (arn: string): PrincipalArnEntity => {
  * Extracts the identity ARN from the GetCallerIdentity response to one of the following formats:
  * - arn:aws:iam::123456789012:user/MyUserName
  * - arn:aws:iam::123456789012:role/MyRoleName
+ * - arn:aws-us-gov:iam::123456789012:user/MyUserName (GovCloud)
+ * - arn:aws-us-gov:iam::123456789012:role/MyRoleName (GovCloud)
  */
-export const extractPrincipalArn = (arn: string) => {
-  const entity = extractPrincipalArnEntity(arn);
+export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = false) => {
+  const entity = extractPrincipalArnEntity(arn, formatAsIamRole);
 
-  return `arn:aws:${entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
+  return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };

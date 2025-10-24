@@ -111,6 +111,7 @@ type TCertificateDetails = {
 
 export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
+  const [shouldShowSubjectSection, setShouldShowSubjectSection] = useState(true);
   const { currentProject } = useProject();
 
   const inputSerialNumber =
@@ -127,19 +128,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { mutateAsync: createCertificate } = useCreateCertificateV3();
 
-  const selectedProfileId = useMemo(() => {
-    const form = document.querySelector('select[name="profileId"]') as HTMLSelectElement;
-    return form?.value || profileId || "";
-  }, [profileId]);
-
-  const selectedProfile = useMemo(
-    () => profilesData?.certificateProfiles?.find((p) => p.id === selectedProfileId),
-    [profilesData?.certificateProfiles, selectedProfileId]
-  );
-
-  const { data: templateData } = useGetCertificateTemplateV2ById({
-    templateId: selectedProfile?.certificateTemplateId || ""
-  });
+  const formResolver = useMemo(() => {
+    return zodResolver(createSchema(shouldShowSubjectSection));
+  }, [shouldShowSubjectSection]);
 
   const {
     control,
@@ -150,7 +141,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     formState,
     formState: { isSubmitting }
   } = useForm<FormData>({
-    resolver: zodResolver(createSchema((templateData?.subject?.length || 0) > 0)),
+    resolver: formResolver,
     defaultValues: {
       profileId: profileId || "",
       subjectAttributes: [],
@@ -169,6 +160,16 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
     [profilesData?.certificateProfiles, actualSelectedProfileId]
   );
 
+  const { data: templateData } = useGetCertificateTemplateV2ById({
+    templateId: actualSelectedProfile?.certificateTemplateId || ""
+  });
+
+  useEffect(() => {
+    if (templateData !== undefined) {
+      setShouldShowSubjectSection((templateData?.subject?.length || 0) > 0);
+    }
+  }, [templateData]);
+
   const {
     constraints,
     filteredKeyUsages,
@@ -186,6 +187,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const resetAllState = useCallback(() => {
     setCertificateDetails(null);
+    setShouldShowSubjectSection(true);
     resetConstraints();
     reset();
   }, [reset, resetConstraints]);

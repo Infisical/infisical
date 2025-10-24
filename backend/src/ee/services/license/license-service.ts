@@ -40,6 +40,7 @@ import {
   TOrgPlanDTO,
   TOrgPlansTableDTO,
   TOrgPmtMethodsDTO,
+  TPlanBillingInfo,
   TStartOrgTrialDTO,
   TUpdateOrgBillingDetailsDTO
 } from "./license-types";
@@ -465,6 +466,21 @@ export const licenseServiceFactory = ({
     return { url };
   };
 
+  const getUsageMetrics = async (orgId: string) => {
+    const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
+      orgDAL.countAllOrgMembers(orgId),
+      licenseDAL.countOfOrgIdentities(orgId),
+      projectDAL.countOfOrgProjects(orgId)
+    ]);
+
+    return {
+      orgMembersUsed,
+      identityUsed,
+      projectCount,
+      totalIdentities: identityUsed + orgMembersUsed
+    };
+  };
+
   const getOrgBillingInfo = async ({ orgId, actor, actorId, actorAuthMethod, actorOrgId }: TGetOrgBillInfoDTO) => {
     const { permission } = await permissionService.getOrgPermission({
       actorId,
@@ -483,10 +499,16 @@ export const licenseServiceFactory = ({
       });
     }
     if (instanceType === InstanceType.Cloud) {
-      const { data } = await licenseServerCloudApi.request.get(
+      const { data } = await licenseServerCloudApi.request.get<TPlanBillingInfo>(
         `/api/license-server/v1/customers/${organization.customerId}/cloud-plan/billing`
       );
-      return data;
+      const { identityUsed, orgMembersUsed } = await getUsageMetrics(orgId);
+
+      return {
+        ...data,
+        users: orgMembersUsed,
+        identities: identityUsed
+      };
     }
 
     return {
@@ -495,7 +517,9 @@ export const licenseServiceFactory = ({
       interval: "month",
       intervalCount: 1,
       amount: 0,
-      quantity: 1
+      quantity: 1,
+      users: 0,
+      identities: 0
     };
   };
 
@@ -537,21 +561,6 @@ export const licenseServiceFactory = ({
     }
 
     throw new Error(`Unsupported instance type for server-based plan table: ${instanceType}`);
-  };
-
-  const getUsageMetrics = async (orgId: string) => {
-    const [orgMembersUsed, identityUsed, projectCount] = await Promise.all([
-      orgDAL.countAllOrgMembers(orgId),
-      licenseDAL.countOfOrgIdentities(orgId),
-      projectDAL.countOfOrgProjects(orgId)
-    ]);
-
-    return {
-      orgMembersUsed,
-      identityUsed,
-      projectCount,
-      totalIdentities: identityUsed + orgMembersUsed
-    };
   };
 
   // returns org current plan feature table

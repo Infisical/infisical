@@ -22,6 +22,15 @@ export type TOfflineLicense = {
   features: TFeatureSet;
 };
 
+export type TPlanBillingInfo = {
+  currentPeriodStart: number;
+  currentPeriodEnd: number;
+  interval: "month" | "year";
+  intervalCount: number;
+  amount: number;
+  quantity: number;
+};
+
 export type TFeatureSet = {
   _id: null;
   slug: string | null;

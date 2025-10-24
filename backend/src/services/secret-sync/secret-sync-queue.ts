@@ -11,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
+import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
@@ -407,6 +408,24 @@ export const secretSyncQueueFactory = ({
     });
 
     if (!Object.keys(importedSecrets).length) return {};
+
+    let invalidNameCount = 0;
+    let errorMessage = "";
+
+    for (const [key] of Object.entries(importedSecrets)) {
+      const result = SecretNameSchema.safeParse(key);
+      if (!result.success) {
+        invalidNameCount += 1;
+        if (errorMessage === "") errorMessage = result.error.issues[0]?.message;
+      }
+    }
+
+    if (invalidNameCount > 0) {
+      throw new SecretSyncError({
+        message: `Found ${invalidNameCount} invalid secret name${invalidNameCount === 1 ? "" : "s"}. ${errorMessage}`,
+        shouldRetry: false
+      });
+    }
 
     const importedSecretMap: TSecretMap = {};
 
