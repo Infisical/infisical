@@ -14,8 +14,6 @@ Replace `{version}` with the version of the SDK you wish to use. This documentat
 
   <Accordion title="Maven">
 
-    ### Maven
-
     ```xml
     <dependency>
         <groupId>com.infisical</groupId>
@@ -28,7 +26,6 @@ Replace `{version}` with the version of the SDK you wish to use. This documentat
 
   <Accordion title="Gradle">
 
-    ### Gradle
     ```gradle
       implementation group: 'com.infisical', name: 'sdk', version: '{version}'
     ```
@@ -37,7 +34,6 @@ Replace `{version}` with the version of the SDK you wish to use. This documentat
 
   <Accordion title="Others">
 
-    ### Others
     For other build tools, please check our [package snippets](https://central.sonatype.com/artifact/com.infisical/sdk), and select the build tool you're using for your project.
 
   </Accordion>
@@ -98,8 +94,6 @@ The `Auth` component provides methods for authentication:
 
   <Accordion title="Universal Auth">
 
-    ### Universal Auth
-
     ```java
     public void UniversalAuthLogin(
       String clientId,
@@ -124,8 +118,6 @@ The `Auth` component provides methods for authentication:
 
   <Accordion title="AWS Auth">
 
-    ### AWS Auth
-
     ```java
     public void AwsAuthLogin(
       String identityId
@@ -143,8 +135,6 @@ The `Auth` component provides methods for authentication:
   </Accordion>
 
   <Accordion title="LDAP Auth">
-
-    ### LDAP Auth
 
     ```java
     public void LdapAuthLogin(
@@ -174,8 +164,6 @@ The `Auth` component provides methods for authentication:
 
   <Accordion title="Access Token Auth">
 
-    ### Access Token Auth
-
     ```java
     public void SetAccessToken(
       String accessToken
@@ -201,8 +189,6 @@ This sub-class handles operations related to secrets:
 <AccordionGroup>
 
   <Accordion title="List Secrets">
-
-    #### List Secrets
 
     ```java
     public List<Secret> ListSecrets(
@@ -246,9 +232,6 @@ This sub-class handles operations related to secrets:
 
   <Accordion title="Create Secret">
 
-    #### Create Secret
-
-
     ```java
     public Secret CreateSecret(
         String secretName,
@@ -283,8 +266,6 @@ This sub-class handles operations related to secrets:
   </Accordion>
 
   <Accordion title="Update Secret">
-
-    #### Update Secret
 
     ```java
     public Secret UpdateSecret(
@@ -325,8 +306,6 @@ This sub-class handles operations related to secrets:
   </Accordion>
 
   <Accordion title="Get Secret by Name">
-
-    #### Get Secret by Name
 
     ```java
     public Secret GetSecret(
@@ -371,8 +350,6 @@ This sub-class handles operations related to secrets:
 
   <Accordion title="Delete Secret by Name">
 
-    #### Delete Secret by Name
-
     ```java
     public Secret DeleteSecret(
         String secretName,
@@ -411,8 +388,6 @@ This sub-class handles operations related to secrets:
 
   <Accordion title="Get Folder By Name">
 
-    #### Get Folder By Name 
-
     ```java
     public Folder Get(
       String folderId
@@ -433,8 +408,6 @@ This sub-class handles operations related to secrets:
   </Accordion>
 
   <Accordion title="List Folders">
-
-    #### List Folders
 
     ```java
     public List<Folder> List(
@@ -469,8 +442,6 @@ This sub-class handles operations related to secrets:
   </Accordion>
 
   <Accordion title="Create Folder">
-
-    #### Create Folder
 
     ```java
     public Folder Create(
@@ -507,8 +478,6 @@ This sub-class handles operations related to secrets:
 
   <Accordion title="Update Folder">
 
-    #### Update Folder
-
     ```java
     public Folder Update(
       UpdateFolderInput input
@@ -543,8 +512,6 @@ This sub-class handles operations related to secrets:
   </Accordion>
 
   <Accordion title="Delete Folder">
-
-    #### Delete Folder
 
     ```java
     public Folder Delete(
