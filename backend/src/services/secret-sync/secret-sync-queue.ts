@@ -421,9 +421,10 @@ export const secretSyncQueueFactory = ({
     }
 
     if (invalidNameCount > 0) {
-      throw new Error(
-        `Found ${invalidNameCount} invalid secret name${invalidNameCount === 1 ? "" : "s"}. ${errorMessage}`
-      );
+      throw new SecretSyncError({
+        message: `Found ${invalidNameCount} invalid secret name${invalidNameCount === 1 ? "" : "s"}. ${errorMessage}`,
+        shouldRetry: false
+      });
     }
 
     const importedSecretMap: TSecretMap = {};
