@@ -39,7 +39,7 @@ export enum ApiDocsTags {
   ProjectUsers = "Project Users",
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
-  ProjectIdentityMembership = "Project Identity Membership",
+  IdentityProjectMembership = "Project Identity Membership",
   ProjectRoles = "Project Roles",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
@@ -124,13 +124,15 @@ export const IDENTITIES = {
     name: "The name of the identity to create.",
     organizationId: "The organization ID to which the identity belongs.",
     role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'.",
-    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+    hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    metadata: "An optional array of key-value pairs to attach to the identity."
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update.",
     name: "The new name of the identity.",
     role: "The new role of the identity.",
-    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+    hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    metadata: "An optional array of key-value pairs to attach to the identity."
   },
   DELETE: {
     identityId: "The ID of the machine identity to delete."
@@ -140,7 +142,10 @@ export const IDENTITIES = {
     orgId: "The ID of the org of the identity"
   },
   LIST: {
-    orgId: "The ID of the organization to list identities."
+    orgId: "The ID of the organization to list identities.",
+    search: "The text string that identity names will be filtered by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return."
   },
   SEARCH: {
     search: {

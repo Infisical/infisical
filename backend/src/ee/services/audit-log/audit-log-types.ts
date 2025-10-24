@@ -159,9 +159,22 @@ export enum EventType {
   DELETE_TRUSTED_IP = "delete-trusted-ip",
   CREATE_SERVICE_TOKEN = "create-service-token", // v2
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
+
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+
+  CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
+  UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
+  DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
+
+  CREATE_IDENTITY_PROJECT_MEMBERSHIP = "create-identity-project-membership",
+  UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
+  DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
+
   MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE = "machine-identity-auth-template-create",
   MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
   MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
@@ -173,9 +186,6 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
-
-  CREATE_SUB_ORGANIZATION = "create-sub-organization",
-  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -891,6 +901,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -900,6 +911,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -1496,6 +1508,52 @@ interface RevokeIdentityLdapAuthEvent {
 
 interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityOrgMembershipEvent {
+  type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityOrgMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityOrgMembershipEvent {
+  type: EventType.DELETE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityProjectMembershipEvent {
+  type: EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityProjectMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityProjectMembershipEvent {
+  type: EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP;
   metadata: {
     identityId: string;
   };
@@ -4197,6 +4255,12 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | CreateIdentityOrgMembershipEvent
+  | UpdateIdentityOrgMembershipEvent
+  | DeleteIdentityOrgMembershipEvent
+  | CreateIdentityProjectMembershipEvent
+  | UpdateIdentityProjectMembershipEvent
+  | DeleteIdentityProjectMembershipEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent

@@ -12,11 +12,11 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
 import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
-import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 
 type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;

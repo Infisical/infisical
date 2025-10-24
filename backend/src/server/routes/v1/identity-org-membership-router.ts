@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { AccessScope, IdentitiesSchema, MembershipRolesSchema, TemporaryPermissionMode } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, ORG_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -15,7 +16,7 @@ const sanitizedOrgIdentityMembershipSchema = z.object({
   updatedAt: z.date()
 });
 
-export const registerOrgIdentityMembershipRouter = async (server: FastifyZodProvider) => {
+export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/identity-memberships/:identityId",
@@ -84,6 +85,18 @@ export const registerOrgIdentityMembershipRouter = async (server: FastifyZodProv
         data: {
           identityId: req.params.identityId,
           roles: req.body.roles
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP,
+          metadata: {
+            identityId: req.params.identityId,
+            roles: req.body.roles
+          }
         }
       });
 
@@ -166,6 +179,18 @@ export const registerOrgIdentityMembershipRouter = async (server: FastifyZodProv
         }
       });
 
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP,
+          metadata: {
+            identityId: req.params.identityId,
+            roles: req.body.roles
+          }
+        }
+      });
+
       return {
         roles: membership.roles.map((el) => ({ ...el, membershipId: membership.id }))
       };
@@ -206,6 +231,17 @@ export const registerOrgIdentityMembershipRouter = async (server: FastifyZodProv
         },
         selector: {
           identityId: req.params.identityId
+        }
+      });
+
+      await server.services.auditLog.createAuditLog({
+        orgId: req.permission.orgId,
+        ...req.auditLogInfo,
+        event: {
+          type: EventType.DELETE_IDENTITY_ORG_MEMBERSHIP,
+          metadata: {
+            identityId: req.params.identityId
+          }
         }
       });
 

@@ -6,19 +6,19 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
-import { TIdentityDALFactory } from "./identity-dal";
+import { TIdentityV2DALFactory } from "./identity-dal";
 import {
-  TCreateIdentityDTO,
-  TDeleteIdentityDTO,
-  TGetIdentityByIdDTO,
-  TListIdentityDTO,
-  TUpdateIdentityDTO
+  TCreateIdentityV2DTO,
+  TDeleteIdentityV2DTO,
+  TGetIdentityByIdV2DTO,
+  TListIdentityV2DTO,
+  TUpdateIdentityV2DTO
 } from "./identity-types";
 import { newOrgIdentityFactory } from "./org/org-identity-factory";
 import { newProjectIdentityFactory } from "./project/project-identity-factory";
 
-type TScopedIdentityServiceFactoryDep = {
-  identityDAL: TIdentityDALFactory;
+type TScopedIdentityV2ServiceFactoryDep = {
+  identityDAL: TIdentityV2DALFactory;
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
@@ -26,16 +26,16 @@ type TScopedIdentityServiceFactoryDep = {
   identityMetadataDAL: TIdentityMetadataDALFactory;
 };
 
-export type TScopedIdentityServiceFactory = ReturnType<typeof identityServiceFactory>;
+export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
 
-export const identityServiceFactory = ({
+export const identityV2ServiceFactory = ({
   identityDAL,
   permissionService,
   licenseService,
   membershipIdentityDAL,
   membershipRoleDAL,
   identityMetadataDAL
-}: TScopedIdentityServiceFactoryDep) => {
+}: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
   });
@@ -50,7 +50,7 @@ export const identityServiceFactory = ({
     [AccessScope.Namespace]: orgFactory
   };
 
-  const createIdentity = async (dto: TCreateIdentityDTO) => {
+  const createIdentity = async (dto: TCreateIdentityV2DTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -134,7 +134,7 @@ export const identityServiceFactory = ({
     return { identity };
   };
 
-  const updateIdentity = async (dto: TUpdateIdentityDTO) => {
+  const updateIdentity = async (dto: TUpdateIdentityV2DTO) => {
     const { scopeData, data } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -187,7 +187,7 @@ export const identityServiceFactory = ({
     return { identity };
   };
 
-  const deleteIdentity = async (dto: TDeleteIdentityDTO) => {
+  const deleteIdentity = async (dto: TDeleteIdentityV2DTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -208,7 +208,7 @@ export const identityServiceFactory = ({
     return { identity: deletedIdentity };
   };
 
-  const getIdentityById = async (dto: TGetIdentityByIdDTO) => {
+  const getIdentityById = async (dto: TGetIdentityByIdV2DTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -220,7 +220,7 @@ export const identityServiceFactory = ({
     return { identity };
   };
 
-  const listIdentities = async (dto: TListIdentityDTO) => {
+  const listIdentities = async (dto: TListIdentityV2DTO) => {
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
@@ -232,7 +232,7 @@ export const identityServiceFactory = ({
       limit: dto.data.limit
     });
 
-    return { identities };
+    return identities;
   };
 
   return {
