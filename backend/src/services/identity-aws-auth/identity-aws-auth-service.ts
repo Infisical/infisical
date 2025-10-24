@@ -254,7 +254,7 @@ export const identityAwsAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -338,7 +338,7 @@ export const identityAwsAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -409,7 +409,7 @@ export const identityAwsAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -448,7 +448,7 @@ export const identityAwsAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AWS_AUTH)) {

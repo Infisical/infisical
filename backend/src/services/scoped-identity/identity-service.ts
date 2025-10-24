@@ -115,7 +115,7 @@ export const identityServiceFactory = ({
       if (data.metadata && data.metadata.length) {
         const rowsToInsert = data.metadata.map(({ key, value }) => ({
           identityId: newIdentity.id,
-          orgId: dto.permission.orgId,
+          orgId: newIdentity.orgId,
           key,
           value
         }));
@@ -148,7 +148,7 @@ export const identityServiceFactory = ({
       throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
     const identity = await identityDAL.transaction(async (tx) => {
-      const newIdentity =
+      const updatedIdentity =
         data?.name || data?.hasDeleteProtection
           ? await identityDAL.updateById(
               dto.selector.identityId,
@@ -168,8 +168,8 @@ export const identityServiceFactory = ({
 
         if (data.metadata.length) {
           const rowsToInsert = data.metadata.map(({ key, value }) => ({
-            identityId: newIdentity.id,
-            orgId: dto.permission.orgId,
+            identityId: updatedIdentity.id,
+            orgId: updatedIdentity.orgId,
             key,
             value
           }));
@@ -179,7 +179,7 @@ export const identityServiceFactory = ({
       }
 
       return {
-        ...newIdentity,
+        ...updatedIdentity,
         metadata: insertedMetadata
       };
     });
