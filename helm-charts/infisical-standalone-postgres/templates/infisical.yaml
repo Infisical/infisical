@@ -58,6 +58,9 @@ spec:
         ports: 
         - containerPort: 8080
         env:
+        {{- with $infisicalValues.env }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- if .Values.postgresql.useExistingPostgresSecret.enabled }}
         - name: DB_CONNECTION_URI
           valueFrom:
