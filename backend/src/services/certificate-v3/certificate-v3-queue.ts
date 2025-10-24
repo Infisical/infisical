@@ -6,7 +6,6 @@ import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { ActorType } from "../auth/auth-type";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { CERTIFICATE_RENEWAL_CONFIG } from "../certificate-common/certificate-constants";
-import { categorizeCertificateRenewalError } from "../certificate-common/certificate-utils";
 import { TCertificateV3ServiceFactory } from "./certificate-v3-service";
 
 type TCertificateV3QueueServiceFactoryDep = {
@@ -70,9 +69,6 @@ export const certificateV3QueueServiceFactory = ({
               internal: true
             });
 
-            await certificateDAL.updateById(certificate.id, {
-              renewalError: null
-            });
             totalCertificatesRenewed += 1;
 
             await auditLogService.createAuditLog({
@@ -87,42 +83,32 @@ export const certificateV3QueueServiceFactory = ({
                   certificateId: certificate.id,
                   commonName: certificate.commonName || "",
                   profileId: certificate.profileId!,
-                  renewBeforeDays: certificate.renewBeforeDays?.toString() || ""
+                  renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
+                  profileName: certificate.profileName || ""
                 }
               }
             });
           } catch (error) {
-            const categorizedError: string = categorizeCertificateRenewalError(error);
-
-            try {
-              await certificateDAL.updateById(certificate.id, {
-                renewalError: categorizedError
-              });
-            } catch (updateError) {
-              logger.error(updateError, `Failed to update renewal error for certificate ${certificate.id}`);
-            }
-
-            try {
-              await auditLogService.createAuditLog({
-                projectId: certificate.projectId,
-                actor: {
-                  type: ActorType.PLATFORM,
-                  metadata: {}
-                },
-                event: {
-                  type: EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED,
-                  metadata: {
-                    certificateId: certificate.id,
-                    commonName: certificate.commonName || "",
-                    profileId: certificate.profileId || "",
-                    renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
-                    error: categorizedError
-                  }
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            logger.error(error, `Failed to renew certificate ${certificate.id}: ${errorMessage}`);
+            await auditLogService.createAuditLog({
+              projectId: certificate.projectId,
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              },
+              event: {
+                type: EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED,
+                metadata: {
+                  certificateId: certificate.id,
+                  commonName: certificate.commonName || "",
+                  profileId: certificate.profileId || "",
+                  renewBeforeDays: certificate.renewBeforeDays?.toString() || "",
+                  profileName: certificate.profileName || "",
+                  error: errorMessage
                 }
-              });
-            } catch (auditError) {
-              logger.error(auditError, `Failed to create audit log for failed certificate renewal ${certificate.id}`);
-            }
+              }
+            });
           }
         }
 

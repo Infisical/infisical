@@ -84,8 +84,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
               })
             )
             .optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -170,8 +170,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -260,8 +260,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
           commonName: validateTemplateRegexField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -385,7 +385,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           metadata: {
             originalCertificateId: req.params.certificateId,
             newCertificateId: data.certificateId,
-            profileName: data.profileName
+            profileName: data.profileName,
+            commonName: data.commonName
           }
         }
       });
@@ -409,10 +410,10 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       body: z
         .object({
           renewBeforeDays: z.number().int().min(1).max(30).optional(),
-          disableAutoRenewal: z.boolean().optional()
+          enableAutoRenewal: z.boolean().optional()
         })
-        .refine((data) => !(data.renewBeforeDays !== undefined && data.disableAutoRenewal === true), {
-          message: "Cannot specify both renewBeforeDays and disableAutoRenewal"
+        .refine((data) => !(data.renewBeforeDays !== undefined && data.enableAutoRenewal === false), {
+          message: "Cannot specify both renewBeforeDays and enableAutoRenewal=false"
         }),
       response: {
         200: z.object({
@@ -423,7 +424,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      if (req.body.disableAutoRenewal === true) {
+      if (req.body.enableAutoRenewal === false) {
         const data = await server.services.certificateV3.disableRenewalConfig({
           actor: req.permission.type,
           actorId: req.permission.id,
@@ -438,7 +439,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           event: {
             type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
-              certificateId: req.params.certificateId
+              certificateId: req.params.certificateId,
+              commonName: data.commonName
             }
           }
         });
@@ -465,7 +467,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
               certificateId: req.params.certificateId,
-              renewBeforeDays: req.body.renewBeforeDays.toString()
+              renewBeforeDays: req.body.renewBeforeDays.toString(),
+              commonName: data.commonName
             }
           }
         });

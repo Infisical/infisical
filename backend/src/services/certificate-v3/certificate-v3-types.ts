@@ -68,6 +68,7 @@ export type TCertificateFromProfileResponse = {
   certificateId: string;
   projectId: string;
   profileName: string;
+  commonName: string;
 };
 
 export type TCertificateOrderResponse = {
@@ -114,8 +115,10 @@ export type TDisableRenewalConfigDTO = {
 export type TRenewalConfigResponse = {
   projectId: string;
   renewBeforeDays: number;
+  commonName: string;
 };
 
 export type TDisableRenewalResponse = {
   projectId: string;
+  commonName: string;
 };

@@ -2,12 +2,14 @@
 import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import slugify from "@sindresorhus/slugify";
+import { Knex } from "knex";
 
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -1181,7 +1183,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     signatureAlgorithm,
     keyAlgorithm,
     isFromProfile,
-    internal = false
+    internal = false,
+    tx
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1221,10 +1224,17 @@ export const internalCertificateAuthorityServiceFactory = ({
         actionProjectType: ActionProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Create,
-        ProjectPermissionSub.Certificates
-      );
+      if (isFromProfile) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateProfileActions.IssueCert,
+          ProjectPermissionSub.CertificateProfiles
+        );
+      } else {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateActions.Create,
+          ProjectPermissionSub.Certificates
+        );
+      }
     }
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
@@ -1476,7 +1486,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    await certificateDAL.transaction(async (tx) => {
+    const executeIssueCertOperations = async (transaction: Knex) => {
       const cert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
@@ -1495,7 +1505,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm: effectiveKeyAlgorithm,
           signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm
         },
-        tx
+        transaction
       );
 
       await certificateBodyDAL.create(
@@ -1504,7 +1514,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           encryptedCertificate,
           encryptedCertificateChain
         },
-        tx
+        transaction
       );
 
       await certificateSecretDAL.create(
@@ -1512,7 +1522,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           certId: cert.id,
           encryptedPrivateKey
         },
-        tx
+        transaction
       );
 
       if (collectionId) {
@@ -1521,12 +1531,18 @@ export const internalCertificateAuthorityServiceFactory = ({
             pkiCollectionId: collectionId,
             certId: cert.id
           },
-          tx
+          transaction
         );
       }
 
       return cert;
-    });
+    };
+
+    if (tx) {
+      await executeIssueCertOperations(tx);
+    } else {
+      await certificateDAL.transaction(executeIssueCertOperations);
+    }
 
     return {
       certificate: leafCert.toString("pem"),
@@ -1598,10 +1614,17 @@ export const internalCertificateAuthorityServiceFactory = ({
         actionProjectType: ActionProjectType.CertificateManager
       });
 
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Create,
-        ProjectPermissionSub.Certificates
-      );
+      if (dto.isFromProfile && dto.profileId) {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateProfileActions.IssueCert,
+          ProjectPermissionSub.CertificateProfiles
+        );
+      } else {
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateActions.Create,
+          ProjectPermissionSub.Certificates
+        );
+      }
     }
 
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });

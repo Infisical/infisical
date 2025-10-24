@@ -16,8 +16,8 @@ export type TCertificate = {
   extendedKeyUsages: CertExtendedKeyUsage[];
   renewBeforeDays?: number;
   renewedBy?: string;
-  renewedFromId?: string;
-  renewedById?: string;
+  renewedFromCertificateId?: string;
+  renewedByCertificateId?: string;
   renewalError?: string;
 };
 
@@ -67,6 +67,6 @@ export type TRenewCertificateResponse = {
 export type TUpdateRenewalConfigDTO = {
   certificateId: string;
   renewBeforeDays?: number;
-  disableAutoRenewal?: boolean;
+  enableAutoRenewal?: boolean;
   projectSlug: string;
 };

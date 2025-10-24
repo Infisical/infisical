@@ -2470,6 +2470,7 @@ interface AutomatedRenewCertificate {
     commonName: string;
     profileId: string;
     renewBeforeDays: string;
+    profileName: string;
   };
 }
 
@@ -2480,6 +2481,7 @@ interface AutomatedRenewCertificateFailed {
     commonName: string;
     profileId: string;
     renewBeforeDays: string;
+    profileName: string;
     error: string;
   };
 }
@@ -2752,6 +2754,7 @@ interface RenewCertificate {
     originalCertificateId: string;
     newCertificateId: string;
     profileName: string;
+    commonName: string;
   };
 }
 
@@ -4049,6 +4052,7 @@ interface UpdateCertificateRenewalConfigEvent {
   metadata: {
     certificateId: string;
     renewBeforeDays: string;
+    commonName: string;
   };
 }
 
@@ -4056,6 +4060,7 @@ interface DisableCertificateRenewalConfigEvent {
   type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
   metadata: {
     certificateId: string;
+    commonName: string;
   };
 }
 

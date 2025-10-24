@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -7,6 +7,7 @@ import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
+import { useGetCertificateProfileById } from "@app/hooks/api/certificateProfiles";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const DEFAULT_RENEWAL_BEFORE_DAYS = 20;
@@ -64,7 +65,8 @@ const RenewalConfigForm = ({
 }) => (
   <form onSubmit={onSubmit}>
     <FormControl
-      label="Renewal Days Before Expiration"
+      label="Auto-renew days before expiry"
+      isError={Boolean(errors.renewBeforeDays)}
       errorText={errors.renewBeforeDays?.message}
       className="mb-6"
     >
@@ -111,9 +113,23 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
     ttlDays?: number;
     notAfter: string;
     renewalError?: string;
-    renewedFromId?: string;
-    renewedById?: string;
+    renewedFromCertificateId?: string;
+    renewedByCertificateId?: string;
   };
+
+  const { data: profileData } = useGetCertificateProfileById({
+    profileId: certificateData?.profileId || ""
+  });
+
+  const defaultRenewalDays = useMemo(() => {
+    if (certificateData?.renewBeforeDays) {
+      return certificateData.renewBeforeDays;
+    }
+    if (profileData?.apiConfig?.renewBeforeDays) {
+      return profileData.apiConfig.renewBeforeDays;
+    }
+    return DEFAULT_RENEWAL_BEFORE_DAYS;
+  }, [certificateData?.renewBeforeDays, profileData?.apiConfig?.renewBeforeDays]);
 
   const isAutoRenewalEnabled = Boolean(
     certificateData?.renewBeforeDays && certificateData.renewBeforeDays > 0
@@ -134,17 +150,17 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      renewBeforeDays: DEFAULT_RENEWAL_BEFORE_DAYS
+      renewBeforeDays: defaultRenewalDays
     }
   });
 
   useEffect(() => {
     if (popUp.manageRenewal.isOpen) {
       reset({
-        renewBeforeDays: certificateData?.renewBeforeDays || DEFAULT_RENEWAL_BEFORE_DAYS
+        renewBeforeDays: defaultRenewalDays
       });
     }
-  }, [popUp.manageRenewal.isOpen, certificateData?.renewBeforeDays, reset]);
+  }, [popUp.manageRenewal.isOpen, defaultRenewalDays, reset]);
 
   const onUpdateRenewal = async (data: FormData) => {
     try {

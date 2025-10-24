@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { CertStatus } from "./certificate-types";
 
@@ -120,32 +120,33 @@ export const certificateDALFactory = (db: TDbClient) => {
   }: {
     limit: number;
     offset: number;
-  }): Promise<TCertificates[]> => {
+  }): Promise<(TCertificates & { profileName?: string })[]> => {
     try {
       const now = new Date();
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
       const certs = (await db
         .replicaNode()(TableName.Certificate)
-        .select(`${TableName.Certificate}.*`)
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
         .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
-        .whereNull(`${TableName.Certificate}.renewedById`)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .whereNull(`${TableName.Certificate}.renewalError`)
         .whereNull(`${TableName.Certificate}.revokedAt`)
         .whereNotNull(`${TableName.Certificate}.profileId`)
         .whereNotNull(`${TableName.Certificate}.notAfter`)
         .where(`${TableName.Certificate}.notAfter`, ">", now)
-        .where((queryBuilder) => {
-          void queryBuilder.where((subQuery) => {
-            void subQuery
-              .whereNotNull(`${TableName.Certificate}.renewBeforeDays`)
-              .where(`${TableName.Certificate}.renewBeforeDays`, ">", 0)
-              .whereRaw(
-                `"${TableName.Certificate}"."notAfter" - INTERVAL '1 day' * "${TableName.Certificate}"."renewBeforeDays" <= ?`,
-                [endOfDay]
-              );
-          });
-        })
+        .whereNotNull(`${TableName.Certificate}.renewBeforeDays`)
+        .where(`${TableName.Certificate}.renewBeforeDays`, ">", 0)
+        .whereRaw(
+          `"${TableName.Certificate}"."notAfter" - INTERVAL '1 day' * "${TableName.Certificate}"."renewBeforeDays" <= ?`,
+          [endOfDay]
+        )
         .limit(limit)
         .offset(offset)
         .orderBy(`${TableName.Certificate}.notAfter`, "asc")) as TCertificates[];

@@ -16,6 +16,7 @@ import {
   CertExtendedKeyUsage,
   CertificateOrderStatus,
   CertKeyAlgorithm,
+  CertKeyType,
   CertKeyUsage,
   CertSignatureAlgorithm,
   CertStatus
@@ -56,7 +57,7 @@ import {
 } from "./certificate-v3-types";
 
 type TCertificateV3ServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById">;
+  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   certificateTemplateV2Service: Pick<
@@ -114,7 +115,7 @@ const validateRenewalEligibility = (
     notBefore: Date;
     notAfter: Date;
     revokedAt?: Date | null;
-    renewedById?: string | null;
+    renewedByCertificateId?: string | null;
     profileId?: string | null;
     caId?: string | null;
     pkiSubscriberId?: string | null;
@@ -153,7 +154,7 @@ const validateRenewalEligibility = (
     errors.push(`Certificate Authority is ${ca.status}, must be ${CaStatus.ACTIVE}`);
   }
 
-  if (certificate.renewedById) {
+  if (certificate.renewedByCertificateId) {
     errors.push("Certificate has already been renewed");
   }
 
@@ -212,11 +213,11 @@ const validateAlgorithmCompatibility = (
       const keyType = parts[parts.length - 1];
 
       if (caKeyAlgorithm.startsWith("RSA")) {
-        return keyType === "RSA";
+        return keyType === CertKeyType.RSA;
       }
 
       if (caKeyAlgorithm.startsWith("EC")) {
-        return keyType === "ECDSA";
+        return keyType === CertKeyType.ECDSA;
       }
 
       return false;
@@ -338,7 +339,8 @@ export const certificateV3ServiceFactory = ({
       actorId,
       actorAuthMethod,
       actorOrgId,
-      templateId: profile.certificateTemplateId
+      templateId: profile.certificateTemplateId,
+      internal: true
     });
     if (!template) {
       throw new NotFoundError({ message: "Certificate template not found for this profile" });
@@ -361,10 +363,6 @@ export const certificateV3ServiceFactory = ({
     }
 
     validateCaSupport(ca, "direct certificate issuance");
-
-    if (!actorAuthMethod) {
-      throw new BadRequestError({ message: "Authentication method is required for certificate issuance" });
-    }
 
     validateAlgorithmCompatibility(ca, template);
 
@@ -433,7 +431,8 @@ export const certificateV3ServiceFactory = ({
       serialNumber,
       certificateId: cert.id,
       projectId: profile.projectId,
-      profileName: profile.slug
+      profileName: profile.slug,
+      commonName: cert.commonName || ""
     };
   };
 
@@ -468,16 +467,13 @@ export const certificateV3ServiceFactory = ({
 
     validateCaSupport(ca, "CSR signing");
 
-    if (!actorAuthMethod) {
-      throw new BadRequestError({ message: "Authentication method is required for certificate signing" });
-    }
-
     const template = await certificateTemplateV2Service.getTemplateV2ById({
       actor,
       actorId,
       actorAuthMethod,
       actorOrgId,
-      templateId: profile.certificateTemplateId
+      templateId: profile.certificateTemplateId,
+      internal: true
     });
 
     if (!template) {
@@ -541,7 +537,8 @@ export const certificateV3ServiceFactory = ({
       serialNumber,
       certificateId: cert.id,
       projectId: profile.projectId,
-      profileName: profile.slug
+      profileName: profile.slug,
+      commonName: cert.commonName || ""
     };
   };
 
@@ -645,178 +642,224 @@ export const certificateV3ServiceFactory = ({
     actorOrgId,
     internal = false
   }: TRenewCertificateDTO & { internal?: boolean }): Promise<TCertificateFromProfileResponse> => {
-    const originalCert = await certificateDAL.findById(certificateId);
-    if (!originalCert) {
-      throw new NotFoundError({ message: "Certificate not found" });
-    }
-
-    if (!originalCert.profileId) {
-      throw new ForbiddenRequestError({
-        message: "Only certificates issued from a profile can be renewed"
-      });
-    }
-
-    const originalSignatureAlgorithm = originalCert.signatureAlgorithm as CertSignatureAlgorithm;
-    const originalKeyAlgorithm = originalCert.keyAlgorithm as CertKeyAlgorithm;
-
-    if (!originalSignatureAlgorithm || !originalKeyAlgorithm) {
-      throw new BadRequestError({
-        message:
-          "Original certificate does not have algorithm information stored. Cannot renew certificate issued before algorithm tracking was implemented."
-      });
-    }
-
-    const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    if (profile.enrollmentType !== "api") {
-      throw new ForbiddenRequestError({
-        message: "Certificate is not eligible for renewal: EST certificates cannot be renewed through this endpoint"
-      });
-    }
-
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
-    if (!ca) {
-      throw new NotFoundError({ message: "Certificate Authority not found" });
-    }
-
-    const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
-    if (!eligibilityCheck.isEligible) {
-      throw new BadRequestError({
-        message: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
-      });
-    }
-
-    if (!internal) {
-      const { permission } = await permissionService.getProjectPermission({
-        actor,
-        actorId,
-        projectId: profile.projectId,
-        actorAuthMethod,
-        actorOrgId,
-        actionProjectType: ActionProjectType.CertificateManager
-      });
-
-      ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateProfileActions.IssueCert,
-        ProjectPermissionSub.CertificateProfiles
-      );
-    }
-
-    validateCaSupport(ca, "direct certificate issuance");
-
-    const template = await certificateTemplateV2Service.getTemplateV2ById({
-      actor,
-      actorId,
-      actorAuthMethod,
-      actorOrgId,
-      templateId: profile.certificateTemplateId,
-      internal
-    });
-
-    if (!template) {
-      throw new NotFoundError({ message: "Certificate template not found for this profile" });
-    }
-
-    const originalTtlInDays = Math.ceil(
-      (new Date(originalCert.notAfter).getTime() - new Date(originalCert.notBefore).getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const ttl = `${originalTtlInDays}d`;
-
-    const certificateRequest = {
-      commonName: originalCert.commonName || undefined,
-      keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
-      extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(parseExtendedKeyUsages(originalCert.extendedKeyUsages)),
-      subjectAlternativeNames: originalCert.altNames
-        ? originalCert.altNames.split(",").map((san) => {
-            const trimmed = san.trim();
-            const isIp =
-              trimmed.length <= 45 &&
-              (new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$").test(trimmed) ||
-                new RE2("^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$").test(trimmed));
-            return {
-              type: isIp ? CertSubjectAlternativeNameType.IP_ADDRESS : CertSubjectAlternativeNameType.DNS_NAME,
-              value: trimmed
-            };
-          })
-        : [],
-      validity: {
-        ttl
+    const renewalResult = await certificateDAL.transaction(async (tx) => {
+      const originalCert = await certificateDAL.findById(certificateId, tx);
+      if (!originalCert) {
+        throw new NotFoundError({ message: "Certificate not found" });
       }
-    };
 
-    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-      profile.certificateTemplateId,
-      certificateRequest
-    );
+      if (!originalCert.profileId) {
+        throw new ForbiddenRequestError({
+          message: "Only certificates issued from a profile can be renewed"
+        });
+      }
 
-    if (!validationResult.isValid) {
-      await certificateDAL.updateById(originalCert.id, {
-        renewalError: `Template validation failed: ${validationResult.errors.join(", ")}`
-      });
+      const originalSignatureAlgorithm = originalCert.signatureAlgorithm as CertSignatureAlgorithm;
+      const originalKeyAlgorithm = originalCert.keyAlgorithm as CertKeyAlgorithm;
 
-      throw new BadRequestError({
-        message: `Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template: ${validationResult.errors.join(", ")}`
-      });
-    }
+      if (!originalSignatureAlgorithm || !originalKeyAlgorithm) {
+        throw new BadRequestError({
+          message:
+            "Original certificate does not have algorithm information stored. Cannot renew certificate issued before algorithm tracking was implemented."
+        });
+      }
 
-    validateAlgorithmCompatibility(ca, template);
-    const notBefore = new Date();
-    const notAfter = new Date(Date.now() + parseTtlToDays(ttl) * 24 * 60 * 60 * 1000);
+      const profile = await certificateProfileDAL.findByIdWithConfigs(originalCert.profileId);
+      if (!profile) {
+        throw new NotFoundError({ message: "Certificate profile not found" });
+      }
 
-    const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
-      await internalCaService.issueCertFromCa({
-        caId: ca.id,
-        friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
-        commonName: originalCert.commonName || "",
-        altNames: originalCert.altNames || "",
-        ttl,
-        notBefore: normalizeDateForApi(notBefore),
-        notAfter: normalizeDateForApi(notAfter),
-        keyUsages: parseKeyUsages(originalCert.keyUsages),
-        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
-        signatureAlgorithm: originalSignatureAlgorithm,
-        keyAlgorithm: originalKeyAlgorithm,
-        isFromProfile: true,
+      if (profile.enrollmentType !== EnrollmentType.API) {
+        throw new ForbiddenRequestError({
+          message: "Certificate is not eligible for renewal: EST certificates cannot be renewed through this endpoint"
+        });
+      }
+
+      if (!internal) {
+        const { permission } = await permissionService.getProjectPermission({
+          actor,
+          actorId,
+          projectId: profile.projectId,
+          actorAuthMethod,
+          actorOrgId,
+          actionProjectType: ActionProjectType.CertificateManager
+        });
+
+        ForbiddenError.from(permission).throwUnlessCan(
+          ProjectPermissionCertificateProfileActions.IssueCert,
+          ProjectPermissionSub.CertificateProfiles
+        );
+      }
+
+      const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+      if (!ca) {
+        throw new NotFoundError({ message: "Certificate Authority not found" });
+      }
+
+      const eligibilityCheck = validateRenewalEligibility(originalCert, ca);
+      if (!eligibilityCheck.isEligible) {
+        await certificateDAL.updateById(originalCert.id, {
+          renewalError: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
+        });
+        throw new BadRequestError({
+          message: `Certificate is not eligible for renewal: ${eligibilityCheck.errors.join(", ")}`
+        });
+      }
+
+      validateCaSupport(ca, "direct certificate issuance");
+
+      const template = await certificateTemplateV2Service.getTemplateV2ById({
         actor,
         actorId,
         actorAuthMethod,
         actorOrgId,
+        templateId: profile.certificateTemplateId,
         internal
       });
 
-    const newCert = await certificateDAL.findOne({ serialNumber, caId: ca.id });
-    if (!newCert) {
-      throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
-    }
+      if (!template) {
+        throw new NotFoundError({ message: "Certificate template not found for this profile" });
+      }
 
-    const certificateTtlInDays = parseTtlToDays(ttl);
-    const finalRenewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+      const originalTtlInDays = Math.ceil(
+        (new Date(originalCert.notAfter).getTime() - new Date(originalCert.notBefore).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      const ttl = `${originalTtlInDays}d`;
 
-    await certificateDAL.updateById(newCert.id, {
-      profileId: originalCert.profileId,
-      renewBeforeDays: finalRenewBeforeDays,
-      renewedFromId: originalCert.id
+      const certificateRequest = {
+        commonName: originalCert.commonName || undefined,
+        keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
+        extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(
+          parseExtendedKeyUsages(originalCert.extendedKeyUsages)
+        ),
+        subjectAlternativeNames: originalCert.altNames
+          ? originalCert.altNames.split(",").map((san) => {
+              const trimmed = san.trim();
+
+              const isIpv4 = new RE2("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$").test(trimmed);
+              const isIpv6 = new RE2("^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$").test(trimmed);
+              if (isIpv4 || isIpv6) {
+                return {
+                  type: CertSubjectAlternativeNameType.IP_ADDRESS,
+                  value: trimmed
+                };
+              }
+
+              if (new RE2("^[^@]+@[^@]+\\.[^@]+$").test(trimmed)) {
+                return {
+                  type: CertSubjectAlternativeNameType.EMAIL,
+                  value: trimmed
+                };
+              }
+
+              if (new RE2("^[a-zA-Z][a-zA-Z0-9+.-]*:").test(trimmed)) {
+                return {
+                  type: CertSubjectAlternativeNameType.URI,
+                  value: trimmed
+                };
+              }
+
+              return {
+                type: CertSubjectAlternativeNameType.DNS_NAME,
+                value: trimmed
+              };
+            })
+          : [],
+        validity: {
+          ttl
+        },
+        signatureAlgorithm: originalCert.signatureAlgorithm || undefined,
+        keyAlgorithm: originalCert.keyAlgorithm || undefined
+      };
+
+      const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+        profile.certificateTemplateId,
+        certificateRequest
+      );
+
+      if (!validationResult.isValid) {
+        await certificateDAL.updateById(originalCert.id, {
+          renewalError: `Template validation failed: ${validationResult.errors.join(", ")}`
+        });
+
+        throw new BadRequestError({
+          message: `Certificate renewal failed. Errors: ${validationResult.errors.join(", ")}`
+        });
+      }
+
+      validateAlgorithmCompatibility(ca, template);
+      const notBefore = new Date();
+      const notAfter = new Date(Date.now() + parseTtlToDays(ttl) * 24 * 60 * 60 * 1000);
+
+      const certificateTtlInDays = parseTtlToDays(ttl);
+      const finalRenewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+
+      const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
+        await internalCaService.issueCertFromCa({
+          caId: ca.id,
+          friendlyName: originalCert.friendlyName || originalCert.commonName || "Renewed Certificate",
+          commonName: originalCert.commonName || "",
+          altNames: originalCert.altNames || "",
+          ttl,
+          notBefore: normalizeDateForApi(notBefore),
+          notAfter: normalizeDateForApi(notAfter),
+          keyUsages: parseKeyUsages(originalCert.keyUsages),
+          extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
+          signatureAlgorithm: originalSignatureAlgorithm,
+          keyAlgorithm: originalKeyAlgorithm,
+          isFromProfile: true,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId,
+          internal: true,
+          tx
+        });
+
+      const newCert = await certificateDAL.findOne({ serialNumber, caId: ca.id }, tx);
+      if (!newCert) {
+        throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
+      }
+
+      await certificateDAL.updateById(
+        newCert.id,
+        {
+          profileId: originalCert.profileId,
+          renewBeforeDays: finalRenewBeforeDays,
+          renewedFromCertificateId: originalCert.id
+        },
+        tx
+      );
+
+      await certificateDAL.updateById(
+        originalCert.id,
+        {
+          renewedByCertificateId: newCert.id,
+          renewalError: null
+        },
+        tx
+      );
+
+      return {
+        certificate,
+        certificateChain,
+        issuingCaCertificate,
+        serialNumber,
+        newCert,
+        originalCert,
+        profile
+      };
     });
-
-    await certificateDAL.updateById(originalCert.id, {
-      renewedById: newCert.id,
-      renewalError: null
-    });
-
-    const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
-    const certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
 
     return {
-      certificate: certificateString,
-      issuingCaCertificate: extractCertificateFromBuffer(issuingCaCertificate as unknown as Buffer),
-      certificateChain: certificateChainString,
-      serialNumber,
-      certificateId: newCert.id,
-      projectId: profile.projectId,
-      profileName: profile.slug
+      certificate: renewalResult.certificate,
+      issuingCaCertificate: renewalResult.issuingCaCertificate,
+      certificateChain: renewalResult.certificateChain,
+      serialNumber: renewalResult.serialNumber,
+      certificateId: renewalResult.newCert.id,
+      projectId: renewalResult.profile.projectId,
+      profileName: renewalResult.profile.slug,
+      commonName: renewalResult.originalCert.commonName || ""
     };
   };
 
@@ -858,7 +901,7 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== "api") {
+    if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
         message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
       });
@@ -883,7 +926,7 @@ export const certificateV3ServiceFactory = ({
       });
     }
 
-    if (certificate.renewedById) {
+    if (certificate.renewedByCertificateId) {
       throw new BadRequestError({
         message: "Certificate is not eligible for auto-renewal: certificate has already been renewed"
       });
@@ -911,7 +954,8 @@ export const certificateV3ServiceFactory = ({
 
     return {
       projectId: certificate.projectId,
-      renewBeforeDays
+      renewBeforeDays,
+      commonName: certificate.commonName || ""
     };
   };
 
@@ -952,7 +996,7 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
 
-    if (profile.enrollmentType !== "api") {
+    if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
         message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
       });
@@ -963,7 +1007,8 @@ export const certificateV3ServiceFactory = ({
     });
 
     return {
-      projectId: certificate.projectId
+      projectId: certificate.projectId,
+      commonName: certificate.commonName || ""
     };
   };
 

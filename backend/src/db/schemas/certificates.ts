@@ -29,8 +29,8 @@ export const CertificatesSchema = z.object({
   pkiSubscriberId: z.string().uuid().nullable().optional(),
   profileId: z.string().uuid().nullable().optional(),
   renewBeforeDays: z.number().nullable().optional(),
-  renewedFromId: z.string().uuid().nullable().optional(),
-  renewedById: z.string().uuid().nullable().optional(),
+  renewedFromCertificateId: z.string().uuid().nullable().optional(),
+  renewedByCertificateId: z.string().uuid().nullable().optional(),
   renewalError: z.string().nullable().optional(),
   keyAlgorithm: z.string().nullable().optional(),
   signatureAlgorithm: z.string().nullable().optional()

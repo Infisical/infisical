@@ -36,7 +36,8 @@ import {
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useSubscription
 } from "@app/context";
 import { useListWorkspaceCertificates, useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -56,8 +57,8 @@ const isExpiringWithinOneDay = (notAfter: string): boolean => {
 };
 
 const getAutoRenewalInfo = (certificate: TCertificate) => {
-  if (certificate.renewedById) {
-    return { text: "Renewed", variant: "success" as const };
+  if (certificate.renewedByCertificateId) {
+    return { text: "Renewed", variant: "instance" as const };
   }
 
   const isRevoked = certificate.status === CertStatus.REVOKED;
@@ -65,8 +66,36 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   const hasNoProfile = !certificate.profileId;
   const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
 
-  if (isRevoked || isExpired || hasNoProfile || isExpiringWithinDay) {
-    return null;
+  if (isRevoked) {
+    return {
+      text: "Not Available",
+      variant: "instance" as const,
+      tooltip: "Auto-renewal is not available for revoked certificates"
+    };
+  }
+
+  if (isExpired) {
+    return {
+      text: "Not Available",
+      variant: "instance" as const,
+      tooltip: "Auto-renewal is not available for expired certificates"
+    };
+  }
+
+  if (hasNoProfile) {
+    return {
+      text: "Not Available",
+      variant: "instance" as const,
+      tooltip: "Auto-renewal requires a certificate profile"
+    };
+  }
+
+  if (isExpiringWithinDay) {
+    return {
+      text: "Not Available",
+      variant: "instance" as const,
+      tooltip: "Auto-renewal is not available for certificates expiring within 24 hours"
+    };
   }
 
   if (certificate.renewalError) {
@@ -127,8 +156,8 @@ type Props = {
       ttlDays?: number;
       notAfter?: string;
       renewalError?: string;
-      renewedFromId?: string;
-      renewedById?: string;
+      renewedFromCertificateId?: string;
+      renewedByCertificateId?: string;
     }
   ) => void;
 };
@@ -138,6 +167,7 @@ const PER_PAGE_INIT = 25;
 export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
+  const { subscription } = useSubscription();
 
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceCertificates({
@@ -147,6 +177,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
+  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
 
   const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");
 
@@ -173,7 +204,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
       await updateRenewalConfig({
         certificateId,
         projectSlug: currentProject.slug,
-        disableAutoRenewal: true
+        enableAutoRenewal: false
       });
 
       createNotification({
@@ -198,7 +229,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
             <Th>Status</Th>
             <Th>Not Before</Th>
             <Th>Not After</Th>
-            <Th>Auto Renewal</Th>
+            <Th>Renewal Status</Th>
             <Th />
           </Tr>
         </THead>
@@ -286,32 +317,34 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                             </DropdownMenuItem>
                           )}
                         </ProjectPermissionCan>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionCertificateActions.Read}
-                          a={ProjectPermissionSub.Certificates}
-                        >
-                          {(isAllowed) => (
-                            <DropdownMenuItem
-                              className={twMerge(
-                                !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                              )}
-                              onClick={async () =>
-                                handlePopUpOpen("certificate", {
-                                  serialNumber: certificate.serialNumber
-                                })
-                              }
-                              disabled={!isAllowed}
-                              icon={<FontAwesomeIcon icon={faEye} />}
-                            >
-                              View Details
-                            </DropdownMenuItem>
-                          )}
-                        </ProjectPermissionCan>
+                        {isLegacyTemplatesEnabled && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionCertificateActions.Read}
+                            a={ProjectPermissionSub.Certificates}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={async () =>
+                                  handlePopUpOpen("certificate", {
+                                    serialNumber: certificate.serialNumber
+                                  })
+                                }
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faEye} />}
+                              >
+                                View Details
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        )}
                         {/* Manage auto renewal option - not shown for failed renewals */}
                         {(() => {
                           const canManageRenewal =
                             certificate.profileId &&
-                            !certificate.renewedById &&
+                            !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired &&
                             !hasFailed &&
@@ -353,8 +386,9 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                         ttlDays,
                                         notAfter: certificate.notAfter,
                                         renewalError: certificate.renewalError,
-                                        renewedFromId: certificate.renewedFromId,
-                                        renewedById: certificate.renewedById
+                                        renewedFromCertificateId:
+                                          certificate.renewedFromCertificateId,
+                                        renewedByCertificateId: certificate.renewedByCertificateId
                                       });
                                     }}
                                     disabled={!isAllowed}
@@ -373,7 +407,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {(() => {
                           const canDisableRenewal =
                             certificate.profileId &&
-                            !certificate.renewedById &&
+                            !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired &&
                             !isExpiringWithinDay &&
@@ -411,7 +445,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {(() => {
                           const canRenew =
                             certificate.profileId &&
-                            !certificate.renewedById &&
+                            !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired;
 

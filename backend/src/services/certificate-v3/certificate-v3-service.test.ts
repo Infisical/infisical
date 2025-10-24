@@ -29,10 +29,14 @@ import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./cer
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
 
-  const mockCertificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById"> = {
+  const mockCertificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById" | "transaction"> = {
     findOne: vi.fn(),
     findById: vi.fn(),
-    updateById: vi.fn()
+    updateById: vi.fn(),
+    transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+      const mockTx = {};
+      return callback(mockTx);
+    })
   };
 
   const mockCertificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa"> = {
@@ -78,7 +82,7 @@ describe("CertificateV3Service", () => {
 
   beforeEach(() => {
     // Reset all mocks before each test
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     // Mock ForbiddenError.from static method
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
@@ -1473,7 +1477,7 @@ describe("CertificateV3Service", () => {
       notBefore: new Date("2024-01-01"),
       notAfter: new Date("2024-02-01"), // 31 days
       revokedAt: null,
-      renewedById: null,
+      renewedByCertificateId: null,
       profileId: "profile-123",
       renewBeforeDays: 7,
       caId: "ca-123",
@@ -1487,7 +1491,7 @@ describe("CertificateV3Service", () => {
       certificateTemplateId: "template-123",
       revocationReason: null,
       caCertId: null,
-      renewedFromId: null,
+      renewedFromCertificateId: null,
       renewalError: null,
       keyAlgorithm: "RSA_2048",
       signatureAlgorithm: "RSA-SHA256"
@@ -1570,8 +1574,6 @@ describe("CertificateV3Service", () => {
     };
 
     beforeEach(() => {
-      vi.clearAllMocks();
-
       // Mock current date to be within renewal window
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2024-01-26")); // 6 days before cert expires, within renewal window
@@ -1582,6 +1584,7 @@ describe("CertificateV3Service", () => {
     });
 
     it("should successfully renew eligible certificate", async () => {
+      // Mock the initial findById call
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
@@ -1604,6 +1607,13 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
 
+      // Mock the transaction to return the expected structure
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        const result = await callback(mockTx);
+        return result;
+      });
+
       const result = await service.renewCertificate({
         certificateId: "cert-123",
         ...mockActor
@@ -1611,15 +1621,23 @@ describe("CertificateV3Service", () => {
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
       expect(result).toHaveProperty("certificateId", "cert-456");
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-456", {
-        profileId: "profile-123",
-        renewBeforeDays: 14,
-        renewedFromId: "cert-123"
-      });
-      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
-        renewedById: "cert-456",
-        renewalError: null
-      });
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-456",
+        {
+          profileId: "profile-123",
+          renewBeforeDays: 14,
+          renewedFromCertificateId: "cert-123"
+        },
+        {}
+      );
+      expect(mockCertificateDAL.updateById).toHaveBeenCalledWith(
+        "cert-123",
+        {
+          renewedByCertificateId: "cert-456",
+          renewalError: null
+        },
+        {}
+      );
     });
 
     it("should validate certificate against current template during renewal", async () => {
@@ -1631,6 +1649,15 @@ describe("CertificateV3Service", () => {
         isValid: false,
         errors: ["Subject alternative name not allowed"],
         warnings: []
+      });
+
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
       });
 
       await expect(
@@ -1645,9 +1672,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow(
-        "Certificate renewal failed because requested validity period exceeds maximum allowed duration by the profile template: Subject alternative name not allowed"
-      );
+      ).rejects.toThrow("Certificate renewal failed. Errors: Subject alternative name not allowed");
 
       // Should store template validation error
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
@@ -1658,6 +1683,12 @@ describe("CertificateV3Service", () => {
     it("should reject renewal if certificate is not from a profile", async () => {
       const certWithoutProfile = { ...mockOriginalCert, profileId: null };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(certWithoutProfile);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
 
       await expect(
         service.renewCertificate({
@@ -1675,10 +1706,19 @@ describe("CertificateV3Service", () => {
     });
 
     it("should reject renewal if certificate is already renewed", async () => {
-      const alreadyRenewedCert = { ...mockOriginalCert, renewedById: "cert-456" };
+      const alreadyRenewedCert = { ...mockOriginalCert, renewedByCertificateId: "cert-456" };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(alreadyRenewedCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(alreadyRenewedCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
 
       await expect(
         service.renewCertificate({
@@ -1704,6 +1744,15 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
 
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(expiredCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
@@ -1728,6 +1777,15 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
 
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(revokedCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
       await expect(
         service.renewCertificate({
           certificateId: "cert-123",
@@ -1748,6 +1806,15 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(inactiveCA);
+
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
 
       await expect(
         service.renewCertificate({
@@ -1775,6 +1842,15 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(shortLivedCA);
+
+      // Mock updateById to handle the renewal error logging
+      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
+
+      // Set up transaction mock to properly handle errors
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
 
       await expect(
         service.renewCertificate({
@@ -1816,6 +1892,12 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
 
+      // Set up transaction mock to properly handle the renewal process
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
       const result = await service.renewCertificate({
         certificateId: "cert-123",
         ...mockActor
@@ -1830,12 +1912,13 @@ describe("CertificateV3Service", () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
-        renewedById: null,
+        renewedByCertificateId: null,
         notBefore: new Date("2026-01-01"),
         notAfter: new Date("2026-02-01"),
         projectId: "project-123",
         status: CertStatus.ACTIVE,
-        revokedAt: null
+        revokedAt: null,
+        commonName: ""
       };
 
       const mockProfile = {
@@ -1859,7 +1942,8 @@ describe("CertificateV3Service", () => {
 
       expect(result).toEqual({
         projectId: "project-123",
-        renewBeforeDays: 7
+        renewBeforeDays: 7,
+        commonName: ""
       });
 
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {
@@ -1871,7 +1955,7 @@ describe("CertificateV3Service", () => {
       const mockCert = {
         id: "cert-123",
         profileId: null,
-        renewedById: null,
+        renewedByCertificateId: null,
         projectId: "project-123"
       };
 
@@ -1904,7 +1988,7 @@ describe("CertificateV3Service", () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
-        renewedById: "cert-456",
+        renewedByCertificateId: "cert-456",
         projectId: "project-123",
         status: CertStatus.ACTIVE,
         revokedAt: null,
@@ -1948,7 +2032,7 @@ describe("CertificateV3Service", () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
-        renewedById: null,
+        renewedByCertificateId: null,
         notBefore: new Date("2026-01-01"),
         notAfter: new Date("2026-01-08"),
         projectId: "project-123",
@@ -1994,7 +2078,8 @@ describe("CertificateV3Service", () => {
       const mockCert = {
         id: "cert-123",
         profileId: "profile-123",
-        projectId: "project-123"
+        projectId: "project-123",
+        commonName: ""
       };
 
       const mockProfile = {
@@ -2016,7 +2101,8 @@ describe("CertificateV3Service", () => {
       });
 
       expect(result).toEqual({
-        projectId: "project-123"
+        projectId: "project-123",
+        commonName: ""
       });
 
       expect(mockCertificateDAL.updateById).toHaveBeenCalledWith("cert-123", {

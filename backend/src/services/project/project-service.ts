@@ -944,7 +944,7 @@ export const projectServiceFactory = ({
         ...(friendlyName && { friendlyName }),
         ...(commonName && { commonName })
       },
-      { offset, limit, sort: [["updatedAt", "desc"]] }
+      { offset, limit, sort: [["notAfter", "desc"]] }
     );
 
     const count = await certificateDAL.countCertificatesInProject({
