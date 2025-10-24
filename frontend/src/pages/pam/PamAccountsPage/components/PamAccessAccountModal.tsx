@@ -62,7 +62,7 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     () =>
       account &&
       (account.resource.resourceType === PamResourceType.Postgres ||
-        account.resource.resourceType == PamResourceType.MySQL)
+        account.resource.resourceType === PamResourceType.MySQL)
         ? `infisical pam db access-account ${account.id} --duration ${cliDuration}`
         : "",
     [account, cliDuration]

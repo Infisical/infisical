@@ -75,11 +75,8 @@ const CreateForm = ({
       );
     case PamResourceType.MySQL:
       return (
-        <MySQLAccountForm
-          onSubmit={onSubmit}
-          resourceId={resourceId}
-          resourceType={resourceType}
-      />);
+        <MySQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
