@@ -12,6 +12,7 @@ import {
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertificateOrderStatus,
@@ -32,6 +33,10 @@ import { EnrollmentType } from "@app/services/certificate-profile/certificate-pr
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 
 import { CertSubjectAlternativeNameType } from "../certificate-common/certificate-constants";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "../certificate-common/certificate-csr-utils";
 import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
@@ -58,6 +63,7 @@ import {
 
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
   certificateTemplateV2Service: Pick<
@@ -296,8 +302,28 @@ const parseTtlToDays = (ttl: string): number => {
   }
 };
 
+const calculateFinalRenewBeforeDays = (
+  profile: { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } },
+  ttl: string,
+  certificateExpiryDate: Date
+): number | undefined => {
+  if (!profile.apiConfig?.autoRenew || !profile.apiConfig.renewBeforeDays) {
+    return undefined;
+  }
+
+  const certificateTtlInDays = parseTtlToDays(ttl);
+  const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig.renewBeforeDays, certificateTtlInDays);
+
+  if (!renewBeforeDays) {
+    return undefined;
+  }
+
+  return isValidRenewalTiming(renewBeforeDays, certificateExpiryDate) ? renewBeforeDays : undefined;
+};
+
 export const certificateV3ServiceFactory = ({
   certificateDAL,
+  certificateSecretDAL,
   certificateAuthorityDAL,
   certificateProfileDAL,
   certificateTemplateV2Service,
@@ -412,11 +438,11 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
     }
 
-    const certificateTtlInDays = parseTtlToDays(certificateRequest.validity.ttl);
-    const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
-
-    const finalRenewBeforeDays =
-      renewBeforeDays && isValidRenewalTiming(renewBeforeDays, new Date(cert.notAfter)) ? renewBeforeDays : undefined;
+    const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+      profile,
+      certificateRequest.validity.ttl,
+      new Date(cert.notAfter)
+    );
 
     await certificateDAL.updateById(cert.id, {
       profileId,
@@ -442,8 +468,6 @@ export const certificateV3ServiceFactory = ({
     validity,
     notBefore,
     notAfter,
-    signatureAlgorithm,
-    keyAlgorithm,
     actor,
     actorId,
     actorAuthMethod,
@@ -480,22 +504,27 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate template not found for this profile" });
     }
 
+    const certificateRequest = extractCertificateRequestFromCSR(csr);
+    const mappedCertificateRequest = mapEnumsForValidation(certificateRequest);
+
+    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+      extractAlgorithmsFromCSR(csr);
+
+    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+      profile.certificateTemplateId,
+      mappedCertificateRequest
+    );
+
+    if (!validationResult.isValid) {
+      throw new BadRequestError({
+        message: `Certificate request validation failed: ${validationResult.errors.join(", ")}`
+      });
+    }
+
     validateAlgorithmCompatibility(ca, template);
 
-    const effectiveSignatureAlgorithm = signatureAlgorithm;
-    const effectiveKeyAlgorithm = keyAlgorithm;
-
-    if (template.algorithms?.keyAlgorithm && !effectiveKeyAlgorithm) {
-      throw new BadRequestError({
-        message: "Key algorithm is required by template policy but not provided in request"
-      });
-    }
-
-    if (template.algorithms?.signature && !effectiveSignatureAlgorithm) {
-      throw new BadRequestError({
-        message: "Signature algorithm is required by template policy but not provided in request"
-      });
-    }
+    const effectiveSignatureAlgorithm = extractedSignatureAlgorithm;
+    const effectiveKeyAlgorithm = extractedKeyAlgorithm;
 
     const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
       await internalCaService.signCertFromCa({
@@ -516,11 +545,7 @@ export const certificateV3ServiceFactory = ({
       throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
     }
 
-    const certificateTtlInDays = parseTtlToDays(validity.ttl);
-    const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
-
-    const finalRenewBeforeDays =
-      renewBeforeDays && isValidRenewalTiming(renewBeforeDays, new Date(cert.notAfter)) ? renewBeforeDays : undefined;
+    const finalRenewBeforeDays = calculateFinalRenewBeforeDays(profile, validity.ttl, new Date(cert.notAfter));
 
     await certificateDAL.updateById(cert.id, {
       profileId,
@@ -675,6 +700,14 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      const certificateSecret = await certificateSecretDAL.findOne({ certId: originalCert.id }, tx);
+      if (!certificateSecret) {
+        throw new ForbiddenRequestError({
+          message:
+            "Certificate is not eligible for renewal: certificates issued from CSR (external private key) cannot be renewed"
+        });
+      }
+
       if (!internal) {
         const { permission } = await permissionService.getProjectPermission({
           actor,
@@ -791,8 +824,7 @@ export const certificateV3ServiceFactory = ({
       const notBefore = new Date();
       const notAfter = new Date(Date.now() + parseTtlToDays(ttl) * 24 * 60 * 60 * 1000);
 
-      const certificateTtlInDays = parseTtlToDays(ttl);
-      const finalRenewBeforeDays = calculateRenewalThreshold(profile.apiConfig?.renewBeforeDays, certificateTtlInDays);
+      const finalRenewBeforeDays = calculateFinalRenewBeforeDays(profile, ttl, notAfter);
 
       const { certificate, certificateChain, issuingCaCertificate, serialNumber } =
         await internalCaService.issueCertFromCa({
@@ -904,6 +936,14 @@ export const certificateV3ServiceFactory = ({
     if (profile.enrollmentType !== EnrollmentType.API) {
       throw new ForbiddenRequestError({
         message: "Certificate is not eligible for auto-renewal: EST certificates cannot be auto-renewed"
+      });
+    }
+
+    const certificateSecret = await certificateSecretDAL.findOne({ certId: certificate.id });
+    if (!certificateSecret) {
+      throw new ForbiddenRequestError({
+        message:
+          "Certificate is not eligible for auto-renewal: certificates issued from CSR (external private key) cannot be auto-renewed"
       });
     }
 

@@ -18,6 +18,7 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
@@ -169,9 +170,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .min(1, "TTL cannot be empty")
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+          notAfter: validateCaDateField.optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -192,6 +191,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const certificateRequest = extractCertificateRequestFromCSR(req.body.csr);
+
       const data = await server.services.certificateV3.signCertificateFromProfile({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -203,9 +204,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           ttl: req.body.ttl
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-        signatureAlgorithm: req.body.signatureAlgorithm,
-        keyAlgorithm: req.body.keyAlgorithm
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
       });
 
       await server.services.auditLog.createAuditLog({
@@ -217,7 +216,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId,
             profileName: data.profileName,
-            commonName: ""
+            commonName: certificateRequest.commonName || ""
           }
         }
       });

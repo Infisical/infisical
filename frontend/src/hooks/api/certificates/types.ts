@@ -19,6 +19,7 @@ export type TCertificate = {
   renewedFromCertificateId?: string;
   renewedByCertificateId?: string;
   renewalError?: string;
+  hasPrivateKey?: boolean;
 };
 
 export type TDeleteCertDTO = {

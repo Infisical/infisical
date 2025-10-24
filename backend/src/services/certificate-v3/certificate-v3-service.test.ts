@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import { ACMESANType, CertificateOrderStatus, CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -24,7 +25,16 @@ import { EnrollmentType } from "@app/services/certificate-profile/certificate-pr
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "../certificate-common/certificate-csr-utils";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
+
+vi.mock("../certificate-common/certificate-csr-utils", () => ({
+  extractCertificateRequestFromCSR: vi.fn(),
+  extractAlgorithmsFromCSR: vi.fn()
+}));
 
 describe("CertificateV3Service", () => {
   let service: TCertificateV3ServiceFactory;
@@ -37,6 +47,10 @@ describe("CertificateV3Service", () => {
       const mockTx = {};
       return callback(mockTx);
     })
+  };
+
+  const mockCertificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne"> = {
+    findOne: vi.fn()
   };
 
   const mockCertificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa"> = {
@@ -101,8 +115,20 @@ describe("CertificateV3Service", () => {
       }
     });
 
+    vi.mocked(extractCertificateRequestFromCSR).mockReturnValue({
+      commonName: "test.example.com",
+      keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],
+      extendedKeyUsages: [CertExtendedKeyUsageType.SERVER_AUTH]
+    });
+
+    vi.mocked(extractAlgorithmsFromCSR).mockReturnValue({
+      keyAlgorithm: "RSA_2048" as any,
+      signatureAlgorithm: "RSA-SHA256" as any
+    });
+
     service = certificateV3ServiceFactory({
       certificateDAL: mockCertificateDAL,
+      certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateProfileDAL: mockCertificateProfileDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
@@ -647,6 +673,11 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
+      vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
+        isValid: true,
+        errors: [],
+        warnings: []
+      });
       vi.mocked(mockInternalCaService.signCertFromCa).mockResolvedValue(mockSignResult as any);
       vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(mockCertRecord);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCertRecord);
@@ -1586,6 +1617,7 @@ describe("CertificateV3Service", () => {
     it("should successfully renew eligible certificate", async () => {
       // Mock the initial findById call
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
       vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
@@ -1650,6 +1682,7 @@ describe("CertificateV3Service", () => {
         errors: ["Subject alternative name not allowed"],
         warnings: []
       });
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
@@ -1705,11 +1738,37 @@ describe("CertificateV3Service", () => {
       ).rejects.toThrow("Only certificates issued from a profile can be renewed");
     });
 
+    it("should reject renewal if certificate was issued from CSR (external private key)", async () => {
+      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
+      vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue(null as any);
+
+      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+        const mockTx = {};
+        return callback(mockTx);
+      });
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow(ForbiddenRequestError);
+
+      await expect(
+        service.renewCertificate({
+          certificateId: "cert-123",
+          ...mockActor
+        })
+      ).rejects.toThrow("certificates issued from CSR (external private key) cannot be renewed");
+    });
+
     it("should reject renewal if certificate is already renewed", async () => {
       const alreadyRenewedCert = { ...mockOriginalCert, renewedByCertificateId: "cert-456" };
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(alreadyRenewedCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(alreadyRenewedCert);
@@ -1743,6 +1802,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(expiredCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(expiredCert);
@@ -1776,6 +1836,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(revokedCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(revokedCert);
@@ -1806,6 +1867,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(inactiveCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
@@ -1842,6 +1904,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(shortLivedCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       // Mock updateById to handle the renewal error logging
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockOriginalCert);
@@ -1873,6 +1936,7 @@ describe("CertificateV3Service", () => {
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockOriginalCert);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile);
       vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
       vi.mocked(mockCertificateTemplateV2Service.validateCertificateRequest).mockResolvedValue({
         isValid: true,
@@ -1929,6 +1993,7 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
       vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(mockCert as any);
 
       const result = await service.updateRenewalConfig({
@@ -2004,6 +2069,7 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       await expect(
         service.updateRenewalConfig({
@@ -2048,6 +2114,7 @@ describe("CertificateV3Service", () => {
 
       vi.mocked(mockCertificateDAL.findById).mockResolvedValue(mockCert as any);
       vi.mocked(mockCertificateProfileDAL.findByIdWithConfigs).mockResolvedValue(mockProfile as any);
+      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
 
       await expect(
         service.updateRenewalConfig({

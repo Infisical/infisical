@@ -70,7 +70,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
     return {
       text: "Not Available",
       variant: "instance" as const,
-      tooltip: "Auto-renewal is not available for revoked certificates"
+      tooltip: "Renewal is not available for revoked certificates"
     };
   }
 
@@ -78,7 +78,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
     return {
       text: "Not Available",
       variant: "instance" as const,
-      tooltip: "Auto-renewal is not available for expired certificates"
+      tooltip: "Renewal is not available for expired certificates"
     };
   }
 
@@ -86,7 +86,15 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
     return {
       text: "Not Available",
       variant: "instance" as const,
-      tooltip: "Auto-renewal requires a certificate profile"
+      tooltip: "Renewal requires a certificate profile"
+    };
+  }
+
+  if (certificate.hasPrivateKey === false) {
+    return {
+      text: "Not Available",
+      variant: "instance" as const,
+      tooltip: "Renewal is not available for certificates with externally generated private keys"
     };
   }
 
@@ -344,6 +352,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {(() => {
                           const canManageRenewal =
                             certificate.profileId &&
+                            certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired &&
@@ -407,6 +416,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {(() => {
                           const canDisableRenewal =
                             certificate.profileId &&
+                            certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired &&
@@ -445,6 +455,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {(() => {
                           const canRenew =
                             certificate.profileId &&
+                            certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&
                             !isExpired;

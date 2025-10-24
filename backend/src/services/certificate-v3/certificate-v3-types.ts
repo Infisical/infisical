@@ -35,8 +35,6 @@ export type TSignCertificateFromProfileDTO = {
   };
   notBefore?: Date;
   notAfter?: Date;
-  signatureAlgorithm?: string;
-  keyAlgorithm?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

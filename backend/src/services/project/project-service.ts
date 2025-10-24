@@ -154,7 +154,7 @@ type TProjectServiceFactoryDep = {
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "find">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject">;
+  certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject" | "findWithPrivateKeyInfo">;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
@@ -938,7 +938,7 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const certificates = await certificateDAL.find(
+    const certificates = await certificateDAL.findWithPrivateKeyInfo(
       {
         projectId,
         ...(friendlyName && { friendlyName }),

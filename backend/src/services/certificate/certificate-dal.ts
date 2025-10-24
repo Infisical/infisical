@@ -134,6 +134,7 @@ export const certificateDALFactory = (db: TDbClient) => {
           `${TableName.Certificate}.profileId`,
           `${TableName.PkiCertificateProfile}.id`
         )
+        .innerJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
         .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
         .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
         .whereNull(`${TableName.Certificate}.renewalError`)
@@ -157,6 +158,42 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findWithPrivateKeyInfo = async (
+    filter: Partial<TCertificates>,
+    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] }
+  ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
+    try {
+      let query = db
+        .replicaNode()(TableName.Certificate)
+        .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
+        .where(filter);
+
+      if (options?.offset) {
+        query = query.offset(options.offset);
+      }
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+      if (options?.sort) {
+        options.sort.forEach(([column, direction]) => {
+          query = query.orderBy(column, direction);
+        });
+      }
+
+      const results = await query;
+      return results.map((row) => {
+        return {
+          ...row,
+          hasPrivateKey: row.privateKeyRef !== null
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificates with private key info" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
@@ -164,6 +201,7 @@ export const certificateDALFactory = (db: TDbClient) => {
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
     findExpiredSyncedCertificates,
-    findCertificatesEligibleForRenewal
+    findCertificatesEligibleForRenewal,
+    findWithPrivateKeyInfo
   };
 };
