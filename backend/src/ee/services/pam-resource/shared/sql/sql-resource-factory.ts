@@ -1,6 +1,6 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import { DatabaseError } from "pg";
+import { DatabaseError } from "pg-protocol";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
