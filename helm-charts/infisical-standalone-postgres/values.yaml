@@ -10,9 +10,6 @@ infisical:
   # -- Sets the name of the deployment within this chart
   name: infisical
 
-  # -- Automatically migrates new database schema when deploying
-  autoDatabaseSchemaMigration: true
-
   autoBootstrap:
     # -- Enable auto-bootstrap of the Infisical instance
     enabled: false
@@ -68,7 +65,7 @@ infisical:
     # -- Image repository for the Infisical service
     repository: infisical/infisical
     # -- Specific version tag of the Infisical image. View the latest version here https://hub.docker.com/r/infisical/infisical
-    tag: "v0.93.1-postgres"
+    tag: "v0.151.0"
     # -- Pulls image only if not already present on the node
     pullPolicy: IfNotPresent
     # -- Secret references for pulling the image, if needed
@@ -118,8 +115,7 @@ ingress:
   # -- Custom annotations for ingress resource
   annotations: {}
   # -- TLS settings for HTTPS access
-  tls:
-    []
+  tls: []
     # -- TLS secret name for HTTPS
     # - secretName: letsencrypt-prod
     # -- Domain name to associate with the TLS certificate

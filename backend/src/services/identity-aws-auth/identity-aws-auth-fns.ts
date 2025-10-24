@@ -83,9 +83,11 @@ export const extractPrincipalArnEntity = (arn: string, formatAsIamRole: boolean 
  * Extracts the identity ARN from the GetCallerIdentity response to one of the following formats:
  * - arn:aws:iam::123456789012:user/MyUserName
  * - arn:aws:iam::123456789012:role/MyRoleName
+ * - arn:aws-us-gov:iam::123456789012:user/MyUserName (GovCloud)
+ * - arn:aws-us-gov:iam::123456789012:role/MyRoleName (GovCloud)
  */
 export const extractPrincipalArn = (arn: string, formatAsIamRole: boolean = false) => {
   const entity = extractPrincipalArnEntity(arn, formatAsIamRole);
 
-  return `arn:aws:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
+  return `arn:${entity.Partition}:${formatAsIamRole ? "iam" : entity.Service}::${entity.AccountNumber}:${entity.Type}/${entity.FriendlyName}`;
 };
