@@ -181,8 +181,7 @@ Infisical supports three methods for connecting to GitHub.
     <Tab title="Personal Access Token">
         Infisical will use a Personal Access Token to connect to GitHub.
 
-        <Accordion title="Self-Hosted Instance">
-            Using the GitHub integration on a self-hosted instance of Infisical requires creating a Personal Access Token in GitHub.
+        ## Create a Personal Access Token
             <Steps>
                 <Step title="Create a Personal Access Token in GitHub">
                     Navigate to your user Settings > Developer settings > Personal Access Tokens to create a new Personal Access Token.
@@ -199,8 +198,9 @@ Infisical supports three methods for connecting to GitHub.
                     - **Repository access:** Select the repositories you want to grant access to
                         - Select `All repositories` or `Only selected repositories` to be able to manage the secrets in the selected repositories.
                     - **Select scopes:** Add the following scopes:
-                        - Metadata: Read-only
-                        - Environments: Read and write
+                        - **Metadata**: Read-only
+                        - **Environments**: Read and write
+                        - **Secrets**: Read and write
 
                     ![Personal Access Token Form](/images/app-connections/github/create-pat-form.png)
 
@@ -216,7 +216,6 @@ Infisical supports three methods for connecting to GitHub.
                     </Warning>
                 </Step>
             </Steps>
-        </Accordion>
 
         ## Setup GitHub Connection in Infisical
 
