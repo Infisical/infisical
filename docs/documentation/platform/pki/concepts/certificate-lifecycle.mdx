@@ -1,0 +1,53 @@
+---
+title: "Certificate Lifecycle"
+description: "Learn what is the certificate lifecycle and how it works."
+---
+
+## Certificate Lifecycle
+
+Typically, a certificate goes through a series of stages during its lifetime from creation to retirement. This is called the certificate lifecycle. The exact names of these stages may vary from vendor to vendor, but they typically include [discovery](/documentation/platform/pki/concepts/certificate-lifecycle#discovery), [enrollment](/documentation/platform/pki/concepts/certificate-lifecycle#enrollment), [deployment](/documentation/platform/pki/concepts/certificate-lifecycle#deployment), [renewal](/documentation/platform/pki/concepts/certificate-lifecycle#renewal), [revocation](/documentation/platform/pki/concepts/certificate-lifecycle#revocation), and [retirement](/documentation/platform/pki/concepts/certificate-lifecycle#retirement).
+
+Note that not every stage is needed. For instance:
+
+- You are not required to discover certificates in order to start issuing and managing them.
+- You may not need to revoke a certificate explicitly if it expires naturally and is replaced during routine renewal.
+
+## Discovery
+
+Certificate discovery is the process of identifying all active and inactive certificates across an environment, including those found on web servers, load balancers, services, and devices. A complete inventory prevents outages from forgotten certificates and creates the foundation for automation and monitoring.
+
+## Enrollment (Request / Issuance)
+
+Certificate enrollment is the process of requesting a certificate from a CA and can follow different approaches depending on the system or protocol in use.
+
+Common approaches to certificate enrollment include:
+
+- CSR-based enrollment: The client generates a key pair locally and submits a Certificate Signing Request (CSR) to a CA for certificate issuance.
+- CSR-less enrollment: The client requests a certificate directly from a CA which may handle key generation internally and return the key pair in the response.
+
+Enrollment can be manually completed via API or fully automated using protocols like EST or ACME. The choice of enrollment method depends on security requirements, operational constraints, and integration context.
+
+## Deployment
+
+Certificate deployment involves installing the issued certificate on the appropriate systems and services, such as web servers, load balancers, or internal endpoints. It can also include distributing or synchronizing certificates to external systems like cloud key stores (e.g., AWS Secrets Manager, Google Secret Manager, Azure Key Vault) so they can be securely consumed by workloads running in the cloud.
+
+Deployment can happen manually or through automated mechanisms such as configuration pipelines, agents, or webhook integrations.
+
+## Renewal
+
+Certificate renewal is the process of requesting a new certificate from a CA before it expires to maintain trust and availability; this process can involve reusing the same key pair or rotating to a new one.
+
+The renewal process can be server-driven or client-driven:
+
+- Server-driven: Infisical automatically renews the certificate on your behalf. The renewed certificate is stored in the platform and can be synchronized to external systems such as cloud key stores.
+- Client-driven: An external client, such as an agent or workload, initiates the renewal against Infisical. This is useful when key material needs to remain under client control or when rotation is tied to application-specific logic.
+
+This flexibility allows certificates to be renewed in a way that aligns with different security, automation, and infrastructure models.
+
+## Revocation
+
+Certificate revocation is the process of invalidating a certificate to prevent it from being used. This is required when a certificate is compromised, misconfigured, or no longer needed. The CA signals this status to clients through CRLs or OCSP. A new certificate can be issued and deployed if needed.
+
+## Retirement
+
+Certificate retirement is the process of removing a certificate from the system. This is typically done when a certificate is no longer needed or has expired.

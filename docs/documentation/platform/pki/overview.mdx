@@ -4,10 +4,15 @@ sidebarTitle: "Overview"
 description: "Learn how to create a Private CA hierarchy and issue X.509 certificates."
 ---
 
-Infisical can be used to create and manage Certificate Authorities (CAs) and issue X.509 certificates. This allows you to manage PKI infrastructure and issue digital certificates for subscribers such as services, applications, and devices.
+Infisical can be used to create and manage Certificate Authorities (CAs) and issue digital X.509 certificates. This allows you to manage PKI infrastructure and issue certificates for end-entities such as load balancers, web servers, devices, and more.
 
-Infisical's PKI offering is split into three components:
+It helps teams automate certificate management including enrollment and renewal, and adopt secure workflows to ensure certificates remain valid, trusted, and synchronized across infrastructure.
 
-- [Certificate Authorities](/documentation/platform/pki/private-ca): Create and manage CAs, including root and intermediate CAs.
-- [Subscribers](/documentation/platform/pki/subscribers): Define and manage entities that will request X.509 certificates from CAs. This module provides a centralized view of all subscribers, enabling you to issue certificates and monitor their status.
-- [Certificates](/documentation/platform/pki/certificates): Track and monitor issued X.509 certificates, maintaining a comprehensive inventory of all active and expired certificates.
+Core capabilities include:
+
+- Private CA: Create and manage your own private CA hierarchy including root and intermediate CAs.
+- External CA integration: Integrate with external public and private CAs including Azure ADCS and ACME-compatible CAs like Let's Encrypt and DigiCert.
+- Certificate Enrollment: Support enrollment methods including API, ACME, EST, and more to automate certificate issuance for services, devices, and workloads.
+- Certificate Inventory: Track and monitor issued X.509 certificates, maintaining a comprehensive inventory of all active and expired certificates.
+- Certificate Lifecycle Automation: Automate issuance, renewal, and revocation with policy-based workflows, ensuring certificates remain valid, compliant, and up to date across your infrastructure.
+- Certificate Syncs: Push certificates to cloud certificate managers like AWS Certificate Manager and Azure Key Vault.

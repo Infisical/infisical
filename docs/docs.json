@@ -704,11 +704,28 @@
             "item": "Infisical PKI",
             "groups": [
               {
-                "group": "Infisical PKI",
+                "group": "Certificate Management",
                 "pages": [
                   "documentation/platform/pki/overview",
-                  "documentation/platform/pki/private-ca",
-                  "documentation/platform/pki/external-ca",
+                  {
+                    "group": "Concepts",
+                    "pages": [
+                      "documentation/platform/pki/concepts/certificate-mgmt",
+                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  {
+                    "group": "Certificate Authorities",
+                    "pages": [
+                      "documentation/platform/pki/private-ca",
+                      "documentation/platform/pki/external-ca"
+                    ]
+                  },
                   "documentation/platform/pki/subscribers",
                   "documentation/platform/pki/certificates",
                   "documentation/platform/pki/acme-ca",
