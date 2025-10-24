@@ -8,7 +8,7 @@ import {
   ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode
 } from "@app/db/schemas";
-import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
+import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrderByDirection } from "@app/lib/types";
@@ -19,7 +19,7 @@ import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
-export const registerIdentityProjectRouter = async (server: FastifyZodProvider) => {
+export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/identity-memberships/:identityId",
@@ -434,6 +434,64 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
         identityMembershipId: req.params.identityMembershipId
       });
       return { identityMembership };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:projectId/available-identities",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.IdentityProjectMembership],
+      description: "List available identities for project membership",
+      security: [
+        {
+          bearerAuth: []
+        }
+      ],
+      params: z.object({
+        projectId: z.string().trim().describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.projectId)
+      }),
+      querystring: z.object({
+        offset: z.coerce
+          .number()
+          .min(0)
+          .default(0)
+          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.offset)
+          .optional(),
+        limit: z.coerce
+          .number()
+          .min(1)
+          .max(100)
+          .default(20)
+          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
+          .optional()
+      }),
+      response: {
+        200: z.object({
+          identities: IdentitiesSchema.pick({ id: true, name: true }).array()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Project,
+          orgId: req.permission.orgId,
+          projectId: req.params.projectId
+        },
+        data: {
+          offset: req.query.offset,
+          limit: req.query.limit
+        }
+      });
+
+      return { identities };
     }
   });
 };

@@ -1,12 +1,12 @@
 import { AccessScopeData } from "@app/db/schemas";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 
-export interface TIdentityFactory {
-  onCreateIdentityGuard: (arg: TCreateIdentityDTO) => Promise<void>;
-  onUpdateIdentityGuard: (arg: TUpdateIdentityDTO) => Promise<void>;
-  onDeleteIdentityGuard: (arg: TDeleteIdentityDTO) => Promise<void>;
-  onListIdentityGuard: (arg: TListIdentityDTO) => Promise<void>;
-  onGetIdentityByIdGuard: (arg: TGetIdentityByIdDTO) => Promise<void>;
+export interface TIdentityV2Factory {
+  onCreateIdentityGuard: (arg: TCreateIdentityV2DTO) => Promise<void>;
+  onUpdateIdentityGuard: (arg: TUpdateIdentityV2DTO) => Promise<void>;
+  onDeleteIdentityGuard: (arg: TDeleteIdentityV2DTO) => Promise<void>;
+  onListIdentityGuard: (arg: TListIdentityV2DTO) => Promise<void>;
+  onGetIdentityByIdGuard: (arg: TGetIdentityByIdV2DTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
 }
 
@@ -15,7 +15,7 @@ export enum IdentityOrderBy {
   Role = "role"
 }
 
-export type TCreateIdentityDTO = {
+export type TCreateIdentityV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   data: {
@@ -25,7 +25,7 @@ export type TCreateIdentityDTO = {
   };
 };
 
-export type TUpdateIdentityDTO = {
+export type TUpdateIdentityV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
@@ -38,7 +38,7 @@ export type TUpdateIdentityDTO = {
   }>;
 };
 
-export type TDeleteIdentityDTO = {
+export type TDeleteIdentityV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
@@ -46,7 +46,7 @@ export type TDeleteIdentityDTO = {
   };
 };
 
-export type TGetIdentityByIdDTO = {
+export type TGetIdentityByIdV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   selector: {
@@ -54,7 +54,7 @@ export type TGetIdentityByIdDTO = {
   };
 };
 
-export type TListIdentityDTO = {
+export type TListIdentityV2DTO = {
   permission: OrgServiceActor;
   scopeData: AccessScopeData;
   data: Partial<{
