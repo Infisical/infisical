@@ -6,7 +6,7 @@ const twelveDigitRegex = new RE2(/^\d{12}$/);
 // akhilmhdh: change this to a normal function later. Checked no redosable at the moment
 
 const arnRegex = new RE2(
-  /^arn:aws:(iam|sts)::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|assumed-role\/[a-zA-Z0-9_.@+*/-]+|\*)$/
+  /^arn:aws(?:-us-gov)?:(iam|sts)::\d{12}:(user\/[a-zA-Z0-9_.@+*/-]+|role\/[a-zA-Z0-9_.@+*/-]+|assumed-role\/[a-zA-Z0-9_.@+*/-]+|\*)$/
 );
 
 export const validateAccountIds = z
@@ -55,7 +55,7 @@ export const validatePrincipalArns = z
     },
     {
       message:
-        "Each ARN must be in the format of 'arn:aws:iam::123456789012:user/UserName', 'arn:aws:iam::123456789012:role/RoleName', or 'arn:aws:iam::123456789012:*', 'arn:aws:sts::123456789012:assumed-role/RoleName'."
+        "Each ARN must be in the format of 'arn:aws:iam::123456789012:user/UserName', 'arn:aws:iam::123456789012:role/RoleName', or 'arn:aws:iam::123456789012:*', 'arn:aws:sts::123456789012:assumed-role/RoleName'. GovCloud ARNs (arn:aws-us-gov:...) are also supported."
     }
   )
   // Transform to normalize the spaces around commas
