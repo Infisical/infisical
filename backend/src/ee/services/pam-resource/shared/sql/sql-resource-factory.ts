@@ -169,7 +169,7 @@ const makeSqlConnection = (
             await client?.end();
           }
         },
-        rotateCredentials: async (currentCredentials) => {
+        rotateCredentials: async (_) => {
           // TODO: the pwd rotation for MySQL is not supported yet
           throw new BadRequestError({
             message: "Unsupported operation"
