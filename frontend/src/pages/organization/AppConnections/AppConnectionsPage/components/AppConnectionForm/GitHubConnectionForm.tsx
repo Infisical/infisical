@@ -57,10 +57,16 @@ const rootSchema = genericAppConnectionFieldsSchema.extend({
   method: z.nativeEnum(GitHubConnectionMethod)
 });
 
-const baseCredentialsSchema = z.object({
-  instanceType: z.union([z.literal("cloud"), z.literal("server")]).optional(),
-  host: z.string().optional()
-});
+const baseCredentialsSchema = z.union([
+  z.object({
+    instanceType: z.literal("server"),
+    host: z.string().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().optional()
+  })
+]);
 
 const appSchema = rootSchema.extend({
   method: z.literal(GitHubConnectionMethod.App),
@@ -74,9 +80,18 @@ const oauthSchema = rootSchema.extend({
 
 const patSchema = rootSchema.extend({
   method: z.literal(GitHubConnectionMethod.Pat),
-  credentials: baseCredentialsSchema.extend({
-    personalAccessToken: z.string().min(1, "Personal Access Token is required")
-  })
+  credentials: z.union([
+    z.object({
+      instanceType: z.literal("server"),
+      host: z.string().min(1, "Host is required for server instance type"),
+      personalAccessToken: z.string().min(1, "Personal Access Token is required")
+    }),
+    z.object({
+      instanceType: z.literal("cloud").optional(),
+      host: z.string().optional(),
+      personalAccessToken: z.string().min(1, "Personal Access Token is required")
+    })
+  ])
 });
 
 type PatSchemaForm = z.infer<typeof patSchema>;
