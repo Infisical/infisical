@@ -110,7 +110,7 @@ module "infisical_relay_instance" {
     #
     # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
     export INFISICAL_TOKEN="your-machine-identity-token"
-    sudo infisical relay systemd install \
+    sudo -E infisical relay systemd install \
       --name "my-relay-example" \
       --domain "https://app.infisical.com" \
       --host "${aws_eip.infisical_relay_eip.public_ip}"
