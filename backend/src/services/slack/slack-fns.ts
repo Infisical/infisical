@@ -8,6 +8,9 @@ import { TNotification, TriggerFeature } from "@app/lib/workflow-integrations/ty
 import { KmsDataKey } from "../kms/kms-types";
 import { TSendSlackNotificationDTO } from "./slack-types";
 
+const COMPANY_BRAND_COLOR = "#e0ed34";
+const ERROR_COLOR = "#e74c3c";
+
 export const fetchSlackChannels = async (botKey: string) => {
   const slackChannels: {
     name: string;
@@ -74,7 +77,8 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
 
       return {
         payloadMessage: messageBody,
-        payloadBlocks
+        payloadBlocks,
+        color: COMPANY_BRAND_COLOR
       };
     }
     case TriggerFeature.ACCESS_REQUEST: {
@@ -112,7 +116,8 @@ User Note: ${payload.note}`
 
       return {
         payloadMessage: messageBody,
-        payloadBlocks
+        payloadBlocks,
+        color: COMPANY_BRAND_COLOR
       };
     }
     case TriggerFeature.ACCESS_REQUEST_UPDATED: {
@@ -150,7 +155,52 @@ Editor Note: ${payload.editNote}`
 
       return {
         payloadMessage: messageBody,
-        payloadBlocks
+        payloadBlocks,
+        color: COMPANY_BRAND_COLOR
+      };
+    }
+    case TriggerFeature.SECRET_SYNC_ERROR: {
+      const { payload } = notification;
+      const messageBody = `${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}
+
+Sync Error: ${payload.failureMessage}`;
+
+      const payloadBlocks = [
+        {
+          type: "header",
+          text: {
+            type: "plain_text",
+            text: `${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}`,
+            emoji: true
+          }
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `*Sync Error:* ${payload.failureMessage}`
+          }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: `Open ${payload.syncName}`,
+                emoji: true
+              },
+              url: payload.syncUrl
+            }
+          ]
+        }
+      ];
+
+      return {
+        payloadMessage: messageBody,
+        payloadBlocks,
+        color: ERROR_COLOR
       };
     }
     default: {
@@ -177,7 +227,7 @@ export const sendSlackNotification = async ({
   }).toString("utf8");
   const slackWebClient = new WebClient(botKey);
 
-  const { payloadMessage, payloadBlocks } = buildSlackPayload(notification);
+  const { payloadMessage, payloadBlocks, color } = buildSlackPayload(notification);
 
   for await (const conversationId of targetChannelIds) {
     // we send both text and blocks for compatibility with barebone clients
@@ -185,7 +235,12 @@ export const sendSlackNotification = async ({
       .postMessage({
         channel: conversationId,
         text: payloadMessage,
-        blocks: payloadBlocks
+        attachments: [
+          {
+            color,
+            blocks: payloadBlocks
+          }
+        ]
       })
       .catch((err) => logger.error(err));
   }

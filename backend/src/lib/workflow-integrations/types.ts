@@ -7,7 +7,8 @@ import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack
 export enum TriggerFeature {
   SECRET_APPROVAL = "secret-approval",
   ACCESS_REQUEST = "access-request",
-  ACCESS_REQUEST_UPDATED = "access-request-updated"
+  ACCESS_REQUEST_UPDATED = "access-request-updated",
+  SECRET_SYNC_ERROR = "secret-sync-error"
 }
 
 export type TNotification =
@@ -50,6 +51,16 @@ export type TNotification =
         editNote?: string;
         editorFullName?: string;
         editorEmail?: string;
+      };
+    }
+  | {
+      type: TriggerFeature.SECRET_SYNC_ERROR;
+      payload: {
+        syncName: string;
+        syncActionLabel: string;
+        syncDestination: string;
+        failureMessage: string;
+        syncUrl: string;
       };
     };
 
