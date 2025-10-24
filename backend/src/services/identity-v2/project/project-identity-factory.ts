@@ -5,21 +5,21 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { InternalServerError } from "@app/lib/errors";
 
-import { TIdentityFactory } from "../identity-types";
+import { TIdentityV2Factory } from "../identity-types";
 
 type TProjectIdentityFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
 };
 
-export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentityFactoryDep): TIdentityFactory => {
-  const getScopeField: TIdentityFactory["getScopeField"] = (scopeData) => {
+export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentityFactoryDep): TIdentityV2Factory => {
+  const getScopeField: TIdentityV2Factory["getScopeField"] = (scopeData) => {
     if (scopeData.scope === AccessScope.Project) {
       return { key: "projectId" as const, value: scopeData.projectId };
     }
     throw new InternalServerError({ message: "Invalid scope provided for the project factory" });
   };
 
-  const onCreateIdentityGuard: TIdentityFactory["onCreateIdentityGuard"] = async (dto) => {
+  const onCreateIdentityGuard: TIdentityV2Factory["onCreateIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
@@ -35,7 +35,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     );
   };
 
-  const onUpdateIdentityGuard: TIdentityFactory["onUpdateIdentityGuard"] = async (dto) => {
+  const onUpdateIdentityGuard: TIdentityV2Factory["onUpdateIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
@@ -51,7 +51,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     );
   };
 
-  const onDeleteIdentityGuard: TIdentityFactory["onDeleteIdentityGuard"] = async (dto) => {
+  const onDeleteIdentityGuard: TIdentityV2Factory["onDeleteIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
@@ -67,7 +67,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     );
   };
 
-  const onListIdentityGuard: TIdentityFactory["onListIdentityGuard"] = async (dto) => {
+  const onListIdentityGuard: TIdentityV2Factory["onListIdentityGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,
@@ -83,7 +83,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     );
   };
 
-  const onGetIdentityByIdGuard: TIdentityFactory["onGetIdentityByIdGuard"] = async (dto) => {
+  const onGetIdentityByIdGuard: TIdentityV2Factory["onGetIdentityByIdGuard"] = async (dto) => {
     const scope = getScopeField(dto.scopeData);
     const { permission } = await permissionService.getProjectPermission({
       actor: dto.permission.type,

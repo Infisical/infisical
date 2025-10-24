@@ -4,9 +4,9 @@ import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex"
 
 import { buildAuthMethods } from "../identity/identity-fns";
 
-export type TIdentityDALFactory = ReturnType<typeof identityDALFactory>;
+export type TIdentityV2DALFactory = ReturnType<typeof identityV2DALFactory>;
 
-export const identityDALFactory = (db: TDbClient) => {
+export const identityV2DALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.Identity);
 
   const getIdentityById = async (scopeData: AccessScopeData, identityId: string) => {
