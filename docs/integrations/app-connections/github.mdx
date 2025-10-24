@@ -3,7 +3,7 @@ title: "GitHub Connection"
 description: "Learn how to configure a GitHub Connection for Infisical."
 ---
 
-Infisical supports two methods for connecting to GitHub.
+Infisical supports three methods for connecting to GitHub.
 
 <Tabs>
     <Tab title="GitHub App (Recommended)">
@@ -175,6 +175,74 @@ Infisical supports two methods for connecting to GitHub.
             <Step title="Connection Created">
                 Your **GitHub Connection** is now available for use.
                 ![Assume Role AWS Connection](/images/app-connections/github/oauth-connection.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="Personal Access Token">
+        Infisical will use a Personal Access Token to connect to GitHub.
+
+        <Accordion title="Self-Hosted Instance">
+            Using the GitHub integration on a self-hosted instance of Infisical requires creating a Personal Access Token in GitHub.
+            <Steps>
+                <Step title="Create a Personal Access Token in GitHub">
+                    Navigate to your user Settings > Developer settings > Personal Access Tokens to create a new Personal Access Token.
+
+                    ![integrations github config](../../images/integrations/github/integrations-github-config-settings.png)
+                    ![integrations github config](../../images/integrations/github/integrations-github-config-dev-settings.png)
+                    ![integrations github config](../../images/integrations/github/integrations-github-config-new-pat.png)
+
+                    Click **Generate new token** to create the token.
+                </Step>
+                <Step title="Fill in the Personal Access Token details">
+                    Fill in the Personal Access Token details:
+                    - **Token name:** A descriptive name for the token (e.g., "infisical-connection-token")
+                    - **Repository access:** Select the repositories you want to grant access to
+                        - Select `All repositories` or `Only selected repositories` to be able to manage the secrets in the selected repositories.
+                    - **Select scopes:** Add the following scopes:
+                        - Metadata: Read-only
+                        - Environments: Read and write
+
+                    ![Personal Access Token Form](/images/app-connections/github/create-pat-form.png)
+
+                    Click **Generate token** to create the token.
+                </Step>
+                <Step title="Copy the Personal Access Token">
+                    Copy the generated token immediately as it won't be shown again.
+
+                    ![Personal Access Token Generated](/images/app-connections/github/create-pat-token-generated.png)
+
+                    <Warning>
+                        Keep your Personal Access Token secure and do not share it. Anyone with access to this token can access your GitHub account and repositories.
+                    </Warning>
+                </Step>
+            </Steps>
+        </Accordion>
+
+        ## Setup GitHub Connection in Infisical
+
+        <Steps>
+            <Step title="Navigate to App Connections">
+                Navigate to the **App Connections** page in the desired project.
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Add Connection">
+                Select the **GitHub Connection** option from the connection options modal.
+                ![Select GitHub Connection](/images/app-connections/github/select-github-connection.png)
+            </Step>
+            <Step title="Authorize Connection">
+                Select the **Personal Access Token** method and fill in the **Personal Access Token** field with your Personal Access Token.
+
+                You may optionally configure GitHub Enterprise options:
+                - **Gateway:** The gateway connected to your private network
+                - **Hostname:** The hostname at which to access your GitHub Enterprise instance
+
+                Click **Create Connection**.
+
+                ![Personal Access Token](/images/app-connections/github/create-pat-method.png)
+            </Step>
+            <Step title="Connection Created">
+                Your **GitHub Connection** is now available for use.
+                ![Personal Access Token Connection](/images/app-connections/github/pat-connection.png)
             </Step>
         </Steps>
     </Tab>
