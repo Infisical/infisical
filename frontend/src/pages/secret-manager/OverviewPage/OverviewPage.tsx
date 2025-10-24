@@ -1172,7 +1172,9 @@ export const OverviewPage = () => {
                               handlePopUpClose("misc");
                               return;
                             }
-                            handlePopUpOpen("upgradePlan");
+                            handlePopUpOpen("upgradePlan", {
+                              isEnterpriseFeature: true
+                            });
                           }}
                           isDisabled={userAvailableDynamicSecretEnvs.length === 0}
                           variant="outline_bg"
@@ -1679,10 +1681,11 @@ export const OverviewPage = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
           text={
             subscription.slug === null
               ? "You can perform this action under an Enterprise license"
-              : "You can perform this action if you switch to Infisical's Team plan"
+              : "You can perform this action if you switch to Infisical's Enterprise plan"
           }
         />
       )}
