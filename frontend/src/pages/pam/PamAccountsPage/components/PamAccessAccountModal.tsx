@@ -60,7 +60,9 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
 
   const command = useMemo(
     () =>
-      account && account.resource.resourceType === PamResourceType.Postgres
+      account &&
+      (account.resource.resourceType === PamResourceType.Postgres ||
+        account.resource.resourceType == PamResourceType.MySQL)
         ? `infisical pam db access-account ${account.id} --duration ${cliDuration}`
         : "",
     [account, cliDuration]
