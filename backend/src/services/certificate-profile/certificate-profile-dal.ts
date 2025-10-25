@@ -109,7 +109,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
-          db.ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenewDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -132,7 +132,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         ? ({
             id: result.apiConfigId,
             autoRenew: !!result.apiConfigAutoRenew,
-            autoRenewDays: result.apiConfigAutoRenewDays || undefined
+            renewBeforeDays: result.apiConfigRenewBeforeDays || undefined
           } as TCertificateProfileWithConfigs["apiConfig"])
         : undefined;
 
@@ -264,7 +264,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
-          db.ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenewDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays")
         );
 
       if (includeMetrics) {
@@ -290,7 +290,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estEncryptedCaChain"),
             db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
             db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
-            db.ref("autoRenewDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenewDays"),
+            db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
             db.raw("COUNT(certificates.id) as total_certificates"),
             db.raw(
               'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? THEN 1 END) as active_certificates',
@@ -333,7 +333,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           ? {
               id: result.apiId as string,
               autoRenew: !!result.apiAutoRenew,
-              autoRenewDays: (result.apiAutoRenewDays as number) || undefined
+              renewBeforeDays: (result.apiRenewBeforeDays as number) || undefined
             }
           : undefined;
 

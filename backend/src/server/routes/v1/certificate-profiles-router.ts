@@ -42,7 +42,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           apiConfig: z
             .object({
               autoRenew: z.boolean().default(false),
-              autoRenewDays: z.number().min(1).max(365).optional()
+              renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional()
         })
@@ -150,7 +150,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               .object({
                 id: z.string(),
                 autoRenew: z.boolean(),
-                autoRenewDays: z.number().optional()
+                renewBeforeDays: z.number().optional()
               })
               .optional()
           }).array(),
@@ -230,7 +230,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               .object({
                 id: z.string(),
                 autoRenew: z.boolean(),
-                autoRenewDays: z.number().optional()
+                renewBeforeDays: z.number().optional()
               })
               .optional(),
             metrics: z
@@ -355,7 +355,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           apiConfig: z
             .object({
               autoRenew: z.boolean().default(false),
-              autoRenewDays: z.number().min(1).max(365).optional()
+              renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional()
         })

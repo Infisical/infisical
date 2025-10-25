@@ -78,6 +78,7 @@ export enum QueueName {
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification",
   HealthAlert = "health-alert",
+  CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
   PamAccountRotation = "pam-account-rotation"
 }
 
@@ -128,6 +129,7 @@ export enum QueueJobs {
   SecretReminderMigration = "secret-reminder-migration",
   UserNotification = "user-notification-job",
   HealthAlert = "health-alert",
+  CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation"
 }
 
@@ -357,6 +359,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.HealthAlert]: {
     name: QueueJobs.HealthAlert;
+    payload: undefined;
+  };
+  [QueueName.CertificateV3AutoRenewal]: {
+    name: QueueJobs.CertificateV3DailyAutoRenewal;
     payload: undefined;
   };
   [QueueName.PamAccountRotation]: {

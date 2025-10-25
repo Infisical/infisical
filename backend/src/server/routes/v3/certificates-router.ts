@@ -18,6 +18,7 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
@@ -84,8 +85,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
               })
             )
             .optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -169,9 +170,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .min(1, "TTL cannot be empty")
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          notAfter: validateCaDateField.optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -192,6 +191,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
+      const certificateRequest = extractCertificateRequestFromCSR(req.body.csr);
+
       const data = await server.services.certificateV3.signCertificateFromProfile({
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -203,9 +204,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           ttl: req.body.ttl
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-        signatureAlgorithm: req.body.signatureAlgorithm,
-        keyAlgorithm: req.body.keyAlgorithm
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
       });
 
       await server.services.auditLog.createAuditLog({
@@ -217,7 +216,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             certificateProfileId: req.body.profileId,
             certificateId: data.certificateId,
             profileName: data.profileName,
-            commonName: ""
+            commonName: certificateRequest.commonName || ""
           }
         }
       });
@@ -260,8 +259,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notBefore: validateCaDateField.optional(),
           notAfter: validateCaDateField.optional(),
           commonName: validateTemplateRegexField.optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional()
+          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -341,6 +340,147 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       });
 
       return data;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:certificateId/renew",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        certificateId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim(),
+          issuingCaCertificate: z.string().trim(),
+          certificateChain: z.string().trim(),
+          privateKey: z.string().trim().optional(),
+          serialNumber: z.string().trim(),
+          certificateId: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const data = await server.services.certificateV3.renewCertificate({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        certificateId: req.params.certificateId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: data.projectId,
+        event: {
+          type: EventType.RENEW_CERTIFICATE,
+          metadata: {
+            originalCertificateId: req.params.certificateId,
+            newCertificateId: data.certificateId,
+            profileName: data.profileName,
+            commonName: data.commonName
+          }
+        }
+      });
+
+      return data;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:certificateId/config",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      params: z.object({
+        certificateId: z.string().uuid()
+      }),
+      body: z
+        .object({
+          renewBeforeDays: z.number().int().min(1).max(30).optional(),
+          enableAutoRenewal: z.boolean().optional()
+        })
+        .refine((data) => !(data.renewBeforeDays !== undefined && data.enableAutoRenewal === false), {
+          message: "Cannot specify both renewBeforeDays and enableAutoRenewal=false"
+        }),
+      response: {
+        200: z.object({
+          message: z.string(),
+          renewBeforeDays: z.number().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      if (req.body.enableAutoRenewal === false) {
+        const data = await server.services.certificateV3.disableRenewalConfig({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          certificateId: req.params.certificateId
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: data.projectId,
+          event: {
+            type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
+            metadata: {
+              certificateId: req.params.certificateId,
+              commonName: data.commonName
+            }
+          }
+        });
+
+        return {
+          message: "Auto-renewal disabled successfully"
+        };
+      }
+
+      if (req.body.renewBeforeDays !== undefined) {
+        const data = await server.services.certificateV3.updateRenewalConfig({
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          certificateId: req.params.certificateId,
+          renewBeforeDays: req.body.renewBeforeDays
+        });
+
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          projectId: data.projectId,
+          event: {
+            type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG,
+            metadata: {
+              certificateId: req.params.certificateId,
+              renewBeforeDays: req.body.renewBeforeDays.toString(),
+              commonName: data.commonName
+            }
+          }
+        });
+
+        return {
+          message: "Certificate configuration updated successfully",
+          renewBeforeDays: data.renewBeforeDays
+        };
+      }
+
+      return {
+        message: "No configuration changes requested"
+      };
     }
   });
 };

@@ -25,7 +25,7 @@ export const createCertificateProfileSchema = z
     apiConfig: z
       .object({
         autoRenew: z.boolean().default(false),
-        autoRenewDays: z.number().min(1).max(365).optional()
+        renewBeforeDays: z.number().min(1).max(30).optional()
       })
       .optional()
   })
@@ -75,7 +75,7 @@ export const updateCertificateProfileSchema = z
     apiConfig: z
       .object({
         autoRenew: z.boolean().default(false),
-        autoRenewDays: z.number().min(1).max(365).optional()
+        renewBeforeDays: z.number().min(1).max(30).optional()
       })
       .optional()
   })

@@ -25,5 +25,5 @@ export interface TEstConfigData {
 
 export interface TApiConfigData {
   autoRenew: boolean;
-  autoRenewDays?: number;
+  renewBeforeDays?: number;
 }

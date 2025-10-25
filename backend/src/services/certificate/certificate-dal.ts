@@ -1,7 +1,7 @@
 import { TDbClient } from "@app/db";
 import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import { CertStatus } from "./certificate-types";
 
@@ -114,12 +114,94 @@ export const certificateDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findCertificatesEligibleForRenewal = async ({
+    limit,
+    offset
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<(TCertificates & { profileName?: string })[]> => {
+    try {
+      const now = new Date();
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      const certs = (await db
+        .replicaNode()(TableName.Certificate)
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref("slug").withSchema(TableName.PkiCertificateProfile).as("profileName"))
+        .leftJoin(
+          TableName.PkiCertificateProfile,
+          `${TableName.Certificate}.profileId`,
+          `${TableName.PkiCertificateProfile}.id`
+        )
+        .innerJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
+        .whereNull(`${TableName.Certificate}.renewedByCertificateId`)
+        .whereNull(`${TableName.Certificate}.renewalError`)
+        .whereNull(`${TableName.Certificate}.revokedAt`)
+        .whereNotNull(`${TableName.Certificate}.profileId`)
+        .whereNotNull(`${TableName.Certificate}.notAfter`)
+        .where(`${TableName.Certificate}.notAfter`, ">", now)
+        .whereNotNull(`${TableName.Certificate}.renewBeforeDays`)
+        .where(`${TableName.Certificate}.renewBeforeDays`, ">", 0)
+        .whereRaw(
+          `"${TableName.Certificate}"."notAfter" - INTERVAL '1 day' * "${TableName.Certificate}"."renewBeforeDays" <= ?`,
+          [endOfDay]
+        )
+        .limit(limit)
+        .offset(offset)
+        .orderBy(`${TableName.Certificate}.notAfter`, "asc")) as TCertificates[];
+
+      return certs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificates eligible for renewal" });
+    }
+  };
+
+  const findWithPrivateKeyInfo = async (
+    filter: Partial<TCertificates>,
+    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] }
+  ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
+    try {
+      let query = db
+        .replicaNode()(TableName.Certificate)
+        .leftJoin(TableName.CertificateSecret, `${TableName.Certificate}.id`, `${TableName.CertificateSecret}.certId`)
+        .select(selectAllTableCols(TableName.Certificate))
+        .select(db.ref(`${TableName.CertificateSecret}.certId`).as("privateKeyRef"))
+        .where(filter);
+
+      if (options?.offset) {
+        query = query.offset(options.offset);
+      }
+      if (options?.limit) {
+        query = query.limit(options.limit);
+      }
+      if (options?.sort) {
+        options.sort.forEach(([column, direction]) => {
+          query = query.orderBy(column, direction);
+        });
+      }
+
+      const results = await query;
+      return results.map((row) => {
+        return {
+          ...row,
+          hasPrivateKey: row.privateKeyRef !== null
+        };
+      });
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificates with private key info" });
+    }
+  };
+
   return {
     ...certificateOrm,
     countCertificatesInProject,
     countCertificatesForPkiSubscriber,
     findLatestActiveCertForSubscriber,
     findAllActiveCertsForSubscriber,
-    findExpiredSyncedCertificates
+    findExpiredSyncedCertificates,
+    findCertificatesEligibleForRenewal,
+    findWithPrivateKeyInfo
   };
 };

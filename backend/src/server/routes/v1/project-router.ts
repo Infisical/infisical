@@ -1200,7 +1200,7 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          certificates: z.array(CertificatesSchema),
+          certificates: z.array(CertificatesSchema.extend({ hasPrivateKey: z.boolean() })),
           totalCount: z.number()
         })
       }

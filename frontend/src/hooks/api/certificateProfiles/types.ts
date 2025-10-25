@@ -35,7 +35,7 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
   apiConfig?: {
     id: string;
     autoRenew: boolean;
-    autoRenewDays?: number;
+    renewBeforeDays?: number;
   };
 };
 
@@ -53,7 +53,7 @@ export type TCreateCertificateProfileDTO = {
   };
   apiConfig?: {
     autoRenew?: boolean;
-    autoRenewDays?: number;
+    renewBeforeDays?: number;
   };
 };
 
@@ -68,7 +68,7 @@ export type TUpdateCertificateProfileDTO = {
   };
   apiConfig?: {
     autoRenew?: boolean;
-    autoRenewDays?: number;
+    renewBeforeDays?: number;
   };
 };
 

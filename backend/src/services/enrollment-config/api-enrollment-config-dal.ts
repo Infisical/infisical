@@ -69,15 +69,15 @@ export const apiEnrollmentConfigDALFactory = (db: TDbClient) => {
       const profiles = await query
         .where((qb) => {
           void qb
-            .whereNull(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`)
-            .orWhere(`${TableName.PkiApiEnrollmentConfig}.autoRenewDays`, "<=", renewalThresholdDays);
+            .whereNull(`${TableName.PkiApiEnrollmentConfig}.renewBeforeDays`)
+            .orWhere(`${TableName.PkiApiEnrollmentConfig}.renewBeforeDays`, "<=", renewalThresholdDays);
         })
         .select((tx || db).ref("id").withSchema(TableName.PkiCertificateProfile))
         .select((tx || db).ref("name").withSchema(TableName.PkiCertificateProfile))
         .select((tx || db).ref("projectId").withSchema(TableName.PkiCertificateProfile))
-        .select((tx || db).ref("autoRenewDays").withSchema(TableName.PkiCertificateProfile));
+        .select((tx || db).ref("renewBeforeDays").withSchema(TableName.PkiCertificateProfile));
 
-      return profiles as Array<{ id: string; name: string; projectId: string; autoRenewDays?: number }>;
+      return profiles as Array<{ id: string; name: string; projectId: string; renewBeforeDays?: number }>;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find profiles for auto renewal" });
     }
