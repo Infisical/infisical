@@ -12,13 +12,16 @@ export default defineConfig({
     },
     environment: "./e2e-test/vitest-environment-knex.ts",
     include: ["./e2e-test/**/*.spec.ts"],
+    pool: "threads",
     poolOptions: {
       threads: {
-        singleThread: true,
-        useAtomics: true,
-        isolate: false
+        minThreads: 1,
+        maxThreads: 1,
+        singleThread: true
       }
     },
+    fileParallelism: false,
+
     alias: {
       "./license-fns": path.resolve(__dirname, "./src/ee/services/license/__mocks__/license-fns")
     }
