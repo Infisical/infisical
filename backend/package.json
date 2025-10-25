@@ -98,7 +98,7 @@
     "@types/jsrp": "^0.2.6",
     "@types/libsodium-wrappers": "^0.7.13",
     "@types/lodash.isequal": "^4.5.8",
-    "@types/node": "^20.17.30",
+    "@types/node": "^20.19.0",
     "@types/nodemailer": "^6.4.14",
     "@types/passport-google-oauth20": "^2.0.14",
     "@types/pg": "^8.10.9",
