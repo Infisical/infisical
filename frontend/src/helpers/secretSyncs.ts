@@ -114,6 +114,10 @@ export const SECRET_SYNC_MAP: Record<SecretSync, { name: string; image: string }
     name: "Bitbucket",
     image: "Bitbucket.png"
   },
+  [SecretSync.Northflank]: {
+    name: "Northflank",
+    image: "Northflank.png"
+  },
   [SecretSync.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png"
@@ -150,6 +154,7 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Checkly]: AppConnection.Checkly,
   [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
   [SecretSync.Netlify]: AppConnection.Netlify,
+  [SecretSync.Northflank]: AppConnection.Northflank,
   [SecretSync.Bitbucket]: AppConnection.Bitbucket,
   [SecretSync.LaravelForge]: AppConnection.LaravelForge
 };
