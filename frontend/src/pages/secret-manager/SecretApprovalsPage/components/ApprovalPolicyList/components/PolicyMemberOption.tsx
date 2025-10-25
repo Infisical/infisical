@@ -1,10 +1,10 @@
 import { components, OptionProps } from "react-select";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { faBan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Badge } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { BypasserType } from "@app/hooks/api/accessApproval/types";
 import { ApproverType } from "@app/hooks/api/secretApproval/types";
 
@@ -26,8 +26,8 @@ export const PolicyMemberOption = ({
           {children}
         </p>
         {!props.data.isOrgMembershipActive && (
-          <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-            <FontAwesomeIcon icon={faBan} />
+          <Badge className="ml-auto" variant="neutral">
+            <BanIcon />
             Inactive
           </Badge>
         )}

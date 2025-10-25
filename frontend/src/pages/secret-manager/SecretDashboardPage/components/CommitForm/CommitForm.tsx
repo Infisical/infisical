@@ -1,16 +1,12 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import React, { useCallback, useState } from "react";
-import {
-  faClipboardCheck,
-  faCodeCommit,
-  faFolder,
-  faKey,
-  faSave
-} from "@fortawesome/free-solid-svg-icons";
+import { faCodeCommit, faFolder, faKey, faSave } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
+import { ClipboardCheckIcon } from "lucide-react";
 
-import { Badge, Button, Input, Modal, ModalContent } from "@app/components/v2";
+import { Button, Input, Modal, ModalContent } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretVersionDiffView } from "@app/pages/secret-manager/CommitDetailsPage/components/SecretVersionDiffView";
 import { HIDDEN_SECRET_VALUE_API_MASK } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -329,9 +325,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   <div className="flex-1">
                     {/* Header */}
                     <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full bg-yellow-500" />
+                      <div className="h-2 w-2 rounded-full bg-warning" />
                       <span className="font-medium text-mineshaft-100">Pending Changes</span>
-                      <Badge variant="primary" className="text-xs">
+                      <Badge variant="warning">
                         {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
                       </Badge>
                     </div>
@@ -375,9 +371,9 @@ export const CommitForm: React.FC<CommitFormProps> = ({
         <ModalContent
           title={
             <div className="flex items-center gap-2">
-              <FontAwesomeIcon icon={faClipboardCheck} className="text-mineshaft-400" />
               Review Changes
-              <Badge variant="primary" className="mt-[0.05rem]">
+              <Badge variant="warning">
+                <ClipboardCheckIcon />
                 {totalChangesCount} Change{totalChangesCount !== 1 ? "s" : ""}
               </Badge>
             </div>

@@ -7,7 +7,6 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { decodeBase64 } from "@app/components/utilities/cryptography/crypto";
 import {
-  Badge,
   Button,
   FormControl,
   Modal,
@@ -19,6 +18,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { SigningAlgorithm, TCmek, useCmekVerify } from "@app/hooks/api/cmeks";
 import { isBase64 } from "@app/lib/fn/base64";
 
@@ -112,30 +112,22 @@ const VerifyForm = ({ cmek }: FormProps) => {
         <div className="mb-6 flex flex-col gap-2">
           <div className="flex items-center justify-between space-x-2">
             <span className="text-sm opacity-60">Signature Status:</span>
-            <Badge variant={signatureValid ? "success" : "danger"}>
-              <Tooltip
-                content={
-                  signatureValid
-                    ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
-                    : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."
-                }
-              >
-                {signatureValid ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <p>Valid</p>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-2">
-                    <p>Invalid</p>
-                  </div>
-                )}
-              </Tooltip>
-            </Badge>
+            <Tooltip
+              content={
+                signatureValid
+                  ? "The signature is valid. signature was created using the same signing algorithm and key as the one used to sign the data."
+                  : "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with."
+              }
+            >
+              <Badge variant={signatureValid ? "success" : "danger"}>
+                {signatureValid ? "Valid" : "Invalid"}
+              </Badge>
+            </Tooltip>
           </div>
 
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm opacity-60">Signing Algorithm:</span>
-            <Badge variant="primary">{signingAlgorithm}</Badge>
+            <Badge variant="info">{signingAlgorithm}</Badge>
           </div>
           <div className="mt-3">
             <span className="text-sm opacity-60">Signature:</span>{" "}

@@ -1,6 +1,6 @@
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
@@ -29,23 +29,11 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
         )}
       </div>
       <div>
-        <div className="flex items-center text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-mineshaft-300">
           {appDetails.name}
-          <a
+          <DocumentationLinkBadge
             href={`https://infisical.com/docs/integrations/app-connections/${app}`}
-            target="_blank"
-            className="mb-1 ml-1"
-            rel="noopener noreferrer"
-          >
-            <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
-              <span>Docs</span>
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.07rem] ml-1 text-[10px]"
-              />
-            </div>
-          </a>
+          />
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">
           {isConnected ? `${appDetails.name} Connection` : `Connect to ${appDetails.name}`}

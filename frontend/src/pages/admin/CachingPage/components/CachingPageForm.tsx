@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { faRotate } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { RefreshCwIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button, DeleteActionModal } from "@app/components/v2";
+import { Button, DeleteActionModal } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useInvalidateCache } from "@app/hooks/api";
@@ -62,11 +62,8 @@ export const CachingPageForm = () => {
           <div className="mb-2 flex items-center gap-3">
             <span className="text-xl font-medium text-mineshaft-100">Secrets Cache</span>
             {isInvalidating && (
-              <Badge
-                variant="danger"
-                className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-              >
-                <FontAwesomeIcon icon={faRotate} className="animate-spin" />
+              <Badge variant="danger">
+                <RefreshCwIcon className="animate-spin" />
                 Invalidating Cache
               </Badge>
             )}

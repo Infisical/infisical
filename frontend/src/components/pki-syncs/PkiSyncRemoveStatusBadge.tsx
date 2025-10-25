@@ -1,27 +1,20 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import {
-  faCheck,
-  faEraser,
-  faTriangleExclamation,
-  faXmark,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { AlertTriangleIcon, CheckIcon, EraserIcon, LucideIcon } from "lucide-react";
 
-import { Badge, Tooltip } from "@app/components/v2";
-import { BadgeProps } from "@app/components/v2/Badge/Badge";
+import { Tooltip } from "@app/components/v2";
+import { Badge, TBadgeProps } from "@app/components/v3";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   pkiSync: TPkiSync;
-  className?: string;
   mini?: boolean;
 };
 
-export const PkiSyncRemoveStatusBadge = ({ pkiSync, className, mini }: Props) => {
+export const PkiSyncRemoveStatusBadge = ({ pkiSync, mini }: Props) => {
   const { removeStatus, lastRemoveMessage, lastRemovedAt, destination } = pkiSync;
   const [hide, setHide] = useState(removeStatus === PkiSyncStatus.Succeeded);
   const destinationName = PKI_SYNC_MAP[destination].name;
@@ -50,24 +43,24 @@ export const PkiSyncRemoveStatusBadge = ({ pkiSync, className, mini }: Props) =>
 
   if (!removeStatus || hide) return null;
 
-  let variant: BadgeProps["variant"];
+  let variant: TBadgeProps["variant"];
   let label: string;
-  let icon: IconDefinition;
+  let Icon: LucideIcon;
   let tooltipContent: ReactNode;
 
   switch (removeStatus) {
     case PkiSyncStatus.Pending:
     case PkiSyncStatus.Running:
-      variant = "primary";
+      variant = "warning";
       label = "Removing Certificates...";
       tooltipContent = `Removing certificates from ${destinationName}. This may take a moment.`;
-      icon = faEraser;
+      Icon = EraserIcon;
 
       break;
     case PkiSyncStatus.Failed:
       variant = "danger";
       label = "Failed to Remove Certificates";
-      icon = faTriangleExclamation;
+      Icon = AlertTriangleIcon;
       tooltipContent = (
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
@@ -93,20 +86,15 @@ export const PkiSyncRemoveStatusBadge = ({ pkiSync, className, mini }: Props) =>
       tooltipContent = "Successfully removed certificates.";
       variant = "success";
       label = "Certificates Removed";
-      icon = faCheck;
+      Icon = CheckIcon;
   }
 
   return (
     <Tooltip position="bottom" className="max-w-sm" content={tooltipContent}>
-      <div>
-        <Badge
-          className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
-          variant={variant}
-        >
-          <FontAwesomeIcon icon={icon} />
-          {!mini && <span>{label}</span>}
-        </Badge>
-      </div>
+      <Badge isSquare={mini} variant={variant}>
+        <Icon />
+        {!mini && label}
+      </Badge>
     </Tooltip>
   );
 };

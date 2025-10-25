@@ -10,7 +10,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -26,6 +25,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";

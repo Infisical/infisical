@@ -1,55 +1,51 @@
 import {
-  faCheck,
-  faExclamationTriangle,
-  faHourglass,
-  faRotate,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  AlertTriangleIcon,
+  CheckIcon,
+  HourglassIcon,
+  LucideIcon,
+  RefreshCwIcon
+} from "lucide-react";
 
-import { Badge, BadgeProps } from "@app/components/v2/Badge/Badge";
+import { Badge, TBadgeProps } from "@app/components/v3";
 import { SecretSyncStatus } from "@app/hooks/api/secretSyncs";
 
 type Props = {
   status: SecretSyncStatus;
-} & Omit<BadgeProps, "children" | "variant">;
+} & Omit<TBadgeProps, "children" | "variant">;
 
 export const SecretSyncStatusBadge = ({ status }: Props) => {
-  let variant: BadgeProps["variant"];
+  let variant: TBadgeProps["variant"];
   let text: string;
-  let icon: IconDefinition;
+  let Icon: LucideIcon;
 
   switch (status) {
     case SecretSyncStatus.Failed:
       variant = "danger";
       text = "Failed to Sync";
-      icon = faExclamationTriangle;
+      Icon = AlertTriangleIcon;
       break;
     case SecretSyncStatus.Succeeded:
       variant = "success";
       text = "Synced";
-      icon = faCheck;
+      Icon = CheckIcon;
       break;
     case SecretSyncStatus.Pending:
-      variant = "primary";
+      variant = "info";
       text = "Queued";
-      icon = faHourglass;
+      Icon = HourglassIcon;
       break;
     case SecretSyncStatus.Running:
     default:
-      variant = "primary";
+      variant = "info";
       text = "Syncing";
-      icon = faRotate;
+      Icon = RefreshCwIcon;
       break;
   }
 
   return (
-    <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap" variant={variant}>
-      <FontAwesomeIcon
-        icon={icon}
-        className={[SecretSyncStatus.Running].includes(status) ? "animate-spin" : ""}
-      />
-      <span>{text}</span>
+    <Badge variant={variant}>
+      <Icon className={[SecretSyncStatus.Running].includes(status) ? "animate-spin" : ""} />
+      {text}
     </Badge>
   );
 };

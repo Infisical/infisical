@@ -53,6 +53,6 @@ export const getCaStatusBadgeVariant = (status: CaStatus | SshCaStatus | SshCert
     case CaStatus.DISABLED:
       return "danger";
     default:
-      return "primary";
+      return "warning";
   }
 };

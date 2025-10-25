@@ -1,5 +1,5 @@
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
   AwsSecretsManagerSyncMappingBehavior,
@@ -19,8 +19,8 @@ export const AwsSecretsManagerSyncDestinationSection = ({ secretSync }: Props) =
     <>
       <GenericFieldLabel label="Region">
         {awsRegion?.name}
-        <Badge className="ml-1" variant="success">
-          {awsRegion?.slug}{" "}
+        <Badge className="ml-1" variant="neutral">
+          {awsRegion?.slug}
         </Badge>
       </GenericFieldLabel>
       <GenericFieldLabel label="Mapping Behavior" className="capitalize">

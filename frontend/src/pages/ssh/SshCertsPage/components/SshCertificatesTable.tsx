@@ -3,7 +3,6 @@ import { faCertificate } from "@fortawesome/free-solid-svg-icons";
 import { format } from "date-fns";
 
 import {
-  Badge,
   EmptyState,
   Pagination,
   Table,
@@ -15,6 +14,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useListWorkspaceSshCertificates } from "@app/hooks/api";
 

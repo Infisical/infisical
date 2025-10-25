@@ -9,16 +9,15 @@ import {
   faUsers,
   faUserShield,
   faUserXmark,
-  faWarning,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangleIcon, UserCogIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Checkbox,
   DeleteActionModal,
@@ -41,6 +40,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useSubscription, useUser } from "@app/context";
 import {
   getUserTablePreference,
@@ -218,7 +218,8 @@ const UserPanelTable = ({
                             {name ?? <span className="text-mineshaft-400">Not Set</span>}
                           </p>
                           {superAdmin && (
-                            <Badge variant="primary" className="ml-2 whitespace-nowrap">
+                            <Badge variant="info" className="ml-2">
+                              <UserCogIcon />
                               Server Admin
                             </Badge>
                           )}
@@ -548,7 +549,7 @@ export const UserIdentitiesTable = () => {
                 const email = user.email ?? user.username;
                 return (
                   <li key={user.id}>
-                    <div className="flex items-center">
+                    <div className="flex items-center gap-x-1">
                       <p>
                         {user.firstName || user.lastName ? (
                           <>
@@ -561,15 +562,10 @@ export const UserIdentitiesTable = () => {
                       </p>
                       {userId === user.id && (
                         <Tooltip content="Are you sure you want to remove yourself from this instance?">
-                          <div className="inline-block">
-                            <Badge
-                              variant="primary"
-                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
-                            >
-                              <FontAwesomeIcon icon={faWarning} />
-                              <span>Deleting Yourself</span>
-                            </Badge>
-                          </div>
+                          <Badge variant="danger">
+                            <AlertTriangleIcon />
+                            Deleting Yourself
+                          </Badge>
                         </Tooltip>
                       )}
                     </div>

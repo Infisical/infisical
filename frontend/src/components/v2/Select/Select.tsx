@@ -3,6 +3,7 @@ import { IconProp } from "@fortawesome/fontawesome-svg-core";
 import { faCaretDown, faCaretUp, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as SelectPrimitive from "@radix-ui/react-select";
+import { LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Spinner } from "../Spinner";
@@ -19,6 +20,7 @@ type Props = {
   icon?: IconProp;
   isMulti?: boolean;
   iconClassName?: string;
+  LucideIcon?: LucideIcon;
   dropdownContainerStyle?: React.CSSProperties;
   side?: SelectPrimitive.SelectContentProps["side"];
 };
@@ -39,6 +41,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       iconClassName,
       dropdownContainerStyle,
       side,
+      LucideIcon: Lucide,
       ...props
     },
     ref
@@ -65,6 +68,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
           >
             <div className="flex items-center space-x-2 overflow-hidden text-ellipsis whitespace-nowrap">
               {props.icon && <FontAwesomeIcon icon={props.icon} className={iconClassName} />}
+              {Lucide && <Lucide className={twMerge("size-3.5", iconClassName)} />}
               <div className="flex-1 truncate">
                 <SelectPrimitive.Value placeholder={placeholder} />
               </div>

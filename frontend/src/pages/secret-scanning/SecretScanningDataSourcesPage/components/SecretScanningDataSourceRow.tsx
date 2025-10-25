@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import {
-  faBan,
   faCheck,
   faCopy,
   faEdit,
@@ -8,22 +7,20 @@ import {
   faExpand,
   faInfoCircle,
   faPlugCircleXmark,
-  faSearch,
   faToggleOff,
   faToggleOn,
-  faTrash,
-  faWarning
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
+import { AlertTriangleIcon, BanIcon, ScanTextIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,6 +30,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
@@ -139,46 +137,39 @@ export const SecretScanningDataSourceRow = ({
       <Td>
         {/* eslint-disable-next-line no-nested-ternary */}
         {lastScanStatus?.match(/queued|scanning/) ? (
-          <Badge
-            variant="primary"
-            className="flex h-5 w-min animate-pulse items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300"
-          >
-            <FontAwesomeIcon icon={faSearch} />
-            <span>Scanning For Leaks</span>
+          <Badge variant="neutral">
+            <ScanTextIcon />
+            Scanning For Leaks
           </Badge>
         ) : // eslint-disable-next-line no-nested-ternary
         lastScannedAt ? (
           // eslint-disable-next-line no-nested-ternary
           unresolvedFindings ? (
-            <Badge
-              variant="primary"
-              className="flex h-5 w-min cursor-pointer items-center gap-1.5 whitespace-nowrap"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate({
-                  to: "/projects/secret-scanning/$projectId/findings",
-                  params: {
-                    projectId
-                  },
-                  search: {
-                    search: name,
-                    status: SecretScanningFindingStatus.Unresolved
-                  }
-                });
-              }}
-            >
-              <FontAwesomeIcon icon={faWarning} />
-              <span>
+            <Badge variant="warning" asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate({
+                    to: "/projects/secret-scanning/$projectId/findings",
+                    params: {
+                      projectId
+                    },
+                    search: {
+                      search: name,
+                      status: SecretScanningFindingStatus.Unresolved
+                    }
+                  });
+                }}
+              >
+                <AlertTriangleIcon />
                 {unresolvedFindings} Secret{unresolvedFindings > 1 ? "s" : ""} Detected
-              </span>
+              </button>
             </Badge>
           ) : lastScanStatus === SecretScanningScanStatus.Failed ? (
             <span className="text-mineshaft-400">No findings</span>
           ) : (
-            <Badge
-              variant="success"
-              className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-            >
+            <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />
               No Secrets Detected
             </Badge>
@@ -206,12 +197,10 @@ export const SecretScanningDataSourceRow = ({
               className="text-xs"
               content={`Auto-Scan is disabled. Scans will not be automatically triggered when a ${autoScanDescription.verb} occurs to ${autoScanDescription.pluralNoun} associated with this data source`}
             >
-              <div className="ml-auto">
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                  <FontAwesomeIcon icon={faBan} />
-                  <span>Auto-Scan Disabled</span>
-                </Badge>
-              </div>
+              <Badge className="ml-auto" variant="neutral">
+                <BanIcon />
+                Auto-Scan Disabled
+              </Badge>
             </Tooltip>
           )}
           {isDisconnected && (

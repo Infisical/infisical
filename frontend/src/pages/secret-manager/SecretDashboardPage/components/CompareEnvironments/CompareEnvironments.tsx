@@ -9,14 +9,13 @@ import {
   faFolder,
   faKey,
   faRotate,
-  faSearch,
-  faWarning
+  faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   getUserTablePreference,
@@ -396,11 +396,8 @@ export const CompareEnvironments = ({ secretPath }: Props) => {
                                 </>
                               }
                             >
-                              <Badge
-                                variant="primary"
-                                className="-mt-[0.05rem] flex h-4 items-center gap-x-1 pt-[0.1rem] leading-3 font-normal"
-                              >
-                                <FontAwesomeIcon icon={faWarning} className="-mt-[0.1rem] w-2.5" />
+                              <Badge variant="warning">
+                                <AlertTriangleIcon />
                                 {missingKeyCount}
                               </Badge>
                             </Tooltip>

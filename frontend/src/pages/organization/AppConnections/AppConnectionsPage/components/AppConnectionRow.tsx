@@ -8,18 +8,17 @@ import {
   faEdit,
   faEllipsisV,
   faInfoCircle,
-  faServer,
   faTable,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
+import { ServerIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { VariablePermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -29,6 +28,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
@@ -157,9 +157,9 @@ export const AppConnectionRow = ({
           {isPlatformManagedCredentials && (
             <Tooltip side="left" content="This connection's credentials are managed by Infisical.">
               <div>
-                <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap">
-                  <FontAwesomeIcon icon={faServer} />
-                  <span>Platform Managed Credentials</span>
+                <Badge variant="info">
+                  <ServerIcon />
+                  Platform Managed Credentials
                 </Badge>
               </div>
             </Tooltip>

@@ -4,7 +4,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,6 +14,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { PAM_RESOURCE_TYPE_MAP, TPamResource } from "@app/hooks/api/pam";
 
@@ -40,7 +40,7 @@ export const PamResourceRow = ({ resource, onUpdate, onDelete, search }: Props) 
           <span>
             <HighlightText text={name} highlight={search} />
           </span>
-          <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+          <Badge variant="neutral">
             <span>
               <HighlightText text={resourceTypeName} highlight={search} />
             </span>

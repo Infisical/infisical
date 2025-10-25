@@ -3,18 +3,16 @@ import {
   faEllipsis,
   faPencil,
   faServer,
-  faTrash,
-  faUser,
-  faUsers
+  faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import FileSaver from "file-saver";
+import { UserIcon, UsersIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -30,6 +28,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSshHostActions, ProjectPermissionSub, useProject } from "@app/context";
 import { fetchSshHostUserCaPublicKey, useListWorkspaceSshHosts } from "@app/hooks/api";
 import { LoginMappingSource } from "@app/hooks/api/sshHost/types";
@@ -166,15 +165,14 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                     className="flex items-center gap-2"
                                   >
                                     <div className="flex items-center">
-                                      <span className="text-gray-400">└─</span>
+                                      <span className="text-gray-400">└</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <FontAwesomeIcon
-                                        icon={faUser}
-                                        className="text-xs text-yellow/80"
-                                      />
                                       <span>{username}</span>
-                                      <Badge variant="primary">user</Badge>
+                                      <Badge variant="neutral">
+                                        <UserIcon />
+                                        User
+                                      </Badge>
                                     </div>
                                   </div>
                                 ))}
@@ -184,15 +182,14 @@ export const SshHostsTable = ({ handlePopUpOpen }: Props) => {
                                     className="flex items-center gap-2"
                                   >
                                     <div className="flex items-center">
-                                      <span className="text-gray-400">└─</span>
+                                      <span className="text-gray-400">└</span>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <FontAwesomeIcon
-                                        icon={faUsers}
-                                        className="text-xs text-green/80"
-                                      />
                                       <span>{group}</span>
-                                      <Badge variant="success">group</Badge>
+                                      <Badge variant="neutral">
+                                        <UsersIcon />
+                                        Group
+                                      </Badge>
                                     </div>
                                   </div>
                                 ))}

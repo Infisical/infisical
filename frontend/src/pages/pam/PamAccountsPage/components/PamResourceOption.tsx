@@ -3,7 +3,7 @@ import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Badge } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { PAM_RESOURCE_TYPE_MAP, PamResourceType } from "@app/hooks/api/pam";
 
 export const PamResourceOption = ({
@@ -27,7 +27,7 @@ export const PamResourceOption = ({
           <>
             <p className="truncate">{children}</p>
             <div className="mr-auto ml-2">
-              <Badge className="flex h-5 items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+              <Badge variant="neutral">
                 <img
                   alt={`${name} logo`}
                   src={`/images/integrations/${image}`}

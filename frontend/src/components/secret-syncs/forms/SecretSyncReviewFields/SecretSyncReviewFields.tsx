@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Badge } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
@@ -224,7 +224,7 @@ export const SecretSyncReviewFields = () => {
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
           <GenericFieldLabel label="Auto-Sync">
-            <Badge variant={isAutoSyncEnabled ? "success" : "danger"}>
+            <Badge variant={isAutoSyncEnabled ? "success" : "neutral"}>
               {isAutoSyncEnabled ? "Enabled" : "Disabled"}
             </Badge>
           </GenericFieldLabel>
@@ -235,7 +235,7 @@ export const SecretSyncReviewFields = () => {
           {AdditionalSyncOptionsFieldsComponent}
           {disableSecretDeletion && (
             <GenericFieldLabel label="Secret Deletion">
-              <Badge variant="primary">Disabled</Badge>
+              <Badge variant="warning">Disabled</Badge>
             </GenericFieldLabel>
           )}
         </div>

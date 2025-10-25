@@ -1,9 +1,11 @@
 import { components, OptionProps } from "react-select";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { faBuilding, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Badge, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import { Badge, OrgIcon, SubOrgIcon } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import { TAvailableAppConnection } from "@app/hooks/api/appConnections";
 
 export const AppConnectionOption = ({
@@ -12,6 +14,8 @@ export const AppConnectionOption = ({
   ...props
 }: OptionProps<TAvailableAppConnection>) => {
   const isCreateOption = props.data.id === "_create";
+
+  const { isSubOrganization } = useOrganization();
 
   return (
     <components.Option isSelected={isSelected} {...props}>
@@ -23,15 +27,22 @@ export const AppConnectionOption = ({
           </div>
         ) : (
           <>
-            <p className="truncate">{children}</p>
+            <p className="mr-auto truncate">{children}</p>
             {!props.data.projectId && (
-              <Tooltip content="This connection belongs to your organization.">
-                <div className="mr-auto ml-2">
-                  <Badge className="flex h-5 w-min items-center gap-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300 hover:text-bunker-300">
-                    <FontAwesomeIcon icon={faBuilding} size="sm" />
+              <Tooltip
+                content={`This connection belongs to your ${isSubOrganization ? "sub-" : ""}organization.`}
+              >
+                {isSubOrganization ? (
+                  <Badge variant="sub-org">
+                    <SubOrgIcon />
+                    Sub-Organization
+                  </Badge>
+                ) : (
+                  <Badge variant="org">
+                    <OrgIcon />
                     Organization
                   </Badge>
-                </div>
+                )}
               </Tooltip>
             )}
             {isSelected && (

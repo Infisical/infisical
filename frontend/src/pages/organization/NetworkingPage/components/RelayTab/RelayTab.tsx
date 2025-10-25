@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faCopy,
   faDoorClosed,
   faEllipsisV,
@@ -37,6 +35,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionSubjects,
@@ -116,22 +115,9 @@ export const RelayTab = withPermission(
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-2 flex items-center justify-between">
-          <div className="flex grow items-center gap-2">
+          <div className="flex grow items-center gap-x-2">
             <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
-            <a
-              href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="inline-block rounded-md bg-yellow/20 px-1.5 py-0.5 text-sm font-normal text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment" />
             <div className="flex grow" />
             <Button
               variant="outline_bg"

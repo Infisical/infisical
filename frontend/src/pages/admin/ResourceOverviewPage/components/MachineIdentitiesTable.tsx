@@ -7,10 +7,10 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ServerCogIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -110,7 +111,8 @@ const IdentityPanelTable = ({
                     <Td>
                       {name}
                       {isInstanceAdmin && (
-                        <Badge variant="primary" className="ml-2">
+                        <Badge variant="info" className="ml-2">
+                          <ServerCogIcon />
                           Server Admin
                         </Badge>
                       )}

@@ -2,7 +2,8 @@ import { components, OptionProps, SingleValue } from "react-select";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { Badge, FilterableSelect } from "@app/components/v2";
+import { FilterableSelect } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { AWS_REGIONS } from "@app/helpers/appConnections";
 
 const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGIONS)[number]>) => {
@@ -10,7 +11,7 @@ const Option = ({ isSelected, children, ...props }: OptionProps<(typeof AWS_REGI
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
         <p className="truncate">{children}</p>
-        <Badge variant="success" className="mr-auto ml-1 cursor-pointer">
+        <Badge variant="neutral" className="mr-auto ml-1">
           {props.data.slug}
         </Badge>
         {isSelected && (

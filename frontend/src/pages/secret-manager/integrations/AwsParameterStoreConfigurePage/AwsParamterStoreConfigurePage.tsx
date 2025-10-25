@@ -11,7 +11,6 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import {
-  Badge,
   Button,
   Card,
   CardTitle,
@@ -25,6 +24,7 @@ import {
   TabPanel,
   Tabs
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -254,7 +254,7 @@ export const AWSParameterStoreConfigurePage = () => {
                 >
                   {awsRegions.map((awsRegion) => (
                     <SelectItem value={awsRegion.slug} key={`aws-environment-${awsRegion.slug}`}>
-                      {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
+                      {awsRegion.name} <Badge variant="neutral">{awsRegion.slug}</Badge>
                     </SelectItem>
                   ))}
                 </Select>

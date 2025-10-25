@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  faBan,
   faClipboardCheck,
   faEdit,
   faEllipsisV,
@@ -9,6 +8,7 @@ import {
   faUserGroup
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -23,7 +23,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionActions } from "@app/context/ProjectPermissionContext/types";
 import { getMemberLabel } from "@app/helpers/members";
@@ -100,6 +100,8 @@ export const ApprovalPolicyRow = ({
     });
   }, [policy, members, groups]);
 
+  const { variant, Icon } = policyDetails[policy.policyType];
+
   return (
     <>
       <Tr
@@ -116,13 +118,8 @@ export const ApprovalPolicyRow = ({
         <Td>{policy.environments.map((env) => env.name).join(", ")}</Td>
         <Td>{policy.secretPath || "*"}</Td>
         <Td>
-          <Badge
-            className={twMerge(
-              policyDetails[policy.policyType].className,
-              "flex w-min items-center gap-1.5 whitespace-nowrap"
-            )}
-          >
-            <FontAwesomeIcon icon={policyDetails[policy.policyType].icon} />
+          <Badge variant={variant}>
+            <Icon />
             <span>{policyDetails[policy.policyType].name}</span>
           </Badge>
         </Td>
@@ -196,7 +193,7 @@ export const ApprovalPolicyRow = ({
                         className={twMerge("grow border-mineshaft-600", index !== 0 && "border-r")}
                       />
                       {labels.length > 1 && (
-                        <Badge className="my-auto flex h-5 w-min min-w-5 items-center justify-center gap-1.5 bg-mineshaft-400/50 text-center whitespace-nowrap text-bunker-200">
+                        <Badge variant="neutral">
                           <span>{index + 1}</span>
                         </Badge>
                       )}
@@ -225,8 +222,8 @@ export const ApprovalPolicyRow = ({
                                   <span className="text-xs">
                                     <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
                                       <div>
-                                        <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                                          <FontAwesomeIcon icon={faBan} />
+                                        <Badge variant="neutral">
+                                          <BanIcon />
                                           Inactive
                                         </Badge>
                                       </div>

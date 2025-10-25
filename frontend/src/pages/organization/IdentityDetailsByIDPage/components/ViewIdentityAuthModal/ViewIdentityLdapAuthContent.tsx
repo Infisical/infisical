@@ -1,7 +1,8 @@
-import { faBan, faEye } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faBan } from "@fortawesome/free-solid-svg-icons";
+import { EyeIcon } from "lucide-react";
 
-import { Badge, EmptyState, Spinner, Tooltip } from "@app/components/v2";
+import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useClearIdentityLdapAuthLockouts, useGetIdentityLdapAuth } from "@app/hooks/api";
 import { IdentityLdapAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityLdapAuthForm";
 import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityContentWrapper";
@@ -72,12 +73,10 @@ export const ViewIdentityLdapAuthContent = ({
           className="max-w-xl p-2"
           content={<p className="rounded-sm bg-mineshaft-600 p-2 break-words">{data.bindPass}</p>}
         >
-          <div className="w-min">
-            <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-              <FontAwesomeIcon icon={faEye} />
-              <span>Reveal</span>
-            </Badge>
-          </div>
+          <Badge variant="neutral">
+            <EyeIcon />
+            Reveal
+          </Badge>
         </Tooltip>
       </IdentityAuthFieldDisplay>
       <IdentityAuthFieldDisplay label="Search Base / DN">
@@ -95,12 +94,10 @@ export const ViewIdentityLdapAuthContent = ({
               </p>
             }
           >
-            <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                <FontAwesomeIcon icon={faEye} />
-                <span>Reveal</span>
-              </Badge>
-            </div>
+            <Badge variant="neutral">
+              <EyeIcon />
+              Reveal
+            </Badge>
           </Tooltip>
         )}
       </IdentityAuthFieldDisplay>

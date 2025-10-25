@@ -8,7 +8,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import { useGetUserProjects } from "@app/hooks/api";
 import {
@@ -124,7 +124,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
         <Button variant="outline_bg" colorSchema="primary" className="relative">
           <FontAwesomeIcon icon={faFilterCircleXmark} />
           {activeFilterCount > 0 && (
-            <Badge className="absolute right-0 bottom-0" variant="primary">
+            <Badge className="absolute -top-2 -right-2" variant="info">
               {activeFilterCount}
             </Badge>
           )}
@@ -137,7 +137,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span>Filters</span>
-                  <Badge className="px-1.5 py-0.5" variant="primary">
+                  <Badge isSquare variant="info">
                     {activeFilterCount}
                   </Badge>
                 </div>

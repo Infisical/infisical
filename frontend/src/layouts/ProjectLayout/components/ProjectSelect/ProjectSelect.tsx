@@ -3,7 +3,6 @@ import { faStar } from "@fortawesome/free-regular-svg-icons";
 import {
   faCaretDown,
   faCheck,
-  faCube,
   faMagnifyingGlass,
   faPlus,
   faStar as faSolidStar
@@ -16,7 +15,6 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,6 +23,7 @@ import {
   Input,
   Tooltip
 } from "@app/components/v2";
+import { Badge, ProjectIcon } from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -120,11 +119,9 @@ export const ProjectSelect = () => {
           <p className="inline-block truncate text-mineshaft-200 group-hover:underline">
             {currentWorkspace?.name}
           </p>
-          <Badge variant="project" className="cursor-pointer">
-            <FontAwesomeIcon icon={faCube} />
-            <span>
-              {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
-            </span>
+          <Badge variant="project">
+            <ProjectIcon />
+            {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
           </Badge>
         </Link>
         <DropdownMenuTrigger asChild>

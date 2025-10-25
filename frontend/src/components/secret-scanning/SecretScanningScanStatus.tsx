@@ -1,22 +1,23 @@
-import { faArrowRotateForward, faCheck, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { CheckIcon, RotateCwIcon, XIcon } from "lucide-react";
 
-import { Badge, Tooltip } from "@app/components/v2";
+import { Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { SecretScanningScanStatus } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
   status: SecretScanningScanStatus;
   statusMessage?: string | null;
-  className?: string;
+
   scannedAt?: string | null;
 };
 
 export const SecretScanningScanStatusBadge = ({
   status,
   statusMessage,
-  className,
+
   scannedAt
 }: Props) => {
   if (status === SecretScanningScanStatus.Failed) {
@@ -53,11 +54,8 @@ export const SecretScanningScanStatusBadge = ({
         }
       >
         <div>
-          <Badge
-            variant="danger"
-            className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
-          >
-            <FontAwesomeIcon icon={faXmark} />
+          <Badge variant="danger">
+            <XIcon />
             Scan Error
           </Badge>
         </div>
@@ -67,26 +65,17 @@ export const SecretScanningScanStatusBadge = ({
 
   if (status === SecretScanningScanStatus.Queued || status === SecretScanningScanStatus.Scanning) {
     return (
-      <Badge
-        className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
-        variant="primary"
-      >
-        <FontAwesomeIcon icon={faArrowRotateForward} className="animate-spin" />
-        <span>Scanning</span>
+      <Badge variant="info">
+        <RotateCwIcon className="animate-spin" />
+        Scanning
       </Badge>
     );
   }
 
   return (
-    <Badge
-      variant="success"
-      className={twMerge(
-        "flex h-5 w-min items-center gap-1.5 whitespace-nowrap capitalize",
-        className
-      )}
-    >
-      <FontAwesomeIcon icon={faCheck} />
-      <span>Complete</span>
+    <Badge variant="success">
+      <CheckIcon />
+      Complete
     </Badge>
   );
 };

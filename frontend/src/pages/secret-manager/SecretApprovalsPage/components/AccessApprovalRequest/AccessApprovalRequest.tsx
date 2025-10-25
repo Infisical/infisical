@@ -2,23 +2,18 @@
 /* eslint-disable react/jsx-no-useless-fragment */
 import { useCallback, useMemo, useState } from "react";
 import {
-  faArrowUpRightFromSquare,
-  faBan,
-  faBookOpen,
   faCheck,
   faCheckCircle,
   faChevronDown,
-  faClipboardCheck,
   faLock,
   faMagnifyingGlass,
   faPlus,
   faSearch,
-  faStopwatch,
-  faUser,
-  IconDefinition
+  faUser
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
+import { BanIcon, CheckIcon, ClipboardCheckIcon, LucideIcon, TimerIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -34,7 +29,7 @@ import {
   Pagination,
   Tooltip
 } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionMemberActions,
   ProjectPermissionSub,
@@ -207,12 +202,12 @@ export const AccessApprovalRequest = ({
 
       let displayData: {
         label: string;
-        type: "primary" | "danger" | "success";
+        type: "warning" | "danger" | "success";
         tooltipContent?: string;
-        icon: IconDefinition | null;
+        icon: LucideIcon | null;
       } = {
         label: "",
-        type: "primary",
+        type: "warning",
         icon: null
       };
 
@@ -225,7 +220,7 @@ export const AccessApprovalRequest = ({
         displayData = {
           label: "Access Expired",
           type: "danger",
-          icon: faStopwatch,
+          icon: TimerIcon,
           tooltipContent: request.privilege?.temporaryAccessEndTime
             ? `Expired ${format(request.privilege.temporaryAccessEndTime, "M/d/yyyy h:mm aa")}`
             : undefined
@@ -234,27 +229,27 @@ export const AccessApprovalRequest = ({
         displayData = {
           label: "Access Granted",
           type: "success",
-          icon: faCheck,
+          icon: CheckIcon,
           tooltipContent: `Granted ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
         };
       else if (isRejectedByAnyone)
         displayData = {
           label: "Rejected",
           type: "danger",
-          icon: faBan,
+          icon: BanIcon,
           tooltipContent: `Rejected ${format(request.updatedAt, "M/d/yyyy h:mm aa")}`
         };
       else if (userReviewStatus === ApprovalStatus.APPROVED) {
         displayData = {
           label: "Pending Additional Reviews",
-          type: "primary",
-          icon: faClipboardCheck
+          type: "warning",
+          icon: ClipboardCheckIcon
         };
       } else if (!isReviewedByUser)
         displayData = {
           label: "Review Required",
-          type: "primary",
-          icon: faClipboardCheck
+          type: "warning",
+          icon: ClipboardCheckIcon
         };
 
       return {
@@ -301,22 +296,9 @@ export const AccessApprovalRequest = ({
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="flex items-start gap-1">
+            <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Access Requests</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/access-controls/access-requests"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/access-requests" />
             </div>
             <p className="text-sm text-bunker-300">
               Request and review access to secrets in sensitive environments and folders
@@ -473,6 +455,8 @@ export const AccessApprovalRequest = ({
             filteredRequests?.slice(offset, perPage * page).map((request) => {
               const details = generateRequestDetails(request);
 
+              const StatusIcon = details.displayData.icon;
+
               return (
                 <div
                   key={request.id}
@@ -486,7 +470,7 @@ export const AccessApprovalRequest = ({
                     }
                   }}
                 >
-                  <div className="flex w-full items-center justify-between">
+                  <div className="flex flex-1 items-center justify-between">
                     <div className="flex w-full flex-col justify-between">
                       <div className="mb-1 flex w-full items-center">
                         <FontAwesomeIcon
@@ -510,7 +494,7 @@ export const AccessApprovalRequest = ({
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex shrink-0 items-center gap-3">
                       {request.requestedByUserId === user.id && (
                         <div className="flex items-center gap-1.5 text-xs whitespace-nowrap text-bunker-300">
                           <FontAwesomeIcon icon={faUser} size="sm" />
@@ -518,17 +502,10 @@ export const AccessApprovalRequest = ({
                         </div>
                       )}
                       <Tooltip content={details.displayData.tooltipContent}>
-                        <div>
-                          <Badge
-                            className="flex items-center gap-1.5 whitespace-nowrap"
-                            variant={details.displayData.type}
-                          >
-                            {details.displayData.icon && (
-                              <FontAwesomeIcon icon={details.displayData.icon} />
-                            )}
-                            <span>{details.displayData.label}</span>
-                          </Badge>
-                        </div>
+                        <Badge variant={details.displayData.type}>
+                          {StatusIcon && <StatusIcon />}
+                          {details.displayData.label}
+                        </Badge>
                       </Tooltip>
                     </div>
                   </div>

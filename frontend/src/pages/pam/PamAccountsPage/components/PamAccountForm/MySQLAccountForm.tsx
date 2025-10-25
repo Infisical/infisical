@@ -1,14 +1,14 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TMySQLAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
+import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
   account?: TMySQLAccount;

@@ -1,7 +1,8 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Badge, Tab, TabList, Tabs } from "@app/components/v2";
+import { Tab, TabList, Tabs } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionSub,
   useProject,
@@ -66,7 +67,7 @@ export const SecretScanningLayout = () => {
                     <Tab value={isActive ? "selected" : ""}>
                       Findings
                       {Boolean(unresolvedFindings) && (
-                        <Badge variant="primary" className="ml-2 h-min">
+                        <Badge isSquare variant="warning" className="ml-2">
                           {unresolvedFindings}
                         </Badge>
                       )}

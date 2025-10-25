@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faArrowUpRightFromSquare, faBookOpen, faClone } from "@fortawesome/free-solid-svg-icons";
+import { faClone } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,6 +14,7 @@ import {
   Switch
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce } from "@app/hooks";
 import { useGetAccessibleSecrets } from "@app/hooks/api/dashboard";
@@ -227,23 +228,9 @@ export const ReplicateFolderFromBoard = ({
         bodyClassName="overflow-visible"
         className="max-w-2xl"
         title={
-          <div className="flex items-center gap-1 text-mineshaft-300">
+          <div className="flex items-center gap-x-2 text-mineshaft-300">
             <span>Replicate Secrets</span>
-            <a
-              target="_blank"
-              href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents"
-              className="mb-1 ml-1"
-              rel="noopener noreferrer"
-            >
-              <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1 text-[10px]"
-                />
-              </div>
-            </a>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/folder#replicating-folder-contents" />
           </div>
         }
         subTitle="Copy folder contents from other locations into this context"

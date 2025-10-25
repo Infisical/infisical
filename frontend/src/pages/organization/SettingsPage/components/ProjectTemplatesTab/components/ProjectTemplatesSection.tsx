@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects, useSubscription } from "@app/context";
 import { TProjectTemplate } from "@app/hooks/api/projectTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -33,22 +34,9 @@ export const ProjectTemplatesSection = () => {
             project setup
           </p>
           <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <div className="mb-4 flex items-start">
+            <div className="mb-4 flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
-              <a
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://infisical.com/docs/documentation/platform/project-templates"
-              >
-                <div className="mt-[0.32rem] ml-2 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/project-templates" />
               <OrgPermissionCan
                 I={OrgPermissionActions.Create}
                 a={OrgPermissionSubjects.ProjectTemplates}

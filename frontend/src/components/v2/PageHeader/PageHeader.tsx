@@ -1,11 +1,16 @@
-import { IconDefinition } from "@fortawesome/free-brands-svg-icons";
-import { faCube, faCubes, faGlobe, faServer } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { createElement } from "react";
 import { ReactNode } from "@tanstack/react-router";
+import { LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { Badge } from "@app/components/v2";
-import { BadgeProps } from "@app/components/v2/Badge/Badge";
+import {
+  Badge,
+  InstanceIcon,
+  OrgIcon,
+  ProjectIcon,
+  SubOrgIcon,
+  TBadgeProps
+} from "@app/components/v3";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 type Props = {
@@ -16,19 +21,19 @@ type Props = {
   scope: "org" | "namespace" | "instance" | ProjectType | null;
 };
 
-const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: IconDefinition }> = {
-  org: { label: "Organization", icon: faGlobe },
-  [ProjectType.SecretManager]: { label: "Project", icon: faCube },
-  [ProjectType.CertificateManager]: { label: "Project", icon: faCube },
-  [ProjectType.SSH]: { label: "Project", icon: faCube },
-  [ProjectType.KMS]: { label: "Project", icon: faCube },
-  [ProjectType.PAM]: { label: "Project", icon: faCube },
-  [ProjectType.SecretScanning]: { label: "Project", icon: faCube },
-  namespace: { label: "Sub-Organization", icon: faCubes },
-  instance: { label: "Server", icon: faServer }
+const SCOPE_NAME: Record<NonNullable<Props["scope"]>, { label: string; icon: LucideIcon }> = {
+  org: { label: "Organization", icon: OrgIcon },
+  [ProjectType.SecretManager]: { label: "Project", icon: ProjectIcon },
+  [ProjectType.CertificateManager]: { label: "Project", icon: ProjectIcon },
+  [ProjectType.SSH]: { label: "Project", icon: ProjectIcon },
+  [ProjectType.KMS]: { label: "Project", icon: ProjectIcon },
+  [ProjectType.PAM]: { label: "Project", icon: ProjectIcon },
+  [ProjectType.SecretScanning]: { label: "Project", icon: ProjectIcon },
+  namespace: { label: "Sub-Organization", icon: SubOrgIcon },
+  instance: { label: "Server", icon: InstanceIcon }
 };
 
-const SCOPE_VARIANT: Record<NonNullable<Props["scope"]>, BadgeProps["variant"]> = {
+const SCOPE_VARIANT: Record<NonNullable<Props["scope"]>, TBadgeProps["variant"]> = {
   org: "org",
   [ProjectType.SecretManager]: "project",
   [ProjectType.CertificateManager]: "project",
@@ -36,8 +41,8 @@ const SCOPE_VARIANT: Record<NonNullable<Props["scope"]>, BadgeProps["variant"]> 
   [ProjectType.KMS]: "project",
   [ProjectType.PAM]: "project",
   [ProjectType.SecretScanning]: "project",
-  namespace: "namespace",
-  instance: "instance"
+  namespace: "sub-org",
+  instance: "neutral"
 };
 
 export const PageHeader = ({ title, description, children, className, scope }: Props) => (
@@ -47,7 +52,7 @@ export const PageHeader = ({ title, description, children, className, scope }: P
         <h1 className="text-3xl font-medium text-white capitalize">{title}</h1>
         {scope && (
           <Badge variant={SCOPE_VARIANT[scope]} className="mt-1 ml-2.5">
-            <FontAwesomeIcon icon={SCOPE_NAME[scope].icon} />
+            {createElement(SCOPE_NAME[scope].icon)}
             {SCOPE_NAME[scope].label}
           </Badge>
         )}

@@ -1,6 +1,6 @@
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { AUDIT_LOG_STREAM_PROVIDER_MAP } from "@app/helpers/auditLogStreams";
 import { LogProvider } from "@app/hooks/api/auditLogStreams/enums";
 
@@ -34,20 +34,9 @@ export const AuditLogStreamHeader = ({ provider, logStreamExists, onBack }: Prop
         )}
       </div>
       <div>
-        <div className="mb-1 flex items-center text-mineshaft-300">
+        <div className="mb-1 flex items-center gap-x-2 text-mineshaft-300">
           {providerDetails.name}
-          <a
-            href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams#example-providers"
-            target="_blank"
-            className="ml-1"
-            rel="noopener noreferrer"
-          >
-            <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-px text-xs" />
-              <span>Docs</span>
-              <FontAwesomeIcon icon={faArrowUpRightFromSquare} className="mb-px ml-1 text-[10px]" />
-            </div>
-          </a>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-log-streams/audit-log-streams#example-providers" />
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">
           {logStreamExists

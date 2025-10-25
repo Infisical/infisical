@@ -3,7 +3,8 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useOrganization } from "@app/context";
 import {
   useAddExternalKms,
@@ -71,7 +72,7 @@ const GCP_REGIONS = [
 const formatOptionLabel = ({ value, label }: { value: string; label: string }) => (
   <div className="flex w-full flex-row items-center justify-between">
     <span>{label}</span>
-    <Badge variant="success">{value}</Badge>
+    <Badge variant="neutral">{value}</Badge>
   </div>
 );
 

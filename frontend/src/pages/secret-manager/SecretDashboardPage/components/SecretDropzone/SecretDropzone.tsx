@@ -1,15 +1,9 @@
 import { ChangeEvent, Dispatch, DragEvent, SetStateAction, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import {
-  faArrowRight,
-  faAsterisk,
-  faComment,
-  faKey,
-  faPlus,
-  faUpload
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight, faPlus, faUpload } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AsteriskIcon, KeyIcon, MessageSquareIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -22,7 +16,6 @@ import {
   parseYaml
 } from "@app/components/utilities/parseSecrets";
 import {
-  Badge,
   Button,
   FormLabel,
   Lottie,
@@ -31,6 +24,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
@@ -115,23 +109,23 @@ const MatrixImportModalTableRow = ({
       </td>
       <td className="whitespace-nowrap">
         <div className="flex h-full items-start justify-center">
-          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
+          <Badge isFullWidth variant="neutral">
             {mapKey === "key" && (
               <>
-                <FontAwesomeIcon icon={faKey} />
-                <span>Secret Key</span>
+                <KeyIcon />
+                Secret Key
               </>
             )}
             {mapKey === "value" && (
               <>
-                <FontAwesomeIcon icon={faAsterisk} />
-                <span>Secret Value</span>
+                <AsteriskIcon />
+                Secret Value
               </>
             )}
             {mapKey === "comment" && (
               <>
-                <FontAwesomeIcon icon={faComment} />
-                <span>Comment</span>
+                <MessageSquareIcon />
+                Comment
               </>
             )}
           </Badge>

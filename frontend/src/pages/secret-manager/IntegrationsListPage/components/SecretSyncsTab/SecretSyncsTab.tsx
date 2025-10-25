@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
@@ -7,6 +7,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretSyncModal } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Button, Spinner } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -91,22 +92,9 @@ export const SecretSyncsTab = () => {
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="flex items-start gap-1">
+            <div className="flex items-center gap-1.5">
               <p className="text-lg font-medium text-mineshaft-100">Secret Syncs</p>
-              <a
-                href="https://infisical.com/docs/integrations/secret-syncs/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/integrations/secret-syncs/overview" />
             </div>
             <p className="text-sm text-bunker-300">
               Use App Connections to sync secrets to third-party services.

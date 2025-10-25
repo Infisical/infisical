@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { components, OptionProps } from "react-select";
 import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { faGlobe } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
@@ -10,7 +9,6 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   FilterableSelect,
   FormControl,
@@ -19,6 +17,7 @@ import {
   ModalContent,
   Spinner
 } from "@app/components/v2";
+import { Badge, OrgIcon } from "@app/components/v3";
 import { useOrganization, useProject } from "@app/context";
 import {
   useAddIdentityToWorkspace,
@@ -50,9 +49,9 @@ const Option = ({
       <div className="flex flex-row items-center justify-between">
         <p className="truncate">{children}</p>
         {props.data.isManagedByRootOrg && (
-          <Badge variant="org" className="ml-auto cursor-pointer">
-            <FontAwesomeIcon icon={faGlobe} />
-            Managed by Root Org
+          <Badge variant="org" className="ml-auto">
+            <OrgIcon />
+            Organization
           </Badge>
         )}
         {isSelected && (

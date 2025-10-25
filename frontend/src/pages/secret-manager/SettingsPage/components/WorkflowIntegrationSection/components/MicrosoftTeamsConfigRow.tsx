@@ -2,11 +2,11 @@
 import { BsMicrosoftTeams } from "react-icons/bs";
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,6 +15,7 @@ import {
   Td,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useGetMicrosoftTeamsIntegrationTeams } from "@app/hooks/api";
 import {
@@ -66,30 +67,36 @@ export const MicrosoftTeamsConfigRow = ({
         {microsoftTeamsConfig.isAccessRequestNotificationEnabled &&
         !isLoadingConfig &&
         microsoftTeamsConfig.accessRequestChannels?.channelIds?.length > 0 ? (
-          <Badge>
+          <p>
             {microsoftTeamsConfig.accessRequestChannels.channelIds
               .map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
-          </Badge>
+          </p>
         ) : isLoadingConfig ? (
           <Spinner size="xs" />
         ) : (
-          <Badge variant="danger">Disabled</Badge>
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
         )}
       </Td>
       <Td>
         {microsoftTeamsConfig.isSecretRequestNotificationEnabled &&
         !isLoadingConfig &&
         microsoftTeamsConfig.secretRequestChannels?.channelIds?.length > 0 ? (
-          <Badge>
+          <p>
             {microsoftTeamsConfig.secretRequestChannels.channelIds
               .map((channel) => microsoftTeamsChannelIdToName[channel])
               .join(", ")}
-          </Badge>
+          </p>
         ) : isLoadingConfig ? (
           <Spinner size="xs" />
         ) : (
-          <Badge variant="danger">Disabled</Badge>
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
         )}
       </Td>
 
