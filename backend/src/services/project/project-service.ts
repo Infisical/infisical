@@ -303,13 +303,26 @@ export const projectServiceFactory = ({
           });
       }
 
+      const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
+
+      const existingProject = await projectDAL.findOne({
+        slug,
+        orgId: organization.id
+      });
+
+      if (existingProject) {
+        throw new BadRequestError({
+          message: `Failed to create project. A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
+        });
+      }
+
       const project = await projectDAL.create(
         {
           name: workspaceName,
           type,
           description: workspaceDescription,
           orgId: organization.id,
-          slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
+          slug,
           kmsSecretManagerKeyId: kmsKeyId,
           version: ProjectVersion.V3,
           pitVersionLimit: 10
