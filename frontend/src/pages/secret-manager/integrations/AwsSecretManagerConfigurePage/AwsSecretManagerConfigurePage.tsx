@@ -14,7 +14,6 @@ import { motion } from "framer-motion";
 import z from "zod";
 
 import {
-  Badge,
   Button,
   Card,
   CardTitle,
@@ -29,6 +28,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
@@ -332,7 +332,7 @@ export const AwsSecretManagerConfigurePage = () => {
                             className="flex w-full justify-between"
                             key={`aws-environment-${awsRegion.slug}`}
                           >
-                            {awsRegion.name} <Badge variant="success">{awsRegion.slug}</Badge>
+                            {awsRegion.name} <Badge variant="neutral">{awsRegion.slug}</Badge>
                           </SelectItem>
                         ))}
                       </Select>

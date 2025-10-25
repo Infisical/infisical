@@ -1,15 +1,11 @@
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faLink,
-  faPlus
-} from "@fortawesome/free-solid-svg-icons";
+import { faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -113,22 +109,9 @@ export const IdentitySection = withPermission(
       <div>
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex w-full items-center gap-4">
-            <div className="flex flex-1 items-center gap-1">
+            <div className="flex flex-1 items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identities</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/identities/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
             {isSubOrganization && (
               <OrgPermissionCan
@@ -181,22 +164,9 @@ export const IdentitySection = withPermission(
         {/* Identity Auth Templates Section */}
         <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identity Auth Templates</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/identities/auth-templates"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
             </div>
             <OrgPermissionCan
               I={OrgPermissionMachineIdentityAuthTemplateActions.CreateTemplates}

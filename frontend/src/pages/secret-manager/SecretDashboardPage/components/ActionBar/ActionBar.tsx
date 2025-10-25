@@ -33,7 +33,6 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretRotationV2Modal } from "@app/components/secret-rotations-v2";
 import {
-  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -51,6 +50,7 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
@@ -825,7 +825,9 @@ export const ActionBar = ({
                   >
                     <div className="flex w-full justify-between">
                       <span>Tags</span>
-                      {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
+                      {Boolean(filteredTags) && (
+                        <Badge variant="info">{filteredTags} Applied</Badge>
+                      )}
                     </div>
                   </DropdownSubMenuTrigger>
                   <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
@@ -1281,7 +1283,7 @@ export const ActionBar = ({
             subscription.slug === null
               ? "You can perform this action under an Enterprise license"
               : `You can perform this action if you switch to Infisical's ${
-                  popUp.upgradePlan.data.isEnterpriseFeature ? "Enterprise" : "Pro"
+                  popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"
                 } plan`
           }
         />

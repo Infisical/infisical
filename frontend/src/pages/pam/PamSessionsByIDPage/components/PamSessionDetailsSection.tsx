@@ -1,7 +1,9 @@
-import { faBoxOpen, faCheck, faCopy, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { PackageOpenIcon } from "lucide-react";
 
-import { Badge, IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useTimedReset } from "@app/hooks";
 import { PAM_RESOURCE_TYPE_MAP, TPamSession } from "@app/hooks/api/pam";
 
@@ -76,8 +78,8 @@ export const PamSessionDetailsSection = ({
               className="size-4"
             />
             <p>{accountName}</p>
-            <Badge className="flex h-5 w-min items-center gap-1.5 bg-yellow/20 whitespace-nowrap text-yellow">
-              <FontAwesomeIcon icon={faBoxOpen} />
+            <Badge variant="neutral">
+              <PackageOpenIcon />
               {resourceName}
             </Badge>
           </div>

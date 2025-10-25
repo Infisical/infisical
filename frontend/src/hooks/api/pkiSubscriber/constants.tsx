@@ -15,6 +15,6 @@ export const getPkiSubscriberStatusBadgeVariant = (status: PkiSubscriberStatus) 
     case PkiSubscriberStatus.DISABLED:
       return "danger";
     default:
-      return "primary";
+      return "warning";
   }
 };

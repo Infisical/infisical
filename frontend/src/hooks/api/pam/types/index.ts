@@ -1,9 +1,9 @@
 import { PamResourceType, PamSessionStatus } from "../enums";
-import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
+import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 
-export * from "./postgres-resource";
 export * from "./mysql-resource";
+export * from "./postgres-resource";
 
 export type TPamResource = TPostgresResource | TMySQLResource;
 
