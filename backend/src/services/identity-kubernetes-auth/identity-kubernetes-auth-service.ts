@@ -719,7 +719,8 @@ export const identityKubernetesAuthServiceFactory = ({
       );
     }
 
-    const shouldUpdateGatewayId = Boolean(gatewayId);
+    // Strict check to see if gateway ID is undefined. It should update the gateway ID to null if its strictly set to null.
+    const shouldUpdateGatewayId = Boolean(gatewayId !== undefined);
     const gatewayIdValue = isGatewayV1 ? gatewayId : null;
     const gatewayV2IdValue = isGatewayV1 ? null : gatewayId;
 

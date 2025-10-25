@@ -21,6 +21,7 @@ fullnameOverride: ""
 serviceAccount:
   create: true
   automount: true
+  createAsAuthDelegator: true
   annotations: {}
   name: ""
 
