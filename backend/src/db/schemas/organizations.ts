@@ -40,7 +40,8 @@ export const OrganizationsSchema = z.object({
   googleSsoAuthEnforced: z.boolean().default(false),
   googleSsoAuthLastUsed: z.date().nullable().optional(),
   parentOrgId: z.string().uuid().nullable().optional(),
-  rootOrgId: z.string().uuid().nullable().optional()
+  rootOrgId: z.string().uuid().nullable().optional(),
+  blockDuplicateSecretSyncDestinations: z.boolean().default(false)
 });
 
 export type TOrganizations = z.infer<typeof OrganizationsSchema>;

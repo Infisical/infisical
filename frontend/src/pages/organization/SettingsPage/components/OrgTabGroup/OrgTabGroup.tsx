@@ -10,6 +10,7 @@ import { ExternalMigrationsTab } from "../ExternalMigrationsTab";
 import { KmipTab } from "../KmipTab/OrgKmipTab";
 import { OrgEncryptionTab } from "../OrgEncryptionTab";
 import { OrgGeneralTab } from "../OrgGeneralTab";
+import { OrgProductSettingsTab } from "../OrgProductSettingsTab";
 import { OrgProvisioningTab } from "../OrgProvisioningTab";
 import { OrgSecurityTab } from "../OrgSecurityTab";
 import { OrgSsoTab } from "../OrgSsoTab";
@@ -63,7 +64,12 @@ export const OrgTabGroup = () => {
       key: "project-templates",
       component: ProjectTemplatesTab
     },
-    { name: "KMIP", key: "kmip", component: KmipTab }
+    { name: "KMIP", key: "kmip", component: KmipTab },
+    {
+      name: "Product Enforcements",
+      key: "product-enforcements",
+      component: OrgProductSettingsTab
+    }
   ];
 
   const [selectedTab, setSelectedTab] = useState(search.selectedTab || tabs[0].key);

@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Badge } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync, useDuplicateDestinationCheck } from "@app/hooks/api/secretSyncs";
 
@@ -51,6 +51,7 @@ import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
 
   let DestinationFieldsComponent: ReactNode;
   let AdditionalSyncOptionsFieldsComponent: ReactNode;
@@ -193,18 +194,50 @@ export const SecretSyncReviewFields = () => {
           {isChecking && <span className="text-xs text-mineshaft-400">Checking...</span>}
         </div>
         {hasDuplicate && (
-          <div className="mb-2 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
-            <div className="flex text-sm text-yellow-100">
-              <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2 text-yellow-600" />
+          <div
+            className={`mb-2 flex items-start rounded-md border px-3 py-2 ${
+              currentOrg?.blockDuplicateSecretSyncDestinations
+                ? "border-red-600 bg-red-900/20"
+                : "border-yellow-600 bg-yellow-900/20"
+            }`}
+          >
+            <div
+              className={`flex text-sm ${
+                currentOrg?.blockDuplicateSecretSyncDestinations
+                  ? "text-red-100"
+                  : "text-yellow-100"
+              }`}
+            >
+              <FontAwesomeIcon
+                icon={faWarning}
+                className={`mt-1 mr-2 ${
+                  currentOrg?.blockDuplicateSecretSyncDestinations
+                    ? "text-red-600"
+                    : "text-yellow-600"
+                }`}
+              />
               <div>
                 <p>
-                  Another secret sync in your organization is already configured with the same
-                  destination. This may lead to conflicts or unexpected behavior.
+                  {currentOrg?.blockDuplicateSecretSyncDestinations
+                    ? "Another secret sync in your organization is already configured with the same destination. This organization has blocking duplicate destinations enabled."
+                    : "Another secret sync in your organization is already configured with the same destination. This may lead to conflicts or unexpected behavior."}
                 </p>
                 {duplicateProjectId && (
-                  <p className="mt-1 text-xs text-yellow-200">
+                  <p
+                    className={`mt-1 text-xs ${
+                      currentOrg?.blockDuplicateSecretSyncDestinations
+                        ? "text-red-200"
+                        : "text-yellow-200"
+                    }`}
+                  >
                     Duplicate found in project ID:{" "}
-                    <code className="rounded-sm bg-yellow-800/50 px-1 py-0.5">
+                    <code
+                      className={`rounded-sm px-1 py-0.5 ${
+                        currentOrg?.blockDuplicateSecretSyncDestinations
+                          ? "bg-red-800/50"
+                          : "bg-yellow-800/50"
+                      }`}
+                    >
                       {duplicateProjectId}
                     </code>
                   </p>

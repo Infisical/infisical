@@ -323,7 +323,11 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
           .min(1, "Max Shared Secret view count cannot be lower than 1")
           .max(1000, "Max Shared Secret view count cannot exceed 1000")
           .nullable()
+          .optional(),
+        blockDuplicateSecretSyncDestinations: z
+          .boolean()
           .optional()
+          .describe("Block duplicate secret sync destinations across the organization")
       }),
       response: {
         200: z.object({
