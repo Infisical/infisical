@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Controller, FieldValues, useFieldArray, useForm } from "react-hook-form";
-import { faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faQuestionCircle, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -21,15 +22,21 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { useOrgPermission } from "@app/context";
 import { OrgPermissionSubjects } from "@app/context/OrgPermissionContext";
 import { OrgGatewayPermissionActions } from "@app/context/OrgPermissionContext/types";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import { gatewaysQueryKeys, useCreateDynamicSecret } from "@app/hooks/api";
 import {
   DynamicSecretProviders,
   KubernetesDynamicSecretCredentialType
 } from "@app/hooks/api/dynamicSecret/types";
+import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
+import { VaultKubernetesRole } from "@app/hooks/api/migration/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { slugSchema } from "@app/lib/schemas";
+
+import { VaultKubernetesImportModal } from "./VaultKubernetesImportModal";
 
 enum RoleType {
   ClusterRole = "cluster-role",
@@ -162,11 +169,14 @@ export const KubernetesInputForm = ({
   environments,
   isSingleEnvironmentMode
 }: Props) => {
+  const [isVaultImportModalOpen, setIsVaultImportModalOpen] = useState(false);
+
   const {
     control,
     formState: { isSubmitting },
     handleSubmit,
-    watch
+    watch,
+    setValue
   } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -186,17 +196,87 @@ export const KubernetesInputForm = ({
     }
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "provider.audiences"
   });
 
   const createDynamicSecret = useCreateDynamicSecret();
   const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { hasOrgRole } = useOrgPermission();
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const sslEnabled = watch("provider.sslEnabled");
   const credentialType = watch("provider.credentialType");
   const authMethod = watch("provider.authMethod");
+
+  const handleVaultImport = (role: VaultKubernetesRole) => {
+    try {
+      setValue("name", role.name);
+
+      setValue("provider.url", role.config.kubernetes_host);
+
+      // Set CA certificate if available
+      if (role.config.kubernetes_ca_cert) {
+        setValue("provider.ca", role.config.kubernetes_ca_cert);
+        setValue("provider.sslEnabled", true);
+      }
+
+      // Determine credential type based on role configuration
+      if (role.service_account_name) {
+        // Static credential type
+        setValue("provider.credentialType", KubernetesDynamicSecretCredentialType.Static);
+        setValue("provider.serviceAccountName", role.service_account_name);
+
+        // Set namespace (single namespace for static)
+        if (role.allowed_kubernetes_namespaces && role.allowed_kubernetes_namespaces.length > 0) {
+          setValue("provider.namespace", role.allowed_kubernetes_namespaces[0]);
+        }
+      } else if (role.kubernetes_role_name) {
+        // Dynamic credential type
+        setValue("provider.credentialType", KubernetesDynamicSecretCredentialType.Dynamic);
+        setValue("provider.role", role.kubernetes_role_name);
+
+        // Set role type
+        const roleType =
+          role.kubernetes_role_type === "ClusterRole" ? RoleType.ClusterRole : RoleType.Role;
+        setValue("provider.roleType", roleType);
+
+        // Set allowed namespaces (comma-separated for dynamic)
+        if (role.allowed_kubernetes_namespaces && role.allowed_kubernetes_namespaces.length > 0) {
+          setValue("provider.namespace", role.allowed_kubernetes_namespaces.join(", "));
+        }
+      }
+
+      // Set TTLs if available
+      if (role.token_default_ttl) {
+        const defaultTTL = `${role.token_default_ttl}s`;
+        setValue("defaultTTL", defaultTTL);
+      }
+
+      if (role.token_max_ttl) {
+        const maxTTL = `${role.token_max_ttl}s`;
+        setValue("maxTTL", maxTTL);
+      }
+
+      // Set audiences if available
+      if (role.token_default_audiences && role.token_default_audiences.length > 0) {
+        replace(role.token_default_audiences);
+      }
+
+      createNotification({
+        type: "info",
+        text: "Configuration loaded successfully from HashiCorp Vault"
+      });
+    } catch {
+      createNotification({
+        type: "error",
+        text: "Failed to load configuration from HashiCorp Vault"
+      });
+    }
+  };
 
   const handleCreateDynamicSecret = async (formData: TForm) => {
     const { provider, usernameTemplate, ...rest } = formData;
@@ -235,6 +315,39 @@ export const KubernetesInputForm = ({
   return (
     <form onSubmit={handleSubmit(handleCreateDynamicSecret)} autoComplete="off">
       <div>
+        {hasVaultConnection && (
+          <div className="mb-4 flex items-center justify-between rounded-md border border-primary-400/30 bg-primary/10 px-3 py-2.5">
+            <div className="flex items-center gap-2 text-sm">
+              <FontAwesomeIcon icon={faInfoCircle} className="text-primary" />
+              <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
+            </div>
+            <Tooltip
+              content={
+                !isOrgAdmin
+                  ? "Only organization admins can import configurations from HashiCorp Vault"
+                  : undefined
+              }
+            >
+              <Button
+                variant="outline_bg"
+                size="xs"
+                type="button"
+                onClick={() => setIsVaultImportModalOpen(true)}
+                isDisabled={!isOrgAdmin}
+                leftIcon={
+                  <img
+                    src="/images/integrations/Vault.png"
+                    alt="HashiCorp Vault"
+                    className="h-4 w-4"
+                  />
+                }
+              >
+                Load from Vault
+              </Button>
+            </Tooltip>
+          </div>
+        )}
+
         <div className="flex items-center space-x-2">
           <div className="grow">
             <Controller
@@ -286,8 +399,8 @@ export const KubernetesInputForm = ({
           </div>
         </div>
         <div>
-          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1 font-medium text-mineshaft-200">
-            Configuration
+          <div className="mt-4 mb-4 border-b border-mineshaft-500 pb-2 pl-1">
+            <h3 className="font-medium text-mineshaft-200">Configuration</h3>
           </div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
@@ -654,6 +767,11 @@ export const KubernetesInputForm = ({
           Cancel
         </Button>
       </div>
+      <VaultKubernetesImportModal
+        isOpen={isVaultImportModalOpen}
+        onOpenChange={setIsVaultImportModalOpen}
+        onImport={handleVaultImport}
+      />
     </form>
   );
 };

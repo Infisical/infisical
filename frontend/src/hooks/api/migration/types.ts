@@ -49,3 +49,24 @@ export type VaultKubernetesAuthRole = {
     disable_local_ca_jwt?: boolean;
   };
 };
+
+export type VaultKubernetesRole = {
+  name: string;
+  mountPath: string;
+  allowed_kubernetes_namespaces?: string[];
+  allowed_kubernetes_namespace_selector?: string;
+  token_max_ttl?: number;
+  token_default_ttl?: number;
+  token_default_audiences?: string[];
+  service_account_name?: string;
+  kubernetes_role_name?: string;
+  kubernetes_role_type?: string;
+  generated_role_rules?: string;
+  name_template?: string;
+  extra_annotations?: Record<string, string>;
+  extra_labels?: Record<string, string>;
+  config: {
+    kubernetes_host: string;
+    kubernetes_ca_cert?: string;
+  };
+};

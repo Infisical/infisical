@@ -26,6 +26,12 @@ Infisical provides two approaches for migrating from HashiCorp Vault.
 
 This migration approach lets you set up a connection to your Vault instance once, then import specific resources as needed throughout Infisical.
 
+<Warning>
+  **Organization Admin Access Required:** All in-platform migration features
+  (importing secrets, Kubernetes configurations, and policies from Vault) are
+  only accessible to organization admins.
+</Warning>
+
 ### Step 1: Set Up Your Vault Connection
 
 <Steps>
@@ -82,6 +88,19 @@ This migration approach lets you set up a connection to your Vault instance once
     }
 
     path "auth/+/role/*" {
+      capabilities = ["read"]
+    }
+
+    # Kubernetes secrets engine - for reading secrets engine configuration and roles
+    path "+/config" {
+      capabilities = ["read"]
+    }
+
+    path "+/roles" {
+      capabilities = ["list"]
+    }
+
+    path "+/roles/*" {
       capabilities = ["read"]
     }
     ```
@@ -158,6 +177,34 @@ The authentication settings (service accounts, TTL, policies, etc.) will be auto
 <Note>
   Sensitive values like service account JWTs cannot be retrieved from Vault and
   must be manually provided in the form after importing the configuration.
+</Note>
+
+#### Import Kubernetes Dynamic Secret Configurations
+
+When creating a Kubernetes dynamic secret, you can import the configuration from a Vault Kubernetes secrets engine role:
+
+1. Navigate to your project and select an environment
+2. Click **"+ Add Secret"** dropdown and choose **"Dynamic Secret"**
+3. Select **Kubernetes** as the provider
+4. Click **"Load from Vault"** at the top of the form
+
+   ![Load Kubernetes Dynamic Secret from Vault](/images/platform/external-migrations/vault-in-platform/import-vault-kubernetes-role-modal.png)
+
+5. Select your Vault namespace, Kubernetes secrets engine mount, and role
+6. Click **"Load Configuration"**
+
+The form will be automatically populated with the role's configuration including:
+
+- Cluster URL and CA certificate
+- Credential type (Static or Dynamic)
+- Service account name or Kubernetes role settings
+- Allowed namespaces
+- Token TTL values
+- Token audiences
+
+<Note>
+  Sensitive values like cluster tokens cannot be retrieved from Vault and must
+  be manually provided in the form after loading the configuration.
 </Note>
 
 #### Import and Translate Access Control Policies
