@@ -40,7 +40,7 @@ type TSecretApprovalPolicyServiceFactoryDep = {
   secretApprovalPolicyDAL: TSecretApprovalPolicyDALFactory;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne" | "find">;
   userDAL: Pick<TUserDALFactory, "find">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
   secretApprovalPolicyApproverDAL: TSecretApprovalPolicyApproverDALFactory;
   secretApprovalPolicyBypasserDAL: TSecretApprovalPolicyBypasserDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
@@ -62,12 +62,11 @@ export const secretApprovalPolicyServiceFactory = ({
   licenseService,
   secretApprovalRequestDAL
 }: TSecretApprovalPolicyServiceFactoryDep) => {
-  const verifyProjectUserMembership = async (userIds: string[], projectId: string) => {
+  const verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     if (userIds.length === 0) return;
-    const projectMemberships = await projectMembershipDAL.find({
-      $in: { userId: userIds },
-      projectId
-    });
+    const projectMemberships = (await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, userIds)).filter(
+      (v) => v.projectId === projectId
+    );
 
     if (projectMemberships.length !== userIds.length) {
       const projectMemberUserIds = new Set(projectMemberships.map((member) => member.userId));
@@ -253,7 +252,7 @@ export const secretApprovalPolicyServiceFactory = ({
         userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
       }
 
-      await verifyProjectUserMembership(userApproverIds, projectId);
+      await verifyProjectUserMembership(userApproverIds, actorOrgId, projectId);
 
       await secretApprovalPolicyApproverDAL.insertMany(
         userApproverIds.map((approverUserId) => ({
@@ -447,7 +446,7 @@ export const secretApprovalPolicyServiceFactory = ({
           userApproverIds = userApproverIds.concat(approverUsers.map((user) => user.id));
         }
 
-        await verifyProjectUserMembership(userApproverIds, secretApprovalPolicy.projectId);
+        await verifyProjectUserMembership(userApproverIds, actorOrgId, secretApprovalPolicy.projectId);
 
         await secretApprovalPolicyApproverDAL.insertMany(
           userApproverIds.map((approverUserId) => ({
