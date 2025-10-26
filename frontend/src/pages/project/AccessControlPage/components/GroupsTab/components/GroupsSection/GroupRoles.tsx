@@ -269,7 +269,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
   return (
     <form onSubmit={handleSubmit(handleRoleUpdate)} id="role-update-form">
-      <div className="thin-scrollbar max-h-80 space-y-4 overflow-y-auto">
+      <div className="max-h-80 thin-scrollbar space-y-4 overflow-y-auto">
         {projectRoles
           ?.filter(
             ({ name, slug }) =>
@@ -281,7 +281,7 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
 
             return (
               <div key={id} className="flex items-center space-x-4">
-                <div className="flex-grow">
+                <div className="grow">
                   <Controller
                     control={control}
                     defaultValue={Boolean(userProjectRoleDetails?.id)}

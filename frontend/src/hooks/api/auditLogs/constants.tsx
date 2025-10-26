@@ -1,3 +1,4 @@
+import { ProjectType } from "../projects/types";
 import { EventType, UserAgentType } from "./enums";
 
 export const secretEvents: EventType[] = [
@@ -42,6 +43,8 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET]: "Revoke universal auth client secret",
   [EventType.CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS]: "Clear universal auth lockouts",
   [EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS]: "Get universal auth client secrets",
+  [EventType.GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID]:
+    "Get universal auth client secret by id",
   [EventType.CREATE_ENVIRONMENT]: "Create environment",
   [EventType.UPDATE_ENVIRONMENT]: "Update environment",
   [EventType.DELETE_ENVIRONMENT]: "Delete environment",
@@ -246,7 +249,26 @@ export const eventToNameMap: { [K in EventType]: string } = {
 
   [EventType.CREATE_ORG_ROLE]: "Create Org Role",
   [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
-  [EventType.DELETE_ORG_ROLE]: "Delete Org Role"
+  [EventType.DELETE_ORG_ROLE]: "Delete Org Role",
+
+  [EventType.PAM_SESSION_START]: "PAM Session Start",
+  [EventType.PAM_SESSION_LOGS_UPDATE]: "PAM Session Logs Update",
+  [EventType.PAM_SESSION_END]: "PAM Session End",
+  [EventType.PAM_SESSION_GET]: "PAM Session Get",
+  [EventType.PAM_SESSION_LIST]: "PAM Session List",
+  [EventType.PAM_FOLDER_CREATE]: "PAM Folder Create",
+  [EventType.PAM_FOLDER_UPDATE]: "PAM Folder Update",
+  [EventType.PAM_FOLDER_DELETE]: "PAM Folder Delete",
+  [EventType.PAM_ACCOUNT_LIST]: "PAM Account List",
+  [EventType.PAM_ACCOUNT_ACCESS]: "PAM Account Access",
+  [EventType.PAM_ACCOUNT_CREATE]: "PAM Account Create",
+  [EventType.PAM_ACCOUNT_UPDATE]: "PAM Account Update",
+  [EventType.PAM_ACCOUNT_DELETE]: "PAM Account Delete",
+  [EventType.PAM_RESOURCE_LIST]: "PAM Resource List",
+  [EventType.PAM_RESOURCE_GET]: "PAM Resource Get",
+  [EventType.PAM_RESOURCE_CREATE]: "PAM Resource Create",
+  [EventType.PAM_RESOURCE_UPDATE]: "PAM Resource Update",
+  [EventType.PAM_RESOURCE_DELETE]: "PAM Resource Delete"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
@@ -257,4 +279,36 @@ export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {
   [UserAgentType.NODE_SDK]: "InfisicalNodeSDK",
   [UserAgentType.PYTHON_SDK]: "InfisicalPythonSDK",
   [UserAgentType.OTHER]: "Other"
+};
+
+const sharedProjectEvents = [
+  EventType.ADD_PROJECT_MEMBER,
+  EventType.REMOVE_PROJECT_MEMBER,
+  EventType.CREATE_PROJECT_ROLE,
+  EventType.UPDATE_PROJECT_ROLE,
+  EventType.DELETE_PROJECT_ROLE
+];
+
+export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
+  [ProjectType.PAM]: [
+    ...sharedProjectEvents,
+    EventType.PAM_SESSION_START,
+    EventType.PAM_SESSION_LOGS_UPDATE,
+    EventType.PAM_SESSION_END,
+    EventType.PAM_SESSION_GET,
+    EventType.PAM_SESSION_LIST,
+    EventType.PAM_FOLDER_CREATE,
+    EventType.PAM_FOLDER_UPDATE,
+    EventType.PAM_FOLDER_DELETE,
+    EventType.PAM_ACCOUNT_LIST,
+    EventType.PAM_ACCOUNT_ACCESS,
+    EventType.PAM_ACCOUNT_CREATE,
+    EventType.PAM_ACCOUNT_UPDATE,
+    EventType.PAM_ACCOUNT_DELETE,
+    EventType.PAM_RESOURCE_LIST,
+    EventType.PAM_RESOURCE_GET,
+    EventType.PAM_RESOURCE_CREATE,
+    EventType.PAM_RESOURCE_UPDATE,
+    EventType.PAM_RESOURCE_DELETE
+  ]
 };

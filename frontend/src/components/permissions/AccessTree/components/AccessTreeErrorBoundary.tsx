@@ -55,13 +55,13 @@ const ErrorDisplay = ({
         </p>
       </div>
       <div className="relative flex flex-1 flex-col overflow-hidden">
-        <pre className="thin-scrollbar w-full flex-1 overflow-y-auto whitespace-pre-wrap rounded bg-mineshaft-700 p-2 text-xs text-mineshaft-100">
+        <pre className="thin-scrollbar w-full flex-1 overflow-y-auto rounded-sm bg-mineshaft-700 p-2 text-xs whitespace-pre-wrap text-mineshaft-100">
           {display}
         </pre>
         <IconButton
           variant="plain"
           colorSchema="secondary"
-          className="absolute right-4 top-2"
+          className="absolute top-2 right-4"
           ariaLabel="Copy secret value"
           onClick={copyToClipboard}
         >

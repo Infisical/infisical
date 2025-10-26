@@ -1,3 +1,14 @@
+## 1.7.2 (October 20, 2025)
+Changes:
+* Updated the default `infisical.image.tag` value to `v0.151.0`.
+* `autoDatabaseSchemaMigration` has been fully removed as all newer versions of Infisical automatically run migrations as apart of the startup process.
+
+## 1.7.1 (October 10, 2025)
+
+Changes:
+* Fixed using `extraVolumes` and `extraVolumeMounts` for when Infisical auto migration enabled
+    * Previously the custom volumes and custom volume mounts would only be added to the infisical core pods, but not the migration pod.
+
 ## 1.7.0 (September 30, 2025)
 
 Changes:

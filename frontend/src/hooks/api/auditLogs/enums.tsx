@@ -48,6 +48,7 @@ export enum EventType {
   REVOKE_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET = "revoke-identity-universal-auth-client-secret",
   CLEAR_IDENTITY_UNIVERSAL_AUTH_LOCKOUTS = "clear-identity-universal-auth-lockouts",
   GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRETS = "get-identity-universal-auth-client-secret",
+  GET_IDENTITY_UNIVERSAL_AUTH_CLIENT_SECRET_BY_ID = "get-identity-universal-auth-client-secret-by-id",
 
   LOGIN_IDENTITY_LDAP_AUTH = "login-identity-ldap-auth",
   ADD_IDENTITY_LDAP_AUTH = "add-identity-ldap-auth",
@@ -240,5 +241,24 @@ export enum EventType {
 
   CREATE_ORG_ROLE = "create-org-role",
   UPDATE_ORG_ROLE = "update-org-role",
-  DELETE_ORG_ROLE = "delete-org-role"
+  DELETE_ORG_ROLE = "delete-org-role",
+
+  PAM_SESSION_START = "pam-session-start",
+  PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
+  PAM_SESSION_END = "pam-session-end",
+  PAM_SESSION_GET = "pam-session-get",
+  PAM_SESSION_LIST = "pam-session-list",
+  PAM_FOLDER_CREATE = "pam-folder-create",
+  PAM_FOLDER_UPDATE = "pam-folder-update",
+  PAM_FOLDER_DELETE = "pam-folder-delete",
+  PAM_ACCOUNT_LIST = "pam-account-list",
+  PAM_ACCOUNT_ACCESS = "pam-account-access",
+  PAM_ACCOUNT_CREATE = "pam-account-create",
+  PAM_ACCOUNT_UPDATE = "pam-account-update",
+  PAM_ACCOUNT_DELETE = "pam-account-delete",
+  PAM_RESOURCE_LIST = "pam-resource-list",
+  PAM_RESOURCE_GET = "pam-resource-get",
+  PAM_RESOURCE_CREATE = "pam-resource-create",
+  PAM_RESOURCE_UPDATE = "pam-resource-update",
+  PAM_RESOURCE_DELETE = "pam-resource-delete"
 }

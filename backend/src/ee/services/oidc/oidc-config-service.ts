@@ -2,7 +2,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
-import { OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
 import { TOidcConfigsUpdate } from "@app/db/schemas/oidc-configs";
 import { EventType, TAuditLogServiceFactory } from "@app/ee/services/audit-log/audit-log-types";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
@@ -19,12 +19,12 @@ import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -62,11 +62,12 @@ type TOidcConfigServiceFactoryDep = {
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getUserOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   oidcConfigDAL: Pick<TOidcConfigDALFactory, "findOne" | "update" | "create">;
   groupDAL: Pick<TGroupDALFactory, "findByOrgId">;
   userGroupMembershipDAL: Pick<
@@ -78,7 +79,6 @@ type TOidcConfigServiceFactoryDep = {
     | "delete"
     | "filterProjectsByUserMembership"
   >;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -90,7 +90,6 @@ export type TOidcConfigServiceFactory = ReturnType<typeof oidcConfigServiceFacto
 
 export const oidcConfigServiceFactory = ({
   orgDAL,
-  orgMembershipDAL,
   userDAL,
   userAliasDAL,
   licenseService,
@@ -100,7 +99,8 @@ export const oidcConfigServiceFactory = ({
   oidcConfigDAL,
   userGroupMembershipDAL,
   groupDAL,
-  groupProjectDAL,
+  membershipGroupDAL,
+  membershipRoleDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
@@ -118,13 +118,14 @@ export const oidcConfigServiceFactory = ({
     }
 
     if (dto.type === "external") {
-      const { permission } = await permissionService.getOrgPermission(
-        dto.actor,
-        dto.actorId,
-        dto.organizationId,
-        dto.actorAuthMethod,
-        dto.actorOrgId
-      );
+      const { permission } = await permissionService.getOrgPermission({
+        actorId: dto.actorId,
+        actor: dto.actor,
+        orgId: dto.organizationId,
+        actorOrgId: dto.actorOrgId,
+        actorAuthMethod: dto.actorAuthMethod,
+        scope: OrganizationActionScope.ParentOrganization
+      });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Sso);
     }
 
@@ -196,23 +197,30 @@ export const oidcConfigServiceFactory = ({
         const foundUser = await userDAL.findById(userAlias.userId, tx);
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: foundUser.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          await orgMembershipDAL.create(
+          const membership = await orgDAL.createMembership(
             {
-              userId: userAlias.userId,
-              inviteEmail: email,
-              orgId,
-              role,
-              roleId,
-              status: foundUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
+              actorUserId: userAlias.userId,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
+              status: OrgMembershipStatus.Accepted,
               isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -288,8 +296,9 @@ export const oidcConfigServiceFactory = ({
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
@@ -299,15 +308,22 @@ export const oidcConfigServiceFactory = ({
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          await orgMembershipDAL.create(
+          const membership = await orgDAL.createMembership(
             {
-              userId: newUser.id,
-              inviteEmail: email,
-              orgId,
-              role,
-              roleId,
+              actorUserId: newUser.id,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
               status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
-              isActive: true
+              isActive: true,
+              inviteEmail: email.toLowerCase()
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -341,7 +357,7 @@ export const oidcConfigServiceFactory = ({
           userDAL,
           userGroupMembershipDAL,
           orgDAL,
-          groupProjectDAL,
+          membershipGroupDAL,
           projectKeyDAL,
           projectDAL,
           projectBotDAL
@@ -378,7 +394,7 @@ export const oidcConfigServiceFactory = ({
           group,
           userDAL,
           userGroupMembershipDAL,
-          groupProjectDAL,
+          membershipGroupDAL,
           projectKeyDAL
         });
       }
@@ -493,13 +509,14 @@ export const oidcConfigServiceFactory = ({
           "Failed to update OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
+    const { permission } = await permissionService.getOrgPermission({
       actorId,
-      org.id,
+      actor,
+      orgId: org.id,
+      actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.ParentOrganization
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
@@ -587,13 +604,14 @@ export const oidcConfigServiceFactory = ({
           "Failed to create OIDC SSO configuration due to plan restriction. Upgrade plan to update SSO configuration."
       });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor,
+    const { permission } = await permissionService.getOrgPermission({
       actorId,
-      org.id,
+      actor,
+      orgId: org.id,
+      actorOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      scope: OrganizationActionScope.ParentOrganization
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Sso);
 
     if (org.googleSsoAuthEnforced && isActive) {
@@ -749,7 +767,14 @@ export const oidcConfigServiceFactory = ({
   };
 
   const isOidcManageGroupMembershipsEnabled = async (orgId: string, actor: OrgServiceActor) => {
-    await permissionService.getUserOrgPermission(actor.id, orgId, actor.authMethod, actor.orgId);
+    await permissionService.getOrgPermission({
+      actor: ActorType.USER,
+      actorId: actor.id,
+      orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     const oidcConfig = await oidcConfigDAL.findOne({
       orgId,

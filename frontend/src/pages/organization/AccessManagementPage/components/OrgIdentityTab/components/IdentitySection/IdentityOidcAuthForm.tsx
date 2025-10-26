@@ -364,7 +364,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Claims" : undefined}
                       icon={
                         index === 0 ? (
@@ -394,7 +394,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -502,7 +502,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Token Claim Mapping" : undefined}
                       icon={
                         index === 0 ? (
@@ -543,7 +543,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       isError={Boolean(error)}
                       errorText={error?.message}
                     >
@@ -593,7 +593,7 @@ export const IdentityOidcAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}

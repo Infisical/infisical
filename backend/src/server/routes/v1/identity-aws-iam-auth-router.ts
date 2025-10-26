@@ -23,7 +23,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.AwsAuth],
-      description: "Login with AWS Auth",
+      description: "Login with AWS Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(AWS_AUTH.LOGIN.identityId),
         iamHttpRequestMethod: z.string().default("POST").describe(AWS_AUTH.LOGIN.iamHttpRequestMethod),
@@ -40,12 +40,12 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityAwsAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityAwsAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityAwsAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_AWS_AUTH,
           metadata: {
@@ -75,7 +75,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.AwsAuth],
-      description: "Attach AWS Auth configuration onto identity",
+      description: "Attach AWS Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -171,7 +171,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.AwsAuth],
-      description: "Update AWS Auth configuration on identity",
+      description: "Update AWS Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -255,7 +255,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.AwsAuth],
-      description: "Retrieve AWS Auth configuration on identity",
+      description: "Retrieve AWS Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -303,7 +303,7 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.AwsAuth],
-      description: "Delete AWS Auth configuration on identity",
+      description: "Delete AWS Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

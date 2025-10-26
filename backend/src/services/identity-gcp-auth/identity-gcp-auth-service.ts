@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -10,13 +10,21 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityGcpAuthDALFactory } from "./identity-gcp-auth-dal";
 import { validateIamIdentity, validateIdTokenIdentity } from "./identity-gcp-auth-fns";
@@ -30,21 +38,25 @@ import {
 } from "./identity-gcp-auth-types";
 
 type TIdentityGcpAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityGcpAuthDAL: Pick<TIdentityGcpAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
 
 export const identityGcpAuthServiceFactory = ({
+  identityDAL,
   identityGcpAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   identityAccessTokenDAL,
   permissionService,
-  licenseService
+  licenseService,
+  orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
@@ -52,10 +64,8 @@ export const identityGcpAuthServiceFactory = ({
       throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityGcpAuth.identityId });
-    if (!identityMembershipOrg) {
-      throw new UnauthorizedError({ message: "Identity does not belong to any organization" });
-    }
+    const identity = await identityDAL.findById(identityGcpAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     let gcpIdentityDetails: TGcpIdentityDetails;
     switch (identityGcpAuth.type) {
@@ -119,8 +129,8 @@ export const identityGcpAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
           lastLoginTime: new Date()
@@ -158,7 +168,7 @@ export const identityGcpAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityGcpAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityGcpAuth, identityAccessToken, identity };
   };
 
   const attachGcpAuth = async ({
@@ -179,8 +189,17 @@ export const identityGcpAuthServiceFactory = ({
   }: TAttachGcpAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
@@ -192,16 +211,17 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -222,7 +242,7 @@ export const identityGcpAuthServiceFactory = ({
     const identityGcpAuth = await identityGcpAuthDAL.transaction(async (tx) => {
       const doc = await identityGcpAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           type,
           allowedServiceAccounts,
           allowedProjects,
@@ -236,7 +256,7 @@ export const identityGcpAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityGcpAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateGcpAuth = async ({
@@ -254,8 +274,17 @@ export const identityGcpAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateGcpAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
@@ -272,16 +301,17 @@ export const identityGcpAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -314,13 +344,22 @@ export const identityGcpAuthServiceFactory = ({
 
     return {
       ...updatedGcpAuth,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     };
   };
 
   const getGcpAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetGcpAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
@@ -330,16 +369,17 @@ export const identityGcpAuthServiceFactory = ({
 
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    return { ...identityGcpAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityGcpAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const revokeIdentityGcpAuth = async ({
@@ -349,32 +389,44 @@ export const identityGcpAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeGcpAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.GCP_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have gcp auth"
       });
     }
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -384,7 +436,7 @@ export const identityGcpAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke gcp auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),
@@ -395,7 +447,7 @@ export const identityGcpAuthServiceFactory = ({
       const deletedGcpAuth = await identityGcpAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.GCP_AUTH }, tx);
 
-      return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedGcpAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityGcpAuth;
   };

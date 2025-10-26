@@ -213,13 +213,13 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-1">
-            <p className="text-xl font-semibold text-mineshaft-100">App Connections</p>
+            <p className="text-xl font-medium text-mineshaft-100">App Connections</p>
             <a
               href="https://infisical.com/docs/integrations/app-connections/overview"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="ml-1 mt-[0.12rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+              <div className="mt-[0.12rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                 <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                 <span>Docs</span>
                 <FontAwesomeIcon
@@ -271,7 +271,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               size="xs"
               className={`${
                 view === View.Scope ? "bg-mineshaft-500" : "bg-transparent"
-              } min-w-[5rem] rounded border-none hover:bg-mineshaft-600`}
+              } min-w-20 rounded border-none hover:bg-mineshaft-600`}
             >
               Organization
             </Button>
@@ -284,7 +284,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
               size="xs"
               className={`${
                 view === View.All ? "bg-mineshaft-500" : "bg-transparent"
-              } min-w-[5rem] rounded border-none hover:bg-mineshaft-600`}
+              } min-w-20 rounded border-none hover:bg-mineshaft-600`}
             >
               All
             </Button>
@@ -313,7 +313,7 @@ export const AppConnectionsTable = ({ projectId, projectType }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             sideOffset={2}
-            className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
             align="end"
           >
             <DropdownMenuLabel>Filter by Apps</DropdownMenuLabel>

@@ -79,9 +79,11 @@ export const getProjectHomePage = (type: ProjectType, environments: ProjectEnv[]
     case ProjectType.SecretManager:
       return "/projects/secret-management/$projectId/overview" as const;
     case ProjectType.CertificateManager:
-      return "/projects/cert-management/$projectId/subscribers" as const;
+      return "/projects/cert-management/$projectId/policies" as const;
     case ProjectType.SecretScanning:
       return `/projects/${type}/$projectId/data-sources` as const;
+    case ProjectType.PAM:
+      return `/projects/${type}/$projectId/accounts` as const;
     default:
       return `/projects/${type}/$projectId/overview` as const;
   }
@@ -93,7 +95,8 @@ export const getProjectTitle = (type: ProjectType) => {
     [ProjectType.KMS]: "Key Management",
     [ProjectType.CertificateManager]: "Cert Management",
     [ProjectType.SSH]: "SSH",
-    [ProjectType.SecretScanning]: "Secret Scanning"
+    [ProjectType.SecretScanning]: "Secret Scanning",
+    [ProjectType.PAM]: "PAM"
   };
   return titleConvert[type];
 };
@@ -104,7 +107,8 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.KMS]: "unlock",
     [ProjectType.CertificateManager]: "note",
     [ProjectType.SSH]: "terminal",
-    [ProjectType.SecretScanning]: "secret-scan"
+    [ProjectType.SecretScanning]: "secret-scan",
+    [ProjectType.PAM]: "groups"
   };
   return titleConvert[type];
 };

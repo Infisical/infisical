@@ -1,4 +1,6 @@
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
@@ -9,6 +11,7 @@ import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { CommitHistoryTab } from "./components/CommitHistoryTab";
 
@@ -46,9 +49,21 @@ export const CommitsPage = () => {
   };
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-7xl justify-center bg-bunker-800 py-4 text-white">
-      <div className="w-full max-w-[75vw]">
+    <div className="mx-auto mb-4 flex h-full w-full max-w-8xl justify-center bg-bunker-800 text-white">
+      <div className="w-full">
+        <Link
+          to="/projects/secret-management/$projectId/secrets/$envSlug"
+          params={{
+            projectId: currentProject.id,
+            envSlug
+          }}
+          className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+        >
+          <FontAwesomeIcon icon={faChevronLeft} />
+          Secrets
+        </Link>
         <PageHeader
+          scope={ProjectType.SecretManager}
           title="Commits"
           description="Track, inspect, and restore your secrets and folders with confidence. View the complete history of changes made to your environment, examine specific modifications at each commit point, and preview the exact impact before rolling back to previous states."
         />

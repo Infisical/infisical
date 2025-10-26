@@ -10,7 +10,6 @@ import {
   faUpload
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -34,21 +33,27 @@ import {
 } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useCreateSecretBatch, useUpdateSecretBatch } from "@app/hooks/api";
-import {
-  dashboardKeys,
-  fetchDashboardProjectSecretsByKeys
-} from "@app/hooks/api/dashboard/queries";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
-import { secretKeys } from "@app/hooks/api/secrets/queries";
-import { SecretType } from "@app/hooks/api/types";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
+import { fetchProjectSecrets, mergePersonalSecrets } from "@app/hooks/api/secrets/queries";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 
-import { PopUpNames, usePopUpAction } from "../../SecretMainPage.store";
+import {
+  BatchContext,
+  PendingSecretCreate,
+  PendingSecretUpdate,
+  PopUpNames,
+  useBatchModeActions,
+  usePopUpAction
+} from "../../SecretMainPage.store";
 import { CopySecretsFromBoard } from "./CopySecretsFromBoard";
 import { PasteSecretEnvModal } from "./PasteSecretEnvModal";
 
 type TParsedEnv = Record<string, { value: string; comments: string[] }>;
-type TSecOverwriteOpt = { update: TParsedEnv; create: TParsedEnv };
+type TSecOverwriteOpt = {
+  update: TParsedEnv;
+  create: TParsedEnv;
+  existingSecrets: SecretV3RawSanitized[];
+};
 
 type Props = {
   isSmaller: boolean;
@@ -56,7 +61,6 @@ type Props = {
   projectId: string;
   environment: string;
   secretPath: string;
-  isProtectedBranch?: boolean;
 };
 
 type SecretMatrixMap = {
@@ -65,7 +69,7 @@ type SecretMatrixMap = {
   comment: number | null;
 };
 
-const popupKeys = ["importSecEnv", "confirmUpload", "pasteSecEnv", "importMatrixMap"] as const;
+const popupKeys = ["importSecEnv", "pasteSecEnv", "importMatrixMap"] as const;
 
 const MatrixImportModalTableRow = ({
   importSecretMatrixMap,
@@ -104,14 +108,14 @@ const MatrixImportModalTableRow = ({
           })}
         </Select>
       </td>
-      <td className="whitespace-nowrap pl-5 pr-5">
+      <td className="pr-5 pl-5 whitespace-nowrap">
         <div className="flex items-center justify-center">
           <FontAwesomeIcon className="text-mineshaft-400" icon={faArrowRight} />
         </div>
       </td>
       <td className="whitespace-nowrap">
         <div className="flex h-full items-start justify-center">
-          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 whitespace-nowrap border border-mineshaft-600 bg-mineshaft-600 text-bunker-200">
+          <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
             {mapKey === "key" && (
               <>
                 <FontAwesomeIcon icon={faKey} />
@@ -142,8 +146,7 @@ export const SecretDropzone = ({
   environments = [],
   projectId,
   environment,
-  secretPath,
-  isProtectedBranch = false
+  secretPath
 }: Props): JSX.Element => {
   const { t } = useTranslation();
   const [isDragActive, setDragActive] = useToggle();
@@ -157,18 +160,11 @@ export const SecretDropzone = ({
   });
 
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp(popupKeys);
-  const queryClient = useQueryClient();
   const { openPopUp } = usePopUpAction();
+  const { addPendingChange } = useBatchModeActions();
 
-  const { mutateAsync: updateSecretBatch, isPending: isUpdatingSecrets } = useUpdateSecretBatch({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
-    options: { onSuccess: undefined }
-  });
   // hide copy secrets from board due to import folders feature
   const shouldRenderCopySecrets = false;
-  const isSubmitting = isCreatingSecrets || isUpdatingSecrets;
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -177,6 +173,81 @@ export const SecretDropzone = ({
       setDragActive.on();
     } else if (e.type === "dragleave") {
       setDragActive.off();
+    }
+  };
+
+  const handleSaveSecrets = async (data: TSecOverwriteOpt) => {
+    const { update, create, existingSecrets } = data;
+
+    try {
+      const context: BatchContext = {
+        projectId,
+        environment,
+        secretPath
+      };
+
+      const existingSecretsMap = existingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
+        (prev, curr) => ({ ...prev, [curr.key]: curr }),
+        {}
+      );
+
+      const totalCount = Object.keys(create || {}).length + Object.keys(update || {}).length;
+
+      if (Object.keys(create || {}).length) {
+        Object.entries(create).forEach(([secretKey, secData]) => {
+          const createChange: PendingSecretCreate = {
+            id: secretKey,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Create,
+            secretKey,
+            secretValue: secData.value,
+            secretComment: secData.comments.join("\n") || undefined,
+            tags: [],
+            secretMetadata: []
+          };
+          addPendingChange(createChange, context);
+        });
+      }
+
+      if (Object.keys(update || {}).length) {
+        Object.entries(update).forEach(([secretKey, secData]) => {
+          const existingSecret = existingSecretsMap[secretKey];
+
+          if (!existingSecret) {
+            console.warn(`Existing secret not found for key: ${secretKey}`);
+            return;
+          }
+
+          const updateChange: PendingSecretUpdate = {
+            id: existingSecret.id,
+            timestamp: Date.now(),
+            resourceType: "secret",
+            type: PendingAction.Update,
+            secretKey,
+            secretValue: secData.value,
+            secretComment: secData.comments.join("\n") || undefined,
+            existingSecret,
+            originalValue: existingSecret.value || "",
+            originalComment: existingSecret.comment || "",
+            originalSkipMultilineEncoding: existingSecret.skipMultilineEncoding || false,
+            originalTags: existingSecret.tags || [],
+            originalSecretMetadata: existingSecret.secretMetadata || []
+          };
+          addPendingChange(updateChange, context);
+        });
+      }
+
+      createNotification({
+        type: "success",
+        text: `Successfully imported ${totalCount} secret${totalCount > 1 ? "s" : ""}.`
+      });
+    } catch (err) {
+      console.log(err);
+      createNotification({
+        type: "error",
+        text: "Failed to import secrets"
+      });
     }
   };
 
@@ -193,29 +264,38 @@ export const SecretDropzone = ({
 
     try {
       setIsLoading.on();
-      const { secrets: existingSecrets } = await fetchDashboardProjectSecretsByKeys({
-        secretPath,
-        environment,
+      const { secrets: rawExistingSecrets } = await fetchProjectSecrets({
         projectId,
-        keys: envSecretKeys
+        environment,
+        secretPath,
+        viewSecretValue: true
       });
 
-      const secretsGroupedByKey = existingSecrets.reduce<Record<string, boolean>>(
-        (prev, curr) => ({ ...prev, [curr.secretKey]: true }),
+      const allExistingSecrets = mergePersonalSecrets(rawExistingSecrets);
+
+      const existingSecretsMap = allExistingSecrets.reduce<Record<string, SecretV3RawSanitized>>(
+        (prev, curr) => ({ ...prev, [curr.key]: curr }),
         {}
       );
 
-      const updateSecrets = Object.keys(env)
-        .filter((secKey) => secretsGroupedByKey[secKey])
-        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+      const updateSecrets: TParsedEnv = {};
+      const createSecrets: TParsedEnv = {};
+      const relevantExistingSecrets: SecretV3RawSanitized[] = [];
 
-      const createSecrets = Object.keys(env)
-        .filter((secKey) => !secretsGroupedByKey[secKey])
-        .reduce<TParsedEnv>((prev, curr) => ({ ...prev, [curr]: env[curr] }), {});
+      Object.entries(env).forEach(([secretKey, secretData]) => {
+        const existingSecret = existingSecretsMap[secretKey];
+        if (existingSecret) {
+          updateSecrets[secretKey] = secretData;
+          relevantExistingSecrets.push(existingSecret);
+        } else {
+          createSecrets[secretKey] = secretData;
+        }
+      });
 
-      handlePopUpOpen("confirmUpload", {
+      await handleSaveSecrets({
         update: updateSecrets,
-        create: createSecrets
+        create: createSecrets,
+        existingSecrets: relevantExistingSecrets
       });
     } catch (e) {
       console.error(e);
@@ -223,7 +303,6 @@ export const SecretDropzone = ({
         text: "Failed to check for secret conflicts",
         type: "error"
       });
-      handlePopUpClose("confirmUpload");
     } finally {
       setIsLoading.off();
     }
@@ -328,70 +407,6 @@ export const SecretDropzone = ({
     parseFile(e.target?.files?.[0]);
   };
 
-  const handleSaveSecrets = async () => {
-    const { update, create } = popUp?.confirmUpload?.data as TSecOverwriteOpt;
-    try {
-      if (Object.keys(create || {}).length) {
-        await createSecretBatch({
-          secretPath,
-          projectId,
-          environment,
-          secrets: Object.entries(create).map(([secretKey, secData]) => ({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
-            secretValue: secData.value,
-            secretKey
-          }))
-        });
-      }
-      if (Object.keys(update || {}).length) {
-        await updateSecretBatch({
-          secretPath,
-          projectId,
-          environment,
-          secrets: Object.entries(update).map(([secretKey, secData]) => ({
-            type: SecretType.Shared,
-            secretComment: secData.comments.join("\n"),
-            secretValue: secData.value,
-            secretKey
-          }))
-        });
-      }
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ projectId })
-      });
-      handlePopUpClose("confirmUpload");
-      createNotification({
-        type: "success",
-        text: isProtectedBranch
-          ? "Uploaded changes have been sent for review"
-          : "Successfully uploaded secrets"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to upload secrets"
-      });
-    }
-  };
-
-  const createSecretCount = Object.keys(
-    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
-  ).length;
-
-  const updateSecretCount = Object.keys(
-    (popUp.confirmUpload?.data as TSecOverwriteOpt)?.update || {}
-  ).length;
-
-  const isNonConflictingUpload = !updateSecretCount;
-
   return (
     <div>
       <div
@@ -400,7 +415,7 @@ export const SecretDropzone = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={twMerge(
-          "relative mx-0.5 mb-4 mt-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-dashed outline-2 outline-chicago-600 duration-200 hover:opacity-100",
+          "relative mx-0.5 mt-4 mb-4 flex cursor-pointer items-center justify-center rounded-md bg-mineshaft-900 px-2 py-4 text-sm text-mineshaft-200 opacity-60 outline-2 outline-chicago-600 duration-200 outline-dashed hover:opacity-100",
           isDragActive && "opacity-100",
           !isSmaller && "mx-auto mt-40 w-full max-w-3xl flex-col space-y-4 py-20",
           isLoading && "bg-bunker-800"
@@ -495,58 +510,6 @@ export const SecretDropzone = ({
           </div>
         )}
       </div>
-      <Modal
-        isOpen={popUp?.confirmUpload?.isOpen}
-        onOpenChange={(open) => handlePopUpToggle("confirmUpload", open)}
-      >
-        <ModalContent
-          title="Confirm Secret Upload"
-          footerContent={[
-            <Button
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-              colorSchema={isNonConflictingUpload ? "primary" : "danger"}
-              key="overwrite-btn"
-              onClick={handleSaveSecrets}
-            >
-              {isNonConflictingUpload ? "Upload" : "Overwrite"}
-            </Button>,
-            <Button
-              key="keep-old-btn"
-              className="ml-4"
-              onClick={() => handlePopUpClose("confirmUpload")}
-              variant="outline_bg"
-              isDisabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          ]}
-        >
-          {isNonConflictingUpload ? (
-            <div>
-              Are you sure you want to import {createSecretCount} secret
-              {createSecretCount > 1 ? "s" : ""} to this environment?
-            </div>
-          ) : (
-            <div className="flex flex-col text-gray-300">
-              <div>Your project already contains the following {updateSecretCount} secrets:</div>
-              <div className="mt-2 text-sm text-gray-400">
-                {Object.keys((popUp?.confirmUpload?.data as TSecOverwriteOpt)?.update || {})
-                  ?.map((key) => key)
-                  .join(", ")}
-              </div>
-              <div className="mt-6">
-                Are you sure you want to overwrite these secrets
-                {createSecretCount > 0
-                  ? ` and import ${createSecretCount} new
-                one${createSecretCount > 1 ? "s" : ""}`
-                  : ""}
-                ?
-              </div>
-            </div>
-          )}
-        </ModalContent>
-      </Modal>
 
       {/* Matrix Import Modal */}
       <Modal

@@ -138,7 +138,7 @@ export const CreateSecretSyncForm = ({
   if (showConfirmation)
     return (
       <>
-        <div className="flex flex-col rounded-sm border border-l-[2px] border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+        <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
           <div className="mb-1 flex items-center text-sm">
             <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
             Secret Sync Behavior
@@ -185,7 +185,7 @@ export const CreateSecretSyncForm = ({
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
                       ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"

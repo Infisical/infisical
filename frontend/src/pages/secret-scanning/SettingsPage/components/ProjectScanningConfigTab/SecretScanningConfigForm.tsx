@@ -61,7 +61,7 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4">
         <div className="flex items-center gap-2">
-          <h2 className="text-xl font-semibold text-mineshaft-100">Project Configuration</h2>
+          <h2 className="text-xl font-medium text-mineshaft-100">Project Configuration</h2>
           <a
             target="_blank"
             href="https://infisical.com/docs/documentation/platform/secret-scanning/overview#configuration"
@@ -69,7 +69,7 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
             rel="noopener noreferrer"
           >
             <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
               <span>Docs</span>
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
@@ -99,7 +99,7 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
                       }
                       {...field}
                       rows={3}
-                      className="thin-scrollbar min-h-[36rem] w-full !resize-none !resize-y"
+                      className="min-h-144 thin-scrollbar w-full resize-none! resize-y!"
                       isDisabled={!isAllowed}
                     />
                   </FormControl>

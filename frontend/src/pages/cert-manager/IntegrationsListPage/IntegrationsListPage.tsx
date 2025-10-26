@@ -7,6 +7,7 @@ import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { PkiSyncsTab } from "./components";
@@ -42,15 +43,18 @@ export const IntegrationsListPage = () => {
         <meta property="og:title" content="Manage your certificates in seconds" />
         <meta name="og:description" content="Sync and manage PKI certificates across services" />
       </Helmet>
-      <div className="container relative mx-auto max-w-7xl pb-12 text-white">
+      <div className="relative mx-auto max-w-8xl pb-12 text-white">
         <div className="mb-8">
           <PageHeader
+            scope={ProjectType.CertificateManager}
             title="Integrations"
             description="Manage integrations with third-party certificate services."
           />
-          <Tabs value={currentTab} onValueChange={updateSelectedTab}>
+          <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>
             <TabList>
-              <Tab value={IntegrationsListPageTabs.PkiSyncs}>Certificate Syncs</Tab>
+              <Tab variant="project" value={IntegrationsListPageTabs.PkiSyncs}>
+                Certificate Syncs
+              </Tab>
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.PkiSyncs}>
               <ProjectPermissionCan

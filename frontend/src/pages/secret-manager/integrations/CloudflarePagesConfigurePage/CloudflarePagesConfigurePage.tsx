@@ -125,7 +125,7 @@ export const CloudflarePagesConfigurePage = () => {
     integrationAuthApps &&
     targetEnvironment &&
     targetApp ? (
-    <div className="flex h-full w-full items-center justify-center bg-gradient-to-tr from-mineshaft-900 to-bunker-900">
+    <div className="flex h-full w-full items-center justify-center bg-linear-to-tr from-mineshaft-900 to-bunker-900">
       <Card className="max-w-lg rounded-md border border-mineshaft-600 p-0">
         <CardTitle
           className="px-6 text-left"
@@ -211,7 +211,7 @@ export const CloudflarePagesConfigurePage = () => {
           onClick={handleButtonClick}
           color="mineshaft"
           variant="outline_bg"
-          className="mb-6 ml-auto mr-6 mt-2"
+          className="mt-2 mr-6 mb-6 ml-auto"
           isFullWidth={false}
           isLoading={isLoading}
         >

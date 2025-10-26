@@ -82,6 +82,7 @@ type Props = {
       isImported: boolean;
     }[];
   }[];
+  isSecretPresent?: boolean;
 };
 
 export const SecretEditRow = ({
@@ -101,7 +102,8 @@ export const SecretEditRow = ({
   isRotatedSecret,
   importedBy,
   importedSecret,
-  isEmpty
+  isEmpty,
+  isSecretPresent
 }: Props) => {
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
     "editSecret"
@@ -113,20 +115,21 @@ export const SecretEditRow = ({
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
 
-  const fetchSecretValueParams = importedSecret
-    ? {
-        environment: importedSecret.environment,
-        secretPath: importedSecret.secretPath,
-        secretKey: importedSecret.secret?.key ?? "",
-        projectId: currentProject.id
-      }
-    : {
-        environment,
-        secretPath,
-        secretKey: secretName,
-        projectId: currentProject.id,
-        isOverride
-      };
+  const fetchSecretValueParams =
+    importedSecret && !isSecretPresent
+      ? {
+          environment: importedSecret.environment,
+          secretPath: importedSecret.secretPath,
+          secretKey: importedSecret.secret?.key ?? "",
+          projectId: currentProject.id
+        }
+      : {
+          environment,
+          secretPath,
+          secretKey: secretName,
+          projectId: currentProject.id,
+          isOverride
+        };
 
   // scott: only fetch value if secret exists, has non-empty value and user has permission
   const canFetchValue = Boolean(importedSecret ?? secretId) && !isEmpty && !secretValueHidden;
@@ -300,7 +303,7 @@ export const SecretEditRow = ({
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
-      <div className="flex-grow border-r border-r-mineshaft-600 pl-1 pr-2">
+      <div className="grow border-r border-r-mineshaft-600 pr-2 pl-1">
         <Controller
           control={control}
           name="value"

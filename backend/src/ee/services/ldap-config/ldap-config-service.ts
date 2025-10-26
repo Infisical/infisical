@@ -1,7 +1,14 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
-import { OrgMembershipStatus, TableName, TLdapConfigsUpdate, TUsers } from "@app/db/schemas";
+import {
+  AccessScope,
+  OrganizationActionScope,
+  OrgMembershipStatus,
+  TableName,
+  TLdapConfigsUpdate,
+  TUsers
+} from "@app/db/schemas";
 import { TGroupDALFactory } from "@app/ee/services/group/group-dal";
 import { addUsersToGroupByUserIds, removeUsersFromGroupByUserIds } from "@app/ee/services/group/group-fns";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
@@ -12,12 +19,12 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
-import { TGroupProjectDALFactory } from "@app/services/group-project/group-project-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { getDefaultOrgMembershipRole } from "@app/services/org/org-role-fns";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
@@ -49,13 +56,13 @@ import { TLdapGroupMapDALFactory } from "./ldap-group-map-dal";
 type TLdapConfigServiceFactoryDep = {
   ldapConfigDAL: Pick<TLdapConfigDALFactory, "create" | "update" | "findOne" | "transaction">;
   ldapGroupMapDAL: Pick<TLdapGroupMapDALFactory, "find" | "create" | "delete" | "findLdapGroupMapsByLdapConfigId">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "create">;
   orgDAL: Pick<
     TOrgDALFactory,
     "createMembership" | "updateMembershipById" | "findMembership" | "findOrgById" | "findOne" | "updateById"
   >;
   groupDAL: Pick<TGroupDALFactory, "find" | "findOne">;
-  groupProjectDAL: Pick<TGroupProjectDALFactory, "find">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectDAL: Pick<TProjectDALFactory, "findProjectGhostUser" | "findById">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
@@ -87,9 +94,9 @@ export const ldapConfigServiceFactory = ({
   ldapConfigDAL,
   ldapGroupMapDAL,
   orgDAL,
-  orgMembershipDAL,
   groupDAL,
-  groupProjectDAL,
+  membershipGroupDAL,
+  membershipRoleDAL,
   projectKeyDAL,
   projectDAL,
   projectBotDAL,
@@ -119,7 +126,14 @@ export const ldapConfigServiceFactory = ({
     groupSearchFilter,
     caCert
   }: TCreateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -238,7 +252,14 @@ export const ldapConfigServiceFactory = ({
     groupSearchFilter,
     caCert
   }: TUpdateLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -316,7 +337,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetLdapCfgDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
     return getLdapCfg({
       orgId
@@ -388,22 +416,30 @@ export const ldapConfigServiceFactory = ({
       await userDAL.transaction(async (tx) => {
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: userAlias.userId,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: userAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
         if (!orgMembership) {
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
 
-          await orgDAL.createMembership(
+          const membership = await orgDAL.createMembership(
             {
-              userId: userAlias.userId,
-              orgId,
-              role,
-              roleId,
+              actorUserId: userAlias.userId,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
               status: OrgMembershipStatus.Accepted,
               isActive: true
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -459,8 +495,9 @@ export const ldapConfigServiceFactory = ({
 
         const [orgMembership] = await orgDAL.findMembership(
           {
-            [`${TableName.OrgMembership}.userId` as "userId"]: newUser.id,
-            [`${TableName.OrgMembership}.orgId` as "id"]: orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: newUserAlias.userId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           },
           { tx }
         );
@@ -469,16 +506,22 @@ export const ldapConfigServiceFactory = ({
           await throwOnPlanSeatLimitReached(licenseService, orgId, UserAliasType.LDAP);
 
           const { role, roleId } = await getDefaultOrgMembershipRole(organization.defaultMembershipRole);
-
-          await orgMembershipDAL.create(
+          const membership = await orgDAL.createMembership(
             {
-              userId: newUser.id,
-              inviteEmail: email.toLowerCase(),
-              orgId,
-              role,
-              roleId,
+              actorUserId: newUser.id,
+              scopeOrgId: orgId,
+              scope: AccessScope.Organization,
               status: newUser.isAccepted ? OrgMembershipStatus.Accepted : OrgMembershipStatus.Invited, // if user is fully completed, then set status to accepted, otherwise set it to invited so we can update it later
-              isActive: true
+              isActive: true,
+              inviteEmail: email.toLowerCase()
+            },
+            tx
+          );
+          await membershipRoleDAL.create(
+            {
+              membershipId: membership.id,
+              role,
+              customRoleId: roleId
             },
             tx
           );
@@ -542,10 +585,10 @@ export const ldapConfigServiceFactory = ({
               userDAL,
               userGroupMembershipDAL,
               orgDAL,
-              groupProjectDAL,
               projectKeyDAL,
               projectDAL,
               projectBotDAL,
+              membershipGroupDAL,
               tx
             });
           }
@@ -566,7 +609,7 @@ export const ldapConfigServiceFactory = ({
               userIds: [newUser.id],
               userDAL,
               userGroupMembershipDAL,
-              groupProjectDAL,
+              membershipGroupDAL,
               projectKeyDAL,
               tx
             });
@@ -634,7 +677,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TGetLdapGroupMapsDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Ldap);
 
     const ldapConfig = await ldapConfigDAL.findOne({
@@ -663,7 +713,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TCreateLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -717,7 +774,14 @@ export const ldapConfigServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TDeleteLdapGroupMapDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);
@@ -756,7 +820,14 @@ export const ldapConfigServiceFactory = ({
     caCert,
     url
   }: TTestLdapConnectionDTO) => {
-    const { permission } = await permissionService.getOrgPermission(actor, actorId, orgId, actorAuthMethod, actorOrgId);
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Ldap);
 
     const plan = await licenseService.getPlan(orgId);

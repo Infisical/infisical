@@ -125,6 +125,7 @@
                       "integrations/app-connections/hashicorp-vault",
                       "integrations/app-connections/heroku",
                       "integrations/app-connections/humanitec",
+                      "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mysql",
@@ -175,16 +176,14 @@
                 "pages": [
                   "documentation/platform/gateways/overview",
                   "documentation/platform/gateways/gateway-deployment",
-                  "documentation/platform/gateways/relay-deployment",
-                  "documentation/platform/gateways/security",
                   {
-                    "group": "Gateway (Deprecated)",
+                    "group": "Relay Deployment",
                     "pages": [
-                      "documentation/platform/gateways-deprecated/overview",
-                      "documentation/platform/gateways-deprecated/gateway-security",
-                      "documentation/platform/gateways-deprecated/networking"
+                      "documentation/platform/gateways/relay-deployment/overview",
+                      "documentation/platform/gateways/relay-deployment/terraform"
                     ]
-                  }
+                  },
+                  "documentation/platform/gateways/security"
                 ]
               }
             ]
@@ -221,6 +220,7 @@
                             ]
                           },
                           "documentation/platform/sso/auth0-oidc",
+                          "documentation/platform/sso/pingone-oidc",
                           {
                             "group": "General OIDC",
                             "pages": [
@@ -247,6 +247,7 @@
                       "documentation/platform/scim/okta",
                       "documentation/platform/scim/azure",
                       "documentation/platform/scim/jumpcloud",
+                      "documentation/platform/scim/pingone",
                       "documentation/platform/scim/group-mappings"
                     ]
                   }
@@ -314,6 +315,7 @@
                   "self-hosting/deployment-options/linux-upgrade"
                 ]
               },
+              "self-hosting/guides/replication",
               "self-hosting/guides/upgrading-infisical",
               "self-hosting/configuration/envars",
               "self-hosting/guides/releases",
@@ -417,6 +419,7 @@
                       "documentation/guides/node",
                       "documentation/guides/python",
                       "documentation/guides/nextjs-vercel",
+                      "documentation/guides/kubernetes-operator",
                       "documentation/guides/microsoft-power-apps"
                     ]
                   }
@@ -547,6 +550,7 @@
                       "integrations/secret-syncs/hashicorp-vault",
                       "integrations/secret-syncs/heroku",
                       "integrations/secret-syncs/humanitec",
+                      "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/railway",
@@ -723,6 +727,7 @@
                       {
                         "group": "Syncs",
                         "pages": [
+                          "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
                           "documentation/platform/pki/certificate-syncs/azure-key-vault"
                         ]
                       }
@@ -767,6 +772,15 @@
                   "documentation/platform/kms/kubernetes-encryption",
                   "documentation/platform/kms/kmip"
                 ]
+              }
+            ]
+          },
+          {
+            "item": "Infisical PAM",
+            "groups": [
+              {
+                "group": "Infisical PAM",
+                "pages": ["documentation/platform/pam/overview"]
               }
             ]
           }
@@ -1775,6 +1789,18 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/laravel-forge/list",
+                      "api-reference/endpoints/app-connections/laravel-forge/available",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-id",
+                      "api-reference/endpoints/app-connections/laravel-forge/get-by-name",
+                      "api-reference/endpoints/app-connections/laravel-forge/create",
+                      "api-reference/endpoints/app-connections/laravel-forge/update",
+                      "api-reference/endpoints/app-connections/laravel-forge/delete"
+                    ]
+                  },
+                  {
                     "group": "LDAP",
                     "pages": [
                       "api-reference/endpoints/app-connections/ldap/list",
@@ -2255,6 +2281,19 @@
                     ]
                   },
                   {
+                    "group": "Laravel Forge",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/laravel-forge/list",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-id",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/get-by-name",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/create",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/update",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/delete",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Netlify",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/netlify/list",
@@ -2421,20 +2460,6 @@
             "group": "Infisical PKI",
             "pages": [
               {
-                "group": "Subscribers",
-                "pages": [
-                  "api-reference/endpoints/pki/subscribers/list-certs",
-                  "api-reference/endpoints/pki/subscribers/create",
-                  "api-reference/endpoints/pki/subscribers/read",
-                  "api-reference/endpoints/pki/subscribers/update",
-                  "api-reference/endpoints/pki/subscribers/delete",
-                  "api-reference/endpoints/pki/subscribers/issue-cert",
-                  "api-reference/endpoints/pki/subscribers/sign-cert",
-                  "api-reference/endpoints/pki/subscribers/order-cert",
-                  "api-reference/endpoints/pki/subscribers/get-latest-cert-bundle"
-                ]
-              },
-              {
                 "group": "Certificate Authorities",
                 "pages": [
                   {
@@ -2490,10 +2515,11 @@
               {
                 "group": "Certificate Templates",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates/create",
-                  "api-reference/endpoints/certificate-templates/update",
-                  "api-reference/endpoints/certificate-templates/get-by-id",
-                  "api-reference/endpoints/certificate-templates/delete"
+                  "api-reference/endpoints/certificate-templates-v2/list",
+                  "api-reference/endpoints/certificate-templates-v2/create",
+                  "api-reference/endpoints/certificate-templates-v2/update",
+                  "api-reference/endpoints/certificate-templates-v2/get-by-id",
+                  "api-reference/endpoints/certificate-templates-v2/delete"
                 ]
               },
               {
@@ -2518,11 +2544,32 @@
                 ]
               },
               {
+                "group": "Certificate Profiles",
+                "pages": [
+                  "api-reference/endpoints/certificate-profiles/create",
+                  "api-reference/endpoints/certificate-profiles/update",
+                  "api-reference/endpoints/certificate-profiles/get-by-id",
+                  "api-reference/endpoints/certificate-profiles/delete"
+                ]
+              },
+              {
                 "group": "Certificate Syncs",
                 "pages": [
                   "api-reference/endpoints/pki/syncs/list",
                   "api-reference/endpoints/pki/syncs/get-by-id",
                   "api-reference/endpoints/pki/syncs/options",
+                  {
+                    "group": "AWS Certificate Manager",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/list",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/create",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/update",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/delete",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-certificate-manager/remove-certificates"
+                    ]
+                  },
                   {
                     "group": "Azure Key Vault",
                     "pages": [

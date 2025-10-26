@@ -193,7 +193,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
           <Button
             leftIcon={<FontAwesomeIcon icon={faChevronLeft} />}
-            className="text-lg font-semibold text-mineshaft-100"
+            className="text-lg font-medium text-mineshaft-100"
             variant="link"
             onClick={onGoBack}
           >
@@ -249,7 +249,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             <div>
               <Popover>
                 <PopoverTrigger disabled={isIdentityEditDisabled} asChild>
-                  <div className="w-full max-w-md flex-grow">
+                  <div className="w-full max-w-md grow">
                     <FormLabel label="Duration" />
                     <Tooltip content={toolTipText}>
                       <Button

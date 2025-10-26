@@ -1,6 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,6 +21,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useDeletePkiCollection, useGetPkiCollectionById } from "@app/hooks/api";
 import { PkiItemType } from "@app/hooks/api/pkiCollections/constants";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { PkiCollectionModal } from "../AlertingPage/components/PkiCollectionModal";
@@ -70,10 +73,24 @@ export const PkiCollectionPage = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.name}>
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Link
+            to="/projects/cert-management/$projectId/certificates"
+            params={{
+              projectId
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Certificates
+          </Link>
+          <PageHeader
+            scope={ProjectType.CertificateManager}
+            title={data.name}
+            description="Manage certificate collection"
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -111,7 +128,7 @@ export const PkiCollectionPage = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={() =>

@@ -31,7 +31,7 @@ const buttonVariants = cva(
       colorSchema: {
         primary: ["bg-primary", "text-black", "border-primary bg-opacity-90 hover:bg-opacity-100"],
         secondary: ["bg-mineshaft", "text-gray-300", "border-mineshaft hover:bg-opacity-80"],
-        danger: ["!bg-red", "!text-white", "!border-red hover:!bg-opacity-90"],
+        danger: ["bg-red!", "text-white!", "border-red! hover:!bg-opacity-90"],
         gray: ["bg-bunker-500", "text-bunker-200"]
       },
       variant: {
@@ -42,7 +42,7 @@ const buttonVariants = cva(
         outline_bg: "",
         // a constant color not in use on hover or click goes colorSchema color
         star: "text-bunker-200 bg-mineshaft-700 border-mineshaft-600",
-        link: "text-primary !p-0 bg-transparent outline-none border-none"
+        link: "text-primary p-0! bg-transparent outline-hidden border-none"
       },
       isDisabled: {
         true: "bg-mineshaft-700 border border-mineshaft-600 text-white opacity-50 cursor-not-allowed",
@@ -84,7 +84,7 @@ const buttonVariants = cva(
         colorSchema: "primary",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/[0.1] hover:border-primary/40 text-bunker-200"
+          "bg-mineshaft-600 border border-mineshaft-500 hover:bg-primary/10 hover:border-primary/40 text-bunker-200"
       },
       {
         colorSchema: "secondary",
@@ -116,7 +116,7 @@ const buttonVariants = cva(
         colorSchema: "danger",
         variant: "outline_bg",
         className:
-          "bg-mineshaft-600 border border-red-500 hover:bg-red/[0.1] hover:border-red/40 text-red-500"
+          "bg-mineshaft-600 border border-red-500/40 hover:bg-red/15 bg-red/10 hover:border-red text-red-500"
       },
       {
         colorSchema: "primary",
@@ -198,7 +198,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 : "infisical_loading"
             }
             isAutoPlay
-            className="absolute w-8 rounded-xl opacity-80 shadow-sm"
+            className="absolute w-8 rounded-xl opacity-80 shadow-xs"
           />
         )}
         {leftIcon && (

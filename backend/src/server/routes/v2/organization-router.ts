@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   OrgMembershipsSchema,
+  OrgMembershipStatus,
   ProjectMembershipsSchema,
   ProjectsSchema,
   UserEncryptionKeysSchema,
@@ -63,7 +64,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         req.permission.authMethod,
         req.permission.orgId
       );
-      return { users };
+      return { users: users.map((el) => ({ ...el, status: el.status || OrgMembershipStatus.Accepted })) };
     }
   });
 
@@ -138,6 +139,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           membership: OrgMembershipsSchema.extend({
+            customRoleSlug: z.string().nullish(),
             metadata: z
               .object({
                 key: z.string().trim().min(1),
@@ -168,7 +170,7 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         orgId: req.params.organizationId,
         membershipId: req.params.membershipId
       });
-      return { membership };
+      return { membership: { ...membership, status: membership.status || OrgMembershipStatus.Accepted } };
     }
   });
 
@@ -220,7 +222,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         ...req.body
       });
-      return { membership };
+      return {
+        membership: {
+          ...membership,
+          role: req.body.role || "",
+          orgId: req.params.organizationId,
+          status: membership.status || OrgMembershipStatus.Accepted
+        }
+      };
     }
   });
 
@@ -260,7 +269,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipId: req.params.membershipId,
         actorOrgId: req.permission.orgId
       });
-      return { membership };
+      return {
+        membership: {
+          ...membership,
+          status: membership.status || OrgMembershipStatus.Accepted,
+          role: "",
+          orgId: req.params.organizationId
+        }
+      };
     }
   });
 
@@ -302,7 +318,14 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
         membershipIds: req.body.membershipIds,
         actorOrgId: req.permission.orgId
       });
-      return { memberships };
+      return {
+        memberships: memberships.map((el) => ({
+          ...el,
+          status: el?.status || OrgMembershipStatus.Accepted,
+          role: "",
+          orgId: req.params.organizationId
+        }))
+      };
     }
   });
 

@@ -11,6 +11,8 @@ import {
   Button,
   DeleteActionModal,
   EmailServiceSetupModal,
+  Modal,
+  ModalContent,
   Tooltip
 } from "@app/components/v2";
 import {
@@ -26,11 +28,12 @@ import { OrgUser } from "@app/hooks/api/users/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddOrgMemberModal } from "./AddOrgMemberModal";
+import { AddSubOrgMemberModal } from "./AddSubOrgMemberModal";
 import { OrgMembersTable } from "./OrgMembersTable";
 
 export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id ?? "";
   const { user } = useUser();
   const userId = user?.id || "";
@@ -41,6 +44,7 @@ export const OrgMembersSection = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addMember",
+    "addMemberToSubOrg",
     "removeMember",
     "deactivateMember",
     "upgradePlan",
@@ -154,7 +158,7 @@ export const OrgMembersSection = () => {
     <>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           selectedMemberIds.length > 0 && "h-16"
         )}
       >
@@ -203,14 +207,16 @@ export const OrgMembersSection = () => {
       </div>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-semibold text-mineshaft-100">Users</p>
+          <p className="text-xl font-medium text-mineshaft-100">Users</p>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => (
               <Button
                 colorSchema="secondary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handleAddMemberModal()}
+                onClick={() =>
+                  isSubOrganization ? handlePopUpOpen("addMemberToSubOrg") : handleAddMemberModal()
+                }
                 isDisabled={!isAllowed}
               >
                 Add Member
@@ -230,6 +236,14 @@ export const OrgMembersSection = () => {
           completeInviteLinks={completeInviteLinks}
           setCompleteInviteLinks={setCompleteInviteLinks}
         />
+        <Modal
+          isOpen={popUp.addMemberToSubOrg.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
+        >
+          <ModalContent title="Add member from your organization">
+            <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
+          </ModalContent>
+        </Modal>
         <DeleteActionModal
           isOpen={popUp.removeMember.isOpen}
           title={`Are you sure you want to remove member with username ${
@@ -270,7 +284,7 @@ export const OrgMembersSection = () => {
           <div className="mt-4 text-sm text-mineshaft-400">
             The following members will be removed:
           </div>
-          <div className="mt-2 max-h-[20rem] overflow-y-auto rounded border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
+          <div className="mt-2 max-h-80 overflow-y-auto rounded-sm border border-mineshaft-600 bg-red/10 p-4 pl-8 text-sm text-red-200">
             <ul className="list-disc">
               {(popUp.removeMembers.data?.selectedOrgMemberships as OrgUser[])?.map((member) => {
                 const email = member.user.email ?? member.user.username ?? member.inviteEmail;
@@ -292,7 +306,7 @@ export const OrgMembersSection = () => {
                           <div className="inline-block">
                             <Badge
                               variant="danger"
-                              className="ml-1 mt-[0.05rem] inline-flex w-min items-center gap-1.5 whitespace-nowrap"
+                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
                             >
                               <FontAwesomeIcon icon={faBan} />
                               <span>Ignored</span>

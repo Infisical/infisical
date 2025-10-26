@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useProject } from "@app/context";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
 import { EncryptionTab } from "./components/EncryptionTab";
@@ -40,17 +40,18 @@ export const SettingsPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.project.title") })}</title>
       </Helmet>
-      <div className="w-full max-w-7xl">
+      <div className="w-full max-w-8xl">
         <PageHeader
+          scope={ProjectType.SecretManager}
           title="Settings"
           description="Configure your secret manager's encryption, environments, webhooks and other configurations."
         />
-        <Tabs defaultValue={tabs[0].key}>
+        <Tabs orientation="vertical" defaultValue={tabs[0].key}>
           <TabList>
             {tabs
               .filter((el) => !el.isHidden)
               .map((tab) => (
-                <Tab value={tab.key} key={tab.key}>
+                <Tab variant="project" value={tab.key} key={tab.key}>
                   {tab.name}
                 </Tab>
               ))}

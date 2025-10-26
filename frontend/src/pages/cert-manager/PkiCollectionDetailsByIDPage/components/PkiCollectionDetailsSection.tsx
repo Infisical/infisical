@@ -23,7 +23,7 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
   return pkiCollection ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Collection Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Collection Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionActions.Edit}
           a={ProjectPermissionSub.PkiCollections}
@@ -51,7 +51,7 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">PKI Collection ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">PKI Collection ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{pkiCollection.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -72,11 +72,11 @@ export const PkiCollectionDetailsSection = ({ collectionId, handlePopUpOpen }: P
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-semibold text-mineshaft-300">Name</p>
+          <p className="text-sm font-medium text-mineshaft-300">Name</p>
           <p className="text-sm text-mineshaft-300">{pkiCollection.name}</p>
         </div>
         <div>
-          <p className="text-sm font-semibold text-mineshaft-300">Description</p>
+          <p className="text-sm font-medium text-mineshaft-300">Description</p>
           <p className="text-sm text-mineshaft-300">{pkiCollection.description}</p>
         </div>
       </div>

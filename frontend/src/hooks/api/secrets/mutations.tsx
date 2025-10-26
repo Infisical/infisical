@@ -337,6 +337,7 @@ export const useMoveSecrets = ({
       destinationSecretPath,
       secretIds,
       shouldOverwrite,
+      projectSlug,
       projectId
     }) => {
       const { data } = await apiRequest.post<{
@@ -349,6 +350,7 @@ export const useMoveSecrets = ({
         destinationSecretPath,
         secretIds,
         shouldOverwrite,
+        projectSlug,
         projectId
       });
 

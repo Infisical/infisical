@@ -6,13 +6,15 @@ import { paginateGraphql } from "@octokit/plugin-paginate-graphql";
 import { Octokit as OctokitRest } from "@octokit/rest";
 import RE2 from "re2";
 
-import { OrgMembershipRole } from "@app/db/schemas";
+import { AccessScope, OrganizationActionScope, OrgMembershipRole } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { retryWithBackoff } from "@app/lib/retry";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
+import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 
 import { TGroupDALFactory } from "../group/group-dal";
@@ -77,11 +79,10 @@ type TGithubOrgSyncServiceFactoryDep = {
     "findGroupMembershipsByUserIdInOrg" | "findGroupMembershipsByGroupIdInOrg" | "insertMany" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "insertMany" | "transaction" | "find">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany">;
+  membershipGroupDAL: Pick<TMembershipGroupDALFactory, "insertMany">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgMembershipDAL: Pick<
-    TOrgMembershipDALFactory,
-    "find" | "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId"
-  >;
+  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "findOrgMembershipById" | "findOrgMembershipsWithUsersByOrgId">;
 };
 
 export type TGithubOrgSyncServiceFactory = ReturnType<typeof githubOrgSyncServiceFactory>;
@@ -93,7 +94,9 @@ export const githubOrgSyncServiceFactory = ({
   userGroupMembershipDAL,
   groupDAL,
   licenseService,
-  orgMembershipDAL
+  orgMembershipDAL,
+  membershipRoleDAL,
+  membershipGroupDAL
 }: TGithubOrgSyncServiceFactoryDep) => {
   const createGithubOrgSync = async ({
     githubOrgName,
@@ -101,13 +104,14 @@ export const githubOrgSyncServiceFactory = ({
     githubOrgAccessToken,
     isActive
   }: TCreateGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
@@ -159,13 +163,14 @@ export const githubOrgSyncServiceFactory = ({
     githubOrgAccessToken,
     isActive
   }: TUpdateGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      scope: OrganizationActionScope.ParentOrganization,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.GithubOrgSync);
     const plan = await licenseService.getPlan(orgPermission.orgId);
@@ -223,13 +228,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const deleteGithubOrgSync = async ({ orgPermission }: TDeleteGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actor: orgPermission.type,
+      actorId: orgPermission.id,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.GithubOrgSync);
 
@@ -253,13 +259,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const getGithubOrgSync = async ({ orgPermission }: TDeleteGithubOrgSyncDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: orgPermission.id,
+      actor: orgPermission.type,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
@@ -368,6 +375,23 @@ export const githubOrgSyncServiceFactory = ({
             })),
             tx
           );
+          const memberships = await membershipGroupDAL.insertMany(
+            newGroups.map((el) => ({
+              actorGroupId: el.id,
+              scope: AccessScope.Organization,
+              scopeOrgId: orgId
+            })),
+            tx
+          );
+
+          await membershipRoleDAL.insertMany(
+            memberships.map((el) => ({
+              membershipId: el.id,
+              role: OrgMembershipRole.Member
+            })),
+            tx
+          );
+
           await userGroupMembershipDAL.insertMany(
             newGroups.map((el) => ({
               groupId: el.id,
@@ -402,13 +426,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const validateGithubToken = async ({ orgPermission, githubOrgAccessToken }: TValidateGithubTokenDTO) => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: orgPermission.id,
+      actor: orgPermission.type,
+      orgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId,
+      scope: OrganizationActionScope.ParentOrganization
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.GithubOrgSync);
 
@@ -489,13 +514,14 @@ export const githubOrgSyncServiceFactory = ({
   };
 
   const syncAllTeams = async ({ orgPermission }: TSyncAllTeamsDTO): Promise<TSyncResult> => {
-    const { permission } = await permissionService.getOrgPermission(
-      orgPermission.type,
-      orgPermission.id,
-      orgPermission.orgId,
-      orgPermission.authMethod,
-      orgPermission.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.ParentOrganization,
+      actor: orgPermission.type,
+      orgId: orgPermission.orgId,
+      actorId: orgPermission.id,
+      actorAuthMethod: orgPermission.authMethod,
+      actorOrgId: orgPermission.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(
       OrgPermissionActions.Edit,
@@ -690,6 +716,23 @@ export const githubOrgSyncServiceFactory = ({
             role: OrgMembershipRole.Member,
             slug: teamName,
             orgId: orgPermission.orgId
+          })),
+          tx
+        );
+
+        const memberships = await membershipGroupDAL.insertMany(
+          newGroups.map((el) => ({
+            actorGroupId: el.id,
+            scope: AccessScope.Organization,
+            scopeOrgId: orgPermission.orgId
+          })),
+          tx
+        );
+
+        await membershipRoleDAL.insertMany(
+          memberships.map((el) => ({
+            membershipId: el.id,
+            role: OrgMembershipRole.Member
           })),
           tx
         );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
@@ -37,9 +37,12 @@ import {
   IdentityKubernetesAuthTokenReviewMode,
   IdentityTrustedIp
 } from "@app/hooks/api/identities/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { useGetVaultExternalMigrationConfigs } from "@app/hooks/api/migration/queries";
+import { VaultKubernetesAuthRole } from "@app/hooks/api/migration/types";
+import { usePopUp, UsePopUpState } from "@app/hooks/usePopUp";
 
 import { IdentityFormTab } from "./types";
+import { VaultKubernetesAuthImportModal } from "./VaultKubernetesAuthImportModal";
 
 const schema = z
   .object({
@@ -121,6 +124,12 @@ export const IdentityKubernetesAuthForm = ({
     enabled: isUpdate
   });
 
+  const { popUp, handlePopUpToggle: handleImportPopUpToggle } = usePopUp([
+    "importFromVault"
+  ] as const);
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+
   const {
     control,
     handleSubmit,
@@ -191,6 +200,99 @@ export const IdentityKubernetesAuthForm = ({
       });
     }
   }, [data]);
+
+  const handleImportFromVault = (role: VaultKubernetesAuthRole) => {
+    try {
+      setValue("kubernetesHost", role.config.kubernetes_host, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true
+      });
+
+      if (role.bound_service_account_names?.length > 0) {
+        // In Vault, "*" means allow all; in Infisical, empty field means allow any
+        const allowedNames = role.bound_service_account_names.includes("*")
+          ? ""
+          : role.bound_service_account_names.join(", ");
+        setValue("allowedNames", allowedNames, {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.bound_service_account_namespaces?.length > 0) {
+        // In Vault, "*" means allow all; in Infisical, empty field means allow any
+        const allowedNamespaces = role.bound_service_account_namespaces.includes("*")
+          ? ""
+          : role.bound_service_account_namespaces.join(", ");
+        setValue("allowedNamespaces", allowedNamespaces, {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.token_ttl !== undefined) {
+        setValue("accessTokenTTL", String(role.token_ttl), {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.token_max_ttl !== undefined) {
+        setValue("accessTokenMaxTTL", String(role.token_max_ttl), {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.token_num_uses !== undefined) {
+        setValue("accessTokenNumUsesLimit", String(role.token_num_uses), {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.audience) {
+        setValue("allowedAudience", role.audience, {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (role.config.kubernetes_ca_cert) {
+        setValue("caCert", role.config.kubernetes_ca_cert, {
+          shouldDirty: true,
+          shouldTouch: true
+        });
+      }
+
+      if (
+        subscription?.ipAllowlisting &&
+        role.token_bound_cidrs &&
+        role.token_bound_cidrs.length > 0
+      ) {
+        setValue(
+          "accessTokenTrustedIps",
+          role.token_bound_cidrs.map((cidr) => ({ ipAddress: cidr })),
+          {
+            shouldDirty: true,
+            shouldTouch: true
+          }
+        );
+      }
+
+      createNotification({
+        type: "info",
+        text: `Successfully prefilled values from Kubernetes auth role: ${role.name}`
+      });
+    } catch (err) {
+      console.error("Import error:", err);
+      createNotification({
+        type: "error",
+        text: "Failed to import Kubernetes auth configuration"
+      });
+    }
+  };
 
   const onFormSubmit = async ({
     kubernetesHost,
@@ -301,6 +403,28 @@ export const IdentityKubernetesAuthForm = ({
           <Tab value={IdentityFormTab.Advanced}>Advanced</Tab>
         </TabList>
         <TabPanel value={IdentityFormTab.Configuration}>
+          {hasVaultConnection && !isUpdate && (
+            <div className="mb-4 flex items-center justify-between rounded-md border border-primary/30 bg-primary/10 p-3">
+              <div className="flex items-start gap-2 text-sm">
+                <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
+                <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
+              </div>
+              <Button
+                variant="outline_bg"
+                size="xs"
+                leftIcon={
+                  <img
+                    src="/images/integrations/Vault.png"
+                    alt="HashiCorp Vault"
+                    className="h-4 w-4"
+                  />
+                }
+                onClick={() => handleImportPopUpToggle("importFromVault", true)}
+              >
+                Load from Vault
+              </Button>
+            </div>
+          )}
           <div className="flex w-full items-center gap-2">
             <div className="w-full flex-1">
               <OrgPermissionCan
@@ -407,6 +531,7 @@ export const IdentityKubernetesAuthForm = ({
                     placeholder="https://my-example-k8s-api-host.com"
                     type="text"
                     value={field.value || ""}
+                    autoComplete="off"
                   />
                 </FormControl>
               )}
@@ -425,7 +550,7 @@ export const IdentityKubernetesAuthForm = ({
                   errorText={error?.message}
                   tooltipText="Optional JWT token for accessing Kubernetes TokenReview API. If provided, this long-lived token will be used to validate service account tokens during authentication. If omitted, the client's own JWT will be used instead, which requires the client to have the system:auth-delegator ClusterRole binding."
                 >
-                  <Input {...field} placeholder="" type="password" />
+                  <Input {...field} placeholder="" type="password" autoComplete="new-password" />
                 </FormControl>
               )}
             />
@@ -441,7 +566,12 @@ export const IdentityKubernetesAuthForm = ({
                 errorText={error?.message}
                 tooltipText="A comma-separated list of trusted namespaces that service accounts must belong to authenticate with Infisical."
               >
-                <Input {...field} placeholder="namespaceA, namespaceB" type="text" />
+                <Input
+                  {...field}
+                  placeholder="namespaceA, namespaceB"
+                  type="text"
+                  autoComplete="off"
+                />
               </FormControl>
             )}
           />
@@ -456,7 +586,11 @@ export const IdentityKubernetesAuthForm = ({
                 tooltipText="An optional comma-separated list of trusted service account names that are allowed to authenticate with Infisical. Leave empty to allow any service account."
                 errorText={error?.message}
               >
-                <Input {...field} placeholder="service-account-1-name, service-account-1-name" />
+                <Input
+                  {...field}
+                  placeholder="service-account-1-name, service-account-1-name"
+                  autoComplete="off"
+                />
               </FormControl>
             )}
           />
@@ -547,7 +681,7 @@ export const IdentityKubernetesAuthForm = ({
                 render={({ field, fieldState: { error } }) => {
                   return (
                     <FormControl
-                      className="mb-0 flex-grow"
+                      className="mb-0 grow"
                       label={index === 0 ? "Access Token Trusted IPs" : undefined}
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -628,6 +762,11 @@ export const IdentityKubernetesAuthForm = ({
           Cancel
         </Button>
       </div>
+      <VaultKubernetesAuthImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handleImportPopUpToggle("importFromVault", isOpen)}
+        onImport={handleImportFromVault}
+      />
     </form>
   );
 };

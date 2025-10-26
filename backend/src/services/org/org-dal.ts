@@ -2,14 +2,16 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import {
+  AccessScope,
   OrganizationsSchema,
   OrgMembershipRole,
+  OrgMembershipStatus,
   TableName,
+  TMemberships,
+  TMembershipsInsert,
+  TMembershipsUpdate,
   TOrganizations,
   TOrganizationsInsert,
-  TOrgMemberships,
-  TOrgMembershipsInsert,
-  TOrgMembershipsUpdate,
   TUserEncryptionKeys
 } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
@@ -24,6 +26,7 @@ import {
 } from "@app/lib/knex";
 import { generateKnexQueryFromScim } from "@app/lib/knex/scim";
 
+import { ActorType } from "../auth/auth-type";
 import { OrgAuthMethod } from "./org-types";
 
 export type TOrgDALFactory = ReturnType<typeof orgDALFactory>;
@@ -43,8 +46,6 @@ export const orgDALFactory = (db: TDbClient) => {
     sortBy?: keyof TOrganizations;
   }) => {
     try {
-      const query = db.replicaNode()(TableName.Organization);
-
       // Build the subquery for limited organization IDs
       const orgSubquery = db.replicaNode().select("id").from(TableName.Organization);
 
@@ -54,37 +55,49 @@ export const orgDALFactory = (db: TDbClient) => {
         });
       }
 
+      const countQuery = orgSubquery.clone();
+
       if (sortBy) {
         void orgSubquery.orderBy(sortBy);
       }
-
       void orgSubquery.limit(limit).offset(offset);
 
-      // Main query with joins, limited to the subquery results
-      const docs = await query
-        .whereIn(`${TableName.Organization}.id`, orgSubquery)
-        .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
-        .leftJoin(TableName.OrgMembership, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
-        .leftJoin(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.OrgRoles, `${TableName.OrgMembership}.roleId`, `${TableName.OrgRoles}.id`)
-        .where((qb) => {
-          void qb.where(`${TableName.Users}.isGhost`, false).orWhereNull(`${TableName.Users}.id`);
-        })
-        .select(selectAllTableCols(TableName.Organization))
-        .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
-        .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
-        .select(db.ref("slug").withSchema(TableName.Project).as("projectSlug"))
-        .select(db.ref("createdAt").withSchema(TableName.Project).as("projectCreatedAt"))
-        .select(db.ref("email").withSchema(TableName.Users).as("userEmail"))
-        .select(db.ref("username").withSchema(TableName.Users).as("username"))
-        .select(db.ref("firstName").withSchema(TableName.Users).as("firstName"))
-        .select(db.ref("lastName").withSchema(TableName.Users).as("lastName"))
-        .select(db.ref("id").withSchema(TableName.Users).as("userId"))
-        .select(db.ref("id").withSchema(TableName.OrgMembership).as("orgMembershipId"))
-        .select(db.ref("role").withSchema(TableName.OrgMembership).as("orgMembershipRole"))
-        .select(db.ref("roleId").withSchema(TableName.OrgMembership).as("orgMembershipRoleId"))
-        .select(db.ref("status").withSchema(TableName.OrgMembership).as("orgMembershipStatus"))
-        .select(db.ref("name").withSchema(TableName.OrgRoles).as("orgMembershipRoleName"));
+      const buildBaseQuery = (orgIdSubquery: Knex.QueryBuilder) => {
+        return db
+          .replicaNode()(TableName.Organization)
+          .whereNull(`${TableName.Organization}.rootOrgId`)
+          .whereIn(`${TableName.Organization}.id`, orgIdSubquery)
+          .leftJoin(TableName.Project, `${TableName.Organization}.id`, `${TableName.Project}.orgId`)
+          .leftJoin(TableName.Membership, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+          .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+          .whereNotNull(`${TableName.Membership}.actorUserId`)
+          .leftJoin(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+          .leftJoin(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+          .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
+          .where((qb) => {
+            void qb.where(`${TableName.Users}.isGhost`, false).orWhereNull(`${TableName.Users}.id`);
+          });
+      };
+
+      const [docs, totalResult] = await Promise.all([
+        buildBaseQuery(orgSubquery)
+          .select(selectAllTableCols(TableName.Organization))
+          .select(db.ref("name").withSchema(TableName.Project).as("projectName"))
+          .select(db.ref("id").withSchema(TableName.Project).as("projectId"))
+          .select(db.ref("slug").withSchema(TableName.Project).as("projectSlug"))
+          .select(db.ref("createdAt").withSchema(TableName.Project).as("projectCreatedAt"))
+          .select(db.ref("email").withSchema(TableName.Users).as("userEmail"))
+          .select(db.ref("username").withSchema(TableName.Users).as("username"))
+          .select(db.ref("firstName").withSchema(TableName.Users).as("firstName"))
+          .select(db.ref("lastName").withSchema(TableName.Users).as("lastName"))
+          .select(db.ref("id").withSchema(TableName.Users).as("userId"))
+          .select(db.ref("id").withSchema(TableName.Membership).as("orgMembershipId"))
+          .select(db.ref("status").withSchema(TableName.Membership).as("orgMembershipStatus"))
+          .select(db.ref("role").withSchema(TableName.MembershipRole).as("orgMembershipRole"))
+          .select(db.ref("customRoleId").withSchema(TableName.MembershipRole).as("orgMembershipRoleId"))
+          .select(db.ref("name").withSchema(TableName.Role).as("orgMembershipRoleName")),
+        buildBaseQuery(countQuery).countDistinct(`${TableName.Organization}.id`, { as: "count" }).first()
+      ]);
 
       const formattedDocs = sqlNestRelationships({
         data: docs,
@@ -132,9 +145,51 @@ export const orgDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return formattedDocs;
+      const total = Number(totalResult?.count || 0);
+
+      return {
+        organizations: formattedDocs,
+        total
+      };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find organizations by filter" });
+    }
+  };
+
+  const listSubOrganizations = async (dto: {
+    actorId: string;
+    actorType: ActorType;
+    orgId: string;
+    isAccessible?: boolean;
+    limit?: number;
+    offset?: number;
+  }) => {
+    try {
+      // TODO(sub-org:group): check this when implement group support
+      const query = db
+        .replicaNode()(TableName.Organization)
+        .where(`${TableName.Organization}.rootOrgId`, dto.orgId)
+        .select(selectAllTableCols(TableName.Organization));
+
+      if (dto.isAccessible) {
+        void query
+          .leftJoin(`${TableName.Membership}`, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+          .where((qb) => {
+            void qb.where(`${TableName.Membership}.scope`, AccessScope.Organization);
+            if (dto.actorType === ActorType.IDENTITY) {
+              void qb.andWhere(`${TableName.Membership}.actorIdentityId`, dto.actorId);
+            } else {
+              void qb.andWhere(`${TableName.Membership}.actorUserId`, dto.actorId);
+            }
+          });
+      }
+      if (dto.limit) void query.limit(dto.limit);
+      if (dto.offset) void query.offset(dto.offset);
+
+      const orgs = await query;
+      return orgs;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List sub organization" });
     }
   };
 
@@ -143,6 +198,7 @@ export const orgDALFactory = (db: TDbClient) => {
       const org = (await db
         .replicaNode()(TableName.Organization)
         .where({ [`${TableName.Organization}.id` as "id"]: orgId })
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
             `${TableName.SamlConfig}.isActive`,
@@ -179,6 +235,7 @@ export const orgDALFactory = (db: TDbClient) => {
     try {
       const org = (await db
         .replicaNode()(TableName.Organization)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .where({ [`${TableName.Organization}.slug` as "slug"]: orgSlug })
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
@@ -218,9 +275,13 @@ export const orgDALFactory = (db: TDbClient) => {
   ): Promise<(TOrganizations & { orgAuthMethod: string; userRole: string; userStatus: string })[]> => {
     try {
       const org = (await db
-        .replicaNode()(TableName.OrgMembership)
-        .where({ userId })
-        .join(TableName.Organization, `${TableName.OrgMembership}.orgId`, `${TableName.Organization}.id`)
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.actorUserId`, userId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.SamlConfig, (qb) => {
           qb.on(`${TableName.SamlConfig}.orgId`, "=", `${TableName.Organization}.id`).andOn(
             `${TableName.SamlConfig}.isActive`,
@@ -236,8 +297,8 @@ export const orgDALFactory = (db: TDbClient) => {
           );
         })
         .select(selectAllTableCols(TableName.Organization))
-        .select(db.ref("role").withSchema(TableName.OrgMembership).as("userRole"))
-        .select(db.ref("status").withSchema(TableName.OrgMembership).as("userStatus"))
+        .select(db.ref("role").withSchema(TableName.MembershipRole).as("userRole"))
+        .select(db.ref("status").withSchema(TableName.Membership).as("userStatus"))
         .select(
           db.raw(`
             CASE
@@ -272,24 +333,28 @@ export const orgDALFactory = (db: TDbClient) => {
   const findAllOrgMembers = async (orgId: string) => {
     try {
       const members = await db
-        .replicaNode()(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
         .select(
-          db.ref("id").withSchema(TableName.OrgMembership),
-          db.ref("inviteEmail").withSchema(TableName.OrgMembership),
-          db.ref("orgId").withSchema(TableName.OrgMembership),
-          db.ref("role").withSchema(TableName.OrgMembership),
-          db.ref("roleId").withSchema(TableName.OrgMembership),
-          db.ref("status").withSchema(TableName.OrgMembership),
-          db.ref("isActive").withSchema(TableName.OrgMembership),
-          db.ref("lastLoginAuthMethod").withSchema(TableName.OrgMembership),
-          db.ref("lastLoginTime").withSchema(TableName.OrgMembership),
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("inviteEmail").withSchema(TableName.Membership),
+          db.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
+          db.ref("status").withSchema(TableName.Membership),
+          db.ref("isActive").withSchema(TableName.Membership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.Membership),
+          db.ref("lastLoginTime").withSchema(TableName.Membership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
@@ -314,6 +379,7 @@ export const orgDALFactory = (db: TDbClient) => {
     }
   };
 
+  // TODO(sub-org): updated this logic later
   const countAllOrgMembers = async (orgId: string) => {
     try {
       interface CountResult {
@@ -321,11 +387,14 @@ export const orgDALFactory = (db: TDbClient) => {
       }
 
       const count = await db
-        .replicaNode()(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.Membership}.status`, OrgMembershipStatus.Accepted)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
         .count("*")
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .where({ isGhost: false, [`${TableName.OrgMembership}.isActive` as "isActive"]: true })
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .where({ isGhost: false, [`${TableName.Membership}.isActive` as "isActive"]: true })
         .first();
 
       return parseInt((count as unknown as CountResult).count || "0", 10);
@@ -337,21 +406,25 @@ export const orgDALFactory = (db: TDbClient) => {
   const findOrgMembersByUsername = async (orgId: string, usernames: string[], tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
-      const members = await conn(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+      const members = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
         .select(
-          conn.ref("id").withSchema(TableName.OrgMembership),
-          conn.ref("inviteEmail").withSchema(TableName.OrgMembership),
-          conn.ref("orgId").withSchema(TableName.OrgMembership),
-          conn.ref("role").withSchema(TableName.OrgMembership),
-          conn.ref("roleId").withSchema(TableName.OrgMembership),
-          conn.ref("status").withSchema(TableName.OrgMembership),
+          conn.ref("id").withSchema(TableName.Membership),
+          conn.ref("inviteEmail").withSchema(TableName.Membership),
+          conn.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
+          db.ref("role").withSchema(TableName.MembershipRole),
+          db.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
+          conn.ref("status").withSchema(TableName.Membership),
           conn.ref("username").withSchema(TableName.Users),
           conn.ref("email").withSchema(TableName.Users),
           conn.ref("firstName").withSchema(TableName.Users),
@@ -373,22 +446,25 @@ export const orgDALFactory = (db: TDbClient) => {
   const findOrgMembersByRole = async (orgId: string, role: OrgMembershipRole, tx?: Knex) => {
     try {
       const conn = tx || db.replicaNode();
-      const members = await conn(TableName.OrgMembership)
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
-        .where(`${TableName.OrgMembership}.role`, role)
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
+      const members = await conn(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .where(`${TableName.MembershipRole}.role`, role)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
         .leftJoin<TUserEncryptionKeys>(
           TableName.UserEncryptionKey,
           `${TableName.UserEncryptionKey}.userId`,
           `${TableName.Users}.id`
         )
         .select(
-          conn.ref("id").withSchema(TableName.OrgMembership),
-          conn.ref("inviteEmail").withSchema(TableName.OrgMembership),
-          conn.ref("orgId").withSchema(TableName.OrgMembership),
-          conn.ref("role").withSchema(TableName.OrgMembership),
-          conn.ref("roleId").withSchema(TableName.OrgMembership),
-          conn.ref("status").withSchema(TableName.OrgMembership),
+          conn.ref("id").withSchema(TableName.Membership),
+          conn.ref("inviteEmail").withSchema(TableName.Membership),
+          conn.ref("scopeOrgId").withSchema(TableName.Membership).as("orgId"),
+          conn.ref("role").withSchema(TableName.MembershipRole),
+          conn.ref("customRoleId").withSchema(TableName.MembershipRole).as("roleId"),
+          conn.ref("status").withSchema(TableName.Membership),
           conn.ref("username").withSchema(TableName.Users),
           conn.ref("email").withSchema(TableName.Users),
           conn.ref("firstName").withSchema(TableName.Users),
@@ -404,47 +480,6 @@ export const orgDALFactory = (db: TDbClient) => {
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find org members by role" });
-    }
-  };
-
-  const findOrgGhostUser = async (orgId: string) => {
-    try {
-      const member = await db
-        .replicaNode()(TableName.OrgMembership)
-        .where({ orgId })
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
-        .select(
-          db.ref("id").withSchema(TableName.OrgMembership),
-          db.ref("orgId").withSchema(TableName.OrgMembership),
-          db.ref("role").withSchema(TableName.OrgMembership),
-          db.ref("roleId").withSchema(TableName.OrgMembership),
-          db.ref("status").withSchema(TableName.OrgMembership),
-          db.ref("email").withSchema(TableName.Users),
-          db.ref("id").withSchema(TableName.Users).as("userId"),
-          db.ref("publicKey").withSchema(TableName.UserEncryptionKey)
-        )
-        .where({ isGhost: true })
-        .first();
-      return member;
-    } catch (error) {
-      return null;
-    }
-  };
-
-  const ghostUserExists = async (orgId: string) => {
-    try {
-      const member = await db
-        .replicaNode()(TableName.OrgMembership)
-        .where({ orgId })
-        .join(TableName.Users, `${TableName.OrgMembership}.userId`, `${TableName.Users}.id`)
-        .leftJoin(TableName.UserEncryptionKey, `${TableName.UserEncryptionKey}.userId`, `${TableName.Users}.id`)
-        .select(db.ref("id").withSchema(TableName.Users).as("userId"))
-        .where({ isGhost: true })
-        .first();
-      return Boolean(member);
-    } catch (error) {
-      return false;
     }
   };
 
@@ -480,38 +515,37 @@ export const orgDALFactory = (db: TDbClient) => {
 
   // MEMBERSHIP OPERATIONS
   // --------------------
-  // const orgMembershipOrm = ormify(db, TableName.OrgMembership);
 
-  const createMembership = async (data: TOrgMembershipsInsert, tx?: Knex) => {
+  const createMembership = async (data: TMembershipsInsert, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership).insert(data).returning("*");
+      const [membership] = await (tx || db)(TableName.Membership).insert(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create org membership" });
     }
   };
 
-  const bulkCreateMemberships = async (data: TOrgMembershipsInsert[], tx?: Knex) => {
+  const bulkCreateMemberships = async (data: TMembershipsInsert[], tx?: Knex) => {
     try {
-      const memberships = await (tx || db)(TableName.OrgMembership).insert(data).returning("*");
+      const memberships = await (tx || db)(TableName.Membership).insert(data).returning("*");
       return memberships;
     } catch (error) {
       throw new DatabaseError({ error, name: "Create org memberships" });
     }
   };
 
-  const updateMembershipById = async (id: string, data: TOrgMembershipsUpdate, tx?: Knex) => {
+  const updateMembershipById = async (id: string, data: TMembershipsUpdate, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id }).update(data).returning("*");
+      const [membership] = await (tx || db)(TableName.Membership).where({ id }).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org membership" });
     }
   };
 
-  const updateMembership = async (filter: Partial<TOrgMemberships>, data: TOrgMembershipsUpdate, tx?: Knex) => {
+  const updateMembership = async (filter: Partial<TMemberships>, data: TMembershipsUpdate, tx?: Knex) => {
     try {
-      const membership = await (tx || db)(TableName.OrgMembership).where(filter).update(data).returning("*");
+      const membership = await (tx || db)(TableName.Membership).where(filter).update(data).returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update org memberships" });
@@ -520,7 +554,10 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteMembershipById = async (id: string, orgId: string, tx?: Knex) => {
     try {
-      const [membership] = await (tx || db)(TableName.OrgMembership).where({ id, orgId }).delete().returning("*");
+      const [membership] = await (tx || db)(TableName.Membership)
+        .where({ id, scopeOrgId: orgId, scope: AccessScope.Organization })
+        .delete()
+        .returning("*");
       return membership;
     } catch (error) {
       throw new DatabaseError({ error, name: "Delete org membership" });
@@ -529,9 +566,10 @@ export const orgDALFactory = (db: TDbClient) => {
 
   const deleteMembershipsById = async (ids: string[], orgId: string, tx?: Knex) => {
     try {
-      const memberships = await (tx || db)(TableName.OrgMembership)
+      const memberships = await (tx || db)(TableName.Membership)
         .where({
-          orgId
+          scopeOrgId: orgId,
+          scope: AccessScope.Organization
         })
         .whereIn("id", ids)
         .delete()
@@ -543,22 +581,23 @@ export const orgDALFactory = (db: TDbClient) => {
   };
 
   const findMembership = async (
-    filter: TFindFilter<TOrgMemberships>,
-    { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
+    filter: TFindFilter<TMemberships>,
+    { offset, limit, sort, tx }: TFindOpt<TMemberships> = {}
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.OrgMembership)
+      const query = (tx || db.replicaNode())(TableName.Membership)
         // eslint-disable-next-line
         .where(buildFindFilter(filter))
-        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .where("scope", AccessScope.Organization)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
-          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
-            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
-          selectAllTableCols(TableName.OrgMembership),
+          selectAllTableCols(TableName.Membership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
@@ -584,18 +623,20 @@ export const orgDALFactory = (db: TDbClient) => {
   const findMembershipWithScimFilter = async (
     orgId: string,
     scimFilter: string | undefined,
-    { offset, limit, sort, tx }: TFindOpt<TOrgMemberships> = {}
+    { offset, limit, sort, tx }: TFindOpt<TMemberships> = {}
   ) => {
     try {
-      const query = (tx || db.replicaNode())(TableName.OrgMembership)
+      const query = (tx || db.replicaNode())(TableName.Membership)
         // eslint-disable-next-line
-        .where(`${TableName.OrgMembership}.orgId`, orgId)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
         .where((qb) => {
           if (scimFilter) {
             void generateKnexQueryFromScim(qb, scimFilter, (attrPath) => {
               switch (attrPath) {
                 case "active":
-                  return `${TableName.OrgMembership}.isActive`;
+                  return `${TableName.Membership}.isActive`;
                 case "userName":
                   return `${TableName.UserAliases}.externalId`;
                 case "name.givenName":
@@ -610,15 +651,16 @@ export const orgDALFactory = (db: TDbClient) => {
             });
           }
         })
-        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.OrgMembership}.userId`)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.OrgMembership}.orgId`)
+        .join(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
+        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.Membership}.scopeOrgId`)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
         .leftJoin(TableName.UserAliases, function joinUserAlias() {
-          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.OrgMembership}.userId`)
-            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.OrgMembership}.orgId`)
+          this.on(`${TableName.UserAliases}.userId`, "=", `${TableName.Membership}.actorUserId`)
+            .andOn(`${TableName.UserAliases}.orgId`, "=", `${TableName.Membership}.scopeOrgId`)
             .andOn(`${TableName.UserAliases}.aliasType`, "=", (tx || db).raw("?", ["saml"]));
         })
         .select(
-          selectAllTableCols(TableName.OrgMembership),
+          selectAllTableCols(TableName.Membership),
           db.ref("email").withSchema(TableName.Users),
           db.ref("isEmailVerified").withSchema(TableName.Users),
           db.ref("username").withSchema(TableName.Users),
@@ -647,17 +689,39 @@ export const orgDALFactory = (db: TDbClient) => {
   ): Promise<{ id: string; name: string; slug: string; role: string }> => {
     try {
       const org = await db
-        .replicaNode()(TableName.IdentityOrgMembership)
-        .where({ identityId })
-        .join(TableName.Organization, `${TableName.IdentityOrgMembership}.orgId`, `${TableName.Organization}.id`)
+        .replicaNode()(TableName.Membership)
+        .where({ actorIdentityId: identityId })
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNull(`${TableName.Organization}.rootOrgId`)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
+        .join(TableName.Organization, `${TableName.Membership}.scopeOrgId`, `${TableName.Organization}.id`)
         .select(db.ref("id").withSchema(TableName.Organization).as("id"))
         .select(db.ref("name").withSchema(TableName.Organization).as("name"))
         .select(db.ref("slug").withSchema(TableName.Organization).as("slug"))
-        .select(db.ref("role").withSchema(TableName.IdentityOrgMembership).as("role"));
+        .select(db.ref("role").withSchema(TableName.MembershipRole).as("role"));
 
       return org?.[0];
     } catch (error) {
       throw new DatabaseError({ error, name: "Find identity organization" });
+    }
+  };
+
+  const findRootOrgDetails = async (orgId: string, tx?: Knex): Promise<TOrganizations | undefined> => {
+    try {
+      const org = await (tx ?? db.replicaNode())(TableName.Organization)
+        .select(selectAllTableCols(TableName.Organization))
+        .where(
+          "id",
+          db(TableName.Organization)
+            .select(db.raw(`CASE WHEN "rootOrgId" IS NULL THEN id ELSE "rootOrgId" END`))
+            .where("id", orgId)
+        )
+        .first();
+
+      return org;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "FindRootOrgDetails" });
     }
   };
 
@@ -666,14 +730,13 @@ export const orgDALFactory = (db: TDbClient) => {
     findOrgByProjectId,
     findAllOrgMembers,
     countAllOrgMembers,
+    listSubOrganizations,
     findOrgById,
     findOrgBySlug,
     findAllOrgsByUserId,
     findOrganizationsByFilter,
-    ghostUserExists,
     findOrgMembersByUsername,
     findOrgMembersByRole,
-    findOrgGhostUser,
     create,
     updateById,
     deleteById,
@@ -685,6 +748,7 @@ export const orgDALFactory = (db: TDbClient) => {
     deleteMembershipById,
     deleteMembershipsById,
     updateMembership,
-    findIdentityOrganization
+    findIdentityOrganization,
+    findRootOrgDetails
   });
 };

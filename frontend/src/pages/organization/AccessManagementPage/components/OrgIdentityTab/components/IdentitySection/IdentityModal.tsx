@@ -53,6 +53,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const orgId = currentOrg?.id || "";
 
   const { data: roles } = useGetOrgRoles(orgId);
+  const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
   const { mutateAsync: createMutateAsync } = useCreateIdentity();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
@@ -75,7 +76,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     control,
     name: "metadata"
   });
-
   useEffect(() => {
     const identity = popUp?.identity?.data as {
       identityId: string;
@@ -114,6 +114,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         name: string;
         role: string;
         hasDeleteProtection: boolean;
+        orgId: string;
       };
 
       if (identity) {
@@ -197,16 +198,23 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
         title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
       >
         <form onSubmit={handleSubmit(onFormSubmit)}>
-          <Controller
-            control={control}
-            defaultValue=""
-            name="name"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl label="Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="Machine 1" />
-              </FormControl>
-            )}
-          />
+          {isOrgIdentity && (
+            <Controller
+              control={control}
+              defaultValue=""
+              name="name"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  className="mb-4"
+                  label="Name"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="Machine 1" />
+                </FormControl>
+              )}
+            />
+          )}
           <Controller
             control={control}
             name="role"
@@ -215,7 +223,6 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                 label={`${popUp?.identity?.data ? "Update" : ""} Role`}
                 errorText={error?.message}
                 isError={Boolean(error)}
-                className="mt-4"
               >
                 <FilterableSelect
                   placeholder="Select role..."
@@ -228,31 +235,33 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               </FormControl>
             )}
           />
-          <Controller
-            control={control}
-            name="hasDeleteProtection"
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl errorText={error?.message} isError={Boolean(error)}>
-                <Switch
-                  className="ml-0 mr-2 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                  containerClassName="flex-row-reverse w-fit"
-                  id="delete-protection-enabled"
-                  thumbClassName="bg-mineshaft-800"
-                  onCheckedChange={onChange}
-                  isChecked={value}
-                >
-                  <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
-                </Switch>
-              </FormControl>
-            )}
-          />
+          {isOrgIdentity && (
+            <Controller
+              control={control}
+              name="hasDeleteProtection"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <FormControl errorText={error?.message} isError={Boolean(error)}>
+                  <Switch
+                    className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                    containerClassName="flex-row-reverse w-fit"
+                    id="delete-protection-enabled"
+                    thumbClassName="bg-mineshaft-800"
+                    onCheckedChange={onChange}
+                    isChecked={value}
+                  >
+                    <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
+                  </Switch>
+                </FormControl>
+              )}
+            />
+          )}
           <div>
             <FormLabel label="Metadata" />
           </div>
           <div className="mb-3 flex flex-col space-y-2">
             {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
               <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
                   <Controller
                     control={control}
@@ -268,7 +277,7 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                     )}
                   />
                 </div>
-                <div className="flex-grow">
+                <div className="grow">
                   {i === 0 && (
                     <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
                   )}

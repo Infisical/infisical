@@ -15,6 +15,11 @@ export enum OrgPermissionActions {
   Delete = "delete"
 }
 
+export enum OrgPermissionSubOrgActions {
+  Create = "create",
+  DirectAccess = "direct-access"
+}
+
 export enum OrgPermissionAppConnectionActions {
   Read = "read",
   Create = "create",
@@ -117,7 +122,8 @@ export enum OrgPermissionSubjects {
   Kmip = "kmip",
   Gateway = "gateway",
   Relay = "relay",
-  SecretShare = "secret-share"
+  SecretShare = "secret-share",
+  SubOrganization = "sub-organization"
 }
 
 export type AppConnectionSubjectFields = {
@@ -128,6 +134,7 @@ export type OrgPermissionSet =
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Workspace]
   | [OrgPermissionActions.Create, OrgPermissionSubjects.Project]
   | [OrgPermissionActions, OrgPermissionSubjects.Role]
+  | [OrgPermissionSubOrgActions, OrgPermissionSubjects.SubOrganization]
   | [OrgPermissionActions, OrgPermissionSubjects.Member]
   | [OrgPermissionActions, OrgPermissionSubjects.Settings]
   | [OrgPermissionActions, OrgPermissionSubjects.IncidentAccount]
@@ -186,6 +193,12 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   }),
   z.object({
+    subject: z.literal(OrgPermissionSubjects.SubOrganization).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionSubOrgActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
     subject: z.literal(OrgPermissionSubjects.Member).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
   }),
@@ -219,7 +232,9 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Groups).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionGroupActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.SecretScanning).describe("The entity this permission pertains to."),
@@ -227,11 +242,15 @@ export const OrgPermissionSchema = z.discriminatedUnion("subject", [
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Billing).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionBillingActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Identity).describe("The entity this permission pertains to."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionActions).describe("Describe what action an entity can take.")
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(OrgPermissionIdentityActions).describe(
+      "Describe what action an entity can take."
+    )
   }),
   z.object({
     subject: z.literal(OrgPermissionSubjects.Kms).describe("The entity this permission pertains to."),
@@ -302,6 +321,10 @@ const buildAdminPermission = () => {
   // ws permissions
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Workspace);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Project);
+
+  can(OrgPermissionSubOrgActions.Create, OrgPermissionSubjects.SubOrganization);
+  can(OrgPermissionSubOrgActions.DirectAccess, OrgPermissionSubjects.SubOrganization);
+
   // role permission
   can(OrgPermissionActions.Read, OrgPermissionSubjects.Role);
   can(OrgPermissionActions.Create, OrgPermissionSubjects.Role);

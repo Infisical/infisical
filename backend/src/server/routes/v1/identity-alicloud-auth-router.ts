@@ -21,7 +21,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.AliCloudAuth],
-      description: "Login with Alibaba Cloud Auth",
+      description: "Login with Alibaba Cloud Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(ALICLOUD_AUTH.LOGIN.identityId),
         Action: z.enum(["GetCallerIdentity"]).describe(ALICLOUD_AUTH.LOGIN.Action),
@@ -73,12 +73,12 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
       }
     },
     handler: async (req) => {
-      const { identityAliCloudAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityAliCloudAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityAliCloudAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_ALICLOUD_AUTH,
           metadata: {
@@ -108,7 +108,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.AliCloudAuth],
-      description: "Attach Alibaba Cloud Auth configuration onto identity",
+      description: "Attach Alibaba Cloud Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -200,7 +200,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.AliCloudAuth],
-      description: "Update Alibaba Cloud Auth configuration on identity",
+      description: "Update Alibaba Cloud Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -292,7 +292,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.AliCloudAuth],
-      description: "Retrieve Alibaba Cloud Auth configuration on identity",
+      description: "Retrieve Alibaba Cloud Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -340,7 +340,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     schema: {
       hide: false,
       tags: [ApiDocsTags.AliCloudAuth],
-      description: "Delete Alibaba Cloud Auth configuration on identity",
+      description: "Delete Alibaba Cloud Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

@@ -3,7 +3,7 @@ import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -14,14 +14,22 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityOciAuthDALFactory } from "./identity-oci-auth-dal";
 import {
@@ -34,21 +42,25 @@ import {
 } from "./identity-oci-auth-types";
 
 type TIdentityOciAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   identityOciAuthDAL: Pick<TIdentityOciAuthDALFactory, "findOne" | "transaction" | "create" | "updateById" | "delete">;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
 
 export const identityOciAuthServiceFactory = ({
+  identityDAL,
   identityAccessTokenDAL,
   identityOciAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   licenseService,
-  permissionService
+  permissionService,
+  orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
@@ -56,8 +68,8 @@ export const identityOciAuthServiceFactory = ({
       throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityOciAuth.identityId });
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityOciAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
     if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -92,12 +104,9 @@ export const identityOciAuthServiceFactory = ({
 
     // Generate the token
     const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
-        identityMembershipOrg.id,
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH,
-          lastLoginTime: new Date()
-        },
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+        { lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH, lastLoginTime: new Date() },
         tx
       );
       const newToken = await identityAccessTokenDAL.create(
@@ -134,7 +143,7 @@ export const identityOciAuthServiceFactory = ({
       identityOciAuth,
       accessToken,
       identityAccessToken,
-      identityMembershipOrg
+      identity
     };
   };
 
@@ -154,8 +163,17 @@ export const identityOciAuthServiceFactory = ({
   }: TAttachOciAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
@@ -167,16 +185,17 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -197,7 +216,7 @@ export const identityOciAuthServiceFactory = ({
     const identityOciAuth = await identityOciAuthDAL.transaction(async (tx) => {
       const doc = await identityOciAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           type: "iam",
           tenancyOcid,
           allowedUsernames,
@@ -210,7 +229,7 @@ export const identityOciAuthServiceFactory = ({
       );
       return doc;
     });
-    return { ...identityOciAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateOciAuth = async ({
@@ -226,8 +245,17 @@ export const identityOciAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new NotFoundError({
@@ -244,16 +272,17 @@ export const identityOciAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -282,12 +311,21 @@ export const identityOciAuthServiceFactory = ({
         : undefined
     });
 
-    return { ...updatedOciAuth, orgId: identityMembershipOrg.orgId };
+    return { ...updatedOciAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const getOciAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
@@ -297,15 +335,16 @@ export const identityOciAuthServiceFactory = ({
 
     const ociIdentityAuth = await identityOciAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-    return { ...ociIdentityAuth, orgId: identityMembershipOrg.orgId };
+    return { ...ociIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const revokeIdentityOciAuth = async ({
@@ -315,32 +354,44 @@ export const identityOciAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeOciAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.OCI_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have OCI auth"
       });
     }
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
-      actorOrgId
-    );
+      actorOrgId,
+      scope: OrganizationActionScope.Any
+    });
 
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -351,7 +402,7 @@ export const identityOciAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke OCI auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),
@@ -362,7 +413,7 @@ export const identityOciAuthServiceFactory = ({
       const deletedOciAuth = await identityOciAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.OCI_AUTH }, tx);
 
-      return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedOciAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityOciAuth;
   };

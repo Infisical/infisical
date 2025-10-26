@@ -101,7 +101,7 @@ export const OrgLDAPSection = (): JSX.Element => {
       <div className="py-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <p className="text-xl font-semibold text-gray-200">LDAP</p>
+            <p className="text-xl font-medium text-gray-200">LDAP</p>
             <p className="mb-2 text-gray-400">Manage LDAP authentication configuration</p>
           </div>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Ldap}>

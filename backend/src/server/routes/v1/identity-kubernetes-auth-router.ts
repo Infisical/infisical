@@ -41,7 +41,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.KubernetesAuth],
-      description: "Login with Kubernetes Auth",
+      description: "Login with Kubernetes Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
         jwt: z.string().trim()
@@ -56,7 +56,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       }
     },
     handler: async (req) => {
-      const { identityKubernetesAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityKubernetesAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityKubernetesAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -64,7 +64,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_KUBERNETES_AUTH,
           metadata: {
@@ -93,7 +93,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.KubernetesAuth],
-      description: "Attach Kubernetes Auth configuration onto identity",
+      description: "Attach Kubernetes Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -240,7 +240,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.KubernetesAuth],
-      description: "Update Kubernetes Auth configuration on identity",
+      description: "Update Kubernetes Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -383,7 +383,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.KubernetesAuth],
-      description: "Retrieve Kubernetes Auth configuration on identity",
+      description: "Retrieve Kubernetes Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -432,7 +432,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     schema: {
       hide: false,
       tags: [ApiDocsTags.KubernetesAuth],
-      description: "Delete Kubernetes Auth configuration on identity",
+      description: "Delete Kubernetes Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

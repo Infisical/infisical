@@ -148,12 +148,12 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
                 </Tab>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                 sideOffset={2}
                 align="center"
               >
                 <DropdownMenuLabel>Environments</DropdownMenuLabel>
-                <div className="thin-scrollbar max-h-[40vh] overflow-auto">
+                <div className="max-h-[40vh] thin-scrollbar overflow-auto">
                   {dropdownEnvironments.map((environment) => (
                     <DropdownMenuItem
                       key={environment.id}
@@ -175,7 +175,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
                     <DropdownMenuItem
                       isDisabled={!isAllowed}
                       onClick={handleAddEnvironment}
-                      className="data-[highlighted]:bg-mineshaft-900"
+                      className="data-highlighted:bg-mineshaft-900"
                     >
                       <Button
                         size="xs"
@@ -217,7 +217,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
         <ModalContent
           title="Compare Environments"
           subTitle="Compare secrets across multiple environments"
-          className="flex h-full !w-[95vw] max-w-none flex-col"
+          className="flex h-full w-[95vw]! max-w-none flex-col"
           bodyClassName="flex-1 flex flex-col overflow-hidden"
         >
           <CompareEnvironments secretPath={secretPath} />
@@ -226,7 +226,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Team plan."
+        text="You can add custom environments if you switch to Infisical's Pro plan."
       />
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}

@@ -425,4 +425,42 @@ export const registerSyncSecretsEndpoints = <T extends TSecretSync, I extends TS
       return { secretSync };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/check-destination",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      tags: [ApiDocsTags.SecretSyncs],
+      body: z.object({
+        destinationConfig: z.unknown(),
+        excludeSyncId: z.string().uuid().optional(),
+        projectId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          hasDuplicate: z.boolean(),
+          duplicateProjectId: z.string().uuid().optional()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { destinationConfig, excludeSyncId, projectId } = req.body;
+
+      const result = await server.services.secretSync.checkDuplicateDestination(
+        {
+          destinationConfig: destinationConfig as Record<string, unknown>,
+          destination,
+          excludeSyncId,
+          projectId
+        },
+        req.permission
+      );
+
+      return result;
+    }
+  });
 };

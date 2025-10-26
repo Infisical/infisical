@@ -1,11 +1,16 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useParams } from "@tanstack/react-router";
+import { formatRelative } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, PageHeader, Spinner } from "@app/components/v2";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { getProjectBaseURL } from "@app/helpers/project";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
+import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
 import { GroupMembersSection } from "./components/GroupMembersSection";
@@ -31,10 +36,27 @@ const Page = () => {
     );
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {groupMembership ? (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={groupMembership.group.name} />
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <Link
+            to={`${getProjectBaseURL(currentProject.type)}/access-management`}
+            params={{
+              projectId: currentProject.id
+            }}
+            search={{
+              selectedTab: ProjectAccessControlTabs.Groups
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Groups
+          </Link>
+          <PageHeader
+            scope={currentProject.type}
+            title={groupMembership.group.name}
+            description={`Group joined on ${formatRelative(new Date(groupMembership.createdAt || ""), new Date())}`}
+          />
           <div className="flex">
             <div className="mr-4 w-96">
               <GroupDetailsSection groupMembership={groupMembership} />

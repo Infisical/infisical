@@ -1,20 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   faArrowUpRightFromSquare,
   faBookOpen,
   faCopy,
   faDoorClosed,
   faEllipsisV,
+  faInfoCircle,
   faMagnifyingGlass,
+  faPlus,
   faSearch,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionSubjects,
   OrgRelayPermissionActions
@@ -41,12 +46,55 @@ import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useDeleteRelayById, useGetRelays } from "@app/hooks/api/relays";
 
+import { RelayDeployModal } from "./components/RelayDeployModal";
+
+const RelayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
+  const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+  const isHealthy = !heartbeatDate || heartbeatDate >= oneHourAgo;
+  const tooltipContent = heartbeatDate
+    ? `Last heartbeat: ${heartbeatDate.toLocaleString()}`
+    : "No heartbeat data available";
+
+  return (
+    <Tooltip content={tooltipContent}>
+      <span className={`cursor-default ${isHealthy ? "text-green-400" : "text-red-400"}`}>
+        {isHealthy ? "Healthy" : "Unreachable"}
+      </span>
+    </Tooltip>
+  );
+};
+
 export const RelayTab = withPermission(
   () => {
     const [search, setSearch] = useState("");
     const { data: relays, isPending: isRelaysLoading } = useGetRelays();
 
-    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["deleteRelay"] as const);
+    const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+      "deleteRelay",
+      "deployRelay"
+    ] as const);
+
+    const action = useSearch({
+      from: ROUTE_PATHS.Organization.NetworkingPage.id,
+      select: (s) => s.action
+    });
+
+    const navigate = useNavigate({
+      from: ROUTE_PATHS.Organization.NetworkingPage.path
+    });
+
+    useEffect(() => {
+      if (action === "deploy-relay") {
+        handlePopUpOpen("deployRelay");
+        navigate({
+          search: (prev) => ({ ...prev, action: undefined }),
+          replace: true
+        });
+      }
+    }, [action, handlePopUpOpen, navigate]);
 
     const deleteRelayById = useDeleteRelayById();
 
@@ -67,9 +115,9 @@ export const RelayTab = withPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold text-mineshaft-100">Relays</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex grow items-center gap-2">
+            <h3 className="text-lg font-medium text-mineshaft-100">Relays</h3>
             <a
               href="https://infisical.com/docs/documentation/platform/gateways/relay-deployment"
               target="_blank"
@@ -84,6 +132,14 @@ export const RelayTab = withPermission(
                 />
               </div>
             </a>
+            <div className="flex grow" />
+            <Button
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handlePopUpOpen("deployRelay")}
+            >
+              Deploy Relay
+            </Button>
           </div>
         </div>
         <p className="mb-4 text-sm text-mineshaft-400">
@@ -106,6 +162,16 @@ export const RelayTab = withPermission(
                   <Th className="w-1/3">Name</Th>
                   <Th>Host</Th>
                   <Th>Created</Th>
+                  <Th>
+                    Health Check
+                    <Tooltip
+                      asChild={false}
+                      className="normal-case"
+                      content="The last known healthcheck. Triggers every 1 hour."
+                    >
+                      <FontAwesomeIcon icon={faInfoCircle} className="ml-2" />
+                    </Tooltip>
+                  </Th>
                   <Th className="w-5" />
                 </Tr>
               </THead>
@@ -120,7 +186,7 @@ export const RelayTab = withPermission(
                         <span>{el.name}</span>
                         {!el.orgId && (
                           <Tooltip content="This is a managed relay provided by Infisical">
-                            <span className="rounded bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
+                            <span className="rounded-sm bg-mineshaft-700 px-1.5 py-0.5 text-xs text-mineshaft-400">
                               Managed
                             </span>
                           </Tooltip>
@@ -129,6 +195,9 @@ export const RelayTab = withPermission(
                     </Td>
                     <Td>{el.host}</Td>
                     <Td>{formatRelative(new Date(el.createdAt), new Date())}</Td>
+                    <Td>
+                      <RelayHealthStatus heartbeat={el.heartbeat} />
+                    </Td>
                     <Td className="w-5">
                       <Tooltip className="max-w-sm text-center" content="Options">
                         <DropdownMenu>
@@ -188,6 +257,10 @@ export const RelayTab = withPermission(
               onChange={(isOpen) => handlePopUpToggle("deleteRelay", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteRelay()}
+            />
+            <RelayDeployModal
+              isOpen={popUp.deployRelay.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("deployRelay", isOpen)}
             />
           </TableContainer>
         </div>

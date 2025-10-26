@@ -37,7 +37,7 @@ export const SecretSearchInput = ({
           <>
             <div className="flex w-full items-center whitespace-nowrap">
               <Tooltip content="Search Options">
-                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-mineshaft-600 bg-mineshaft-600 p-3 font-inter text-sm font-medium text-bunker-200 transition-all duration-100 hover:border-primary-400/50 hover:bg-primary/[0.1] hover:text-bunker-100">
+                <Combobox.Button className="button user-select-none relative inline-flex h-[2.42rem] cursor-pointer items-center justify-center rounded-md rounded-r-none border border-mineshaft-600 bg-mineshaft-600 p-3 font-inter text-sm font-medium text-bunker-200 transition-all duration-100 hover:border-primary-400/50 hover:bg-primary/10 hover:text-bunker-100">
                   <FontAwesomeIcon
                     icon={faSearch}
                     size="sm"
@@ -53,7 +53,7 @@ export const SecretSearchInput = ({
                   }}
                   autoComplete="off"
                   className={twMerge(
-                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-[0.375rem] pl-2.5 text-gray-400 placeholder-mineshaft-50 placeholder-opacity-50 outline-none duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50",
+                    "input text-md h-[2.3rem] w-full rounded-md rounded-l-none bg-mineshaft-800 py-1.5 pl-2.5 text-gray-400 placeholder-mineshaft-50/50 outline-hidden duration-200 placeholder:text-sm hover:ring-bunker-400/60 focus:bg-mineshaft-700/80 focus:ring-1 focus:ring-primary-400/50",
                     hasSearch ? "pr-8" : "pr-2.5"
                   )}
                   placeholder={
@@ -82,17 +82,17 @@ export const SecretSearchInput = ({
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <Combobox.Options className="absolute z-30 mt-2 w-full min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow focus:outline-none">
+              <Combobox.Options className="absolute z-30 mt-2 w-full min-w-[220px] overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 text-bunker-300 shadow-sm focus:outline-hidden">
                 <Combobox.Option
                   onClick={() => setIsOpen(true)}
                   value={value}
                   className={({ active }) =>
-                    `flex w-full cursor-pointer items-start rounded-sm px-4 py-2 font-inter text-sm text-mineshaft-200 outline-none hover:bg-mineshaft-400 ${
+                    `flex w-full cursor-pointer items-start rounded-xs px-4 py-2 font-inter text-sm text-mineshaft-200 outline-hidden hover:bg-mineshaft-400 ${
                       active ? "bg-mineshaft-500" : ""
                     }`
                   }
                 >
-                  <FontAwesomeIcon icon={faFolderTree} className="mr-2 mt-1 text-yellow-700" />
+                  <FontAwesomeIcon icon={faFolderTree} className="mt-1 mr-2 text-yellow-700" />
                   {value.trim()
                     ? `Search for "${
                         value.length > 10 ? `${value.substring(0, 10)}...` : value

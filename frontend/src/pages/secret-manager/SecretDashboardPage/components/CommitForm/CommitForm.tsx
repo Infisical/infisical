@@ -343,13 +343,13 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                   </div>
 
                   {/* Right Buttons */}
-                  <div className="ml-6 mt-0.5 flex items-center gap-3">
+                  <div className="mt-0.5 ml-6 flex items-center gap-3">
                     <Button
                       size="sm"
                       onClick={() => clearAllPendingChanges({ projectId, environment, secretPath })}
                       isDisabled={totalChangesCount === 0}
                       variant="outline_bg"
-                      className="px-4 hover:border-red/40 hover:bg-red/[0.1]"
+                      className="px-4 hover:border-red/40 hover:bg-red/10"
                     >
                       Discard
                     </Button>
@@ -383,7 +383,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             </div>
           }
           subTitle="Write a commit message and review the changes you're about to save."
-          className="max-h-[90vh] max-w-[95%] md:max-w-7xl"
+          className="max-h-[90vh] max-w-[95%] md:max-w-8xl"
         >
           <div className="space-y-6">
             {/* Changes List */}
@@ -392,7 +392,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Folder Changes */}
                 {pendingChanges.folders.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
+                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
                       <FontAwesomeIcon icon={faFolder} className="text-mineshaft-300" />
                       Folders ({pendingChanges.folders.length})
                     </h4>
@@ -413,7 +413,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 {/* Secret Changes */}
                 {pendingChanges.secrets.length > 0 && (
                   <div>
-                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-semibold text-mineshaft-200">
+                    <h4 className="mb-4 flex items-center gap-2 border-b border-mineshaft-700 pb-2 text-sm font-medium text-mineshaft-200">
                       <FontAwesomeIcon icon={faKey} className="mr-1 text-mineshaft-300" />
                       Secrets ({pendingChanges.secrets.length})
                     </h4>

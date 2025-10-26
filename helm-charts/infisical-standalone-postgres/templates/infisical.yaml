@@ -45,16 +45,6 @@ spec:
       imagePullSecrets:
         {{- toYaml $infisicalValues.image.imagePullSecrets | nindent 6 }}
     {{- end }}
-    {{- if $infisicalValues.autoDatabaseSchemaMigration }}
-      serviceAccountName: {{ include "infisical.serviceAccountName" . }}
-      initContainers:
-      - name: "migration-init"
-        image: "{{ $infisicalValues.databaseSchemaMigrationJob.image.repository }}:{{ $infisicalValues.databaseSchemaMigrationJob.image.tag }}"
-        imagePullPolicy: {{ $infisicalValues.databaseSchemaMigrationJob.image.pullPolicy }}
-        args: 
-        - "job"
-        - "{{ .Release.Name }}-schema-migration-{{ .Release.Revision }}"
-    {{- end }}
       containers:
       - name: {{ template "infisical.name" . }}-{{ $infisicalValues.name }}
         image: "{{ $infisicalValues.image.repository }}:{{ $infisicalValues.image.tag }}"

@@ -109,7 +109,7 @@ export const OrgMembersTable = ({
 }: Props) => {
   const navigate = useNavigate();
   const { subscription } = useSubscription();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { user } = useUser();
   const userId = user?.id || "";
   const orgId = currentOrg?.id || "";
@@ -332,7 +332,7 @@ export const OrgMembersTable = ({
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -348,7 +348,7 @@ export const OrgMembersTable = ({
               >
                 Roles
               </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                   Apply Roles to Filter Users
                 </DropdownMenuLabel>
@@ -525,7 +525,7 @@ export const OrgMembersTable = ({
                           </p>
                           {u.superAdmin && (
                             <Badge variant="primary" className="ml-2 w-min whitespace-nowrap">
-                              <span className="hidden xl:inline">Server Admin</span>
+                              <span className="mr-1 hidden xl:inline">Server Admin</span>
                               <Tooltip content="Server Admin">
                                 <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
                               </Tooltip>
@@ -533,7 +533,7 @@ export const OrgMembersTable = ({
                           )}
                           {lastLoginAuthMethod && lastLoginTime && (
                             <Tooltip
-                              className="min-w-52 max-w-96 px-3"
+                              className="max-w-96 min-w-52 px-3"
                               content={
                                 <LastLoginSection
                                   lastLoginAuthMethod={lastLoginAuthMethod}
@@ -586,6 +586,7 @@ export const OrgMembersTable = ({
                           {isActive &&
                             (status === "invited" || status === "verified") &&
                             email &&
+                            !isSubOrganization &&
                             serverDetails?.emailConfigured && (
                               <OrgPermissionCan
                                 I={OrgPermissionActions.Edit}

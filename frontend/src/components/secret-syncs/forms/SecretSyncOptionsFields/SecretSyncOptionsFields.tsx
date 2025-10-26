@@ -69,6 +69,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.DigitalOceanAppPlatform:
     case SecretSync.Netlify:
     case SecretSync.Bitbucket:
+    case SecretSync.LaravelForge:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:
@@ -224,14 +225,14 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                 onCheckedChange={onChange}
                 isChecked={value}
               >
-                <p className="w-[11rem]">
+                <p className="w-44">
                   Disable Secret Deletion{" "}
                   <Tooltip
                     className="max-w-md"
                     content={
                       <>
                         <p>
-                          When enabled, Infisical will <span className="font-semibold">not</span>{" "}
+                          When enabled, Infisical will <span className="font-medium">not</span>{" "}
                           remove secrets from the destination during a sync.
                         </p>
                         <p className="mt-4">

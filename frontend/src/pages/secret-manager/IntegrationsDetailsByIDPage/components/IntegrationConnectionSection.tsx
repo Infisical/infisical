@@ -15,16 +15,16 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     return (
       <div className="flex flex-row">
         <div className="flex flex-col">
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Organization" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Organization" />
           <div className="text-sm text-mineshaft-300">{integration?.owner || "-"}</div>
         </div>
         <div className="flex flex-col">
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Project" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Project" />
           <div className="text-sm text-mineshaft-300">{integration?.targetService || "-"}</div>
         </div>
         <div className="flex flex-col">
           <FormLabel
-            className="text-sm font-semibold text-mineshaft-300"
+            className="text-sm font-medium text-mineshaft-300"
             label="Target Environment"
           />
           <div className="text-sm text-mineshaft-300">{integration?.targetEnvironment || "-"}</div>
@@ -94,7 +94,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
 
     return (
       <div className="flex flex-col">
-        <FormLabel className="text-sm font-semibold text-mineshaft-300" label={formLabel()} />
+        <FormLabel className="text-sm font-medium text-mineshaft-300" label={formLabel()} />
         <div className="text-sm text-mineshaft-300">{contents()}</div>
       </div>
     );
@@ -104,7 +104,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "bitbucket") {
       return (
         <div className="flex flex-col">
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Workspace" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Workspace" />
           <div className="text-sm text-mineshaft-300">
             {integration.targetEnvironment || integration.targetEnvironmentId}
           </div>
@@ -115,7 +115,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "octopus-deploy") {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Space" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Space" />
           <div className="text-sm text-mineshaft-300">{integration.targetEnvironment}</div>
         </div>
       );
@@ -128,7 +128,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
       return (
         <div className="flex flex-col">
           <FormLabel
-            className="text-sm font-semibold text-mineshaft-300"
+            className="text-sm font-medium text-mineshaft-300"
             label="Target Environment"
           />
           <div className="text-sm text-mineshaft-300">
@@ -145,7 +145,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "checkly" && integration.targetService) {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Group" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Group" />
           <div className="text-sm text-mineshaft-300">{integration.targetService}</div>
         </div>
       );
@@ -154,7 +154,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "circleci" && integration.owner) {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Organization" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Organization" />
           <div className="text-sm text-mineshaft-300">{integration.owner}</div>
         </div>
       );
@@ -163,7 +163,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "terraform-cloud" && integration.targetService) {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Category" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Category" />
           <div className="text-sm text-mineshaft-300">{integration.targetService}</div>
         </div>
       );
@@ -172,7 +172,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "checkly" || integration.integration === "github") {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Secret Suffix" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Secret Suffix" />
           <div className="text-sm text-mineshaft-300">
             {integration?.metadata?.secretSuffix || "-"}
           </div>
@@ -184,7 +184,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
       return (
         <div>
           <FormLabel
-            className="text-sm font-semibold text-mineshaft-300"
+            className="text-sm font-medium text-mineshaft-300"
             label="Deployment Environment"
           />
           <div className="text-sm text-mineshaft-300">{integration.targetService}</div>
@@ -195,7 +195,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
     if (integration.integration === "windmill" && integration.url) {
       return (
         <div>
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Instance URL" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Instance URL" />
           <div className="text-sm text-mineshaft-300">{integration.url}</div>
         </div>
       );
@@ -207,7 +207,7 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
   return (
     <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-semibold text-mineshaft-100">Connection</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Connection</h3>
       </div>
 
       <div className="mt-4">
@@ -215,18 +215,18 @@ export const IntegrationConnectionSection = ({ integration }: Props) => {
 
         <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
           <div className="flex flex-col">
-            <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Environment" />
+            <FormLabel className="text-sm font-medium text-mineshaft-300" label="Environment" />
             <div className="text-sm text-mineshaft-300">{integration.environment.name}</div>
           </div>
           <div className="flex flex-col">
-            <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Secret Path" />
+            <FormLabel className="text-sm font-medium text-mineshaft-300" label="Secret Path" />
             <div className="text-sm text-mineshaft-300">{integration.secretPath}</div>
           </div>
         </div>
 
         <FormLabel className="my-2" label="Destination" />
         <div className="space-y-2 rounded-lg border border-mineshaft-700 bg-mineshaft-800 p-2">
-          <FormLabel className="text-sm font-semibold text-mineshaft-300" label="Platform" />
+          <FormLabel className="text-sm font-medium text-mineshaft-300" label="Platform" />
           <div className="text-sm text-mineshaft-300">
             {integrationSlugNameMapping?.[integration.integration]}
           </div>

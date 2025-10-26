@@ -133,7 +133,7 @@ export const SecretOverviewTableRow = ({
                   className={twMerge("hidden group-hover:flex", isSelected && "flex")}
                 />
                 <FontAwesomeIcon
-                  className={twMerge("block group-hover:hidden", isSelected && "hidden")}
+                  className={twMerge("block group-hover:!hidden", isSelected && "!hidden")}
                   icon={isFormExpanded ? faAngleDown : faKey}
                 />
               </div>
@@ -209,16 +209,13 @@ export const SecretOverviewTableRow = ({
                 <table className="secret-table">
                   <thead>
                     <tr className="h-10 border-b-2 border-mineshaft-600">
-                      <th
-                        style={{ padding: "0.5rem 1rem" }}
-                        className="min-table-row min-w-[11rem]"
-                      >
+                      <th style={{ padding: "0.5rem 1rem" }} className="min-table-row min-w-44">
                         Environment
                       </th>
                       <th style={{ padding: "0.5rem 1rem" }} className="border-none">
                         Value
                       </th>
-                      <div className="absolute right-0 top-0 ml-auto mr-1 mt-1 w-min">
+                      <div className="absolute top-0 right-0 mt-1 mr-1 ml-auto w-min">
                         <Button
                           variant="outline_bg"
                           className="p-1"
@@ -247,7 +244,7 @@ export const SecretOverviewTableRow = ({
                             className="flex h-full items-center"
                             style={{ padding: "0.25rem 1rem" }}
                           >
-                            <div title={name} className="flex h-8 w-[8rem] items-center space-x-2">
+                            <div title={name} className="flex h-8 w-32 items-center space-x-2">
                               <span className="truncate">{name}</span>
                               {isImportedSecret && (
                                 <Tooltip
@@ -287,6 +284,7 @@ export const SecretOverviewTableRow = ({
                               environment={slug}
                               isRotatedSecret={secret?.isRotatedSecret}
                               importedBy={importedBy}
+                              isSecretPresent={Boolean(secret)}
                             />
                           </td>
                         </tr>

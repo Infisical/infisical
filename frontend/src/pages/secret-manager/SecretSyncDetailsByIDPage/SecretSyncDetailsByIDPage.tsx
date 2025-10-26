@@ -73,7 +73,7 @@ const PageContent = () => {
   return (
     <>
       <div className="container mx-auto flex flex-col justify-between bg-bunker-800 font-inter text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl">
+        <div className="mx-auto mb-6 w-full max-w-8xl">
           <Button
             variant="link"
             type="submit"
@@ -96,10 +96,10 @@ const PageContent = () => {
             <img
               alt={`${destinationDetails.name} sync`}
               src={`/images/integrations/${destinationDetails.image}`}
-              className="ml-1 mt-3 w-16"
+              className="mt-3 ml-1 w-16"
             />
             <div>
-              <p className="text-3xl font-semibold text-white">{secretSync.name}</p>
+              <p className="text-3xl font-medium text-white">{secretSync.name}</p>
               <p className="leading-3 text-bunker-300">{destinationDetails.name} Sync</p>
             </div>
             <SecretSyncActionTriggers secretSync={secretSync} />

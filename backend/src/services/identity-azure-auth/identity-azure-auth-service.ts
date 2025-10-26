@@ -1,6 +1,6 @@
 import { ForbiddenError } from "@casl/ability";
 
-import { IdentityAuthMethod } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -10,13 +10,21 @@ import {
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
-import { BadRequestError, NotFoundError, PermissionBoundaryError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PermissionBoundaryError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TIdentityDALFactory } from "../identity/identity-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identity-access-token-types";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityAzureAuthDALFactory } from "./identity-azure-auth-dal";
 import { validateAzureIdentity } from "./identity-azure-auth-fns";
@@ -29,24 +37,28 @@ import {
 } from "./identity-azure-auth-types";
 
 type TIdentityAzureAuthServiceFactoryDep = {
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   identityAzureAuthDAL: Pick<
     TIdentityAzureAuthDALFactory,
     "findOne" | "transaction" | "create" | "updateById" | "delete"
   >;
-  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findOne" | "updateById">;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
 
 export const identityAzureAuthServiceFactory = ({
+  identityDAL,
   identityAzureAuthDAL,
-  identityOrgMembershipDAL,
+  membershipIdentityDAL,
   identityAccessTokenDAL,
   permissionService,
-  licenseService
+  licenseService,
+  orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: azureJwt }: TLoginAzureAuthDTO) => {
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
@@ -54,8 +66,8 @@ export const identityAzureAuthServiceFactory = ({
       throw new NotFoundError({ message: "Azure auth method not found for identity, did you configure Azure Auth?" });
     }
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId: identityAzureAuth.identityId });
-    if (!identityMembershipOrg) throw new UnauthorizedError({ message: "Identity not attached to a organization" });
+    const identity = await identityDAL.findById(identityAzureAuth.identityId);
+    if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const azureIdentity = await validateAzureIdentity({
       tenantId: identityAzureAuth.tenantId,
@@ -80,8 +92,8 @@ export const identityAzureAuthServiceFactory = ({
     }
 
     const identityAccessToken = await identityAzureAuthDAL.transaction(async (tx) => {
-      await identityOrgMembershipDAL.updateById(
-        identityMembershipOrg.id,
+      await membershipIdentityDAL.update(
+        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
         {
           lastLoginAuthMethod: IdentityAuthMethod.AZURE_AUTH,
           lastLoginTime: new Date()
@@ -119,7 +131,7 @@ export const identityAzureAuthServiceFactory = ({
           }
     );
 
-    return { accessToken, identityAzureAuth, identityAccessToken, identityMembershipOrg };
+    return { accessToken, identityAzureAuth, identityAccessToken, identity };
   };
 
   const attachAzureAuth = async ({
@@ -139,8 +151,17 @@ export const identityAzureAuthServiceFactory = ({
   }: TAttachAzureAuthDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
 
     if (identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
@@ -151,16 +172,17 @@ export const identityAzureAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -181,7 +203,7 @@ export const identityAzureAuthServiceFactory = ({
     const identityAzureAuth = await identityAzureAuthDAL.transaction(async (tx) => {
       const doc = await identityAzureAuthDAL.create(
         {
-          identityId: identityMembershipOrg.identityId,
+          identityId: identityMembershipOrg.identity.id,
           tenantId,
           resource,
           allowedServicePrincipalIds,
@@ -195,7 +217,7 @@ export const identityAzureAuthServiceFactory = ({
 
       return doc;
     });
-    return { ...identityAzureAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityAzureAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const updateAzureAuth = async ({
@@ -212,8 +234,17 @@ export const identityAzureAuthServiceFactory = ({
     actor,
     actorOrgId
   }: TUpdateAzureAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
         message: "Failed to update Azure Auth"
@@ -229,16 +260,17 @@ export const identityAzureAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const plan = await licenseService.getPlan(identityMembershipOrg.orgId);
+    const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
       if (
         !plan.ipAllowlisting &&
@@ -270,13 +302,22 @@ export const identityAzureAuthServiceFactory = ({
 
     return {
       ...updatedAzureAuth,
-      orgId: identityMembershipOrg.orgId
+      orgId: identityMembershipOrg.scopeOrgId
     };
   };
 
   const getAzureAuth = async ({ identityId, actorId, actor, actorAuthMethod, actorOrgId }: TGetAzureAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have Azure Auth attached"
@@ -285,16 +326,17 @@ export const identityAzureAuthServiceFactory = ({
 
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    return { ...identityAzureAuth, orgId: identityMembershipOrg.orgId };
+    return { ...identityAzureAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
   const revokeIdentityAzureAuth = async ({
@@ -304,31 +346,43 @@ export const identityAzureAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId
   }: TRevokeAzureAuthDTO) => {
-    const identityMembershipOrg = await identityOrgMembershipDAL.findOne({ identityId });
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+      throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
+    }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.AZURE_AUTH)) {
       throw new BadRequestError({
         message: "The identity does not have azure auth"
       });
     }
-    const { permission, membership } = await permissionService.getOrgPermission(
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
       actor,
       actorId,
-      identityMembershipOrg.orgId,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission(
-      ActorType.IDENTITY,
-      identityMembershipOrg.identityId,
-      identityMembershipOrg.orgId,
+    const { permission: rolePermission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: ActorType.IDENTITY,
+      actorId: identityMembershipOrg.identity.id,
+      orgId: identityMembershipOrg.scopeOrgId,
       actorAuthMethod,
       actorOrgId
-    );
+    });
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
     const permissionBoundary = validatePrivilegeChangeOperation(
-      membership.shouldUseNewPrivilegeSystem,
+      shouldUseNewPrivilegeSystem,
       OrgPermissionIdentityActions.RevokeAuth,
       OrgPermissionSubjects.Identity,
       permission,
@@ -338,7 +392,7 @@ export const identityAzureAuthServiceFactory = ({
       throw new PermissionBoundaryError({
         message: constructPermissionErrorMessage(
           "Failed to revoke azure auth of identity with more privileged role",
-          membership.shouldUseNewPrivilegeSystem,
+          shouldUseNewPrivilegeSystem,
           OrgPermissionIdentityActions.RevokeAuth,
           OrgPermissionSubjects.Identity
         ),
@@ -349,7 +403,7 @@ export const identityAzureAuthServiceFactory = ({
       const deletedAzureAuth = await identityAzureAuthDAL.delete({ identityId }, tx);
       await identityAccessTokenDAL.delete({ identityId, authMethod: IdentityAuthMethod.AZURE_AUTH }, tx);
 
-      return { ...deletedAzureAuth?.[0], orgId: identityMembershipOrg.orgId };
+      return { ...deletedAzureAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
     });
     return revokedIdentityAzureAuth;
   };

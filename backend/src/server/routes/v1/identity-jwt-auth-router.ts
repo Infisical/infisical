@@ -96,7 +96,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.JwtAuth],
-      description: "Login with JWT Auth",
+      description: "Login with JWT Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
         jwt: z.string().trim()
@@ -111,7 +111,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityJwtAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityJwtAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityJwtAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -119,7 +119,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_JWT_AUTH,
           metadata: {
@@ -148,7 +148,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.JwtAuth],
-      description: "Attach JWT Auth configuration onto identity",
+      description: "Attach JWT Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -217,7 +217,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.JwtAuth],
-      description: "Update JWT Auth configuration on identity",
+      description: "Update JWT Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -283,7 +283,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.JwtAuth],
-      description: "Retrieve JWT Auth configuration on identity",
+      description: "Retrieve JWT Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -332,7 +332,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.JwtAuth],
-      description: "Delete JWT Auth configuration on identity",
+      description: "Delete JWT Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

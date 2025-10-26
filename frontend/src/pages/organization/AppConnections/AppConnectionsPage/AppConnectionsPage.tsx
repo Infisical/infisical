@@ -3,6 +3,7 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { PageHeader } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import {
   OrgPermissionAppConnectionActions,
   OrgPermissionSubjects
@@ -12,6 +13,8 @@ import { AppConnectionsTable } from "@app/pages/organization/AppConnections/AppC
 
 export const AppConnectionsPage = withPermission(
   () => {
+    const { isSubOrganization } = useOrganization();
+
     return (
       <div className="bg-bunker-800">
         <Helmet>
@@ -20,15 +23,16 @@ export const AppConnectionsPage = withPermission(
           <meta property="og:image" content="/images/message.png" />
         </Helmet>
         <div className="flex w-full justify-center bg-bunker-800 text-white">
-          <div className="w-full max-w-7xl">
+          <div className="w-full max-w-8xl">
             <PageHeader
+              scope={isSubOrganization ? "namespace" : "org"}
               className="w-full"
               title="App Connections"
               description="Manage organization App Connections"
             />
             <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">
               <div className="flex items-center">
-                <FontAwesomeIcon icon={faInfoCircle} className="mb-0.5 mr-2 text-sm" />
+                <FontAwesomeIcon icon={faInfoCircle} className="mr-2 mb-0.5 text-sm" />
                 <span className="text-sm text-blue-200">
                   App connections can also be created and managed independently in projects now.
                 </span>

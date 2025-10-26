@@ -30,7 +30,7 @@ export const ContentLoader = ({ text, frequency = 2000, className, lottieClassNa
   return (
     <div
       className={twMerge(
-        "container relative mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:[color-scheme:dark]",
+        "relative container mx-auto flex h-screen w-full flex-col items-center justify-center space-y-8 px-8 text-mineshaft-50 dark:scheme-dark",
         className
       )}
     >

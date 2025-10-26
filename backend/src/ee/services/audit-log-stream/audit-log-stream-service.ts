@@ -1,7 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 
-import { TAuditLogs } from "@app/db/schemas";
+import { OrganizationActionScope, TAuditLogs } from "@app/db/schemas";
 import {
   decryptLogStream,
   decryptLogStreamCredentials,
@@ -45,13 +45,14 @@ export const auditLogStreamServiceFactory = ({
       });
     }
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Create, OrgPermissionSubjects.Settings);
 
@@ -94,13 +95,14 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(logStreamId);
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      logStream.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Edit, OrgPermissionSubjects.Settings);
 
@@ -160,13 +162,14 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(logStreamId);
     if (!logStream) throw new NotFoundError({ message: `Audit Log Stream with ID '${logStreamId}' not found` });
 
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      logStream.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Delete, OrgPermissionSubjects.Settings);
 
@@ -185,14 +188,14 @@ export const auditLogStreamServiceFactory = ({
     const logStream = await auditLogStreamDAL.findById(logStreamId);
 
     if (!logStream) throw new NotFoundError({ message: `Audit log stream with ID '${logStreamId}' not found` });
-
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      logStream.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 
@@ -206,13 +209,14 @@ export const auditLogStreamServiceFactory = ({
   };
 
   const list = async (actor: OrgServiceActor) => {
-    const { permission } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Settings);
 

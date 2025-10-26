@@ -22,6 +22,15 @@ export type TOfflineLicense = {
   features: TFeatureSet;
 };
 
+export type TPlanBillingInfo = {
+  currentPeriodStart: number;
+  currentPeriodEnd: number;
+  interval: "month" | "year";
+  intervalCount: number;
+  amount: number;
+  quantity: number;
+};
+
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
@@ -33,6 +42,7 @@ export type TFeatureSet = {
   membersUsed: number;
   identityLimit: null;
   identitiesUsed: number;
+  subOrganization: false;
   environmentLimit: null;
   environmentsUsed: 0;
   secretVersioning: true;
@@ -78,8 +88,10 @@ export type TFeatureSet = {
   enterpriseCertificateSyncs: false;
   enterpriseAppConnections: false;
   machineIdentityAuthTemplates: false;
+  pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
+  pam: false;
 };
 
 export type TOrgPlansTableDTO = {

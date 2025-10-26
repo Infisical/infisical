@@ -20,7 +20,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.GcpAuth],
-      description: "Login with GCP Auth",
+      description: "Login with GCP Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId),
         jwt: z.string()
@@ -35,12 +35,12 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       }
     },
     handler: async (req) => {
-      const { identityGcpAuth, accessToken, identityAccessToken, identityMembershipOrg } =
+      const { identityGcpAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityGcpAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_GCP_AUTH,
           metadata: {
@@ -70,7 +70,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.GcpAuth],
-      description: "Attach GCP Auth configuration onto identity",
+      description: "Attach GCP Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -163,7 +163,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.GcpAuth],
-      description: "Update GCP Auth configuration on identity",
+      description: "Update GCP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -249,7 +249,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.GcpAuth],
-      description: "Retrieve GCP Auth configuration on identity",
+      description: "Retrieve GCP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -298,7 +298,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     schema: {
       hide: false,
       tags: [ApiDocsTags.GcpAuth],
-      description: "Delete GCP Auth configuration on identity",
+      description: "Delete GCP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

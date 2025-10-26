@@ -66,6 +66,7 @@ const Content = ({
   secrets,
   environments,
   projectId,
+  projectSlug,
   sourceSecretPath
 }: ContentProps) => {
   const [search, setSearch] = useState(sourceSecretPath);
@@ -194,6 +195,7 @@ const Content = ({
           destinationEnvironment: environment.slug,
           destinationSecretPath: value.secretPath,
           projectId,
+          projectSlug,
           secretIds: secretsToMove.map((sec) => sec.id)
         });
 
@@ -248,7 +250,7 @@ const Content = ({
     return (
       <div className="w-full">
         <div className="mb-2">Results</div>
-        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded bg-mineshaft-900 px-3 py-2">
+        <div className="mb-4 flex flex-col divide-y divide-mineshaft-600 rounded-sm bg-mineshaft-900 px-3 py-2">
           {moveResults.map(({ id, name, status, message }) => {
             let className: string;
             let icon: IconDefinition;
@@ -325,7 +327,7 @@ const Content = ({
         />
       </FormControl>
       {Boolean(environmentsToBeSkipped.length) && (
-        <div className="rounded bg-mineshaft-900 px-3 py-2">
+        <div className="rounded-sm bg-mineshaft-900 px-3 py-2">
           <span className="text-sm text-yellow">
             <FontAwesomeIcon icon={faWarning} className="mr-0.5" /> The following environments will
             not be affected
@@ -359,7 +361,7 @@ const Content = ({
           onCheckedChange={setShouldOverwrite}
           isChecked={shouldOverwrite}
         >
-          <p className="w-[11rem]">Overwrite Existing Secrets</p>
+          <p className="w-44">Overwrite Existing Secrets</p>
         </Switch>
       </FormControl>
       <div className="mt-6 flex items-center">

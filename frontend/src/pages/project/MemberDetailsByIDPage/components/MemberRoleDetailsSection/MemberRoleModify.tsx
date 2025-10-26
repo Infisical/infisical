@@ -181,7 +181,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
               />
               <Popover>
                 <PopoverTrigger disabled={isMemberEditDisabled} asChild>
-                  <div className="flex-grow">
+                  <div className="grow">
                     <Tooltip
                       content={
                         temporaryAccess?.isTemporary

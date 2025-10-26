@@ -31,6 +31,7 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
 
 ## Subcommands & flags
 
+<AccordionGroup>
 <Accordion title="infisical gateway start" defaultOpen="true">
   Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to the specified relay server and provides secure access to private resources within your network.
 
@@ -245,6 +246,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
 ### Other Flags
 
+  <AccordionGroup>
   <Accordion title="--relay">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
@@ -276,6 +278,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     ```
 
   </Accordion>
+  </AccordionGroup>
 </Accordion>
 
 <Accordion title="infisical gateway systemd install">
@@ -293,6 +296,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
 ### Flags
 
+  <AccordionGroup>
   <Accordion title="--token">
     The machine identity access token to authenticate with Infisical.
 
@@ -334,6 +338,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
     ```
 
   </Accordion>
+  </AccordionGroup>
 
 ### Service Details
 
@@ -360,9 +365,11 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 ```
 
 </Accordion>
+</AccordionGroup>
 
 ## Legacy Gateway Commands
 
+<AccordionGroup>
 <Accordion title="infisical gateway (deprecated)">
   <Warning>
   **This command is deprecated and will be removed in a future release.**
@@ -579,6 +586,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
 
 ### Other Flags
 
+  <AccordionGroup>
   <Accordion title="--domain">
     Domain of your self-hosted Infisical instance.
 
@@ -588,6 +596,7 @@ The Infisical CLI supports multiple authentication methods. Below are the availa
     ```
 
   </Accordion>
+  </AccordionGroup>
 </Accordion>
 
 <Accordion title="infisical gateway install (deprecated)">
@@ -614,6 +623,7 @@ sudo infisical gateway install --token=<token> --domain=<domain>
 
 ### Flags
 
+  <AccordionGroup>
   <Accordion title="--token">
     The machine identity access token to authenticate with Infisical.
 
@@ -635,6 +645,7 @@ sudo infisical gateway install --token=<token> --domain=<domain>
     ```
 
   </Accordion>
+  </AccordionGroup>
 
 ### Service Details
 
@@ -659,3 +670,4 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 ```
 
 </Accordion>
+</AccordionGroup>

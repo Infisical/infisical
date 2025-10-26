@@ -2,7 +2,7 @@ import { Controller, useFormContext } from "react-hook-form";
 
 import { FormControl, Input, TextArea } from "@app/components/v2";
 
-import { TPkiSyncForm } from "./schemas";
+import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
 export const PkiSyncDetailsFields = () => {
   const { control } = useFormContext<TPkiSyncForm>();
@@ -38,7 +38,7 @@ export const PkiSyncDetailsFields = () => {
               value={value}
               onChange={onChange}
               placeholder="Describe the purpose of this sync..."
-              className="!resize-none"
+              className="resize-none!"
               rows={4}
             />
           </FormControl>

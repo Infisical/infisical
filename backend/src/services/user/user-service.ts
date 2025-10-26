@@ -1,6 +1,7 @@
 import { ForbiddenError } from "@casl/ability";
 import { Knex } from "knex";
 
+import { AccessScope, OrganizationActionScope } from "@app/db/schemas";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { crypto } from "@app/lib/crypto";
@@ -9,12 +10,11 @@ import { logger } from "@app/lib/logger";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { TOrgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { AuthMethod, AuthTokenType } from "../auth/auth-type";
 import { TGroupProjectDALFactory } from "../group-project/group-project-dal";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TUserAliasDALFactory } from "../user-alias/user-alias-dal";
 import { TUserDALFactory } from "./user-dal";
 import { TListUserGroupsDTO, TUpdateUserEmailDTO, TUpdateUserMfaDTO } from "./user-types";
@@ -37,9 +37,8 @@ type TUserServiceFactoryDep = {
   >;
   groupProjectDAL: Pick<TGroupProjectDALFactory, "findByUserId">;
   orgDAL: Pick<TOrgDALFactory, "findById" | "find">;
-  orgMembershipDAL: Pick<TOrgMembershipDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
+  membershipUserDAL: Pick<TMembershipUserDALFactory, "find" | "insertMany" | "findOne" | "updateById">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser" | "revokeAllMySessions">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "find">;
   smtpService: Pick<TSmtpService, "sendMail">;
   permissionService: TPermissionServiceFactory;
   userAliasDAL: Pick<TUserAliasDALFactory, "findOne" | "find" | "updateById" | "delete">;
@@ -50,8 +49,7 @@ export type TUserServiceFactory = ReturnType<typeof userServiceFactory>;
 export const userServiceFactory = ({
   userDAL,
   orgDAL,
-  orgMembershipDAL,
-  projectMembershipDAL,
+  membershipUserDAL,
   groupProjectDAL,
   tokenService,
   smtpService,
@@ -183,13 +181,19 @@ export const userServiceFactory = ({
   };
 
   const checkUserScimRestriction = async (userId: string, tx?: Knex) => {
-    const userOrgs = await orgMembershipDAL.find({ userId }, { tx });
+    const userOrgs = await membershipUserDAL.find(
+      {
+        actorUserId: userId,
+        scope: AccessScope.Organization
+      },
+      { tx }
+    );
 
     if (userOrgs.length === 0) {
       return false;
     }
 
-    const orgIds = userOrgs.map((membership) => membership.orgId);
+    const orgIds = userOrgs.map((membership) => membership.scopeOrgId);
     const organizations = await orgDAL.find({ $in: { id: orgIds } }, { tx });
 
     return organizations.some((org) => org.scimEnabled);
@@ -347,6 +351,23 @@ export const userServiceFactory = ({
 
   const deleteUser = async (userId: string) => {
     const user = await userDAL.deleteById(userId);
+
+    try {
+      if (user?.email) {
+        // Send email to user to confirm account deletion
+        await smtpService.sendMail({
+          template: SmtpTemplates.AccountDeletionConfirmation,
+          subjectLine: "Your Infisical account has been deleted",
+          recipients: [user.email],
+          substitutions: {
+            email: user.email
+          }
+        });
+      }
+    } catch (error) {
+      logger.error(error, `Failed to send account deletion confirmation email to ${user.email}`);
+    }
+
     return user;
   };
 
@@ -380,9 +401,10 @@ export const userServiceFactory = ({
   };
 
   const getUserProjectFavorites = async (userId: string, orgId: string) => {
-    const orgMembership = await orgMembershipDAL.findOne({
-      userId,
-      orgId
+    const orgMembership = await membershipUserDAL.findOne({
+      scope: AccessScope.Organization,
+      actorUserId: userId,
+      scopeOrgId: orgId
     });
 
     if (!orgMembership) {
@@ -395,9 +417,10 @@ export const userServiceFactory = ({
   };
 
   const updateUserProjectFavorites = async (userId: string, orgId: string, projectIds: string[]) => {
-    const orgMembership = await orgMembershipDAL.findOne({
-      userId,
-      orgId
+    const orgMembership = await membershipUserDAL.findOne({
+      scope: AccessScope.Organization,
+      actorUserId: userId,
+      scopeOrgId: orgId
     });
 
     if (!orgMembership) {
@@ -406,18 +429,20 @@ export const userServiceFactory = ({
       });
     }
 
-    const matchingUserProjectMemberships = await projectMembershipDAL.find({
-      userId,
+    const matchingUserProjectMemberships = await membershipUserDAL.find({
+      scope: AccessScope.Project,
+      scopeOrgId: orgId,
+      actorUserId: userId,
       $in: {
-        projectId: projectIds
+        scopeProjectId: projectIds
       }
     });
 
     const memberProjectFavorites = matchingUserProjectMemberships.map(
-      (projectMembership) => projectMembership.projectId
+      (projectMembership) => projectMembership.scopeProjectId as string
     );
 
-    const updatedOrgMembership = await orgMembershipDAL.updateById(orgMembership.id, {
+    const updatedOrgMembership = await membershipUserDAL.updateById(orgMembership.id, {
       projectFavorites: memberProjectFavorites
     });
 
@@ -433,13 +458,14 @@ export const userServiceFactory = ({
 
     // This makes it so the user can always read information about themselves, but no one else if they don't have the Members Read permission.
     if (user.id !== actorId) {
-      const { permission } = await permissionService.getOrgPermission(
+      const { permission } = await permissionService.getOrgPermission({
         actor,
         actorId,
-        actorOrgId,
+        orgId: actorOrgId,
         actorAuthMethod,
-        actorOrgId
-      );
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
       ForbiddenError.from(permission).throwUnlessCan(OrgPermissionActions.Read, OrgPermissionSubjects.Member);
     }
 

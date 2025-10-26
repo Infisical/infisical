@@ -74,6 +74,7 @@ type Props = {
     | "billing"
     | "audit-logs"
     | "machine-identity-auth-template"
+    | "sub-organization"
   >;
   setValue: UseFormSetValue<TFormSchema>;
   control: Control<TFormSchema>;
@@ -189,7 +190,7 @@ export const RolePermissionRow = ({ isEditable, title, formName, control, setVal
       {isRowExpanded && (
         <Tr>
           <Td colSpan={3} className="border-mineshaft-500 bg-mineshaft-900 p-8">
-            <div className="flex flex-grow flex-wrap justify-start gap-x-8 gap-y-4">
+            <div className="flex grow flex-wrap justify-start gap-x-8 gap-y-4">
               {getPermissionList(formName).map(({ action, label }) => {
                 return (
                   <Controller

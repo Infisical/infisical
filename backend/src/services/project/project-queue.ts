@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import {
+  AccessScope,
   IntegrationAuthsSchema,
   ProjectMembershipRole,
   ProjectUpgradeStatus,
@@ -29,13 +30,13 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueJobTypes, TQueueServiceFactory } from "@app/queue";
 
 import { TIntegrationAuthDALFactory } from "../integration-auth/integration-auth-dal";
+import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
+import { TMembershipUserDALFactory } from "../membership-user/membership-user-dal";
 import { TOrgDALFactory } from "../org/org-dal";
 import { TOrgServiceFactory } from "../org/org-service";
 import { TProjectBotDALFactory } from "../project-bot/project-bot-dal";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TProjectKeyDALFactory } from "../project-key/project-key-dal";
-import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
-import { TProjectUserMembershipRoleDALFactory } from "../project-membership/project-user-membership-role-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { TSecretVersionDALFactory } from "../secret/secret-version-dal";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
@@ -55,13 +56,13 @@ type TProjectQueueFactoryDep = {
   secretApprovalSecretDAL: Pick<TSecretApprovalRequestSecretDALFactory, "find" | "bulkUpdateNoVersionIncrement">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne" | "delete" | "create">;
   orgService: Pick<TOrgServiceFactory, "addGhostUser">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "create">;
-  projectUserMembershipRoleDAL: Pick<TProjectUserMembershipRoleDALFactory, "create">;
   integrationAuthDAL: TIntegrationAuthDALFactory;
   userDAL: Pick<TUserDALFactory, "findUserEncKeyByUserId">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "find">;
   projectDAL: Pick<TProjectDALFactory, "findOne" | "transaction" | "updateById" | "setProjectUpgradeStatus" | "find">;
   orgDAL: Pick<TOrgDALFactory, "findMembership">;
+  membershipUserDAL: TMembershipUserDALFactory;
+  membershipRoleDAL: TMembershipRoleDALFactory;
 };
 
 export const projectQueueFactory = ({
@@ -79,8 +80,8 @@ export const projectQueueFactory = ({
   orgDAL,
   projectDAL,
   orgService,
-  projectMembershipDAL,
-  projectUserMembershipRoleDAL
+  membershipUserDAL,
+  membershipRoleDAL
 }: TProjectQueueFactoryDep) => {
   const upgradeProject = async (dto: TQueueJobTypes["upgrade-project-to-ghost"]["payload"]) => {
     await queueService.queue(QueueName.UpgradeProjectToGhost, QueueJobs.UpgradeProjectToGhost, dto, {
@@ -227,17 +228,16 @@ export const projectQueueFactory = ({
         );
 
         // Create a membership for the ghost user
-        const projectMembership = await projectMembershipDAL.create(
+        const projectMembership = await membershipUserDAL.create(
           {
-            projectId: project.id,
-            userId: ghostUser.user.id
+            scopeProjectId: project.id,
+            scope: AccessScope.Project,
+            actorUserId: ghostUser.user.id,
+            scopeOrgId: project.orgId
           },
           tx
         );
-        await projectUserMembershipRoleDAL.create(
-          { projectMembershipId: projectMembership.id, role: ProjectMembershipRole.Admin },
-          tx
-        );
+        await membershipRoleDAL.create({ membershipId: projectMembership.id, role: ProjectMembershipRole.Admin }, tx);
 
         // If a bot already exists, delete it
         if (existingBot) {
@@ -272,8 +272,9 @@ export const projectQueueFactory = ({
         for (const key of existingProjectKeys) {
           const user = await userDAL.findUserEncKeyByUserId(key.receiverId);
           const [orgMembership] = await orgDAL.findMembership({
-            [`${TableName.OrgMembership}.userId` as "userId"]: key.receiverId,
-            [`${TableName.OrgMembership}.orgId` as "orgId"]: project.orgId
+            [`${TableName.Membership}.actorUserId` as "actorUserId"]: key.receiverId,
+            [`${TableName.Membership}.scopeOrgId` as "scopeOrgId"]: project.orgId,
+            [`${TableName.Membership}.scope` as "scope"]: AccessScope.Organization
           });
 
           if (!user) {

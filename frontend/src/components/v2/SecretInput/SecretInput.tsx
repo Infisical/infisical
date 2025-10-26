@@ -62,7 +62,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   isErrorLoadingValue?: boolean;
 };
 
-const commonClassName = "font-mono text-sm caret-white border-none outline-none w-full break-all";
+const commonClassName = "font-mono text-sm caret-white border-none outline-hidden w-full break-all";
 
 export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
   (
@@ -87,7 +87,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <div
-        className={twMerge("w-full overflow-auto rounded-md no-scrollbar", containerClassName)}
+        className={twMerge("no-scrollbar w-full overflow-auto rounded-md", containerClassName)}
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div className="relative overflow-hidden">
@@ -108,7 +108,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             style={{ whiteSpace: "break-spaces" }}
             aria-label="secret value"
             ref={ref}
-            className={`absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent no-scrollbar focus:border-0 ${commonClassName}`}
+            className={`no-scrollbar absolute inset-0 block h-full resize-none overflow-hidden bg-transparent text-transparent focus:border-0 ${commonClassName}`}
             onFocus={(evt) => {
               onFocus?.(evt);
               setIsSecretFocused.on();

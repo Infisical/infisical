@@ -86,13 +86,14 @@ import {
   useCreateSecretV3,
   useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
+  useGetOrCreateFolder,
   useGetWsTags,
   useUpdateSecretV3
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
@@ -367,6 +368,7 @@ export const OverviewPage = () => {
   const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
+  const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
 
   const { handlePopUpOpen, handlePopUpToggle, handlePopUpClose, popUp } = usePopUp([
@@ -384,16 +386,32 @@ export const OverviewPage = () => {
   ] as const);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
-    const promises = userAvailableEnvs.map((env) => {
-      const environment = env.slug;
-      return createFolder({
-        name: folderName,
-        path: secretPath,
-        environment,
-        projectId,
-        description
+    const promises = userAvailableEnvs
+      .map((env) => {
+        const environment = env.slug;
+        const isFolderPresent = isFolderPresentInEnv(folderName, environment);
+        if (isFolderPresent) {
+          return undefined;
+        }
+
+        return createFolder({
+          name: folderName,
+          path: secretPath,
+          environment,
+          projectId,
+          description
+        });
+      })
+      .filter((promise) => promise !== undefined);
+
+    if (promises.length === 0) {
+      handlePopUpClose("addFolder");
+      createNotification({
+        type: "info",
+        text: "Folder already exists in all environments"
       });
-    });
+      return;
+    }
 
     const results = await Promise.allSettled(promises);
     const isFoldersAdded = results.some((result) => result.status === "fulfilled");
@@ -481,7 +499,7 @@ export const OverviewPage = () => {
           })
         );
         if (folderName && parentPath && canCreateFolder) {
-          await createFolder({
+          await getOrCreateFolder({
             projectId,
             path: parentPath,
             environment: env,
@@ -645,7 +663,7 @@ export const OverviewPage = () => {
         })
       );
       if (folderName && parentPath && canCreateFolder) {
-        await createFolder({
+        await getOrCreateFolder({
           projectId,
           environment: slug,
           path: parentPath,
@@ -884,7 +902,7 @@ export const OverviewPage = () => {
 
   if (isProjectV3 && visibleEnvs.length > 0 && isOverviewLoading) {
     return (
-      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="container mx-auto flex h-screen w-full items-center justify-center px-8 text-mineshaft-50 dark:scheme-dark">
         <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
       </div>
     );
@@ -900,7 +918,7 @@ export const OverviewPage = () => {
 
   if (!isProjectV3)
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
@@ -911,10 +929,11 @@ export const OverviewPage = () => {
         <meta property="og:title" content={String(t("dashboard.og-title"))} />
         <meta name="og:description" content={String(t("dashboard.og-description"))} />
       </Helmet>
-      <div className="relative mx-auto max-w-7xl text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="relative mx-auto max-w-8xl text-mineshaft-50 dark:scheme-dark">
         <div className="flex w-full items-baseline justify-between">
           <PageHeader
-            title="Secrets Overview"
+            scope={ProjectType.SecretManager}
+            title="Overview"
             description={
               <p className="text-md text-bunker-300">
                 Inject your secrets using
@@ -958,7 +977,7 @@ export const OverviewPage = () => {
             }
           />
         </div>
-        <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
           <div className="flex flex-row items-center justify-center space-x-2">
             {isTableFiltered && (
@@ -980,7 +999,7 @@ export const OverviewPage = () => {
                     size="sm"
                     variant="outline_bg"
                     className={twMerge(
-                      "flex h-[2.5rem]",
+                      "flex h-10",
                       isTableFiltered && "border-primary/40 bg-primary/10"
                     )}
                     leftIcon={
@@ -994,7 +1013,7 @@ export const OverviewPage = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
-                  className="thin-scrollbar max-h-[70vh] overflow-y-auto"
+                  className="max-h-[70vh] thin-scrollbar overflow-y-auto"
                   align="end"
                   sideOffset={2}
                 >
@@ -1153,7 +1172,9 @@ export const OverviewPage = () => {
                               handlePopUpClose("misc");
                               return;
                             }
-                            handlePopUpOpen("upgradePlan");
+                            handlePopUpOpen("upgradePlan", {
+                              isEnterpriseFeature: true
+                            });
                           }}
                           isDisabled={userAvailableDynamicSecretEnvs.length === 0}
                           variant="outline_bg"
@@ -1204,7 +1225,7 @@ export const OverviewPage = () => {
         <div ref={tableRef} className="mt-4">
           <TableContainer
             onScroll={(e) => setScrollOffset(e.currentTarget.scrollLeft)}
-            className="thin-scrollbar max-h-[66vh] overflow-y-auto rounded-b-none"
+            className="max-h-[66vh] thin-scrollbar overflow-y-auto rounded-b-none"
           >
             <Table>
               <THead
@@ -1221,7 +1242,7 @@ export const OverviewPage = () => {
                   >
                     <div
                       className={twMerge(
-                        "flex h-full border-b border-mineshaft-600 pb-3 pl-3 pr-5",
+                        "flex h-full border-b border-mineshaft-600 pr-5 pb-3 pl-3",
                         !collapseEnvironments && "border-r pt-3.5"
                       )}
                     >
@@ -1238,7 +1259,7 @@ export const OverviewPage = () => {
                               : ""
                           }
                         >
-                          <div className="ml-2 mr-4">
+                          <div className="mr-4 ml-2">
                             <Checkbox
                               isDisabled={totalCount === 0}
                               id="checkbox-select-all-rows"
@@ -1276,7 +1297,7 @@ export const OverviewPage = () => {
                           ariaLabel="Toggle Environment View"
                           variant="plain"
                           colorSchema="secondary"
-                          className="ml-auto mt-auto h-min p-1"
+                          className="mt-auto ml-auto h-min p-1"
                           onClick={handleToggleNarrowHeader}
                         >
                           <FontAwesomeIcon
@@ -1297,14 +1318,14 @@ export const OverviewPage = () => {
                       <Th
                         className={twMerge(
                           "min-table-row border-b-0 p-0 text-xs",
-                          collapseEnvironments && index === visibleEnvs.length - 1 && "!mr-8",
-                          !collapseEnvironments && "min-w-[11rem] text-center"
+                          collapseEnvironments && index === visibleEnvs.length - 1 && "mr-8!",
+                          !collapseEnvironments && "min-w-44 text-center"
                         )}
                         style={
                           collapseEnvironments
                             ? {
                                 height: headerHeight,
-                                width: "w-[1rem]"
+                                width: "w-4"
                               }
                             : undefined
                         }
@@ -1331,7 +1352,7 @@ export const OverviewPage = () => {
                               "border-b border-mineshaft-600",
                               collapseEnvironments
                                 ? "relative"
-                                : "flex items-center justify-center px-5 pb-[0.82rem] pt-3.5",
+                                : "flex items-center justify-center px-5 pt-3.5 pb-[0.82rem]",
                               collapseEnvironments && isLast && "overflow-clip"
                             )}
                             style={{
@@ -1374,7 +1395,7 @@ export const OverviewPage = () => {
                                 className="max-w-none lowercase"
                                 content={`${missingKeyCount} secrets missing\n compared to other environments`}
                               >
-                                <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-sm border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
+                                <div className="ml-2 flex h-[1.1rem] cursor-default items-center justify-center rounded-xs border border-red-400 bg-red-600 p-1 text-xs font-medium text-bunker-100">
                                   <span className="text-bunker-100">{missingKeyCount}</span>
                                 </div>
                               </Tooltip>
@@ -1541,7 +1562,7 @@ export const OverviewPage = () => {
                 <Tr className="sticky bottom-0 z-10 border-0 bg-mineshaft-800">
                   <Td className="sticky left-0 z-10 border-0 bg-mineshaft-800 p-0">
                     <div
-                      className="w-full border-r border-t border-mineshaft-600"
+                      className="w-full border-t border-r border-mineshaft-600"
                       style={{ height: "45px" }}
                     />
                   </Td>
@@ -1561,7 +1582,7 @@ export const OverviewPage = () => {
                               ariaLabel="Explore Environment"
                               size="xs"
                               variant="outline_bg"
-                              className="mx-auto h-[1.76rem] rounded"
+                              className="mx-auto h-[1.76rem] rounded-sm"
                               onClick={() => handleExploreEnvClick(slug)}
                             >
                               <FontAwesomeIcon icon={faArrowRightToBracket} />
@@ -1660,10 +1681,11 @@ export const OverviewPage = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
           text={
             subscription.slug === null
               ? "You can perform this action under an Enterprise license"
-              : "You can perform this action if you switch to Infisical's Team plan"
+              : "You can perform this action if you switch to Infisical's Enterprise plan"
           }
         />
       )}

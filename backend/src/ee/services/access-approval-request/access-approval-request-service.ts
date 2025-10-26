@@ -1,7 +1,7 @@
 import slugify from "@sindresorhus/slugify";
 import msFn from "ms";
 
-import { ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TemporaryPermissionMode } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
@@ -10,12 +10,12 @@ import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { EnforcementLevel } from "@app/lib/types";
 import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
 import { TriggerFeature } from "@app/lib/workflow-integrations/types";
+import { TAdditionalPrivilegeDALFactory } from "@app/services/additional-privilege/additional-privilege-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TProjectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectEnvDALFactory } from "@app/services/project-env/project-env-dal";
-import { TProjectMembershipDALFactory } from "@app/services/project-membership/project-membership-dal";
 import { TProjectSlackConfigDALFactory } from "@app/services/slack/project-slack-config-dal";
 import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
@@ -26,15 +26,13 @@ import { TAccessApprovalPolicyApproverDALFactory } from "../access-approval-poli
 import { TAccessApprovalPolicyDALFactory } from "../access-approval-policy/access-approval-policy-dal";
 import { TGroupDALFactory } from "../group/group-dal";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
-import { TProjectUserAdditionalPrivilegeDALFactory } from "../project-user-additional-privilege/project-user-additional-privilege-dal";
-import { ProjectUserAdditionalPrivilegeTemporaryMode } from "../project-user-additional-privilege/project-user-additional-privilege-types";
 import { TAccessApprovalRequestDALFactory } from "./access-approval-request-dal";
 import { verifyRequestedPermissions } from "./access-approval-request-fns";
 import { TAccessApprovalRequestReviewerDALFactory } from "./access-approval-request-reviewer-dal";
 import { ApprovalStatus, TAccessApprovalRequestServiceFactory } from "./access-approval-request-types";
 
 type TSecretApprovalRequestServiceFactoryDep = {
-  additionalPrivilegeDAL: Pick<TProjectUserAdditionalPrivilegeDALFactory, "create" | "findById">;
+  additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "create" | "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "invalidateProjectPermissionCache">;
   accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
   projectEnvDAL: Pick<TProjectEnvDALFactory, "findOne">;
@@ -59,7 +57,6 @@ type TSecretApprovalRequestServiceFactoryDep = {
     "create" | "find" | "findOne" | "transaction" | "delete"
   >;
   groupDAL: Pick<TGroupDALFactory, "findAllGroupPossibleMembers">;
-  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findById">;
   smtpService: Pick<TSmtpService, "sendMail">;
   userDAL: Pick<
     TUserDALFactory,
@@ -125,7 +122,7 @@ export const accessApprovalRequestServiceFactory = ({
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
     // Anyone can create an access approval request.
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -133,9 +130,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const requestedByUser = await userDAL.findById(actorId);
     if (!requestedByUser) throw new ForbiddenRequestError({ message: "User not found" });
@@ -340,7 +334,7 @@ export const accessApprovalRequestServiceFactory = ({
       });
     }
 
-    const { membership, hasRole } = await permissionService.getProjectPermission({
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -348,10 +342,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const isApprover = policy.approvers.find((approver) => approver.userId === actorId);
 
@@ -496,7 +486,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -504,9 +494,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const policies = await accessApprovalPolicyDAL.find({ projectId: project.id });
     let requests = await accessApprovalRequestDAL.findRequestsWithPrivilegeByPolicyIds(policies.map((p) => p.id));
@@ -566,7 +553,7 @@ export const accessApprovalRequestServiceFactory = ({
       slug: permissionEnvironment
     });
 
-    const { membership, hasRole } = await permissionService.getProjectPermission({
+    const { hasRole } = await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: accessApprovalRequest.projectId,
@@ -574,10 +561,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const isSelfApproval = actorId === accessApprovalRequest.requestedByUserId;
     const isSoftEnforcement = policy.enforcementLevel === EnforcementLevel.Soft;
@@ -724,9 +707,9 @@ export const accessApprovalRequestServiceFactory = ({
             // Permanent access
             const privilege = await additionalPrivilegeDAL.create(
               {
-                userId: accessApprovalRequest.requestedByUserId,
+                actorUserId: accessApprovalRequest.requestedByUserId,
                 projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions)
               },
               tx
@@ -739,12 +722,12 @@ export const accessApprovalRequestServiceFactory = ({
 
             const privilege = await additionalPrivilegeDAL.create(
               {
-                userId: accessApprovalRequest.requestedByUserId,
+                actorUserId: accessApprovalRequest.requestedByUserId,
                 projectId: accessApprovalRequest.projectId,
-                slug: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
+                name: `requested-privilege-${slugify(alphaNumericNanoId(12))}`,
                 permissions: JSON.stringify(accessApprovalRequest.permissions),
                 isTemporary: true, // Explicitly set to true for the privilege
-                temporaryMode: ProjectUserAdditionalPrivilegeTemporaryMode.Relative,
+                temporaryMode: TemporaryPermissionMode.Relative,
                 temporaryRange: accessApprovalRequest.temporaryRange!,
                 temporaryAccessStartTime: startTime,
                 temporaryAccessEndTime: new Date(startTime.getTime() + relativeTempAllocatedTimeInMs)
@@ -830,7 +813,7 @@ export const accessApprovalRequestServiceFactory = ({
     const project = await projectDAL.findProjectBySlug(projectSlug, actorOrgId);
     if (!project) throw new NotFoundError({ message: `Project with slug '${projectSlug}' not found` });
 
-    const { membership } = await permissionService.getProjectPermission({
+    await permissionService.getProjectPermission({
       actor,
       actorId,
       projectId: project.id,
@@ -838,9 +821,6 @@ export const accessApprovalRequestServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.SecretManager
     });
-    if (!membership) {
-      throw new ForbiddenRequestError({ message: "You are not a member of this project" });
-    }
 
     const count = await accessApprovalRequestDAL.getCount({ projectId: project.id, policyId });
 

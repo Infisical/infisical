@@ -8,22 +8,40 @@ type Props = {
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   text: string;
+  isEnterpriseFeature?: boolean;
 };
 
-export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Element => {
+export const UpgradePlanModal = ({
+  text,
+  isOpen,
+  onOpenChange,
+  isEnterpriseFeature = false
+}: Props): JSX.Element => {
   const { subscription } = useSubscription();
   const { currentOrg } = useOrganization();
   const { mutateAsync, isPending } = useGetOrgTrialUrl();
-  const link =
-    subscription && subscription.slug !== null
-      ? ("/organization/billing" as const)
-      : "https://infisical.com/scheduledemo";
+
+  const getLink = () => {
+    // self-hosting
+    if (!subscription || subscription.slug === null) {
+      return "https://infisical.com/scheduledemo";
+    }
+
+    // Infisical cloud
+    if (isEnterpriseFeature) {
+      return "https://infisical.com/talk-to-us";
+    }
+
+    return "/organization/billing" as const;
+  };
+
+  const link = getLink();
 
   const handleUpgradeBtnClick = async () => {
     try {
       if (!subscription || !currentOrg) return;
 
-      if (!subscription.has_used_trial) {
+      if (!subscription.has_used_trial && !isEnterpriseFeature) {
         // direct user to start pro trial
 
         const url = await mutateAsync({
@@ -40,6 +58,17 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
       console.error(err);
     }
   };
+  const getUpgradePlanLabel = () => {
+    if (subscription) {
+      if (isEnterpriseFeature) {
+        return "Talk to Us";
+      }
+      if (!subscription.has_used_trial) {
+        return "Start Pro Free Trial";
+      }
+    }
+    return "Upgrade Plan";
+  };
 
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -55,7 +84,7 @@ export const UpgradePlanModal = ({ text, isOpen, onOpenChange }: Props): JSX.Ele
             onClick={handleUpgradeBtnClick}
             className="mr-4"
           >
-            {subscription && !subscription.has_used_trial ? "Start Pro Free Trial" : "Upgrade Plan"}
+            {getUpgradePlanLabel()}
           </Button>
           <Button
             colorSchema="secondary"

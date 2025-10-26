@@ -90,10 +90,11 @@ export const IntegrationDetailsByIDPage = () => {
         <meta property="og:title" content="Manage your .env files in seconds" />
         <meta name="og:description" content={t("integrations.description") as string} />
       </Helmet>
-      <div className="mx-auto flex max-w-7xl flex-col justify-between bg-bunker-800 text-white">
+      <div className="mx-auto flex max-w-8xl flex-col justify-between bg-bunker-800 text-white">
         {integration ? (
-          <div className="mx-auto mb-6 w-full max-w-7xl">
+          <div className="mx-auto mb-6 w-full max-w-8xl">
             <PageHeader
+              scope={ProjectType.SecretManager}
               title={`${integrationSlugNameMapping[integration.integration]} Integration`}
             >
               <DropdownMenu>
@@ -127,7 +128,7 @@ export const IntegrationDetailsByIDPage = () => {
                       <DropdownMenuItem
                         className={twMerge(
                           isAllowed
-                            ? "hover:!bg-red-500 hover:!text-white"
+                            ? "hover:bg-red-500! hover:text-white!"
                             : "pointer-events-none cursor-not-allowed opacity-50"
                         )}
                         onClick={() => {
@@ -151,7 +152,7 @@ export const IntegrationDetailsByIDPage = () => {
                 <IntegrationDetailsSection integration={integration} />
                 <IntegrationConnectionSection integration={integration} />
               </div>
-              <div className="flex-grow space-y-4">
+              <div className="grow space-y-4">
                 <IntegrationSettingsSection integration={integration} />
                 <IntegrationAuditLogsSection integration={integration} />
               </div>

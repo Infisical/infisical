@@ -19,12 +19,12 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
         <img
           alt={`${appDetails.name} logo`}
           src={`/images/integrations/${appDetails.image}`}
-          className="h-12 w-12 rounded-md bg-bunker-500 p-2"
+          className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
         />
         {appDetails.icon && (
           <FontAwesomeIcon
             icon={appDetails.icon}
-            className="absolute bottom-1 right-1 text-primary-700"
+            className="absolute right-1 bottom-1 text-primary-700"
           />
         )}
       </div>
@@ -38,7 +38,7 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
             rel="noopener noreferrer"
           >
             <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mb-[0.03rem] mr-1 text-[12px]" />
+              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
               <span>Docs</span>
               <FontAwesomeIcon
                 icon={faArrowUpRightFromSquare}
@@ -54,7 +54,7 @@ export const AppConnectionHeader = ({ app, isConnected, onBack }: Props) => {
       {onBack && (
         <button
           type="button"
-          className="ml-auto mt-1 text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
+          className="mt-1 ml-auto text-xs text-mineshaft-400 underline underline-offset-2 hover:text-mineshaft-300"
           onClick={onBack}
         >
           Select another App

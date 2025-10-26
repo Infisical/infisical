@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { ProjectMembershipRole, ProjectType, TProjectEnvironments } from "@app/db/schemas";
 import { TProjectPermissionV2Schema } from "@app/ee/services/permission/project-permission";
-import { OrgServiceActor } from "@app/lib/types";
+import { ProjectServiceActor } from "@app/lib/types";
 import { UnpackedPermissionSchema } from "@app/server/routes/sanitizedSchema/permission";
 
 export type TProjectTemplateEnvironment = Pick<TProjectEnvironments, "name" | "slug" | "position">;
@@ -31,7 +31,7 @@ export enum InfisicalProjectTemplate {
 
 export type TProjectTemplateServiceFactory = {
   listProjectTemplatesByOrg: (
-    actor: OrgServiceActor,
+    actor: ProjectServiceActor,
     type?: ProjectType
   ) => Promise<
     (
@@ -85,7 +85,7 @@ export type TProjectTemplateServiceFactory = {
   >;
   createProjectTemplate: (
     arg: TCreateProjectTemplateDTO,
-    actor: OrgServiceActor
+    actor: ProjectServiceActor
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -109,7 +109,7 @@ export type TProjectTemplateServiceFactory = {
   updateProjectTemplateById: (
     id: string,
     { roles, environments, ...params }: TUpdateProjectTemplateDTO,
-    actor: OrgServiceActor
+    actor: ProjectServiceActor
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -132,7 +132,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   deleteProjectTemplateById: (
     id: string,
-    actor: OrgServiceActor
+    actor: ProjectServiceActor
   ) => Promise<{
     environments: TProjectTemplateEnvironment[];
     roles: {
@@ -155,7 +155,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   findProjectTemplateById: (
     id: string,
-    actor: OrgServiceActor
+    actor: ProjectServiceActor
   ) => Promise<{
     packedRoles: TProjectTemplateRole[];
     environments: TProjectTemplateEnvironment[];
@@ -179,7 +179,7 @@ export type TProjectTemplateServiceFactory = {
   }>;
   findProjectTemplateByName: (
     name: string,
-    actor: OrgServiceActor
+    actor: ProjectServiceActor
   ) => Promise<{
     packedRoles: TProjectTemplateRole[];
     environments: TProjectTemplateEnvironment[];

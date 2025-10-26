@@ -17,7 +17,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
   }
 
   return (
-    <div className="flex h-screen w-screen items-center justify-center bg-mineshaft-900">
+    <div className="flex h-screen items-center justify-center bg-bunker-800">
       <div className="flex max-w-3xl flex-col rounded-md border border-mineshaft-600 bg-mineshaft-800 p-8 text-center text-mineshaft-200">
         <FontAwesomeIcon icon={faBugs} className="my-2 inline text-6xl" />
         <p>
@@ -50,7 +50,7 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
         {error?.message && (
           <>
             <div className="my-4 h-px w-full bg-mineshaft-600" />
-            <p className="thin-scrollbar max-h-44 w-full overflow-auto text-ellipsis rounded-md bg-mineshaft-700 p-2">
+            <p className="max-h-44 thin-scrollbar w-full overflow-auto rounded-md bg-mineshaft-700 p-2 text-ellipsis">
               <code className="text-xs">
                 {window.location.pathname}
                 <br />

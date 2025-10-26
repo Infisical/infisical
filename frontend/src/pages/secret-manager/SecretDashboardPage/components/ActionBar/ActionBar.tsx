@@ -77,6 +77,11 @@ import {
   fetchDashboardProjectSecretsByKeys
 } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
+import {
+  useGetVaultExternalMigrationConfigs,
+  useImportVaultSecrets
+} from "@app/hooks/api/migration";
+import { VaultImportStatus } from "@app/hooks/api/migration/types";
 import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { fetchProjectSecrets, secretKeys } from "@app/hooks/api/secrets/queries";
@@ -98,6 +103,7 @@ import { CreateDynamicSecretForm } from "./CreateDynamicSecretForm";
 import { CreateSecretImportForm } from "./CreateSecretImportForm";
 import { FolderForm } from "./FolderForm";
 import { MoveSecretsModal } from "./MoveSecretsModal";
+import { VaultSecretImportModal } from "./VaultSecretImportModal";
 
 type TParsedEnv = { value: string; comments: string[]; secretPath?: string; secretKey: string }[];
 type TParsedFolderEnv = Record<
@@ -171,7 +177,8 @@ export const ActionBar = ({
     "upgradePlan",
     "replicateFolder",
     "confirmUpload",
-    "requestAccess"
+    "requestAccess",
+    "importFromVault"
   ] as const);
   const isProtectedBranch = Boolean(protectedBranchPolicyName);
   const { subscription } = useSubscription();
@@ -185,6 +192,7 @@ export const ActionBar = ({
   const { mutateAsync: createSecretBatch, isPending: isCreatingSecrets } = useCreateSecretBatch({
     options: { onSuccess: undefined }
   });
+  const { mutateAsync: importVaultSecrets } = useImportVaultSecrets();
   const queryClient = useQueryClient();
   const { addPendingChange } = useBatchModeActions();
 
@@ -193,6 +201,8 @@ export const ActionBar = ({
   const isMultiSelectActive = Boolean(Object.keys(selectedSecrets).length);
 
   const { permission } = useProjectPermission();
+  const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
+  const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
     try {
@@ -349,6 +359,7 @@ export const ActionBar = ({
         destinationEnvironment,
         destinationSecretPath,
         projectId,
+        projectSlug: currentProject.slug,
         secretIds: secretsToMove.map((sec) => sec.id)
       });
 
@@ -379,7 +390,7 @@ export const ActionBar = ({
     }
   };
 
-  // Replicate Folder Logic
+  // Replicate Secrets Logic
   const createSecretCount = Object.keys(
     (popUp.confirmUpload?.data as TSecOverwriteOpt)?.create || {}
   ).length;
@@ -438,17 +449,22 @@ export const ActionBar = ({
           const processBatches = async () => {
             await secretBatches.reduce(async (previous, batch) => {
               await previous;
+              try {
+                const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
+                  secretPath: normalizedPath,
+                  environment,
+                  projectId,
+                  keys: batch
+                });
 
-              const { secrets: batchSecrets } = await fetchDashboardProjectSecretsByKeys({
-                secretPath: normalizedPath,
-                environment,
-                projectId,
-                keys: batch
-              });
-
-              batchSecrets.forEach((secret) => {
-                existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
-              });
+                batchSecrets.forEach((secret) => {
+                  existingSecretLookup.add(`${normalizedPath}-${secret.secretKey}`);
+                });
+              } catch (error) {
+                if (!(error instanceof AxiosError && error.response?.status === 404)) {
+                  throw error;
+                }
+              }
             }, Promise.resolve());
           };
 
@@ -657,6 +673,40 @@ export const ActionBar = ({
     }
   };
 
+  const handleVaultImport = async (vaultPath: string, namespace: string) => {
+    try {
+      const result = await importVaultSecrets({
+        projectId,
+        environment,
+        secretPath,
+        vaultNamespace: namespace,
+        vaultSecretPath: vaultPath
+      });
+
+      if (result.status === VaultImportStatus.ApprovalRequired) {
+        createNotification({
+          type: "info",
+          text: "Secret change request created successfully. Awaiting approval."
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully imported secrets from HashiCorp Vault"
+        });
+      }
+    } catch (err) {
+      console.error("Vault import error:", err);
+      const error = err as AxiosError<{ message?: string }>;
+      const errorMessage =
+        error.response?.data?.message || "Failed to import secrets from Vault. Please try again.";
+
+      createNotification({
+        type: "error",
+        text: errorMessage
+      });
+    }
+  };
+
   const isTableFiltered =
     Object.values(filter.tags).some(Boolean) || Object.values(filter.include).some(Boolean);
 
@@ -681,7 +731,7 @@ export const ActionBar = ({
                 size="sm"
                 variant="outline_bg"
                 className={twMerge(
-                  "flex h-[2.5rem]",
+                  "flex h-10",
                   isTableFiltered && "border-primary/40 bg-primary/10"
                 )}
                 leftIcon={
@@ -778,7 +828,7 @@ export const ActionBar = ({
                       {Boolean(filteredTags) && <Badge>{filteredTags} Applied</Badge>}
                     </div>
                   </DropdownSubMenuTrigger>
-                  <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+                  <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                     <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                       <div className="flex w-full items-center justify-between">
                         <span>Filter by Secret Tags</span>
@@ -817,7 +867,7 @@ export const ActionBar = ({
             Clear Filters
           </Button>
         )}
-        <div className="flex-grow" />
+        <div className="grow" />
         <div>
           {isProtectedBranch && (
             <Tooltip content={`Protected by policy ${protectedBranchPolicyName}`}>
@@ -969,7 +1019,9 @@ export const ActionBar = ({
                           handlePopUpClose("misc");
                           return;
                         }
-                        handlePopUpOpen("upgradePlan");
+                        handlePopUpOpen("upgradePlan", {
+                          isEnterpriseFeature: true
+                        });
                       }}
                       isDisabled={!isAllowed}
                       variant="outline_bg"
@@ -1049,10 +1101,43 @@ export const ActionBar = ({
                       className="h-10 text-left"
                       isFullWidth
                     >
-                      Replicate Folder
+                      Replicate Secrets
                     </Button>
                   )}
                 </ProjectPermissionCan>
+                {hasVaultConnection && (
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Create}
+                    a={subject(ProjectPermissionSub.Secrets, {
+                      environment,
+                      secretPath,
+                      secretName: "*",
+                      secretTags: ["*"]
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <Button
+                        leftIcon={
+                          <img
+                            src="/images/integrations/Vault.png"
+                            alt="HashiCorp Vault"
+                            className="h-4 w-4"
+                          />
+                        }
+                        onClick={() => {
+                          handlePopUpOpen("importFromVault");
+                          handlePopUpClose("misc");
+                        }}
+                        isDisabled={!isAllowed}
+                        variant="outline_bg"
+                        className="h-10 text-left"
+                        isFullWidth
+                      >
+                        Add from HashiCorp Vault
+                      </Button>
+                    )}
+                  </ProjectPermissionCan>
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1060,7 +1145,7 @@ export const ActionBar = ({
       </div>
       <div
         className={twMerge(
-          "h-0 flex-shrink-0 overflow-hidden transition-all",
+          "h-0 shrink-0 overflow-hidden transition-all",
           isMultiSelectActive && "h-16"
         )}
       >
@@ -1191,10 +1276,13 @@ export const ActionBar = ({
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
           text={
             subscription.slug === null
               ? "You can perform this action under an Enterprise license"
-              : "You can perform this action if you switch to Infisical's Team plan"
+              : `You can perform this action if you switch to Infisical's ${
+                  popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"
+                } plan`
           }
         />
       )}
@@ -1271,6 +1359,13 @@ export const ActionBar = ({
           </div>
         </ModalContent>
       </Modal>
+      <VaultSecretImportModal
+        isOpen={popUp.importFromVault.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("importFromVault", isOpen)}
+        environment={environment}
+        secretPath={secretPath}
+        onImport={handleVaultImport}
+      />
     </>
   );
 };

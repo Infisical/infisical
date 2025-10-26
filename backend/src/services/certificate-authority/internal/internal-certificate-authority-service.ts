@@ -32,6 +32,8 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
+  CertSignatureAlgorithm,
+  CertSignatureType,
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
@@ -48,7 +50,8 @@ import {
   getCaCertChains,
   getCaCredentials,
   keyAlgorithmToAlgCfg,
-  parseDistinguishedName
+  parseDistinguishedName,
+  signatureAlgorithmToAlgCfg
 } from "../certificate-authority-fns";
 import { TCertificateAuthorityQueueFactory } from "../certificate-authority-queue";
 import { TCertificateAuthoritySecretDALFactory } from "../certificate-authority-secret-dal";
@@ -1174,7 +1177,10 @@ export const internalCertificateAuthorityServiceFactory = ({
     actor,
     actorOrgId,
     keyUsages,
-    extendedKeyUsages
+    extendedKeyUsages,
+    signatureAlgorithm,
+    keyAlgorithm,
+    isFromProfile
   }: TIssueCertFromCaDTO) => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
@@ -1221,7 +1227,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (!ca.enableDirectIssuance && !certificateTemplate) {
+    if (!isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
@@ -1277,13 +1283,43 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
-    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const effectiveKeyAlgorithm =
+      (keyAlgorithm as CertKeyAlgorithm) || (ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+    const keyGenAlg = keyAlgorithmToAlgCfg(effectiveKeyAlgorithm);
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
+
+    if (signatureAlgorithm) {
+      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
+      const requestedKeyType = signatureAlgorithm.split("-")[0];
+
+      const isRsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.RSA_2048.split("_")[0]);
+      const isEcdsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.ECDSA_P256.split("_")[0]);
+
+      if (
+        (requestedKeyType === CertSignatureAlgorithm.RSA_SHA256.split("-")[0] && !isRsaCa) ||
+        (requestedKeyType === CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0] && !isEcdsaCa)
+      ) {
+        // eslint-disable-next-line no-nested-ternary
+        const supportedType = isRsaCa
+          ? CertSignatureAlgorithm.RSA_SHA256.split("-")[0]
+          : isEcdsaCa
+            ? CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0]
+            : "unknown";
+        throw new BadRequestError({
+          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
+        });
+      }
+    }
+
+    // Determine signing algorithm for certificate signing
+    const signingAlg = signatureAlgorithm
+      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, ca.internalCa.keyAlgorithm as CertKeyAlgorithm)
+      : keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
       name: `CN=${commonName}`,
       keys: leafKeys,
-      signingAlgorithm: alg,
+      signingAlgorithm: keyGenAlg,
       extensions: [
         // eslint-disable-next-line no-bitwise
         new x509.KeyUsagesExtension(x509.KeyUsageFlags.digitalSignature | x509.KeyUsageFlags.keyEncipherment)
@@ -1296,7 +1332,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateAuthorityDAL,
       certificateAuthoritySecretDAL,
       projectDAL,
-      kmsService
+      kmsService,
+      signatureAlgorithm: signingAlg
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
@@ -1319,7 +1356,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     // handle key usages
     let selectedKeyUsages: CertKeyUsage[] = keyUsages ?? [];
     if (keyUsages === undefined && !certificateTemplate) {
-      selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+      selectedKeyUsages = isFromProfile ? [] : [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
     }
 
     if (keyUsages === undefined && certificateTemplate) {
@@ -1405,7 +1442,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       notAfter: notAfterDate,
       signingKey: caPrivateKey,
       publicKey: csrObj.publicKey,
-      signingAlgorithm: alg,
+      signingAlgorithm: signingAlg,
       extensions
     });
 
@@ -1517,7 +1554,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       notBefore,
       notAfter,
       keyUsages,
-      extendedKeyUsages
+      extendedKeyUsages,
+      signatureAlgorithm,
+      keyAlgorithm
     } = dto;
 
     let collectionId = pkiCollectionId;
@@ -1563,7 +1602,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     if (ca.status !== CaStatus.ACTIVE) throw new BadRequestError({ message: "CA is not active" });
     if (!ca.internalCa.activeCaCertId)
       throw new BadRequestError({ message: "CA does not have a certificate installed" });
-    if (!ca.enableDirectIssuance && !certificateTemplate) {
+    if (!dto.isFromProfile && !ca.enableDirectIssuance && !certificateTemplate) {
       throw new BadRequestError({ message: "Certificate template or subscriber is required for issuance" });
     }
 
@@ -1622,7 +1661,29 @@ export const internalCertificateAuthorityServiceFactory = ({
       throw new BadRequestError({ message: "notAfter date is after CA certificate's notAfter date" });
     }
 
-    const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+    if (signatureAlgorithm) {
+      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
+      const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
+
+      const isRsaCa = caKeyAlgorithm.startsWith(CertSignatureType.RSA);
+      const isEcdsaCa = caKeyAlgorithm.startsWith(CertSignatureType.ECDSA);
+
+      if (
+        (requestedKeyType === CertSignatureType.RSA && !isRsaCa) ||
+        (requestedKeyType === CertSignatureType.ECDSA && !isEcdsaCa)
+      ) {
+        // eslint-disable-next-line no-nested-ternary
+        const supportedType = isRsaCa ? CertSignatureType.RSA : isEcdsaCa ? CertSignatureType.ECDSA : "unknown";
+        throw new BadRequestError({
+          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
+        });
+      }
+    }
+
+    const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
+    const alg = signatureAlgorithm
+      ? signatureAlgorithmToAlgCfg(signatureAlgorithm, effectiveKeyAlgorithm)
+      : keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
 
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
@@ -1671,7 +1732,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       if (csrKeyUsageExtension) {
         selectedKeyUsages = csrKeyUsages;
       } else {
-        selectedKeyUsages = [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
+        selectedKeyUsages = dto.isFromProfile ? [] : [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT];
       }
     }
 

@@ -19,16 +19,16 @@ export const ManagePlansModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("managePlan", isOpen);
       }}
     >
-      <ModalContent className="max-w-screen-lg" title="Infisical Cloud Plans">
+      <ModalContent className="max-w-(--breakpoint-lg)" title="Infisical Cloud Plans">
         <Tab.Group>
-          <Tab.List className="max-w-screen-lg border-b-2 border-mineshaft-600">
+          <Tab.List className="max-w-(--breakpoint-lg) border-b-2 border-mineshaft-600">
             <Tab as={Fragment}>
               {({ selected }) => (
                 <button
                   type="button"
                   className={`p-4 ${
                     selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"
-                  } w-30 font-semibold outline-none`}
+                  } w-30 font-medium whitespace-nowrap outline-hidden`}
                 >
                   Bill monthly
                 </button>
@@ -40,7 +40,7 @@ export const ManagePlansModal = ({ popUp, handlePopUpToggle }: Props) => {
                   type="button"
                   className={`p-4 ${
                     selected ? "border-b-2 border-white text-white" : "text-mineshaft-400"
-                  } w-30 font-semibold outline-none`}
+                  } w-30 font-medium outline-hidden`}
                 >
                   Bill yearly
                 </button>

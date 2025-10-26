@@ -126,7 +126,7 @@ export const QuickSearchSecretItem = ({
           </span>
           <span className="text-xs text-mineshaft-400">
             <FontAwesomeIcon size="xs" className="mr-0.5 text-yellow-700" icon={faFolder} />{" "}
-            <Tooltip className="max-w-7xl" content={groupSecret.path}>
+            <Tooltip className="max-w-8xl" content={groupSecret.path}>
               <span>{reverseTruncate(groupSecret.path ?? "")}</span>
             </Tooltip>
           </span>
@@ -247,13 +247,13 @@ export const QuickSearchSecretItem = ({
                       )}
                       <p
                         className={twMerge(
-                          "hidden w-[12rem] max-w-[12rem] truncate text-sm group-hover:block",
+                          "hidden w-48 max-w-48 truncate text-sm group-hover:block",
                           !secret.value && "text-mineshaft-400"
                         )}
                       >
                         {secret.value || "EMPTY"}
                       </p>
-                      <p className="w-[12rem] text-sm group-hover:hidden">
+                      <p className="w-48 text-sm group-hover:!hidden">
                         ***************************
                       </p>
                     </div>

@@ -77,6 +77,10 @@ import {
   HumanitecConnectionListItemSchema,
   SanitizedHumanitecConnectionSchema
 } from "@app/services/app-connection/humanitec";
+import {
+  LaravelForgeConnectionListItemSchema,
+  SanitizedLaravelForgeConnectionSchema
+} from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
@@ -158,7 +162,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedNetlifyConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
-  ...SanitizedRedisConnectionSchema.options
+  ...SanitizedRedisConnectionSchema.options,
+  ...SanitizedLaravelForgeConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -200,7 +205,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   NetlifyConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
-  RedisConnectionListItemSchema
+  RedisConnectionListItemSchema,
+  LaravelForgeConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

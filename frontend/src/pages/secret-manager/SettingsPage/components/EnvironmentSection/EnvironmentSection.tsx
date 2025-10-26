@@ -68,7 +68,7 @@ export const EnvironmentSection = () => {
       className="mb-6 scroll-m-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4"
     >
       <div className="mb-8 flex justify-between">
-        <p className="text-xl font-semibold text-mineshaft-100">Environments</p>
+        <p className="text-xl font-medium text-mineshaft-100">Environments</p>
         <div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
@@ -123,7 +123,7 @@ export const EnvironmentSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Team plan."
+        text="You can add custom environments if you switch to Infisical's Pro plan."
       />
     </div>
   );

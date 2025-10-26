@@ -18,7 +18,7 @@ const createFolder = async (dto: { path: string; name: string }) => {
   return res.json().folder;
 };
 
-const deleteFolder = async (dto: { path: string; id: string }) => {
+const deleteFolder = async (dto: { path: string; id: string; forceDelete?: boolean }) => {
   const res = await testServer.inject({
     method: "DELETE",
     url: `/api/v2/folders/${dto.id}`,
@@ -28,7 +28,8 @@ const deleteFolder = async (dto: { path: string; id: string }) => {
     body: {
       projectId: seedData1.project.id,
       environment: seedData1.environment.slug,
-      path: dto.path
+      path: dto.path,
+      forceDelete: dto.forceDelete ?? false
     }
   });
   expect(res.statusCode).toBe(200);
@@ -40,7 +41,7 @@ describe("Secret Folder Router", async () => {
     { name: "folder1", path: "/" }, // one in root
     { name: "folder1", path: "/level1/level2" }, // then create a deep one creating intermediate ones
     { name: "folder2", path: "/" },
-    { name: "folder1", path: "/level1/level2" } // this should not create folder return same thing
+    { name: "folder3", path: "/level1/level2" }
   ])("Create folder $name in $path", async ({ name, path }) => {
     const createdFolder = await createFolder({ path, name });
     // check for default environments
@@ -57,7 +58,7 @@ describe("Secret Folder Router", async () => {
     {
       path: "/",
       expected: {
-        folders: [{ name: "folder1" }, { name: "level1" }, { name: "folder2" }],
+        folders: [{ name: "folder4" }, { name: "level2" }, { name: "folder5" }],
         length: 3
       }
     },
@@ -86,7 +87,7 @@ describe("Secret Folder Router", async () => {
       folders: expect.arrayContaining(expected.folders.map((el) => expect.objectContaining(el)))
     });
 
-    await Promise.all(newFolders.map(({ id }) => deleteFolder({ path, id })));
+    await Promise.all(newFolders.map(({ id }) => deleteFolder({ path, id, forceDelete: true })));
   });
 
   test("Update a deep folder", async () => {
@@ -161,5 +162,27 @@ describe("Secret Folder Router", async () => {
     const updatedFolderList = JSON.parse(resUpdatedFolders.payload);
     expect(updatedFolderList).toHaveProperty("folders");
     expect(updatedFolderList.folders.length).toEqual(0);
+  });
+
+  test("Creating a duplicate folder should return a 400 error", async () => {
+    const newFolder = await createFolder({ name: "folder-duplicate", path: "/level1/level2" });
+
+    const res = await testServer.inject({
+      method: "POST",
+      url: `/api/v2/folders`,
+      headers: {
+        authorization: `Bearer ${jwtAuthToken}`
+      },
+      body: {
+        projectId: seedData1.project.id,
+        environment: seedData1.environment.slug,
+        name: "folder-duplicate",
+        path: "/level1/level2"
+      }
+    });
+    expect(res.statusCode).toBe(400);
+    const payload = JSON.parse(res.payload);
+    expect(payload).toHaveProperty("error");
+    await deleteFolder({ path: "/level1/level2", id: newFolder.id });
   });
 });

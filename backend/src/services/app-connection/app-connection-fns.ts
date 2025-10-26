@@ -103,6 +103,11 @@ import {
   HumanitecConnectionMethod,
   validateHumanitecConnectionCredentials
 } from "./humanitec";
+import {
+  getLaravelForgeConnectionListItem,
+  LaravelForgeConnectionMethod,
+  validateLaravelForgeConnectionCredentials
+} from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
@@ -187,6 +192,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getOnePassConnectionListItem(),
     getHerokuConnectionListItem(),
     getRenderConnectionListItem(),
+    getLaravelForgeConnectionListItem(),
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
@@ -214,6 +220,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
         case ProjectType.KMS:
           return false;
         case ProjectType.SSH:
+          return false;
+        case ProjectType.PAM:
           return false;
         default:
           return true;
@@ -314,6 +322,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.OnePass]: validateOnePassConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Heroku]: validateHerokuConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Render]: validateRenderConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.LaravelForge]: validateLaravelForgeConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -336,6 +345,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case GitHubConnectionMethod.App:
     case GitHubRadarConnectionMethod.App:
       return "GitHub App";
+    case GitHubConnectionMethod.Pat:
+      return "Personal Access Token";
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
@@ -366,6 +377,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
+    case LaravelForgeConnectionMethod.ApiToken:
       return "API Token";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
@@ -461,7 +473,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
-  [AppConnection.Redis]: platformManagedCredentialsNotSupported
+  [AppConnection.Redis]: platformManagedCredentialsNotSupported,
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

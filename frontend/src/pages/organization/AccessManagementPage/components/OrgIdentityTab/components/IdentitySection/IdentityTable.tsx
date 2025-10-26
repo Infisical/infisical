@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faBuilding,
   faCheckCircle,
   faChevronRight,
   faEdit,
@@ -78,7 +79,7 @@ type Filter = {
 
 export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const {
     offset,
@@ -192,7 +193,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-[2.375rem] w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "flex h-9.5 w-[2.6rem] items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
                 isTableFiltered && "border-primary/50 text-primary"
               )}
             >
@@ -208,7 +209,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               >
                 Roles
               </DropdownSubMenuTrigger>
-              <DropdownSubMenuContent className="thin-scrollbar max-h-[20rem] overflow-y-auto rounded-l-none">
+              <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
                   Apply Roles to Filter Identities
                 </DropdownMenuLabel>
@@ -286,15 +287,18 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
+              {isSubOrganization && <Th>Managed By</Th>}
               <Th className="w-16">{isFetching ? <Spinner size="xs" /> : null}</Th>
             </Tr>
           </THead>
           <TBody>
-            {isPending && <TableSkeleton columns={3} innerKey="org-identities" />}
+            {isPending && (
+              <TableSkeleton columns={isSubOrganization ? 4 : 3} innerKey="org-identities" />
+            )}
             {!isPending &&
               data?.identities?.map(
                 ({
-                  identity: { id, name },
+                  identity: { id, name, orgId },
                   role,
                   customRole,
                   lastLoginAuthMethod,
@@ -317,7 +321,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                         {name}
                         {lastLoginAuthMethod && lastLoginTime && (
                           <Tooltip
-                            className="min-w-52 max-w-96 px-3"
+                            className="max-w-96 min-w-52 px-3"
                             content={
                               <LastLoginSection
                                 lastLoginAuthMethod={identityAuthToNameMap[lastLoginAuthMethod]}
@@ -362,6 +366,14 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           }}
                         </OrgPermissionCan>
                       </Td>
+                      {isSubOrganization && (
+                        <Td>
+                          <p className="truncate">
+                            <FontAwesomeIcon size="sm" className="mr-1.5" icon={faBuilding} />
+                            {currentOrg.id === orgId ? "Sub Organization" : "Root Organization"}
+                          </p>
+                        </Td>
+                      )}
                       <Td>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

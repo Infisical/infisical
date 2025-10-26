@@ -27,7 +27,7 @@ const BreadcrumbList = React.forwardRef<HTMLOListElement, React.ComponentPropsWi
     <ol
       ref={ref}
       className={twMerge(
-        "flex flex-wrap items-center break-words text-sm text-bunker-100",
+        "flex flex-wrap items-center text-sm break-words text-bunker-100",
         className
       )}
       {...props}
@@ -120,10 +120,16 @@ export type TBreadcrumbFormat =
       icon?: ReactNode;
     };
 
-const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[] }) => (
-  <div className="mx-auto max-w-7xl text-white">
-    <Breadcrumb>
-      <BreadcrumbList>
+const BreadcrumbContainer = ({
+  breadcrumbs,
+  className
+}: {
+  breadcrumbs: TBreadcrumbFormat[];
+  className?: string;
+}) => (
+  <div className={twMerge("mx-auto max-w-8xl overflow-hidden text-white", className)}>
+    <Breadcrumb className="overflow-hidden">
+      <BreadcrumbList className="overflow-hidden">
         {(breadcrumbs as TBreadcrumbFormat[]).map((el, index) => {
           const isNotLastCrumb = index + 1 !== breadcrumbs.length;
           const BreadcrumbSegment = isNotLastCrumb ? BreadcrumbLink : BreadcrumbPage;
@@ -165,8 +171,8 @@ const BreadcrumbContainer = ({ breadcrumbs }: { breadcrumbs: TBreadcrumbFormat[]
             const Component = el.component;
             return (
               <React.Fragment key={`breadcrumb-group-${index + 1}`}>
-                <BreadcrumbItem>
-                  <BreadcrumbSegment>
+                <BreadcrumbItem className="overflow-hidden">
+                  <BreadcrumbSegment className="overflow-hidden">
                     <Component />
                   </BreadcrumbSegment>
                 </BreadcrumbItem>

@@ -17,6 +17,9 @@ import {
   TAccessApprovalRequestsReviewersInsert,
   TAccessApprovalRequestsReviewersUpdate,
   TAccessApprovalRequestsUpdate,
+  TAdditionalPrivileges,
+  TAdditionalPrivilegesInsert,
+  TAdditionalPrivilegesUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -227,6 +230,15 @@ import {
   TLdapGroupMaps,
   TLdapGroupMapsInsert,
   TLdapGroupMapsUpdate,
+  TMembershipRoles,
+  TMembershipRolesInsert,
+  TMembershipRolesUpdate,
+  TMemberships,
+  TMembershipsInsert,
+  TMembershipsUpdate,
+  TNamespaces,
+  TNamespacesInsert,
+  TNamespacesUpdate,
   TOidcConfigs,
   TOidcConfigsInsert,
   TOidcConfigsUpdate,
@@ -254,12 +266,24 @@ import {
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiApiEnrollmentConfigs,
+  TPkiApiEnrollmentConfigsInsert,
+  TPkiApiEnrollmentConfigsUpdate,
+  TPkiCertificateProfiles,
+  TPkiCertificateProfilesInsert,
+  TPkiCertificateProfilesUpdate,
+  TPkiCertificateTemplatesV2,
+  TPkiCertificateTemplatesV2Insert,
+  TPkiCertificateTemplatesV2Update,
   TPkiCollectionItems,
   TPkiCollectionItemsInsert,
   TPkiCollectionItemsUpdate,
   TPkiCollections,
   TPkiCollectionsInsert,
   TPkiCollectionsUpdate,
+  TPkiEstEnrollmentConfigs,
+  TPkiEstEnrollmentConfigsInsert,
+  TPkiEstEnrollmentConfigsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -314,6 +338,9 @@ import {
   TResourceMetadata,
   TResourceMetadataInsert,
   TResourceMetadataUpdate,
+  TRoles,
+  TRolesInsert,
+  TRolesUpdate,
   TSamlConfigs,
   TSamlConfigsInsert,
   TSamlConfigsUpdate,
@@ -503,6 +530,9 @@ import {
   TUsers,
   TUsersInsert,
   TUsersUpdate,
+  TVaultExternalMigrationConfigs,
+  TVaultExternalMigrationConfigsInsert,
+  TVaultExternalMigrationConfigsUpdate,
   TWebhooks,
   TWebhooksInsert,
   TWebhooksUpdate,
@@ -530,6 +560,10 @@ import {
   TMicrosoftTeamsIntegrationsInsert,
   TMicrosoftTeamsIntegrationsUpdate
 } from "@app/db/schemas/microsoft-teams-integrations";
+import { TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate } from "@app/db/schemas/pam-accounts";
+import { TPamFolders, TPamFoldersInsert, TPamFoldersUpdate } from "@app/db/schemas/pam-folders";
+import { TPamResources, TPamResourcesInsert, TPamResourcesUpdate } from "@app/db/schemas/pam-resources";
+import { TPamSessions, TPamSessionsInsert, TPamSessionsUpdate } from "@app/db/schemas/pam-sessions";
 import {
   TProjectMicrosoftTeamsConfigs,
   TProjectMicrosoftTeamsConfigsInsert,
@@ -651,6 +685,26 @@ declare module "knex/types/tables" {
       TCertificateTemplates,
       TCertificateTemplatesInsert,
       TCertificateTemplatesUpdate
+    >;
+    [TableName.PkiCertificateTemplateV2]: KnexOriginal.CompositeTableType<
+      TPkiCertificateTemplatesV2,
+      TPkiCertificateTemplatesV2Insert,
+      TPkiCertificateTemplatesV2Update
+    >;
+    [TableName.PkiCertificateProfile]: KnexOriginal.CompositeTableType<
+      TPkiCertificateProfiles,
+      TPkiCertificateProfilesInsert,
+      TPkiCertificateProfilesUpdate
+    >;
+    [TableName.PkiEstEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiEstEnrollmentConfigs,
+      TPkiEstEnrollmentConfigsInsert,
+      TPkiEstEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiApiEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiApiEnrollmentConfigs,
+      TPkiApiEnrollmentConfigsInsert,
+      TPkiApiEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
@@ -1307,6 +1361,29 @@ declare module "knex/types/tables" {
       TKeyValueStore,
       TKeyValueStoreInsert,
       TKeyValueStoreUpdate
+    >;
+    [TableName.PamFolder]: KnexOriginal.CompositeTableType<TPamFolders, TPamFoldersInsert, TPamFoldersUpdate>;
+    [TableName.PamResource]: KnexOriginal.CompositeTableType<TPamResources, TPamResourcesInsert, TPamResourcesUpdate>;
+    [TableName.PamAccount]: KnexOriginal.CompositeTableType<TPamAccounts, TPamAccountsInsert, TPamAccountsUpdate>;
+    [TableName.PamSession]: KnexOriginal.CompositeTableType<TPamSessions, TPamSessionsInsert, TPamSessionsUpdate>;
+
+    [TableName.Namespace]: KnexOriginal.CompositeTableType<TNamespaces, TNamespacesInsert, TNamespacesUpdate>;
+    [TableName.Membership]: KnexOriginal.CompositeTableType<TMemberships, TMembershipsInsert, TMembershipsUpdate>;
+    [TableName.MembershipRole]: KnexOriginal.CompositeTableType<
+      TMembershipRoles,
+      TMembershipRolesInsert,
+      TMembershipRolesUpdate
+    >;
+    [TableName.Role]: KnexOriginal.CompositeTableType<TRoles, TRolesInsert, TRolesUpdate>;
+    [TableName.AdditionalPrivilege]: KnexOriginal.CompositeTableType<
+      TAdditionalPrivileges,
+      TAdditionalPrivilegesInsert,
+      TAdditionalPrivilegesUpdate
+    >;
+    [TableName.VaultExternalMigrationConfig]: KnexOriginal.CompositeTableType<
+      TVaultExternalMigrationConfigs,
+      TVaultExternalMigrationConfigsInsert,
+      TVaultExternalMigrationConfigsUpdate
     >;
   }
 }

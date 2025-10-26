@@ -7,6 +7,7 @@ import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
 } from "@app/context";
@@ -20,6 +21,8 @@ import {
   ProjectPermissionIdentityActions,
   ProjectPermissionKmipActions,
   ProjectPermissionMemberActions,
+  ProjectPermissionPamAccountActions,
+  ProjectPermissionPamSessionActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiSyncActions,
   ProjectPermissionPkiTemplateActions,
@@ -213,12 +216,31 @@ const PkiTemplatePolicyActionSchema = z.object({
   [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
 });
+const CertificateProfilePolicyActionSchema = z.object({
+  [ProjectPermissionCertificateProfileActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional()
+});
 
 const SecretEventsPolicyActionSchema = z.object({
   [ProjectPermissionSecretEventActions.SubscribeCreated]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeUpdated]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeDeleted]: z.boolean().optional(),
   [ProjectPermissionSecretEventActions.SubscribeImportMutations]: z.boolean().optional()
+});
+
+const PamAccountPolicyActionSchema = z.object({
+  [ProjectPermissionPamAccountActions.Access]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.Create]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.Read]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionPamAccountActions.Delete]: z.boolean().optional()
+});
+
+const PamSessionPolicyActionSchema = z.object({
+  [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
 });
 
 const SecretRollbackPolicyActionSchema = z.object({
@@ -371,6 +393,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
+      [ProjectPermissionSub.CertificateProfiles]:
+        CertificateProfilePolicyActionSchema.array().default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -406,7 +430,16 @@ export const projectRoleFormSchema = z.object({
         conditions: ConditionSchema
       })
         .array()
-        .default([])
+        .default([]),
+      [ProjectPermissionSub.PamFolders]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamResources]: GeneralPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.PamAccounts]: PamAccountPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -427,7 +460,8 @@ type TConditionalFields =
   | ProjectPermissionSub.SecretSyncs
   | ProjectPermissionSub.PkiSyncs
   | ProjectPermissionSub.SecretEvents
-  | ProjectPermissionSub.AppConnections;
+  | ProjectPermissionSub.AppConnections
+  | ProjectPermissionSub.PamAccounts;
 
 export const isConditionalSubjects = (
   subject: ProjectPermissionSub
@@ -444,7 +478,8 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
-  subject === ProjectPermissionSub.AppConnections;
+  subject === ProjectPermissionSub.AppConnections ||
+  subject === ProjectPermissionSub.PamAccounts;
 
 const convertCaslConditionToFormOperator = (caslConditions: TPermissionCondition) => {
   const formConditions: z.infer<typeof ConditionSchema> = [];
@@ -553,7 +588,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.SecretSyncs,
         ProjectPermissionSub.PkiSyncs,
         ProjectPermissionSub.SecretEvents,
-        ProjectPermissionSub.AppConnections
+        ProjectPermissionSub.AppConnections,
+        ProjectPermissionSub.PamFolders,
+        ProjectPermissionSub.PamResources
       ].includes(subject)
     ) {
       // from above statement we are sure it won't be undefined
@@ -781,7 +818,9 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canDelete = action.includes(ProjectPermissionActions.Delete);
       const canCreate = action.includes(ProjectPermissionActions.Create);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
+      if (!formVal[subject]) {
+        formVal[subject] = [{ conditions: [] }];
+      }
       if (canRead) formVal[subject as ProjectPermissionSub.Member]![0].read = true;
       if (canEdit) formVal[subject as ProjectPermissionSub.Member]![0].edit = true;
       if (canCreate) formVal[subject as ProjectPermissionSub.Member]![0].create = true;
@@ -1111,6 +1150,65 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
         inverted
       });
+
+      return;
+    }
+    if (subject === ProjectPermissionSub.CertificateProfiles) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject]!.push({
+        [ProjectPermissionCertificateProfileActions.Edit]: action.includes(
+          ProjectPermissionCertificateProfileActions.Edit
+        ),
+        [ProjectPermissionCertificateProfileActions.Delete]: action.includes(
+          ProjectPermissionCertificateProfileActions.Delete
+        ),
+        [ProjectPermissionCertificateProfileActions.Create]: action.includes(
+          ProjectPermissionCertificateProfileActions.Create
+        ),
+        [ProjectPermissionCertificateProfileActions.Read]: action.includes(
+          ProjectPermissionCertificateProfileActions.Read
+        ),
+        [ProjectPermissionCertificateProfileActions.IssueCert]: action.includes(
+          ProjectPermissionCertificateProfileActions.IssueCert
+        )
+      });
+
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PamAccounts) {
+      if (!formVal[subject]) formVal[subject] = [];
+
+      formVal[subject].push({
+        [ProjectPermissionPamAccountActions.Access]: action.includes(
+          ProjectPermissionPamAccountActions.Access
+        ),
+        [ProjectPermissionPamAccountActions.Create]: action.includes(
+          ProjectPermissionPamAccountActions.Create
+        ),
+        [ProjectPermissionPamAccountActions.Delete]: action.includes(
+          ProjectPermissionPamAccountActions.Delete
+        ),
+        [ProjectPermissionPamAccountActions.Edit]: action.includes(
+          ProjectPermissionPamAccountActions.Edit
+        ),
+        [ProjectPermissionPamAccountActions.Read]: action.includes(
+          ProjectPermissionPamAccountActions.Read
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
+      return;
+    }
+
+    if (subject === ProjectPermissionSub.PamSessions) {
+      const canRead = action.includes(ProjectPermissionPamSessionActions.Read);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      // Map actions to the keys defined in ApprovalPolicyActionSchema
+      if (canRead) formVal[subject]![0][ProjectPermissionPamAccountActions.Read] = true;
     }
   });
 
@@ -1237,8 +1335,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
                   This is a legacy action and will be removed in the future.
                   <br />
                   <br /> You should instead use the{" "}
-                  <strong className="font-semibold">Describe Secret</strong> and{" "}
-                  <strong className="font-semibold">Read Value</strong> actions.
+                  <strong className="font-medium">Describe Secret</strong> and{" "}
+                  <strong className="font-medium">Read Value</strong> actions.
                 </div>
               }
             >
@@ -1459,6 +1557,16 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Remove", value: ProjectPermissionPkiTemplateActions.Delete },
       { label: "Issue Certificates", value: ProjectPermissionPkiTemplateActions.IssueCert },
       { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
+    ]
+  },
+  [ProjectPermissionSub.CertificateProfiles]: {
+    title: "Certificate Profiles",
+    actions: [
+      { label: "Read", value: ProjectPermissionCertificateProfileActions.Read },
+      { label: "Create", value: ProjectPermissionCertificateProfileActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificateProfileActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificateProfileActions.Delete },
+      { label: "Issue Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
     ]
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
@@ -1731,6 +1839,38 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
         value: ProjectPermissionAppConnectionActions.Connect
       }
     ]
+  },
+  [ProjectPermissionSub.PamFolders]: {
+    title: "Folders",
+    actions: [
+      { label: "Read", value: ProjectPermissionActions.Read },
+      { label: "Create", value: ProjectPermissionActions.Create },
+      { label: "Modify", value: ProjectPermissionActions.Edit },
+      { label: "Remove", value: ProjectPermissionActions.Delete }
+    ]
+  },
+  [ProjectPermissionSub.PamResources]: {
+    title: "Resources",
+    actions: [
+      { label: "Read", value: ProjectPermissionActions.Read },
+      { label: "Create", value: ProjectPermissionActions.Create },
+      { label: "Modify", value: ProjectPermissionActions.Edit },
+      { label: "Remove", value: ProjectPermissionActions.Delete }
+    ]
+  },
+  [ProjectPermissionSub.PamAccounts]: {
+    title: "Accounts",
+    actions: [
+      { label: "Access", value: ProjectPermissionPamAccountActions.Access },
+      { label: "Read", value: ProjectPermissionPamAccountActions.Read },
+      { label: "Create", value: ProjectPermissionPamAccountActions.Create },
+      { label: "Modify", value: ProjectPermissionPamAccountActions.Edit },
+      { label: "Remove", value: ProjectPermissionPamAccountActions.Delete }
+    ]
+  },
+  [ProjectPermissionSub.PamSessions]: {
+    title: "Sessions",
+    actions: [{ label: "Read", value: ProjectPermissionPamSessionActions.Read }]
   }
 };
 
@@ -1776,6 +1916,7 @@ const CertificateManagerPermissionSubjects = (enabled = false) => ({
   [ProjectPermissionSub.PkiSyncs]: enabled,
   [ProjectPermissionSub.CertificateAuthorities]: enabled,
   [ProjectPermissionSub.CertificateTemplates]: enabled,
+  [ProjectPermissionSub.CertificateProfiles]: enabled,
   [ProjectPermissionSub.Certificates]: enabled
 });
 
@@ -1793,6 +1934,13 @@ const SecretScanningSubject = (enabled = false) => ({
   [ProjectPermissionSub.SecretScanningConfigs]: enabled
 });
 
+const PamPermissionSubjects = (enabled = false) => ({
+  [ProjectPermissionSub.PamFolders]: enabled,
+  [ProjectPermissionSub.PamResources]: enabled,
+  [ProjectPermissionSub.PamAccounts]: enabled,
+  [ProjectPermissionSub.PamSessions]: enabled
+});
+
 // scott: this structure ensures we don't forget to add project permissions to their relevant project type
 export const ProjectTypePermissionSubjects: Record<
   ProjectType,
@@ -1805,6 +1953,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
+    ...PamPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.KMS]: {
@@ -1814,6 +1963,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
+    ...PamPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.CertificateManager]: {
@@ -1823,6 +1973,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...SshPermissionSubjects(),
     ...SecretScanningSubject(),
+    ...PamPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
   },
   [ProjectType.SSH]: {
@@ -1832,6 +1983,7 @@ export const ProjectTypePermissionSubjects: Record<
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
     ...SecretScanningSubject(),
+    ...PamPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: false
   },
   [ProjectType.SecretScanning]: {
@@ -1841,7 +1993,18 @@ export const ProjectTypePermissionSubjects: Record<
     ...CertificateManagerPermissionSubjects(),
     ...KmsPermissionSubjects(),
     ...SecretsManagerPermissionSubjects(),
+    ...PamPermissionSubjects(),
     [ProjectPermissionSub.AppConnections]: true
+  },
+  [ProjectType.PAM]: {
+    ...SharedPermissionSubjects,
+    ...SecretScanningSubject(),
+    ...SshPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...SecretsManagerPermissionSubjects(),
+    ...PamPermissionSubjects(true),
+    [ProjectPermissionSub.AppConnections]: false
   }
 };
 
@@ -2025,6 +2188,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: [ProjectPermissionPkiSyncActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: [ProjectPermissionCertificateProfileActions.Read]
         }
       ]
     },
@@ -2056,6 +2223,10 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         {
           subject: ProjectPermissionSub.PkiSyncs,
           actions: Object.values(ProjectPermissionPkiSyncActions)
+        },
+        {
+          subject: ProjectPermissionSub.CertificateProfiles,
+          actions: Object.values(ProjectPermissionCertificateProfileActions)
         }
       ]
     },
@@ -2245,5 +2416,65 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         actions: Object.values(ProjectPermissionActions)
       }
     ])
+  ],
+  [ProjectType.PAM]: [
+    {
+      id: "pam-viewer",
+      name: "PAM Viewing Policies",
+      description: "Grants read access to PAM accounts and resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.PamFolders,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.PamResources,
+          actions: [ProjectPermissionActions.Read]
+        },
+        {
+          subject: ProjectPermissionSub.PamAccounts,
+          actions: [ProjectPermissionPamAccountActions.Read]
+        }
+      ]
+    },
+    {
+      id: "pam-accessor",
+      name: "PAM Accessing Policies",
+      description: "Grants the right to access all PAM accounts",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.PamAccounts,
+          actions: [
+            ProjectPermissionPamAccountActions.Access,
+            ProjectPermissionPamAccountActions.Read
+          ]
+        }
+      ]
+    },
+    {
+      id: "pam-editor",
+      name: "PAM Editing Policies",
+      description: "Grants read and edit access to PAM accounts and resources",
+      permissions: [
+        {
+          subject: ProjectPermissionSub.PamFolders,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.PamResources,
+          actions: Object.values(ProjectPermissionActions)
+        },
+        {
+          subject: ProjectPermissionSub.PamAccounts,
+          actions: [
+            ProjectPermissionPamAccountActions.Read,
+            ProjectPermissionPamAccountActions.Edit,
+            ProjectPermissionPamAccountActions.Create,
+            ProjectPermissionPamAccountActions.Delete
+          ]
+        }
+      ]
+    },
+    projectManagerTemplate()
   ]
 };

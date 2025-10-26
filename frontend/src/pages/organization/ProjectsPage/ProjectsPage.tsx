@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
 import { PageHeader } from "@app/components/v2";
-import { useSubscription } from "@app/context";
+import { useOrganization, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AllProjectView } from "./components/AllProjectView";
@@ -52,23 +52,22 @@ export const ProjectsPage = () => {
   ] as const);
 
   const { subscription } = useSubscription();
-
+  const { isSubOrganization } = useOrganization();
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
 
   return (
-    <div className="mx-auto flex max-w-7xl flex-col justify-start bg-bunker-800">
+    <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800">
       <Helmet>
         <title>{t("common.head-title", { title: t("settings.members.title") })}</title>
         <link rel="icon" href="/infisical.ico" />
       </Helmet>
-      <div className="mb-4 flex flex-col items-start justify-start">
-        <PageHeader
-          title="Projects"
-          description="Your team's complete security toolkit - organized and ready when you need them."
-        />
-      </div>
+      <PageHeader
+        scope={isSubOrganization ? "namespace" : "org"}
+        title="Overview"
+        description="Your team's complete security toolkit - organized and ready when you need them."
+      />
       {projectListView === ProjectListView.MyProjects ? (
         <MyProjectView
           onAddNewProject={() => handlePopUpOpen("addNewWs")}

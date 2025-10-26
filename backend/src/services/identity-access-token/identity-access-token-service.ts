@@ -1,4 +1,4 @@
-import { IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
+import { AccessScope, IdentityAuthMethod, TableName, TIdentityAccessTokens } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
@@ -7,27 +7,30 @@ import { checkIPAgainstBlocklist, TIp } from "@app/lib/ip";
 import { TAccessTokenQueueServiceFactory } from "../access-token-queue/access-token-queue";
 import { AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
-import { TIdentityOrgDALFactory } from "../identity/identity-org-dal";
+import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { TIdentityAccessTokenDALFactory } from "./identity-access-token-dal";
 import { TIdentityAccessTokenJwtPayload, TRenewAccessTokenDTO } from "./identity-access-token-types";
 
 type TIdentityAccessTokenServiceFactoryDep = {
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   identityDAL: Pick<TIdentityDALFactory, "getTrustedIpsByAuthMethod">;
-  identityOrgMembershipDAL: TIdentityOrgDALFactory;
   accessTokenQueue: Pick<
     TAccessTokenQueueServiceFactory,
     "updateIdentityAccessTokenStatus" | "getIdentityTokenDetailsInCache"
   >;
+  membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
+  orgDAL: Pick<TOrgDALFactory, "findOne">;
 };
 
 export type TIdentityAccessTokenServiceFactory = ReturnType<typeof identityAccessTokenServiceFactory>;
 
 export const identityAccessTokenServiceFactory = ({
   identityAccessTokenDAL,
-  identityOrgMembershipDAL,
   accessTokenQueue,
-  identityDAL
+  identityDAL,
+  membershipIdentityDAL,
+  orgDAL
 }: TIdentityAccessTokenServiceFactoryDep) => {
   const validateAccessTokenExp = async (identityAccessToken: TIdentityAccessTokens) => {
     const {
@@ -181,7 +184,11 @@ export const identityAccessTokenServiceFactory = ({
     return { revokedToken };
   };
 
-  const fnValidateIdentityAccessToken = async (token: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
+  const fnValidateIdentityAccessToken = async (
+    token: TIdentityAccessTokenJwtPayload,
+    subOrganizationSelector?: string,
+    ipAddress?: string
+  ) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
@@ -202,13 +209,40 @@ export const identityAccessTokenServiceFactory = ({
         trustedIps: trustedIps as TIp[]
       });
     }
+    let orgId = "";
+    let parentOrgId = "";
+    const identityOrgDetails = await orgDAL.findOne({ id: identityAccessToken.identityScopeOrgId });
+    const rootOrgId = identityOrgDetails.rootOrgId || identityOrgDetails.id;
 
-    const identityOrgMembership = await identityOrgMembershipDAL.findOne({
-      identityId: identityAccessToken.identityId
-    });
+    if (subOrganizationSelector) {
+      const subOrganization = await orgDAL.findOne({ rootOrgId, slug: subOrganizationSelector });
+      if (!subOrganization)
+        throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
 
-    if (!identityOrgMembership) {
-      throw new BadRequestError({ message: "Identity does not belong to any organization" });
+      const identityOrgMembership = await membershipIdentityDAL.findOne({
+        scope: AccessScope.Organization,
+        actorIdentityId: identityAccessToken.identityId,
+        scopeOrgId: subOrganization.id
+      });
+
+      if (!identityOrgMembership) {
+        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+      }
+      orgId = subOrganization.id;
+      parentOrgId = subOrganization.parentOrgId as string;
+    } else {
+      const identityOrgMembership = await membershipIdentityDAL.findOne({
+        scope: AccessScope.Organization,
+        actorIdentityId: identityAccessToken.identityId,
+        scopeOrgId: rootOrgId
+      });
+
+      if (!identityOrgMembership) {
+        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+      }
+
+      orgId = rootOrgId;
+      parentOrgId = rootOrgId;
     }
 
     let { accessTokenNumUses } = identityAccessToken;
@@ -219,7 +253,7 @@ export const identityAccessTokenServiceFactory = ({
     await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
-    return { ...identityAccessToken, orgId: identityOrgMembership.orgId };
+    return { ...identityAccessToken, orgId, rootOrgId, parentOrgId };
   };
 
   return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };

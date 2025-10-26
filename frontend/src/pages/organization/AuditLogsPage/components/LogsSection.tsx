@@ -77,13 +77,13 @@ const LogsSectionComponent = ({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
             <div className="flex items-center gap-1 whitespace-nowrap">
-              <p className="text-xl font-semibold text-mineshaft-100">Audit History</p>
+              <p className="text-xl font-medium text-mineshaft-100">Audit History</p>
               <a
                 href="https://infisical.com/docs/documentation/platform/audit-logs"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="ml-1 mt-[0.1rem] inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
+                <div className="mt-[0.1rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
                   <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
                   <span>Docs</span>
                   <FontAwesomeIcon

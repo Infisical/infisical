@@ -44,7 +44,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.OidcAuth],
-      description: "Login with OIDC Auth",
+      description: "Login with OIDC Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
         jwt: z.string().trim()
@@ -59,7 +59,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       }
     },
     handler: async (req) => {
-      const { identityOidcAuth, accessToken, identityAccessToken, identityMembershipOrg, oidcTokenData } =
+      const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
         await server.services.identityOidcAuth.login({
           identityId: req.body.identityId,
           jwt: req.body.jwt
@@ -67,7 +67,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_OIDC_AUTH,
           metadata: {
@@ -100,7 +100,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.OidcAuth],
-      description: "Attach OIDC Auth configuration onto identity",
+      description: "Attach OIDC Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -201,7 +201,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.OidcAuth],
-      description: "Update OIDC Auth configuration on identity",
+      description: "Update OIDC Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -300,7 +300,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.OidcAuth],
-      description: "Retrieve OIDC Auth configuration on identity",
+      description: "Retrieve OIDC Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -349,7 +349,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.OidcAuth],
-      description: "Delete OIDC Auth configuration on identity",
+      description: "Delete OIDC Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []

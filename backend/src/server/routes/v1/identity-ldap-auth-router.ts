@@ -120,7 +120,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Login with LDAP Auth",
+      description: "Login with LDAP Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(LDAP_AUTH.LOGIN.identityId),
         username: z.string().describe(LDAP_AUTH.LOGIN.username),
@@ -162,13 +162,13 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
 
       const { identityId, user } = req.passportMachineIdentity;
 
-      const { accessToken, identityLdapAuth, identityMembershipOrg } = await server.services.identityLdapAuth.login({
+      const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
         identityId
       });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        orgId: identityMembershipOrg?.orgId,
+        orgId: identity.orgId,
         event: {
           type: EventType.LOGIN_IDENTITY_LDAP_AUTH,
           metadata: {
@@ -198,7 +198,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Attach LDAP Auth configuration onto identity",
+      description: "Attach LDAP Auth configuration onto machine identity",
       security: [
         {
           bearerAuth: []
@@ -389,7 +389,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Update LDAP Auth configuration on identity",
+      description: "Update LDAP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -510,7 +510,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Retrieve LDAP Auth configuration on identity",
+      description: "Retrieve LDAP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -568,7 +568,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Delete LDAP Auth configuration on identity",
+      description: "Delete LDAP Auth configuration on machine identity",
       security: [
         {
           bearerAuth: []
@@ -621,7 +621,7 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
     schema: {
       hide: false,
       tags: [ApiDocsTags.LdapAuth],
-      description: "Clear LDAP Auth Lockouts for identity",
+      description: "Clear LDAP Auth Lockouts for machine identity",
       security: [
         {
           bearerAuth: []

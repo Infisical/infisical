@@ -124,6 +124,14 @@ export enum ProjectPermissionPkiTemplateActions {
   ListCerts = "list-certs"
 }
 
+export enum ProjectPermissionCertificateProfileActions {
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete",
+  IssueCert = "issue-cert"
+}
+
 export enum ProjectPermissionSecretRotationActions {
   Read = "read",
   ReadGeneratedCredentials = "read-generated-credentials",
@@ -187,6 +195,19 @@ export enum ProjectPermissionCommitsActions {
   PerformRollback = "perform-rollback"
 }
 
+export enum ProjectPermissionPamAccountActions {
+  Access = "access",
+  Read = "read",
+  Create = "create",
+  Edit = "edit",
+  Delete = "delete"
+}
+
+export enum ProjectPermissionPamSessionActions {
+  Read = "read"
+  // Terminate = "terminate"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -208,7 +229,8 @@ export type ConditionalProjectPermissionSubject =
   | ProjectPermissionSub.SecretImports
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.SecretEvents
-  | ProjectPermissionSub.AppConnections;
+  | ProjectPermissionSub.AppConnections
+  | ProjectPermissionSub.PamAccounts;
 
 export const formatedConditionsOperatorNames: { [K in PermissionConditionOperators]: string } = {
   [PermissionConditionOperators.$EQ]: "equal to",
@@ -279,6 +301,7 @@ export enum ProjectPermissionSub {
   PkiAlerts = "pki-alerts",
   PkiCollections = "pki-collections",
   PkiSubscribers = "pki-subscribers",
+  CertificateProfiles = "certificate-profiles",
   Kms = "kms",
   Cmek = "cmek",
   SecretSyncs = "secret-syncs",
@@ -289,7 +312,11 @@ export enum ProjectPermissionSub {
   SecretScanningFindings = "secret-scanning-findings",
   SecretScanningConfigs = "secret-scanning-configs",
   SecretEvents = "secret-events",
-  AppConnections = "app-connections"
+  AppConnections = "app-connections",
+  PamFolders = "pam-folders",
+  PamResources = "pam-resources",
+  PamAccounts = "pam-accounts",
+  PamSessions = "pam-sessions"
 }
 
 export type SecretSubjectFields = {
@@ -348,6 +375,12 @@ export type PkiSubscriberSubjectFields = {
 export type PkiTemplateSubjectFields = {
   name: string;
   // (dangtony98): consider adding [commonName] as a subject field in the future
+};
+
+export type PamAccountSubjectFields = {
+  resourceName: string;
+  accountName: string;
+  accountPath: string;
 };
 
 export type ProjectPermissionSet =
@@ -446,6 +479,7 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PkiSubscribers> & PkiSubscriberSubjectFields)
       )
     ]
+  | [ProjectPermissionCertificateProfileActions, ProjectPermissionSub.CertificateProfiles]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiAlerts]
   | [ProjectPermissionActions, ProjectPermissionSub.PkiCollections]
   | [ProjectPermissionActions.Delete, ProjectPermissionSub.Project]
@@ -475,6 +509,16 @@ export type ProjectPermissionSet =
         | ProjectPermissionSub.AppConnections
         | (ForcedSubject<ProjectPermissionSub.AppConnections> & AppConnectionSubjectFields)
       )
-    ];
+    ]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamFolders]
+  | [ProjectPermissionActions, ProjectPermissionSub.PamResources]
+  | [
+      ProjectPermissionPamAccountActions,
+      (
+        | ProjectPermissionSub.PamAccounts
+        | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
+      )
+    ]
+  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

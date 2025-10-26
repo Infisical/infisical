@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-slim AS build
+FROM node:20.19.5-trixie-slim AS build
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-slim
+FROM node:20.19.5-trixie-slim
 WORKDIR /app
 
 ENV npm_config_cache /home/node/.npm
@@ -55,7 +55,7 @@ COPY --from=build /app .
 # Install Infisical CLI
 RUN apt-get install -y curl bash && \
     curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash && \
-    apt-get update && apt-get install -y infisical=0.41.89 git
+    apt-get update && apt-get install -y infisical=0.43.14 git
 
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s \
     CMD node healthcheck.js

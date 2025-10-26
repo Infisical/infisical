@@ -3,9 +3,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { faArrowDown, faArrowUp, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowDown,
+  faArrowUp,
+  faChevronLeft,
+  faInfoCircle
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -51,7 +56,7 @@ import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy } from "@app/hooks/api/dashboard/types";
 import { useGetFolderCommitsCount } from "@app/hooks/api/folderCommits";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { ProjectVersion } from "@app/hooks/api/projects/types";
+import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { queryClient } from "@app/hooks/api/reactQuery";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { useCreateCommit } from "@app/hooks/api/secrets/mutations";
@@ -754,14 +759,25 @@ const Page = () => {
 
   if (!(currentProject?.version === ProjectVersion.V3))
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:[color-scheme:dark]">
+      <div className="flex h-full w-full flex-col items-center justify-center px-6 text-mineshaft-50 dark:scheme-dark">
         <SecretV2MigrationSection />
       </div>
     );
 
   return (
-    <div className="container mx-auto flex max-w-7xl flex-col text-mineshaft-50 dark:[color-scheme:dark]">
+    <div className="mx-auto flex max-w-8xl flex-col text-mineshaft-50 dark:scheme-dark">
+      <Link
+        to="/projects/secret-management/$projectId/overview"
+        params={{
+          projectId
+        }}
+        className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+      >
+        <FontAwesomeIcon icon={faChevronLeft} />
+        Secrets Overview
+      </Link>
       <PageHeader
+        scope={ProjectType.SecretManager}
         title="Secrets Management"
         description={
           <p className="text-md text-bunker-300">
@@ -847,7 +863,7 @@ const Page = () => {
           <div
             ref={tableRef}
             className={twMerge(
-              "thin-scrollbar mt-3 overflow-y-auto overflow-x-hidden rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
+              "mt-3 thin-scrollbar overflow-x-hidden overflow-y-auto rounded-md bg-mineshaft-800 text-left text-sm text-bunker-300",
               isNotEmpty && "rounded-b-none"
             )}
           >
@@ -888,11 +904,11 @@ const Page = () => {
                       }`}
                       onMouseDown={handleMouseDown}
                     />
-                    <div className="pointer-events-none absolute -right-[0.04rem] top-2 z-30">
+                    <div className="pointer-events-none absolute top-2 -right-[0.04rem] z-30">
                       <div className="h-5 w-0.5 rounded-[1.5px] bg-gray-400 opacity-50" />
                     </div>
                     <div
-                      className="flex flex-shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
+                      className="flex shrink-0 items-center border-r border-mineshaft-600 py-2 pl-4"
                       style={{ width: colWidth }}
                       role="button"
                       tabIndex={0}
@@ -908,7 +924,7 @@ const Page = () => {
                       />
                     </div>
                   </div>
-                  <div className="flex-grow px-4 py-2">Value</div>
+                  <div className="grow px-4 py-2">Value</div>
                 </div>
               )}
               {hasPathPolicies &&
@@ -923,7 +939,7 @@ const Page = () => {
                     <div className="flex items-center text-sm">
                       <FontAwesomeIcon
                         icon={faInfoCircle}
-                        className="ml-[0.15rem] mr-[1.65rem] text-primary"
+                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
                       />
                       <span>You do not have permission to read secrets in this folder</span>
                     </div>
@@ -943,7 +959,7 @@ const Page = () => {
                     <div className="flex items-center text-sm">
                       <FontAwesomeIcon
                         icon={faInfoCircle}
-                        className="ml-[0.15rem] mr-[1.65rem] text-primary"
+                        className="mr-[1.65rem] ml-[0.15rem] text-primary"
                       />
                       <span>
                         You do not have permission to {!canEditSecrets ? "edit" : ""}
@@ -1093,7 +1109,6 @@ const Page = () => {
             secretPath={secretPath}
             isSmaller={isNotEmpty}
             environments={currentProject?.environments}
-            isProtectedBranch={isProtectedBranch}
           />
           <PitDrawer
             secretSnaphots={snapshotList}

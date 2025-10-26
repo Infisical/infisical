@@ -1,6 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -27,10 +29,11 @@ const Page = () => {
     from: ROUTE_PATHS.Organization.IdentityDetailsByIDPage.id
   });
   const identityId = params.identityId as string;
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetIdentityById(identityId);
   const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+  const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "identity",
@@ -72,17 +75,37 @@ const Page = () => {
   };
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.identity.name} />
+        <div className="mx-auto w-full max-w-8xl">
+          <Link
+            to="/organization/access-management"
+            search={{
+              selectedTab: OrgAccessControlTabSections.Identities
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Identities
+          </Link>
+          <PageHeader
+            scope={isSubOrganization ? "namespace" : "org"}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
+            title={data.identity.name}
+          />
           <div className="flex">
             <div className="mr-4 w-96">
-              <IdentityDetailsSection identityId={identityId} handlePopUpOpen={handlePopUpOpen} />
-              <IdentityAuthenticationSection
+              <IdentityDetailsSection
+                isOrgIdentity={data.identity.orgId === currentOrg.id}
                 identityId={identityId}
                 handlePopUpOpen={handlePopUpOpen}
               />
+              {!isAuthHidden && (
+                <IdentityAuthenticationSection
+                  identityId={identityId}
+                  handlePopUpOpen={handlePopUpOpen}
+                />
+              )}
             </div>
             <IdentityProjectsSection identityId={identityId} />
           </div>

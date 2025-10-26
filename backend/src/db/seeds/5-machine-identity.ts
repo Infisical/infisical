@@ -1,22 +1,37 @@
 import { Knex } from "knex";
 
-import { initEnvConfig } from "@app/lib/config/env";
+import { initializeHsmModule } from "@app/ee/services/hsm/hsm-fns";
+import { hsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
+import { getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { initLogger, logger } from "@app/lib/logger";
+import { kmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { superAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
-import { IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
+import { AccessScope, IdentityAuthMethod, OrgMembershipRole, ProjectMembershipRole, TableName } from "../schemas";
 import { seedData1 } from "../seed-data";
 
 export async function seed(knex: Knex): Promise<void> {
   // Deletes ALL existing entries
   await knex(TableName.Identity).del();
-  await knex(TableName.IdentityOrgMembership).del();
 
   initLogger();
 
   const superAdminDAL = superAdminDALFactory(knex);
-  await initEnvConfig(superAdminDAL, logger);
+  const kmsRootConfigDAL = kmsRootConfigDALFactory(knex);
+  const hsmConfig = getHsmConfig(logger);
+
+  const hsmModule = initializeHsmModule(hsmConfig);
+  hsmModule.initialize();
+
+  const hsmService = hsmServiceFactory({
+    hsmModule: hsmModule.getModule(),
+    envConfig: hsmConfig
+  });
+
+  await hsmService.startService();
+
+  await initEnvConfig(hsmService, kmsRootConfigDAL, superAdminDAL, logger);
 
   // Inserts seed entries
   await knex(TableName.Identity).insert([
@@ -25,7 +40,8 @@ export async function seed(knex: Knex): Promise<void> {
       // @ts-ignore
       id: seedData1.machineIdentity.id,
       name: seedData1.machineIdentity.name,
-      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH
+      authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+      orgId: seedData1.organization.id
     }
   ]);
   const identityUa = await knex(TableName.IdentityUniversalAuth)
@@ -78,34 +94,47 @@ export async function seed(knex: Knex): Promise<void> {
       isClientSecretRevoked: false
     }
   ]);
-  await knex(TableName.IdentityOrgMembership).insert([
+  const [orgMembership] = await knex(TableName.Membership)
+    .insert([
+      {
+        actorIdentityId: seedData1.machineIdentity.id,
+        scopeOrgId: seedData1.organization.id,
+        scope: AccessScope.Organization
+      }
+    ])
+    .returning("*");
+  await knex(TableName.MembershipRole).insert([
     {
-      identityId: seedData1.machineIdentity.id,
-      orgId: seedData1.organization.id,
+      membershipId: orgMembership.id,
       role: OrgMembershipRole.Admin
     }
   ]);
 
-  const identityProjectMembership = await knex(TableName.IdentityProjectMembership)
+  const identityProjectMembership = await knex(TableName.Membership)
     .insert({
-      identityId: seedData1.machineIdentity.id,
-      projectId: seedData1.project.id
+      actorIdentityId: seedData1.machineIdentity.id,
+      scopeOrgId: seedData1.organization.id,
+      scope: AccessScope.Project,
+      scopeProjectId: seedData1.project.id
     })
     .returning("*");
 
-  await knex(TableName.IdentityProjectMembershipRole).insert({
+  await knex(TableName.MembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectMembershipId: identityProjectMembership[0].id
+    membershipId: identityProjectMembership[0].id
   });
-  const identityProjectMembershipV3 = await knex(TableName.IdentityProjectMembership)
+
+  const identityProjectMembershipV3 = await knex(TableName.Membership)
     .insert({
-      identityId: seedData1.machineIdentity.id,
-      projectId: seedData1.projectV3.id
+      actorIdentityId: seedData1.machineIdentity.id,
+      scopeOrgId: seedData1.organization.id,
+      scope: AccessScope.Project,
+      scopeProjectId: seedData1.projectV3.id
     })
     .returning("*");
 
-  await knex(TableName.IdentityProjectMembershipRole).insert({
+  await knex(TableName.MembershipRole).insert({
     role: ProjectMembershipRole.Admin,
-    projectMembershipId: identityProjectMembershipV3[0].id
+    membershipId: identityProjectMembershipV3[0].id
   });
 }

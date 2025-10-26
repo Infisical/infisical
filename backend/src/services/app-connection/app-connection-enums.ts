@@ -37,7 +37,8 @@ export enum AppConnection {
   DigitalOcean = "digital-ocean",
   Netlify = "netlify",
   Okta = "okta",
-  Redis = "redis"
+  Redis = "redis",
+  LaravelForge = "laravel-forge"
 }
 
 export enum AWSRegion {

@@ -109,11 +109,11 @@ const Folder: React.FC<FolderProps> = ({
   return (
     <div className={`folder-container ml-${level > 0 ? "4" : 0}`}>
       <Collapsible open={open} onOpenChange={setOpen}>
-        <div className="group flex items-center rounded px-2 py-1">
+        <div className="group flex items-center rounded-sm px-2 py-1">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="mr-1 flex h-6 w-6 items-center justify-center rounded focus:outline-none"
+              className="mr-1 flex h-6 w-6 items-center justify-center rounded-sm focus:outline-hidden"
               disabled={!hasContents}
               aria-label={open ? "Collapse folder" : "Expand folder"}
             >
@@ -142,7 +142,7 @@ const Folder: React.FC<FolderProps> = ({
 
           <label
             htmlFor={`folder-${path}`}
-            className={`ml-2 flex-1 cursor-pointer truncate ${basePath ? "italic text-mineshaft-300" : ""}`}
+            className={`ml-2 flex-1 cursor-pointer truncate ${basePath ? "text-mineshaft-300 italic" : ""}`}
             title={displayName}
           >
             {displayName || `${basePath}`}
@@ -157,10 +157,10 @@ const Folder: React.FC<FolderProps> = ({
 
         <CollapsibleContent className="overflow-hidden transition-all duration-300 ease-in-out">
           <div className="relative mt-1">
-            <div className="absolute bottom-0 left-5 top-0 w-px bg-mineshaft-600" />
+            <div className="absolute top-0 bottom-0 left-5 w-px bg-mineshaft-600" />
             {structure.items.map((item) => (
-              <div key={item.id} className="group ml-6 flex items-center rounded px-2 py-1">
-                <div className="ml-6 mr-2">
+              <div key={item.id} className="group ml-6 flex items-center rounded-sm px-2 py-1">
+                <div className="mr-2 ml-6">
                   <FontAwesomeIcon icon={faKey} className="h-3 w-3" />
                 </div>
                 {!isDisabled && (
@@ -295,7 +295,7 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
 
   return (
     <div className="flex w-full items-start gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900">
-      <div className={`w-full rounded-lg shadow-sm ${className}`}>
+      <div className={`w-full rounded-lg shadow-xs ${className}`}>
         <div className="h-[25vh] overflow-auto p-3">
           {isEmptyData ? (
             <div className="flex h-full w-full items-center justify-center text-center text-mineshaft-300">
@@ -321,7 +321,7 @@ export const SecretTreeView: React.FC<TreeViewProps> = ({
         </div>
 
         {!isDisabled && (
-          <div className="flex justify-end pb-2 pr-2 pt-2">
+          <div className="flex justify-end pt-2 pr-2 pb-2">
             <h3 className="flex items-center text-mineshaft-400">
               {selectedItems.length} Item{selectedItems.length === 1 ? "" : "s"} Selected
             </h3>

@@ -29,6 +29,7 @@ import {
 import { usePopUp } from "@app/hooks";
 import { CommitWithChanges } from "@app/hooks/api/folderCommits";
 import { useCommitRevert, useGetCommitDetails } from "@app/hooks/api/folderCommits/queries";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { CommitType } from "@app/hooks/api/types";
 
 import { SecretVersionDiffView } from "../SecretVersionDiffView";
@@ -260,6 +261,7 @@ export const CommitDetailsTab = ({
         Commit History
       </Button>
       <PageHeader
+        scope={ProjectType.SecretManager}
         title={`${parsedCommitDetails.changes?.message}` || "No message"}
         description={
           <>
@@ -302,7 +304,7 @@ export const CommitDetailsTab = ({
                         <span className="text-sm font-medium text-white">
                           Roll back to this commit
                         </span>
-                        <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                        <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
                           Return this folder to its exact state at the time of this commit,
                           discarding all other changes made after it
                         </span>
@@ -317,7 +319,7 @@ export const CommitDetailsTab = ({
                   <div className="flex items-center space-x-3">
                     <div className="flex flex-col">
                       <span className="text-sm font-medium text-white">Revert changes</span>
-                      <span className="whitespace-normal break-words text-xs leading-snug text-gray-400">
+                      <span className="text-xs leading-snug break-words whitespace-normal text-gray-400">
                         Will restore to the previous version of affected resources
                       </span>
                     </div>
@@ -330,7 +332,7 @@ export const CommitDetailsTab = ({
       </PageHeader>
       <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900 pt-4">
         <div className="mx-4 flex items-center justify-between border-b border-mineshaft-400 pb-4">
-          <h3 className="text-lg font-semibold text-mineshaft-100">Commit Changes</h3>
+          <h3 className="text-lg font-medium text-mineshaft-100">Commit Changes</h3>
         </div>
         <div className="flex flex-col overflow-hidden px-4">
           <div className="thin-scrollbar overflow-y-auto py-4">
@@ -339,7 +341,7 @@ export const CommitDetailsTab = ({
             ) : (
               <EmptyState
                 title="No changes found."
-                className="h-full pb-0 pt-28"
+                className="h-full pt-28 pb-0"
                 icon={faCodeCommit}
               />
             )}

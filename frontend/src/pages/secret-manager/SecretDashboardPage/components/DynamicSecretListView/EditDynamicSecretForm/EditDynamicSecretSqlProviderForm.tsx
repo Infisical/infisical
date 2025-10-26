@@ -205,7 +205,7 @@ export const EditDynamicSecretSqlProviderForm = ({
     <div>
       <form onSubmit={handleSubmit(handleUpdateDynamicSecret)} autoComplete="off">
         <div className="flex items-center space-x-2">
-          <div className="flex-grow">
+          <div className="grow">
             <Controller
               control={control}
               name="newName"
@@ -339,7 +339,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     label="Host"
-                    className="flex-grow"
+                    className="grow"
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
@@ -411,7 +411,7 @@ export const EditDynamicSecretSqlProviderForm = ({
             </div>
             <div>
               {selectedClient === SqlProviders.MsSQL && (
-                <div className="mb-2 mt-2">
+                <div className="mt-2 mb-2">
                   <Controller
                     control={control}
                     name="inputs.sslEnabled"
@@ -448,7 +448,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </FormControl>
                 )}
               />
-              <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="advanced">
                   <AccordionTrigger>
                     Creation, Revocation & Renew Statements (optional)
@@ -542,7 +542,7 @@ export const EditDynamicSecretSqlProviderForm = ({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
-              <Accordion type="multiple" className="mb-2 mt-4 w-full bg-mineshaft-700">
+              <Accordion type="multiple" className="mt-4 mb-2 w-full bg-mineshaft-700">
                 <AccordionItem value="password-config">
                   <AccordionTrigger>Password Configuration (optional)</AccordionTrigger>
                   <AccordionContent>

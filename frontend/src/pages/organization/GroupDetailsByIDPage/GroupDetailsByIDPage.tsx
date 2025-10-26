@@ -1,6 +1,8 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -18,7 +20,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteGroup } from "@app/hooks/api";
 import { useGetGroupById } from "@app/hooks/api/groups/queries";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -42,6 +44,8 @@ const Page = () => {
   const groupId = params.groupId as string;
 
   const { data, isPending } = useGetGroupById(groupId);
+
+  const { isSubOrganization } = useOrganization();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -77,13 +81,27 @@ const Page = () => {
     handlePopUpClose("deleteGroup");
   };
 
-  if (isPending) return <Spinner size="sm" className="ml-2 mt-2" />;
+  if (isPending) return <Spinner size="sm" className="mt-2 ml-2" />;
 
   return (
-    <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+    <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {data && (
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title={data.group.name}>
+        <div className="mx-auto w-full max-w-8xl">
+          <Link
+            to="/organization/access-management"
+            search={{
+              selectedTab: TabSections.Groups
+            }}
+            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
+          >
+            <FontAwesomeIcon icon={faChevronLeft} />
+            Groups
+          </Link>
+          <PageHeader
+            scope={isSubOrganization ? "namespace" : "org"}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Group`}
+            title={data.group.name}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild className="rounded-lg">
                 <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -124,7 +142,7 @@ const Page = () => {
                     <DropdownMenuItem
                       className={twMerge(
                         isAllowed
-                          ? "hover:!bg-red-500 hover:!text-white"
+                          ? "hover:bg-red-500! hover:text-white!"
                           : "pointer-events-none cursor-not-allowed opacity-50"
                       )}
                       onClick={async () => {

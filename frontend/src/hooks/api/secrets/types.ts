@@ -239,6 +239,7 @@ export type TDeleteSecretBatchDTO = {
 
 export type TMoveSecretsDTO = {
   projectId: string;
+  projectSlug: string;
   sourceEnvironment: string;
   sourceSecretPath: string;
   destinationEnvironment: string;
@@ -265,6 +266,5 @@ export type TSecretReferenceTraceNode = {
 export type SecretAccessListEntry = {
   allowedActions: ProjectPermissionActions[];
   id: string;
-  membershipId: string;
   name: string;
 };

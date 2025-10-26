@@ -13,9 +13,13 @@ export const CachingPage = () => {
       <Helmet>
         <title>{t("common.head-title", { title: "Admin" })}</title>
       </Helmet>
-      <div className="container mx-auto flex flex-col justify-between bg-bunker-800 text-white">
-        <div className="mx-auto mb-6 w-full max-w-7xl">
-          <PageHeader title="Caching" description="Manage caching for your Infisical instance." />
+      <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
+        <div className="mx-auto mb-6 w-full max-w-8xl">
+          <PageHeader
+            scope="instance"
+            title="Caching"
+            description="Manage caching for your Infisical instance."
+          />
           <CachingPageForm />
         </div>
       </div>

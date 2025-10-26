@@ -12,12 +12,12 @@ import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
+import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 import { PkiSyncSourceFields } from "./PkiSyncSourceFields";
-import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
@@ -124,7 +124,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
   if (showConfirmation)
     return (
       <>
-        <div className="flex flex-col rounded-sm border border-l-[2px] border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
+        <div className="flex flex-col rounded-xs border border-l-2 border-mineshaft-600 border-l-primary bg-mineshaft-700/80 px-4 py-3">
           <div className="mb-1 flex items-center text-sm">
             <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
             Certificate Sync Behavior
@@ -171,7 +171,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `w-30 -mb-[0.14rem] ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-none disabled:opacity-60 ${
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
                     selected
                       ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
                       : "text-bunker-300"

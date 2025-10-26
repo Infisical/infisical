@@ -30,6 +30,8 @@ jobs:
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.7.0
+        with:
+          yamale_version: "6.0.0"
 
       - name: Run chart-testing (lint)
         run: ct lint --config ct.yaml --charts helm-charts/infisical-standalone-postgres
@@ -54,7 +56,7 @@ jobs:
             --config ct.yaml \
             --charts helm-charts/infisical-standalone-postgres \
             --helm-extra-args="--timeout=300s" \
-            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.autoDatabaseSchemaMigration=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.132.2-postgres" \
+            --helm-extra-set-args="--set ingress.nginx.enabled=false --set infisical.replicaCount=1 --set infisical.image.tag=v0.151.0" \
             --namespace infisical-standalone-postgres
 
   release:

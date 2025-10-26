@@ -33,10 +33,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/organization/secret-sharing",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"
     ),
-    SecretSharingSettings: setRoute(
-      "/organization/secret-sharing/settings",
-      "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/settings"
-    ),
     SettingsPage: setRoute(
       "/organization/settings",
       "/_authenticate/_inject-org-details/_org-layout/organization/settings/"
@@ -66,7 +62,11 @@ export const ROUTE_PATHS = Object.freeze({
         "/organization/app-connections/$appConnection/oauth/callback",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
       )
-    }
+    },
+    NetworkingPage: setRoute(
+      "/organization/networking",
+      "/_authenticate/_inject-org-details/_org-layout/organization/networking"
+    )
   },
   SecretManager: {
     ApprovalPage: setRoute(
@@ -348,6 +348,24 @@ export const ROUTE_PATHS = Object.freeze({
     FindingsPage: setRoute(
       "/projects/secret-scanning/$projectId/findings",
       "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout/findings"
+    )
+  },
+  Pam: {
+    AccountsPage: setRoute(
+      "/projects/pam/$projectId/accounts",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/accounts"
+    ),
+    ResourcesPage: setRoute(
+      "/projects/pam/$projectId/resources",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/resources"
+    ),
+    SessionsPage: setRoute(
+      "/projects/pam/$projectId/sessions",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/"
+    ),
+    PamSessionByIDPage: setRoute(
+      "/projects/pam/$projectId/sessions/$sessionId",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
     )
   },
   Public: {

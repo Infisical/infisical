@@ -3,7 +3,7 @@ title: "Gateway Deployment"
 description: "Complete guide to deploying Infisical Gateways including network configuration and firewall requirements"
 ---
 
-Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network. 
+Infisical Gateways enables secure communication between your private resources and the Infisical platform without exposing inbound ports in your network.
 This guide covers everything you need to deploy and configure Infisical Gateways.
 
 ## Deployment Steps
@@ -18,73 +18,73 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
     <AccordionGroup>
       <Accordion title="Universal Auth">
         Simple and secure authentication using client ID and client secret.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=universal-auth`
         - `INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id>`
         - `INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret>`
       </Accordion>
-      
+
       <Accordion title="Token Auth">
         Direct authentication using a machine identity access token.
-        
+
         **Environment Variables:**
         - `INFISICAL_TOKEN=<token>`
       </Accordion>
-      
+
       <Accordion title="Native Kubernetes">
         Authentication using Kubernetes service account tokens.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=kubernetes`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
       </Accordion>
-      
+
       <Accordion title="Native AWS IAM">
         Authentication using AWS IAM roles.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=aws-iam`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
       </Accordion>
-      
+
       <Accordion title="Native GCP ID Token">
         Authentication using GCP identity tokens.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=gcp-id-token`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
       </Accordion>
-      
+
       <Accordion title="GCP IAM">
         Authentication using GCP service account keys.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=gcp-iam`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
         - `INFISICAL_GCP_SERVICE_ACCOUNT_KEY_FILE_PATH=<path-to-key-file>`
       </Accordion>
-      
+
       <Accordion title="Native Azure">
         Authentication using Azure managed identity.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=azure`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
       </Accordion>
-      
+
       <Accordion title="OIDC Auth">
         Authentication using OIDC identity tokens.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=oidc-auth`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
         - `INFISICAL_JWT=<oidc-jwt>`
       </Accordion>
-      
+
       <Accordion title="JWT Auth">
         Authentication using JWT tokens.
-        
+
         **Environment Variables:**
         - `INFISICAL_AUTH_METHOD=jwt-auth`
         - `INFISICAL_MACHINE_IDENTITY_ID=<machine-identity-id>`
@@ -95,7 +95,7 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
   <Step title="Set Up a Relay Server">
   Ensure a relay server is running and accessible before you deploy any gateways. You have two options:
   - **Managed relay (Infisical Cloud, US/EU only):** Managed relays are only available for Infisical Cloud instances in the US and EU regions. If you are using Infisical Cloud in these regions, you can use the provided managed relay.
-  - **Self-hosted relay:** For all other cases, including all self-hosted and dedicated enterprise instances of Infisical, you must deploy your own relay server. You can also choose to deploy your own relay server when using Infisical Cloud if you require reduced geographic proximity to your target resources for lower latency or to reduce network congestion. For setup instructions, see the <a href="/documentation/platform/gateways/relay-deployment">Relay Deployment Guide</a>.
+  - **Self-hosted relay:** For all other cases, including all self-hosted and dedicated enterprise instances of Infisical, you must deploy your own relay server. You can also choose to deploy your own relay server when using Infisical Cloud if you require reduced geographic proximity to your target resources for lower latency or to reduce network congestion. For setup instructions, see the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
   </Step>
   <Step title="Install the Infisical CLI">
     Make sure the Infisical CLI is installed on the machine or environment where you plan to deploy the gateway. The CLI is required for gateway installation and management.
@@ -111,7 +111,7 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
     | TCP      | Infisical instance host (US/EU, other)  | 443  | API communication and certificate requests |
 
     For managed relays, allow outbound traffic to the provided relay server IP/hostname. For self-hosted relays, allow outbound traffic to your own relay server address.
-    
+
     If you are in a corporate environment with strict egress filtering, ensure outbound TCP 2222 to relay servers and outbound HTTPS 443 to Infisical API endpoints are allowed.
   </Step>
   <Step title="Select a Deployment Method">
@@ -185,10 +185,9 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
   </Step>
 </Steps>
 
-
-
-
 ## Frequently Asked Questions
+
+<AccordionGroup>
 <Accordion title="Do I need to open any inbound ports on my firewall?">
 No inbound ports need to be opened for gateways. The gateway only makes outbound connections:
 
@@ -263,3 +262,4 @@ The gateway is designed to handle network interruptions gracefully:
 No manual intervention is typically required during network interruptions.
 
 </Accordion>
+</AccordionGroup>
