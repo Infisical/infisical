@@ -1,5 +1,5 @@
 ---
-title: "Gloo Mesh Integration"
+title: "Gloo Mesh"
 description: "Learn how to automatically provision and manage Istio intermediate CA certificates for Gloo Mesh using Infisical PKI"
 ---
 
@@ -7,8 +7,8 @@ This guide will provide a high level overview on how you can use Infisical PKI a
 
 ## Overview
 
-In this setup, we will use Infisical PKI to generate and store your root CA and subordinate CAs that are used to generate Istio intermediate CAs for your Gloo Mesh workload clusters. 
-To manage the lifecycle of Istio intermediate CA certificates, you'll also install [cert-manager](https://cert-manager.io/). 
+In this setup, we will use Infisical PKI to generate and store your root CA and subordinate CAs that are used to generate Istio intermediate CAs for your Gloo Mesh workload clusters.
+To manage the lifecycle of Istio intermediate CA certificates, you'll also install [cert-manager](https://cert-manager.io/).
 Cert-manager is a Kubernetes controller that helps you automate the process of obtaining and renewing certificates from various PKI providers.
 
 With this approach, you get the following benefits:
@@ -18,10 +18,10 @@ With this approach, you get the following benefits:
 - Use cert-manager to automatically issue and renew Istio intermediate CA certificates from the same root, ensuring cross-cluster workload communication.
 - Increased auditability of private key infrastructure.
 
-
 ## General Setup
+
 The certificate provisioning workflow begins with setting up your PKI hierarchy in Infisical, where you create root and subordinate certificate authorities.
-When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` uses the Infisical PKI Issuer controller to authenticate with Infisical using machine identity credentials and request an intermediate CA certificate. 
+When you deploy a `Certificate` CRD in your workload cluster, `cert-manager` uses the Infisical PKI Issuer controller to authenticate with Infisical using machine identity credentials and request an intermediate CA certificate.
 Infisical verifies the request against your certificate templates and returns the signed certificate.
 From there, Istio's control plane will automatically use this intermediate CA to sign leaf certificates for workloads in the service mesh, enabling secure mTLS communication across your entire Gloo Mesh infrastructure.
 
@@ -35,5 +35,5 @@ For Gloo Mesh-specific configuration, ensure that:
 
 ## Using the certificates
 
-Once the `cacerts` Kubernetes secret is created in the `istio-system` namespace, Istio automatically uses the custom CA certificate instead of the default self-signed certificate. 
+Once the `cacerts` Kubernetes secret is created in the `istio-system` namespace, Istio automatically uses the custom CA certificate instead of the default self-signed certificate.
 When you deploy applications to your Gloo Mesh service mesh, the workloads will receive leaf certificates signed by your Infisical PKI intermediate CA, enabling secure mTLS communication across your entire mesh infrastructure.

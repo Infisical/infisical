@@ -728,30 +728,30 @@
                   },
                   "documentation/platform/pki/subscribers",
                   "documentation/platform/pki/certificates",
-                  "documentation/platform/pki/acme-ca",
-                  "documentation/platform/pki/azure-adcs",
                   "documentation/platform/pki/est",
-                  "documentation/platform/pki/alerting",
-                  {
-                    "group": "Integrations",
-                    "pages": [
-                      "documentation/platform/pki/pki-issuer",
-                      "documentation/platform/pki/integration-guides/gloo-mesh"
-                    ]
-                  },
-                  {
-                    "group": "Certificate Syncs",
-                    "pages": [
-                      "documentation/platform/pki/certificate-syncs/overview",
-                      {
-                        "group": "Syncs",
-                        "pages": [
-                          "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
-                        ]
-                      }
-                    ]
-                  }
+                  "documentation/platform/pki/alerting"
+                ]
+              },
+              {
+                "group": "Infrastructure Integrations",
+                "pages": [
+                  "documentation/platform/pki/pki-issuer",
+                  "documentation/platform/pki/integration-guides/gloo-mesh"
+                ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "documentation/platform/pki/certificate-syncs/overview",
+                  "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+                  "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                ]
+              },
+              {
+                "group": "CA Integrations",
+                "pages": [
+                  "documentation/platform/pki/acme-ca",
+                  "documentation/platform/pki/azure-adcs"
                 ]
               }
             ]
