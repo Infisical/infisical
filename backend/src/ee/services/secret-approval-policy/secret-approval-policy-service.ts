@@ -271,6 +271,8 @@ export const secretApprovalPolicyServiceFactory = ({
       );
 
       if (bypasserUserIds.length) {
+        await verifyProjectUserMembership(bypasserUserIds, actorOrgId, projectId);
+
         await secretApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({
             bypasserUserId: userId,
@@ -481,6 +483,8 @@ export const secretApprovalPolicyServiceFactory = ({
       await secretApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
 
       if (bypasserUserIds.length) {
+        await verifyProjectUserMembership(bypasserUserIds, actorOrgId, secretApprovalPolicy.projectId);
+
         await secretApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({
             bypasserUserId: userId,

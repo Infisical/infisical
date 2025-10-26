@@ -280,6 +280,8 @@ export const accessApprovalPolicyServiceFactory = ({
       }
 
       if (bypasserUserIds.length) {
+        await verifyProjectUserMembership(bypasserUserIds, project.orgId, project.id);
+
         await accessApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({
             bypasserUserId: userId,
@@ -443,11 +445,6 @@ export const accessApprovalPolicyServiceFactory = ({
         bypasserUserIds = [...new Set(bypasserUserIds.concat(bypasserUsers.map((user) => user.id)))];
       }
 
-      // Validate user bypassers
-      if (bypasserUserIds.length > 0) {
-        await verifyProjectUserMembership(bypasserUserIds, actorOrgId, accessApprovalPolicy.projectId);
-      }
-
       // Validate group bypassers
       if (groupBypassers.length > 0) {
         const orgGroups = await groupDAL.find({
@@ -555,6 +552,8 @@ export const accessApprovalPolicyServiceFactory = ({
       await accessApprovalPolicyBypasserDAL.delete({ policyId: doc.id }, tx);
 
       if (bypasserUserIds.length) {
+        await verifyProjectUserMembership(bypasserUserIds, actorOrgId, accessApprovalPolicy.projectId);
+
         await accessApprovalPolicyBypasserDAL.insertMany(
           bypasserUserIds.map((userId) => ({
             bypasserUserId: userId,
