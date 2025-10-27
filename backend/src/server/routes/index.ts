@@ -25,6 +25,7 @@ import { auditLogStreamServiceFactory } from "@app/ee/services/audit-log-stream/
 import { certificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
 import { certificateAuthorityCrlServiceFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-service";
 import { certificateEstServiceFactory } from "@app/ee/services/certificate-est/certificate-est-service";
+import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { dynamicSecretDALFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-dal";
 import { dynamicSecretServiceFactory } from "@app/ee/services/dynamic-secret/dynamic-secret-service";
 import { buildDynamicSecretProviders } from "@app/ee/services/dynamic-secret/providers";
@@ -1159,6 +1160,10 @@ export const registerRoutes = async (
     permissionService,
     kmsService,
     projectDAL
+  });
+
+  const pkiAcmeService = pkiAcmeServiceFactory({
+    certificateProfileDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
@@ -2436,6 +2441,7 @@ export const registerRoutes = async (
     certificateProfile: certificateProfileService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
+    pkiAcme: pkiAcmeService,
     pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
