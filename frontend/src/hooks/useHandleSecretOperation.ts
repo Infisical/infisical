@@ -1,10 +1,10 @@
 import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { SecretType } from "@app/hooks/api/types";
+import { useCallback } from "react";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
 } from "../pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
-import { useCallback } from "react";
 import { useInvalidateSecretQueries } from "./useInvalidateSecretQueries";
 
 interface HandleSecretParams {
@@ -60,14 +60,14 @@ export function useHandleSecretOperation(projectId: string) {
       }> = {}
     ) => {
       if (operation === "delete") {
-        return await deleteSecretV3({
+        return deleteSecretV3({
           environment,
           projectId,
           secretPath,
           secretKey: key,
           type,
           secretId
-        }).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
+        }).then((result) => invalidateSecretQueries({ environment, secretPath, key }, result));
       }
 
       if (operation === "update") {
@@ -80,7 +80,7 @@ export function useHandleSecretOperation(projectId: string) {
           secretValue = undefined;
         }
 
-        return await updateSecretV3({
+        return updateSecretV3({
           environment,
           projectId,
           secretPath,
@@ -97,10 +97,10 @@ export function useHandleSecretOperation(projectId: string) {
           secretReminderRecipients: reminderRecipients,
           skipMultilineEncoding,
           secretMetadata
-        }).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
+        }).then((result) => invalidateSecretQueries({ environment, secretPath, key }, result));
       }
 
-      return await createSecretV3(
+      return createSecretV3(
         {
           environment,
           projectId,
@@ -112,7 +112,7 @@ export function useHandleSecretOperation(projectId: string) {
           type
         },
         {}
-      ).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
+      ).then((result) => invalidateSecretQueries({ environment, secretPath, key }, result));
     },
     [projectId, deleteSecretV3, createSecretV3, updateSecretV3]
   );

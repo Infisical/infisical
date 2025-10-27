@@ -10,13 +10,30 @@ export function useInvalidateSecretQueries(projectId: string) {
   const queryClient = useQueryClient();
 
   const invalidSecretQueries = useCallback(
-    <T>({ environment, secretPath }: { environment: string; secretPath: string }, result?: T) => {
+    <T>(
+      { environment, secretPath, key }: { environment: string; secretPath: string; key: string },
+      result: T
+    ) => {
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({
           projectId,
           secretPath
         })
       });
+
+      // Multiple uses of is override as individual components read values
+      [true, false, undefined].map((isOverride) =>
+        queryClient.invalidateQueries({
+          queryKey: dashboardKeys.getSecretValue({
+            projectId,
+            environment,
+            secretPath,
+            secretKey: key,
+            isOverride
+          })
+        })
+      );
+
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
       });
