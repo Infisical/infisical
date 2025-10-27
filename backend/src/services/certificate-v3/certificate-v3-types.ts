@@ -35,8 +35,6 @@ export type TSignCertificateFromProfileDTO = {
   };
   notBefore?: Date;
   notAfter?: Date;
-  signatureAlgorithm?: string;
-  keyAlgorithm?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
@@ -68,6 +66,7 @@ export type TCertificateFromProfileResponse = {
   certificateId: string;
   projectId: string;
   profileName: string;
+  commonName: string;
 };
 
 export type TCertificateOrderResponse = {
@@ -96,4 +95,28 @@ export type TCertificateOrderResponse = {
   certificate?: string;
   projectId: string;
   profileName: string;
+};
+
+export type TRenewCertificateDTO = {
+  certificateId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TUpdateRenewalConfigDTO = {
+  certificateId: string;
+  renewBeforeDays: number;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TDisableRenewalConfigDTO = {
+  certificateId: string;
+} & Omit<TProjectPermission, "projectId">;
+
+export type TRenewalConfigResponse = {
+  projectId: string;
+  renewBeforeDays: number;
+  commonName: string;
+};
+
+export type TDisableRenewalResponse = {
+  projectId: string;
+  commonName: string;
 };

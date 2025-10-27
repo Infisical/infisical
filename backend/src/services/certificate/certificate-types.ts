@@ -21,6 +21,11 @@ export enum CertKeyAlgorithm {
   ECDSA_P521 = "EC_secp521r1"
 }
 
+export enum CertKeyType {
+  RSA = "RSA",
+  ECDSA = "ECDSA"
+}
+
 export enum CertSignatureAlgorithm {
   RSA_SHA256 = "RSA-SHA256",
   RSA_SHA384 = "RSA-SHA384",
