@@ -2339,7 +2339,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
-  await certificateV3Queue.startDailyAutoRenewalJob();
+  await certificateV3Queue.init();
   await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
