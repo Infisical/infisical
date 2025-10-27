@@ -1,19 +1,13 @@
 import { useCallback, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { commitKeys } from "@app/hooks/api/folderCommits/queries";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
-import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
@@ -66,7 +60,7 @@ export const SecretListView = ({
   importedBy,
   colWidth
 }: Props) => {
-  const queryClient = useQueryClient();
+
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
@@ -329,42 +323,7 @@ export const SecretListView = ({
           );
           if (cb) cb();
         }
-        queryClient.invalidateQueries({
-          queryKey: dashboardKeys.getDashboardSecrets({
-            projectId,
-            secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.history({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretApprovalRequestKeys.count({ projectId })
-        });
+
         if (!isReminderEvent) {
           handlePopUpClose("secretDetail");
         }
@@ -446,36 +405,7 @@ export const SecretListView = ({
         { operation: "delete", type: SecretType.Shared, key, secretPath, environment },
         { secretId }
       );
-      // wrap this in another function and then reuse
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ projectId })
-      });
+
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
       createNotification({

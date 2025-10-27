@@ -5,6 +5,7 @@ import {
   HIDDEN_SECRET_VALUE_API_MASK
 } from "../pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 import { useCallback } from "react";
+import { useInvalidateSecretQueries } from "./useInvalidateSecretQueries";
 
 interface HandleSecretParams {
   operation: "create" | "update" | "delete";
@@ -24,6 +25,8 @@ export function useHandleSecretOperation(projectId: string) {
   const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3({
     options: { onSuccess: undefined }
   });
+
+  const invalidateSecretQueries = useInvalidateSecretQueries(projectId);
 
   const handleSecretOperation = useCallback(
     async (
@@ -64,7 +67,7 @@ export function useHandleSecretOperation(projectId: string) {
           secretKey: key,
           type,
           secretId
-        });
+        }).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
       }
 
       if (operation === "update") {
@@ -94,7 +97,7 @@ export function useHandleSecretOperation(projectId: string) {
           secretReminderRecipients: reminderRecipients,
           skipMultilineEncoding,
           secretMetadata
-        });
+        }).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
       }
 
       return await createSecretV3(
@@ -109,7 +112,7 @@ export function useHandleSecretOperation(projectId: string) {
           type
         },
         {}
-      );
+      ).then((result) => invalidateSecretQueries({ environment, secretPath }, result));
     },
     [projectId, deleteSecretV3, createSecretV3, updateSecretV3]
   );
