@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createNotification } from "@app/components/notifications";
 import { SecretSyncEditFields } from "@app/components/secret-syncs/types";
 import { Button, ModalClose } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   TSecretSync,
@@ -30,6 +31,7 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
   const { name: destinationName } = SECRET_SYNC_MAP[secretSync.destination];
   const [showDuplicateConfirmation, setShowDuplicateConfirmation] = useState(false);
   const [pendingFormData, setPendingFormData] = useState<TSecretSyncForm | null>(null);
+  const { currentOrg } = useOrganization();
 
   const formMethods = useForm<TSecretSyncForm>({
     resolver: zodResolver(UpdateSecretSyncFormSchema),
@@ -209,6 +211,7 @@ export const EditSecretSyncForm = ({ secretSync, fields, onComplete }: Props) =>
         onConfirm={handleConfirmDuplicate}
         isLoading={updateSecretSync.isPending}
         duplicateProjectId={storedDuplicateProjectId}
+        isDisabled={currentOrg?.blockDuplicateSecretSyncDestinations}
       />
     </>
   );

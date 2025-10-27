@@ -256,11 +256,7 @@ export const CreateSecretSyncForm = ({
       </FormProvider>
 
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
-        <Button
-          onClick={handleNext}
-          colorSchema="secondary"
-          isDisabled={isCreateButtonDisabled || (isFinalStep && hasDuplicate)}
-        >
+        <Button onClick={handleNext} colorSchema="secondary" isDisabled={isCreateButtonDisabled}>
           {isFinalStep ? "Create Sync" : "Next"}
         </Button>
         {selectedTabIndex > 0 && (

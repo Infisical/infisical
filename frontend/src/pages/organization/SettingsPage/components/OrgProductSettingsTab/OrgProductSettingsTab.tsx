@@ -49,11 +49,11 @@ export const OrgProductSettingsTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="mb-2 text-lg font-medium text-mineshaft-100">
-            Block Duplicate Secret Sync Destinations
+            Unique Secret Sync Destination Policy
           </h3>
           <p className="text-sm text-mineshaft-400">
-            When enabled, this setting prevents the creation of multiple sync configurations
-            pointing to the same destination.
+            When enabled, ensures each destination can only be used by one secret sync
+            configuration, preventing potential conflicts or overwrites.
           </p>
         </div>
         <OrgPermissionCan I={OrgPermissionActions.Edit} a={OrgPermissionSubjects.Settings}>

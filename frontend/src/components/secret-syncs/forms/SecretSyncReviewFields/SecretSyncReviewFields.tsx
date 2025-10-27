@@ -219,7 +219,7 @@ export const SecretSyncReviewFields = () => {
               <div>
                 <p>
                   {currentOrg?.blockDuplicateSecretSyncDestinations
-                    ? "Another secret sync in your organization is already configured with the same destination. This organization has blocking duplicate destinations enabled."
+                    ? "Another secret sync in your organization is already configured with the same destination. Your organization does not allow duplicate destination configurations."
                     : "Another secret sync in your organization is already configured with the same destination. This may lead to conflicts or unexpected behavior."}
                 </p>
                 {duplicateProjectId && (

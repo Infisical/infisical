@@ -1,1 +1,0 @@
-export { BlockDuplicateSecretSyncDestinationsSection } from "./BlockDuplicateSecretSyncDestinationsSection";
