@@ -60,7 +60,9 @@ export const ProjectTemplatesSection = () => {
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
                       if (!subscription?.projectTemplates) {
-                        handlePopUpOpen("upgradePlan");
+                        handlePopUpOpen("upgradePlan", {
+                          isEnterpriseFeature: true
+                        });
                         return;
                       }
 
@@ -84,6 +86,7 @@ export const ProjectTemplatesSection = () => {
               isOpen={popUp.upgradePlan.isOpen}
               onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
               text="You can create project templates if you switch to Infisical's Enterprise plan."
+              isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
             />
           </div>
         </div>
