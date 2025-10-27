@@ -83,12 +83,9 @@ import {
 } from "@app/hooks";
 import {
   useCreateFolder,
-  useCreateSecretV3,
-  useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
-  useGetWsTags,
-  useUpdateSecretV3
+  useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
@@ -125,6 +122,7 @@ import { SecretSearchInput } from "./components/SecretSearchInput";
 import { SecretTableResourceCount } from "./components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
+import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -364,9 +362,6 @@ export const OverviewPage = () => {
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
-  const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
@@ -483,6 +478,8 @@ export const OverviewPage = () => {
     }
   };
 
+  const handleSecretOperation = useHandleSecretOperation(projectId);
+
   const handleSecretCreate = async (env: string, key: string, value: string) => {
     try {
       // create folder if not existing
@@ -507,15 +504,19 @@ export const OverviewPage = () => {
           });
         }
       }
-      const result = await createSecretV3({
-        environment: env,
-        projectId,
-        secretPath,
-        secretKey: key,
-        secretValue: value,
-        secretComment: "",
-        type: SecretType.Shared
-      });
+      const result = await handleSecretOperation(
+        {
+          operation: "create",
+          type: SecretType.Shared,
+          environment: env,
+          key,
+          secretPath
+        },
+        {
+          value,
+          comment: ""
+        }
+      );
 
       if ("approval" in result) {
         createNotification({
@@ -562,14 +563,18 @@ export const OverviewPage = () => {
     }
 
     try {
-      const result = await updateSecretV3({
-        environment: env,
-        projectId,
-        secretPath,
-        secretKey: key,
-        secretValue,
-        type
-      });
+      const result = await handleSecretOperation(
+        {
+          operation: "update",
+          environment: env,
+          key,
+          secretPath,
+          type
+        },
+        {
+          value: secretValue
+        }
+      );
 
       if ("approval" in result) {
         createNotification({
@@ -591,16 +596,20 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
+  const handleSecretDelete = async (env: string, key: string, type: SecretType, secretId?: string) => {
     try {
-      const result = await deleteSecretV3({
-        environment: env,
-        projectId,
-        secretPath,
-        secretKey: key,
-        secretId,
-        type: SecretType.Shared
-      });
+      const result = await handleSecretOperation(
+        {
+          operation: "delete",
+          environment: env,
+          key,
+          secretPath,
+          type
+        },
+        {
+          secretId
+        }
+      );
 
       if ("approval" in result) {
         createNotification({

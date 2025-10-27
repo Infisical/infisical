@@ -63,7 +63,7 @@ type Props = {
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, type: SecretType, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
@@ -280,7 +280,7 @@ export const SecretEditRow = ({
     setIsModalOpen(false);
 
     try {
-      await onSecretDelete(environment, secretName, secretId);
+      await onSecretDelete(environment, secretName, isOverride ? SecretType.Personal : SecretType.Shared, secretId);
       reset({ value: null });
     } finally {
       setIsDeleting.off();
@@ -292,7 +292,9 @@ export const SecretEditRow = ({
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
-        title="Do you want to delete the selected secret?"
+        title={
+          isOverride ? "Do you want to delete your personal override for the selected secret?" : "Do you want to delete the selected secret?"
+        }
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
@@ -405,7 +407,7 @@ export const SecretEditRow = ({
               </Tooltip>
             </div>
 
-            <div className="opacity-0 group-hover:opacity-100">
+            <div data-override={isOverride} className="data-[override=true]:hidden opacity-0 group-hover:opacity-100">
               <Modal>
                 <ModalTrigger asChild>
                   <div className="opacity-0 group-hover:opacity-100">
@@ -446,7 +448,7 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}>
+                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : isOverride ? "Remove Personal Override" : "Delete"}>
                     <IconButton
                       variant="plain"
                       ariaLabel="delete-value"

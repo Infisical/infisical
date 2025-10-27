@@ -46,7 +46,7 @@ type Props = {
     type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, type: SecretType, secretId?: string) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
   getImportedSecretByKey: (
     env: string,
