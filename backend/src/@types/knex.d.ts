@@ -287,6 +287,9 @@ import {
   TPkiEstEnrollmentConfigs,
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate,
+  TPkiAcmeEnrollmentConfigs,
+  TPkiAcmeEnrollmentConfigsInsert,
+  TPkiAcmeEnrollmentConfigsUpdate,
   TPkiSubscribers,
   TPkiSubscribersInsert,
   TPkiSubscribersUpdate,
@@ -708,6 +711,11 @@ declare module "knex/types/tables" {
       TPkiApiEnrollmentConfigs,
       TPkiApiEnrollmentConfigsInsert,
       TPkiApiEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiAcmeEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiAcmeEnrollmentConfigs,
+      TPkiAcmeEnrollmentConfigsInsert,
+      TPkiAcmeEnrollmentConfigsUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
