@@ -3,7 +3,6 @@ import { z } from "zod";
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { DynamicSecretProviderSchema } from "@app/ee/services/dynamic-secret/providers/models";
 import { ApiDocsTags, DYNAMIC_SECRETS } from "@app/lib/api-docs";
-import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { isValidHandleBarTemplate } from "@app/lib/template/validate-handlebars";
@@ -60,8 +59,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
             const valMs = ms(val);
             if (valMs < 60 * 1000)
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-            if (valMs > daysToMillisecond(1))
-              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+            if (valMs > ms("10y"))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
           }),
         maxTTL: z
           .string()
@@ -130,8 +129,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
               const valMs = ms(val);
               if (valMs < 60 * 1000)
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-              if (valMs > daysToMillisecond(1))
-                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+              if (valMs > ms("10y"))
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
             }),
           maxTTL: z
             .string()
@@ -142,8 +141,8 @@ export const registerDynamicSecretRouter = async (server: FastifyZodProvider) =>
               const valMs = ms(val);
               if (valMs < 60 * 1000)
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-              if (valMs > daysToMillisecond(1))
-                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+              if (valMs > ms("10y"))
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
             })
             .nullable(),
           newName: z.string().describe(DYNAMIC_SECRETS.UPDATE.newName).optional(),
