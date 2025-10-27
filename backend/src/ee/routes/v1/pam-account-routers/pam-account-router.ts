@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
@@ -10,8 +11,10 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
-// Use z.union([...]) when more resources are added
-const SanitizedAccountSchema = SanitizedPostgresAccountWithResourceSchema;
+const SanitizedAccountSchema = z.union([
+  SanitizedPostgresAccountWithResourceSchema,
+  SanitizedMySQLAccountWithResourceSchema
+]);
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({

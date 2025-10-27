@@ -1281,7 +1281,7 @@ export const ActionBar = ({
             subscription.slug === null
               ? "You can perform this action under an Enterprise license"
               : `You can perform this action if you switch to Infisical's ${
-                  popUp.upgradePlan.data.isEnterpriseFeature ? "Enterprise" : "Pro"
+                  popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"
                 } plan`
           }
         />

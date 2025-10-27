@@ -38,6 +38,19 @@ export const GitHubConnectionAppInputCredentialsSchema = z.union([
   })
 ]);
 
+export const GitHubConnectionPatInputCredentialsSchema = z.union([
+  z.object({
+    personalAccessToken: z.string().trim().min(1, "Personal Access Token required"),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    personalAccessToken: z.string().trim().min(1, "Personal Access Token required"),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
+
 export const GitHubConnectionOAuthOutputCredentialsSchema = z.union([
   z.object({
     accessToken: z.string(),
@@ -64,6 +77,19 @@ export const GitHubConnectionAppOutputCredentialsSchema = z.union([
   })
 ]);
 
+export const GitHubConnectionPatOutputCredentialsSchema = z.union([
+  z.object({
+    personalAccessToken: z.string(),
+    instanceType: z.literal("server"),
+    host: z.string().trim().min(1)
+  }),
+  z.object({
+    personalAccessToken: z.string(),
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().trim().optional()
+  })
+]);
+
 export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z.literal(GitHubConnectionMethod.App).describe(AppConnections.CREATE(AppConnection.GitHub).method),
@@ -74,6 +100,12 @@ export const ValidateGitHubConnectionCredentialsSchema = z.discriminatedUnion("m
   z.object({
     method: z.literal(GitHubConnectionMethod.OAuth).describe(AppConnections.CREATE(AppConnection.GitHub).method),
     credentials: GitHubConnectionOAuthInputCredentialsSchema.describe(
+      AppConnections.CREATE(AppConnection.GitHub).credentials
+    )
+  }),
+  z.object({
+    method: z.literal(GitHubConnectionMethod.Pat).describe(AppConnections.CREATE(AppConnection.GitHub).method),
+    credentials: GitHubConnectionPatInputCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.GitHub).credentials
     )
   })
@@ -88,7 +120,11 @@ export const CreateGitHubConnectionSchema = ValidateGitHubConnectionCredentialsS
 export const UpdateGitHubConnectionSchema = z
   .object({
     credentials: z
-      .union([GitHubConnectionAppInputCredentialsSchema, GitHubConnectionOAuthInputCredentialsSchema])
+      .union([
+        GitHubConnectionAppInputCredentialsSchema,
+        GitHubConnectionOAuthInputCredentialsSchema,
+        GitHubConnectionPatInputCredentialsSchema
+      ])
       .optional()
       .describe(AppConnections.UPDATE(AppConnection.GitHub).credentials)
   })
@@ -110,6 +146,10 @@ export const GitHubConnectionSchema = z.intersection(
     z.object({
       method: z.literal(GitHubConnectionMethod.OAuth),
       credentials: GitHubConnectionOAuthOutputCredentialsSchema
+    }),
+    z.object({
+      method: z.literal(GitHubConnectionMethod.Pat),
+      credentials: GitHubConnectionPatOutputCredentialsSchema
     })
   ])
 );
@@ -124,6 +164,13 @@ export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
   }),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.OAuth),
+    credentials: z.object({
+      instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
+      host: z.string().optional()
+    })
+  }),
+  BaseGitHubConnectionSchema.extend({
+    method: z.literal(GitHubConnectionMethod.Pat),
     credentials: z.object({
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()

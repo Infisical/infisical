@@ -248,10 +248,18 @@ export const makePaginatedGitHubRequest = async <T, R = T[]>(
 ): Promise<T[]> => {
   const { credentials, method } = appConnection;
 
-  const token =
-    method === GitHubConnectionMethod.OAuth
-      ? credentials.accessToken
-      : await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service);
+  let token: string;
+
+  switch (method) {
+    case GitHubConnectionMethod.OAuth:
+      token = credentials.accessToken;
+      break;
+    case GitHubConnectionMethod.Pat:
+      token = credentials.personalAccessToken;
+      break;
+    default:
+      token = await getGitHubAppAuthToken(appConnection, gatewayService, gatewayV2Service);
+  }
 
   const baseUrl = `https://${await getGitHubInstanceApiUrl(appConnection)}${path}`;
   const initialUrlObj = new URL(baseUrl);
@@ -460,6 +468,35 @@ export const validateGitHubConnectionCredentials = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   const { credentials, method } = config;
+
+  // PAT validation
+  if (method === GitHubConnectionMethod.Pat) {
+    try {
+      const apiUrl = await getGitHubInstanceApiUrl(config);
+      await requestWithGitHubGateway(config, gatewayService, gatewayV2Service, {
+        url: `https://${apiUrl}/user`,
+        method: "GET",
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${credentials.personalAccessToken}`,
+          "X-GitHub-Api-Version": "2022-11-28"
+        }
+      });
+
+      return {
+        personalAccessToken: credentials.personalAccessToken,
+        instanceType: credentials.instanceType,
+        host: credentials.host
+      };
+    } catch (e: unknown) {
+      logger.error(e, "Unable to verify GitHub PAT connection");
+
+      throw new BadRequestError({
+        message: "Unable to validate Personal Access Token: verify token has proper permissions"
+      });
+    }
+  }
+
   const {
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_ID,
     INF_APP_CONNECTION_GITHUB_OAUTH_CLIENT_SECRET,
