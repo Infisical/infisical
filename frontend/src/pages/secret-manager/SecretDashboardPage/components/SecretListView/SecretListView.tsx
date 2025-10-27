@@ -12,6 +12,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
+import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 import {
   PendingSecretChange,
   PendingSecretCreate,
@@ -26,7 +27,6 @@ import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
 import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
-import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
@@ -60,7 +60,6 @@ export const SecretListView = ({
   importedBy,
   colWidth
 }: Props) => {
-
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",

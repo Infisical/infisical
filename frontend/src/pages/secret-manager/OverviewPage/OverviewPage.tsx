@@ -104,6 +104,7 @@ import {
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
+import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import {
@@ -122,7 +123,6 @@ import { SecretSearchInput } from "./components/SecretSearchInput";
 import { SecretTableResourceCount } from "./components/SecretTableResourceCount";
 import { SecretV2MigrationSection } from "./components/SecretV2MigrationSection";
 import { SelectionPanel } from "./components/SelectionPanel/SelectionPanel";
-import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 
 export enum EntryType {
   FOLDER = "folder",
@@ -596,7 +596,12 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (env: string, key: string, type: SecretType, secretId?: string) => {
+  const handleSecretDelete = async (
+    env: string,
+    key: string,
+    type: SecretType,
+    secretId?: string
+  ) => {
     try {
       const result = await handleSecretOperation(
         {

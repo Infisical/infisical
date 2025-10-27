@@ -258,7 +258,7 @@ export const SecretOverviewTableRow = ({
                               )}
                             </div>
                           </td>
-                          <td className={"col-span-2 w-full"}>
+                          <td className="col-span-2 w-full">
                             <div className="flex flex-col gap-0.5 divide-y divide-mineshaft-600">
                               <div className="flex h-8 items-center">
                                 <SecretEditRow

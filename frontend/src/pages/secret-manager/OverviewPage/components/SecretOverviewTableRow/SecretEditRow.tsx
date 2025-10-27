@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
@@ -280,12 +280,23 @@ export const SecretEditRow = ({
     setIsModalOpen(false);
 
     try {
-      await onSecretDelete(environment, secretName, isOverride ? SecretType.Personal : SecretType.Shared, secretId);
+      await onSecretDelete(
+        environment,
+        secretName,
+        isOverride ? SecretType.Personal : SecretType.Shared,
+        secretId
+      );
       reset({ value: null });
     } finally {
       setIsDeleting.off();
     }
   }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
+
+  const deleteLabel = useMemo(() => {
+    if (isRotatedSecret) return "Cannot Delete Rotated Secret";
+    if (isOverride) return "Remove Personal Override";
+    return "Delete";
+  }, []);
 
   return (
     <div className="group flex w-full cursor-text items-center space-x-2">
@@ -293,7 +304,9 @@ export const SecretEditRow = ({
         isOpen={isModalOpen}
         onClose={toggleModal}
         title={
-          isOverride ? "Do you want to delete your personal override for the selected secret?" : "Do you want to delete the selected secret?"
+          isOverride
+            ? "Do you want to delete your personal override for the selected secret?"
+            : "Do you want to delete the selected secret?"
         }
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
@@ -407,7 +420,10 @@ export const SecretEditRow = ({
               </Tooltip>
             </div>
 
-            <div data-override={isOverride} className="data-[override=true]:hidden opacity-0 group-hover:opacity-100">
+            <div
+              data-override={isOverride}
+              className="opacity-0 group-hover:opacity-100 data-[override=true]:hidden"
+            >
               <Modal>
                 <ModalTrigger asChild>
                   <div className="opacity-0 group-hover:opacity-100">
@@ -448,7 +464,7 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : isOverride ? "Remove Personal Override" : "Delete"}>
+                  <Tooltip content={deleteLabel}>
                     <IconButton
                       variant="plain"
                       ariaLabel="delete-value"
