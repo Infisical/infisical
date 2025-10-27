@@ -11,6 +11,26 @@ import {
   mapTemplateSignatureAlgorithmToApi
 } from "@app/pages/cert-manager/PoliciesPage/components/CertificateTemplatesV2Tab/shared/certificate-constants";
 
+const convertTemplateTtlToCertificateTtl = (templateTtl: string): string => {
+  const match = templateTtl.match(/^(\d+)([dmyh])$/);
+  if (!match) return templateTtl;
+
+  const [, value, unit] = match;
+  const numValue = parseInt(value, 10);
+
+  switch (unit) {
+    case "m":
+      return `${numValue * 30}d`;
+    case "y":
+      return `${numValue * 365}d`;
+    case "d":
+    case "h":
+      return templateTtl;
+    default:
+      return templateTtl;
+  }
+};
+
 export type TemplateConstraints = {
   allowedKeyUsages: string[];
   allowedExtendedKeyUsages: string[];
@@ -118,7 +138,7 @@ export const useCertificateTemplate = (
 
       // Set TTL if available
       if (templateData.validity?.max) {
-        setValue("ttl", templateData.validity.max);
+        setValue("ttl", convertTemplateTtlToCertificateTtl(templateData.validity.max));
       }
 
       // Handle SAN types
