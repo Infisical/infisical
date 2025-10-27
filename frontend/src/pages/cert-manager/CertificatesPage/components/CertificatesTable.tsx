@@ -115,7 +115,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   }
 
   if (!certificate.renewBeforeDays) {
-    return { text: "Disabled", variant: "primary" as const };
+    return { text: "Auto-Renewal Disabled", variant: "primary" as const };
   }
 
   const notAfterDate = new Date(certificate.notAfter);
