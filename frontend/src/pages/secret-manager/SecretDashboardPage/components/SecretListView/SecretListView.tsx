@@ -6,7 +6,6 @@ import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
 import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { commitKeys } from "@app/hooks/api/folderCommits/queries";
@@ -31,8 +30,9 @@ import {
 } from "../../SecretMainPage.store";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
-import { HIDDEN_SECRET_VALUE, HIDDEN_SECRET_VALUE_API_MASK, SecretItem } from "./SecretItem";
+import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
+import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
 
 type Props = {
   secrets?: SecretV3RawSanitized[];
@@ -74,17 +74,6 @@ export const SecretListView = ({
     "createSharedSecret"
   ] as const);
 
-  // strip of side effect queries
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3({
-    options: { onSuccess: undefined }
-  });
-
   const selectedSecrets = useSelectedSecrets();
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
   const { isBatchMode, pendingChanges } = useBatchMode();
@@ -105,95 +94,7 @@ export const SecretListView = ({
     pendingChangesRef.current = pendingChanges;
   }, [pendingChanges]);
 
-  const handleSecretOperation = async (
-    operation: "create" | "update" | "delete",
-    type: SecretType,
-    key: string,
-    {
-      secretValueHidden,
-      value,
-      comment,
-      reminderRepeatDays,
-      reminderNote,
-      reminderRecipients,
-      tags,
-      skipMultilineEncoding,
-      newKey,
-      secretId,
-      secretMetadata,
-      isRotatedSecret
-    }: Partial<{
-      secretValueHidden: boolean;
-      value: string;
-      comment: string;
-      reminderRepeatDays: number | null;
-      reminderNote: string | null;
-      reminderRecipients?: string[] | null;
-      tags: string[];
-      skipMultilineEncoding: boolean;
-      newKey: string;
-      secretId: string;
-      secretMetadata?: { key: string; value: string }[];
-      isRotatedSecret?: boolean;
-    }> = {}
-  ) => {
-    if (operation === "delete") {
-      await deleteSecretV3({
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        type,
-        secretId
-      });
-      return;
-    }
-
-    if (operation === "update") {
-      let secretValue = value;
-
-      if (
-        secretValueHidden &&
-        (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
-      ) {
-        secretValue = undefined;
-      }
-
-      await updateSecretV3({
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        ...(!isRotatedSecret && {
-          newSecretName: newKey,
-          secretValue: secretValueHidden ? secretValue : secretValue || ""
-        }),
-        type,
-        tagIds: tags,
-        secretComment: comment,
-        secretReminderRepeatDays: reminderRepeatDays,
-        secretReminderNote: reminderNote,
-        secretReminderRecipients: reminderRecipients,
-        skipMultilineEncoding,
-        secretMetadata
-      });
-      return;
-    }
-
-    await createSecretV3(
-      {
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        secretValue: value || "",
-        secretComment: "",
-        skipMultilineEncoding,
-        type
-      },
-      {}
-    );
-  };
+  const handleSecretOperation = useHandleSecretOperation(projectId);
 
   function getTrueOriginalSecret(
     currentSecret: SecretV3RawSanitized,
@@ -297,22 +198,49 @@ export const SecretListView = ({
         // personal secret change
         let personalAction = false;
         if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", SecretType.Personal, oldKey, {
-            secretId: orgSecret.idOverride
-          });
+          await handleSecretOperation(
+            {
+              operation: "delete",
+              type: SecretType.Personal,
+              key: oldKey,
+              secretPath,
+              environment
+            },
+            {
+              secretId: orgSecret.idOverride
+            }
+          );
           personalAction = true;
         } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", SecretType.Personal, oldKey, {
-            value: valueOverride,
-            newKey: hasKeyChanged ? key : undefined,
-            secretId: orgSecret.idOverride,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
-          });
+          await handleSecretOperation(
+            {
+              operation: "update",
+              type: SecretType.Personal,
+              key: oldKey,
+              secretPath,
+              environment
+            },
+            {
+              value: valueOverride,
+              newKey: hasKeyChanged ? key : undefined,
+              secretId: orgSecret.idOverride,
+              skipMultilineEncoding: modSecret.skipMultilineEncoding
+            }
+          );
           personalAction = true;
         } else if (overrideAction) {
-          await handleSecretOperation("create", SecretType.Personal, oldKey, {
-            value: valueOverride
-          });
+          await handleSecretOperation(
+            {
+              operation: "create",
+              type: SecretType.Personal,
+              key: oldKey,
+              secretPath,
+              environment
+            },
+            {
+              value: valueOverride
+            }
+          );
           personalAction = true;
         }
 
@@ -382,20 +310,23 @@ export const SecretListView = ({
             return;
           }
 
-          await handleSecretOperation("update", SecretType.Shared, oldKey, {
-            value,
-            tags: tagIds,
-            comment,
-            reminderRepeatDays,
-            reminderNote,
-            reminderRecipients,
-            secretId: orgSecret.id,
-            newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding,
-            secretMetadata,
-            isRotatedSecret: orgSecret.isRotatedSecret,
-            secretValueHidden
-          });
+          await handleSecretOperation(
+            { operation: "update", type: SecretType.Shared, key: oldKey, secretPath, environment },
+            {
+              value,
+              tags: tagIds,
+              comment,
+              reminderRepeatDays,
+              reminderNote,
+              reminderRecipients,
+              secretId: orgSecret.id,
+              newKey: hasKeyChanged ? key : undefined,
+              skipMultilineEncoding: modSecret.skipMultilineEncoding,
+              secretMetadata,
+              isRotatedSecret: orgSecret.isRotatedSecret,
+              secretValueHidden
+            }
+          );
           if (cb) cb();
         }
         queryClient.invalidateQueries({
@@ -511,7 +442,10 @@ export const SecretListView = ({
         return;
       }
 
-      await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
+      await handleSecretOperation(
+        { operation: "delete", type: SecretType.Shared, key, secretPath, environment },
+        { secretId }
+      );
       // wrap this in another function and then reuse
       queryClient.invalidateQueries({
         queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
