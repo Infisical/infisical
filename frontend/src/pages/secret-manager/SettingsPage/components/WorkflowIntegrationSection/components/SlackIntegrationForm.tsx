@@ -44,6 +44,69 @@ const formSchema = z.object({
 
 type TSlackConfigForm = z.infer<typeof formSchema>;
 
+type TChannelSelectorProps = {
+  value: string[];
+  onChange: (value: string[]) => void;
+  error?: { message?: string };
+  slackChannelIdToName: Record<string, string>;
+  sortedSlackChannels?: { id: string; name: string }[];
+  keyPrefix: string;
+};
+
+const ChannelSelector = ({
+  value,
+  onChange,
+  error,
+  slackChannelIdToName,
+  sortedSlackChannels,
+  keyPrefix
+}: TChannelSelectorProps) => (
+  <FormControl label="Slack channels" isError={Boolean(error)} errorText={error?.message}>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Input
+          isReadOnly
+          value={value
+            ?.filter(Boolean)
+            .map((entry) => slackChannelIdToName[entry])
+            .join(", ")}
+          className="text-left"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        style={{
+          width: "var(--radix-dropdown-menu-trigger-width)",
+          maxHeight: "350px",
+          overflowY: "auto"
+        }}
+        side="bottom"
+        align="start"
+      >
+        {sortedSlackChannels?.map((slackChannel) => {
+          const isChecked = value?.includes(slackChannel.id);
+          return (
+            <DropdownMenuItem
+              onClick={(evt) => {
+                evt.preventDefault();
+                onChange(
+                  isChecked
+                    ? value?.filter((el: string) => el !== slackChannel.id)
+                    : [...(value || []), slackChannel.id]
+                );
+              }}
+              key={`${keyPrefix}-slack-channel-${slackChannel.id}`}
+              iconPos="right"
+              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
+            >
+              {slackChannel.name}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </FormControl>
+);
+
 type Props = {
   onClose: () => void;
 };
@@ -320,63 +383,3 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
     </form>
   );
 };
-
-type TChannelSelectorProps = {
-  value: string[];
-  onChange: (value: string[]) => void;
-  error?: { message?: string };
-  slackChannelIdToName: Record<string, string>;
-  sortedSlackChannels?: { id: string; name: string }[];
-  keyPrefix: string;
-};
-
-const ChannelSelector = ({
-  value,
-  onChange,
-  error,
-  slackChannelIdToName,
-  sortedSlackChannels,
-  keyPrefix
-}: TChannelSelectorProps) => (
-  <FormControl label="Slack channels" isError={Boolean(error)} errorText={error?.message}>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Input
-          isReadOnly
-          value={value?.filter(Boolean).map((entry) => slackChannelIdToName[entry]).join(", ")}
-          className="text-left"
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        style={{
-          width: "var(--radix-dropdown-menu-trigger-width)",
-          maxHeight: "350px",
-          overflowY: "auto"
-        }}
-        side="bottom"
-        align="start"
-      >
-        {sortedSlackChannels?.map((slackChannel) => {
-          const isChecked = value?.includes(slackChannel.id);
-          return (
-            <DropdownMenuItem
-              onClick={(evt) => {
-                evt.preventDefault();
-                onChange(
-                  isChecked
-                    ? value?.filter((el: string) => el !== slackChannel.id)
-                    : [...(value || []), slackChannel.id]
-                );
-              }}
-              key={`${keyPrefix}-slack-channel-${slackChannel.id}`}
-              iconPos="right"
-              icon={isChecked && <FontAwesomeIcon icon={faCheckCircle} />}
-            >
-              {slackChannel.name}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </FormControl>
-);

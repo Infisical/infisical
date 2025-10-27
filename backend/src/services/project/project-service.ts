@@ -1573,8 +1573,8 @@ export const projectServiceFactory = ({
     isSecretSyncErrorNotificationEnabled
   }: TUpdateProjectWorkflowIntegration & {
     // workaround intersection type while we don't have the microsoft teams integration for failed secret syncs
-    isSecretSyncErrorNotificationEnabled: boolean;
-    secretSyncErrorChannels: string;
+    isSecretSyncErrorNotificationEnabled?: boolean;
+    secretSyncErrorChannels?: string;
   }) => {
     const project = await projectDAL.findById(projectId);
     if (!project) {
