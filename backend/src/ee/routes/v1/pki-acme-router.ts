@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
-import { ApiDocsTags } from "@app/lib/api-docs";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import {
   CreateAcmeAccountResponseSchema,
   CreateAcmeAccountSchema,
@@ -25,8 +23,13 @@ import {
   RespondToAcmeChallengeResponseSchema,
   RespondToAcmeChallengeSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
+import { ApiDocsTags } from "@app/lib/api-docs";
+import { getConfig } from "@app/lib/config/env";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
+
   server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
@@ -107,11 +110,21 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
+      // TODO: check nonce here
+      // TODO: check signature here
+
       const account = await server.services.pkiAcme.createAcmeAccount(req.params.profileId, req.body);
       // TODO: deal with existing account case here
       res.code(201);
+      res.header(
+        "Location",
+        `${appCfg.SITE_URL}/api/v1/pki/acme/profiles/${req.params.profileId}/accounts/${account.accountUrl}`
+      );
+
+      // TODO: DRY
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
+      res.header("Cache-Control", "no-store");
       return account;
     }
   });
@@ -227,11 +240,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const order = await server.services.pkiAcme.finalizeAcmeOrder(
-        req.params.profileId,
-        req.params.orderId,
-        req.body.csr
-      );
+      const order = await server.services.pkiAcme.finalizeAcmeOrder(req.params.profileId, req.params.orderId, req.body);
       return order;
     }
   });
