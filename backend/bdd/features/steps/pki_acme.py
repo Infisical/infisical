@@ -24,7 +24,7 @@ def step_impl(context: Context, method: str, url: str):
     context.response = context.http_client.request(method, url.format(**context.vars))
 
 
-@then('the response status code should be "{expected_status_code}"')
+@then('the response status code should be "{expected_status_code:d}"')
 def step_impl(context: Context, expected_status_code: int):
     assert context.response.status_code == expected_status_code, (
         f"{context.response.status_code} != {expected_status_code}"
