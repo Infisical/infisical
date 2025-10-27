@@ -47,6 +47,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     method: "HEAD",
     url: "/profiles/:profileId/new-nonce",
     config: {
+      // TODO: probably a different rate limit for nonce creation
       rateLimit: readLimit
     },
     schema: {
