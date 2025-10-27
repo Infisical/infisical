@@ -4,10 +4,14 @@ import { NotFoundError } from "@app/lib/errors";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
 import {
+  TCreateAcmeAccountPayload,
   TCreateAcmeAccountResponse,
+  TCreateAcmeOrderPayload,
   TCreateAcmeOrderResponse,
+  TDeactivateAcmeAccountPayload,
   TDeactivateAcmeAccountResponse,
   TDownloadAcmeCertificateDTO,
+  TFinalizeAcmeOrderPayload,
   TFinalizeAcmeOrderResponse,
   TGetAcmeAuthorizationResponse,
   TGetAcmeDirectoryResponse,
@@ -49,7 +53,10 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     return "FIXME-generate-nonce";
   };
 
-  const createAcmeAccount = async (profileId: string, body: unknown): Promise<TCreateAcmeAccountResponse> => {
+  const createAcmeAccount = async (
+    profileId: string,
+    body: TCreateAcmeAccountPayload
+  ): Promise<TCreateAcmeAccountResponse> => {
     // FIXME: Implement ACME new account registration
     // Use EAB authentication to find corresponding Infisical machine identity
     // Check permissions and return account information
@@ -63,7 +70,10 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     };
   };
 
-  const createAcmeOrder = async (profileId: string, body: unknown): Promise<TCreateAcmeOrderResponse> => {
+  const createAcmeOrder = async (
+    profileId: string,
+    body: TCreateAcmeOrderPayload
+  ): Promise<TCreateAcmeOrderResponse> => {
     // FIXME: Implement ACME new order creation
     const orderId = "FIXME-order-id";
     const baseUrl = appCfg.SITE_URL || "";
@@ -78,7 +88,8 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
 
   const deactivateAcmeAccount = async (
     profileId: string,
-    accountId: string
+    accountId: string,
+    body?: TDeactivateAcmeAccountPayload
   ): Promise<TDeactivateAcmeAccountResponse> => {
     // FIXME: Implement ACME account deactivation
     return {
@@ -108,8 +119,9 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
   const finalizeAcmeOrder = async (
     profileId: string,
     orderId: string,
-    csr: string
+    body: TFinalizeAcmeOrderPayload
   ): Promise<TFinalizeAcmeOrderResponse> => {
+    const { csr } = body;
     // FIXME: Implement ACME finalize order
     const baseUrl = appCfg.SITE_URL || "";
     return {

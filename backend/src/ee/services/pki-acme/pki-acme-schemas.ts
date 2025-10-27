@@ -21,23 +21,26 @@ export const GetAcmeNewNonceSchema = z.object({
   })
 });
 
+// New Account payload schema
+export const CreateAcmeAccountBodySchema = z.object({
+  contact: z.array(z.string()).optional(),
+  termsOfServiceAgreed: z.boolean().optional(),
+  onlyReturnExisting: z.boolean().optional(),
+  externalAccountBinding: z
+    .object({
+      protected: z.string(),
+      payload: z.string(),
+      signature: z.string()
+    })
+    .optional()
+});
+
 // New Account endpoint
 export const CreateAcmeAccountSchema = z.object({
   params: z.object({
     profileId: z.string().uuid()
   }),
-  body: z.object({
-    contact: z.array(z.string()).optional(),
-    termsOfServiceAgreed: z.boolean().optional(),
-    onlyReturnExisting: z.boolean().optional(),
-    externalAccountBinding: z
-      .object({
-        protected: z.string(),
-        payload: z.string(),
-        signature: z.string()
-      })
-      .optional()
-  })
+  body: CreateAcmeAccountBodySchema
 });
 
 export const CreateAcmeAccountResponseSchema = z.object({
@@ -47,21 +50,24 @@ export const CreateAcmeAccountResponseSchema = z.object({
   accountUrl: z.string()
 });
 
+// New Order payload schema
+export const CreateAcmeOrderBodySchema = z.object({
+  identifiers: z.array(
+    z.object({
+      type: z.string(),
+      value: z.string()
+    })
+  ),
+  notBefore: z.string().optional(),
+  notAfter: z.string().optional()
+});
+
 // New Order endpoint
 export const CreateAcmeOrderSchema = z.object({
   params: z.object({
     profileId: z.string().uuid()
   }),
-  body: z.object({
-    identifiers: z.array(
-      z.object({
-        type: z.string(),
-        value: z.string()
-      })
-    ),
-    notBefore: z.string().optional(),
-    notAfter: z.string().optional()
-  })
+  body: CreateAcmeOrderBodySchema
 });
 
 export const CreateAcmeOrderResponseSchema = z.object({
@@ -78,15 +84,18 @@ export const CreateAcmeOrderResponseSchema = z.object({
   certificate: z.string().optional()
 });
 
+// Account Deactivation payload schema
+export const DeactivateAcmeAccountBodySchema = z.object({
+  status: z.literal("deactivated")
+});
+
 // Account Deactivation endpoint
 export const DeactivateAcmeAccountSchema = z.object({
   params: z.object({
     profileId: z.string().uuid(),
     accountId: z.string()
   }),
-  body: z.object({
-    status: z.literal("deactivated")
-  })
+  body: DeactivateAcmeAccountBodySchema
 });
 
 export const DeactivateAcmeAccountResponseSchema = z.object({
@@ -127,15 +136,18 @@ export const GetAcmeOrderResponseSchema = z.object({
   certificate: z.string().optional()
 });
 
+// Finalize Order payload schema
+export const FinalizeAcmeOrderBodySchema = z.object({
+  csr: z.string()
+});
+
 // Finalize Order endpoint
 export const FinalizeAcmeOrderSchema = z.object({
   params: z.object({
     profileId: z.string().uuid(),
     orderId: z.string()
   }),
-  body: z.object({
-    csr: z.string()
-  })
+  body: FinalizeAcmeOrderBodySchema
 });
 
 export const FinalizeAcmeOrderResponseSchema = z.object({
