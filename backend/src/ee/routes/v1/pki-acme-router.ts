@@ -146,6 +146,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         201: CreateAcmeOrderResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const order = await server.services.pkiAcme.createAcmeOrder(req.params.profileId, req.body);
       res.code(201);
@@ -170,6 +172,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: DeactivateAcmeAccountResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const result = await server.services.pkiAcme.deactivateAcmeAccount(req.params.profileId, req.params.accountId);
       return result;
@@ -193,6 +197,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: ListAcmeOrdersResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const orders = await server.services.pkiAcme.listAcmeOrders(req.params.profileId, req.params.accountId);
       return orders;
@@ -216,6 +222,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: GetAcmeOrderResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const order = await server.services.pkiAcme.getAcmeOrder(req.params.profileId, req.params.orderId);
       return order;
@@ -239,6 +247,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: FinalizeAcmeOrderResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const order = await server.services.pkiAcme.finalizeAcmeOrder(req.params.profileId, req.params.orderId, req.body);
       return order;
@@ -262,6 +272,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: z.string()
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const certificate = await server.services.pkiAcme.downloadAcmeCertificate(
         req.params.profileId,
@@ -289,6 +301,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: GetAcmeAuthorizationResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const authz = await server.services.pkiAcme.getAcmeAuthorization(req.params.profileId, req.params.authzId);
       return authz;
@@ -312,6 +326,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: RespondToAcmeChallengeResponseSchema
       }
     },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const challenge = await server.services.pkiAcme.respondToAcmeChallenge(req.params.profileId, req.params.authzId);
       return challenge;
