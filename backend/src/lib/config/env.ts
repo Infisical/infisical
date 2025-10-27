@@ -266,12 +266,8 @@ const envSchema = z
     RELAY_AUTH_SECRET: zpStr(z.string().optional()),
 
     DYNAMIC_SECRET_ALLOW_INTERNAL_IP: zodStrBool.default("false"),
-    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()).default(
-      process.env.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID
-    ),
-    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
-      process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
-    ),
+    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
+    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
@@ -439,7 +435,11 @@ const envSchema = z
       data.INF_APP_CONNECTION_AZURE_APP_CONFIGURATION_CLIENT_SECRET || data.INF_APP_CONNECTION_AZURE_CLIENT_SECRET,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID: data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_ID || data.CLIENT_ID_HEROKU,
     INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET:
-      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU
+      data.INF_APP_CONNECTION_HEROKU_OAUTH_CLIENT_SECRET || data.CLIENT_SECRET_HEROKU,
+    DYNAMIC_SECRET_AWS_ACCESS_KEY_ID:
+      data.DYNAMIC_SECRET_AWS_ACCESS_KEY_ID || data.INF_APP_CONNECTION_AWS_ACCESS_KEY_ID,
+    DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY:
+      data.DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY || data.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
   }));
 
 export type TEnvConfig = Readonly<z.infer<typeof envSchema>>;
