@@ -225,7 +225,7 @@ export const certificateProfileServiceFactory = ({
         const apiConfig = await apiEnrollmentConfigDAL.create(
           {
             autoRenew: data.apiConfig.autoRenew,
-            autoRenewDays: data.apiConfig.autoRenewDays
+            renewBeforeDays: data.apiConfig.renewBeforeDays
           },
           tx
         );
@@ -343,7 +343,7 @@ export const certificateProfileServiceFactory = ({
           existingProfile.apiConfigId,
           {
             autoRenew: apiConfig.autoRenew,
-            autoRenewDays: apiConfig.autoRenewDays
+            renewBeforeDays: apiConfig.renewBeforeDays
           },
           tx
         );

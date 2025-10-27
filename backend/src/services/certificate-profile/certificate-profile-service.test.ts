@@ -110,7 +110,7 @@ describe("CertificateProfileService", () => {
     apiConfig: {
       id: "api-config-123",
       autoRenew: true,
-      autoRenewDays: 30
+      renewBeforeDays: 30
     }
   };
 
@@ -202,7 +202,7 @@ describe("CertificateProfileService", () => {
       certificateTemplateId: "template-123",
       apiConfig: {
         autoRenew: true,
-        autoRenewDays: 30
+        renewBeforeDays: 30
       }
     };
 
@@ -323,7 +323,7 @@ describe("CertificateProfileService", () => {
         certificateTemplateId: "template-123",
         apiConfig: {
           autoRenew: true,
-          autoRenewDays: 30
+          renewBeforeDays: 30
         }
       };
 
@@ -761,7 +761,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           apiConfig: {
             autoRenew: true,
-            autoRenewDays: 30
+            renewBeforeDays: 30
           }
         };
 
@@ -786,7 +786,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           apiConfig: {
             autoRenew: true,
-            autoRenewDays: 7
+            renewBeforeDays: 7
           }
         };
 
@@ -808,7 +808,7 @@ describe("CertificateProfileService", () => {
         expect(mockApiEnrollmentConfigDAL.create).toHaveBeenCalledWith(
           {
             autoRenew: true,
-            autoRenewDays: 7
+            renewBeforeDays: 7
           },
           undefined
         );

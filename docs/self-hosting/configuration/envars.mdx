@@ -116,6 +116,27 @@ The platform utilizes Postgres to persist all of its data and Redis for caching 
 <ParamField query="DB_ROOT_CERT" type="string" default="" optional>
   Configure the SSL certificate for securing a Postgres connection by first encoding it in base64.
   Use the following command to encode your certificate: `echo "<certificate>" | base64`
+
+  Many cloud providers provide a CA certificate for their data regions that you can use to secure your connection with SSL.
+
+  <AccordionGroup>
+    <Accordion title="AWS RDS">
+      If you're hosting your database on AWS RDS, you can use their publicly available CA certificate as the database root certificate.
+
+      You can find all the available CA certificates for AWS RDS on the official [AWS RDS documentation](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html).
+
+      As an example, if your RDS cluster is hosted in `us-east-1` _(US East, N. Virginia)_, you can use the following root certificate: https://truststore.pki.rds.amazonaws.com/us-east-1/us-east-1-bundle.pem.
+
+      All the available CA certificates can be found in the AWS RDS documentation linked above.
+
+      Remember to base64 encode the certificate before setting it as the `DB_ROOT_CERT` environment variable. `cat /path/to/certificate.pem | base64`.
+
+      ```bash
+      DB_ROOT_CERT=LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1 # .... (base64 encoded certificate)
+      DB_CONNECTION_URI=<rds-endpoint>?sslmode=verify-ca # or verify-full depending on your security policies
+      ```
+    </Accordion>
+  </AccordionGroup>
 </ParamField>
 
 <ParamField query="DB_READ_REPLICAS" type="string" default="" optional>

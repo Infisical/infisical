@@ -21,6 +21,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -147,6 +148,8 @@ export const identityAwsAuthServiceFactory = ({
     if (identityAwsAuth.allowedPrincipalArns) {
       // validate if Arn is in the list of allowed Principal ARNs
 
+      const formattedArn = extractPrincipalArn(Arn);
+
       const isArnAllowed = identityAwsAuth.allowedPrincipalArns
         .split(",")
         .map((principalArn) => principalArn.trim())
@@ -155,13 +158,18 @@ export const identityAwsAuthServiceFactory = ({
           // considers exact matches + wildcard matches
           // heavily validated in router
           const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
-          return regex.test(extractPrincipalArn(Arn));
+          return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
         });
 
-      if (!isArnAllowed)
+      if (!isArnAllowed) {
+        logger.error(
+          `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
+        );
+
         throw new UnauthorizedError({
-          message: "Access denied: AWS principal ARN not allowed."
+          message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`
         });
+      }
     }
 
     const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {

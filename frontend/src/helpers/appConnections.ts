@@ -135,6 +135,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.App:
     case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
+    case GitHubConnectionMethod.Pat:
+      return { name: "Personal Access Token", icon: faKey };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:

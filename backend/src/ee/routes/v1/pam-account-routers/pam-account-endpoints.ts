@@ -22,11 +22,15 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
     folderId?: C["folderId"];
     name: C["name"];
     description?: C["description"];
+    rotationEnabled: C["rotationEnabled"];
+    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
   }>;
   updateAccountSchema: z.ZodType<{
     credentials?: C["credentials"];
     name?: C["name"];
     description?: C["description"];
+    rotationEnabled?: C["rotationEnabled"];
+    rotationIntervalSeconds?: C["rotationIntervalSeconds"];
   }>;
   accountResponseSchema: z.ZodTypeAny;
 }) => {
@@ -60,7 +64,9 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             resourceType,
             folderId: req.body.folderId,
             name: req.body.name,
-            description: req.body.description
+            description: req.body.description,
+            rotationEnabled: req.body.rotationEnabled,
+            rotationIntervalSeconds: req.body.rotationIntervalSeconds
           }
         }
       });
@@ -108,7 +114,9 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
             resourceId: account.resourceId,
             resourceType,
             name: req.body.name,
-            description: req.body.description
+            description: req.body.description,
+            rotationEnabled: req.body.rotationEnabled,
+            rotationIntervalSeconds: req.body.rotationIntervalSeconds
           }
         }
       });

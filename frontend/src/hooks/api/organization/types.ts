@@ -68,6 +68,8 @@ export type PlanBillingInfo = {
   interval: "month" | "year";
   intervalCount: number;
   quantity: number;
+  users: number;
+  identities: number;
 };
 
 export type Invoice = {

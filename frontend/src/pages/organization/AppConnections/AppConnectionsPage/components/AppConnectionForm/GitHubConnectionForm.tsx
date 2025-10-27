@@ -16,6 +16,7 @@ import {
   FormControl,
   Input,
   ModalClose,
+  SecretInput,
   Select,
   SelectItem,
   Tooltip
@@ -48,28 +49,58 @@ import {
 type Props = {
   appConnection?: TGitHubConnection;
   projectId: string | undefined | null;
+  onSubmit: (formData: PatSchemaForm) => Promise<void>;
 };
 
-const formSchema = genericAppConnectionFieldsSchema.extend({
+const rootSchema = genericAppConnectionFieldsSchema.extend({
   app: z.literal(AppConnection.GitHub),
-  method: z.nativeEnum(GitHubConnectionMethod),
-  credentials: z
-    .union([
-      z.object({
-        instanceType: z.literal("cloud").optional(),
-        host: z.string().optional()
-      }),
-      z.object({
-        instanceType: z.literal("server"),
-        host: z.string().min(1, "Required")
-      })
-    ])
-    .optional()
+  method: z.nativeEnum(GitHubConnectionMethod)
 });
+
+const baseCredentialsSchema = z.union([
+  z.object({
+    instanceType: z.literal("server"),
+    host: z.string().min(1, "Host is required for server instance type")
+  }),
+  z.object({
+    instanceType: z.literal("cloud").optional(),
+    host: z.string().optional()
+  })
+]);
+
+const appSchema = rootSchema.extend({
+  method: z.literal(GitHubConnectionMethod.App),
+  credentials: baseCredentialsSchema
+});
+
+const oauthSchema = rootSchema.extend({
+  method: z.literal(GitHubConnectionMethod.OAuth),
+  credentials: baseCredentialsSchema
+});
+
+const patSchema = rootSchema.extend({
+  method: z.literal(GitHubConnectionMethod.Pat),
+  credentials: z.union([
+    z.object({
+      instanceType: z.literal("server"),
+      host: z.string().min(1, "Host is required for server instance type"),
+      personalAccessToken: z.string().min(1, "Personal Access Token is required")
+    }),
+    z.object({
+      instanceType: z.literal("cloud").optional(),
+      host: z.string().optional(),
+      personalAccessToken: z.string().min(1, "Personal Access Token is required")
+    })
+  ])
+});
+
+type PatSchemaForm = z.infer<typeof patSchema>;
+
+const formSchema = z.discriminatedUnion("method", [appSchema, oauthSchema, patSchema]);
 
 type FormData = z.infer<typeof formSchema>;
 
-export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
+export const GitHubConnectionForm = ({ appConnection, projectId, onSubmit }: Props) => {
   const isUpdate = Boolean(appConnection);
   const [isRedirecting, setIsRedirecting] = useState(false);
 
@@ -106,7 +137,12 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
 
   const returnUrl = useGetAppConnectionOauthReturnUrl();
 
-  const onSubmit = (formData: FormData) => {
+  const submitHandler = async (formData: FormData) => {
+    if (formData.method === GitHubConnectionMethod.Pat) {
+      await onSubmit(formData);
+      return;
+    }
+
     setIsRedirecting(true);
     const state = crypto.randomBytes(16).toString("hex");
     localStorage.setItem("latestCSRFToken", state);
@@ -151,15 +187,26 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
     case GitHubConnectionMethod.App:
       isMissingConfig = !appClientSlug;
       break;
+    case GitHubConnectionMethod.Pat:
+      isMissingConfig = false;
+      break;
     default:
       throw new Error(`Unhandled GitHub Connection method: ${selectedMethod}`);
   }
 
   const methodDetails = getAppConnectionMethodDetails(selectedMethod);
 
+  const getButtonText = () => {
+    if (selectedMethod === GitHubConnectionMethod.Pat) {
+      return isUpdate ? "Update Connection" : "Create Connection";
+    }
+
+    return isUpdate ? "Reconnect to GitHub" : "Connect to GitHub";
+  };
+
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(submitHandler)}>
         {!isUpdate && <GenericAppConnectionsFields />}
         <Controller
           name="method"
@@ -201,6 +248,26 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
             </FormControl>
           )}
         />
+        {selectedMethod === GitHubConnectionMethod.Pat && (
+          <Controller
+            name="credentials.personalAccessToken"
+            control={control}
+            shouldUnregister
+            render={({ field: { value, onChange }, fieldState: { error } }) => (
+              <FormControl
+                errorText={error?.message}
+                isError={Boolean(error?.message)}
+                label="Personal Access Token"
+              >
+                <SecretInput
+                  containerClassName="text-gray-400 group-focus-within:!border-primary-400/50 border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                  value={value}
+                  onChange={(e) => onChange(e.target.value)}
+                />
+              </FormControl>
+            )}
+          />
+        )}
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="enterprise-options" className="data-[state=open]:border-none">
             <AccordionTrigger className="h-fit flex-none pl-1 text-sm">
@@ -310,7 +377,7 @@ export const GitHubConnectionForm = ({ appConnection, projectId }: Props) => {
             isLoading={isSubmitting || isRedirecting}
             isDisabled={isSubmitting || (!isUpdate && !isDirty) || isMissingConfig || isRedirecting}
           >
-            {isUpdate ? "Reconnect to GitHub" : "Connect to GitHub"}
+            {getButtonText()}
           </Button>
           <ModalClose asChild>
             <Button colorSchema="secondary" variant="plain">

@@ -25,6 +25,23 @@ import {
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
 
+// HashiCorp Vault stores JSON data, so values can be any valid JSON type
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export const convertVaultValueToString = (value: JsonValue): string => {
+  if (value === null) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  // For objects and arrays, serialize as JSON
+  return JSON.stringify(value);
+};
+
 // Concurrency limit for HC Vault API requests to avoid rate limiting
 const HC_VAULT_CONCURRENCY_LIMIT = 20;
 
@@ -598,7 +615,7 @@ export const getHCVaultSecretsForPath = async (
       // For KV v2: /v1/{mount}/data/{path}
       const { data } = await requestWithHCVaultGateway<{
         data: {
-          data: Record<string, string>; // KV v2 has nested data structure
+          data: Record<string, JsonValue>; // KV v2 has nested data structure, supports all JSON types
           metadata: {
             created_time: string;
             deletion_time: string;
@@ -620,7 +637,7 @@ export const getHCVaultSecretsForPath = async (
 
     // For KV v1: /v1/{mount}/{path}
     const { data } = await requestWithHCVaultGateway<{
-      data: Record<string, string>; // KV v1 has flat data structure
+      data: Record<string, JsonValue>; // KV v1 has flat data structure, supports all JSON types
       lease_duration: number;
       lease_id: string;
       renewable: boolean;

@@ -1,8 +1,10 @@
 ---
 title: "Kubernetes via Helm Chart"
 description: "Learn how to use Helm chart to install Infisical on your Kubernetes cluster."
---- 
+---
+
 **Prerequisites**
+
 - You have extensive understanding of [Kubernetes](https://kubernetes.io/)
 - Installed [Helm package manager](https://helm.sh/) version v3.11.3 or greater
 - You have [kubectl](https://kubernetes.io/docs/reference/kubectl/kubectl/) installed and connected to your kubernetes cluster
@@ -12,7 +14,7 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
     ```bash
     helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/' 
     ```
-    ```
+    ```bash
     helm repo update
     ```
   </Step>
@@ -61,6 +63,7 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
       </Tab>
       <Tab title="Production deployment">
         For production environments, we recommend using Cloud-based Platform as a Service (PaaS) solutions for PostgreSQL and Redis to ensure high availability. In on-premise setups, it's recommended to configure Redis and Postgres for high availability, either by using Bitnami charts or a custom configuration.
+
         ```yaml simple-values-example.yaml 
         apiVersion: v1
         kind: Secret
@@ -74,6 +77,10 @@ description: "Learn how to use Helm chart to install Infisical on your Kubernete
           DB_CONNECTION_URI: <>
           SITE_URL: <>
         ```
+
+        <Tip>
+          If you need to configure the SSL certificate for your production Postgres instance, you can use the `DB_ROOT_CERT` environment variable. [Learn more about configuring the SSL certificate](/self-hosting/configuration/envars#aws-rds).
+        </Tip>
       </Tab>
     </Tabs>
   </Step>
