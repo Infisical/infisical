@@ -32,6 +32,7 @@ export type TNotification =
         secretPath: string;
         environment: string;
         projectName: string;
+        projectPath: string;
         permissions: string[];
         approvalUrl: string;
         note?: string;
@@ -61,6 +62,10 @@ export type TNotification =
         syncDestination: string;
         failureMessage: string;
         syncUrl: string;
+        environment: string;
+        secretPath: string;
+        projectName: string;
+        projectPath: string;
       };
     };
 

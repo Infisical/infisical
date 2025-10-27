@@ -89,7 +89,22 @@ export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackCon
           <Badge variant="danger">Disabled</Badge>
         )}
       </Td>
-
+      <Td>
+        {slackConfig.isSecretSyncErrorNotificationEnabled &&
+        !isLoadingConfig &&
+        slackConfig.secretSyncErrorChannels.length > 0 ? (
+          <Badge>
+            {slackConfig.secretSyncErrorChannels
+              .split(", ")
+              .map((channel) => slackChannelIdToName[channel])
+              .join(", ")}
+          </Badge>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
+        ) : (
+          <Badge variant="danger">Disabled</Badge>
+        )}
+      </Td>
       <Td>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">

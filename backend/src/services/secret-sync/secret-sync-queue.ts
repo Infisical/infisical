@@ -932,7 +932,9 @@ export const secretSyncQueueFactory = ({
         break;
     }
 
-    const syncPath = `/projects/secret-management/${projectId}/integrations/secret-syncs/${destination}/${secretSync.id}`;
+    const baseProjectPath = `/projects/secret-management/${projectId}`;
+    const overviewPath = `${baseProjectPath}/overview`;
+    const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
 
     const notifications = [
       triggerWorkflowIntegrationNotification({
@@ -944,10 +946,14 @@ export const secretSyncQueueFactory = ({
               syncDestination,
               failureMessage: failureMessage || "An unknown error occurred",
               syncUrl: `${appCfg.SITE_URL}${syncPath}`,
-              syncActionLabel: actionLabel
+              syncActionLabel: actionLabel,
+              environment: environment?.name || "-",
+              secretPath: folder?.path || "-",
+              projectName: project.name,
+              projectPath: overviewPath
             }
           },
-          projectId: project.id
+          projectId
         },
         dependencies: {
           projectDAL,

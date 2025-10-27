@@ -769,7 +769,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             isAccessRequestNotificationEnabled: true,
             accessRequestChannels: true,
             isSecretRequestNotificationEnabled: true,
-            secretRequestChannels: true
+            secretRequestChannels: true,
+            isSecretSyncErrorNotificationEnabled: true,
+            secretSyncErrorChannels: true
           }).merge(
             z.object({
               integration: z.literal(WorkflowIntegration.SLACK),
@@ -873,7 +875,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
           accessRequestChannels: validateSlackChannelsField,
           secretRequestChannels: validateSlackChannelsField,
           isAccessRequestNotificationEnabled: z.boolean(),
-          isSecretRequestNotificationEnabled: z.boolean()
+          isSecretRequestNotificationEnabled: z.boolean(),
+          secretSyncErrorChannels: validateSlackChannelsField,
+          isSecretSyncErrorNotificationEnabled: z.boolean()
         }),
         z.object({
           integration: z.literal(WorkflowIntegration.MICROSOFT_TEAMS),
@@ -891,7 +895,9 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
             isAccessRequestNotificationEnabled: true,
             accessRequestChannels: true,
             isSecretRequestNotificationEnabled: true,
-            secretRequestChannels: true
+            secretRequestChannels: true,
+            isSecretSyncErrorNotificationEnabled: true,
+            secretSyncErrorChannels: true
           }).merge(
             z.object({
               integration: z.literal(WorkflowIntegration.SLACK),

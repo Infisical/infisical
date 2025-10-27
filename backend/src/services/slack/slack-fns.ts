@@ -76,6 +76,7 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
       ];
 
       return {
+        headerBlocks: [],
         payloadMessage: messageBody,
         payloadBlocks,
         color: COMPANY_BRAND_COLOR
@@ -83,20 +84,15 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
     }
     case TriggerFeature.ACCESS_REQUEST: {
       const { payload } = notification;
-      const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested ${
-        payload.isTemporary ? "temporary" : "permanent"
-      } access to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.
-      
-The following permissions are requested: ${payload.permissions.join(", ")}
+      const projectUrl = `${appCfg.SITE_URL}${payload.projectPath}`;
+      const accessType = payload.isTemporary ? "temporary" : "permanent";
+      const permissionsFormatted = payload.permissions.map((p) => `*${p}*`).join(", ");
 
-View the request and approve or deny it <${payload.approvalUrl}|here>.${
-        payload.note
-          ? `
-User Note: ${payload.note}`
-          : ""
+      const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested ${accessType} access to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.\n\nThe following permissions are requested: ${payload.permissions.join(", ")}${
+        payload.note ? `\n\nUser note\n${payload.note}` : ""
       }`;
 
-      const payloadBlocks = [
+      const headerBlocks = [
         {
           type: "header",
           text: {
@@ -104,17 +100,38 @@ User Note: ${payload.note}`
             text: "New access approval request pending for review",
             emoji: true
           }
-        },
+        }
+      ];
+
+      const payloadBlocks = [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: messageBody
+            text: `*${payload.requesterFullName}* (${payload.requesterEmail}) has requested *${accessType}* access to *${payload.secretPath}* in the *${payload.environment}* environment of *<${projectUrl}|${payload.projectName}>*.\n\nThe following permissions are requested: ${permissionsFormatted}${
+              payload.note ? `\n\n*User note*\n${payload.note}` : ""
+            }`
           }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
         }
       ];
 
       return {
+        headerBlocks,
         payloadMessage: messageBody,
         payloadBlocks,
         color: COMPANY_BRAND_COLOR
@@ -125,7 +142,7 @@ User Note: ${payload.note}`
       const messageBody = `${payload.editorFullName} (${payload.editorEmail}) has updated the ${
         payload.isTemporary ? "temporary" : "permanent"
       } access request from ${payload.requesterFullName} (${payload.requesterEmail}) to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.
-      
+
 The following permissions are requested: ${payload.permissions.join(", ")}
 
 View the request and approve or deny it <${payload.approvalUrl}|here>.${
@@ -154,6 +171,7 @@ Editor Note: ${payload.editNote}`
       ];
 
       return {
+        headerBlocks: [],
         payloadMessage: messageBody,
         payloadBlocks,
         color: COMPANY_BRAND_COLOR
@@ -161,24 +179,26 @@ Editor Note: ${payload.editNote}`
     }
     case TriggerFeature.SECRET_SYNC_ERROR: {
       const { payload } = notification;
-      const messageBody = `${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}
+      const projectUrl = `${appCfg.SITE_URL}${payload.projectPath}`;
+      const messageBody = `Secret sync ${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}\n\n\nEnvironment: ${payload.environment}\n\n\nSecret Path: ${payload.secretPath}\n\n\nProject: ${payload.projectName} (${projectUrl})\n\n\nReason:\n${payload.failureMessage}`;
 
-Sync Error: ${payload.failureMessage}`;
-
-      const payloadBlocks = [
+      const headerBlocks = [
         {
           type: "header",
           text: {
             type: "plain_text",
-            text: `${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}`,
+            text: `Secret sync ${payload.syncName} for ${payload.syncDestination} failed on ${payload.syncActionLabel}`,
             emoji: true
           }
-        },
+        }
+      ];
+
+      const payloadBlocks = [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Sync Error:* ${payload.failureMessage}`
+            text: `*Environment*\n${payload.environment}\n\n\n*Secret Path*\n${payload.secretPath}\n\n\n*Project*\n<${projectUrl}|${payload.projectName}>\n\n\n*Reason*\n${payload.failureMessage}`
           }
         },
         {
@@ -188,9 +208,10 @@ Sync Error: ${payload.failureMessage}`;
               type: "button",
               text: {
                 type: "plain_text",
-                text: `Open ${payload.syncName}`,
+                text: "Open secret sync",
                 emoji: true
               },
+              style: "primary",
               url: payload.syncUrl
             }
           ]
@@ -199,6 +220,7 @@ Sync Error: ${payload.failureMessage}`;
 
       return {
         payloadMessage: messageBody,
+        headerBlocks,
         payloadBlocks,
         color: ERROR_COLOR
       };
@@ -227,14 +249,16 @@ export const sendSlackNotification = async ({
   }).toString("utf8");
   const slackWebClient = new WebClient(botKey);
 
-  const { payloadMessage, payloadBlocks, color } = buildSlackPayload(notification);
+  const { payloadMessage, payloadBlocks, color, headerBlocks } = buildSlackPayload(notification);
 
   for await (const conversationId of targetChannelIds) {
     // we send both text and blocks for compatibility with barebone clients
+
     await slackWebClient.chat
       .postMessage({
         channel: conversationId,
         text: payloadMessage,
+        blocks: headerBlocks,
         attachments: [
           {
             color,
