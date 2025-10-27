@@ -1,5 +1,6 @@
 /* eslint-disable import/extensions */
 import path from "node:path";
+import { monitorEventLoopDelay } from "perf_hooks";
 
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
@@ -24,6 +25,7 @@ import { TQueueServiceFactory } from "@app/queue";
 import { TKmsRootConfigDALFactory } from "@app/services/kms/kms-root-config-dal";
 import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
+import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
 import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
@@ -35,6 +37,15 @@ import { maintenanceMode } from "./plugins/maintenanceMode";
 import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
+
+// Monitor event loop for readiness checks
+const histogram = monitorEventLoopDelay({ resolution: 20 });
+histogram.enable();
+
+// Readiness state
+const readinessState = {
+  isReady: false
+};
 
 type TMain = {
   auditLogDb?: Knex;
@@ -145,6 +156,66 @@ export const main = async ({
       })
     });
 
+    // Health check - always returns 200 when server is running
+    server.get("/api/health", async () => {
+      return { status: "ok", message: "Server is alive" };
+    });
+
+    // Global preHandler to block requests during migrations
+    // Excludes /api/health and /api/ready endpoints
+    server.addHook("preHandler", async (request, reply) => {
+      if (request.url === "/api/health" || request.url === "/api/ready") {
+        return;
+      }
+      if (!readinessState.isReady) {
+        return reply.code(503).send({
+          status: "unavailable",
+          message: "Server is starting up, migrations in progress. Please try again in a moment."
+        });
+      }
+    });
+
+    // Readiness check - returns 503 until migrations are complete
+    server.get("/api/ready", async (request, reply) => {
+      const cfg = getConfig();
+
+      // Calculate event loop statistics
+      const meanLagMs = histogram.mean / 1e6;
+      const maxLagMs = histogram.max / 1e6;
+      const p99LagMs = histogram.percentile(99) / 1e6;
+
+      request.log.info(
+        `Event loop stats - Mean: ${meanLagMs.toFixed(2)}ms, Max: ${maxLagMs.toFixed(2)}ms, p99: ${p99LagMs.toFixed(2)}ms`
+      );
+
+      request.log.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
+
+      if (!readinessState.isReady) {
+        return reply.code(503).send({
+          date: new Date(),
+          message: "Server is starting up, migrations in progress",
+          emailConfigured: cfg.isSmtpConfigured,
+          redisConfigured: cfg.isRedisConfigured,
+          secretScanningConfigured: cfg.isSecretScanningConfigured,
+          samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
+          auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+        });
+      }
+
+      const serverCfg = await getServerCfg();
+
+      return {
+        date: new Date(),
+        message: "Ok",
+        emailConfigured: cfg.isSmtpConfigured,
+        inviteOnlySignup: Boolean(serverCfg.allowSignUp),
+        redisConfigured: cfg.isRedisConfigured,
+        secretScanningConfigured: cfg.isSecretScanningConfigured,
+        samlDefaultOrgSlug: cfg.samlDefaultOrgSlug,
+        auditLogStorageDisabled: Boolean(cfg.DISABLE_AUDIT_LOG_STORAGE)
+      };
+    });
+
     await server.register(registerRoutes, {
       smtp,
       queue,
@@ -170,4 +241,9 @@ export const main = async ({
     await queue.shutdown();
     process.exit(1);
   }
+};
+
+// Function to mark server as ready after migrations
+export const markServerReady = () => {
+  readinessState.isReady = true;
 };

@@ -16,7 +16,7 @@ import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
-import { main } from "./server/app";
+import { main, markServerReady } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { kmsRootConfigDALFactory } from "./services/kms/kms-root-config-dal";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
@@ -59,8 +59,6 @@ const run = async () => {
       })
     : undefined;
 
-  await runMigrations({ applicationDb: db, auditLogDb, logger });
-
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
   const queue = queueServiceFactory(envConfig, {
@@ -87,8 +85,8 @@ const run = async () => {
     redis,
     envConfig
   });
-  const bootstrap = await bootstrapCheck({ db });
 
+  // Setup signal handlers
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
@@ -119,14 +117,28 @@ const run = async () => {
     });
   }
 
+  // Start listening BEFORE migrations
+  // At this point: /api/health returns 200, /api/ready returns 503
   await server.listen({
     port: envConfig.PORT,
-    host: envConfig.HOST,
-    listenTextResolver: (address) => {
-      void bootstrap();
-      return address;
-    }
+    host: envConfig.HOST
   });
+
+  logger.info(`Server listening on ${envConfig.HOST}:${envConfig.PORT}`);
+  logger.info("Running migrations - health check available, other endpoints blocked...");
+
+  // Run migrations while server is up
+  await runMigrations({ applicationDb: db, auditLogDb, logger });
+
+  logger.info("Migrations complete. Marking server as ready...");
+
+  // Mark server as ready - now all endpoints work
+  markServerReady();
+
+  logger.info("Server is ready to accept traffic");
+
+  const bootstrap = await bootstrapCheck({ db });
+  void bootstrap();
 };
 
 void run();
