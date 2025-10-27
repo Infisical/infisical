@@ -187,6 +187,49 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
           </Step>
         </Steps>
       </Tab>
+
+      <Tab title="Group Access Token">
+        Group access tokens provide access to all projects within a GitLab group, offering group-level control.
+
+        <Steps>
+          <Step title="Navigate to Group Settings">
+            Go to your GitLab group and navigate to Settings > Access Tokens. Click **Add new token** to create a new group access token.
+            ![GitLab Group Access Tokens](/images/app-connections/gitlab/gitlab-group-access-token-list.png)
+          </Step>
+          <Step title="Configure Token">
+              Fill in the token details:
+              - **Token name**: A descriptive name for the token
+              - **Expiration date**: Set an appropriate expiration date
+              - **Select role and scopes**: Depending on your use case, add the required role and one or more of the following scopes:
+
+            <Tabs>
+                <Tab title="Secret Sync">
+                  For Secret Syncs, your token will require the `api` scope and at least a **Maintainer** role or higher.
+                  ![GitLab Create Group Token](/images/app-connections/gitlab/gitlab-group-access-token-form-secret-sync.png)
+
+                  Click **Create group access token** to create the token.
+                </Tab>
+                <Tab title="Secret Scanning">
+                    For Secret Scanning, your token will require the `api` scope and at least a **Maintainer** role or higher.
+                    ![GitLab Create Group Token](/images/app-connections/gitlab/gitlab-group-access-token-form-secret-sync.png)
+
+                    Click **Create group access token** to create the token.
+                </Tab>
+            </Tabs>
+
+            <Info>
+              Group Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+            </Info>
+          </Step>
+          <Step title="Copy Token">
+            Copy the generated token immediately as it won't be shown again.
+            ![GitLab Group Token Created](/images/app-connections/gitlab/gitlab-group-access-token-created.png)
+            <Warning>
+              Keep your access token secure and do not share it. Anyone with access to this token can access all projects within your GitLab group.
+            </Warning>
+          </Step>
+        </Steps>
+      </Tab>
     </Tabs>
 
     ## Setup GitLab Access Token Connection in Infisical
