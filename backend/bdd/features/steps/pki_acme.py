@@ -1,9 +1,17 @@
 import json
 
+from acme import client
+from acme import messages
 from behave.runner import Context
 from behave import given
 from behave import when
 from behave import then
+from josepy.jwk import JWKRSA
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
+
+ACC_KEY_BITS = 2048
+ACC_KEY_PUBLIC_EXPONENT = 65537
 
 
 class AcmeProfile:
@@ -37,6 +45,23 @@ def step_impl(context: Context, method: str, url: str):
     context.response = context.http_client.request(method, url.format(**context.vars))
 
 
+@when("I have an ACME client connecting to {url}")
+def step_impl(context: Context, url: str):
+    private_key = rsa.generate_private_key(
+        public_exponent=ACC_KEY_PUBLIC_EXPONENT, key_size=ACC_KEY_BITS
+    )
+    pem_bytes = private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    acc_jwk = JWKRSA.load(pem_bytes)
+    net = client.ClientNetwork(acc_jwk)
+    directory_url = url.format(**context.vars)
+    directory = client.ClientV2.get_directory(directory_url, net)
+    context.acme_client = client.ClientV2(directory, net=net)
+
+
 @then('the response status code should be "{expected_status_code:d}"')
 def step_impl(context: Context, expected_status_code: int):
     assert context.response.status_code == expected_status_code, (
@@ -59,3 +84,12 @@ def step_impl(context: Context):
     expected = json.loads(context.text)
     replace_vars(expected, context.vars)
     assert payload == expected, f"{payload} != {expected}"
+
+
+@then(
+    "I register a new ACME account with email {email} and EAB key id {kid} with secret {secret} as {account_var}"
+)
+def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+    # TODO: add EAB info here
+    registration = messages.NewRegistration.from_data(email=email)
+    context.var[account_var] = context.acme_client.new_account(registration)
