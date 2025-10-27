@@ -5,6 +5,7 @@ import { registerAccessApprovalRequestRouter } from "./access-approval-request-r
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
 import { registerCaCrlRouter } from "./certificate-authority-crl-router";
+import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerDeprecatedProjectRoleRouter } from "./deprecated-project-role-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerDeprecatedSecretApprovalPolicyRouter } from "./deprecated-secret-approval-policy-router";
@@ -107,6 +108,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+      await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
     { prefix: "/pki" }
   );
