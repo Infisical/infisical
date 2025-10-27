@@ -86,7 +86,6 @@ const run = async () => {
     envConfig
   });
 
-  // Setup signal handlers
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
     await server.close();
@@ -117,7 +116,6 @@ const run = async () => {
     });
   }
 
-  // Start listening BEFORE migrations
   await server.listen({
     port: envConfig.PORT,
     host: envConfig.HOST
@@ -144,7 +142,6 @@ const run = async () => {
 
   logger.info("Migrations complete. Marking server as READY...");
 
-  // Now mark server as ready - it can accept traffic
   markServerReady();
 
   logger.info("Server is ready to accept traffic");

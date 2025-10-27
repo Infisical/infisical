@@ -87,7 +87,8 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger, onMigra
     await applicationDb.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
 
-      // Signal that this container is running migrations
+      // Signal that this container is running migrations so that it can be marked as healthy/alive
+      // This is to prevent the container from being killed by the orchestrator
       if (onMigrationLockAcquired) {
         onMigrationLockAcquired();
       }

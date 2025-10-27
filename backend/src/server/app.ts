@@ -38,11 +38,9 @@ import { registerServeUI } from "./plugins/serve-ui";
 import { fastifySwagger } from "./plugins/swagger";
 import { registerRoutes } from "./routes";
 
-// Monitor event loop for readiness checks
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
 
-// Server state tracking
 const serverState = {
   isReady: false,
   isRunningMigrations: false,
@@ -171,7 +169,6 @@ export const main = async ({
     });
 
     // Global preHandler to block requests during migrations
-    // Excludes /api/health and /api/ready endpoints
     server.addHook("preHandler", async (request, reply) => {
       if (request.url === "/api/health" || request.url === "/api/ready") {
         return;
@@ -188,7 +185,6 @@ export const main = async ({
     server.get("/api/ready", async (request, reply) => {
       const cfg = getConfig();
 
-      // Calculate event loop statistics
       const meanLagMs = histogram.mean / 1e6;
       const maxLagMs = histogram.max / 1e6;
       const p99LagMs = histogram.percentile(99) / 1e6;
@@ -252,7 +248,6 @@ export const main = async ({
   }
 };
 
-// Functions to manage server state
 export const markServerReady = () => {
   serverState.isReady = true;
   serverState.isRunningMigrations = false;
