@@ -176,16 +176,14 @@
                 "pages": [
                   "documentation/platform/gateways/overview",
                   "documentation/platform/gateways/gateway-deployment",
-                  "documentation/platform/gateways/relay-deployment",
-                  "documentation/platform/gateways/security",
                   {
-                    "group": "Gateway (Deprecated)",
+                    "group": "Relay Deployment",
                     "pages": [
-                      "documentation/platform/gateways-deprecated/overview",
-                      "documentation/platform/gateways-deprecated/gateway-security",
-                      "documentation/platform/gateways-deprecated/networking"
+                      "documentation/platform/gateways/relay-deployment/overview",
+                      "documentation/platform/gateways/relay-deployment/terraform"
                     ]
-                  }
+                  },
+                  "documentation/platform/gateways/security"
                 ]
               }
             ]
