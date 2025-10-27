@@ -27,6 +27,20 @@ import {
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
+  server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
+    try {
+      const strBody = body instanceof Buffer ? body.toString() : body;
+      if (!strBody) {
+        done(null, undefined);
+      }
+      const json: unknown = JSON.parse(strBody as string);
+      // TODO: deal with JWS payload here
+      done(null, json);
+    } catch (err) {
+      const error = err as Error;
+      done(error, undefined);
+    }
+  });
   // GET /api/v1/pki/acme/profiles/<profile_id>/directory
   // Directory (RFC 8555 Section 7.1.1)
   server.route({
@@ -94,7 +108,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const account = await server.services.pkiAcme.createAcmeAccount(req.params.profileId, req.body);
+      // TODO: deal with existing account case here
       res.code(201);
+      const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
+      res.header("Replay-Nonce", nonce);
       return account;
     }
   });
