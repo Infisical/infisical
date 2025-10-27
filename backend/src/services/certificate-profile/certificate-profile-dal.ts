@@ -90,6 +90,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiAcmeEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.acmeConfigId`,
+          `${TableName.PkiAcmeEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
@@ -109,7 +114,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
-          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -134,6 +140,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             autoRenew: !!result.apiConfigAutoRenew,
             renewBeforeDays: result.apiConfigRenewBeforeDays || undefined
           } as TCertificateProfileWithConfigs["apiConfig"])
+        : undefined;
+
+      const acmeConfig = result.acmeConfigId
+        ? ({ id: result.acmeConfigId } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
       const certificateAuthority =
@@ -166,10 +176,12 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         enrollmentType: result.enrollmentType as EnrollmentType,
         estConfigId: result.estConfigId,
         apiConfigId: result.apiConfigId,
+        acmeConfigId: result.acmeConfigId,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
         estConfig,
         apiConfig,
+        acmeConfig,
         certificateAuthority,
         certificateTemplate
       };
