@@ -141,19 +141,19 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
       if (slackChannels) {
         setValue(
           "secretRequestChannels",
-          slackConfig.secretRequestChannels
+          (slackConfig.secretRequestChannels || "")
             .split(", ")
             .filter((channel) => channel in slackChannelIdToName)
         );
         setValue(
           "accessRequestChannels",
-          slackConfig.accessRequestChannels
+          (slackConfig.accessRequestChannels || "")
             .split(", ")
             .filter((channel) => channel in slackChannelIdToName)
         );
         setValue(
           "secretSyncErrorChannels",
-          slackConfig.secretSyncErrorChannels
+          (slackConfig.secretSyncErrorChannels || "")
             .split(", ")
             .filter((channel) => channel in slackChannelIdToName)
         );

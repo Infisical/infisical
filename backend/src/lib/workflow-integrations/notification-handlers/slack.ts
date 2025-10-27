@@ -25,15 +25,15 @@ const handleSlackNotification = async ({
   switch (notification.type) {
     case TriggerFeature.ACCESS_REQUEST:
     case TriggerFeature.ACCESS_REQUEST_UPDATED:
-      targetChannelIds = slackConfig.accessRequestChannels?.split(", ") || [];
+      targetChannelIds = slackConfig.accessRequestChannels?.split(", ").filter(Boolean) || [];
       isEnabled = slackConfig.isAccessRequestNotificationEnabled;
       break;
     case TriggerFeature.SECRET_APPROVAL:
-      targetChannelIds = slackConfig.secretRequestChannels?.split(", ") || [];
+      targetChannelIds = slackConfig.secretRequestChannels?.split(", ").filter(Boolean) || [];
       isEnabled = slackConfig.isSecretRequestNotificationEnabled;
       break;
     case TriggerFeature.SECRET_SYNC_ERROR:
-      targetChannelIds = slackConfig.secretSyncErrorChannels?.split(", ") || [];
+      targetChannelIds = slackConfig.secretSyncErrorChannels?.split(", ").filter(Boolean) || [];
       isEnabled = slackConfig.isSecretSyncErrorNotificationEnabled;
       break;
     default:

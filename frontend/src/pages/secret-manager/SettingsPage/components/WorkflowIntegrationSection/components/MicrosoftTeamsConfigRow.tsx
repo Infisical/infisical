@@ -93,7 +93,7 @@ export const MicrosoftTeamsConfigRow = ({
         )}
       </Td>
       <Td>
-        <Badge variant="danger">Coming Soon</Badge>
+        <Badge variant="danger">Disabled</Badge>
       </Td>
       <Td>
         <DropdownMenu>
