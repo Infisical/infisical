@@ -8,7 +8,7 @@ import path from "path";
 import { seedData1 } from "@app/db/seed-data";
 import { getDatabaseCredentials, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
-import { main } from "@app/server/app";
+import { main, markServerReady } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { mockSmtpServer } from "./mocks/smtp";
@@ -95,6 +95,8 @@ export default {
         redis,
         envConfig: envCfg
       });
+
+      markServerReady();
 
       await bootstrapCheck({ db });
 

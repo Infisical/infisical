@@ -16,7 +16,7 @@ import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
-import { main, markServerReady } from "./server/app";
+import { main, markRunningMigrations, markServerReady } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { kmsRootConfigDALFactory } from "./services/kms/kms-root-config-dal";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
@@ -118,25 +118,36 @@ const run = async () => {
   }
 
   // Start listening BEFORE migrations
-  // At this point: /api/health returns 200, /api/ready returns 503
   await server.listen({
     port: envConfig.PORT,
     host: envConfig.HOST
   });
 
   logger.info(`Server listening on ${envConfig.HOST}:${envConfig.PORT}`);
-  logger.info("Running migrations - health check available, other endpoints blocked...");
+  logger.info("Running migrations...");
 
   // Run migrations while server is up
-  await runMigrations({ applicationDb: db, auditLogDb, logger });
+  // All containers start as NOT HEALTHY (waiting for migrations)
+  // Container that acquires lock: becomes HEALTHY (running migrations) + NOT READY (no traffic)
+  // Other containers waiting: stay NOT HEALTHY (waiting) + NOT READY (no traffic)
+  await runMigrations({
+    applicationDb: db,
+    auditLogDb,
+    logger,
+    onMigrationLockAcquired: () => {
+      // Called after successfully acquiring the lock
+      // This container is now the migration runner
+      markRunningMigrations();
+      logger.info("Migration lock acquired! This container is running migrations.");
+    }
+  });
 
-  logger.info("Migrations complete. Marking server as ready...");
+  logger.info("Migrations complete. Marking server as READY...");
 
-  // Mark server as ready - now all endpoints work
+  // Now mark server as ready - it can accept traffic
   markServerReady();
 
   logger.info("Server is ready to accept traffic");
-
   const bootstrap = await bootstrapCheck({ db });
   void bootstrap();
 };

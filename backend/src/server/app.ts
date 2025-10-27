@@ -42,9 +42,11 @@ import { registerRoutes } from "./routes";
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
 
-// Readiness state
-const readinessState = {
-  isReady: false
+// Server state tracking
+const serverState = {
+  isReady: false,
+  isRunningMigrations: false,
+  isWaitingForMigrations: true // Start as true - containers are unhealthy until they acquire migration lock or complete
 };
 
 type TMain = {
@@ -156,8 +158,15 @@ export const main = async ({
       })
     });
 
-    // Health check - always returns 200 when server is running
-    server.get("/api/health", async () => {
+    // Health check - returns 200 only if doing useful work (running migrations or ready)
+    // Returns 503 if waiting for another container to finish migrations
+    server.get("/api/health", async (_, reply) => {
+      if (serverState.isWaitingForMigrations) {
+        return reply.code(503).send({
+          status: "waiting",
+          message: "Waiting for migrations to complete in another container"
+        });
+      }
       return { status: "ok", message: "Server is alive" };
     });
 
@@ -167,7 +176,7 @@ export const main = async ({
       if (request.url === "/api/health" || request.url === "/api/ready") {
         return;
       }
-      if (!readinessState.isReady) {
+      if (!serverState.isReady) {
         return reply.code(503).send({
           status: "unavailable",
           message: "Server is starting up, migrations in progress. Please try again in a moment."
@@ -190,7 +199,7 @@ export const main = async ({
 
       request.log.info(`Raw event loop stats: ${JSON.stringify(histogram, null, 2)}`);
 
-      if (!readinessState.isReady) {
+      if (!serverState.isReady) {
         return reply.code(503).send({
           date: new Date(),
           message: "Server is starting up, migrations in progress",
@@ -243,7 +252,14 @@ export const main = async ({
   }
 };
 
-// Function to mark server as ready after migrations
+// Functions to manage server state
 export const markServerReady = () => {
-  readinessState.isReady = true;
+  serverState.isReady = true;
+  serverState.isRunningMigrations = false;
+  serverState.isWaitingForMigrations = false;
+};
+
+export const markRunningMigrations = () => {
+  serverState.isRunningMigrations = true;
+  serverState.isWaitingForMigrations = false;
 };
