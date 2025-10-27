@@ -17,6 +17,7 @@ export const PkiCertificateProfilesSchema = z.object({
   enrollmentType: z.string(),
   estConfigId: z.string().uuid().nullable().optional(),
   apiConfigId: z.string().uuid().nullable().optional(),
+  acmeConfigId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
