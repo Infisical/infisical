@@ -11,7 +11,7 @@ export const GetAcmeDirectoryResponseSchema = z.object({
   newNonce: z.string(),
   newAccount: z.string(),
   newOrder: z.string(),
-  revokeCert: z.string()
+  revokeCert: z.string().optional()
 });
 
 // New Nonce endpoint

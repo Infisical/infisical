@@ -92,4 +92,4 @@ def step_impl(context: Context):
 def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
     # TODO: add EAB info here
     registration = messages.NewRegistration.from_data(email=email)
-    context.var[account_var] = context.acme_client.new_account(registration)
+    context.vars[account_var] = context.acme_client.new_account(registration)
