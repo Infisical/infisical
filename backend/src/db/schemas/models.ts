@@ -28,6 +28,7 @@ export enum TableName {
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
+  PkiAcmeAccount = "pki_acme_accounts",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiCollection = "pki_collections",

@@ -92,6 +92,8 @@ export * from "./pam-accounts";
 export * from "./pam-folders";
 export * from "./pam-resources";
 export * from "./pam-sessions";
+export * from "./pki-acme-accounts";
+export * from "./pki-acme-enrollment-configs";
 export * from "./pki-alerts";
 export * from "./pki-api-enrollment-configs";
 export * from "./pki-certificate-profiles";
