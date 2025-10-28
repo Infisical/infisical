@@ -221,7 +221,7 @@ export const main = async ({
       };
     });
 
-    await server.register(registerRoutes, {
+    const completeServerInitialization = await registerRoutes(server, {
       smtp,
       queue,
       db,
@@ -240,7 +240,7 @@ export const main = async ({
 
     await server.ready();
     server.swagger();
-    return server;
+    return { server, completeServerInitialization };
   } catch (err) {
     server.log.error(err);
     await queue.shutdown();

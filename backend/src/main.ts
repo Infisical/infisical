@@ -72,7 +72,7 @@ const run = async () => {
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
   const redis = buildRedisFromConfig(envConfig);
 
-  const server = await main({
+  const { server, completeServerInitialization } = await main({
     db,
     auditLogDb,
     superAdminDAL,
@@ -140,7 +140,18 @@ const run = async () => {
     }
   });
 
-  logger.info("Migrations complete. Marking server as READY...");
+  logger.info("Migrations complete. Completing server initialization...");
+
+  try {
+    await completeServerInitialization();
+  } catch (error) {
+    logger.error(error, "Failed to complete server initialization");
+    await server.close();
+    await queue.shutdown();
+    process.exit(1);
+  }
+
+  logger.info("Server initialization complete. Marking server as READY...");
 
   markServerReady();
 
