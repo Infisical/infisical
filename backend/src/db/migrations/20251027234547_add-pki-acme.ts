@@ -7,6 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.PkiAcmeEnrollmentConfig))) {
     await knex.schema.createTable(TableName.PkiAcmeEnrollmentConfig, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.binary("encryptedEabSecret").notNullable();
 
       t.timestamps(true, true, true);
     });
