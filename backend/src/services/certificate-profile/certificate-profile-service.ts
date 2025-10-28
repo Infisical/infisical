@@ -225,11 +225,8 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
-    if (data.enrollmentType === EnrollmentType.ACME && !data.acmeConfig) {
-      throw new ForbiddenRequestError({
-        message: "ACME enrollment requires ACME configuration"
-      });
-    }
+    // TODO: acme type currently doesn't require config obj, but add a check in the future if
+    //       we have options
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {

@@ -82,7 +82,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
     const config = {
       api: { variant: "ghost" as const, label: "API" },
-      est: { variant: "ghost" as const, label: "EST" }
+      est: { variant: "ghost" as const, label: "EST" },
+      acme: { variant: "ghost" as const, label: "ACME" }
     } as const;
 
     const configKey = Object.keys(config).includes(enrollmentType)

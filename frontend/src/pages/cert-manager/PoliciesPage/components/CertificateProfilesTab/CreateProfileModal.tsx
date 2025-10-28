@@ -72,7 +72,8 @@ const createSchema = z
         autoRenew: z.boolean().optional(),
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -80,6 +81,9 @@ const createSchema = z
         return false;
       }
       if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
       return true;
@@ -188,7 +192,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   autoRenew: profile.apiConfig?.autoRenew || false,
                   renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
                 }
-              : undefined
+              : undefined,
+          acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
         }
       : {
           slug: "",
@@ -199,7 +204,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           apiConfig: {
             autoRenew: false,
             renewBeforeDays: 30
-          }
+          },
+          acmeConfig: {}
         }
   });
 
@@ -230,7 +236,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 autoRenew: profile.apiConfig?.autoRenew || false,
                 renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
               }
-            : undefined
+            : undefined,
+        acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
       });
     }
   }, [isEdit, profile, reset]);
@@ -249,6 +256,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         updateData.estConfig = data.estConfig;
       } else if (data.enrollmentType === "api" && data.apiConfig) {
         updateData.apiConfig = data.apiConfig;
+      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+        updateData.acmeConfig = data.acmeConfig;
       }
 
       await updateProfile.mutateAsync(updateData);
@@ -549,6 +558,20 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </div>
           )}
 
+          {/* ACME Configuration */}
+          {watchedEnrollmentType === "acme" && (
+            <div className="mb-4 space-y-4">
+              <Controller
+                control={control}
+                name="acmeConfig"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div className="flex items-center gap-2">FIXME: ACME configuration</div>
+                  </FormControl>
+                )}
+              />
+            </div>
+          )}
           {watchedAutoRenew && (
             <div className="mb-4 space-y-4">
               <Controller
