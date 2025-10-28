@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { JWK } from "jose";
 import {
   CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
@@ -46,7 +45,7 @@ export type TJwsPayloadWithJwk = TJwsPayload & {
 export type TAcmeResponse<TPayload> = {
   status: number;
   headers: Record<string, string>;
-  payload: TPayload;
+  body: TPayload;
 };
 
 export type TPkiAcmeServiceFactory = {

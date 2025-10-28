@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import {
   CreateAcmeAccountResponseSchema,
-  CreateAcmeAccountSchema,
   CreateAcmeOrderResponseSchema,
   CreateAcmeOrderSchema,
   DeactivateAcmeAccountResponseSchema,
@@ -24,10 +23,10 @@ import {
   RespondToAcmeChallengeResponseSchema,
   RespondToAcmeChallengeSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
+import { TCreateAcmeAccountPayload, TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -112,28 +111,25 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      // TODO: check nonce here
-      const { payload, protectedHeader, jwk } = await server.services.pkiAcme.validateCreateAcmeAccountJwsPayload(
+      const { payload, jwk } = await server.services.pkiAcme.validateCreateAcmeAccountJwsPayload(
         req.body as TRawJwsPayload
       );
-
-      const account = await server.services.pkiAcme.createAcmeAccount(
+      const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount(
         req.params.profileId,
         jwk,
         payload as TCreateAcmeAccountPayload
       );
-      // TODO: deal with existing account case here
-      res.code(201);
-      res.header(
-        "Location",
-        `${appCfg.SITE_URL}/api/v1/pki/acme/profiles/${req.params.profileId}/accounts/${account.accountUrl}`
-      );
+      // TODO: DRY
+      res.code(status);
+      for (const [key, value] of Object.entries(headers)) {
+        res.header(key, value);
+      }
 
       // TODO: DRY
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
       res.header("Cache-Control", "no-store");
-      return account;
+      return body;
     }
   });
 
