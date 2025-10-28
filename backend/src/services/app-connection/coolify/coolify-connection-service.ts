@@ -12,8 +12,8 @@ type TGetAppConnectionFunc = (
 ) => Promise<TCoolifyConnection>;
 
 export const coolifyConnectionService = (getAppConnection: TGetAppConnectionFunc) => {
-  const listProjects = async (connectionId: string, action: OrgServiceActor) => {
-    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, action);
+  const listProjects = async (connectionId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, actor);
 
     try {
       const projects = await listCoolifyProjects(appConnection);
@@ -24,8 +24,8 @@ export const coolifyConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
-  const listProjectEnvironments = async (connectionId: string, projectId: string, action: OrgServiceActor) => {
-    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, action);
+  const listProjectEnvironments = async (connectionId: string, projectId: string, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, actor);
 
     try {
       const envs = await listCoolifyProjectEnvironments(appConnection, projectId);
@@ -36,8 +36,8 @@ export const coolifyConnectionService = (getAppConnection: TGetAppConnectionFunc
     }
   };
 
-  const listApplications = async (connectionId: string, environmentId: number, action: OrgServiceActor) => {
-    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, action);
+  const listApplications = async (connectionId: string, environmentId: number, actor: OrgServiceActor) => {
+    const appConnection = await getAppConnection(AppConnection.Coolify, connectionId, actor);
 
     try {
       const applications = await listCoolifyApplications(appConnection);
