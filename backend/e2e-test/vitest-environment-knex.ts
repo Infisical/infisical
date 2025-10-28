@@ -83,7 +83,7 @@ export default {
 
       await queue.initialize();
 
-      const server = await main({
+      const { server, completeServerInitialization } = await main({
         db,
         smtp,
         logger,
@@ -95,6 +95,8 @@ export default {
         redis,
         envConfig: envCfg
       });
+
+      await completeServerInitialization();
 
       markServerReady();
 
