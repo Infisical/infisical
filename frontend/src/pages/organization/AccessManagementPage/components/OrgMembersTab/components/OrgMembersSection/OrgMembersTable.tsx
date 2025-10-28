@@ -133,7 +133,8 @@ export const OrgMembersTable = ({
 
       if (isCustomRole && subscription && !subscription?.rbac) {
         handlePopUpOpen("upgradePlan", {
-          description: "You can assign custom roles to members if you upgrade your Infisical plan."
+          description:
+            "You can assign custom roles to members if you switch to Infisical's Pro plan."
         });
         return;
       }

@@ -76,7 +76,7 @@ export const OrgMembersSection = () => {
 
     if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
-        description: "You can add more members if you upgrade your Infisical plan."
+        description: "You can add more members if you switch to Infisical's Pro plan."
       });
       return;
     }

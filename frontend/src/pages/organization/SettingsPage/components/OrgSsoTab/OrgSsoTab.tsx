@@ -93,7 +93,7 @@ export const OrgSsoTab = withPermission(
                   colorSchema="secondary"
                   onClick={() => {
                     if (!subscription?.samlSSO) {
-                      handlePopUpOpen("upgradePlan", { feature: "SAML SSO", plan: "Pro" });
+                      handlePopUpOpen("upgradePlan", { feature: "SAML SSO" });
                       return;
                     }
 
@@ -116,7 +116,7 @@ export const OrgSsoTab = withPermission(
                   colorSchema="secondary"
                   onClick={() => {
                     if (!subscription?.oidcSSO) {
-                      handlePopUpOpen("upgradePlan", { feature: "OIDC SSO", plan: "Pro" });
+                      handlePopUpOpen("upgradePlan", { feature: "OIDC SSO" });
                       return;
                     }
 
@@ -134,7 +134,10 @@ export const OrgSsoTab = withPermission(
                   colorSchema="secondary"
                   onClick={() => {
                     if (!subscription?.ldap) {
-                      handlePopUpOpen("upgradePlan", { feature: "LDAP", plan: "Enterprise" });
+                      handlePopUpOpen("upgradePlan", {
+                        feature: "LDAP",
+                        isEnterpriseFeature: true
+                      });
                       return;
                     }
 
@@ -208,8 +211,13 @@ export const OrgSsoTab = withPermission(
           text={`You can use ${
             (popUp.upgradePlan.data as { feature: string })?.feature
           } if you switch to Infisical's ${
-            (popUp.upgradePlan.data as { plan: string })?.plan
+            (popUp.upgradePlan.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
+              ? "Enterprise"
+              : "Pro"
           } plan.`}
+          isEnterpriseFeature={
+            (popUp.upgradePlan.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
+          }
         />
       </>
     );

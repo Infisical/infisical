@@ -60,7 +60,9 @@ export const SecretScanningDataSourcesSection = () => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   if (!subscription.secretScanning) {
-                    handlePopUpOpen("upgradePlan");
+                    handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true
+                    });
                     return;
                   }
 
@@ -83,6 +85,7 @@ export const SecretScanningDataSourcesSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can create Data Sources by upgrading to Infisical's Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );

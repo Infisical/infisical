@@ -29,7 +29,9 @@ export const OrgScimSection = () => {
     if (subscription?.scim) {
       handlePopUpOpen("scimToken");
     } else {
-      handlePopUpOpen("upgradePlan");
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
+      });
     }
   };
 
@@ -37,7 +39,9 @@ export const OrgScimSection = () => {
     try {
       if (!currentOrg?.id) return;
       if (!subscription?.scim) {
-        handlePopUpOpen("upgradePlan");
+        handlePopUpOpen("upgradePlan", {
+          isEnterpriseFeature: true
+        });
         return;
       }
 
@@ -90,7 +94,9 @@ export const OrgScimSection = () => {
                   if (subscription?.scim) {
                     handleEnableSCIMToggle(value);
                   } else {
-                    handlePopUpOpen("upgradePlan");
+                    handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true
+                    });
                   }
                 }}
                 isChecked={currentOrg?.scimEnabled ?? false}
@@ -112,6 +118,7 @@ export const OrgScimSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can use SCIM Provisioning if you switch to Infisical's Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>
   );

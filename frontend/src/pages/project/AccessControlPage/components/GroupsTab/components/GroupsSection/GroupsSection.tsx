@@ -34,7 +34,8 @@ export const GroupsSection = () => {
     if (!subscription?.groups) {
       handlePopUpOpen("upgradePlan", {
         description:
-          "You can manage users more efficiently with groups if you upgrade your Infisical plan to an Enterprise license."
+          "You can manage users more efficiently with groups if you switch to Infisical's Enterprise plan.",
+        isEnterpriseFeature: true
       });
     } else {
       handlePopUpOpen("group");
@@ -104,6 +105,9 @@ export const GroupsSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
+        isEnterpriseFeature={
+          (popUp.upgradePlan?.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
+        }
       />
     </div>
   );

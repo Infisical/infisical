@@ -311,7 +311,10 @@ export const AccessApprovalRequest = ({
             <Button
               onClick={() => {
                 if (subscription && !subscription?.secretApproval) {
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    description:
+                      "You can use request access feature if you switch to Infisical's Pro plan."
+                  });
                   return;
                 }
                 handlePopUpOpen("requestAccess");
@@ -570,7 +573,7 @@ export const AccessApprovalRequest = ({
       )}
 
       <UpgradePlanModal
-        text="You need to upgrade your plan to access this feature"
+        text={popUp.upgradePlan.data?.description}
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={() => handlePopUpClose("upgradePlan")}
       />

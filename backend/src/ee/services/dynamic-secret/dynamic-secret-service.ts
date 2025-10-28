@@ -112,7 +112,7 @@ export const dynamicSecretServiceFactory = ({
 
     const existingDynamicSecret = await dynamicSecretDAL.findOne({ name, folderId: folder.id });
     if (existingDynamicSecret)
-      throw new BadRequestError({ message: "Provided dynamic secret already exist under the folder" });
+      throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
 
     const selectedProvider = dynamicSecretProviders[provider.type];
     const inputs = await selectedProvider.validateProviderInputs(provider.inputs, { projectId });
@@ -265,7 +265,7 @@ export const dynamicSecretServiceFactory = ({
     if (newName) {
       const existingDynamicSecret = await dynamicSecretDAL.findOne({ name: newName, folderId: folder.id });
       if (existingDynamicSecret)
-        throw new BadRequestError({ message: "Provided dynamic secret already exist under the folder" });
+        throw new BadRequestError({ message: "Provided dynamic secret already exists under the folder" });
     }
     const { encryptor: secretManagerEncryptor, decryptor: secretManagerDecryptor } =
       await kmsService.createCipherPairWithDataKey({
