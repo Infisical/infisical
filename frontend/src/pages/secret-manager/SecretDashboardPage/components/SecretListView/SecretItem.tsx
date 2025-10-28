@@ -53,6 +53,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { createNotification } from "@app/components/notifications";
 import { useQueryClient } from "@tanstack/react-query";
+import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
 import { FontAwesomeSpriteName, formSchema, TFormSchema } from "./SecretListView.utils";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
@@ -129,7 +130,8 @@ export const SecretItem = memo(
       environment,
       secretPath,
       secretKey: originalSecret.originalKey || originalSecret.key,
-      projectId: currentProject.id
+      projectId: currentProject.id,
+      isOverride: false
     };
 
     const {
@@ -301,8 +303,14 @@ export const SecretItem = memo(
       return () => clearTimeout(timer);
     }, [isSecValueCopied]);
 
+    const createPersonalSecretOverride = useCreatePersonalSecretOverride(currentProject.id);
+
     const handleAddPersonalOverride = () => {
-      throw new Error("Not Implemented");
+      createPersonalSecretOverride({
+        key: originalSecret.key,
+        environment,
+        secretPath
+      });
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {

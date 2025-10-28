@@ -63,7 +63,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
     return false;
   });
 
-  const isOverriden = secrets.some(
+  const isOverridden = secrets.some(
     (secret) =>
       secret?.overrideAction === SecretActionType.Created ||
       secret?.overrideAction === SecretActionType.Modified
@@ -185,7 +185,7 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
               isReadOnly={isReadOnly || secrets.filter(Boolean).length === 0}
               autoCapitalization={currentProject?.autoCapitalization}
               variant="plain"
-              isDisabled={isOverriden}
+              isDisabled={isOverridden}
               placeholder={error?.message}
               onKeyUp={() => trigger("key")}
               isError={Boolean(error)}
@@ -196,8 +196,10 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
         />
       </div>
 
-      {isReadOnly || isOverriden ? (
-        <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
+      {isReadOnly || isOverridden ? (
+        <Tooltip content="Remove personal overrides to change the key">
+          <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
+        </Tooltip>
       ) : (
         <div className="group flex w-20 items-center justify-center border-l border-mineshaft-500 py-1">
           <AnimatePresence mode="wait">

@@ -65,7 +65,7 @@ import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
-import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { formSchema, TFormSchema } from "./SecretListView.utils";
 import { SecretVersionItem } from "./SecretVersionItem";
 
 type Props = {
@@ -110,7 +110,7 @@ export const SecretDetailSidebar = ({
     secretPath,
     secretKey: originalSecret?.originalKey || originalSecret?.key,
     projectId: currentProject.id,
-    isOverride: Boolean(originalSecret?.idOverride)
+    isOverride: false
   };
 
   const {
@@ -126,8 +126,7 @@ export const SecretDetailSidebar = ({
 
   const secret = {
     ...originalSecret,
-    value: originalSecret?.value ?? secretValueData?.value,
-    valueOverride: originalSecret?.valueOverride ?? secretValueData?.valueOverride
+    value: originalSecret?.value ?? secretValueData?.value
   };
 
   const { permission } = useProjectPermission();
@@ -154,18 +153,6 @@ export const SecretDetailSidebar = ({
     return secret.value || "";
   };
 
-  const getOverrideDefaultValue = () => {
-    if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
-
-    if (secret.secretValueHidden) {
-      return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-    }
-
-    if (isErrorFetchingSecretValue) return "Error loading secret value...";
-
-    return secret.valueOverride || "";
-  };
-
   const {
     control,
     watch,
@@ -179,7 +166,6 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: {
       ...secret,
-      valueOverride: getOverrideDefaultValue(),
       value: getDefaultValue()
     },
     disabled: !secret
@@ -243,10 +229,6 @@ export const SecretDetailSidebar = ({
     cannotEditSecret &&
     cannotReadSecretValue;
 
-  const overrideAction = watch("overrideAction");
-  const isOverridden =
-    overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
-
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
@@ -278,8 +260,7 @@ export const SecretDetailSidebar = ({
       {
         ...secret,
         ...data,
-        value: getFieldState("value").isDirty ? data.value : undefined,
-        valueOverride: getFieldState("valueOverride").isDirty ? data.valueOverride : undefined
+        value: getFieldState("value").isDirty ? data.value : undefined
       },
       () => reset()
     );
@@ -296,14 +277,14 @@ export const SecretDetailSidebar = ({
   }, [secret?.secretReminderRecipients]);
 
   const fetchValue = async () => {
-    if (secretValueData) return secretValueData.valueOverride ?? secretValueData.value;
+    if (secretValueData) return secretValueData.value;
 
     try {
       const data = await fetchSecretValue(fetchSecretValueParams);
 
       queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
 
-      return data?.valueOverride ?? data.value;
+      return data.value;
     } catch (error) {
       console.error(error);
       createNotification({
@@ -409,7 +390,6 @@ export const SecretDetailSidebar = ({
                           environment={environment}
                           secretPath={secretPath}
                           key="secret-value"
-                          isDisabled={isOverridden}
                           containerClassName="text-bunker-300 w-full hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
                           {...field}
                           autoFocus={false}
@@ -436,8 +416,7 @@ export const SecretDetailSidebar = ({
                               let value: string | undefined;
 
                               if (hasFetchedSecretValue) {
-                                const values = getValues(["value", "valueOverride"]);
-                                value = secret.idOverride ? values[1] : values[0];
+                                value = getValues(["value"])[0];
                               } else {
                                 value = await fetchValue();
                               }

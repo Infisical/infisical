@@ -21,18 +21,32 @@ export function useInvalidateSecretQueries(projectId: string) {
         })
       });
 
-      // Multiple uses of is override as individual components read values
-      [true, false, undefined].map((isOverride) =>
-        queryClient.invalidateQueries({
-          queryKey: dashboardKeys.getSecretValue({
-            projectId,
-            environment,
-            secretPath,
-            secretKey: key,
-            isOverride
-          })
-        })
-      );
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getSecretValue({
+          projectId,
+          environment,
+          secretPath,
+          secretKey: key
+        }),
+        exact: false
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getProjectSecretsDetails({
+          projectId,
+          secretPath,
+          environment
+        } as any),
+        exact: false
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getProjectSecretsOverview({
+          projectId,
+          secretPath
+        } as any),
+        exact: false
+      });
 
       queryClient.invalidateQueries({
         queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
