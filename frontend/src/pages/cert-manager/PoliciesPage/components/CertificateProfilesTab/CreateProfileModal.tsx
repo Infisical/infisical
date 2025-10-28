@@ -447,6 +447,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
+                  <SelectItem value="acme">ACME</SelectItem>
                 </Select>
               </FormControl>
             )}
