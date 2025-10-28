@@ -141,202 +141,6 @@ export const secretScanningV2QueueServiceFactory = async ({
     }
   };
 
-  await queueService.startPg<QueueName.SecretScanningV2>(
-    QueueJobs.SecretScanningV2FullScan,
-    async ([job]) => {
-      const { scanId, resourceId, dataSourceId } = job.data as TQueueSecretScanningDataSourceFullScan;
-      const { retryCount, retryLimit } = job;
-
-      const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
-
-      const tempFolder = await createTempFolder();
-
-      const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
-
-      if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
-
-      const resource = await secretScanningV2DAL.resources.findById(resourceId);
-
-      if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
-
-      let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
-
-      try {
-        try {
-          lock = await keyStore.acquireLock(
-            [KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId)],
-            60 * 1000 * 5
-          );
-        } catch (e) {
-          throw new Error("Failed to acquire scanning lock.");
-        }
-
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
-          {
-            status: SecretScanningScanStatus.Scanning
-          }
-        );
-
-        let connection: TAppConnection | null = null;
-        if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
-
-        const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
-          kmsService,
-          appConnectionDAL
-        });
-
-        const findingsPath = join(tempFolder, "findings.json");
-
-        const scanPath = await factory.getFullScanPath({
-          dataSource: {
-            ...dataSource,
-            connection
-          } as TSecretScanningDataSourceWithConnection,
-          resourceName: resource.name,
-          tempFolder
-        });
-
-        const config = await secretScanningV2DAL.configs.findOne({
-          projectId: dataSource.projectId
-        });
-
-        let configPath: string | undefined;
-
-        if (config && config.content) {
-          configPath = join(tempFolder, "infisical-scan.toml");
-          await writeTextToFile(configPath, config.content);
-        }
-
-        let findingsPayload: TFindingsPayload;
-        switch (resource.type) {
-          case SecretScanningResource.Repository:
-          case SecretScanningResource.Project:
-            findingsPayload = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
-            break;
-          default:
-            throw new Error("Unhandled resource type");
-        }
-
-        const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
-          let findings: TSecretScanningFindings[] = [];
-          if (findingsPayload.length) {
-            findings = await secretScanningV2DAL.findings.upsert(
-              findingsPayload.map((finding) => ({
-                ...finding,
-                projectId: dataSource.projectId,
-                dataSourceName: dataSource.name,
-                dataSourceType: dataSource.type,
-                resourceName: resource.name,
-                resourceType: resource.type,
-                scanId
-              })),
-              ["projectId", "fingerprint"],
-              tx,
-              ["resourceName", "dataSourceName"]
-            );
-          }
-
-          await secretScanningV2DAL.scans.update(
-            { id: scanId },
-            {
-              status: SecretScanningScanStatus.Completed,
-              statusMessage: null
-            }
-          );
-
-          return findings;
-        });
-
-        const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
-
-        if (newFindings.length) {
-          await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
-            status: SecretScanningScanStatus.Completed,
-            resourceName: resource.name,
-            isDiffScan: false,
-            dataSource,
-            numberOfSecrets: newFindings.length,
-            scanId
-          });
-        }
-
-        await auditLogService.createAuditLog({
-          projectId: dataSource.projectId,
-          actor: {
-            type: ActorType.PLATFORM,
-            metadata: {}
-          },
-          event: {
-            type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
-            metadata: {
-              dataSourceId: dataSource.id,
-              dataSourceType: dataSource.type,
-              resourceId: resource.id,
-              resourceType: resource.type,
-              scanId,
-              scanStatus: SecretScanningScanStatus.Completed,
-              scanType: SecretScanningScanType.FullScan,
-              numberOfSecretsDetected: findingsPayload.length
-            }
-          }
-        });
-
-        logger.info(`secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsPayload.length}]`);
-      } catch (error) {
-        if (retryCount === retryLimit) {
-          const errorMessage = parseScanErrorMessage(error);
-
-          await secretScanningV2DAL.scans.update(
-            { id: scanId },
-            {
-              status: SecretScanningScanStatus.Failed,
-              statusMessage: errorMessage
-            }
-          );
-
-          await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
-            status: SecretScanningScanStatus.Failed,
-            resourceName: resource.name,
-            dataSource,
-            errorMessage
-          });
-
-          await auditLogService.createAuditLog({
-            projectId: dataSource.projectId,
-            actor: {
-              type: ActorType.PLATFORM,
-              metadata: {}
-            },
-            event: {
-              type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
-              metadata: {
-                dataSourceId: dataSource.id,
-                dataSourceType: dataSource.type,
-                resourceId: resource.id,
-                resourceType: resource.type,
-                scanId,
-                scanStatus: SecretScanningScanStatus.Failed,
-                scanType: SecretScanningScanType.FullScan
-              }
-            }
-          });
-        }
-
-        logger.error(error, `secretScanningV2Queue: Full Scan Failed ${logDetails}`);
-        throw error;
-      } finally {
-        await deleteTempFolder(tempFolder);
-        await lock?.release();
-      }
-    },
-    {
-      batchSize: 1,
-      workerCount: 2,
-      pollingIntervalSeconds: 1
-    }
-  );
-
   const queueResourceDiffScan = async ({
     payload,
     dataSourceId,
@@ -391,147 +195,126 @@ export const secretScanningV2QueueServiceFactory = async ({
     }
   };
 
-  await queueService.startPg<QueueName.SecretScanningV2>(
-    QueueJobs.SecretScanningV2DiffScan,
-    async ([job]) => {
-      const { payload, dataSourceId, resourceId, scanId } = job.data as TQueueSecretScanningResourceDiffScan;
-      const { retryCount, retryLimit } = job;
+  const init = async () => {
+    await queueService.startPg<QueueName.SecretScanningV2>(
+      QueueJobs.SecretScanningV2FullScan,
+      async ([job]) => {
+        const { scanId, resourceId, dataSourceId } = job.data as TQueueSecretScanningDataSourceFullScan;
+        const { retryCount, retryLimit } = job;
 
-      const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
+        const logDetails = `[scanId=${scanId}] [resourceId=${resourceId}] [dataSourceId=${dataSourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-      const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
+        const tempFolder = await createTempFolder();
 
-      if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
+        const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
-      const resource = await secretScanningV2DAL.resources.findById(resourceId);
+        if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
 
-      if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
+        const resource = await secretScanningV2DAL.resources.findById(resourceId);
 
-      const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
-        kmsService,
-        appConnectionDAL
-      });
+        if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
-      const tempFolder = await createTempFolder();
+        let lock: Awaited<ReturnType<typeof keyStore.acquireLock>> | undefined;
 
-      try {
-        await secretScanningV2DAL.scans.update(
-          { id: scanId },
-          {
-            status: SecretScanningScanStatus.Scanning
-          }
-        );
-
-        let connection: TAppConnection | null = null;
-        if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
-
-        const config = await secretScanningV2DAL.configs.findOne({
-          projectId: dataSource.projectId
-        });
-
-        let configPath: string | undefined;
-
-        if (config && config.content) {
-          configPath = join(tempFolder, "infisical-scan.toml");
-          await writeTextToFile(configPath, config.content);
-        }
-
-        const findingsPayload = await factory.getDiffScanFindingsPayload({
-          dataSource: {
-            ...dataSource,
-            connection
-          } as TSecretScanningDataSourceWithConnection,
-          resourceName: resource.name,
-          payload,
-          configPath
-        });
-
-        const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
-          let findings: TSecretScanningFindings[] = [];
-
-          if (findingsPayload.length) {
-            findings = await secretScanningV2DAL.findings.upsert(
-              findingsPayload.map((finding) => ({
-                ...finding,
-                projectId: dataSource.projectId,
-                dataSourceName: dataSource.name,
-                dataSourceType: dataSource.type,
-                resourceName: resource.name,
-                resourceType: resource.type,
-                scanId
-              })),
-              ["projectId", "fingerprint"],
-              tx,
-              ["resourceName", "dataSourceName"]
+        try {
+          try {
+            lock = await keyStore.acquireLock(
+              [KeyStorePrefixes.SecretScanningLock(dataSource.id, resource.externalId)],
+              60 * 1000 * 5
             );
+          } catch (e) {
+            throw new Error("Failed to acquire scanning lock.");
           }
 
           await secretScanningV2DAL.scans.update(
             { id: scanId },
             {
-              status: SecretScanningScanStatus.Completed
+              status: SecretScanningScanStatus.Scanning
             }
           );
 
-          return findings;
-        });
+          let connection: TAppConnection | null = null;
+          if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
-        const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
-
-        if (newFindings.length) {
-          const finding = newFindings[0] as TSecretScanningFinding;
-          await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
-            status: SecretScanningScanStatus.Completed,
-            resourceName: resource.name,
-            isDiffScan: true,
-            dataSource,
-            numberOfSecrets: newFindings.length,
-            scanId,
-            authorName: finding?.details?.author,
-            authorEmail: finding?.details?.email
+          const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+            kmsService,
+            appConnectionDAL
           });
-        }
 
-        await auditLogService.createAuditLog({
-          projectId: dataSource.projectId,
-          actor: {
-            type: ActorType.PLATFORM,
-            metadata: {}
-          },
-          event: {
-            type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
-            metadata: {
-              dataSourceId: dataSource.id,
-              dataSourceType: dataSource.type,
-              resourceId,
-              resourceType: resource.type,
-              scanId,
-              scanStatus: SecretScanningScanStatus.Completed,
-              scanType: SecretScanningScanType.DiffScan,
-              numberOfSecretsDetected: findingsPayload.length
-            }
+          const findingsPath = join(tempFolder, "findings.json");
+
+          const scanPath = await factory.getFullScanPath({
+            dataSource: {
+              ...dataSource,
+              connection
+            } as TSecretScanningDataSourceWithConnection,
+            resourceName: resource.name,
+            tempFolder
+          });
+
+          const config = await secretScanningV2DAL.configs.findOne({
+            projectId: dataSource.projectId
+          });
+
+          let configPath: string | undefined;
+
+          if (config && config.content) {
+            configPath = join(tempFolder, "infisical-scan.toml");
+            await writeTextToFile(configPath, config.content);
           }
-        });
 
-        logger.info(`secretScanningV2Queue: Diff Scan Complete ${logDetails}`);
-      } catch (error) {
-        if (retryCount === retryLimit) {
-          const errorMessage = parseScanErrorMessage(error);
+          let findingsPayload: TFindingsPayload;
+          switch (resource.type) {
+            case SecretScanningResource.Repository:
+            case SecretScanningResource.Project:
+              findingsPayload = await scanGitRepositoryAndGetFindings(scanPath, findingsPath, configPath);
+              break;
+            default:
+              throw new Error("Unhandled resource type");
+          }
 
-          await secretScanningV2DAL.scans.update(
-            { id: scanId },
-            {
-              status: SecretScanningScanStatus.Failed,
-              statusMessage: errorMessage
+          const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
+            let findings: TSecretScanningFindings[] = [];
+            if (findingsPayload.length) {
+              findings = await secretScanningV2DAL.findings.upsert(
+                findingsPayload.map((finding) => ({
+                  ...finding,
+                  projectId: dataSource.projectId,
+                  dataSourceName: dataSource.name,
+                  dataSourceType: dataSource.type,
+                  resourceName: resource.name,
+                  resourceType: resource.type,
+                  scanId
+                })),
+                ["projectId", "fingerprint"],
+                tx,
+                ["resourceName", "dataSourceName"]
+              );
             }
-          );
 
-          await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
-            status: SecretScanningScanStatus.Failed,
-            resourceName: resource.name,
-            dataSource,
-            errorMessage
+            await secretScanningV2DAL.scans.update(
+              { id: scanId },
+              {
+                status: SecretScanningScanStatus.Completed,
+                statusMessage: null
+              }
+            );
+
+            return findings;
           });
+
+          const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+
+          if (newFindings.length) {
+            await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
+              status: SecretScanningScanStatus.Completed,
+              resourceName: resource.name,
+              isDiffScan: false,
+              dataSource,
+              numberOfSecrets: newFindings.length,
+              scanId
+            });
+          }
 
           await auditLogService.createAuditLog({
             projectId: dataSource.projectId,
@@ -547,128 +330,348 @@ export const secretScanningV2QueueServiceFactory = async ({
                 resourceId: resource.id,
                 resourceType: resource.type,
                 scanId,
-                scanStatus: SecretScanningScanStatus.Failed,
-                scanType: SecretScanningScanType.DiffScan
+                scanStatus: SecretScanningScanStatus.Completed,
+                scanType: SecretScanningScanType.FullScan,
+                numberOfSecretsDetected: findingsPayload.length
               }
             }
           });
+
+          logger.info(`secretScanningV2Queue: Full Scan Complete ${logDetails} findings=[${findingsPayload.length}]`);
+        } catch (error) {
+          if (retryCount === retryLimit) {
+            const errorMessage = parseScanErrorMessage(error);
+
+            await secretScanningV2DAL.scans.update(
+              { id: scanId },
+              {
+                status: SecretScanningScanStatus.Failed,
+                statusMessage: errorMessage
+              }
+            );
+
+            await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
+              status: SecretScanningScanStatus.Failed,
+              resourceName: resource.name,
+              dataSource,
+              errorMessage
+            });
+
+            await auditLogService.createAuditLog({
+              projectId: dataSource.projectId,
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              },
+              event: {
+                type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+                metadata: {
+                  dataSourceId: dataSource.id,
+                  dataSourceType: dataSource.type,
+                  resourceId: resource.id,
+                  resourceType: resource.type,
+                  scanId,
+                  scanStatus: SecretScanningScanStatus.Failed,
+                  scanType: SecretScanningScanType.FullScan
+                }
+              }
+            });
+          }
+
+          logger.error(error, `secretScanningV2Queue: Full Scan Failed ${logDetails}`);
+          throw error;
+        } finally {
+          await deleteTempFolder(tempFolder);
+          await lock?.release();
         }
-
-        logger.error(error, `secretScanningV2Queue: Diff Scan Failed ${logDetails}`);
-        throw error;
-      } finally {
-        await deleteTempFolder(tempFolder);
+      },
+      {
+        batchSize: 1,
+        workerCount: 2,
+        pollingIntervalSeconds: 1
       }
-    },
-    {
-      batchSize: 1,
-      workerCount: 2,
-      pollingIntervalSeconds: 1
-    }
-  );
+    );
 
-  await queueService.startPg<QueueName.SecretScanningV2>(
-    QueueJobs.SecretScanningV2SendNotification,
-    async ([job]) => {
-      const { dataSource, resourceName, ...payload } = job.data as TQueueSecretScanningSendNotification;
+    await queueService.startPg<QueueName.SecretScanningV2>(
+      QueueJobs.SecretScanningV2DiffScan,
+      async ([job]) => {
+        const { payload, dataSourceId, resourceId, scanId } = job.data as TQueueSecretScanningResourceDiffScan;
+        const { retryCount, retryLimit } = job;
 
-      const appCfg = getConfig();
+        const logDetails = `[dataSourceId=${dataSourceId}] [scanId=${scanId}] [resourceId=${resourceId}] [jobId=${job.id}] retryCount=[${retryCount}/${retryLimit}]`;
 
-      if (!appCfg.isSmtpConfigured) return;
+        const dataSource = await secretScanningV2DAL.dataSources.findById(dataSourceId);
 
-      try {
-        const { projectId } = dataSource;
+        if (!dataSource) throw new Error(`Data source with ID "${dataSourceId}" not found`);
 
-        logger.info(
-          `secretScanningV2Queue: Sending Status Notification [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
-        );
+        const resource = await secretScanningV2DAL.resources.findById(resourceId);
 
-        const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
-        const project = await projectDAL.findById(projectId);
+        if (!resource) throw new Error(`Resource with ID "${resourceId}" not found`);
 
-        const recipients = projectMembers.filter((member) => {
-          const isAdmin = member.roles.some((role) => role.role === ProjectMembershipRole.Admin);
-          const isCompleted = payload.status === SecretScanningScanStatus.Completed;
-          // We assume that the committer is one of the project members
-          const isCommitter = isCompleted && payload.authorEmail === member.user.email;
-          return isAdmin || isCommitter;
+        const factory = SECRET_SCANNING_FACTORY_MAP[dataSource.type as SecretScanningDataSource]({
+          kmsService,
+          appConnectionDAL
         });
 
-        const timestamp = new Date().toISOString();
+        const tempFolder = await createTempFolder();
 
-        const subjectLine =
-          payload.status === SecretScanningScanStatus.Completed
-            ? "Incident Alert: Secret(s) Leaked"
-            : `Secret Scanning Failed`;
+        try {
+          await secretScanningV2DAL.scans.update(
+            { id: scanId },
+            {
+              status: SecretScanningScanStatus.Scanning
+            }
+          );
 
-        await notificationService.createUserNotifications(
-          recipients.map((member) => ({
-            userId: member.userId,
-            orgId: project.orgId,
-            type:
-              payload.status === SecretScanningScanStatus.Completed
-                ? NotificationType.SECRET_SCANNING_SECRETS_DETECTED
-                : NotificationType.SECRET_SCANNING_SCAN_FAILED,
-            title: subjectLine,
-            body:
-              payload.status === SecretScanningScanStatus.Completed
-                ? `Uncovered **${payload.numberOfSecrets}** secret(s) ${payload.isDiffScan ? " from a recent commit to" : " in"} **${resourceName}**.`
-                : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
-            link:
-              payload.status === SecretScanningScanStatus.Completed
-                ? `/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
-                : `/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
-          }))
-        );
+          let connection: TAppConnection | null = null;
+          if (dataSource.connection) connection = await decryptAppConnection(dataSource.connection, kmsService);
 
-        await smtpService.sendMail({
-          recipients: recipients.map((member) => member.user.email!).filter(Boolean),
-          template:
-            payload.status === SecretScanningScanStatus.Completed
-              ? SmtpTemplates.SecretScanningV2SecretsDetected
-              : SmtpTemplates.SecretScanningV2ScanFailed,
-          subjectLine,
-          substitutions:
-            payload.status === SecretScanningScanStatus.Completed
-              ? {
-                  authorName: payload.authorName,
-                  authorEmail: payload.authorEmail,
-                  resourceName,
-                  numberOfSecrets: payload.numberOfSecrets,
-                  isDiffScan: payload.isDiffScan,
-                  url: encodeURI(
-                    `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
-                  ),
-                  timestamp
-                }
-              : {
+          const config = await secretScanningV2DAL.configs.findOne({
+            projectId: dataSource.projectId
+          });
+
+          let configPath: string | undefined;
+
+          if (config && config.content) {
+            configPath = join(tempFolder, "infisical-scan.toml");
+            await writeTextToFile(configPath, config.content);
+          }
+
+          const findingsPayload = await factory.getDiffScanFindingsPayload({
+            dataSource: {
+              ...dataSource,
+              connection
+            } as TSecretScanningDataSourceWithConnection,
+            resourceName: resource.name,
+            payload,
+            configPath
+          });
+
+          const allFindings = await secretScanningV2DAL.findings.transaction(async (tx) => {
+            let findings: TSecretScanningFindings[] = [];
+
+            if (findingsPayload.length) {
+              findings = await secretScanningV2DAL.findings.upsert(
+                findingsPayload.map((finding) => ({
+                  ...finding,
+                  projectId: dataSource.projectId,
                   dataSourceName: dataSource.name,
-                  resourceName,
-                  projectName: project.name,
-                  timestamp,
-                  errorMessage: payload.errorMessage,
-                  url: encodeURI(
-                    `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
-                  )
+                  dataSourceType: dataSource.type,
+                  resourceName: resource.name,
+                  resourceType: resource.type,
+                  scanId
+                })),
+                ["projectId", "fingerprint"],
+                tx,
+                ["resourceName", "dataSourceName"]
+              );
+            }
+
+            await secretScanningV2DAL.scans.update(
+              { id: scanId },
+              {
+                status: SecretScanningScanStatus.Completed
+              }
+            );
+
+            return findings;
+          });
+
+          const newFindings = allFindings.filter((finding) => finding.scanId === scanId);
+
+          if (newFindings.length) {
+            const finding = newFindings[0] as TSecretScanningFinding;
+            await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
+              status: SecretScanningScanStatus.Completed,
+              resourceName: resource.name,
+              isDiffScan: true,
+              dataSource,
+              numberOfSecrets: newFindings.length,
+              scanId,
+              authorName: finding?.details?.author,
+              authorEmail: finding?.details?.email
+            });
+          }
+
+          await auditLogService.createAuditLog({
+            projectId: dataSource.projectId,
+            actor: {
+              type: ActorType.PLATFORM,
+              metadata: {}
+            },
+            event: {
+              type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+              metadata: {
+                dataSourceId: dataSource.id,
+                dataSourceType: dataSource.type,
+                resourceId,
+                resourceType: resource.type,
+                scanId,
+                scanStatus: SecretScanningScanStatus.Completed,
+                scanType: SecretScanningScanType.DiffScan,
+                numberOfSecretsDetected: findingsPayload.length
+              }
+            }
+          });
+
+          logger.info(`secretScanningV2Queue: Diff Scan Complete ${logDetails}`);
+        } catch (error) {
+          if (retryCount === retryLimit) {
+            const errorMessage = parseScanErrorMessage(error);
+
+            await secretScanningV2DAL.scans.update(
+              { id: scanId },
+              {
+                status: SecretScanningScanStatus.Failed,
+                statusMessage: errorMessage
+              }
+            );
+
+            await queueService.queuePg(QueueJobs.SecretScanningV2SendNotification, {
+              status: SecretScanningScanStatus.Failed,
+              resourceName: resource.name,
+              dataSource,
+              errorMessage
+            });
+
+            await auditLogService.createAuditLog({
+              projectId: dataSource.projectId,
+              actor: {
+                type: ActorType.PLATFORM,
+                metadata: {}
+              },
+              event: {
+                type: EventType.SECRET_SCANNING_DATA_SOURCE_SCAN,
+                metadata: {
+                  dataSourceId: dataSource.id,
+                  dataSourceType: dataSource.type,
+                  resourceId: resource.id,
+                  resourceType: resource.type,
+                  scanId,
+                  scanStatus: SecretScanningScanStatus.Failed,
+                  scanType: SecretScanningScanType.DiffScan
                 }
-        });
-      } catch (error) {
-        logger.error(
-          error,
-          `secretScanningV2Queue: Failed to Send Status Notification [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
-        );
-        throw error;
+              }
+            });
+          }
+
+          logger.error(error, `secretScanningV2Queue: Diff Scan Failed ${logDetails}`);
+          throw error;
+        } finally {
+          await deleteTempFolder(tempFolder);
+        }
+      },
+      {
+        batchSize: 1,
+        workerCount: 2,
+        pollingIntervalSeconds: 1
       }
-    },
-    {
-      batchSize: 1,
-      workerCount: 2,
-      pollingIntervalSeconds: 1
-    }
-  );
+    );
+
+    await queueService.startPg<QueueName.SecretScanningV2>(
+      QueueJobs.SecretScanningV2SendNotification,
+      async ([job]) => {
+        const { dataSource, resourceName, ...payload } = job.data as TQueueSecretScanningSendNotification;
+
+        const appCfg = getConfig();
+
+        if (!appCfg.isSmtpConfigured) return;
+
+        try {
+          const { projectId } = dataSource;
+
+          logger.info(
+            `secretScanningV2Queue: Sending Status Notification [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
+          );
+
+          const projectMembers = await projectMembershipDAL.findAllProjectMembers(projectId);
+          const project = await projectDAL.findById(projectId);
+
+          const recipients = projectMembers.filter((member) => {
+            const isAdmin = member.roles.some((role) => role.role === ProjectMembershipRole.Admin);
+            const isCompleted = payload.status === SecretScanningScanStatus.Completed;
+            // We assume that the committer is one of the project members
+            const isCommitter = isCompleted && payload.authorEmail === member.user.email;
+            return isAdmin || isCommitter;
+          });
+
+          const timestamp = new Date().toISOString();
+
+          const subjectLine =
+            payload.status === SecretScanningScanStatus.Completed
+              ? "Incident Alert: Secret(s) Leaked"
+              : `Secret Scanning Failed`;
+
+          await notificationService.createUserNotifications(
+            recipients.map((member) => ({
+              userId: member.userId,
+              orgId: project.orgId,
+              type:
+                payload.status === SecretScanningScanStatus.Completed
+                  ? NotificationType.SECRET_SCANNING_SECRETS_DETECTED
+                  : NotificationType.SECRET_SCANNING_SCAN_FAILED,
+              title: subjectLine,
+              body:
+                payload.status === SecretScanningScanStatus.Completed
+                  ? `Uncovered **${payload.numberOfSecrets}** secret(s) ${payload.isDiffScan ? " from a recent commit to" : " in"} **${resourceName}**.`
+                  : `Encountered an error while attempting to scan the resource **${resourceName}**: ${payload.errorMessage}`,
+              link:
+                payload.status === SecretScanningScanStatus.Completed
+                  ? `/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
+                  : `/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
+            }))
+          );
+
+          await smtpService.sendMail({
+            recipients: recipients.map((member) => member.user.email!).filter(Boolean),
+            template:
+              payload.status === SecretScanningScanStatus.Completed
+                ? SmtpTemplates.SecretScanningV2SecretsDetected
+                : SmtpTemplates.SecretScanningV2ScanFailed,
+            subjectLine,
+            substitutions:
+              payload.status === SecretScanningScanStatus.Completed
+                ? {
+                    authorName: payload.authorName,
+                    authorEmail: payload.authorEmail,
+                    resourceName,
+                    numberOfSecrets: payload.numberOfSecrets,
+                    isDiffScan: payload.isDiffScan,
+                    url: encodeURI(
+                      `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/findings?search=scanId:${payload.scanId}`
+                    ),
+                    timestamp
+                  }
+                : {
+                    dataSourceName: dataSource.name,
+                    resourceName,
+                    projectName: project.name,
+                    timestamp,
+                    errorMessage: payload.errorMessage,
+                    url: encodeURI(
+                      `${appCfg.SITE_URL}/projects/secret-scanning/${projectId}/data-sources/${dataSource.type}/${dataSource.id}`
+                    )
+                  }
+          });
+        } catch (error) {
+          logger.error(
+            error,
+            `secretScanningV2Queue: Failed to Send Status Notification [dataSourceId=${dataSource.id}] [resourceName=${resourceName}] [status=${payload.status}]`
+          );
+          throw error;
+        }
+      },
+      {
+        batchSize: 1,
+        workerCount: 2,
+        pollingIntervalSeconds: 1
+      }
+    );
+  };
 
   return {
     queueDataSourceFullScan,
-    queueResourceDiffScan
+    queueResourceDiffScan,
+    init
   };
 };

@@ -1,23 +1,19 @@
 import { useEffect, useState } from "react";
 import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faCheck,
   faCheckCircle,
   faChevronDown,
   faCodeBranch,
-  faCodeMerge,
   faMagnifyingGlass,
-  faSearch,
-  faXmark
+  faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useSearch } from "@tanstack/react-router";
 import { format, formatDistance } from "date-fns";
+import { GitMergeIcon, XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -30,6 +26,7 @@ import {
   Skeleton,
   Tooltip
 } from "@app/components/v2";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionMemberActions,
@@ -139,22 +136,9 @@ export const SecretApprovalRequest = () => {
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <div className="flex items-start gap-1">
+          <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Change Requests</p>
-            <a
-              href="https://infisical.com/docs/documentation/platform/pr-workflows"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pr-workflows" />
           </div>
           <p className="text-sm text-bunker-300">Review pending and closed change requests</p>
         </div>
@@ -329,12 +313,18 @@ export const SecretApprovalRequest = () => {
               {status === "close" && (
                 <Tooltip content={updatedAt ? format(new Date(updatedAt), "M/dd/yyyy h:mm a") : ""}>
                   <div className="my-auto ml-auto">
-                    <Badge
-                      variant={hasMerged ? "success" : "danger"}
-                      className="flex h-min items-center gap-1"
-                    >
-                      <FontAwesomeIcon icon={hasMerged ? faCodeMerge : faXmark} />
-                      {hasMerged ? "Merged" : "Rejected"}
+                    <Badge variant={hasMerged ? "success" : "danger"}>
+                      {hasMerged ? (
+                        <>
+                          <GitMergeIcon />
+                          Merged
+                        </>
+                      ) : (
+                        <>
+                          <XIcon />
+                          Rejected
+                        </>
+                      )}
                     </Badge>
                   </div>
                 </Tooltip>

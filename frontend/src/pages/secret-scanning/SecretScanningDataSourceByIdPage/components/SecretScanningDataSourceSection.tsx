@@ -1,10 +1,12 @@
-import { faBan, faCheck, faEdit, faPlugCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon, CheckIcon, UnplugIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EditSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge, IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -33,12 +35,9 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
                 content="The external data source has been removed and can no longer be scanned. Delete this data source and re-initialize the connection."
               >
                 <div className="ml-auto">
-                  <Badge
-                    variant="danger"
-                    className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                  >
-                    <FontAwesomeIcon icon={faPlugCircleXmark} />
-                    <span>Disconnected</span>
+                  <Badge variant="danger">
+                    <UnplugIcon />
+                    Disconnected
                   </Badge>
                 </div>
               </Tooltip>
@@ -71,17 +70,14 @@ export const SecretScanningDataSourceSection = ({ dataSource }: Props) => {
             <DataSourceConfigDisplay dataSource={dataSource} />
             <GenericFieldLabel label="Auto-Scan">
               {isAutoScanEnabled ? (
-                <Badge
-                  variant="success"
-                  className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                >
-                  <FontAwesomeIcon icon={faCheck} />
-                  <span>Enabled</span>
+                <Badge variant="success">
+                  <CheckIcon />
+                  Enabled
                 </Badge>
               ) : (
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                  <FontAwesomeIcon icon={faBan} />
-                  <span>Disabled</span>
+                <Badge variant="neutral">
+                  <BanIcon />
+                  Disabled
                 </Badge>
               )}
             </GenericFieldLabel>

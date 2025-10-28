@@ -12,7 +12,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -21,6 +20,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProjectPermission } from "@app/context";
 import {
   ProjectPermissionActions,
@@ -45,42 +45,26 @@ const MetricsBadges = ({
   };
 }) => {
   if (!metrics) {
-    return (
-      <Badge variant="primary" className="text-xs">
-        No metrics
-      </Badge>
-    );
+    return <Badge variant="warning">No metrics</Badge>;
   }
 
   if (metrics.totalCertificates === 0) {
-    return (
-      <Badge variant="primary" className="text-xs">
-        No certificates
-      </Badge>
-    );
+    return <Badge variant="warning">No certificates</Badge>;
   }
 
   return (
     <>
       {metrics.activeCertificates > 0 && (
-        <Badge variant="success" className="text-xs">
-          {metrics.activeCertificates} active
-        </Badge>
+        <Badge variant="success">{metrics.activeCertificates} active</Badge>
       )}
       {metrics.expiringCertificates > 0 && (
-        <Badge variant="primary" className="text-xs">
-          {metrics.expiringCertificates} expiring
-        </Badge>
+        <Badge variant="warning">{metrics.expiringCertificates} expiring</Badge>
       )}
       {metrics.expiredCertificates > 0 && (
-        <Badge variant="danger" className="text-xs">
-          {metrics.expiredCertificates} expired
-        </Badge>
+        <Badge variant="danger">{metrics.expiredCertificates} expired</Badge>
       )}
       {metrics.revokedCertificates > 0 && (
-        <Badge variant="danger" className="text-xs">
-          {metrics.revokedCertificates} revoked
-        </Badge>
+        <Badge variant="danger">{metrics.revokedCertificates} revoked</Badge>
       )}
     </>
   );
@@ -135,7 +119,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
     const config = {
       api: { variant: "success" as const, label: "API" },
-      est: { variant: "primary" as const, label: "EST" }
+      est: { variant: "warning" as const, label: "EST" }
     } as const;
 
     const configKey = Object.keys(config).includes(enrollmentType)

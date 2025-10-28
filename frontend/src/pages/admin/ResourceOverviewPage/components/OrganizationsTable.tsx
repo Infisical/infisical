@@ -3,7 +3,6 @@ import {
   faArrowDown,
   faArrowUp,
   faBuilding,
-  faCircleQuestion,
   faEllipsisV,
   faEnvelope,
   faEye,
@@ -19,11 +18,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { CircleQuestionMarkIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -46,6 +45,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useUser } from "@app/context";
 import { OrgMembershipRole } from "@app/helpers/roles";
 import {
@@ -295,15 +295,17 @@ const ViewMembersModalContent = ({
                         )}
                     </div>
                   </Td>
-                  <Td className="max-w-0">
-                    <Badge className="flex w-fit max-w-full items-center gap-x-1 bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
-                      <p className="truncate capitalize">{member.role.replace("-", " ")}</p>
-                      {Boolean(member.roleId) && (
-                        <Tooltip content="This member has a custom role assigned.">
-                          <FontAwesomeIcon icon={faCircleQuestion} className="w-3" />
-                        </Tooltip>
-                      )}
-                    </Badge>
+                  <Td>
+                    <div className="flex max-w-32">
+                      <Tooltip
+                        content={member.roleId ? "This member has a custom role assigned." : ""}
+                      >
+                        <Badge isTruncatable variant="neutral">
+                          <span className="capitalize">{member.role.replace("-", " ")}</span>
+                          {Boolean(member.roleId) && <CircleQuestionMarkIcon />}
+                        </Badge>
+                      </Tooltip>
+                    </div>
                   </Td>
                   <Td>
                     <div className="flex justify-end">

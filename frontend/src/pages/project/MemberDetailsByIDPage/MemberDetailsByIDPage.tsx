@@ -191,7 +191,7 @@ export const Page = () => {
             onOpenUpgradeModal={() =>
               handlePopUpOpen("upgradePlan", {
                 description:
-                  "You can assign custom roles to members if you upgrade your Infisical plan."
+                  "You can assign custom roles to members if you switch to Infisical's Pro plan."
               })
             }
           />

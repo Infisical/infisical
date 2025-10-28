@@ -27,6 +27,7 @@ type Props = {
       kmsId?: string;
       name?: string;
       provider?: string;
+      isEnterpriseFeature?: boolean;
     }
   ) => void;
   subscription: SubscriptionPlan;
@@ -111,7 +112,9 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
                   onClick={(e) => {
                     e.stopPropagation();
                     if (subscription && !subscription?.externalKms) {
-                      handlePopUpOpen("upgradePlan");
+                      handlePopUpOpen("upgradePlan", {
+                        isEnterpriseFeature: true
+                      });
                       return;
                     }
 

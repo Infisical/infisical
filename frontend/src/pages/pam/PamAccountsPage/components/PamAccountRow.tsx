@@ -1,23 +1,21 @@
 import { useCallback } from "react";
 import {
-  faBoxOpen,
   faCheck,
   faCopy,
   faEdit,
   faEllipsisV,
-  faFolder,
   faRightToBracket,
   faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
+import { FolderIcon, PackageOpenIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +27,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
@@ -88,15 +87,15 @@ export const PamAccountRow = ({
             <span>
               <HighlightText text={name} highlight={search} />
             </span>
-            <Badge className="flex h-5 w-min items-center gap-1.5 bg-bunker-300/20 whitespace-nowrap text-bunker-300">
-              <FontAwesomeIcon icon={faBoxOpen} />
+            <Badge variant="neutral">
+              <PackageOpenIcon />
               <span>
                 <HighlightText text={account.resource.name} highlight={search} />
               </span>
             </Badge>
             {isFlatView && accountPath && (
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-bunker-300/20 whitespace-nowrap text-bunker-300">
-                <FontAwesomeIcon icon={faFolder} />
+              <Badge variant="neutral">
+                <FolderIcon />
                 <span>
                   <HighlightText text={accountPath} highlight={search} />
                 </span>
@@ -108,14 +107,7 @@ export const PamAccountRow = ({
                 isDisabled={!account.lastRotationMessage}
                 content={account.lastRotationMessage}
               >
-                <Badge
-                  className={twMerge(
-                    "flex h-5 w-min items-center gap-1.5 whitespace-nowrap",
-                    account.rotationStatus === "failed"
-                      ? "bg-red/20 text-red"
-                      : "bg-green/20 text-green"
-                  )}
-                >
+                <Badge variant={account.rotationStatus === "failed" ? "danger" : "success"}>
                   <FontAwesomeIcon icon={faRotate} />
                   <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
                 </Badge>

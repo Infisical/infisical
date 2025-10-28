@@ -1,8 +1,8 @@
-import { faEye } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { EyeIcon } from "lucide-react";
 
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge, Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
+import { Table, TBody, Td, Th, THead, Tooltip, Tr } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { TAwsParameterStoreSync } from "@app/hooks/api/secretSyncs/types/aws-parameter-store-sync";
 
 type Props = {
@@ -40,11 +40,9 @@ export const AwsParameterStoreSyncOptionsSection = ({ secretSync }: Props) => {
             }
           >
             <div className="w-min">
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                <FontAwesomeIcon icon={faEye} />
-                <span>
-                  {tags.length} Tag{tags.length > 1 ? "s" : ""}
-                </span>
+              <Badge variant="neutral">
+                <EyeIcon />
+                {tags.length} Tag{tags.length > 1 ? "s" : ""}
               </Badge>
             </div>
           </Tooltip>
