@@ -3,7 +3,12 @@ import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
 
-const ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollmentType_check";
+// Notice: the old constraint name is "enrollmentType_check" instead of "enrollment_type_check"
+//         with psql, if there's no quote around an identifier, it will be lowercased.
+//         this may cause issues in migrations as Knex sometimes generates identifiers without quotes.
+//         to avoid this, we use a new constraint name that contains only lowercase letters and underscores.
+const OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollmentType_check";
+const NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollment_type_check";
 
 export async function up(knex: Knex): Promise<void> {
   // Create PkiAcmeEnrollmentConfig table
@@ -26,10 +31,11 @@ export async function up(knex: Knex): Promise<void> {
     });
   }
 
-  await dropConstraintIfExists(TableName.PkiCertificateProfile, ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
+  await dropConstraintIfExists(TableName.PkiCertificateProfile, OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
   if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "enrollmentType")) {
+    // Notice: it's okay to use `.checkIn(...).alter();` here because the constraint name is all lowercase.
     await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-      t.string("enrollmentType").checkIn(["api", "est", "acme"], ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
+      t.string("enrollmentType").checkIn(["api", "est", "acme"], NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
     });
   }
 
@@ -153,12 +159,20 @@ export async function down(knex: Knex): Promise<void> {
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeAccount);
   }
 
-  // Change enrollmentType check constraint to only allow api and est
-  await dropConstraintIfExists(TableName.PkiCertificateProfile, ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
+  // Change enrollmentType check constraint to allow acme
+  await dropConstraintIfExists(TableName.PkiCertificateProfile, NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
   if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "enrollmentType")) {
-    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-      t.string("enrollmentType").checkIn(["api", "est"], ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
-    });
+    // Notice: DO NOT USE
+    //
+    //   `t.string("enrollmentType").checkIn(["api", "est"], OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();`
+    //
+    // here because knex will generate a constraint name without quotes, and it will be treated as lowercased and causing problems.
+    await knex.raw(
+      `ALTER TABLE ??
+          ADD CONSTRAINT ?? CHECK (enrollmentType IN ('api', 'est'));
+      `,
+      [TableName.PkiCertificateProfile, OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT]
+    );
   }
 
   // Drop acmeConfigId column
