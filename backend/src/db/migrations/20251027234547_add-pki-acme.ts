@@ -21,7 +21,8 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("acmeConfigId").references("id").inTable(TableName.PkiAcmeEnrollmentConfig).onDelete("SET NULL");
       t.index("acmeConfigId");
     });
-    // TODO: should update (or add?) the constraints to check at least one of the enrollment config id is set
+    // TODO: should update (or add?) the constraints to check at least one of
+    //       the enrollment config id is set and it matches the enrollment type?
   }
 
   // Create PkiAcmeAccount table
@@ -119,6 +120,14 @@ export async function up(knex: Knex): Promise<void> {
 
 export async function down(knex: Knex): Promise<void> {
   // Drop tables in reverse dependency order
+
+  if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "acmeConfigId")) {
+    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
+      t.dropForeign(["acmeConfigId"]);
+      t.dropIndex("acmeConfigId");
+      t.dropColumn("acmeConfigId");
+    });
+  }
 
   // Drop PkiAcmeChallenge first (depends on PkiAcmeAuth)
   if (await knex.schema.hasTable(TableName.PkiAcmeChallenge)) {
