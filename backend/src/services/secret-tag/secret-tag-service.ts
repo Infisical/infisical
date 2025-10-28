@@ -35,7 +35,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Create, ProjectPermissionSub.Tags);
 
     const existingTag = await secretTagDAL.findOne({ slug, projectId });
-    if (existingTag) throw new BadRequestError({ message: "Tag already exist" });
+    if (existingTag) throw new BadRequestError({ message: "Tag already exists" });
 
     const newTag = await secretTagDAL.create({
       projectId,
@@ -53,7 +53,7 @@ export const secretTagServiceFactory = ({ secretTagDAL, permissionService }: TSe
 
     if (slug) {
       const existingTag = await secretTagDAL.findOne({ slug, projectId: tag.projectId });
-      if (existingTag && existingTag.id !== tag.id) throw new BadRequestError({ message: "Tag already exist" });
+      if (existingTag && existingTag.id !== tag.id) throw new BadRequestError({ message: "Tag already exists" });
     }
 
     const { permission } = await permissionService.getProjectPermission({

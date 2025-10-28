@@ -76,7 +76,7 @@ export const projectEnvServiceFactory = ({
       const existingEnv = envs.find(({ slug: envSlug }) => envSlug === slug);
       if (existingEnv)
         throw new BadRequestError({
-          message: "Environment with slug already exist",
+          message: "Environment with slug already exists",
           name: "CreateEnvironment"
         });
 
@@ -171,7 +171,7 @@ export const projectEnvServiceFactory = ({
         const existingEnv = await projectEnvDAL.findOne({ slug, projectId });
         if (existingEnv && existingEnv.id !== id) {
           throw new BadRequestError({
-            message: "Environment with slug already exist",
+            message: "Environment with slug already exists",
             name: "UpdateEnvironment"
           });
         }
