@@ -27,6 +27,8 @@ jobs:
 
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.7.0
+        with:
+          yamale_version: "6.0.0"
 
       - name: Run chart-testing (lint)
         run: ct lint --config ct.yaml --charts helm-charts/infisical-gateway

@@ -1958,6 +1958,8 @@ export const registerRoutes = async (
     secretImportDAL,
     permissionService,
     appConnectionService,
+    projectDAL,
+    orgDAL,
     folderDAL,
     secretSyncQueue,
     projectBotService,

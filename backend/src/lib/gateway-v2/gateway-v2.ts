@@ -7,6 +7,7 @@ import https from "https";
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { splitPemChain } from "@app/services/certificate/certificate-fns";
 
+import { getConfig } from "../config/env";
 import { BadRequestError } from "../errors";
 import { GatewayProxyProtocol } from "../gateway/types";
 import { logger } from "../logger";
@@ -80,6 +81,8 @@ const createGatewayConnection = async (
   gateway: { clientCertificate: string; clientPrivateKey: string; serverCertificateChain: string },
   protocol: GatewayProxyProtocol
 ): Promise<net.Socket> => {
+  const appCfg = getConfig();
+
   const protocolToAlpn = {
     [GatewayProxyProtocol.Http]: "infisical-http-proxy",
     [GatewayProxyProtocol.Tcp]: "infisical-tcp-proxy",
@@ -94,7 +97,8 @@ const createGatewayConnection = async (
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.3",
     rejectUnauthorized: true,
-    ALPNProtocols: [protocolToAlpn[protocol]]
+    ALPNProtocols: [protocolToAlpn[protocol]],
+    checkServerIdentity: appCfg.isDevelopmentMode ? () => undefined : tls.checkServerIdentity
   };
 
   return new Promise((resolve, reject) => {

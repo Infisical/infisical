@@ -15,6 +15,8 @@ import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { deepEqualSkipFields } from "@app/lib/fn/object";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TSecretFolderDALFactory } from "@app/services/secret-folder/secret-folder-dal";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -50,6 +52,8 @@ type TSecretSyncServiceFactoryDep = {
   secretImportDAL: TSecretImportDALFactory;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectDAL: Pick<TProjectDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId" | "findById" | "findBySecretPath">;
   keyStore: Pick<TKeyStoreFactory, "getItem">;
@@ -68,6 +72,8 @@ export const secretSyncServiceFactory = ({
   secretImportDAL,
   permissionService,
   appConnectionService,
+  projectDAL,
+  orgDAL,
   projectBotService,
   secretSyncQueue,
   keyStore,
@@ -225,6 +231,61 @@ export const secretSyncServiceFactory = ({
     return secretSync as TSecretSync;
   };
 
+  const checkDuplicateDestination = async (
+    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
+    actor: OrgServiceActor
+  ) => {
+    const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.SecretManager,
+      projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionSecretSyncActions.Read,
+      ProjectPermissionSub.SecretSyncs
+    );
+
+    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+
+    try {
+      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
+
+      const duplicates = existingSyncs.filter((sync) => {
+        if (sync.id === excludeSyncId) {
+          return false;
+        }
+
+        try {
+          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
+          if (baseFieldsMatch) {
+            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
+              sync.destinationConfig as Record<string, unknown>,
+              destinationConfig
+            );
+          }
+          return false;
+        } catch {
+          return false;
+        }
+      });
+
+      const hasDuplicate = duplicates.length > 0;
+      return {
+        hasDuplicate,
+        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
+      };
+    } catch (error) {
+      return { hasDuplicate: false, duplicateProjectId: undefined };
+    }
+  };
+
   const createSecretSync = async (
     { projectId, secretPath, environment, ...params }: TCreateSecretSyncDTO,
     actor: OrgServiceActor
@@ -270,6 +331,30 @@ export const secretSyncServiceFactory = ({
       throw new BadRequestError({
         message: `Could not find folder with path "${secretPath}" in environment "${environment}" for project with ID "${projectId}"`
       });
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
+
+    const organization = await orgDAL.findById(project.orgId);
+    if (organization?.blockDuplicateSecretSyncDestinations) {
+      const duplicateCheck = await checkDuplicateDestination(
+        {
+          destination: params.destination,
+          destinationConfig: params.destinationConfig,
+          projectId
+        },
+        actor
+      );
+      if (duplicateCheck.hasDuplicate) {
+        throw new BadRequestError({
+          message: `A secret sync with this destination already exists${
+            duplicateCheck.duplicateProjectId ? ` in project ${duplicateCheck.duplicateProjectId}` : ""
+          }.`
+        });
+      }
+    }
 
     const destinationApp = SECRET_SYNC_CONNECTION_MAP[params.destination];
 
@@ -368,6 +453,33 @@ export const secretSyncServiceFactory = ({
       });
 
     let { folderId } = secretSync;
+
+    if (params.destinationConfig) {
+      const project = await projectDAL.findById(secretSync.projectId);
+      if (!project) {
+        throw new NotFoundError({ message: "Project not found" });
+      }
+      const organization = await orgDAL.findById(project.orgId);
+
+      if (organization?.blockDuplicateSecretSyncDestinations) {
+        const duplicateCheck = await checkDuplicateDestination(
+          {
+            destination,
+            destinationConfig: params.destinationConfig,
+            projectId: secretSync.projectId,
+            excludeSyncId: secretSync.id
+          },
+          actor
+        );
+        if (duplicateCheck.hasDuplicate) {
+          throw new BadRequestError({
+            message: `A secret sync with this destination already exists${
+              duplicateCheck.duplicateProjectId ? ` in project ${duplicateCheck.duplicateProjectId}` : ""
+            }.`
+          });
+        }
+      }
+    }
 
     if (params.connectionId) {
       const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
@@ -701,61 +813,6 @@ export const secretSyncServiceFactory = ({
     });
 
     return updatedSecretSync as TSecretSync;
-  };
-
-  const checkDuplicateDestination = async (
-    { destination, destinationConfig, excludeSyncId, projectId }: TCheckDuplicateDestinationDTO,
-    actor: OrgServiceActor
-  ) => {
-    const skipFields = SECRET_SYNC_SKIP_FIELDS_MAP[destination];
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorId: actor.id,
-      actorAuthMethod: actor.authMethod,
-      actorOrgId: actor.orgId,
-      actionProjectType: ActionProjectType.SecretManager,
-      projectId
-    });
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionSecretSyncActions.Read,
-      ProjectPermissionSub.SecretSyncs
-    );
-
-    if (!destinationConfig || Object.keys(destinationConfig).length === 0) {
-      return { hasDuplicate: false, duplicateProjectId: undefined };
-    }
-
-    try {
-      const existingSyncs = await secretSyncDAL.findByDestinationAndOrgId(destination, actor.orgId);
-
-      const duplicates = existingSyncs.filter((sync) => {
-        if (sync.id === excludeSyncId) {
-          return false;
-        }
-
-        try {
-          const baseFieldsMatch = deepEqualSkipFields(sync.destinationConfig, destinationConfig, skipFields);
-          if (baseFieldsMatch) {
-            return DESTINATION_DUPLICATE_CHECK_MAP[destination](
-              sync.destinationConfig as Record<string, unknown>,
-              destinationConfig
-            );
-          }
-          return false;
-        } catch {
-          return false;
-        }
-      });
-
-      const hasDuplicate = duplicates.length > 0;
-      return {
-        hasDuplicate,
-        duplicateProjectId: hasDuplicate ? duplicates[0].projectId : undefined
-      };
-    } catch (error) {
-      return { hasDuplicate: false, duplicateProjectId: undefined };
-    }
   };
 
   return {
