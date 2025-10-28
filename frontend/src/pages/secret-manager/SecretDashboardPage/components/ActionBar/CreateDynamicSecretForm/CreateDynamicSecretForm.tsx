@@ -13,16 +13,12 @@ import {
 } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
 import { faAws, faGithub, faGoogle } from "@fortawesome/free-brands-svg-icons";
-import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
-  faClock,
-  faDatabase
-} from "@fortawesome/free-solid-svg-icons";
+import { faClock, faDatabase } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Modal, ModalContent } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 
@@ -202,23 +198,11 @@ export const CreateDynamicSecretForm = ({
     <Modal isOpen={isOpen} onOpenChange={(state) => handleFormReset(state)}>
       <ModalContent
         title={
-          <div className="flex items-center">
+          <div className="flex items-center gap-x-2">
             <span>{modalTitle ? `${modalTitle} Dynamic Secret` : "Dynamic Secrets"} </span>
-            <a
+            <DocumentationLinkBadge
               href={`https://infisical.com/docs/documentation/platform/dynamic-secrets/${selectedProvider ? (UniqueLinks[selectedProvider] ?? selectedProvider) : "overview"}`}
-              target="_blank"
-              className="mb-0.5 ml-1.5"
-              rel="noopener noreferrer"
-            >
-              <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1 text-[10px]"
-                />
-              </div>
-            </a>
+            />
           </div>
         }
         subTitle="Configure dynamic secret parameters"
@@ -234,11 +218,11 @@ export const CreateDynamicSecretForm = ({
               exit={{ opacity: 0, translateX: -30 }}
             >
               <div className="mb-4 text-mineshaft-300">Select a service to connect to:</div>
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="grid grid-cols-4 gap-2">
                 {DYNAMIC_SECRET_LIST.map(({ icon, provider, title }) => (
                   <div
                     key={`dynamic-secret-provider-${provider}`}
-                    className="flex h-32 w-32 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
+                    className="flex h-30 w-42 cursor-pointer flex-col items-center space-y-4 rounded-sm border border-mineshaft-500 bg-bunker-600 p-6 transition-all hover:border-primary/70 hover:bg-primary/10 hover:text-white"
                     role="button"
                     tabIndex={0}
                     onClick={() => {

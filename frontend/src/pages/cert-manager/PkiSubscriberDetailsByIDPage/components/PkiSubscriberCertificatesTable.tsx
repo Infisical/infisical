@@ -7,7 +7,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -24,6 +23,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
@@ -93,7 +93,7 @@ export const PkiSubscriberCertificatesTable = ({ subscriberName, handlePopUpOpen
     }
 
     if (daysUntilExpiry < 30) {
-      return <Badge variant="primary">Expiring Soon</Badge>;
+      return <Badge variant="warning">Expiring Soon</Badge>;
     }
 
     return <Badge variant="success">Valid</Badge>;

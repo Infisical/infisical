@@ -5,18 +5,17 @@ import {
   faEllipsis,
   faEye,
   faFileExport,
-  faQuestionCircle,
   faRedo,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
+import { CircleQuestionMarkIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -33,6 +32,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
@@ -58,7 +58,7 @@ const isExpiringWithinOneDay = (notAfter: string): boolean => {
 
 const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (certificate.renewedByCertificateId) {
-    return { text: "Renewed", variant: "instance" as const };
+    return { text: "Renewed", variant: "neutral" as const };
   }
 
   const isRevoked = certificate.status === CertStatus.REVOKED;
@@ -69,7 +69,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (isRevoked) {
     return {
       text: "Not Available",
-      variant: "instance" as const,
+      variant: "neutral" as const,
       tooltip: "Renewal is not available for revoked certificates"
     };
   }
@@ -77,7 +77,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (isExpired) {
     return {
       text: "Not Available",
-      variant: "instance" as const,
+      variant: "neutral" as const,
       tooltip: "Renewal is not available for expired certificates"
     };
   }
@@ -85,7 +85,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (hasNoProfile) {
     return {
       text: "Not Available",
-      variant: "instance" as const,
+      variant: "neutral" as const,
       tooltip: "Renewal requires a certificate profile"
     };
   }
@@ -93,7 +93,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (certificate.hasPrivateKey === false) {
     return {
       text: "Not Available",
-      variant: "instance" as const,
+      variant: "neutral" as const,
       tooltip: "Renewal is not available for certificates with externally generated private keys"
     };
   }
@@ -101,7 +101,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   if (isExpiringWithinDay) {
     return {
       text: "Not Available",
-      variant: "instance" as const,
+      variant: "neutral" as const,
       tooltip: "Auto-renewal is not available for certificates expiring within 24 hours"
     };
   }
@@ -115,7 +115,7 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   }
 
   if (!certificate.renewBeforeDays) {
-    return { text: "Auto-Renewal Disabled", variant: "primary" as const };
+    return { text: "Auto-Renewal Disabled", variant: "warning" as const };
   }
 
   const notAfterDate = new Date(certificate.notAfter);
@@ -133,11 +133,11 @@ const getAutoRenewalInfo = (certificate: TCertificate) => {
   );
 
   if (daysUntilRenewal === 0) {
-    return { text: "Renews today", variant: "primary" as const };
+    return { text: "Renews today", variant: "warning" as const };
   }
 
   if (daysUntilRenewal <= 7) {
-    return { text: `Renews in ${daysUntilRenewal}d`, variant: "primary" as const };
+    return { text: `Renews in ${daysUntilRenewal}d`, variant: "warning" as const };
   }
 
   return { text: `Renews in ${daysUntilRenewal}d`, variant: "success" as const };
@@ -279,16 +279,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                     {autoRenewalInfo &&
                       (autoRenewalInfo.tooltip ? (
                         <div className="flex items-center gap-2">
-                          <Badge variant={autoRenewalInfo.variant}>
-                            {autoRenewalInfo.text}
-                            <Tooltip content={autoRenewalInfo.tooltip}>
-                              <FontAwesomeIcon
-                                icon={faQuestionCircle}
-                                className="ml-1 cursor-help text-red-400 hover:text-red-300"
-                                size="sm"
-                              />
-                            </Tooltip>
-                          </Badge>
+                          <Tooltip content={autoRenewalInfo.tooltip}>
+                            <Badge variant={autoRenewalInfo.variant}>
+                              {autoRenewalInfo.text}
+                              <CircleQuestionMarkIcon />
+                            </Badge>
+                          </Tooltip>
                         </div>
                       ) : (
                         <Badge variant={autoRenewalInfo.variant}>{autoRenewalInfo.text}</Badge>

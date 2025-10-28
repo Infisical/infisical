@@ -1,45 +1,38 @@
 import {
-  faBan,
-  faCircle,
-  faGavel,
-  faHourglass,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { twMerge } from "tailwind-merge";
+  ActivityIcon,
+  BanIcon,
+  ChevronsLeftRightEllipsisIcon,
+  GavelIcon,
+  LucideIcon
+} from "lucide-react";
 
-import { Badge } from "@app/components/v2";
+import { Badge, TBadgeProps } from "@app/components/v3";
 import { PamSessionStatus } from "@app/hooks/api/pam";
 
 interface StatusConfig {
-  bgColor: string;
-  textColor: string;
-  icon: IconDefinition;
-  iconClassName?: string;
+  variant: TBadgeProps["variant"];
+  icon: LucideIcon;
+  className?: string;
 }
 
 const PAM_SESSION_STATUS_CONFIG: Record<PamSessionStatus, StatusConfig> = {
   [PamSessionStatus.Active]: {
-    bgColor: "bg-green/20",
-    textColor: "text-green",
-    icon: faCircle,
-    iconClassName: "size-2 animate-pulse"
+    variant: "success",
+    icon: ActivityIcon,
+    className: "animate-pulse"
   },
   [PamSessionStatus.Terminated]: {
-    bgColor: "bg-red/20",
-    textColor: "text-red",
-    icon: faGavel
+    variant: "danger",
+    icon: GavelIcon
   },
   [PamSessionStatus.Starting]: {
-    bgColor: "bg-yellow/20",
-    textColor: "text-yellow",
-    icon: faHourglass,
-    iconClassName: "animate-spin"
+    variant: "info",
+    icon: ChevronsLeftRightEllipsisIcon,
+    className: "animate-pulse"
   },
   [PamSessionStatus.Ended]: {
-    bgColor: "bg-bunker-300/20",
-    textColor: "text-bunker-300",
-    icon: faBan
+    variant: "neutral",
+    icon: BanIcon
   }
 };
 
@@ -48,15 +41,11 @@ export const PamSessionStatusBadge = ({ status }: { status: PamSessionStatus }) 
 
   const displayName = status[0].toUpperCase() + status.slice(1);
 
+  const Icon = config.icon;
+
   return (
-    <Badge
-      className={twMerge(
-        "flex h-5 w-min items-center gap-1.5 whitespace-nowrap",
-        config.bgColor,
-        config.textColor
-      )}
-    >
-      <FontAwesomeIcon icon={config.icon} className={config.iconClassName} />
+    <Badge variant={config.variant} className={config.className}>
+      <Icon />
       {displayName}
     </Badge>
   );
