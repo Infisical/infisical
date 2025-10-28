@@ -15,6 +15,15 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiAcmeEnrollmentConfig);
   }
 
+  if (!(await knex.schema.hasColumn(TableName.PkiCertificateProfile, "acmeConfigId"))) {
+    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
+      t.uuid("acmeConfigId");
+      t.foreign("acmeConfigId").references("id").inTable(TableName.PkiAcmeEnrollmentConfig).onDelete("SET NULL");
+      t.index("acmeConfigId");
+    });
+    // TODO: should update (or add?) the constraints to check at least one of the enrollment config id is set
+  }
+
   // Create PkiAcmeAccount table
   if (!(await knex.schema.hasTable(TableName.PkiAcmeAccount))) {
     await knex.schema.createTable(TableName.PkiAcmeAccount, (t) => {
