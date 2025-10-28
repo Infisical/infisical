@@ -36,7 +36,7 @@ def step_impl(context: Context, profile_var: str):
     # TODO: Fixed value for now, just to make test much easier,
     #       we should call infisical API to create such profile instead
     #       in the future
-    profile_id = "40dd4794-66e3-4bd3-9875-c1f819804bb2"
+    profile_id = "0e96a01b-017e-4660-8b3d-ff26018fe0ce"
     context.vars[profile_var] = AcmeProfile(profile_id)
 
 
