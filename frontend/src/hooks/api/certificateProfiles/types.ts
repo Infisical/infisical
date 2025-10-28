@@ -5,7 +5,7 @@ export type TCertificateProfile = {
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est";
+  enrollmentType: "api" | "est" | "acme";
   estConfigId?: string;
   apiConfigId?: string;
   createdAt: string;
@@ -44,7 +44,7 @@ export type TCreateCertificateProfileDTO = {
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est";
+  enrollmentType: "api" | "est" | "acme";
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase: string;
@@ -54,6 +54,7 @@ export type TCreateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
+  acmeConfig?: {};
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -69,6 +70,7 @@ export type TUpdateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
+  acmeConfig?: {};
 };
 
 export type TDeleteCertificateProfileDTO = {
@@ -81,7 +83,7 @@ export type TListCertificateProfilesDTO = {
   offset?: number;
   search?: string;
   includeConfigs?: boolean;
-  enrollmentType?: "api" | "est";
+  enrollmentType?: "api" | "est" | "acme";
 };
 
 export type TGetCertificateProfileByIdDTO = {
