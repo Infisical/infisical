@@ -20,12 +20,14 @@ import {
   GetAcmeOrderSchema,
   ListAcmeOrdersResponseSchema,
   ListAcmeOrdersSchema,
+  RawJwsPayloadSchema,
   RespondToAcmeChallengeResponseSchema,
   RespondToAcmeChallengeSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -104,16 +106,22 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Account - register a new account or find existing one",
-      ...CreateAcmeAccountSchema.shape,
+      ...RawJwsPayloadSchema.shape,
       response: {
         201: CreateAcmeAccountResponseSchema
       }
     },
     handler: async (req, res) => {
       // TODO: check nonce here
-      // TODO: check signature here
+      const { payload, protectedHeader, jwk } = await server.services.pkiAcme.validateCreateAcmeAccountJwsPayload(
+        req.body as TRawJwsPayload
+      );
 
-      const account = await server.services.pkiAcme.createAcmeAccount(req.params.profileId, req.body);
+      const account = await server.services.pkiAcme.createAcmeAccount(
+        req.params.profileId,
+        jwk,
+        payload as TCreateAcmeAccountPayload
+      );
       // TODO: deal with existing account case here
       res.code(201);
       res.header(
