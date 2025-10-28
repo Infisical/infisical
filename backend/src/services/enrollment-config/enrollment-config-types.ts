@@ -38,5 +38,5 @@ export interface TApiConfigData {
 }
 
 export interface TAcmeConfigData {
-  // TODO: we don't provide any config for ACME right now, but maybe in the future
+  eabSecret: string;
 }

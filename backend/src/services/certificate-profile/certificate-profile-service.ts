@@ -13,10 +13,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
-import { TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
+import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -30,6 +30,37 @@ import {
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
+import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
+
+const generateAndEncryptAcmeEabSecret = async (
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+) => {
+  try {
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const appCfg = getConfig();
+    const secret = crypto.randomBytes(32).toString("hex");
+    const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);
+
+    const { cipherTextBlob } = await kmsEncryptor({
+      plainText: Buffer.from(secretHash)
+    });
+
+    return { encryptedEabSecret: cipherTextBlob };
+  } catch (error) {
+    throw new BadRequestError({ message: `Failed to generate ACME EAB secret: ${(error as Error).message}` });
+  }
+};
 
 const validateAndEncryptPemCaChain = async (
   caChain: string,
@@ -95,9 +126,13 @@ const decryptCaChain = async (
   }
 };
 
-export type TCertificateProfileCreateData = Omit<TCertificateProfileInsert, "estConfigId" | "apiConfigId"> & {
+export type TCertificateProfileCreateData = Omit<
+  TCertificateProfileInsert,
+  "estConfigId" | "apiConfigId" | "acmeConfigId"
+> & {
   estConfig?: TEstConfigData;
   apiConfig?: TApiConfigData;
+  acmeConfig?: TAcmeConfigData;
 };
 
 type TCertificateProfileServiceFactoryDep = {
@@ -105,6 +140,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateTemplateV2DAL: TCertificateTemplateV2DALFactory;
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
+  acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -124,6 +160,7 @@ export const certificateProfileServiceFactory = ({
   certificateTemplateV2DAL,
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
+  acmeEnrollmentConfigDAL,
   permissionService,
   kmsService,
   projectDAL
@@ -188,11 +225,17 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
+    if (data.enrollmentType === EnrollmentType.ACME && !data.acmeConfig) {
+      throw new ForbiddenRequestError({
+        message: "ACME enrollment requires ACME configuration"
+      });
+    }
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
       let apiConfigId: string | null = null;
+      let acmeConfigId: string | null = null;
 
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
@@ -228,6 +271,10 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
+      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
+        const acmeConfig = await acmeEnrollmentConfigDAL.create({ encryptedEabSecret }, tx);
+        acmeConfigId = acmeConfig.id;
       }
 
       // Create the profile with the created config IDs
@@ -237,7 +284,8 @@ export const certificateProfileServiceFactory = ({
           ...profileData,
           projectId,
           estConfigId,
-          apiConfigId
+          apiConfigId,
+          acmeConfigId
         },
         tx
       );
