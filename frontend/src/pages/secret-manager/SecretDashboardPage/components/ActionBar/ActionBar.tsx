@@ -905,7 +905,9 @@ export const ActionBar = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    feature: "PIT Recovery"
+                  });
                 }}
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                 isLoading={isSnapshotCountLoading}
@@ -1020,6 +1022,7 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
+                          feature: "Dynamic Secrets",
                           isEnterpriseFeature: true
                         });
                       }}
@@ -1048,7 +1051,9 @@ export const ActionBar = ({
                           handlePopUpClose("misc");
                           return;
                         }
-                        handlePopUpOpen("upgradePlan");
+                        handlePopUpOpen("upgradePlan", {
+                          feature: "Secret Rotation"
+                        });
                       }}
                       variant="outline_bg"
                       className="h-10 text-left"
@@ -1214,7 +1219,11 @@ export const ActionBar = ({
         environment={environment}
         secretPath={secretPath}
         projectId={projectId}
-        onUpgradePlan={() => handlePopUpOpen("upgradePlan")}
+        onUpgradePlan={() =>
+          handlePopUpOpen("upgradePlan", {
+            feature: "Secret Imports"
+          })
+        }
         isOpen={popUp.addSecretImport.isOpen}
         onClose={() => handlePopUpClose("addSecretImport")}
         onTogglePopUp={(isOpen) => handlePopUpToggle("addSecretImport", isOpen)}
@@ -1277,13 +1286,7 @@ export const ActionBar = ({
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={
-            subscription.slug === null
-              ? "You can perform this action under an Enterprise license"
-              : `You can perform this action if you switch to Infisical's ${
-                  popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"
-                } plan`
-          }
+          text={`You can use ${popUp.upgradePlan.data?.feature} if you switch to Infisical's ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
         />
       )}
       <Modal

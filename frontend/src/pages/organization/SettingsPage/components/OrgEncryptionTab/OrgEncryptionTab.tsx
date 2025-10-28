@@ -74,7 +74,9 @@ export const OrgEncryptionTab = withPermission(
               <Button
                 onClick={() => {
                   if (subscription && !subscription?.externalKms) {
-                    handlePopUpOpen("upgradePlan");
+                    handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true
+                    });
                     return;
                   }
                   handlePopUpOpen("addExternalKms");
@@ -124,6 +126,7 @@ export const OrgEncryptionTab = withPermission(
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="You can configure external KMS if you switch to Infisical's Enterprise plan."
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />
         <AddExternalKmsForm
           isOpen={popUp.addExternalKms.isOpen}

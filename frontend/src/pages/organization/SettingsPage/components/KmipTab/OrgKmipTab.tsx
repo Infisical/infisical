@@ -180,7 +180,9 @@ const OrgConfigSection = ({
               className="mt-2"
               onClick={() => {
                 if (subscription && !subscription.kmip) {
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    isEnterpriseFeature: true
+                  });
                   return;
                 }
 
@@ -251,6 +253,7 @@ const OrgConfigSection = ({
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="KMIP requires an enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );
