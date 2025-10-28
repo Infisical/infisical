@@ -277,7 +277,11 @@ export const OverviewPage = () => {
   });
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
-  const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
+  const {
+    isPending: isOverviewLoading,
+    data: overview,
+    isFetching: isOverviewFetching
+  } = useGetProjectSecretsOverview(
     {
       projectId,
       environments: visibleEnvs.map((env) => env.slug),
@@ -631,6 +635,8 @@ export const OverviewPage = () => {
   };
 
   const handleFolderClick = (path: string) => {
+    if (isOverviewFetching) return;
+
     // store for breadcrumb nav to restore previously used filters
     setFilterHistory((prev) => {
       const curr = new Map(prev);
