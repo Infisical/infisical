@@ -22,7 +22,7 @@ export const RawJwsPayloadSchema = z.object({
 
 export const JwsPayloadSchema = z.object({
   protectedHeader: ProtectedHeaderSchema,
-  payload: z.any()
+  payload: z.unknown()
 });
 
 // Directory endpoint
@@ -71,8 +71,7 @@ export const CreateAcmeAccountSchema = z.object({
 export const CreateAcmeAccountResponseSchema = z.object({
   status: z.string(),
   contact: z.array(z.string()).optional(),
-  orders: z.string().optional(),
-  accountUrl: z.string()
+  orders: z.string().optional()
 });
 
 // New Order payload schema
