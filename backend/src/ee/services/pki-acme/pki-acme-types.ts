@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { JWK } from "jose";
 import {
   CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
@@ -39,11 +40,24 @@ export type TCreateAcmeOrderPayload = z.infer<typeof CreateAcmeOrderBodySchema>;
 export type TDeactivateAcmeAccountPayload = z.infer<typeof DeactivateAcmeAccountBodySchema>;
 export type TFinalizeAcmeOrderPayload = z.infer<typeof FinalizeAcmeOrderBodySchema>;
 
+export type TJwsPayloadWithJwk = TJwsPayload & {
+  jwk: JsonWebKey;
+};
+export type TAcmeResponse<TPayload> = {
+  status: number;
+  headers: Record<string, string>;
+  payload: TPayload;
+};
+
 export type TPkiAcmeServiceFactory = {
-  validateCreateAcmeAccountJwsPayload(body: TRawJwsPayload): Promise<TJwsPayload>;
+  validateCreateAcmeAccountJwsPayload(body: TRawJwsPayload): Promise<TJwsPayloadWithJwk>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
-  createAcmeAccount: (profileId: string, body: TCreateAcmeAccountPayload) => Promise<TCreateAcmeAccountResponse>;
+  createAcmeAccount: (
+    profileId: string,
+    jwk: JsonWebKey,
+    body: TCreateAcmeAccountPayload
+  ) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
   createAcmeOrder: (profileId: string, body: TCreateAcmeOrderPayload) => Promise<TCreateAcmeOrderResponse>;
   deactivateAcmeAccount: (
     profileId: string,

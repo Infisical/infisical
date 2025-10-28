@@ -3,7 +3,7 @@ import { NotFoundError } from "@app/lib/errors";
 
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
-import { AcmeBadPublicKeyError, AcmeMalformedError } from "./pki-acme-errors";
+import { AcmeAccountDoesNotExistError, AcmeBadPublicKeyError, AcmeMalformedError } from "./pki-acme-errors";
 
 import {
   EnrollmentType,
@@ -12,6 +12,7 @@ import {
 import { flattenedVerify, importJWK, JWK, JWSHeaderParameters } from "jose";
 import { ProtectedHeaderSchema } from "./pki-acme-schemas";
 import {
+  TAcmeResponse,
   TCreateAcmeAccountPayload,
   TCreateAcmeAccountResponse,
   TCreateAcmeOrderPayload,
@@ -24,17 +25,23 @@ import {
   TGetAcmeDirectoryResponse,
   TGetAcmeOrderResponse,
   TJwsPayload,
+  TJwsPayloadWithJwk,
   TListAcmeOrdersResponse,
   TPkiAcmeServiceFactory,
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
+import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  pkiAcmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByPublicKey" | "create">;
 };
 
-export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
+export const pkiAcmeServiceFactory = ({
+  certificateProfileDAL,
+  pkiAcmeAccountDAL
+}: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
     if (!profile) {
@@ -52,7 +59,7 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     return `${baseUrl}${path}`;
   };
 
-  const validateCreateAcmeAccountJwsPayload = async (rawJwsPayload: TRawJwsPayload): Promise<TJwsPayload> => {
+  const validateCreateAcmeAccountJwsPayload = async (rawJwsPayload: TRawJwsPayload): Promise<TJwsPayloadWithJwk> => {
     const { payload: rawPayload, protectedHeader: rawProtectedHeader } = await flattenedVerify(
       rawJwsPayload,
       async (protectedHeader: JWSHeaderParameters | undefined) => {
@@ -72,10 +79,11 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     if (!success) {
       throw new AcmeMalformedError({ detail: "Invalid protected header" });
     }
+
     const decoder = new TextDecoder();
     const payload = JSON.parse(decoder.decode(rawPayload)) as TCreateAcmeAccountPayload;
     // TODO: also consume the nonce here
-    return { payload, protectedHeader };
+    return { payload, protectedHeader, jwk: protectedHeader.jwk as JsonWebKey };
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
@@ -96,18 +104,47 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
 
   const createAcmeAccount = async (
     profileId: string,
+    jwk: JWK,
     payload: TCreateAcmeAccountPayload
-  ): Promise<TCreateAcmeAccountResponse> => {
+  ): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME new account registration
-    // Use EAB authentication to find corresponding Infisical machine identity
-    // Check permissions and return account information
-    const accountId = "FIXME-account-id";
+    // TODO: the jwk as json obj may not be the best idea for indexing.
+    // Maybe we should find a way to serialize the jwk deterministically.
+    let account = await pkiAcmeAccountDAL.findByPublicKey(jwk);
+    if (payload.onlyReturnExisting && !account) {
+      throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
+    }
+    if (account) {
+      // With the same public key, we found an existing account, just return it
+      return {
+        status: 200,
+        payload: {
+          status: "valid",
+          contact: account.emails,
+          orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
+        },
+        headers: {
+          Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}`)
+        }
+      };
+    }
+
+    account = await pkiAcmeAccountDAL.create({
+      profileId,
+      publicKey: jwk,
+      emails: payload.contact ?? []
+    });
+    // TODO: check EAB authentication here
     return {
-      status: "valid",
-      accountUrl: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}`),
-      contact: [],
-      orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}/orders`)
+      status: 201,
+      payload: {
+        status: "valid",
+        contact: account.emails,
+        orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}`)
+      }
     };
   };
 
@@ -116,6 +153,7 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     payload: TCreateAcmeOrderPayload
   ): Promise<TCreateAcmeOrderResponse> => {
     const profile = await validateAcmeProfile(profileId);
+
     // FIXME: Implement ACME new order creation
     const orderId = "FIXME-order-id";
     return {
