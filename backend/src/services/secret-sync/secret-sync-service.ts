@@ -454,6 +454,33 @@ export const secretSyncServiceFactory = ({
 
     let { folderId } = secretSync;
 
+    if (params.destinationConfig) {
+      const project = await projectDAL.findById(secretSync.projectId);
+      if (!project) {
+        throw new NotFoundError({ message: "Project not found" });
+      }
+      const organization = await orgDAL.findById(project.orgId);
+
+      if (organization?.blockDuplicateSecretSyncDestinations) {
+        const duplicateCheck = await checkDuplicateDestination(
+          {
+            destination,
+            destinationConfig: params.destinationConfig,
+            projectId: secretSync.projectId,
+            excludeSyncId: secretSync.id
+          },
+          actor
+        );
+        if (duplicateCheck.hasDuplicate) {
+          throw new BadRequestError({
+            message: `A secret sync with this destination already exists${
+              duplicateCheck.duplicateProjectId ? ` in project ${duplicateCheck.duplicateProjectId}` : ""
+            }.`
+          });
+        }
+      }
+    }
+
     if (params.connectionId) {
       const destinationApp = SECRET_SYNC_CONNECTION_MAP[secretSync.destination as SecretSync];
 
