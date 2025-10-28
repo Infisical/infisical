@@ -35,7 +35,10 @@ export async function up(knex: Knex): Promise<void> {
   if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "enrollmentType")) {
     // Notice: it's okay to use `.checkIn(...).alter();` here because the constraint name is all lowercase.
     await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-      t.string("enrollmentType").checkIn(["api", "est", "acme"], NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
+      t.string("enrollmentType")
+        .notNullable()
+        .checkIn(["api", "est", "acme"], NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT)
+        .alter();
     });
   }
 
