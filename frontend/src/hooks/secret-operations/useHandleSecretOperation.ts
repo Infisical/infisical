@@ -4,8 +4,8 @@ import { useCallback } from "react";
 import {
   HIDDEN_SECRET_VALUE,
   HIDDEN_SECRET_VALUE_API_MASK
-} from "../pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
-import { useInvalidateSecretQueries } from "./useInvalidateSecretQueries";
+} from "../../pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { useInvalidateSecretQueries } from "../useInvalidateSecretQueries";
 
 interface HandleSecretParams {
   operation: "create" | "update" | "delete";

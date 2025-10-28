@@ -12,7 +12,7 @@ import { WsTag } from "@app/hooks/api/types";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
-import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
+import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import {
   PendingSecretChange,
   PendingSecretCreate,

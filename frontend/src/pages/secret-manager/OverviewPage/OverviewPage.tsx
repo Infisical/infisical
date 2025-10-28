@@ -104,7 +104,7 @@ import {
 import { SecretOverviewSecretRotationRow } from "@app/pages/secret-manager/OverviewPage/components/SecretOverviewSecretRotationRow";
 import { getHeaderStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 
-import { useHandleSecretOperation } from "@app/hooks/useHandleSecretOperation";
+import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import { CreateDynamicSecretForm } from "../SecretDashboardPage/components/ActionBar/CreateDynamicSecretForm";
 import { FolderForm } from "../SecretDashboardPage/components/ActionBar/FolderForm";
 import {
