@@ -772,13 +772,14 @@ export const externalMigrationServiceFactory = ({
     namespace: string;
     mountPath: string;
   }) => {
-    const { hasRole } = await permissionService.getOrgPermission(
-      actor.type,
-      actor.id,
-      actor.orgId,
-      actor.authMethod,
-      actor.orgId
-    );
+    const { hasRole } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor: actor.type,
+      actorId: actor.id,
+      orgId: actor.orgId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId
+    });
 
     if (!hasRole(OrgMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "Only admins can get Kubernetes roles" });
