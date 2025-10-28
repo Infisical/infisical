@@ -388,7 +388,6 @@ export const MoveSecretsModal = ({ isOpen, onOpenChange, ...props }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        bodyClassName="overflow-visible"
         title="Move Secrets Folder Location"
         subTitle="Move the selected secrets across all environments to a new folder location"
       >

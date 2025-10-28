@@ -117,7 +117,6 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
         subTitle={
           selectedDataSource ? undefined : "Select a data source to configure secret scanning for."
         }
-        bodyClassName="overflow-visible"
       >
         <Content
           onComplete={() => {

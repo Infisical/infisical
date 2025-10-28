@@ -20,7 +20,6 @@ export const EditSecretSyncModal = ({ secretSync, onOpenChange, fields, ...props
       <ModalContent
         title={<SecretSyncModalHeader isConfigured destination={secretSync.destination} />}
         className="max-w-2xl"
-        bodyClassName="overflow-visible"
       >
         <EditSecretSyncForm
           onComplete={() => onOpenChange(false)}

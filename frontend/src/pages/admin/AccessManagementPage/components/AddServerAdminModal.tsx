@@ -126,7 +126,6 @@ export const AddServerAdminModal = ({ isOpen, onOpenChange }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
-        bodyClassName="overflow-visible"
         title="Grant Server Admin"
         subTitle="Grant server admin status to a user"
       >

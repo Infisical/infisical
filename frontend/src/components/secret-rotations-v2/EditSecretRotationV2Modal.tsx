@@ -18,7 +18,6 @@ export const EditSecretRotationV2Modal = ({ secretRotation, onOpenChange, ...pro
       <ModalContent
         title={<SecretRotationV2ModalHeader isConfigured type={secretRotation.type} />}
         className="max-w-2xl"
-        bodyClassName="overflow-visible"
       >
         <SecretRotationV2Form
           onComplete={() => onOpenChange(false)}

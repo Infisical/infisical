@@ -22,7 +22,6 @@ export const EditSecretScanningDataSourceModal = ({
       <ModalContent
         title={<SecretScanningDataSourceModalHeader isConfigured type={dataSource.type} />}
         className="max-w-2xl"
-        bodyClassName="overflow-visible"
       >
         <SecretScanningDataSourceForm
           onComplete={() => onOpenChange(false)}

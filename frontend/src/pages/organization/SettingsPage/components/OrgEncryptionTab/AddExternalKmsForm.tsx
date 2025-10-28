@@ -48,7 +48,6 @@ export const AddExternalKmsForm = ({ isOpen, onToggle }: Props) => {
         title="Add a Key Management System"
         subTitle="Configure an external key management system (KMS)"
         className="my-4"
-        bodyClassName="overflow-visible"
       >
         <AnimatePresence mode="wait">
           {wizardStep === WizardSteps.SelectProvider && (

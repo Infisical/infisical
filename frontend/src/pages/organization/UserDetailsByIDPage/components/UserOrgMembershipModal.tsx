@@ -125,7 +125,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
         reset();
       }}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Update Membership">
+      <ModalContent title="Update Membership">
         <form onSubmit={handleSubmit(onFormSubmit)}>
           <Controller
             control={control}
