@@ -38,11 +38,6 @@ export async function up(knex: Knex): Promise<void> {
             .merge();
         }
       }
-
-      await tx(TableName.Identity).whereNull("orgId").delete();
-      await tx.schema.alterTable(TableName.Identity, (t) => {
-        t.uuid("orgId").notNullable().alter();
-      });
     }
   });
 }
