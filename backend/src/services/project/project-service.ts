@@ -10,7 +10,8 @@ import {
   ProjectType,
   ProjectVersion,
   TableName,
-  TProjectEnvironments
+  TProjectEnvironments,
+  TProjects
 } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
@@ -40,7 +41,8 @@ import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-hos
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { DatabaseErrorCode } from "@app/lib/error-codes";
+import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 import { TProjectPermission } from "@app/lib/types";
@@ -303,19 +305,34 @@ export const projectServiceFactory = ({
           });
       }
 
-      const project = await projectDAL.create(
-        {
-          name: workspaceName,
-          type,
-          description: workspaceDescription,
-          orgId: organization.id,
-          slug: projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`),
-          kmsSecretManagerKeyId: kmsKeyId,
-          version: ProjectVersion.V3,
-          pitVersionLimit: 10
-        },
-        tx
-      );
+      const slug = projectSlug || slugify(`${workspaceName}-${alphaNumericNanoId(4)}`);
+
+      let project: TProjects;
+      try {
+        project = await projectDAL.create(
+          {
+            name: workspaceName,
+            type,
+            description: workspaceDescription,
+            orgId: organization.id,
+            slug,
+            kmsSecretManagerKeyId: kmsKeyId,
+            version: ProjectVersion.V3,
+            pitVersionLimit: 10
+          },
+          tx
+        );
+      } catch (err) {
+        if (
+          err instanceof DatabaseError &&
+          (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation
+        ) {
+          throw new BadRequestError({
+            message: `A project with the slug "${slug}" already exists in your organization. Please choose a different name or slug.`
+          });
+        }
+        throw err;
+      }
 
       if (type === ProjectType.SSH) {
         await bootstrapSshProject({
@@ -579,39 +596,36 @@ export const projectServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Edit, ProjectPermissionSub.Settings);
 
-    if (update.slug) {
-      const existingProject = await projectDAL.findOne({
-        slug: update.slug,
-        orgId: actorOrgId
-      });
-      if (existingProject && existingProject.id !== project.id) {
-        throw new BadRequestError({
-          message: `Failed to update project slug. The project "${existingProject.name}" with the slug "${existingProject.slug}" already exists in your organization. Please choose a unique slug for your project.`
-        });
-      }
-    }
-
     if (update.secretDetectionIgnoreValues && !hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({
         message: "Only admins can update secret detection ignore values"
       });
     }
 
-    const updatedProject = await projectDAL.updateById(project.id, {
-      name: update.name,
-      description: update.description,
-      autoCapitalization: update.autoCapitalization,
-      enforceCapitalization: update.autoCapitalization,
-      hasDeleteProtection: update.hasDeleteProtection,
-      slug: update.slug,
-      secretSharing: update.secretSharing,
-      defaultProduct: update.defaultProduct,
-      showSnapshotsLegacy: update.showSnapshotsLegacy,
-      secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
-      pitVersionLimit: update.pitVersionLimit
-    });
+    try {
+      const updatedProject = await projectDAL.updateById(project.id, {
+        name: update.name,
+        description: update.description,
+        autoCapitalization: update.autoCapitalization,
+        enforceCapitalization: update.autoCapitalization,
+        hasDeleteProtection: update.hasDeleteProtection,
+        slug: update.slug,
+        secretSharing: update.secretSharing,
+        defaultProduct: update.defaultProduct,
+        showSnapshotsLegacy: update.showSnapshotsLegacy,
+        secretDetectionIgnoreValues: update.secretDetectionIgnoreValues,
+        pitVersionLimit: update.pitVersionLimit
+      });
 
-    return updatedProject;
+      return updatedProject;
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Failed to update project. A project with the slug "${update.slug}" already exists in your organization. Please choose a different slug.`
+        });
+      }
+      throw err;
+    }
   };
 
   const toggleAutoCapitalization = async ({
