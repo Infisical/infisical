@@ -2300,35 +2300,35 @@ export const registerRoutes = async (
   // setup the communication with license key server
   await licenseService.init();
 
+  // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
+  crypto.verifyFipsLicense(licenseService);
+
+  // Start HSM service if it's configured/enabled.
+  await hsmService.startService();
+
+  const hsmStatus = await isHsmActiveAndEnabled({
+    hsmService,
+    kmsRootConfigDAL,
+    licenseService
+  });
+
+  // if the encryption strategy is software - user needs to provide an encryption key
+  // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
+  const needsEncryptionKey =
+    hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
+    (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
+
+  if (needsEncryptionKey) {
+    if (!envConfig.ROOT_ENCRYPTION_KEY && !envConfig.ENCRYPTION_KEY) {
+      throw new BadRequestError({
+        message:
+          "Root KMS encryption strategy is set to software. Please set the ENCRYPTION_KEY environment variable and restart your deployment.\nYou can enable HSM encryption in the Server Console."
+      });
+    }
+  }
+
   const completeServerInitialization = async () => {
     await superAdminService.initServerCfg();
-
-    // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
-    crypto.verifyFipsLicense(licenseService);
-
-    // Start HSM service if it's configured/enabled.
-    await hsmService.startService();
-
-    const hsmStatus = await isHsmActiveAndEnabled({
-      hsmService,
-      kmsRootConfigDAL,
-      licenseService
-    });
-
-    // if the encryption strategy is software - user needs to provide an encryption key
-    // if the encryption strategy is null AND the hsm is not configured - user needs to provide an encryption key
-    const needsEncryptionKey =
-      hsmStatus.rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.Software ||
-      (hsmStatus.rootKmsConfigEncryptionStrategy === null && !hsmStatus.isHsmConfigured);
-
-    if (needsEncryptionKey) {
-      if (!envConfig.ROOT_ENCRYPTION_KEY && !envConfig.ENCRYPTION_KEY) {
-        throw new BadRequestError({
-          message:
-            "Root KMS encryption strategy is set to software. Please set the ENCRYPTION_KEY environment variable and restart your deployment.\nYou can enable HSM encryption in the Server Console."
-        });
-      }
-    }
 
     await telemetryQueue.startTelemetryCheck();
     await telemetryQueue.startAggregatedEventsJob();
