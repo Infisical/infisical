@@ -15,6 +15,7 @@ import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -353,6 +354,7 @@ export const pamAccountServiceFactory = ({
       TPamAccounts & {
         resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
+        lastRotationMessage: string | null;
       }
     > = [];
 
@@ -376,6 +378,7 @@ export const pamAccountServiceFactory = ({
       ) {
         // Decrypt the account only if the user has permission to read it
         const decryptedAccount = await decryptAccount(account, account.projectId, kmsService);
+
         decryptedAndPermittedAccounts.push({
           ...decryptedAccount,
           resource: {
@@ -619,7 +622,9 @@ export const pamAccountServiceFactory = ({
               account.id,
               {
                 encryptedCredentials,
-                lastRotatedAt: new Date()
+                lastRotatedAt: new Date(),
+                rotationStatus: "success",
+                encryptedLastRotationMessage: null
               },
               tx
             );
@@ -645,6 +650,24 @@ export const pamAccountServiceFactory = ({
 
             const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
 
+            const { encryptor } = await kmsService.createCipherPairWithDataKey({
+              type: KmsDataKey.SecretManager,
+              projectId: account.projectId
+            });
+
+            const { cipherTextBlob: encryptedMessage } = encryptor({
+              plainText: Buffer.from(errorMessage)
+            });
+
+            await pamAccountDAL.updateById(
+              account.id,
+              {
+                rotationStatus: "failed",
+                encryptedLastRotationMessage: encryptedMessage
+              },
+              tx
+            );
+
             await auditLogService.createAuditLog({
               projectId: account.projectId,
               actor: {
@@ -662,7 +685,6 @@ export const pamAccountServiceFactory = ({
                 }
               }
             });
-            throw error; // Rollback transaction
           }
         })
       );

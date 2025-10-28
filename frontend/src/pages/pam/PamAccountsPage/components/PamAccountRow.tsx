@@ -103,10 +103,23 @@ export const PamAccountRow = ({
               </Badge>
             )}
             {account.lastRotatedAt && (
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-orange/20 whitespace-nowrap text-orange">
-                <FontAwesomeIcon icon={faRotate} />
-                <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
-              </Badge>
+              <Tooltip
+                className="max-w-sm text-center"
+                isDisabled={!account.lastRotationMessage}
+                content={account.lastRotationMessage}
+              >
+                <Badge
+                  className={twMerge(
+                    "flex h-5 w-min items-center gap-1.5 whitespace-nowrap",
+                    account.rotationStatus === "failed"
+                      ? "bg-red/20 text-red"
+                      : "bg-green/20 text-green"
+                  )}
+                >
+                  <FontAwesomeIcon icon={faRotate} />
+                  <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
+                </Badge>
+              </Tooltip>
             )}
           </div>
         </div>

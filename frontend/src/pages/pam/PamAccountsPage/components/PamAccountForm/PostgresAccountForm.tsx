@@ -1,6 +1,6 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
@@ -12,10 +12,10 @@ import {
 } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
-import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
+import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
 
 type Props = {
   account?: TPostgresAccount;

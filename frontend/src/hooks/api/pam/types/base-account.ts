@@ -16,6 +16,8 @@ export interface TBasePamAccount {
   rotationEnabled: boolean;
   rotationIntervalSeconds?: number | null;
   lastRotatedAt?: string | null;
+  lastRotationMessage?: string | null;
+  rotationStatus?: string | null;
   createdAt: string;
   updatedAt: string;
 }
