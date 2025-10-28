@@ -5,5 +5,6 @@ export enum GitLabConnectionMethod {
 
 export enum GitLabAccessTokenType {
   Project = "project",
-  Personal = "personal"
+  Personal = "personal",
+  Group = "group"
 }
