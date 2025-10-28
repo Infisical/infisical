@@ -31,6 +31,7 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
+import { TPkiAcmeAccount } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 
 type TPkiAcmeServiceFactoryDep = {
@@ -105,20 +106,20 @@ export const pkiAcmeServiceFactory = ({
   const createAcmeAccount = async (
     profileId: string,
     jwk: JWK,
-    payload: TCreateAcmeAccountPayload
+    { onlyReturnExisting, contact }: TCreateAcmeAccountPayload
   ): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     // TODO: the jwk as json obj may not be the best idea for indexing.
     // Maybe we should find a way to serialize the jwk deterministically.
-    let account = await pkiAcmeAccountDAL.findByPublicKey(jwk);
-    if (payload.onlyReturnExisting && !account) {
+    let account: TPkiAcmeAccount | null = await pkiAcmeAccountDAL.findByPublicKey(jwk);
+    if (onlyReturnExisting && !account) {
       throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
     }
     if (account) {
       // With the same public key, we found an existing account, just return it
       return {
         status: 200,
-        payload: {
+        body: {
           status: "valid",
           contact: account.emails,
           orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
@@ -132,12 +133,12 @@ export const pkiAcmeServiceFactory = ({
     account = await pkiAcmeAccountDAL.create({
       profileId,
       publicKey: jwk,
-      emails: payload.contact ?? []
+      emails: contact ?? []
     });
     // TODO: check EAB authentication here
     return {
       status: 201,
-      payload: {
+      body: {
         status: "valid",
         contact: account.emails,
         orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
