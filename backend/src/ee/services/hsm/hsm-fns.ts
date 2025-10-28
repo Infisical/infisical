@@ -84,7 +84,7 @@ export const isHsmActiveAndEnabled = async ({
 
   rootKmsConfigEncryptionStrategy = (rootKmsConfig?.encryptionStrategy || null) as RootKeyEncryptionStrategy | null;
   if (
-    (rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM || isHsmConfigured) &&
+    rootKmsConfigEncryptionStrategy === RootKeyEncryptionStrategy.HSM &&
     licenseService &&
     !licenseService.onPremFeatures.hsm
   ) {

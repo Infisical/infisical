@@ -10,7 +10,6 @@ type TNotificationQueueServiceFactoryDep = {
 
 export type TNotificationQueueServiceFactory = {
   pushUserNotifications: (data: TCreateUserNotificationDTO[]) => Promise<void>;
-  init: () => Promise<void>;
 };
 
 export const notificationQueueServiceFactory = async ({
@@ -21,23 +20,20 @@ export const notificationQueueServiceFactory = async ({
     await queueService.queuePg(QueueJobs.UserNotification, { notifications: data });
   };
 
-  const init = async () => {
-    await queueService.startPg(
-      QueueJobs.UserNotification,
-      async ([job]) => {
-        const { notifications } = job.data as { notifications: TCreateUserNotificationDTO[] };
-        await userNotificationDAL.batchInsert(notifications);
-      },
-      {
-        batchSize: 1,
-        workerCount: 2,
-        pollingIntervalSeconds: 1
-      }
-    );
-  };
+  await queueService.startPg(
+    QueueJobs.UserNotification,
+    async ([job]) => {
+      const { notifications } = job.data as { notifications: TCreateUserNotificationDTO[] };
+      await userNotificationDAL.batchInsert(notifications);
+    },
+    {
+      batchSize: 1,
+      workerCount: 2,
+      pollingIntervalSeconds: 1
+    }
+  );
 
   return {
-    pushUserNotifications,
-    init
+    pushUserNotifications
   };
 };
