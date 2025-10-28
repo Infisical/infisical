@@ -109,8 +109,6 @@ export const pkiAcmeServiceFactory = ({
     { onlyReturnExisting, contact }: TCreateAcmeAccountPayload
   ): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
-    // TODO: the jwk as json obj may not be the best idea for indexing.
-    // Maybe we should find a way to serialize the jwk deterministically.
     let account: TPkiAcmeAccount | null = await pkiAcmeAccountDAL.findByPublicKey(jwk);
     if (onlyReturnExisting && !account) {
       throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
@@ -122,16 +120,16 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: account.emails,
-          orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
+          orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}/orders`)
         },
         headers: {
-          Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}`)
+          Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}`)
         }
       };
     }
 
     account = await pkiAcmeAccountDAL.create({
-      profileId,
+      profileId: profile.id,
       publicKey: jwk,
       emails: contact ?? []
     });
@@ -141,10 +139,10 @@ export const pkiAcmeServiceFactory = ({
       body: {
         status: "valid",
         contact: account.emails,
-        orders: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}/orders`)
+        orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}/orders`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${account.id}`)
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}`)
       }
     };
   };
