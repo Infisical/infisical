@@ -18,7 +18,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  SecretInput,
   Spinner,
   TextArea,
   Tooltip
@@ -54,12 +53,7 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { createNotification } from "@app/components/notifications";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  FontAwesomeSpriteName,
-  formSchema,
-  SecretActionType,
-  TFormSchema
-} from "./SecretListView.utils";
+import { FontAwesomeSpriteName, formSchema, TFormSchema } from "./SecretListView.utils";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
 
@@ -135,8 +129,7 @@ export const SecretItem = memo(
       environment,
       secretPath,
       secretKey: originalSecret.originalKey || originalSecret.key,
-      projectId: currentProject.id,
-      isOverride: Boolean(originalSecret.idOverride)
+      projectId: currentProject.id
     };
 
     const {
@@ -152,8 +145,7 @@ export const SecretItem = memo(
 
     const secret = {
       ...originalSecret,
-      value: originalSecret.value ?? secretValueData?.value,
-      valueOverride: originalSecret.valueOverride ?? secretValueData?.valueOverride
+      value: originalSecret.value ?? secretValueData?.value
     };
 
     const { isRotatedSecret } = secret;
@@ -191,24 +183,11 @@ export const SecretItem = memo(
       return secret.value || "";
     };
 
-    const getOverrideDefaultValue = () => {
-      if (isLoadingSecretValue) return undefined;
-
-      if (secret.secretValueHidden && !isPending) {
-        return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-      }
-
-      if (isErrorFetchingSecretValue) return undefined;
-
-      return secret.valueOverride || "";
-    };
-
     const {
       handleSubmit,
       control,
       register,
       watch,
-      setValue,
       reset,
       getValues,
       trigger,
@@ -217,19 +196,16 @@ export const SecretItem = memo(
     } = useForm<TFormSchema>({
       defaultValues: {
         ...secret,
-        valueOverride: getOverrideDefaultValue(),
         value: getDefaultValue()
       },
       values: {
         ...secret,
-        valueOverride: getOverrideDefaultValue(),
         value: getDefaultValue()
       },
       resolver: zodResolver(formSchema)
     });
 
     const secretName = watch("key");
-    const overrideAction = watch("overrideAction");
     const hasComment = Boolean(watch("comment"));
 
     const selectedTags = watch("tags", []) || [];
@@ -244,19 +220,12 @@ export const SecretItem = memo(
       name: "tags"
     });
 
-    const isOverridden =
-      overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
+    const hasOverride = Boolean(secret.idOverride);
     const hasTagsApplied = Boolean(fields.length);
 
     const autoSaveChanges = useCallback(
       async (data: TFormSchema) => {
         if (isAutoSavingRef.current) return;
-        if (
-          data.overrideAction === SecretActionType.Created ||
-          data.overrideAction === SecretActionType.Modified
-        ) {
-          return;
-        }
 
         isAutoSavingRef.current = true;
         try {
@@ -332,28 +301,8 @@ export const SecretItem = memo(
       return () => clearTimeout(timer);
     }, [isSecValueCopied]);
 
-    const handleOverrideClick = () => {
-      if (isOverridden) {
-        // override need not be flagged delete if it was never saved in server
-        // meaning a new unsaved personal secret but user toggled back later
-        const isUnsavedOverride = !secret.idOverride;
-        setValue(
-          "overrideAction",
-          isUnsavedOverride ? secret?.overrideAction : SecretActionType.Deleted,
-          {
-            shouldDirty: !isUnsavedOverride
-          }
-        );
-        setValue("valueOverride", secret?.valueOverride, { shouldDirty: !isUnsavedOverride });
-        setValue("reminderRepeatDays", secret?.reminderRepeatDays, {
-          shouldDirty: !isUnsavedOverride
-        });
-        setValue("reminderNote", secret?.reminderNote, { shouldDirty: !isUnsavedOverride });
-      } else {
-        reset();
-        setValue("overrideAction", SecretActionType.Modified, { shouldDirty: true });
-        setValue("valueOverride", "", { shouldDirty: true });
-      }
+    const handleAddPersonalOverride = () => {
+      throw new Error("Not Implemented");
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
@@ -407,20 +356,16 @@ export const SecretItem = memo(
 
     const copyTokenToClipboard = async () => {
       if (hasFetchedSecretValue) {
-        const [overrideValue, value] = getValues(["value", "valueOverride"]);
-        if (isOverridden) {
-          navigator.clipboard.writeText(value as string);
-        } else {
-          navigator.clipboard.writeText(overrideValue as string);
-        }
+        const [value] = getValues(["value"]);
+        navigator.clipboard.writeText(value as string);
       } else {
         const data = await fetchValue();
-        navigator.clipboard.writeText((data.valueOverride ?? data.value) as string);
+        navigator.clipboard.writeText(data.value as string);
       }
       setIsSecValueCopied.on();
     };
 
-    const isInAutoSaveMode = isDirty && !isSubmitting && !isOverridden;
+    const isInAutoSaveMode = isDirty && !isSubmitting;
 
     return (
       <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -480,7 +425,6 @@ export const SecretItem = memo(
                     isReadOnly={isReadOnly || isRotatedSecret}
                     autoCapitalization={currentProject?.autoCapitalization}
                     variant="plain"
-                    isDisabled={isOverridden}
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
@@ -526,60 +470,33 @@ export const SecretItem = memo(
                   <FontAwesomeIcon className="pr-2" size="sm" icon={faEyeSlash} />
                 </Tooltip>
               )}
-              {isOverridden ? (
-                <Controller
-                  name="valueOverride"
-                  key="value-overriden"
-                  control={control}
-                  render={({ field }) => (
-                    <SecretInput
-                      isLoadingValue={isLoadingSecretValue && Boolean(secret.idOverride)}
-                      isErrorLoadingValue={isErrorFetchingSecretValue}
-                      key="value-overriden"
-                      isVisible={isVisible}
-                      {...field}
-                      onFocus={() => {
-                        if (secret.idOverride) setIsFieldFocused.on();
-                      }}
-                      onBlur={() => {
-                        setIsFieldFocused.off();
-                        field.onBlur();
-                      }}
-                      containerClassName="py-1.5 rounded-md transition-all"
-                    />
-                  )}
-                />
-              ) : (
-                <Controller
-                  name="value"
-                  key="secret-value"
-                  control={control}
-                  render={({ field }) => (
-                    <InfisicalSecretInput
-                      isLoadingValue={isLoadingSecretValue}
-                      isErrorLoadingValue={isErrorFetchingSecretValue}
-                      isReadOnly={isReadOnlySecret}
-                      key="secret-value"
-                      isVisible={isVisible && (!secretValueHidden || isPending)}
-                      canEditButNotView={secretValueHidden && !isOverridden && !isPending}
-                      environment={environment}
-                      secretPath={secretPath}
-                      {...field}
-                      onFocus={() => {
-                        setIsFieldFocused.on();
-                      }}
-                      onBlur={() => {
-                        setIsFieldFocused.off();
-                        field.onBlur();
-                      }}
-                      defaultValue={
-                        secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined
-                      }
-                      containerClassName="py-1.5 rounded-md transition-all"
-                    />
-                  )}
-                />
-              )}
+              <Controller
+                name="value"
+                key="secret-value"
+                control={control}
+                render={({ field }) => (
+                  <InfisicalSecretInput
+                    isLoadingValue={isLoadingSecretValue}
+                    isErrorLoadingValue={isErrorFetchingSecretValue}
+                    isReadOnly={isReadOnlySecret}
+                    key="secret-value"
+                    isVisible={isVisible && (!secretValueHidden || isPending)}
+                    canEditButNotView={secretValueHidden && !isPending}
+                    environment={environment}
+                    secretPath={secretPath}
+                    {...field}
+                    onFocus={() => {
+                      setIsFieldFocused.on();
+                    }}
+                    onBlur={() => {
+                      setIsFieldFocused.off();
+                      field.onBlur();
+                    }}
+                    defaultValue={secretValueHidden && !isPending ? HIDDEN_SECRET_VALUE : undefined}
+                    containerClassName="py-1.5 rounded-md transition-all"
+                  />
+                )}
+              />
               {pendingAction !== PendingAction.Create && pendingAction !== PendingAction.Delete && (
                 <div
                   key="actions"
@@ -623,14 +540,12 @@ export const SecretItem = memo(
                         variant="plain"
                         size="md"
                         ariaLabel="Secret reminder"
-                        isDisabled={!isAllowed || isOverridden}
+                        isDisabled={!isAllowed}
                       >
                         <Tooltip
                           className="max-w-2xl"
                           content={
-                            isOverridden ? (
-                              "Unavailable with override"
-                            ) : secret.reminder ? (
+                            secret.reminder ? (
                               <div className="flex flex-col gap-y-1">
                                 <GenericFieldLabel label="Reminder Date">
                                   {secret.reminder.nextReminderDate
@@ -668,7 +583,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <DropdownMenuTrigger asChild disabled={!isAllowed || isOverridden}>
+                        <DropdownMenuTrigger asChild disabled={!isAllowed}>
                           <IconButton
                             ariaLabel="tags"
                             variant="plain"
@@ -677,9 +592,9 @@ export const SecretItem = memo(
                               "w-0 overflow-hidden p-0 group-hover:w-5 data-[state=open]:w-5",
                               hasTagsApplied && "w-5 text-primary"
                             )}
-                            isDisabled={!isAllowed || isOverridden}
+                            isDisabled={!isAllowed}
                           >
-                            <Tooltip content={isOverridden ? "Unavailable with override" : "Tags"}>
+                            <Tooltip content="Tags">
                               <FontAwesomeSymbol
                                 className="h-3.5 w-3.5"
                                 symbolName={FontAwesomeSpriteName.Tags}
@@ -738,36 +653,35 @@ export const SecretItem = memo(
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <ProjectPermissionCan
-                    I={ProjectPermissionActions.Create}
-                    a={subject(ProjectPermissionSub.Secrets, {
-                      environment,
-                      secretPath,
-                      secretName,
-                      secretTags: selectedTagSlugs
-                    })}
-                  >
-                    {(isAllowed) => (
-                      <IconButton
-                        ariaLabel="override-value"
-                        isDisabled={!isAllowed}
-                        variant="plain"
-                        size="sm"
-                        onClick={handleOverrideClick}
-                        className={twMerge(
-                          "w-0 overflow-hidden p-0 group-hover:w-5",
-                          isOverridden && "w-5 text-primary"
-                        )}
-                      >
-                        <Tooltip content={`${isOverridden ? "Remove" : "Add"} Override`}>
-                          <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Override}
-                            className="h-3.5 w-3.5"
-                          />
-                        </Tooltip>
-                      </IconButton>
-                    )}
-                  </ProjectPermissionCan>
+                  {!hasOverride && (
+                    <ProjectPermissionCan
+                      I={ProjectPermissionActions.Create}
+                      a={subject(ProjectPermissionSub.Secrets, {
+                        environment,
+                        secretPath,
+                        secretName,
+                        secretTags: selectedTagSlugs
+                      })}
+                    >
+                      {(isAllowed) => (
+                        <IconButton
+                          ariaLabel="add-personal-override"
+                          isDisabled={!isAllowed}
+                          variant="plain"
+                          size="sm"
+                          onClick={handleAddPersonalOverride}
+                          className="w-0 overflow-hidden p-0 group-hover:w-5"
+                        >
+                          <Tooltip content="Add Override">
+                            <FontAwesomeSymbol
+                              symbolName={FontAwesomeSpriteName.Override}
+                              className="h-3.5 w-3.5"
+                            />
+                          </Tooltip>
+                        </IconButton>
+                      )}
+                    </ProjectPermissionCan>
+                  )}
                   <Popover>
                     <ProjectPermissionCan
                       I={ProjectPermissionActions.Edit}
@@ -779,7 +693,7 @@ export const SecretItem = memo(
                       })}
                     >
                       {(isAllowed) => (
-                        <PopoverTrigger asChild disabled={!isAllowed || isOverridden}>
+                        <PopoverTrigger asChild disabled={!isAllowed}>
                           <IconButton
                             className={twMerge(
                               "w-0 overflow-hidden p-0 group-hover:w-5",
@@ -788,11 +702,9 @@ export const SecretItem = memo(
                             variant="plain"
                             size="md"
                             ariaLabel="add-comment"
-                            isDisabled={!isAllowed || isOverridden}
+                            isDisabled={!isAllowed}
                           >
-                            <Tooltip
-                              content={isOverridden ? "Unavailable with override" : "Comment"}
-                            >
+                            <Tooltip content="Comment">
                               <FontAwesomeSymbol
                                 className="h-3.5 w-3.5"
                                 symbolName={FontAwesomeSpriteName.Comment}
@@ -994,13 +906,12 @@ export const SecretItem = memo(
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 10, opacity: 0 }}
                   >
-                    <Tooltip content={isOverridden ? "Unavailable with override" : "More"}>
+                    <Tooltip content="More">
                       <IconButton
                         ariaLabel="more"
                         variant="plain"
                         size="md"
                         className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
-                        isDisabled={isOverridden}
                         onClick={() => onDetailViewSecret(secret)}
                       >
                         <FontAwesomeSymbol
@@ -1018,13 +929,7 @@ export const SecretItem = memo(
                         secretTags: selectedTagSlugs
                       })}
                       renderTooltip
-                      allowedLabel={
-                        isOverridden
-                          ? "Unavailable with override"
-                          : isRotatedSecret
-                            ? "Cannot Delete Rotated Secret"
-                            : "Delete"
-                      }
+                      allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
                     >
                       {(isAllowed) => (
                         <IconButton
@@ -1034,7 +939,7 @@ export const SecretItem = memo(
                           size="md"
                           className="p-0 opacity-0 group-hover:opacity-100"
                           onClick={() => onDeleteSecret(secret)}
-                          isDisabled={!isAllowed || isRotatedSecret || isOverridden}
+                          isDisabled={!isAllowed || isRotatedSecret}
                         >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Trash}
