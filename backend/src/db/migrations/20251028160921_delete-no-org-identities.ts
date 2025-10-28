@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
         });
       }
     } finally {
-      await knex.raw(`SET statement_timeout = '${originalTimeout}'`);
+      await tx.raw(`SET statement_timeout = '${originalTimeout}'`);
     }
   });
 }
