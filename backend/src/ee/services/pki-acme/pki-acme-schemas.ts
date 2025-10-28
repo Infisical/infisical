@@ -1,12 +1,17 @@
 import { z } from "zod";
 
-export const ProtectedHeaderSchema = z.object({
-  alg: z.string(),
-  nonce: z.string(),
-  url: z.string(),
-  kid: z.string().optional(),
-  jwk: z.record(z.string(), z.string()).optional()
-});
+export const ProtectedHeaderSchema = z
+  .object({
+    alg: z.string(),
+    nonce: z.string(),
+    url: z.string(),
+    kid: z.string().optional(),
+    jwk: z.record(z.string(), z.string()).optional()
+  })
+  .refine((data) => data.kid || data.jwk, {
+    message: "Either kid or jwk must be provided",
+    path: ["kid", "jwk"]
+  });
 
 // Raw JWS payload schema before parsing and verification
 export const RawJwsPayloadSchema = z.object({
