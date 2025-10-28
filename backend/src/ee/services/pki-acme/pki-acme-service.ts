@@ -1,14 +1,16 @@
 import { getConfig } from "@app/lib/config/env";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
-import { AcmeMalformedError, AcmeBadPublicKeyError } from "./pki-acme-errors";
+import { AcmeBadPublicKeyError, AcmeMalformedError } from "./pki-acme-errors";
 
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import { flattenedVerify, importJWK, JWK, JWSHeaderParameters } from "jose";
+import { ProtectedHeaderSchema } from "./pki-acme-schemas";
 import {
   TCreateAcmeAccountPayload,
   TCreateAcmeAccountResponse,
@@ -21,14 +23,12 @@ import {
   TGetAcmeAuthorizationResponse,
   TGetAcmeDirectoryResponse,
   TGetAcmeOrderResponse,
-  TRawJwsPayload,
+  TJwsPayload,
   TListAcmeOrdersResponse,
   TPkiAcmeServiceFactory,
-  TRespondToAcmeChallengeResponse,
-  TJwsPayload,
-  TProtectedHeader
+  TRawJwsPayload,
+  TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { flattenedVerify, importJWK, JWK, JWSHeaderParameters } from "jose";
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
@@ -52,9 +52,9 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
     return `${baseUrl}${path}`;
   };
 
-  const validateCreateAcmeAccountJwsPayload = async (rawPayload: TRawJwsPayload): Promise<TJwsPayload> => {
-    const { payload, protectedHeader } = await flattenedVerify(
-      rawPayload,
+  const validateCreateAcmeAccountJwsPayload = async (rawJwsPayload: TRawJwsPayload): Promise<TJwsPayload> => {
+    const { payload: rawPayload, protectedHeader: rawProtectedHeader } = await flattenedVerify(
+      rawJwsPayload,
       async (protectedHeader: JWSHeaderParameters | undefined) => {
         if (protectedHeader === undefined) {
           throw new AcmeMalformedError({ detail: "Protected header is required" });
@@ -68,10 +68,14 @@ export const pkiAcmeServiceFactory = ({ certificateProfileDAL }: TPkiAcmeService
         return imported;
       }
     );
+    const { success, data: protectedHeader } = ProtectedHeaderSchema.safeParse(rawProtectedHeader);
+    if (!success) {
+      throw new AcmeMalformedError({ detail: "Invalid protected header" });
+    }
     const decoder = new TextDecoder();
-    const parsedPayload = JSON.parse(decoder.decode(payload)) as TCreateAcmeAccountPayload;
+    const payload = JSON.parse(decoder.decode(rawPayload)) as TCreateAcmeAccountPayload;
     // TODO: also consume the nonce here
-    return { payload: parsedPayload, protectedHeader: protectedHeader as TProtectedHeader };
+    return { payload, protectedHeader };
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
