@@ -714,6 +714,11 @@ declare module "knex/types/tables" {
       TPkiAcmeEnrollmentConfigsInsert,
       TPkiAcmeEnrollmentConfigsUpdate
     >;
+    [TableName.PkiAcmeAccount]: KnexOriginal.CompositeTableType<
+      TPkiAcmeAccounts,
+      TPkiAcmeAccountsInsert,
+      TPkiAcmeAccountsUpdate
+    >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
       TCertificateTemplateEstConfigsInsert,
