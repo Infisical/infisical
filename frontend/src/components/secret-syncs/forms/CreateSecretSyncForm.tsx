@@ -8,13 +8,14 @@ import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import {
   SecretSync,
   SecretSyncInitialSyncBehavior,
   TSecretSync,
   useCreateSecretSync,
+  useDuplicateDestinationCheck,
   useSecretSyncOption
 } from "@app/hooks/api/secretSyncs";
 
@@ -48,6 +49,7 @@ export const CreateSecretSyncForm = ({
 }: Props) => {
   const createSecretSync = useCreateSecretSync();
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { name: destinationName } = SECRET_SYNC_MAP[destination];
 
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -106,11 +108,20 @@ export const CreateSecretSyncForm = ({
     setSelectedTabIndex((prev) => prev - 1);
   };
 
-  const { handleSubmit, trigger, control } = formMethods;
+  const { handleSubmit, trigger, control, watch } = formMethods;
+
+  const { hasDuplicate } = useDuplicateDestinationCheck({
+    destination,
+    projectId: currentProject?.id || "",
+    enabled: true,
+    destinationConfig: watch("destinationConfig")
+  });
 
   const isStepValid = async (index: number) => trigger(FORM_TABS[index].fields);
 
   const isFinalStep = selectedTabIndex === FORM_TABS.length - 1;
+  const isCreateButtonDisabled =
+    isFinalStep && hasDuplicate && currentOrg?.blockDuplicateSecretSyncDestinations;
 
   const handleNext = async () => {
     if (isFinalStep) {
@@ -245,7 +256,7 @@ export const CreateSecretSyncForm = ({
       </FormProvider>
 
       <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
-        <Button onClick={handleNext} colorSchema="secondary">
+        <Button onClick={handleNext} colorSchema="secondary" isDisabled={isCreateButtonDisabled}>
           {isFinalStep ? "Create Sync" : "Next"}
         </Button>
         {selectedTabIndex > 0 && (

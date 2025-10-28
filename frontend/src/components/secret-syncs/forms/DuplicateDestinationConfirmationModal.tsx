@@ -6,6 +6,7 @@ type Props = {
   onConfirm: () => void;
   isLoading?: boolean;
   duplicateProjectId?: string;
+  isDisabled?: boolean;
 };
 
 export const DuplicateDestinationConfirmationModal = ({
@@ -13,7 +14,8 @@ export const DuplicateDestinationConfirmationModal = ({
   onOpenChange,
   onConfirm,
   isLoading,
-  duplicateProjectId
+  duplicateProjectId,
+  isDisabled
 }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
@@ -21,7 +23,12 @@ export const DuplicateDestinationConfirmationModal = ({
         <div className="mb-4 text-sm">
           <p>
             Another secret sync in your organization is already configured with the same
-            destination. Proceeding may cause conflicts or overwrite existing data.
+            destination.{" "}
+            <span className={isDisabled ? "text-red-400" : ""}>
+              {isDisabled
+                ? "Your organization does not allow duplicate destination configurations."
+                : "Proceeding may cause conflicts or overwrite existing data."}
+            </span>
           </p>
           {duplicateProjectId && (
             <p className="mt-2 text-xs text-mineshaft-400">
@@ -31,26 +38,28 @@ export const DuplicateDestinationConfirmationModal = ({
               </code>
             </p>
           )}
-          <p className="mt-2">Are you sure you want to continue?</p>
+          {!isDisabled && <p className="mt-2">Are you sure you want to continue?</p>}
         </div>
 
-        <div className="flex items-center gap-4 pt-4">
-          <ModalClose asChild>
-            <Button
-              onClick={onConfirm}
-              colorSchema="danger"
-              isLoading={isLoading}
-              isDisabled={isLoading}
-            >
-              Continue
-            </Button>
-          </ModalClose>
-          <ModalClose asChild>
-            <Button colorSchema="secondary" variant="plain" isDisabled={isLoading}>
-              Cancel
-            </Button>
-          </ModalClose>
-        </div>
+        {!isDisabled && (
+          <div className="flex items-center gap-4 pt-4">
+            <ModalClose asChild>
+              <Button
+                onClick={onConfirm}
+                colorSchema="danger"
+                isLoading={isLoading}
+                isDisabled={isLoading}
+              >
+                Continue
+              </Button>
+            </ModalClose>
+            <ModalClose asChild>
+              <Button colorSchema="secondary" variant="plain" isDisabled={isLoading}>
+                Cancel
+              </Button>
+            </ModalClose>
+          </div>
+        )}
       </ModalContent>
     </Modal>
   );
