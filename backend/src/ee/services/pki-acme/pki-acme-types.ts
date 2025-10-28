@@ -12,7 +12,10 @@ import {
   GetAcmeAuthorizationResponseSchema,
   GetAcmeDirectoryResponseSchema,
   GetAcmeOrderResponseSchema,
+  JwsPayloadSchema,
   ListAcmeOrdersResponseSchema,
+  ProtectedHeaderSchema,
+  RawJwsPayloadSchema,
   RespondToAcmeChallengeResponseSchema
 } from "./pki-acme-schemas";
 
@@ -28,12 +31,16 @@ export type TGetAcmeAuthorizationResponse = z.infer<typeof GetAcmeAuthorizationR
 export type TRespondToAcmeChallengeResponse = z.infer<typeof RespondToAcmeChallengeResponseSchema>;
 
 // Payload types
+export type TRawJwsPayload = z.infer<typeof RawJwsPayloadSchema>;
+export type TJwsPayload = z.infer<typeof JwsPayloadSchema>;
+export type TProtectedHeader = z.infer<typeof ProtectedHeaderSchema>;
 export type TCreateAcmeAccountPayload = z.infer<typeof CreateAcmeAccountBodySchema>;
 export type TCreateAcmeOrderPayload = z.infer<typeof CreateAcmeOrderBodySchema>;
 export type TDeactivateAcmeAccountPayload = z.infer<typeof DeactivateAcmeAccountBodySchema>;
 export type TFinalizeAcmeOrderPayload = z.infer<typeof FinalizeAcmeOrderBodySchema>;
 
 export type TPkiAcmeServiceFactory = {
+  validateCreateAcmeAccountJwsPayload(body: TRawJwsPayload): Promise<TJwsPayload>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: (profileId: string, body: TCreateAcmeAccountPayload) => Promise<TCreateAcmeAccountResponse>;

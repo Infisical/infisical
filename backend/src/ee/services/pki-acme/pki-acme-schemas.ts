@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+export const ProtectedHeaderSchema = z.object({
+  alg: z.string(),
+  nonce: z.string(),
+  url: z.string(),
+  kid: z.string().optional(),
+  jwk: z.record(z.string(), z.string()).optional()
+});
+
+// Raw JWS payload schema before parsing and verification
+export const RawJwsPayloadSchema = z.object({
+  protected: z.string(),
+  payload: z.string(),
+  signature: z.string()
+});
+
+export const JwsPayloadSchema = z.object({
+  protectedHeader: ProtectedHeaderSchema,
+  payload: z.any()
+});
+
 // Directory endpoint
 export const GetAcmeDirectorySchema = z.object({
   params: z.object({
