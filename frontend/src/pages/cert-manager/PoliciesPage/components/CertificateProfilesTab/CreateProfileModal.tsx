@@ -45,7 +45,7 @@ const createSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est"]),
+    enrollmentType: z.enum(["api", "est", "acme"]),
     certificateAuthorityId: z.string().min(1, "Certificate Authority is required"),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
     estConfig: z
