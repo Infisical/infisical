@@ -5,7 +5,8 @@ import { apiRequest } from "@app/config/request";
 import {
   ExternalMigrationProviders,
   TVaultExternalMigrationConfig,
-  VaultKubernetesAuthRole
+  VaultKubernetesAuthRole,
+  VaultKubernetesRole
 } from "./types";
 
 export const externalMigrationQueryKeys = {
@@ -29,6 +30,11 @@ export const externalMigrationQueryKeys = {
   ],
   vaultKubernetesAuthRoles: (namespace?: string, mountPath?: string) => [
     "vault-kubernetes-auth-roles",
+    namespace,
+    mountPath
+  ],
+  vaultKubernetesRoles: (namespace?: string, mountPath?: string) => [
+    "vault-kubernetes-roles",
     namespace,
     mountPath
   ]
@@ -161,6 +167,33 @@ export const useGetVaultKubernetesAuthRoles = (
       const { data } = await apiRequest.get<{
         roles: VaultKubernetesAuthRole[];
       }>("/api/v3/external-migration/vault/auth-roles/kubernetes", {
+        params: {
+          namespace,
+          mountPath
+        }
+      });
+
+      return data.roles;
+    },
+    enabled: enabled && !!namespace && !!mountPath
+  });
+};
+
+export const useGetVaultKubernetesRoles = (
+  enabled = true,
+  namespace?: string,
+  mountPath?: string
+) => {
+  return useQuery({
+    queryKey: externalMigrationQueryKeys.vaultKubernetesRoles(namespace, mountPath),
+    queryFn: async () => {
+      if (!namespace || !mountPath) {
+        throw new Error("Both namespace and mountPath are required");
+      }
+
+      const { data } = await apiRequest.get<{
+        roles: VaultKubernetesRole[];
+      }>("/api/v3/external-migration/vault/kubernetes-roles", {
         params: {
           namespace,
           mountPath
