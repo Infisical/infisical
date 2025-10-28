@@ -16,7 +16,7 @@ import { buildRedisFromConfig } from "./lib/config/redis";
 import { removeTemporaryBaseDirectory } from "./lib/files";
 import { initLogger } from "./lib/logger";
 import { queueServiceFactory } from "./queue";
-import { main } from "./server/app";
+import { main, markRunningMigrations, markServerReady } from "./server/app";
 import { bootstrapCheck } from "./server/boot-strap-check";
 import { kmsRootConfigDALFactory } from "./services/kms/kms-root-config-dal";
 import { smtpServiceFactory } from "./services/smtp/smtp-service";
@@ -59,8 +59,6 @@ const run = async () => {
       })
     : undefined;
 
-  await runMigrations({ applicationDb: db, auditLogDb, logger });
-
   const smtp = smtpServiceFactory(formatSmtpConfig());
 
   const queue = queueServiceFactory(envConfig, {
@@ -74,7 +72,7 @@ const run = async () => {
   const keyStore = keyStoreFactory(envConfig, keyValueStoreDAL);
   const redis = buildRedisFromConfig(envConfig);
 
-  const server = await main({
+  const { server, completeServerInitialization } = await main({
     db,
     auditLogDb,
     superAdminDAL,
@@ -87,7 +85,6 @@ const run = async () => {
     redis,
     envConfig
   });
-  const bootstrap = await bootstrapCheck({ db });
 
   // eslint-disable-next-line
   process.on("SIGINT", async () => {
@@ -121,12 +118,46 @@ const run = async () => {
 
   await server.listen({
     port: envConfig.PORT,
-    host: envConfig.HOST,
-    listenTextResolver: (address) => {
-      void bootstrap();
-      return address;
+    host: envConfig.HOST
+  });
+
+  logger.info(`Server listening on ${envConfig.HOST}:${envConfig.PORT}`);
+  logger.info("Running migrations...");
+
+  // Run migrations while server is up
+  // All containers start as NOT HEALTHY (waiting for migrations)
+  // Container that acquires lock: becomes HEALTHY (running migrations) + NOT READY (no traffic)
+  // Other containers waiting: stay NOT HEALTHY (waiting) + NOT READY (no traffic)
+  await runMigrations({
+    applicationDb: db,
+    auditLogDb,
+    logger,
+    onMigrationLockAcquired: () => {
+      // Called after successfully acquiring the lock
+      // This container is now the migration runner
+      markRunningMigrations();
+      logger.info("Migration lock acquired! This container is running migrations.");
     }
   });
+
+  logger.info("Migrations complete. Completing server initialization...");
+
+  try {
+    await completeServerInitialization();
+  } catch (error) {
+    logger.error(error, "Failed to complete server initialization");
+    await server.close();
+    await queue.shutdown();
+    process.exit(1);
+  }
+
+  logger.info("Server initialization complete. Marking server as READY...");
+
+  markServerReady();
+
+  logger.info("Server is ready to accept traffic");
+  const bootstrap = await bootstrapCheck({ db });
+  void bootstrap();
 };
 
 void run();
