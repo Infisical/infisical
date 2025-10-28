@@ -1,7 +1,8 @@
 import { useFormContext } from "react-hook-form";
 
 import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
-import { Badge, GenericFieldLabel } from "@app/components/v2";
+import { GenericFieldLabel } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
 export const CoolifySyncOptionsReviewFields = () => {
