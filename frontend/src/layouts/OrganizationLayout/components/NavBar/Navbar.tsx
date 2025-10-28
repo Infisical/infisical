@@ -146,7 +146,9 @@ export const Navbar = () => {
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
   const isCardDeclinedMoreThan30Days = Boolean(
-    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
+    isCardDeclined &&
+      subscription?.cardDeclinedDays !== undefined &&
+      subscription?.cardDeclinedDays >= 30
   );
 
   const { data: orgs } = useGetOrganizations();
@@ -161,10 +163,10 @@ export const Navbar = () => {
   const location = useLocation();
   const isBillingPage = location.pathname === "/organization/billing";
 
-  const makeModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
+  const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
 
   useEffect(() => {
-    if (makeModalIntrusive) {
+    if (isModalIntrusive) {
       setShowCardDeclinedModal(true);
       sessionStorage.setItem("paymentFailed", "true");
       return;
@@ -174,7 +176,8 @@ export const Navbar = () => {
       sessionStorage.setItem("paymentFailed", "true");
       setShowCardDeclinedModal(true);
     }
-  }, [subscription, isBillingPage]);
+  }, [subscription, isBillingPage, isModalIntrusive]);
+
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
@@ -700,7 +703,7 @@ export const Navbar = () => {
 
       <Modal
         isOpen={showCardDeclinedModal}
-        onOpenChange={() => !makeModalIntrusive && setShowCardDeclinedModal(false)}
+        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
       >
         <ModalContent
           title={
@@ -709,7 +712,7 @@ export const Navbar = () => {
               Your payment could not be processed.
             </div>
           }
-          showCloseButton={!makeModalIntrusive}
+          showCloseButton={!isModalIntrusive}
         >
           <div>
             <div>
@@ -731,7 +734,7 @@ export const Navbar = () => {
                       Update Payment Method
                     </Button>
                   </Link>
-                  {!makeModalIntrusive && (
+                  {!isModalIntrusive && (
                     <Button
                       colorSchema="secondary"
                       variant="outline"
