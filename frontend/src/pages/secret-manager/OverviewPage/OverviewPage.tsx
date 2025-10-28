@@ -1174,8 +1174,7 @@ export const OverviewPage = () => {
                             }
                             handlePopUpOpen("upgradePlan", {
                               isEnterpriseFeature: true,
-                              description:
-                                "You can add dynamic secrets if you switch to Infisical's Enterprise plan."
+                              text: "Adding dynamic secrets can be unlocked if you upgrade to Infisical Enterprise plan."
                             });
                           }}
                           isDisabled={userAvailableDynamicSecretEnvs.length === 0}
@@ -1200,8 +1199,7 @@ export const OverviewPage = () => {
                               return;
                             }
                             handlePopUpOpen("upgradePlan", {
-                              description:
-                                "You can add secret rotations if you switch to Infisical's Pro plan."
+                              text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
                             });
                           }}
                           isDisabled={userAvailableSecretRotationEnvs.length === 0}
@@ -1687,7 +1685,7 @@ export const OverviewPage = () => {
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.description}
+          text={popUp.upgradePlan.data?.text}
         />
       )}
       <CreateSecretRotationV2Modal

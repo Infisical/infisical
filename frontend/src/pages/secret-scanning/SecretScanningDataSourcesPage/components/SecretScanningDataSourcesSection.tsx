@@ -96,7 +96,7 @@ export const SecretScanningDataSourcesSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can create Data Sources by upgrading to Infisical's Enterprise plan."
+        text="Creating data sources can be unlocked if you upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>

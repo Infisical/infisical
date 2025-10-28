@@ -190,8 +190,7 @@ export const Page = () => {
             isMembershipDetailsLoading={isMembershipDetailsLoading}
             onOpenUpgradeModal={() =>
               handlePopUpOpen("upgradePlan", {
-                description:
-                  "You can assign custom roles to members if you switch to Infisical's Pro plan."
+                text: "Your current plan does not provide access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
               })
             }
           />
@@ -215,7 +214,7 @@ export const Page = () => {
           <UpgradePlanModal
             isOpen={popUp.upgradePlan.isOpen}
             onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-            text={(popUp.upgradePlan?.data as { description: string })?.description}
+            text={popUp.upgradePlan?.data?.text}
           />
         </>
       ) : (

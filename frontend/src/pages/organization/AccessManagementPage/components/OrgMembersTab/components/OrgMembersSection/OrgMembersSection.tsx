@@ -75,7 +75,7 @@ export const OrgMembersSection = () => {
 
     if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
-        description: "You can add more members if you switch to Infisical's Pro plan."
+        text: "You have reached the limit of members allowed on your current plan. To add more members, please upgrade to Infisical Pro plan."
       });
       return;
     }
@@ -324,7 +324,7 @@ export const OrgMembersSection = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={(popUp.upgradePlan?.data as { description: string })?.description}
+          text={(popUp.upgradePlan?.data as { text: string })?.text}
         />
         <EmailServiceSetupModal
           isOpen={popUp.setUpEmail?.isOpen}

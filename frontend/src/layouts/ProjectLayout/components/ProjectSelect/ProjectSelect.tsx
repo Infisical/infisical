@@ -243,7 +243,7 @@ export const ProjectSelect = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have exceeded the number of projects allowed on the free plan."
+        text="Your current plan does not allow you to create new projects. To create new projects, please upgrade to Infisical Pro plan."
       />
       <NewProjectModal
         isOpen={popUp.addNewWs.isOpen}

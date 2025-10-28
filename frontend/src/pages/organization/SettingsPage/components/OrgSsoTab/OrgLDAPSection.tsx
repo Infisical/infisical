@@ -191,7 +191,7 @@ export const OrgLDAPSection = (): JSX.Element => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use LDAP authentication if you switch to Infisical's Enterprise plan."
+        text="Your current plan does not provide access to LDAP authentication. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>

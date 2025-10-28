@@ -432,7 +432,9 @@ export const ServerAdminsTable = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={`${popUp?.upgradePlan?.data?.message} is only available on Infisical's Pro plan and above.`}
+          text={
+            "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+          }
         />
         <DeleteActionModal
           isOpen={popUp.removeUsers.isOpen}

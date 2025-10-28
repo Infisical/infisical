@@ -82,7 +82,7 @@ type Props = {
     data?: {
       orgMembershipId?: string;
       username?: string;
-      description?: string;
+      text?: string;
       selectedOrgMemberships?: OrgUser[];
     }
   ) => void;
@@ -133,8 +133,7 @@ export const OrgMembersTable = ({
 
       if (isCustomRole && subscription && !subscription?.rbac) {
         handlePopUpOpen("upgradePlan", {
-          description:
-            "You can assign custom roles to members if you switch to Infisical's Pro plan."
+          text: "Your current plan does not allow assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
         });
         return;
       }
