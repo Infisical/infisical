@@ -8,7 +8,7 @@ import path from "path";
 import { seedData1 } from "@app/db/seed-data";
 import { getDatabaseCredentials, getHsmConfig, initEnvConfig } from "@app/lib/config/env";
 import { initLogger } from "@app/lib/logger";
-import { main, markServerReady } from "@app/server/app";
+import { main } from "@app/server/app";
 import { AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 
 import { mockSmtpServer } from "./mocks/smtp";
@@ -83,7 +83,7 @@ export default {
 
       await queue.initialize();
 
-      const { server, completeServerInitialization } = await main({
+      const server = await main({
         db,
         smtp,
         logger,
@@ -95,10 +95,6 @@ export default {
         redis,
         envConfig: envCfg
       });
-
-      await completeServerInitialization();
-
-      markServerReady();
 
       await bootstrapCheck({ db });
 

@@ -137,33 +137,6 @@ Configure database read replicas for high availability PostgreSQL setups:
 DB_READ_REPLICAS='[{"DB_CONNECTION_URI":"postgresql://user:pass@replica:5432/db?sslmode=require"}]'
 ```
 
-### Health Check Endpoints
-
-Infisical provides two health check endpoints for proper container orchestration and load balancer integration:
-
-#### `/api/health` - Container Health Check
-
-Determines whether the application container should be kept alive or terminated.
-
-- Returns `200` if the application is running and operational
-- Returns `200` even during startup tasks
-- Returns `503` only if the application has crashed or is unable to start
-
-**Use for**: Docker health checks, Kubernetes liveness probes, ECS task health checks.
-
-#### `/api/ready` - Traffic Readiness Check
-
-Determines whether the application instance is ready to receive production traffic.
-
-- Returns `200` when the application is fully ready to serve requests
-- Returns `503` during startup tasks (e.g., database migrations, initialization)
-
-**Use for**: Load balancer health checks, Kubernetes readiness probes, ALB target health checks.
-
-#### Why Two Endpoints?
-
-Using both endpoints together enables zero-downtime deployments: containers stay alive during startup tasks (`/api/health` returns `200`) while load balancers avoid sending traffic to instances that aren't ready (`/api/ready` returns `503`). This ensures existing instances continue serving traffic until new instances complete their initialization.
-
 ### Operational Security
 
 #### User Access Management
@@ -234,16 +207,13 @@ docker run --memory=1g --cpus=0.5 infisical/infisical:latest
 
 #### Health Monitoring
 
-**Configure health checks**. Set up Docker health checks using the appropriate endpoint:
+**Configure health checks**. Set up Docker health checks:
 
 ```dockerfile
 # In Dockerfile or docker-compose.yml
-# Use /api/health for container health (keeps container alive during startup)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8080/api/health || exit 1
+  CMD curl -f http://localhost:8080/api/status || exit 1
 ```
-
-**Note**: Use `/api/health` for container health checks and `/api/ready` for load balancer readiness checks. See [Health Check Endpoints](#health-check-endpoints) for detailed information.
 
 #### Network Security
 
@@ -463,31 +433,25 @@ stringData:
 
 #### Health Monitoring
 
-**Set up health checks**. Configure readiness and liveness probes using the appropriate endpoints:
+**Set up health checks**. Configure readiness and liveness probes:
 
 ```yaml
 # Health check configuration
 containers:
   - name: infisical
-    # Use /api/ready for readiness (traffic routing)
     readinessProbe:
       httpGet:
-        path: /api/ready
+        path: /api/status
         port: 8080
       initialDelaySeconds: 10
       periodSeconds: 5
-      failureThreshold: 3
-    # Use /api/health for liveness (container restart)
     livenessProbe:
       httpGet:
-        path: /api/health
+        path: /api/status
         port: 8080
       initialDelaySeconds: 30
       periodSeconds: 10
-      failureThreshold: 3
 ```
-
-**Important**: The `readinessProbe` uses `/api/ready` to ensure traffic is only sent to pods that are fully initialized. The `livenessProbe` uses `/api/health` to keep the container alive during startup. See [Health Check Endpoints](#health-check-endpoints) for detailed information.
 
 #### Infrastructure Considerations
 
