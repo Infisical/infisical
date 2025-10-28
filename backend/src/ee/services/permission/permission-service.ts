@@ -337,6 +337,12 @@ export const permissionServiceFactory = ({
       throw new NotFoundError({ message: `Project with ${projectId} not found` });
     }
 
+    requestContext.set("projectDetails", {
+      id: projectDetails.id,
+      name: projectDetails.name,
+      slug: projectDetails.slug
+    });
+
     if (projectDetails.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
     }

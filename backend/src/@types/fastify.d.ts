@@ -136,8 +136,20 @@ declare module "@fastify/request-context" {
   interface RequestContextData {
     reqId: string;
     orgId?: string;
+    orgName?: string;
+    userAuthInfo?: {
+      userId: string;
+      email: string;
+    };
+    projectDetails?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
     identityAuthInfo?: {
       identityId: string;
+      identityName: string;
+      authMethod: string;
       oidc?: {
         claims: Record<string, string>;
       };
