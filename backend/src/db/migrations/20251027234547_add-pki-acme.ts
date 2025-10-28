@@ -169,9 +169,9 @@ export async function down(knex: Knex): Promise<void> {
     // here because knex will generate a constraint name without quotes, and it will be treated as lowercased and causing problems.
     await knex.raw(
       `ALTER TABLE ??
-          ADD CONSTRAINT ?? CHECK (enrollmentType IN ('api', 'est'));
+          ADD CONSTRAINT ?? CHECK (?? IN ('api', 'est'));
       `,
-      [TableName.PkiCertificateProfile, OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT]
+      [TableName.PkiCertificateProfile, OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT, "enrollmentType"]
     );
   }
 
