@@ -1,6 +1,9 @@
 import { Knex } from "knex";
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
+import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
+
+const ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollmentType_check";
 
 export async function up(knex: Knex): Promise<void> {
   // Create PkiAcmeEnrollmentConfig table
@@ -21,8 +24,13 @@ export async function up(knex: Knex): Promise<void> {
       t.foreign("acmeConfigId").references("id").inTable(TableName.PkiAcmeEnrollmentConfig).onDelete("SET NULL");
       t.index("acmeConfigId");
     });
-    // TODO: should update (or add?) the constraints to check at least one of
-    //       the enrollment config id is set and it matches the enrollment type?
+  }
+
+  await dropConstraintIfExists(TableName.PkiCertificateProfile, ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
+  if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "enrollmentType")) {
+    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
+      t.string("enrollmentType").checkIn(["api", "est", "acme"], ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
+    });
   }
 
   // Create PkiAcmeAccount table
@@ -121,14 +129,6 @@ export async function up(knex: Knex): Promise<void> {
 export async function down(knex: Knex): Promise<void> {
   // Drop tables in reverse dependency order
 
-  if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "acmeConfigId")) {
-    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-      t.dropForeign(["acmeConfigId"]);
-      t.dropIndex("acmeConfigId");
-      t.dropColumn("acmeConfigId");
-    });
-  }
-
   // Drop PkiAcmeChallenge first (depends on PkiAcmeAuth)
   if (await knex.schema.hasTable(TableName.PkiAcmeChallenge)) {
     await knex.schema.dropTable(TableName.PkiAcmeChallenge);
@@ -151,6 +151,23 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.PkiAcmeAccount)) {
     await knex.schema.dropTable(TableName.PkiAcmeAccount);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeAccount);
+  }
+
+  // Change enrollmentType check constraint to only allow api and est
+  await dropConstraintIfExists(TableName.PkiCertificateProfile, ENROLLMENT_TYPE_CHECK_CONSTRAINT, knex);
+  if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "enrollmentType")) {
+    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
+      t.string("enrollmentType").checkIn(["api", "est"], ENROLLMENT_TYPE_CHECK_CONSTRAINT).alter();
+    });
+  }
+
+  // Drop acmeConfigId column
+  if (await knex.schema.hasColumn(TableName.PkiCertificateProfile, "acmeConfigId")) {
+    await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
+      t.dropForeign(["acmeConfigId"]);
+      t.dropIndex("acmeConfigId");
+      t.dropColumn("acmeConfigId");
+    });
   }
 
   // Drop PkiAcmeEnrollmentConfig
