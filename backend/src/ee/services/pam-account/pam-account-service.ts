@@ -685,6 +685,8 @@ export const pamAccountServiceFactory = ({
                 }
               }
             });
+
+            throw error;
           }
         })
       );
