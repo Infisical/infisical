@@ -5,10 +5,13 @@
 
 import { z } from "zod";
 
+import { zodBuffer } from "@app/lib/zod";
+
 import { TImmutableDBKeys } from "./models";
 
 export const PkiAcmeEnrollmentConfigsSchema = z.object({
   id: z.string().uuid(),
+  encryptedEabSecret: zodBuffer,
   createdAt: z.date(),
   updatedAt: z.date()
 });
