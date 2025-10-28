@@ -54,8 +54,8 @@ export async function up(knex: Knex): Promise<void> {
       // Multi-value emails array
       t.specificType("emails", "text[]").notNullable();
 
-      // Public key (PEM format)
-      t.text("publicKey").notNullable();
+      // Public key (JWK format)
+      t.jsonb("publicKey").notNullable();
 
       t.timestamps(true, true, true);
     });
