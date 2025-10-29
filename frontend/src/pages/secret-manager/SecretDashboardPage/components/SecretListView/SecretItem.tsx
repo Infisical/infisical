@@ -1,5 +1,4 @@
 /* eslint-disable no-nested-ternary */
-/* eslint-disable simple-import-sort/imports */
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -50,6 +49,8 @@ import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
 import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
 import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
+import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
+
 import { FontAwesomeSpriteName, formSchema, TFormSchema } from "./SecretListView.utils";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
@@ -295,11 +296,14 @@ export const SecretItem = memo(
     const createPersonalSecretOverride = useCreatePersonalSecretOverride(currentProject.id);
 
     const handleAddPersonalOverride = () => {
-      createPersonalSecretOverride({
-        key: originalSecret.key,
-        environment,
-        secretPath
-      });
+      createPersonalSecretOverride(
+        {
+          key: originalSecret.key,
+          environment,
+          secretPath
+        },
+        secretValueData?.value
+      );
     };
 
     const handleFormSubmit = async (data: TFormSchema) => {
@@ -479,25 +483,18 @@ export const SecretItem = memo(
                         key="actions"
                         className="flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
                       >
-                        <IconButton
+                        <InlineActionIconButton
                           isDisabled={secret.secretValueHidden}
-                          ariaLabel="copy-value"
-                          variant="plain"
-                          size="sm"
-                          className="w-0 overflow-hidden p-0 group-hover:w-5"
+                          hint="Copy secret"
+                          icon={
+                            isSecretValueCopied
+                              ? FontAwesomeSpriteName.Check
+                              : FontAwesomeSpriteName.ClipboardCopy
+                          }
                           onClick={copySecretToClipboard}
-                        >
-                          <Tooltip content="Copy secret">
-                            <FontAwesomeSymbol
-                              className="h-3.5 w-3"
-                              symbolName={
-                                isSecretValueCopied
-                                  ? FontAwesomeSpriteName.Check
-                                  : FontAwesomeSpriteName.ClipboardCopy
-                              }
-                            />
-                          </Tooltip>
-                        </IconButton>
+                          revealOnGroupHover
+                        />
+
                         <ProjectPermissionCan
                           I={ProjectPermissionActions.Edit}
                           a={subject(ProjectPermissionSub.Secrets, {
@@ -508,45 +505,32 @@ export const SecretItem = memo(
                           })}
                         >
                           {(isAllowed) => (
-                            <IconButton
-                              className={twMerge(
-                                "w-0 overflow-hidden p-0 group-hover:w-5",
-                                secret.reminder && "w-5 text-primary"
-                              )}
-                              onClick={() => handlePopUpOpen("reminder")}
-                              variant="plain"
-                              size="md"
-                              ariaLabel="Secret reminder"
+                            <InlineActionIconButton
                               isDisabled={!isAllowed}
-                            >
-                              <Tooltip
-                                className="max-w-2xl"
-                                content={
-                                  secret.reminder ? (
-                                    <div className="flex flex-col gap-y-1">
-                                      <GenericFieldLabel label="Reminder Date">
-                                        {secret.reminder.nextReminderDate
-                                          ? format(
-                                              new Date(secret.reminder.nextReminderDate),
-                                              "h:mm aa - MMM d yyyy"
-                                            )
-                                          : undefined}
-                                      </GenericFieldLabel>
-                                      <GenericFieldLabel label="Message">
-                                        {secret.reminder.message}
-                                      </GenericFieldLabel>
-                                    </div>
-                                  ) : (
-                                    "Set Secret Reminder"
-                                  )
-                                }
-                              >
-                                <FontAwesomeSymbol
-                                  className="h-3.5 w-3.5"
-                                  symbolName={FontAwesomeSpriteName.Reminder}
-                                />
-                              </Tooltip>
-                            </IconButton>
+                              revealOnGroupHover
+                              onClick={() => handlePopUpOpen("reminder")}
+                              className={secret?.reminder && "text-primary"}
+                              icon={FontAwesomeSpriteName.Reminder}
+                              hint={
+                                secret.reminder ? (
+                                  <div className="flex flex-col gap-y-1">
+                                    <GenericFieldLabel label="Reminder Date">
+                                      {secret.reminder.nextReminderDate
+                                        ? format(
+                                            new Date(secret.reminder.nextReminderDate),
+                                            "h:mm aa - MMM d yyyy"
+                                          )
+                                        : undefined}
+                                    </GenericFieldLabel>
+                                    <GenericFieldLabel label="Message">
+                                      {secret.reminder.message}
+                                    </GenericFieldLabel>
+                                  </div>
+                                ) : (
+                                  "Set Secret Reminder"
+                                )
+                              }
+                            />
                           )}
                         </ProjectPermissionCan>
                         <DropdownMenu>
@@ -630,35 +614,26 @@ export const SecretItem = memo(
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                        {!hasOverride && (
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Create}
-                            a={subject(ProjectPermissionSub.Secrets, {
-                              environment,
-                              secretPath,
-                              secretName,
-                              secretTags: selectedTagSlugs
-                            })}
-                          >
-                            {(isAllowed) => (
-                              <IconButton
-                                ariaLabel="add-personal-override"
-                                isDisabled={!isAllowed}
-                                variant="plain"
-                                size="sm"
-                                onClick={handleAddPersonalOverride}
-                                className="w-0 overflow-hidden p-0 group-hover:w-5"
-                              >
-                                <Tooltip content="Add Override">
-                                  <FontAwesomeSymbol
-                                    symbolName={FontAwesomeSpriteName.Override}
-                                    className="h-3.5 w-3.5"
-                                  />
-                                </Tooltip>
-                              </IconButton>
-                            )}
-                          </ProjectPermissionCan>
-                        )}
+                        <ProjectPermissionCan
+                          I={ProjectPermissionActions.Create}
+                          a={subject(ProjectPermissionSub.Secrets, {
+                            environment,
+                            secretPath,
+                            secretName,
+                            secretTags: selectedTagSlugs
+                          })}
+                        >
+                          {(isAllowed) => (
+                            <InlineActionIconButton
+                              hint="Add Override"
+                              isHidden={hasOverride}
+                              icon={FontAwesomeSpriteName.Override}
+                              isDisabled={!isAllowed}
+                              onClick={handleAddPersonalOverride}
+                              revealOnGroupHover
+                            />
+                          )}
+                        </ProjectPermissionCan>
                         <Popover>
                           <ProjectPermissionCan
                             I={ProjectPermissionActions.Edit}
@@ -691,21 +666,13 @@ export const SecretItem = memo(
                               </PopoverTrigger>
                             )}
                           </ProjectPermissionCan>
-                          <IconButton
+                          <InlineActionIconButton
                             isDisabled={secret.secretValueHidden || !currentProject.secretSharing}
-                            className="w-0 overflow-hidden p-0 group-hover:w-5"
-                            variant="plain"
-                            size="md"
-                            ariaLabel="share-secret"
+                            revealOnGroupHover
                             onClick={openCreateSharedSecretPopup}
-                          >
-                            <Tooltip content="Share Secret">
-                              <FontAwesomeSymbol
-                                className="h-3.5 w-3.5"
-                                symbolName={FontAwesomeSpriteName.ShareSecret}
-                              />
-                            </Tooltip>
-                          </IconButton>
+                            icon={FontAwesomeSpriteName.ShareSecret}
+                            hint="Share Secret"
+                          />
                           <PopoverContent
                             className="w-auto border border-mineshaft-600 bg-mineshaft-800 p-2 drop-shadow-2xl"
                             sticky="always"
