@@ -33,7 +33,6 @@ import {
   TGetAcmeDirectoryResponse,
   TGetAcmeOrderResponse,
   TJwsPayload,
-  TJwsPayloadWithJwk,
   TListAcmeOrdersResponse,
   TPkiAcmeServiceFactory,
   TRawJwsPayload,
@@ -74,15 +73,13 @@ export const pkiAcmeServiceFactory = ({
     rawJwsPayload: TRawJwsPayload,
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
     schema: z.ZodSchema<T>
-  ): Promise<TJwsPayload> => {
+  ): Promise<TJwsPayload<T>> => {
     let result: FlattenedVerifyResult;
     try {
       result = await flattenedVerify(rawJwsPayload, async (protectedHeader: JWSHeaderParameters | undefined) => {
         if (protectedHeader === undefined) {
           throw new AcmeMalformedError({ detail: "Protected header is required" });
         }
-        const parsedHeader = ProtectedHeaderSchema.parse(protectedHeader);
-        // TODO: consume the nonce here
         const jwk = await getJWK(protectedHeader);
         return await importJWK(jwk, protectedHeader.alg);
       });
@@ -96,15 +93,12 @@ export const pkiAcmeServiceFactory = ({
       logger.error(error, "Unexpected error while verifying JWS payload");
       throw new AcmeServerInternalError({ detail: "Failed to verify JWS payload" });
     }
-    const { payload: rawPayload, protectedHeader: rawProtectedHeader } = result!;
-    const { success, data: protectedHeader } = ProtectedHeaderSchema.safeParse(rawProtectedHeader);
-    if (!success) {
-      throw new AcmeMalformedError({ detail: "Invalid protected header" });
-    }
-
-    const decoder = new TextDecoder();
-    const jsonPayload = JSON.parse(decoder.decode(rawPayload));
+    const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
+      const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      // TODO: consume the nonce here
+      const decoder = new TextDecoder();
+      const jsonPayload = JSON.parse(decoder.decode(rawPayload));
       const payload = schema.parse(jsonPayload);
       return {
         protectedHeader,
@@ -297,7 +291,7 @@ export const pkiAcmeServiceFactory = ({
   };
 
   return {
-    validateCreateAcmeAccountJwsPayload,
+    validateJwsPayload,
     getAcmeDirectory,
     getAcmeNewNonce,
     createAcmeAccount,
