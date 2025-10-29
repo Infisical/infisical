@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
+import { AcmeBadPublicKeyError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
   CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
@@ -24,15 +25,11 @@ import {
   RespondToAcmeChallengeResponseSchema,
   RespondToAcmeChallengeSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
-import { TCreateAcmeAccountPayload, TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
+import { TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { AcmeBadPublicKeyError } from "@app/ee/services/pki-acme/pki-acme-errors";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
-  const appCfg = getConfig();
-
   server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
