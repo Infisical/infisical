@@ -2,47 +2,50 @@ import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
 import fp from "fastify-plugin";
 
+const apiMeter = opentelemetry.metrics.getMeter("API");
+
+const latencyHistogram = apiMeter.createHistogram("API_latency", {
+  unit: "ms"
+});
+
+const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+
+const requestCounter = infisicalMeter.createCounter("infisical.http.server.request.count", {
+  description: "Total number of API requests to Infisical (covers both human users and machine identities)",
+  unit: "{request}"
+});
+
+const requestDurationHistogram = infisicalMeter.createHistogram("infisical.http.server.request.duration", {
+  description: "API request latency",
+  unit: "s"
+});
+
 export const apiMetrics = fp(async (fastify) => {
-  const apiMeter = opentelemetry.metrics.getMeter("API");
-
-  const latencyHistogram = apiMeter.createHistogram("API_latency", {
-    unit: "ms"
-  });
-
-  const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
-
-  const requestCounter = infisicalMeter.createCounter("infisical.http.server.request.count", {
-    description: "Total number of API requests to Infisical (covers both human users and machine identities)",
-    unit: "{request}"
-  });
-
   fastify.addHook("onResponse", async (request, reply) => {
     const { method } = request;
     const route = request.routerPath;
     const { statusCode } = reply;
 
-    // Record latency
     latencyHistogram.record(reply.elapsedTime, {
       route,
       method,
       statusCode
     });
 
-    // Get context data
     const orgId = requestContext.get("orgId");
     const orgName = requestContext.get("orgName");
     const userAuthInfo = requestContext.get("userAuthInfo");
     const identityAuthInfo = requestContext.get("identityAuthInfo");
     const projectDetails = requestContext.get("projectDetails");
+    const userAgent = requestContext.get("userAgent");
+    const ip = requestContext.get("ip");
 
-    // Build attributes object
     const attributes: Record<string, string | number> = {
       "http.request.method": method,
       "http.route": route,
       "http.response.status_code": statusCode
     };
 
-    // Add organization info
     if (orgId) {
       attributes["infisical.organization.id"] = orgId;
     }
@@ -50,7 +53,6 @@ export const apiMetrics = fp(async (fastify) => {
       attributes["infisical.organization.name"] = orgName;
     }
 
-    // Add user info (for human users)
     if (userAuthInfo) {
       if (userAuthInfo.userId) {
         attributes["infisical.user.id"] = userAuthInfo.userId;
@@ -60,7 +62,6 @@ export const apiMetrics = fp(async (fastify) => {
       }
     }
 
-    // Add identity info (for machine identities)
     if (identityAuthInfo) {
       if (identityAuthInfo.identityId) {
         attributes["infisical.identity.id"] = identityAuthInfo.identityId;
@@ -73,7 +74,6 @@ export const apiMetrics = fp(async (fastify) => {
       }
     }
 
-    // Add project info
     if (projectDetails) {
       if (projectDetails.id) {
         attributes["infisical.project.id"] = projectDetails.id;
@@ -83,17 +83,15 @@ export const apiMetrics = fp(async (fastify) => {
       }
     }
 
-    // Add user agent
-    const userAgent = request.headers["user-agent"];
     if (userAgent) {
       attributes["user_agent.original"] = userAgent;
     }
 
-    // Add client IP address
-    if (request.realIp) {
-      attributes["client.address"] = request.realIp;
+    if (ip) {
+      attributes["client.address"] = ip;
     }
 
     requestCounter.add(1, attributes);
+    requestDurationHistogram.record(reply.elapsedTime / 1000, attributes);
   });
 });
