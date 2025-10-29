@@ -170,7 +170,9 @@ export const KmipClientTable = () => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   if (subscription && !subscription.kmip) {
-                    handlePopUpOpen("upgradePlan");
+                    handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true
+                    });
                     return;
                   }
 
@@ -343,6 +345,7 @@ export const KmipClientTable = () => {
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           text="KMIP requires an enterprise plan."
+          isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />
       </div>
     </motion.div>

@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   Button,
   Checkbox,
   EmptyState,
@@ -20,6 +19,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import {
   CertStatus,

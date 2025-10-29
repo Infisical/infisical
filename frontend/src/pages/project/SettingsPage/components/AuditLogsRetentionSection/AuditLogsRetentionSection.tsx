@@ -42,7 +42,8 @@ export const AuditLogsRetentionSection = () => {
     try {
       if (!subscription?.auditLogs) {
         handlePopUpOpen("upgradePlan", {
-          description: "You can only configure audit logs retention if you upgrade your plan."
+          description:
+            "You can only configure audit logs retention if you switch to Infisical's Pro plan."
         });
 
         return;
@@ -51,7 +52,7 @@ export const AuditLogsRetentionSection = () => {
       if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
         handlePopUpOpen("upgradePlan", {
           description:
-            "To update your audit logs retention period to a higher value, upgrade your plan."
+            "To update your audit logs retention period to a higher value, switch to Infisical's Pro plan."
         });
 
         return;

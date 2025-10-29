@@ -14,7 +14,8 @@ import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Badge, IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { TCloudIntegration } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
@@ -103,7 +104,7 @@ export const IntegrationRow = ({
       <Td>
         {" "}
         {typeof integration.isSynced !== "boolean" ? (
-          <Badge variant="primary" key={integration.id}>
+          <Badge variant="info" key={integration.id}>
             Pending Sync
           </Badge>
         ) : (

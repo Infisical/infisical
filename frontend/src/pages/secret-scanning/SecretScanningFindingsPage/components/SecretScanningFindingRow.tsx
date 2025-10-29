@@ -7,7 +7,6 @@ import { twMerge } from "tailwind-merge";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   Checkbox,
   DropdownMenu,
@@ -20,19 +19,17 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionSecretScanningFindingActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import {
   SECRET_SCANNING_DATA_SOURCE_MAP,
-  SECRET_SCANNING_FINDING_STATUS_ICON_MAP
+  SECRET_SCANNING_FINDING_STATUS_MAP
 } from "@app/helpers/secretScanningV2";
 import { useToggle } from "@app/hooks";
-import {
-  SecretScanningFindingStatus,
-  TSecretScanningFinding
-} from "@app/hooks/api/secretScanningV2";
+import { TSecretScanningFinding } from "@app/hooks/api/secretScanningV2";
 
 type Props = {
   isSelected: boolean;
@@ -83,6 +80,8 @@ export const SecretScanningFindingRow = ({
 
   const [isExpanded, setIsExpanded] = useToggle(false);
 
+  const StatusIcon = SECRET_SCANNING_FINDING_STATUS_MAP[status].Icon;
+
   return (
     <>
       <Tr
@@ -127,20 +126,10 @@ export const SecretScanningFindingRow = ({
         <Td className="whitespace-nowrap">{rule}</Td>
         <Td className="whitespace-nowrap">
           <Tooltip position="left" content={remarks}>
-            <div className="w-min">
-              <Badge
-                variant={status === SecretScanningFindingStatus.Resolved ? "success" : "primary"}
-                className={twMerge(
-                  "flex h-5 w-min items-center gap-1.5 whitespace-nowrap",
-                  (status === SecretScanningFindingStatus.FalsePositive ||
-                    status === SecretScanningFindingStatus.Ignore) &&
-                    "bg-mineshaft-400/50 text-bunker-300"
-                )}
-              >
-                <FontAwesomeIcon icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].icon} />
-                <span className="capitalize">{status.replace("-", " ")}</span>
-              </Badge>
-            </div>
+            <Badge variant={SECRET_SCANNING_FINDING_STATUS_MAP[status].variant}>
+              <StatusIcon />
+              <span className="capitalize">{status.replace("-", " ")}</span>
+            </Badge>
           </Tooltip>
         </Td>
         <Td>
@@ -172,7 +161,7 @@ export const SecretScanningFindingRow = ({
         </Td>
       </Tr>
       <Tr>
-        <Td colSpan={6} className="border-none! p-0">
+        <Td colSpan={7} className="border-none! p-0">
           <div
             className={`w-full overflow-hidden bg-mineshaft-900/75 transition-all duration-500 ${
               isExpanded ? "max-h-200 opacity-100" : "max-h-0"
@@ -225,9 +214,11 @@ export const SecretScanningFindingRow = ({
                     colorSchema="secondary"
                     isDisabled={!isAllowed}
                     leftIcon={
-                      <FontAwesomeIcon
-                        className={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].className}
-                        icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].icon}
+                      <StatusIcon
+                        className={twMerge(
+                          "size-4",
+                          SECRET_SCANNING_FINDING_STATUS_MAP[status].className
+                        )}
                       />
                     }
                   >

@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { DynamicSecretLeasesSchema } from "@app/db/schemas";
 import { ApiDocsTags, DYNAMIC_SECRET_LEASES } from "@app/lib/api-docs";
-import { daysToMillisecond } from "@app/lib/dates";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -32,8 +31,8 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
             const valMs = ms(val);
             if (valMs < 60 * 1000)
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-            if (valMs > daysToMillisecond(1))
-              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+            if (valMs > ms("10y"))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
           }),
         path: z.string().trim().default("/").transform(removeTrailingSlash).describe(DYNAMIC_SECRET_LEASES.CREATE.path),
         environmentSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.CREATE.environmentSlug),
@@ -127,8 +126,8 @@ export const registerDynamicSecretLeaseRouter = async (server: FastifyZodProvide
             const valMs = ms(val);
             if (valMs < 60 * 1000)
               ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be a greater than 1min" });
-            if (valMs > daysToMillisecond(1))
-              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than a day" });
+            if (valMs > ms("10y"))
+              ctx.addIssue({ code: z.ZodIssueCode.custom, message: "TTL must be less than 10 years" });
           }),
         projectSlug: z.string().min(1).describe(DYNAMIC_SECRET_LEASES.RENEW.projectSlug),
         path: z

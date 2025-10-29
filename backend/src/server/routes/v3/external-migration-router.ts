@@ -395,6 +395,56 @@ export const registerExternalMigrationRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
+    url: "/vault/kubernetes-roles",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      querystring: z.object({
+        namespace: z.string(),
+        mountPath: z.string()
+      }),
+      response: {
+        200: z.object({
+          roles: z.array(
+            z.object({
+              name: z.string(),
+              mountPath: z.string(),
+              allowed_kubernetes_namespaces: z.array(z.string()).nullish(),
+              allowed_kubernetes_namespace_selector: z.string().nullish(),
+              token_max_ttl: z.number().nullish(),
+              token_default_ttl: z.number().nullish(),
+              token_default_audiences: z.array(z.string()).nullish(),
+              service_account_name: z.string().nullish(),
+              kubernetes_role_name: z.string().nullish(),
+              kubernetes_role_type: z.string().nullish(),
+              generated_role_rules: z.string().nullish(),
+              name_template: z.string().nullish(),
+              extra_annotations: z.record(z.string()).nullish(),
+              extra_labels: z.record(z.string()).nullish(),
+              config: z.object({
+                kubernetes_host: z.string(),
+                kubernetes_ca_cert: z.string().nullish()
+              })
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const roles = await server.services.migration.getVaultKubernetesRoles({
+        actor: req.permission,
+        namespace: req.query.namespace,
+        mountPath: req.query.mountPath
+      });
+
+      return { roles };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/vault/secret-paths",
     config: {
       rateLimit: readLimit

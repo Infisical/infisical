@@ -1,13 +1,13 @@
 import { useState } from "react";
-import { faBan, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   DeleteActionModal,
   EmailServiceSetupModal,
@@ -15,6 +15,7 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -75,7 +76,7 @@ export const OrgMembersSection = () => {
 
     if (!isMoreIdentitiesAllowed && !isEnterprise) {
       handlePopUpOpen("upgradePlan", {
-        description: "You can add more members if you upgrade your Infisical plan."
+        description: "You can add more members if you switch to Infisical's Pro plan."
       });
       return;
     }
@@ -207,7 +208,10 @@ export const OrgMembersSection = () => {
       </div>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xl font-medium text-mineshaft-100">Users</p>
+          <div className="flex items-center gap-x-2">
+            <p className="text-xl font-medium text-mineshaft-100">Users</p>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
+          </div>
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => (
               <Button
@@ -303,15 +307,10 @@ export const OrgMembersSection = () => {
                       </p>
                       {userId === member.user.id && (
                         <Tooltip content="You cannot remove yourself from this organization">
-                          <div className="inline-block">
-                            <Badge
-                              variant="danger"
-                              className="mt-[0.05rem] ml-1 inline-flex w-min items-center gap-1.5 whitespace-nowrap"
-                            >
-                              <FontAwesomeIcon icon={faBan} />
-                              <span>Ignored</span>
-                            </Badge>
-                          </div>
+                          <Badge variant="danger" className="ml-2">
+                            <BanIcon />
+                            Ignored
+                          </Badge>
                         </Tooltip>
                       )}
                     </div>

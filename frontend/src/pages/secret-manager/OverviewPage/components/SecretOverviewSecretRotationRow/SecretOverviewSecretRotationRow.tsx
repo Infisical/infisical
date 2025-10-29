@@ -11,11 +11,13 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { XIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretRotationV2StatusBadge } from "@app/components/secret-rotations-v2/SecretRotationV2StatusBadge";
-import { Badge, IconButton, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, TableContainer, Tag, Td, Tooltip, Tr } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionSecretRotationActions,
   ProjectPermissionSub
@@ -70,15 +72,10 @@ export const SecretOverviewSecretRotationRow = ({
             <div className="flex-1">{secretRotationName}</div>
             {statuses?.some((status) => status === SecretRotationStatus.Failed) && (
               <Tooltip className="max-w-sm" content="One or more secrets failed to rotate.">
-                <div>
-                  <Badge
-                    variant="danger"
-                    className="flex h-5 w-min items-center gap-1 whitespace-nowrap"
-                  >
-                    <FontAwesomeIcon icon={faXmark} />
-                    <span>Rotation Failed</span>
-                  </Badge>
-                </div>
+                <Badge variant="danger">
+                  <XIcon />
+                  Rotation Failed
+                </Badge>
               </Tooltip>
             )}
           </div>

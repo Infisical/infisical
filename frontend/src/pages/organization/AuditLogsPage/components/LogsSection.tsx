@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ms from "ms";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionAuditLogsActions,
   OrgPermissionSubjects,
@@ -76,22 +75,9 @@ const LogsSectionComponent = ({
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-y-2">
           <div>
-            <div className="flex items-center gap-1 whitespace-nowrap">
+            <div className="flex items-center gap-x-2 whitespace-nowrap">
               <p className="text-xl font-medium text-mineshaft-100">Audit History</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/audit-logs"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.1rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/audit-logs" />
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -137,7 +123,7 @@ const LogsSectionComponent = ({
             onOpenChange={(isOpen) => {
               handlePopUpToggle("upgradePlan", isOpen);
             }}
-            text="You can use audit logs if you switch to a paid Infisical plan."
+            text="You can use audit logs if you switch to Infisical's Pro plan."
           />
         </div>
       </div>
@@ -181,7 +167,7 @@ const LogsSectionComponent = ({
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
-        text="You can use audit logs if you switch to a paid Infisical plan."
+        text="You can use audit logs if you switch to Infisical's Pro plan."
       />
     </div>
   );

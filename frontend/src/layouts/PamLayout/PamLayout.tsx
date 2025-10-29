@@ -18,7 +18,10 @@ export const PamLayout = () => {
 
   useEffect(() => {
     if (subscription && !subscription.pam) {
-      handlePopUpOpen("upgradePlan");
+      handlePopUpOpen("upgradePlan", {
+        description: "You can use PAM if you switch to Infisical's Enterprise plan.",
+        isEnterpriseFeature: true
+      });
     }
   }, [subscription]);
 
@@ -111,7 +114,8 @@ export const PamLayout = () => {
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
-        text="You can use PAM if you switch to a paid Infisical plan."
+        text={popUp.upgradePlan.data?.description}
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );

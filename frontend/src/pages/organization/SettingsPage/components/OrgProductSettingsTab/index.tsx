@@ -1,0 +1,1 @@
+export { OrgProductSettingsTab } from "./OrgProductSettingsTab";

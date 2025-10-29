@@ -5760,7 +5760,6 @@ export interface FileRouteTypes {
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/projects/cert-management/$projectId/alerting'
     | '/projects/cert-management/$projectId/certificate-authorities'
-    | '/projects/cert-management/$projectId/certificates'
     | '/projects/cert-management/$projectId/policies'
     | '/projects/cert-management/$projectId/settings'
     | '/projects/kms/$projectId/kmip'
@@ -5992,7 +5991,6 @@ export interface FileRouteTypes {
     | '/organization/app-connections/$appConnection/oauth/callback'
     | '/projects/cert-management/$projectId/alerting'
     | '/projects/cert-management/$projectId/certificate-authorities'
-    | '/projects/cert-management/$projectId/certificates'
     | '/projects/cert-management/$projectId/policies'
     | '/projects/cert-management/$projectId/settings'
     | '/projects/kms/$projectId/kmip'
@@ -6234,7 +6232,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities'
-    | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/policies'
     | '/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/settings'
     | '/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/kmip'
@@ -6870,7 +6867,6 @@ export const routeTree = rootRoute
       "children": [
         "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/alerting",
         "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities",
-        "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates",
         "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/policies",
         "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/settings",
         "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/access-management",
@@ -6983,10 +6979,6 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities": {
       "filePath": "cert-manager/CertificateAuthoritiesPage/route.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates": {
-      "filePath": "cert-manager/CertificatesPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/policies": {

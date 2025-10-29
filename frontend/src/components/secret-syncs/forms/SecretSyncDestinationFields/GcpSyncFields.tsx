@@ -5,14 +5,8 @@ import { faCircleInfo } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/SecretSyncConnectionField";
-import {
-  Badge,
-  FilterableSelect,
-  FormControl,
-  Select,
-  SelectItem,
-  Tooltip
-} from "@app/components/v2";
+import { FilterableSelect, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { GCP_SYNC_SCOPES } from "@app/helpers/secretSyncs";
 import {
   useGcpConnectionListProjectLocations,
@@ -26,10 +20,7 @@ import { TSecretSyncForm } from "../schemas";
 
 const formatOptionLabel = ({ displayName, locationId }: TGcpLocation) => (
   <div className="flex w-full flex-row items-center gap-1">
-    <span>{displayName}</span>{" "}
-    <Badge className="h-5 leading-5" variant="success">
-      {locationId}
-    </Badge>
+    <span>{displayName}</span> <Badge variant="info">{locationId}</Badge>
   </div>
 );
 

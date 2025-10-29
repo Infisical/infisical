@@ -38,7 +38,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import {
   SECRET_SCANNING_DATA_SOURCE_MAP,
-  SECRET_SCANNING_FINDING_STATUS_ICON_MAP
+  SECRET_SCANNING_FINDING_STATUS_MAP
 } from "@app/helpers/secretScanningV2";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
@@ -219,34 +219,40 @@ export const SecretScanningFindingsTable = ({ findings }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Status</DropdownMenuLabel>
-            {Object.values(SecretScanningFindingStatus).map((status) => (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  setFilters((prev) => ({
-                    ...prev,
-                    status: prev.status.includes(status)
-                      ? prev.status.filter((s) => s !== status)
-                      : [...prev.status, status]
-                  }));
-                }}
-                key={status}
-                icon={
-                  filters.status.includes(status) && (
-                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                  )
-                }
-                iconPos="right"
-              >
-                <div className="flex items-center gap-2">
-                  <FontAwesomeIcon
-                    icon={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].icon}
-                    className={SECRET_SCANNING_FINDING_STATUS_ICON_MAP[status].className}
-                  />
-                  <span className="capitalize">{status.replace("-", " ")}</span>
-                </div>
-              </DropdownMenuItem>
-            ))}
+            {Object.values(SecretScanningFindingStatus).map((status) => {
+              const { Icon } = SECRET_SCANNING_FINDING_STATUS_MAP[status];
+
+              return (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilters((prev) => ({
+                      ...prev,
+                      status: prev.status.includes(status)
+                        ? prev.status.filter((s) => s !== status)
+                        : [...prev.status, status]
+                    }));
+                  }}
+                  key={status}
+                  icon={
+                    filters.status.includes(status) && (
+                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    )
+                  }
+                  iconPos="right"
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon
+                      className={twMerge(
+                        SECRET_SCANNING_FINDING_STATUS_MAP[status].className,
+                        "size-3.5"
+                      )}
+                    />
+                    <span className="capitalize">{status.replace("-", " ")}</span>
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
             <DropdownMenuLabel>Platform</DropdownMenuLabel>
             {findings.length ? (
               [...new Set(findings.map(({ dataSourceType: type }) => type))].map((type) => {

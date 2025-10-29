@@ -7,7 +7,6 @@ import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CertificateManagementModal } from "@app/components/pki-syncs/CertificateManagementModal";
 import {
-  Badge,
   EmptyState,
   IconButton,
   Pagination,
@@ -20,6 +19,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { useListPkiSyncCertificates, useRemoveCertificatesFromPkiSync } from "@app/hooks/api";
@@ -32,7 +32,7 @@ type Props = {
 const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "success";
   if (status === CertificateSyncStatus.Failed) return "danger";
-  if (status === CertificateSyncStatus.Syncing) return "primary";
+  if (status === CertificateSyncStatus.Syncing) return "neutral";
   return "project";
 };
 

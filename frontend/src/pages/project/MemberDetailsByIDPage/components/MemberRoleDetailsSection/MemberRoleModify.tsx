@@ -60,7 +60,7 @@ type TRoleForm = z.infer<typeof roleFormSchema>;
 
 type Props = {
   projectMember: TWorkspaceUser;
-  onOpenUpgradeModal: (title: string) => void;
+  onOpenUpgradeModal: () => void;
 };
 
 export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) => {
@@ -122,9 +122,7 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
     );
 
     if (hasCustomRoleSelected && subscription && !subscription?.rbac) {
-      onOpenUpgradeModal(
-        "You can assign custom roles to members if you upgrade your Infisical plan."
-      );
+      onOpenUpgradeModal();
       return;
     }
 

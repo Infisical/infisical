@@ -1,6 +1,4 @@
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 
@@ -20,23 +18,11 @@ export const SecretSyncModalHeader = ({ destination, isConfigured }: Props) => {
         className="h-12 w-12 rounded-md bg-bunker-500 object-contain p-2"
       />
       <div>
-        <div className="flex items-center text-mineshaft-300">
+        <div className="flex items-center gap-x-2 text-mineshaft-300">
           {destinationDetails.name} Sync
-          <a
-            target="_blank"
+          <DocumentationLinkBadge
             href={`https://infisical.com/docs/integrations/secret-syncs/${destination}`}
-            className="mb-1 ml-1"
-            rel="noopener noreferrer"
-          >
-            <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-              <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
-              <span>Docs</span>
-              <FontAwesomeIcon
-                icon={faArrowUpRightFromSquare}
-                className="mb-[0.07rem] ml-1 text-[10px]"
-              />
-            </div>
-          </a>
+          />
         </div>
         <p className="text-sm leading-4 text-mineshaft-400">
           {isConfigured

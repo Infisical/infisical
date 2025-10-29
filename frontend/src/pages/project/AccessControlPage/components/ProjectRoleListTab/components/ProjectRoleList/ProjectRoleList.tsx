@@ -13,12 +13,12 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { ServerIcon, WrenchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -39,6 +39,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { isCustomProjectRole } from "@app/helpers/roles";
@@ -167,7 +168,10 @@ export const ProjectRoleList = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Project Roles</p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Project Roles</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/access-controls/role-based-access-controls#project-level-access-controls" />
+        </div>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
@@ -261,8 +265,18 @@ export const ProjectRoleList = () => {
                   <Td>{name}</Td>
                   <Td>{slug}</Td>
                   <Td>
-                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
-                      {isCustomProjectRole(slug) ? "Custom" : "Default"}
+                    <Badge variant="ghost">
+                      {isCustomProjectRole(slug) ? (
+                        <>
+                          <WrenchIcon />
+                          Custom
+                        </>
+                      ) : (
+                        <>
+                          <ServerIcon />
+                          Platform
+                        </>
+                      )}
                     </Badge>
                   </Td>
                   <Td>

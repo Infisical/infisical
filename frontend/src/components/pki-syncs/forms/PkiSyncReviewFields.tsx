@@ -1,6 +1,7 @@
 import { useFormContext } from "react-hook-form";
 
-import { Badge, GenericFieldLabel } from "@app/components/v2";
+import { GenericFieldLabel } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
