@@ -1705,7 +1705,8 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
