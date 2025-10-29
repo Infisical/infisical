@@ -10,5 +10,6 @@ export type TGitLabGroup = {
 
 export enum GitLabAccessTokenType {
   Personal = "personal",
-  Project = "project"
+  Project = "project",
+  Group = "group"
 }
