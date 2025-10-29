@@ -23,6 +23,7 @@ import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import { CreateAcmeAccountBodySchema, ProtectedHeaderSchema } from "./pki-acme-schemas";
 import {
   TAcmeResponse,
+  TAuthenciatedJwsPayload,
   TCreateAcmeAccountPayload,
   TCreateAcmeAccountResponse,
   TCreateAcmeOrderPayload,
@@ -43,7 +44,7 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByPublicKey" | "create">;
+  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create">;
 };
 
@@ -67,6 +68,14 @@ export const pkiAcmeServiceFactory = ({
     const appCfg = getConfig();
     const baseUrl = appCfg.SITE_URL ?? "";
     return `${baseUrl}${path}`;
+  };
+
+  const extractAccountIdFromKid = (kid: string, profileId: string): string => {
+    const kidPrefix = buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/`);
+    if (!kid.startsWith(kidPrefix)) {
+      throw new AcmeMalformedError({ detail: "KID must start with the profile account URL" });
+    }
+    return kid.slice(kidPrefix.length);
   };
 
   const validateJwsPayload = async <T>(
@@ -120,12 +129,42 @@ export const pkiAcmeServiceFactory = ({
       rawJwsPayload,
       async (protectedHeader) => {
         if (!protectedHeader.jwk) {
-          throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
+          throw new AcmeMalformedError({ detail: "JWK is required in the protected header" });
         }
         return protectedHeader.jwk as unknown as JsonWebKey;
       },
       CreateAcmeAccountBodySchema
     );
+  };
+
+  const validateExistingAccountJwsPayload = async <T>(
+    profileId: string,
+    rawJwsPayload: TRawJwsPayload,
+    schema: z.ZodSchema<T>
+  ): Promise<TAuthenciatedJwsPayload<T>> => {
+    const profile = await validateAcmeProfile(profileId);
+    const result = await validateJwsPayload(
+      rawJwsPayload,
+      async (protectedHeader) => {
+        if (!protectedHeader.kid) {
+          throw new AcmeMalformedError({ detail: "KID is required in the protected header" });
+        }
+        const accountId = extractAccountIdFromKid(protectedHeader.kid, profileId);
+        const account = await acmeAccountDAL.findById(profile.id, accountId);
+        if (!account) {
+          throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
+        }
+        if (account.alg !== protectedHeader.alg) {
+          throw new AcmeMalformedError({ detail: "ACME account algorithm mismatch" });
+        }
+        return account.publicKey as JsonWebKey;
+      },
+      schema
+    );
+    return {
+      ...result,
+      accountId: extractAccountIdFromKid(result.protectedHeader.kid!, profileId)
+    };
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
@@ -195,13 +234,25 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
-  const createAcmeOrder = async (
-    profileId: string,
-    account: TPkiAcmeAccounts,
-    payload: TCreateAcmeOrderPayload
-  ): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+  const createAcmeOrder = async ({
+    profileId,
+    accountId,
+    payload
+  }: {
+    profileId: string;
+    accountId: string;
+    payload: TCreateAcmeOrderPayload;
+  }): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
+    const account = await acmeAccountDAL.findById(profileId, accountId)!;
 
+    // TODO: check and see if we have existing orders for this account that meet the criteria
+    //       if we do, return the existing order
+
+    orders = await acmeOrderDAL.create({
+      profileId,
+      accountId,
+      status: "pending"
+    });
     // FIXME: Implement ACME new order creation
     const orderId = "FIXME-order-id";
     return {
@@ -315,6 +366,7 @@ export const pkiAcmeServiceFactory = ({
   return {
     validateJwsPayload,
     validateNewAccountJwsPayload,
+    validateExistingAccountJwsPayload,
     getAcmeDirectory,
     getAcmeNewNonce,
     createAcmeAccount,

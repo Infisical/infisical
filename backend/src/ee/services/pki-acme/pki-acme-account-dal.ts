@@ -26,38 +26,13 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateById = async (id: string, data: TPkiAcmeAccountsUpdate, tx?: Knex) => {
+  const findById = async (profileId: string, id: string, tx?: Knex) => {
     try {
-      const result = await (tx || db)(TableName.PkiAcmeAccount).where({ id }).update(data).returning("*");
-      const [account] = result;
-
-      if (!account) {
-        return null;
-      }
-
-      return account;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Update PKI ACME account" });
-    }
-  };
-
-  const findById = async (id: string, tx?: Knex) => {
-    try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ id }).first();
+      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, id }).first();
 
       return account || null;
     } catch (error) {
       throw new DatabaseError({ error, name: "Find PKI ACME account by id" });
-    }
-  };
-
-  const findByProfileId = async (profileId: string, tx?: Knex) => {
-    try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId }).first();
-
-      return account || null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME account by profile id" });
     }
   };
 
@@ -71,35 +46,12 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findManyByProfileId = async (profileId: string, tx?: Knex) => {
-    try {
-      const accounts = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId });
-
-      return accounts;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find many PKI ACME accounts by profile id" });
-    }
-  };
-
-  const deleteById = async (id: string, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeAccount).where({ id }).delete().returning("*");
-      const [account] = result;
-
-      return account || null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete PKI ACME account by id" });
-    }
-  };
-
   return {
     ...pkiAcmeAccountOrm,
     create,
     updateById,
     findById,
     findByProfileId,
-    findByPublicKey,
-    findManyByProfileId,
-    deleteById
+    findByPublicKey
   };
 };
