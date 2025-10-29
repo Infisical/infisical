@@ -110,7 +110,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { payload, protectedHeader, jwk } = await server.services.pkiAcme.validateJwsPayload(
+      const { payload, protectedHeader } = await server.services.pkiAcme.validateJwsPayload(
         req.body as TRawJwsPayload,
         async (protectedHeader) => {
           if (!protectedHeader.jwk) {
@@ -120,13 +120,11 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         },
         CreateAcmeAccountBodySchema
       );
-      if (!jwk) {
-        throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
-      }
+      const { alg, jwk } = protectedHeader;
       const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount(
         req.params.profileId,
-        protectedHeader.alg,
-        jwk,
+        alg,
+        jwk!,
         payload
       );
       // TODO: DRY
