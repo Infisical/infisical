@@ -87,8 +87,6 @@ const getChefAuthHeaders = (
   // Format the private key properly
   const formattedKey = formatPrivateKey(privateKey);
 
-  console.log("formattedKey", formattedKey);
-
   // Sign the canonical request
   const sign = crypto.createSign(apiVersion === "1.3" ? "RSA-SHA256" : "RSA-SHA1");
   sign.update(canonicalRequest);
