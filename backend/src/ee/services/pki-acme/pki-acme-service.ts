@@ -81,7 +81,8 @@ export const pkiAcmeServiceFactory = ({
         if (protectedHeader === undefined) {
           throw new AcmeMalformedError({ detail: "Protected header is required" });
         }
-        ProtectedHeaderSchema.parse(protectedHeader);
+        const parsedHeader = ProtectedHeaderSchema.parse(protectedHeader);
+        // TODO: consume the nonce here
         const jwk = await getJWK(protectedHeader);
         return await importJWK(jwk, protectedHeader.alg);
       });

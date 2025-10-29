@@ -2,6 +2,7 @@
 import { z } from "zod";
 
 import {
+  CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
   CreateAcmeOrderResponseSchema,
   CreateAcmeOrderSchema,
@@ -27,6 +28,7 @@ import { TCreateAcmeAccountPayload, TRawJwsPayload } from "@app/ee/services/pki-
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { getConfig } from "@app/lib/config/env";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { AcmeBadPublicKeyError } from "@app/ee/services/pki-acme/pki-acme-errors";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
@@ -111,13 +113,24 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { payload, jwk } = await server.services.pkiAcme.validateCreateAcmeAccountJwsPayload(
-        req.body as TRawJwsPayload
+      const { payload, protectedHeader, jwk } = await server.services.pkiAcme.validateJwsPayload(
+        req.body as TRawJwsPayload,
+        async (protectedHeader) => {
+          if (!protectedHeader.jwk) {
+            throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
+          }
+          return protectedHeader.jwk as unknown as JsonWebKey;
+        },
+        CreateAcmeAccountBodySchema
       );
+      if (!jwk) {
+        throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
+      }
       const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount(
         req.params.profileId,
+        protectedHeader.alg,
         jwk,
-        payload as TCreateAcmeAccountPayload
+        payload
       );
       // TODO: DRY
       res.code(status);
