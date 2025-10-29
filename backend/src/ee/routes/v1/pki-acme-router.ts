@@ -1,32 +1,38 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import type { TAcmeResponse } from "@app/ee/services/pki-acme/pki-acme-types";
+import { FastifyReply } from "fastify";
 import { z } from "zod";
 
 import {
   CreateAcmeAccountResponseSchema,
   CreateAcmeOrderBodySchema,
   CreateAcmeOrderResponseSchema,
+  DeactivateAcmeAccountBodySchema,
   DeactivateAcmeAccountResponseSchema,
-  DeactivateAcmeAccountSchema,
-  DownloadAcmeCertificateSchema,
-  FinalizeAcmeOrderResponseSchema,
-  FinalizeAcmeOrderSchema,
+  FinalizeAcmeOrderBodySchema,
   GetAcmeAuthorizationResponseSchema,
-  GetAcmeAuthorizationSchema,
   GetAcmeDirectoryResponseSchema,
-  GetAcmeDirectorySchema,
-  GetAcmeNewNonceSchema,
   GetAcmeOrderResponseSchema,
-  GetAcmeOrderSchema,
   ListAcmeOrdersResponseSchema,
-  ListAcmeOrdersSchema,
   RawJwsPayloadSchema,
-  RespondToAcmeChallengeResponseSchema,
-  RespondToAcmeChallengeSchema
+  RespondToAcmeChallengeResponseSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
+  const sendAcmeResponse = async <T>(res: FastifyReply, profileId: string, response: TAcmeResponse<T>): Promise<T> => {
+    res.code(response.status);
+    for (const [key, value] of Object.entries(response.headers)) {
+      res.header(key, value);
+    }
+
+    const nonce = await server.services.pkiAcme.getAcmeNewNonce(profileId);
+    res.header("Replay-Nonce", nonce);
+    res.header("Cache-Control", "no-store");
+    return response.body;
+  };
+
   server.addContentTypeParser("application/jose+json", { parseAs: "string" }, (_, body, done) => {
     try {
       const strBody = body instanceof Buffer ? body.toString() : body;
@@ -53,7 +59,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Directory - provides URLs for the client to make API calls to",
-      ...GetAcmeDirectorySchema.shape,
+      params: z.object({
+        profileId: z.string().uuid()
+      }),
       response: {
         200: GetAcmeDirectoryResponseSchema
       }
@@ -77,15 +85,17 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Nonce - generate a new nonce and return in Replay-Nonce header",
-      ...GetAcmeNewNonceSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid()
+      }),
       response: {
-        200: z.object({})
+        200: z.string().length(0)
       }
     },
     handler: async (req, res) => {
       const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
       res.header("Replay-Nonce", nonce);
-      return {};
+      return "";
     }
   });
 
@@ -112,23 +122,16 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload(req.body);
       const { alg, jwk } = protectedHeader;
-      const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount({
-        profileId: req.params.profileId,
-        alg,
-        jwk: jwk!,
-        payload
-      });
-      // TODO: DRY
-      res.code(status);
-      for (const [key, value] of Object.entries(headers)) {
-        res.header(key, value);
-      }
-
-      // TODO: DRY
-      const nonce = await server.services.pkiAcme.getAcmeNewNonce(req.params.profileId);
-      res.header("Replay-Nonce", nonce);
-      res.header("Cache-Control", "no-store");
-      return body;
+      return sendAcmeResponse(
+        res,
+        req.params.profileId,
+        await server.services.pkiAcme.createAcmeAccount({
+          profileId: req.params.profileId,
+          alg,
+          jwk: jwk!,
+          payload
+        })
+      );
     }
   });
 
@@ -155,14 +158,20 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { payload, protectedHeader, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload(
+      const { payload, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload(
         req.params.profileId,
         req.body,
         CreateAcmeOrderBodySchema
       );
-      const order = await server.services.pkiAcme.createAcmeOrder(req.params.profileId, req.body);
-      res.code(201);
-      return order;
+      return sendAcmeResponse(
+        res,
+        req.params.profileId,
+        await server.services.pkiAcme.createAcmeOrder({
+          profileId: req.params.profileId,
+          accountId,
+          payload
+        })
+      );
     }
   });
 
@@ -178,7 +187,11 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Account Deactivation",
-      ...DeactivateAcmeAccountSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        accountId: z.string()
+      }),
+      body: DeactivateAcmeAccountBodySchema,
       response: {
         200: DeactivateAcmeAccountResponseSchema
       }
@@ -203,7 +216,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME List Orders - get existing orders from current account",
-      ...ListAcmeOrdersSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        accountId: z.string()
+      }),
       response: {
         200: ListAcmeOrdersResponseSchema
       }
@@ -228,7 +244,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Get Order - return status and details of the order",
-      ...GetAcmeOrderSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        orderId: z.string().uuid()
+      }),
       response: {
         200: GetAcmeOrderResponseSchema
       }
@@ -253,10 +272,11 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Finalize Order - finalize cert order by providing CSR",
-      ...FinalizeAcmeOrderSchema.shape,
-      response: {
-        200: FinalizeAcmeOrderResponseSchema
-      }
+      params: z.object({
+        profileId: z.string().uuid(),
+        orderId: z.string().uuid()
+      }),
+      body: FinalizeAcmeOrderBodySchema
     },
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -278,7 +298,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Download Certificate - download certificate when ready",
-      ...DownloadAcmeCertificateSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        orderId: z.string().uuid()
+      }),
       response: {
         200: z.string()
       }
@@ -307,7 +330,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Identifier Authorization - get authorization info (challenges)",
-      ...GetAcmeAuthorizationSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        authzId: z.string().uuid()
+      }),
       response: {
         200: GetAcmeAuthorizationResponseSchema
       }
@@ -332,7 +358,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Respond to Challenge - let ACME server know challenge is ready",
-      ...RespondToAcmeChallengeSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid(),
+        authzId: z.string().uuid()
+      }),
       response: {
         200: RespondToAcmeChallengeResponseSchema
       }

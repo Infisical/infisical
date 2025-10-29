@@ -1,5 +1,26 @@
 import { z } from "zod";
 
+export enum AcmeIdentifierType {
+  DNS = "dns"
+}
+
+export enum AcmeOrderStatus {
+  Pending = "pending",
+  Processing = "processing",
+  Ready = "ready",
+  Valid = "valid",
+  Invalid = "invalid"
+}
+
+export enum AcmeAuthStatus {
+  Pending = "pending",
+  Valid = "valid",
+  Invalid = "invalid",
+  Deactivated = "deactivated",
+  Expired = "expired",
+  Revoked = "revoked"
+}
+
 export const ProtectedHeaderSchema = z
   .object({
     alg: z.string(),
@@ -20,25 +41,11 @@ export const RawJwsPayloadSchema = z.object({
   signature: z.string()
 });
 
-// Directory endpoint
-export const GetAcmeDirectorySchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid()
-  })
-});
-
 export const GetAcmeDirectoryResponseSchema = z.object({
   newNonce: z.string(),
   newAccount: z.string(),
   newOrder: z.string(),
   revokeCert: z.string().optional()
-});
-
-// New Nonce endpoint
-export const GetAcmeNewNonceSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid()
-  })
 });
 
 // New Account payload schema
@@ -73,20 +80,14 @@ export const CreateAcmeAccountResponseSchema = z.object({
 export const CreateAcmeOrderBodySchema = z.object({
   identifiers: z.array(
     z.object({
-      type: z.string(),
-      value: z.string()
+      type: z
+        .string()
+        .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/, "Invalid DNS identifier"),
+      value: z.enum(Object.values(AcmeIdentifierType) as [string, ...string[]])
     })
   ),
   notBefore: z.string().optional(),
   notAfter: z.string().optional()
-});
-
-// New Order endpoint
-export const CreateAcmeOrderSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid()
-  }),
-  body: CreateAcmeOrderBodySchema
 });
 
 export const CreateAcmeOrderResponseSchema = z.object({
@@ -108,41 +109,17 @@ export const DeactivateAcmeAccountBodySchema = z.object({
   status: z.literal("deactivated")
 });
 
-// Account Deactivation endpoint
-export const DeactivateAcmeAccountSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    accountId: z.string()
-  }),
-  body: DeactivateAcmeAccountBodySchema
-});
-
 export const DeactivateAcmeAccountResponseSchema = z.object({
   status: z.string()
 });
 
 // List Orders endpoint
-export const ListAcmeOrdersSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    accountId: z.string()
-  })
-});
-
 export const ListAcmeOrdersResponseSchema = z.object({
   orders: z.array(z.string())
 });
 
-// Get Order endpoint
-export const GetAcmeOrderSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    orderId: z.string()
-  })
-});
-
 export const GetAcmeOrderResponseSchema = z.object({
-  status: z.string(),
+  status: z.enum(Object.values(AcmeOrderStatus) as [string, ...string[]]),
   expires: z.string().optional(),
   identifiers: z.array(
     z.object({
@@ -160,17 +137,8 @@ export const FinalizeAcmeOrderBodySchema = z.object({
   csr: z.string()
 });
 
-// Finalize Order endpoint
-export const FinalizeAcmeOrderSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    orderId: z.string()
-  }),
-  body: FinalizeAcmeOrderBodySchema
-});
-
 export const FinalizeAcmeOrderResponseSchema = z.object({
-  status: z.string(),
+  status: z.enum(Object.values(AcmeOrderStatus) as [string, ...string[]]),
   expires: z.string().optional(),
   identifiers: z.array(
     z.object({
@@ -183,24 +151,8 @@ export const FinalizeAcmeOrderResponseSchema = z.object({
   certificate: z.string().optional()
 });
 
-// Download Certificate endpoint
-export const DownloadAcmeCertificateSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    orderId: z.string()
-  })
-});
-
-// Get Authorization endpoint
-export const GetAcmeAuthorizationSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    authzId: z.string()
-  })
-});
-
 export const GetAcmeAuthorizationResponseSchema = z.object({
-  status: z.string(),
+  status: z.enum(Object.values(AcmeAuthStatus) as [string, ...string[]]),
   expires: z.string().optional(),
   identifier: z.object({
     type: z.string(),
@@ -215,14 +167,6 @@ export const GetAcmeAuthorizationResponseSchema = z.object({
       validated: z.string().optional()
     })
   )
-});
-
-// Respond to Challenge endpoint
-export const RespondToAcmeChallengeSchema = z.object({
-  params: z.object({
-    profileId: z.string().uuid(),
-    authzId: z.string()
-  })
 });
 
 export const RespondToAcmeChallengeResponseSchema = z.object({
