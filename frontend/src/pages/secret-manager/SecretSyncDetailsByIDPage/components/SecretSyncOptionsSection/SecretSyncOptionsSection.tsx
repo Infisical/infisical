@@ -14,6 +14,7 @@ import { SecretSync, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 import { AwsParameterStoreSyncOptionsSection } from "./AwsParameterStoreSyncOptionsSection";
 import { AwsSecretsManagerSyncOptionsSection } from "./AwsSecretsManagerSyncOptionsSection";
+import { CoolifySyncOptionsSection } from "./CoolifySyncOptionsSection";
 import { RenderSyncOptionsSection } from "./RenderSyncOptionsSection";
 
 type Props = {
@@ -44,6 +45,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
       break;
     case SecretSync.Render:
       AdditionalSyncOptionsComponent = <RenderSyncOptionsSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Coolify:
+      AdditionalSyncOptionsComponent = <CoolifySyncOptionsSection secretSync={secretSync} />;
       break;
     case SecretSync.GitHub:
     case SecretSync.GCPSecretManager:
@@ -82,9 +86,9 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
   const permissionSubject =
     environment && folder
       ? subject(ProjectPermissionSub.SecretSyncs, {
-          environment: environment.slug,
-          secretPath: folder.path
-        })
+        environment: environment.slug,
+        secretPath: folder.path
+      })
       : ProjectPermissionSub.SecretSyncs;
 
   return (

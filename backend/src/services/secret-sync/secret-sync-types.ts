@@ -96,6 +96,7 @@ import {
   TCloudflareWorkersSyncListItem,
   TCloudflareWorkersSyncWithCredentials
 } from "./cloudflare-workers";
+import { TCoolifySync, TCoolifySyncInput, TCoolifySyncListItem, TCoolifySyncWithCredentials } from "./coolify";
 import {
   TDigitalOceanAppPlatformSyncInput,
   TDigitalOceanAppPlatformSyncListItem,
@@ -187,7 +188,8 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TNetlifySync
-  | TBitbucketSync;
+  | TBitbucketSync
+  | TCoolifySync;
 
 export type TSecretSyncWithCredentials =
   | TAwsParameterStoreSyncWithCredentials
@@ -220,7 +222,8 @@ export type TSecretSyncWithCredentials =
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
   | TBitbucketSyncWithCredentials
-  | TLaravelForgeSyncWithCredentials;
+  | TLaravelForgeSyncWithCredentials
+  | TCoolifySyncWithCredentials;
 
 export type TSecretSyncInput =
   | TAwsParameterStoreSyncInput
@@ -253,7 +256,8 @@ export type TSecretSyncInput =
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
   | TBitbucketSyncInput
-  | TLaravelForgeSyncInput;
+  | TLaravelForgeSyncInput
+  | TCoolifySyncInput;
 
 export type TSecretSyncListItem =
   | TAwsParameterStoreSyncListItem
@@ -286,7 +290,8 @@ export type TSecretSyncListItem =
   | TSupabaseSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
-  | TBitbucketSyncListItem;
+  | TBitbucketSyncListItem
+  | TCoolifySyncListItem;
 
 export type TSyncOptionsConfig = {
   canImportSecrets: boolean;

@@ -2376,6 +2376,10 @@ export const AppConnections = {
     },
     LARAVEL_FORGE: {
       apiToken: "The API token used to authenticate with Laravel Forge."
+    },
+    COOLIFY: {
+      instanceUrl: "The Coolify instance URL to connect with",
+      apiToken: "The API token used to access the Coolify server"
     }
   }
 };
@@ -2457,6 +2461,10 @@ export const SecretSyncs = {
     RENDER: {
       autoRedeployServices:
         "Whether Infisical should automatically redeploy the configured Render service upon secret changes."
+    },
+    COOLIFY: {
+      autoRedeployServices:
+        "Whether Infisical should automatically redeploy the configured coolify application upon secret changes."
     }
   },
   DESTINATION_CONFIG: {
@@ -2620,6 +2628,9 @@ export const SecretSyncs = {
       siteName: "The name of the Netlify site to sync secrets to.",
       siteId: "The ID of the Netlify site to sync secrets to.",
       context: "The Netlify context to sync secrets to."
+    },
+    COOLIFY: {
+      applicationId: "The UUID of the application or service to sync secret to."
     }
   }
 };
@@ -2754,9 +2765,8 @@ export const SecretRotations = {
 
 export const SecretScanningDataSources = {
   LIST: (type?: SecretScanningDataSource) => ({
-    projectId: `The ID of the project to list ${
-      type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
-    } Data Sources from.`
+    projectId: `The ID of the project to list ${type ? SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type] : "Scanning"
+      } Data Sources from.`
   }),
   GET_BY_ID: (type: SecretScanningDataSource) => ({
     dataSourceId: `The ID of the ${SECRET_SCANNING_DATA_SOURCE_NAME_MAP[type]} Data Source to retrieve.`

@@ -89,6 +89,12 @@ import {
   TValidateCloudflareConnectionCredentialsSchema
 } from "./cloudflare/cloudflare-connection-types";
 import {
+  TCoolifyConnection,
+  TCoolifyConnectionConfig,
+  TCoolifyConnectionInput,
+  TValidateCoolifyConnectionCredentialsSchema
+} from "./coolify";
+import {
   TDatabricksConnection,
   TDatabricksConnectionConfig,
   TDatabricksConnectionInput,
@@ -275,6 +281,7 @@ export type TAppConnection = { id: string } & (
   | TNetlifyConnection
   | TOktaConnection
   | TRedisConnection
+  | TCoolifyConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -322,6 +329,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNetlifyConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TCoolifyConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -386,7 +394,8 @@ export type TAppConnectionConfig =
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
   | TOktaConnectionConfig
-  | TRedisConnectionConfig;
+  | TRedisConnectionConfig
+  | TCoolifyConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -428,7 +437,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
-  | TValidateRedisConnectionCredentialsSchema;
+  | TValidateRedisConnectionCredentialsSchema
+  | TValidateCoolifyConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

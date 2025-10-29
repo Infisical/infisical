@@ -176,6 +176,10 @@ export type TRedisConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Redis;
 };
 
+export type TCoolifyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Coolify;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -215,7 +219,8 @@ export type TAppConnectionOption =
   | TNetlifyConnectionOption
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption
-  | TLaravelForgeConnectionOption;
+  | TLaravelForgeConnectionOption
+  | TCoolifyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -257,5 +262,6 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Okta]: TOktaConnectionOption;
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
-  [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
+  [AppConnection.LaravelForge]: TLaravelForgeConnectionOption
+  [AppConnection.Coolify]: TCoolifyConnectionOption;
 };

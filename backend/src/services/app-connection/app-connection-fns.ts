@@ -73,6 +73,7 @@ import {
   getCloudflareConnectionListItem,
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
+import { getCoolifyConnectionListItem, validateCoolifyConnectionCredentials } from "./coolify/coolify-connection-fns";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -204,7 +205,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
     getOktaConnectionListItem(),
-    getRedisConnectionListItem()
+    getRedisConnectionListItem(),
+    getCoolifyConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -244,13 +246,13 @@ export const encryptAppConnectionCredentials = async ({
   const { encryptor } = await kmsService.createCipherPairWithDataKey(
     projectId
       ? {
-          type: KmsDataKey.SecretManager,
-          projectId
-        }
+        type: KmsDataKey.SecretManager,
+        projectId
+      }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const { cipherTextBlob: encryptedCredentialsBlob } = encryptor({
@@ -275,9 +277,9 @@ export const decryptAppConnectionCredentials = async ({
     projectId
       ? { type: KmsDataKey.SecretManager, projectId }
       : {
-          type: KmsDataKey.Organization,
-          orgId
-        }
+        type: KmsDataKey.Organization,
+        orgId
+      }
   );
 
   const decryptedPlainTextBlob = decryptor({
@@ -334,7 +336,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Coolify]: validateCoolifyConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -474,7 +477,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
-  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
+  [AppConnection.Coolify]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (
