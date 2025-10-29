@@ -76,6 +76,7 @@ import { permissionServiceFactory } from "@app/ee/services/permission/permission
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
+import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -1070,6 +1071,7 @@ export const registerRoutes = async (
   const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
+  const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -1174,7 +1176,8 @@ export const registerRoutes = async (
     certificateProfileDAL,
     acmeAccountDAL,
     acmeOrderDAL,
-    acmeAuthDAL
+    acmeAuthDAL,
+    acmeOrderAuthDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({

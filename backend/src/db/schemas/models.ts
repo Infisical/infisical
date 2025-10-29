@@ -30,6 +30,7 @@ export enum TableName {
   PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
   PkiAcmeAccount = "pki_acme_accounts",
   PkiAcmeOrder = "pki_acme_orders",
+  PkiAcmeOrderAuth = "pki_acme_order_auths",
   PkiAcmeAuth = "pki_acme_auths",
   PkiAcmeChallenge = "pki_acme_challenges",
   PkiSubscriber = "pki_subscribers",

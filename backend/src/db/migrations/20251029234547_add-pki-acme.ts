@@ -116,6 +116,25 @@ export async function up(knex: Knex): Promise<void> {
     await createOnUpdateTrigger(knex, TableName.PkiAcmeAuth);
   }
 
+  // Create PkiAcmeOrderAuth table
+  if (!(await knex.schema.hasTable(TableName.PkiAcmeOrderAuth))) {
+    await knex.schema.createTable(TableName.PkiAcmeOrderAuth, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+
+      // Foreign key to PkiAcmeOrder
+      t.uuid("orderId").notNullable();
+      t.foreign("orderId").references("id").inTable(TableName.PkiAcmeOrder).onDelete("CASCADE");
+
+      // Foreign key to PkiAcmeAuth
+      t.uuid("authId").notNullable();
+      t.foreign("authId").references("id").inTable(TableName.PkiAcmeAuth).onDelete("CASCADE");
+
+      t.timestamps(true, true, true);
+    });
+
+    await createOnUpdateTrigger(knex, TableName.PkiAcmeOrderAuth);
+  }
+
   // Create PkiAcmeChallenge table
   if (!(await knex.schema.hasTable(TableName.PkiAcmeChallenge))) {
     await knex.schema.createTable(TableName.PkiAcmeChallenge, (t) => {
@@ -148,6 +167,12 @@ export async function down(knex: Knex): Promise<void> {
   if (await knex.schema.hasTable(TableName.PkiAcmeChallenge)) {
     await knex.schema.dropTable(TableName.PkiAcmeChallenge);
     await dropOnUpdateTrigger(knex, TableName.PkiAcmeChallenge);
+  }
+
+  // Drop PkiAcmeOrderAuth (depends on PkiAcmeOrder and PkiAcmeAuth)
+  if (await knex.schema.hasTable(TableName.PkiAcmeOrderAuth)) {
+    await knex.schema.dropTable(TableName.PkiAcmeOrderAuth);
+    await dropOnUpdateTrigger(knex, TableName.PkiAcmeOrderAuth);
   }
 
   // Drop PkiAcmeAuth (depends on PkiAcmeAccount and Certificate)
