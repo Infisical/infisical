@@ -31,7 +31,7 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { TPkiAcmeAccount } from "@app/db/schemas/pki-acme-accounts";
+import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 
 type TPkiAcmeServiceFactoryDep = {
@@ -109,26 +109,26 @@ export const pkiAcmeServiceFactory = ({
     { onlyReturnExisting, contact }: TCreateAcmeAccountPayload
   ): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
-    let account: TPkiAcmeAccount | null = await pkiAcmeAccountDAL.findByPublicKey(jwk);
-    if (onlyReturnExisting && !account) {
+    const existingAccount: TPkiAcmeAccounts | null = await pkiAcmeAccountDAL.findByPublicKey(jwk);
+    if (onlyReturnExisting && !existingAccount) {
       throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
     }
-    if (account) {
+    if (existingAccount) {
       // With the same public key, we found an existing account, just return it
       return {
         status: 200,
         body: {
           status: "valid",
-          contact: account.emails,
-          orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}/orders`)
+          contact: existingAccount.emails,
+          orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${existingAccount.id}/orders`)
         },
         headers: {
-          Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}`)
+          Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${existingAccount.id}`)
         }
       };
     }
 
-    account = await pkiAcmeAccountDAL.create({
+    const newAccount = await pkiAcmeAccountDAL.create({
       profileId: profile.id,
       publicKey: jwk,
       emails: contact ?? []
@@ -138,11 +138,11 @@ export const pkiAcmeServiceFactory = ({
       status: 201,
       body: {
         status: "valid",
-        contact: account.emails,
-        orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}/orders`)
+        contact: newAccount.emails,
+        orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${newAccount.id}/orders`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${account.id}`)
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${newAccount.id}`)
       }
     };
   };
