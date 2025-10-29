@@ -19,8 +19,15 @@ import {
 import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderParameters } from "jose";
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
+import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
-import { CreateAcmeAccountBodySchema, ProtectedHeaderSchema } from "./pki-acme-schemas";
+import {
+  AcmeAuthStatus,
+  AcmeIdentifierType,
+  AcmeOrderStatus,
+  CreateAcmeAccountBodySchema,
+  ProtectedHeaderSchema
+} from "./pki-acme-schemas";
 import {
   TAcmeResponse,
   TAuthenciatedJwsPayload,
@@ -46,12 +53,14 @@ type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create">;
+  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
 };
 
 export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
   acmeAccountDAL,
-  acmeOrderDAL
+  acmeOrderDAL,
+  acmeAuthDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -168,11 +177,11 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
-    await validateAcmeProfile(profileId);
+    const profile = await validateAcmeProfile(profileId);
     return {
-      newNonce: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/new-nonce`),
-      newAccount: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/new-account`),
-      newOrder: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/new-order`)
+      newNonce: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-nonce`),
+      newAccount: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-account`),
+      newOrder: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-order`)
     };
   };
 
@@ -244,15 +253,29 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeOrderPayload;
   }): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
     const account = await acmeAccountDAL.findById(profileId, accountId)!;
-
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
 
-    orders = await acmeOrderDAL.create({
-      profileId,
-      accountId,
-      status: "pending"
+    const order = await acmeOrderDAL.create({
+      accountId: account.id,
+      status: AcmeOrderStatus.Pending
     });
+    payload.identifiers.forEach(async (identifier) => {
+      if (identifier.type === AcmeIdentifierType.DNS) {
+        // TODO: reuse existing authorizations for this identifier if they exist
+        const auth = await acmeAuthDAL.create({
+          accountId: account.id,
+          status: AcmeAuthStatus.Pending,
+          identifierType: identifier.type,
+          identifierValue: identifier.value,
+          // TODO: read config from the profile to get the expiration time instead
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        });
+      } else {
+        throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
+      }
+    });
+
     // FIXME: Implement ACME new order creation
     const orderId = "FIXME-order-id";
     return {
@@ -262,10 +285,10 @@ export const pkiAcmeServiceFactory = ({
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         identifiers: [],
         authorizations: [],
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/orders/${orderId}/finalize`)
+        finalize: buildUrl(`/api/v1/pki/acme/profiles/${account.profileId}/orders/${orderId}/finalize`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/orders/${orderId}`)
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${account.profileId}/orders/${orderId}`)
       }
     };
   };
