@@ -61,9 +61,9 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByPublicKey = async (publicKey: unknown, alg: string, tx?: Knex) => {
+  const findByPublicKey = async (profileId: string, alg: string, publicKey: unknown, tx?: Knex) => {
     try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ publicKey, alg }).first();
+      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, alg, publicKey }).first();
 
       return account || null;
     } catch (error) {
