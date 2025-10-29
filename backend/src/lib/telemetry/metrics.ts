@@ -1,4 +1,7 @@
+import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
+
+import { getConfig } from "../config/env";
 
 const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
 
@@ -32,3 +35,66 @@ export const authAttemptCounter = infisicalMeter.createCounter("infisical.auth.a
   description: "Authentication attempts (both successful and failed)",
   unit: "{attempt}"
 });
+
+export const secretReadCounter = infisicalMeter.createCounter("infisical.secret.read.count", {
+  description: "Number of secret read operations",
+  unit: "{operation}"
+});
+
+export const recordSecretReadMetric = (params: { environment: string; secretPath: string; name?: string }) => {
+  const appCfg = getConfig();
+
+  if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+    const attributes: Record<string, string> = {
+      "infisical.environment": params.environment,
+      "infisical.secret.path": params.secretPath,
+      ...(params.name ? { "infisical.secret.name": params.name } : {})
+    };
+
+    const orgId = requestContext.get("orgId");
+    if (orgId) {
+      attributes["infisical.organization.id"] = orgId;
+    }
+
+    const orgName = requestContext.get("orgName");
+    if (orgName) {
+      attributes["infisical.organization.name"] = orgName;
+    }
+
+    const projectDetails = requestContext.get("projectDetails");
+    if (projectDetails?.id) {
+      attributes["infisical.project.id"] = projectDetails.id;
+    }
+    if (projectDetails?.name) {
+      attributes["infisical.project.name"] = projectDetails.name;
+    }
+
+    const userAuthInfo = requestContext.get("userAuthInfo");
+    if (userAuthInfo?.userId) {
+      attributes["infisical.user.id"] = userAuthInfo.userId;
+    }
+    if (userAuthInfo?.email) {
+      attributes["infisical.user.email"] = userAuthInfo.email;
+    }
+
+    const identityAuthInfo = requestContext.get("identityAuthInfo");
+    if (identityAuthInfo?.identityId) {
+      attributes["infisical.identity.id"] = identityAuthInfo.identityId;
+    }
+    if (identityAuthInfo?.identityName) {
+      attributes["infisical.identity.name"] = identityAuthInfo.identityName;
+    }
+
+    const userAgent = requestContext.get("userAgent");
+    if (userAgent) {
+      attributes["user_agent.original"] = userAgent;
+    }
+
+    const ip = requestContext.get("ip");
+    if (ip) {
+      attributes["client.address"] = ip;
+    }
+
+    secretReadCounter.add(1, attributes);
+  }
+};
