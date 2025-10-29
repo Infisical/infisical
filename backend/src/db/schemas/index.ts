@@ -97,6 +97,7 @@ export * from "./pki-acme-auths";
 export * from "./pki-acme-challenges";
 export * from "./pki-acme-enrollment-configs";
 export * from "./pki-acme-orders";
+export * from "./pki-acme-order-auths";
 export * from "./pki-alerts";
 export * from "./pki-api-enrollment-configs";
 export * from "./pki-certificate-profiles";
