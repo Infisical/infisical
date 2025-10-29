@@ -2,6 +2,7 @@ import { Job } from "bullmq";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import { QueueJobs } from "@app/queue";
+import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { ResourceMetadataDTO } from "@app/services/resource-metadata/resource-metadata-schema";
 
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -70,7 +71,10 @@ export type TPkiSyncListItem = TPkiSync & {
   appConnectionApp: string;
 };
 
-export type TCertificateMap = Record<string, { cert: string; privateKey: string; certificateChain?: string }>;
+export type TCertificateMap = Record<
+  string,
+  { cert: string; privateKey: string; certificateChain?: string; alternativeNames?: string[] }
+>;
 
 export type TCreatePkiSyncDTO = {
   name: string;
@@ -79,9 +83,10 @@ export type TCreatePkiSyncDTO = {
   isAutoSyncEnabled?: boolean;
   destinationConfig: Record<string, unknown>;
   syncOptions?: Record<string, unknown>;
-  subscriberId?: string;
+  subscriberId?: string | null;
   connectionId: string;
   projectId: string;
+  certificateIds?: string[];
   auditLogInfo: AuditLogInfo;
   resourceMetadata?: ResourceMetadataDTO;
 };
@@ -94,8 +99,9 @@ export type TUpdatePkiSyncDTO = {
   isAutoSyncEnabled?: boolean;
   destinationConfig?: Record<string, unknown>;
   syncOptions?: Record<string, unknown>;
-  subscriberId?: string;
+  subscriberId?: string | null;
   connectionId?: string;
+  certificateIds?: string[];
   auditLogInfo: AuditLogInfo;
   resourceMetadata?: ResourceMetadataDTO;
 };
@@ -108,6 +114,7 @@ export type TDeletePkiSyncDTO = {
 
 export type TListPkiSyncsByProjectId = {
   projectId: string;
+  certificateId?: string;
 };
 
 export type TFindPkiSyncByIdDTO = {
@@ -131,6 +138,45 @@ export type TTriggerPkiSyncRemoveCertificatesByIdDTO = {
   id: string;
   projectId?: string;
   auditLogInfo: AuditLogInfo;
+};
+
+export type TAddCertificatesToPkiSyncDTO = {
+  pkiSyncId: string;
+  certificateIds: string[];
+  projectId?: string;
+  auditLogInfo: AuditLogInfo;
+};
+
+export type TRemoveCertificatesFromPkiSyncDTO = {
+  pkiSyncId: string;
+  certificateIds: string[];
+  projectId?: string;
+  auditLogInfo: AuditLogInfo;
+};
+
+export type TListPkiSyncCertificatesDTO = {
+  pkiSyncId: string;
+  projectId?: string;
+  offset?: number;
+  limit?: number;
+};
+
+export type TPkiSyncCertificate = {
+  id: string;
+  pkiSyncId: string;
+  certificateId: string;
+  syncStatus: CertificateSyncStatus;
+  lastSyncMessage?: string;
+  lastSyncedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  certificate?: {
+    serialNumber: string;
+    commonName: string;
+    status: string;
+    notBefore: Date;
+    notAfter: Date;
+  };
 };
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;

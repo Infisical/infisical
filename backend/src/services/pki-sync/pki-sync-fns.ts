@@ -194,6 +194,7 @@ export const PkiSyncFns = {
       failedUploads?: Array<{ name: string; error: string }>;
       failedRemovals?: Array<{ name: string; error: string }>;
       skippedCertificates?: Array<{ name: string; reason: string }>;
+      validationErrors?: Array<{ name: string; error: string }>;
     };
   }> => {
     switch (pkiSync.destination) {

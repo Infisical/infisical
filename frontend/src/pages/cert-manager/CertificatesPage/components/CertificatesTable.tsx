@@ -5,6 +5,7 @@ import {
   faEllipsis,
   faEye,
   faFileExport,
+  faLink,
   faQuestionCircle,
   faRedo,
   faTrash
@@ -39,12 +40,13 @@ import {
   useProject,
   useSubscription
 } from "@app/context";
-import { useListWorkspaceCertificates, useUpdateRenewalConfig } from "@app/hooks/api";
+import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
 import { TCertificate } from "@app/hooks/api/certificates/types";
+import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { getCertValidUntilBadgeDetails } from "./CertificatesTable.utils";
@@ -152,7 +154,8 @@ type Props = {
         "revokeCertificate",
         "certificateCert",
         "manageRenewal",
-        "renewCertificate"
+        "renewCertificate",
+        "managePkiSyncs"
       ]
     >,
     data?: {
@@ -488,6 +491,31 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                             </ProjectPermissionCan>
                           );
                         })()}
+                        {/* PKI Sync management - only for active certificates */}
+                        {certificate.status === CertStatus.ACTIVE && (
+                          <ProjectPermissionCan
+                            I={ProjectPermissionCertificateActions.Edit}
+                            a={ProjectPermissionSub.Certificates}
+                          >
+                            {(isAllowed) => (
+                              <DropdownMenuItem
+                                className={twMerge(
+                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
+                                )}
+                                onClick={async () =>
+                                  handlePopUpOpen("managePkiSyncs", {
+                                    certificateId: certificate.id,
+                                    commonName: certificate.commonName
+                                  })
+                                }
+                                disabled={!isAllowed}
+                                icon={<FontAwesomeIcon icon={faLink} />}
+                              >
+                                PKI Syncs
+                              </DropdownMenuItem>
+                            )}
+                          </ProjectPermissionCan>
+                        )}
                         {/* Only show revoke button if CA supports revocation */}
                         {(() => {
                           const caType = caCapabilityMap[certificate.caId];

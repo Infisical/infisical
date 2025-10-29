@@ -1,6 +1,6 @@
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
-import { PkiSyncStatus } from "../enums";
+import { CertificateSyncStatus, PkiSyncStatus } from "../enums";
 
 export type RootPkiSyncOptions = {
   canImportCertificates: boolean;
@@ -43,4 +43,23 @@ export type TRootPkiSync = {
   } | null;
   appConnectionName?: string;
   appConnectionApp?: string;
+  hasCertificate?: boolean;
+};
+
+export type TPkiSyncCertificate = {
+  id: string;
+  pkiSyncId: string;
+  certificateId: string;
+  syncStatus?: CertificateSyncStatus | null;
+  lastSyncMessage?: string | null;
+  lastSyncedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  certificateSerialNumber?: string;
+  certificateCommonName?: string;
+  certificateStatus?: string;
+  certificateNotBefore?: Date;
+  certificateNotAfter?: Date;
+  pkiSyncName?: string;
+  pkiSyncDestination?: string;
 };

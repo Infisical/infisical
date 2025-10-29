@@ -10,17 +10,23 @@ import { AppConnection } from "@app/services/app-connection/app-connection-enums
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSync, PkiSyncStatus } from "./pki-sync-enums";
 import { enterprisePkiSyncCheck, getPkiSyncProviderCapabilities, listPkiSyncOptions } from "./pki-sync-fns";
 import { PKI_SYNC_CONNECTION_MAP, PKI_SYNC_NAME_MAP } from "./pki-sync-maps";
 import { TPkiSyncQueueFactory } from "./pki-sync-queue";
 import {
+  TAddCertificatesToPkiSyncDTO,
   TCreatePkiSyncDTO,
   TDeletePkiSyncDTO,
   TFindPkiSyncByIdDTO,
+  TListPkiSyncCertificatesDTO,
   TListPkiSyncsByProjectId,
   TPkiSync,
+  TPkiSyncCertificate,
+  TRemoveCertificatesFromPkiSyncDTO,
   TTriggerPkiSyncImportCertificatesByIdDTO,
   TTriggerPkiSyncRemoveCertificatesByIdDTO,
   TTriggerPkiSyncSyncCertificatesByIdDTO,
@@ -42,6 +48,16 @@ type TPkiSyncServiceFactoryDep = {
     TPkiSyncDALFactory,
     "findById" | "findByProjectIdWithSubscribers" | "findByNameAndProjectId" | "create" | "updateById" | "deleteById"
   >;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    | "findByPkiSyncId"
+    | "findByCertificateId"
+    | "findCertificateIdsByPkiSyncId"
+    | "addCertificates"
+    | "removeCertificates"
+    | "removeAllCertificatesFromSync"
+    | "findWithDetails"
+  >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "connectAppConnectionById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -56,6 +72,7 @@ export type TPkiSyncServiceFactory = ReturnType<typeof pkiSyncServiceFactory>;
 
 export const pkiSyncServiceFactory = ({
   pkiSyncDAL,
+  certificateSyncDAL,
   pkiSubscriberDAL,
   appConnectionService,
   permissionService,
@@ -72,7 +89,8 @@ export const pkiSyncServiceFactory = ({
       syncOptions = {},
       subscriberId,
       connectionId,
-      projectId
+      projectId,
+      certificateIds = []
     }: Omit<TCreatePkiSyncDTO, "auditLogInfo">,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
@@ -128,6 +146,10 @@ export const pkiSyncServiceFactory = ({
         ...(isAutoSyncEnabled && { syncStatus: PkiSyncStatus.Pending })
       });
 
+      if (certificateIds.length > 0) {
+        await certificateSyncDAL.addCertificates(pkiSync.id, certificateIds);
+      }
+
       if (pkiSync.isAutoSyncEnabled) {
         await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id });
       }
@@ -152,7 +174,8 @@ export const pkiSyncServiceFactory = ({
       destinationConfig,
       syncOptions,
       subscriberId,
-      connectionId
+      connectionId,
+      certificateIds
     }: Omit<TUpdatePkiSyncDTO, "auditLogInfo" | "projectId">,
     actor: OrgServiceActor
   ): Promise<TPkiSync> => {
@@ -221,6 +244,13 @@ export const pkiSyncServiceFactory = ({
       };
     }
 
+    if (certificateIds !== undefined) {
+      await certificateSyncDAL.removeAllCertificatesFromSync(id);
+      if (certificateIds.length > 0) {
+        await certificateSyncDAL.addCertificates(id, certificateIds);
+      }
+    }
+
     const updatedPkiSync = await pkiSyncDAL.updateById(id, {
       name,
       description,
@@ -266,7 +296,7 @@ export const pkiSyncServiceFactory = ({
   };
 
   const listPkiSyncsByProjectId = async (
-    { projectId }: TListPkiSyncsByProjectId,
+    { projectId, certificateId }: TListPkiSyncsByProjectId,
     actor: OrgServiceActor
   ): Promise<TPkiSync[]> => {
     const { permission } = await permissionService.getProjectPermission({
@@ -281,6 +311,29 @@ export const pkiSyncServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
 
     const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId);
+
+    if (certificateId) {
+      const syncsWithCertificateInfo = await Promise.all(
+        pkiSyncsWithSubscribers.map(async (sync) => {
+          try {
+            const certificateSyncs = await certificateSyncDAL.findByPkiSyncId(sync.id);
+            const hasCertificate = certificateSyncs.some((certSync) => certSync.certificateId === certificateId);
+
+            return {
+              ...sync,
+              hasCertificate
+            };
+          } catch (error) {
+            return {
+              ...sync,
+              hasCertificate: false
+            };
+          }
+        })
+      );
+
+      return syncsWithCertificateInfo as TPkiSync[];
+    }
 
     return pkiSyncsWithSubscribers as TPkiSync[];
   };
@@ -433,6 +486,136 @@ export const pkiSyncServiceFactory = ({
     return listPkiSyncOptions();
   };
 
+  const addCertificatesToPkiSync = async (
+    { pkiSyncId, certificateIds }: Omit<TAddCertificatesToPkiSyncDTO, "auditLogInfo" | "projectId">,
+    actor: OrgServiceActor
+  ) => {
+    const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager,
+      projectId: pkiSync.projectId
+    });
+
+    let subscriber;
+    if (pkiSync.subscriberId) {
+      subscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subscriber
+        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: subscriber.name })
+        : ProjectPermissionSub.PkiSyncs
+    );
+
+    const addedCertificates = await certificateSyncDAL.addCertificates(pkiSyncId, certificateIds);
+
+    if (pkiSync.isAutoSyncEnabled) {
+      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    }
+
+    return addedCertificates;
+  };
+
+  const removeCertificatesFromPkiSync = async (
+    { pkiSyncId, certificateIds }: Omit<TRemoveCertificatesFromPkiSyncDTO, "auditLogInfo" | "projectId">,
+    actor: OrgServiceActor
+  ) => {
+    const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager,
+      projectId: pkiSync.projectId
+    });
+
+    let subscriber;
+    if (pkiSync.subscriberId) {
+      subscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Edit,
+      subscriber
+        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: subscriber.name })
+        : ProjectPermissionSub.PkiSyncs
+    );
+
+    const removedCount = await certificateSyncDAL.removeCertificates(pkiSyncId, certificateIds);
+
+    if (pkiSync.isAutoSyncEnabled) {
+      await pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSyncId });
+    }
+
+    return { removedCount };
+  };
+
+  const listPkiSyncCertificates = async (
+    { pkiSyncId, offset = 0, limit = 20 }: Omit<TListPkiSyncCertificatesDTO, "projectId">,
+    actor: OrgServiceActor
+  ): Promise<{ certificates: TPkiSyncCertificate[]; totalCount: number }> => {
+    const pkiSync = await pkiSyncDAL.findById(pkiSyncId);
+    if (!pkiSync) throw new NotFoundError({ message: "PKI sync not found" });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager,
+      projectId: pkiSync.projectId
+    });
+
+    let subscriber;
+    if (pkiSync.subscriberId) {
+      subscriber = await pkiSubscriberDAL.findById(pkiSync.subscriberId);
+    }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiSyncActions.Read,
+      subscriber
+        ? subject(ProjectPermissionSub.PkiSyncs, { subscriberName: subscriber.name })
+        : ProjectPermissionSub.PkiSyncs
+    );
+
+    const result = await certificateSyncDAL.findWithDetails({
+      pkiSyncId,
+      offset,
+      limit
+    });
+    const { certificateDetails, totalCount } = result;
+
+    const certificates = certificateDetails.map((detail) => ({
+      id: detail.id,
+      pkiSyncId: detail.pkiSyncId,
+      certificateId: detail.certificateId,
+      syncStatus: (detail.syncStatus as CertificateSyncStatus) || CertificateSyncStatus.Pending,
+      lastSyncMessage: detail.lastSyncMessage || undefined,
+      lastSyncedAt: detail.lastSyncedAt || undefined,
+      createdAt: detail.createdAt,
+      updatedAt: detail.updatedAt,
+      certificateSerialNumber: detail.certificateSerialNumber || undefined,
+      certificateCommonName: detail.certificateCommonName || undefined,
+      certificateStatus: detail.certificateStatus || undefined,
+      certificateNotBefore: detail.certificateNotBefore || undefined,
+      certificateNotAfter: detail.certificateNotAfter || undefined,
+      pkiSyncName: detail.pkiSyncName || undefined,
+      pkiSyncDestination: detail.pkiSyncDestination || undefined
+    }));
+
+    return { certificates, totalCount };
+  };
+
   return {
     createPkiSync,
     updatePkiSync,
@@ -442,6 +625,9 @@ export const pkiSyncServiceFactory = ({
     triggerPkiSyncSyncCertificatesById,
     triggerPkiSyncImportCertificatesById,
     triggerPkiSyncRemoveCertificatesById,
-    getPkiSyncOptions
+    getPkiSyncOptions,
+    addCertificatesToPkiSync,
+    removeCertificatesFromPkiSync,
+    listPkiSyncCertificates
   };
 };

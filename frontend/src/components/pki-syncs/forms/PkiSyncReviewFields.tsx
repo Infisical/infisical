@@ -3,7 +3,7 @@ import { useFormContext } from "react-hook-form";
 import { Badge, GenericFieldLabel } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
-import { useListWorkspacePkiSubscribers } from "@app/hooks/api";
+import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
@@ -11,18 +11,24 @@ export const PkiSyncReviewFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
   const { currentProject } = useProject();
 
-  const { data: pkiSubscribers = [] } = useListWorkspacePkiSubscribers(currentProject?.id || "");
+  const { data } = useListWorkspaceCertificates({
+    projectId: currentProject?.id || "",
+    offset: 0,
+    limit: 100
+  });
 
-  const getSubscriberName = (subscriberId?: string) => {
-    const subscriber = pkiSubscribers.find((sub) => sub.id === subscriberId);
-    return subscriber?.name || "Unknown";
+  const certificates = data?.certificates || [];
+
+  const getSelectedCertificates = (certificateIds?: string[]) => {
+    if (!certificateIds || certificateIds.length === 0) return [];
+    return certificates.filter((cert) => certificateIds.includes(cert.id));
   };
 
   const {
     name,
     description,
     connection,
-    subscriberId,
+    certificateIds,
     syncOptions,
     destination,
     destinationConfig,
@@ -30,17 +36,28 @@ export const PkiSyncReviewFields = () => {
   } = watch();
 
   const destinationName = PKI_SYNC_MAP[destination].name;
+  const selectedCertificates = getSelectedCertificates(certificateIds);
 
   return (
     <div className="mb-4 flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div className="w-full border-b border-mineshaft-600">
-          <span className="text-sm text-mineshaft-300">Source</span>
+          <span className="text-sm text-mineshaft-300">Certificates</span>
         </div>
         <div className="flex flex-wrap gap-x-8 gap-y-2">
-          <GenericFieldLabel label="PKI Subscriber">
-            {getSubscriberName(subscriberId)}
-          </GenericFieldLabel>
+          <div>
+            {selectedCertificates.length === 0 ? (
+              <span className="text-bunker-400">No certificates selected</span>
+            ) : (
+              <div className="space-y-1">
+                {selectedCertificates.map((cert) => (
+                  <div key={cert.id} className="text-sm">
+                    {cert.commonName}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex flex-col gap-3">

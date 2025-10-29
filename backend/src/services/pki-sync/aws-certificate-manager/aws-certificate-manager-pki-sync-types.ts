@@ -39,6 +39,7 @@ export interface SyncCertificatesResult {
   details?: {
     failedUploads?: Array<{ name: string; error: string }>;
     failedRemovals?: Array<{ name: string; error: string }>;
+    validationErrors?: Array<{ name: string; error: string }>;
   };
 }
 

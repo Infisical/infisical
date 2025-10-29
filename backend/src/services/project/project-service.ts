@@ -154,7 +154,14 @@ type TProjectServiceFactoryDep = {
   >;
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "find">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "find" | "findWithAssociatedCa">;
-  certificateDAL: Pick<TCertificateDALFactory, "find" | "countCertificatesInProject" | "findWithPrivateKeyInfo">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    | "find"
+    | "countCertificatesInProject"
+    | "findWithPrivateKeyInfo"
+    | "findActiveCertificatesForSync"
+    | "countActiveCertificatesForSync"
+  >;
   certificateTemplateDAL: Pick<TCertificateTemplateDALFactory, "getCertTemplatesByProjectId">;
   pkiAlertDAL: Pick<TPkiAlertDALFactory, "find">;
   pkiCollectionDAL: Pick<TPkiCollectionDALFactory, "find">;
@@ -915,6 +922,7 @@ export const projectServiceFactory = ({
     offset = 0,
     friendlyName,
     commonName,
+    forPkiSync = false,
     actorId,
     actorOrgId,
     actorAuthMethod,
@@ -938,20 +946,35 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const certificates = await certificateDAL.findWithPrivateKeyInfo(
-      {
-        projectId,
-        ...(friendlyName && { friendlyName }),
-        ...(commonName && { commonName })
-      },
-      { offset, limit, sort: [["notAfter", "desc"]] }
-    );
+    const certificates = forPkiSync
+      ? await certificateDAL.findActiveCertificatesForSync(
+          {
+            projectId,
+            ...(friendlyName && { friendlyName }),
+            ...(commonName && { commonName })
+          },
+          { offset, limit }
+        )
+      : await certificateDAL.findWithPrivateKeyInfo(
+          {
+            projectId,
+            ...(friendlyName && { friendlyName }),
+            ...(commonName && { commonName })
+          },
+          { offset, limit, sort: [["notAfter", "desc"]] }
+        );
 
-    const count = await certificateDAL.countCertificatesInProject({
-      projectId,
-      friendlyName,
-      commonName
-    });
+    const count = forPkiSync
+      ? await certificateDAL.countActiveCertificatesForSync({
+          projectId,
+          friendlyName,
+          commonName
+        })
+      : await certificateDAL.countCertificatesInProject({
+          projectId,
+          friendlyName,
+          commonName
+        });
 
     return {
       certificates,
