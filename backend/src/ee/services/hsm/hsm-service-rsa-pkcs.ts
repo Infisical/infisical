@@ -218,6 +218,8 @@ export const rsaPkcsEncryptionProvider = ({
         { type: pkcs11js.CKA_TOKEN, value: true },
         { type: pkcs11js.CKA_ENCRYPT, value: true },
         { type: pkcs11js.CKA_VERIFY, value: true },
+        { type: pkcs11js.CKA_MODULUS_BITS, value: 2048 },
+        { type: pkcs11js.CKA_PUBLIC_EXPONENT, value: Buffer.from([0x01, 0x00, 0x01]) }, // 65537
       ];
 
       const privateKeyTemplate = [
