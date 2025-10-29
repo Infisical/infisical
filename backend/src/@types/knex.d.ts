@@ -722,6 +722,17 @@ declare module "knex/types/tables" {
       TPkiAcmeAccountsInsert,
       TPkiAcmeAccountsUpdate
     >;
+    [TableName.PkiAcmeOrder]: KnexOriginal.CompositeTableType<
+      TPkiAcmeOrders,
+      TPkiAcmeOrdersInsert,
+      TPkiAcmeOrdersUpdate
+    >;
+    [TableName.PkiAcmeAuth]: KnexOriginal.CompositeTableType<TPkiAcmeAuths, TPkiAcmeAuthsInsert, TPkiAcmeAuthsUpdate>;
+    [TableName.PkiAcmeChallenge]: KnexOriginal.CompositeTableType<
+      TPkiAcmeChallenges,
+      TPkiAcmeChallengesInsert,
+      TPkiAcmeChallengesUpdate
+    >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
       TCertificateTemplateEstConfigsInsert,

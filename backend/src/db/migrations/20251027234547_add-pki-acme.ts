@@ -56,6 +56,7 @@ export async function up(knex: Knex): Promise<void> {
       // Multi-value emails array
       t.specificType("emails", "text[]").notNullable();
 
+      // TODO: make public key a string instead of jsonb to make indexing much easier
       // Public key (JWK format)
       t.jsonb("publicKey").notNullable();
       // The JWS algorithm used to sign the public key when creating the account, e.g. "RS256", "ES256", "PS256", etc.
