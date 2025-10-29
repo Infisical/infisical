@@ -55,6 +55,7 @@ export type TPkiAcmeServiceFactory = {
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: (
     profileId: string,
+    alg: string,
     jwk: JsonWebKey,
     body: TCreateAcmeAccountPayload
   ) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;

@@ -361,6 +361,7 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
+import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -1065,7 +1066,8 @@ export const registerRoutes = async (
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
   const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
-  const pkiAcmeAccountDAL = pkiAcmeAccountDALFactory(db);
+  const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
+  const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
 
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
@@ -1169,7 +1171,8 @@ export const registerRoutes = async (
 
   const pkiAcmeService = pkiAcmeServiceFactory({
     certificateProfileDAL,
-    pkiAcmeAccountDAL
+    acmeAccountDAL,
+    acmeOrderDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
