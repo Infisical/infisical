@@ -10,7 +10,6 @@ import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
-import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import {
@@ -63,8 +62,7 @@ export const SecretListView = ({
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag",
-    "createSharedSecret"
+    "createTag"
   ] as const);
 
   const selectedSecrets = useSelectedSecrets();
@@ -391,13 +389,6 @@ export const SecretListView = ({
     (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
-  const onShareSecret = useCallback(
-    (sec: SecretV3RawSanitized) =>
-      handlePopUpOpen("createSharedSecret", {
-        value: sec.value
-      }),
-    []
-  );
 
   return (
     <>
@@ -420,7 +411,6 @@ export const SecretListView = ({
           onDetailViewSecret={onDetailViewSecret}
           importedBy={importedBy}
           onCreateTag={onCreateTag}
-          onShareSecret={onShareSecret}
           isPending={secret.isPending}
           pendingAction={secret.pendingAction}
         />
@@ -464,7 +454,6 @@ export const SecretListView = ({
           onSaveSecret={handleSaveSecret}
           tags={wsTags}
           onCreateTag={() => handlePopUpOpen("createTag")}
-          handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
         />
       )}
       <CreateTagModal
@@ -473,7 +462,6 @@ export const SecretListView = ({
         append={append}
         currentSecret={popUp.createTag.data}
       />
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
 };

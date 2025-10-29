@@ -525,3 +525,15 @@ export const useGetSecretValue = (
     ...options
   });
 };
+
+export function useFetchSecretValue() {
+  const queryClient = useQueryClient()
+
+  return useCallback((params: TGetSecretValueDTO) => {
+    const data = fetchSecretValue(params)
+
+    queryClient.setQueryData(dashboardKeys.getSecretValue(params), data);
+
+    return data
+  }, [])
+}

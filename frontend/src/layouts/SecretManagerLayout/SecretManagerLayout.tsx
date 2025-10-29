@@ -13,6 +13,7 @@ import {
 } from "@app/hooks/api";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
+import { ShareSecretModalProvider } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/ShareSecretModalProvider";
 
 export const SecretManagerLayout = () => {
   const { currentProject, projectId } = useProject();
@@ -41,7 +42,7 @@ export const SecretManagerLayout = () => {
     (secretApprovalReqCount?.open || 0) + (accessApprovalRequestCount?.pendingCount || 0);
 
   return (
-    <>
+    <ShareSecretModalProvider>
       <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
         <div className="border-b border-mineshaft-600 bg-mineshaft-900">
           <motion.div
@@ -176,6 +177,6 @@ export const SecretManagerLayout = () => {
           {` ${t("common.no-mobile")} `}
         </p>
       </div>
-    </>
+    </ShareSecretModalProvider>
   );
 };

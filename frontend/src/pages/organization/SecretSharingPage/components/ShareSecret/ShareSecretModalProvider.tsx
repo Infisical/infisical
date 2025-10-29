@@ -1,19 +1,28 @@
 import { Modal, ModalContent } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { usePopUp } from "@app/hooks/usePopUp";
 import { ShareSecretForm } from "@app/pages/public/ShareSecretPage/components";
+import { ReactNode } from "@tanstack/react-router";
+import { createContext, useCallback } from "react";
 
 type Props = {
-  popUp: UsePopUpState<["createSharedSecret"]>;
-  handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["createSharedSecret"]>,
-    state?: boolean
-  ) => void;
+  children: ReactNode
 };
 
-export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const HandleCreateSharedSecretPopupOpenContext = createContext<((value: string) => void) | undefined>(undefined)
+
+export const ShareSecretModalProvider = ({children}: Props) => {
   const { currentOrg } = useOrganization();
-  return (
+
+  const { handlePopUpOpen, popUp, handlePopUpToggle } = usePopUp([
+      "createSharedSecret"
+    ] as const);
+
+    const openModalFunction = useCallback((value: string) => {
+      handlePopUpOpen("createSharedSecret", {value})
+    }, [handlePopUpOpen])
+
+  return (<HandleCreateSharedSecretPopupOpenContext.Provider value={openModalFunction}>
     <Modal
       isOpen={popUp?.createSharedSecret?.isOpen}
       onOpenChange={(isOpen) => {
@@ -35,5 +44,9 @@ export const AddShareSecretModal = ({ popUp, handlePopUpToggle }: Props) => {
         />
       </ModalContent>
     </Modal>
+    {children}
+    </HandleCreateSharedSecretPopupOpenContext.Provider>
   );
 };
+
+

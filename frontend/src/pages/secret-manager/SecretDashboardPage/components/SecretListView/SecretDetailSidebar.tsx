@@ -63,6 +63,7 @@ import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, TFormSchema } from "./SecretListView.utils";
@@ -83,7 +84,6 @@ type Props = {
   ) => Promise<void>;
   tags: WsTag[];
   onCreateTag: () => void;
-  handleSecretShare: (value: string) => void;
 };
 
 export const SecretDetailSidebar = ({
@@ -95,8 +95,7 @@ export const SecretDetailSidebar = ({
   tags,
   onCreateTag,
   environment,
-  secretPath,
-  handleSecretShare
+  secretPath
 }: Props) => {
   const { currentProject } = useProject();
   const [isFieldFocused, setIsFieldFocused] = useToggle();
@@ -122,7 +121,6 @@ export const SecretDetailSidebar = ({
   });
 
   const isLoadingSecretValue = canFetchSecretValue && isPendingSecretValue;
-  const hasFetchedSecretValue = !canFetchSecretValue || Boolean(secretValueData);
 
   const secret = {
     ...originalSecret,
@@ -169,6 +167,11 @@ export const SecretDetailSidebar = ({
       value: getDefaultValue()
     },
     disabled: !secret
+  });
+
+  const openCreateSharedSecretPopup = useCreateSharedSecretPopup({
+    getFetchedValue: () => getValues("value"),
+    fetchSecretParams: fetchSecretValueParams
   });
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
@@ -412,17 +415,7 @@ export const SecretDetailSidebar = ({
                             className="px-2 py-[0.43rem] font-normal"
                             variant="outline_bg"
                             leftIcon={<FontAwesomeIcon icon={faShare} />}
-                            onClick={async () => {
-                              let value: string | undefined;
-
-                              if (hasFetchedSecretValue) {
-                                value = getValues(["value"])[0];
-                              } else {
-                                value = await fetchValue();
-                              }
-
-                              handleSecretShare(value ?? "");
-                            }}
+                            onClick={openCreateSharedSecretPopup}
                           >
                             Share
                           </Button>
