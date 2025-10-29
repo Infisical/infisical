@@ -722,8 +722,18 @@
                   {
                     "group": "Certificate Authorities",
                     "pages": [
-                      "documentation/platform/pki/private-ca",
-                      "documentation/platform/pki/external-ca"
+                      "documentation/platform/pki/ca/overview",
+                      "documentation/platform/pki/ca/private-ca",
+                      "documentation/platform/pki/ca/external-ca"
+                    ]
+                  },
+                  {
+                    "group": "Certificates",
+                    "pages": [
+                      "documentation/platform/pki/certificates/overview",
+                      "documentation/platform/pki/certificates/profiles",
+                      "documentation/platform/pki/certificates/templates",
+                      "documentation/platform/pki/certificates/certificates"
                     ]
                   },
                   "documentation/platform/pki/subscribers",
@@ -750,8 +760,8 @@
               {
                 "group": "CA Integrations",
                 "pages": [
-                  "documentation/platform/pki/acme-ca",
-                  "documentation/platform/pki/azure-adcs"
+                  "documentation/platform/pki/ca/acme-ca",
+                  "documentation/platform/pki/ca/azure-adcs"
                 ]
               }
             ]
@@ -2939,6 +2949,22 @@
     {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"
+    },
+    {
+      "source": "/documentation/platform/pki/private-ca",
+      "destination": "/documentation/platform/pki/ca/private-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/external-ca",
+      "destination": "/documentation/platform/pki/ca/external-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/acme-ca",
+      "destination": "/documentation/platform/pki/ca/acme-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/azure-adcs",
+      "destination": "/documentation/platform/pki/ca/azure-adcs"
     }
   ]
 }

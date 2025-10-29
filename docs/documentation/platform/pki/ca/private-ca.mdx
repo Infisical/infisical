@@ -1,13 +1,12 @@
 ---
-title: "Private CA"
-sidebarTitle: "Private CA"
+title: "Internal CA"
+sidebarTitle: "Internal CA"
 description: "Learn how to create a Private CA hierarchy with Infisical."
 ---
 
 ## Concept
 
-The first step to creating your Internal PKI is to create a Private Certificate Authority (CA) hierarchy that is a structure of entities
-used to issue digital certificates for your [subscribers](/documentation/platform/pki/subscribers).
+Infisical lets you build your Internal PKI through a Private Certificate Authority (CA) hierarchy, enabling you to issue and manage digital certificates for your end-entities.
 
 <div align="center">
 
@@ -47,7 +46,7 @@ consisting of an (optional) root CA and an intermediate CA.
     <Step title="Creating a root CA">
         If you wish to use an external root CA, you can skip this step and head to step 2 to create an intermediate CA.
     
-        To create a root CA, head to your Project > Internal PKI > Certificate Authorities and press **Create CA**.
+        To create a root CA, head to your Certificate Management Project > Certificate Authorities > Internal Certificate Authorities and press **Create CA**.
 
         ![pki create ca](/images/platform/pki/ca/ca-create.png)
 
@@ -55,18 +54,17 @@ consisting of an (optional) root CA and an intermediate CA.
 
         ![pki create root ca](/images/platform/pki/ca/ca-create-root.png)
 
-        Here's some guidance on each field:
+        Here's some guidance for each field:
 
         - Valid Until: The date until which the CA is valid in the date time string format specified [here](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date#date_time_string_format). For example, the following formats would be valid: `YYYY`, `YYYY-MM`, `YYYY-MM-DD`, `YYYY-MM-DDTHH:mm:ss.sssZ`.
         - Path Length: The maximum number of intermediate CAs that can be chained to this CA. A path of `-1` implies no limit; a path of `0` implies no intermediate CAs can be chained.
         - Key Algorithm: The type of public key algorithm and size, in bits, of the key pair that the CA creates when it issues a certificate. Supported key algorithms are `RSA 2048`, `RSA 4096`, `ECDSA P-256`, and `ECDSA P-384` with the default being `RSA 2048`.
-        - Friendly Name: A friendly name for the CA; this is only for display and defaults to the subject of the CA if left empty.
+        - Name: A slug-friendly name for the CA.
         - Organization (O): The organization name.
         - Country (C): The country code.
         - State or Province Name: The state or province.
         - Locality Name: The city or locality.
         - Common Name: The name of the CA.
-        - Require Template for Certificate Issuance: Whether or not certificates for this CA can only be issued through certificate templates (recommended).
 
         <Note>
             The Organization, Country, State or Province Name, Locality Name, and Common Name make up the **Distinguished Name (DN)** or **subject** of the CA.
@@ -98,8 +96,7 @@ consisting of an (optional) root CA and an intermediate CA.
 
         ![pki cas](/images/platform/pki/ca/cas.png)
 
-        Great! You've successfully created a Private CA hierarchy with a root CA and an intermediate CA.
-        Now check out the [Subscribers](/documentation/platform/pki/subscribers) page to learn more about how to issue X.509 certificates using the intermediate CA.
+        Great! You've successfully created a Private CA hierarchy with a root CA and an intermediate CA. Now check out the Certificates section to learn more about how to issue X.509 certificates using the intermediate CA.
 
         2.3b. If you have an external root CA, select **External CA** for the **Parent CA Type** field.
 
