@@ -162,7 +162,7 @@ export const IdentitySection = withPermission(
                   onClick={() => {
                     if (!isMoreIdentitiesAllowed && !isEnterprise) {
                       handlePopUpOpen("upgradePlan", {
-                        text: "You have reached the limit of identities allowed on your current plan. To add more identities, please upgrade to Infisical Pro plan."
+                        text: "You have reached the maximum number of identities allowed on your current plan. Upgrade to Infisical Pro plan to add more identities."
                       });
                       return;
                     }
@@ -210,7 +210,7 @@ export const IdentitySection = withPermission(
                     if (subscription && !subscription.machineIdentityAuthTemplates) {
                       handlePopUpOpen("upgradePlan", {
                         isEnterpriseFeature: true,
-                        text: "Your current plan does not provide access to creating Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
+                        text: "Your current plan does not include access to creating Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
                       });
                       return;
                     }

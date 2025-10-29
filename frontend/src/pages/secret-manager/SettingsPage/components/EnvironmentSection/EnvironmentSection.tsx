@@ -123,7 +123,7 @@ export const EnvironmentSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You have reached the maximum number of environments allowed on your current plan. To add more environments, please upgrade to Infisical Pro plan."
+        text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."
       />
     </div>
   );

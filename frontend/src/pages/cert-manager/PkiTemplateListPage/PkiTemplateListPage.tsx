@@ -297,7 +297,7 @@ export const PkiTemplateListPage = () => {
       <UpgradePlanModal
         isOpen={popUp.estUpgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("estUpgradePlan", isOpen)}
-        text="Your current plan does not allow configuring template enrollment methods. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        text="Your current plan does not include access to configuring template enrollment methods. To unlock this feature, please upgrade to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.estUpgradePlan.data?.isEnterpriseFeature}
       />
     </>

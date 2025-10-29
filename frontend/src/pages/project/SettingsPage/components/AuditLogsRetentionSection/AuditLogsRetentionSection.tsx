@@ -42,7 +42,7 @@ export const AuditLogsRetentionSection = () => {
     try {
       if (!subscription?.auditLogs) {
         handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not provide access to configuring audit logs retention. To unlock this feature, please upgrade to Infisical Pro plan."
+          text: "Configuring audit logs retention can be unlocked if you upgrade to Infisical Pro plan."
         });
 
         return;
@@ -50,7 +50,7 @@ export const AuditLogsRetentionSection = () => {
 
       if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
         handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not provide access to updating audit logs retention period to a higher value. To unlock this feature, please upgrade to Infisical Pro plan."
+          text: "Updating audit logs retention period to a higher value can be unlocked if you upgrade to Infisical Pro plan."
         });
 
         return;

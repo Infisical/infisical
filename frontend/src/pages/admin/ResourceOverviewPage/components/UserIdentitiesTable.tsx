@@ -256,7 +256,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        text: "Your current plan does not allow making users server admins. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        text: "Your current plan does not allow setting additional server admins. To unlock this feature, please upgrade to Infisical Pro plan."
                                       });
                                       return;
                                     }
@@ -284,7 +284,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        text: "Your current plan does not allow removing server admin permissions from user. To unlock this feature, please upgrade to Infisical Pro plan."
+                                        text: "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
                                       });
                                       return;
                                     }

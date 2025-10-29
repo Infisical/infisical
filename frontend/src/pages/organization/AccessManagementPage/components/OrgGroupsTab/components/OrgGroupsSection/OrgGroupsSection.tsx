@@ -26,7 +26,7 @@ export const OrgGroupsSection = () => {
   const handleAddGroupModal = () => {
     if (!subscription?.groups) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not allow managing groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        text: "Your current plan does not allow adding groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true
       });
     } else {
@@ -93,7 +93,7 @@ export const OrgGroupsSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text={(popUp.upgradePlan?.data as { text: string })?.text}
+        text={popUp.upgradePlan?.data?.text}
       />
     </div>
   );

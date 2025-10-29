@@ -38,7 +38,7 @@ export const OrgSSOSection = (): JSX.Element => {
 
       if (!subscription?.samlSSO) {
         handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not provide access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
+          text: "Your current plan does not include access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
         });
         return;
       }
@@ -68,7 +68,7 @@ export const OrgSSOSection = (): JSX.Element => {
       if (!subscription?.samlSSO || !subscription?.groups) {
         handlePopUpOpen("upgradePlan", {
           isEnterpriseFeature: true,
-          text: "Your current plan does not provide access to SAML group mapping. To unlock this feature, please upgrade to Infisical Enterprise plan."
+          text: "Your current plan does not include access to SAML group mapping. To unlock this feature, please upgrade to Infisical Enterprise plan."
         });
         return;
       }
@@ -110,7 +110,7 @@ export const OrgSSOSection = (): JSX.Element => {
         handlePopUpOpen("addSSO");
       } else {
         handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not provide access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
+          text: "Your current plan does not include access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
         });
       }
     } catch (err) {

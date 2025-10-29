@@ -32,7 +32,7 @@ export const GroupsSection = () => {
   const handleAddGroupModal = () => {
     if (!subscription?.groups) {
       handlePopUpOpen("upgradePlan", {
-        text: "Your current plan does not provide access to managing groups. To unlock this feature, please upgrade to Infisical Enterprise plan.",
+        text: "Managing groups can be unlocked if you upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true
       });
     } else {

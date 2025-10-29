@@ -159,7 +159,7 @@ export const IPAllowlistTable = ({ popUp, handlePopUpOpen, handlePopUpToggle }: 
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="Your current plan does not provide access to IP allowlisting. To unlock this feature, please upgrade to Infisical Pro plan."
+        text="Your current plan does not include access to IP allowlisting. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>
   );

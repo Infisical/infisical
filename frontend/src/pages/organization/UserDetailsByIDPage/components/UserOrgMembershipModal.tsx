@@ -148,7 +148,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
 
                     if (isCustomRole && subscription && !subscription?.rbac) {
                       handlePopUpOpen("upgradePlan", {
-                        text: "Your current plan does not provide access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
+                        text: "Your current plan does not include access to assig custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
                       });
                       return;
                     }
