@@ -29,7 +29,7 @@ type TDependencies = {
 };
 
 type THsmServiceDependencies = {
-  envConfig: Pick<TMigrationEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured">;
+  envConfig: Pick<TMigrationEnvConfig, "HSM_PIN" | "HSM_SLOT" | "HSM_LIB_PATH" | "HSM_KEY_LABEL" | "isHsmConfigured" | "HSM_ENCRYPTION_STRATEGY">;
 };
 
 export const getMigrationHsmService = async ({ envConfig }: THsmServiceDependencies) => {
