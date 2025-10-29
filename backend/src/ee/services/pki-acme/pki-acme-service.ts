@@ -260,21 +260,23 @@ export const pkiAcmeServiceFactory = ({
       accountId: account.id,
       status: AcmeOrderStatus.Pending
     });
-    payload.identifiers.forEach(async (identifier) => {
-      if (identifier.type === AcmeIdentifierType.DNS) {
-        // TODO: reuse existing authorizations for this identifier if they exist
-        const auth = await acmeAuthDAL.create({
-          accountId: account.id,
-          status: AcmeAuthStatus.Pending,
-          identifierType: identifier.type,
-          identifierValue: identifier.value,
-          // TODO: read config from the profile to get the expiration time instead
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-        });
-      } else {
-        throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
-      }
-    });
+    const authorizations = await Promise.all(
+      payload.identifiers.map(async (identifier) => {
+        if (identifier.type === AcmeIdentifierType.DNS) {
+          // TODO: reuse existing authorizations for this identifier if they exist
+          return await acmeAuthDAL.create({
+            accountId: account.id,
+            status: AcmeAuthStatus.Pending,
+            identifierType: identifier.type,
+            identifierValue: identifier.value,
+            // TODO: read config from the profile to get the expiration time instead
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+          });
+        } else {
+          throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
+        }
+      })
+    );
 
     // FIXME: Implement ACME new order creation
     const orderId = "FIXME-order-id";
