@@ -41,6 +41,7 @@ export type TFinalizeAcmeOrderPayload = z.infer<typeof FinalizeAcmeOrderBodySche
 
 export type TJwsPayloadWithJwk = TJwsPayload & {
   jwk: JsonWebKey;
+  alg: string;
 };
 export type TAcmeResponse<TPayload> = {
   status: number;
@@ -57,7 +58,10 @@ export type TPkiAcmeServiceFactory = {
     jwk: JsonWebKey,
     body: TCreateAcmeAccountPayload
   ) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
-  createAcmeOrder: (profileId: string, body: TCreateAcmeOrderPayload) => Promise<TCreateAcmeOrderResponse>;
+  createAcmeOrder: (
+    profileId: string,
+    body: TCreateAcmeOrderPayload
+  ) => Promise<TAcmeResponse<TCreateAcmeOrderResponse>>;
   deactivateAcmeAccount: (
     profileId: string,
     accountId: string,

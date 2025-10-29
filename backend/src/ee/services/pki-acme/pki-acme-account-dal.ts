@@ -61,13 +61,13 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByPublicKey = async (publicKey: unknown, tx?: Knex) => {
+  const findByPublicKey = async (publicKey: unknown, alg: string, tx?: Knex) => {
     try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ publicKey }).first();
+      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ publicKey, alg }).first();
 
       return account || null;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME account by public key" });
+      throw new DatabaseError({ error, name: "Find PKI ACME account by public key and alg" });
     }
   };
 
