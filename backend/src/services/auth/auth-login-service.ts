@@ -386,6 +386,8 @@ export const authLoginServiceFactory = ({
     providerAuthToken?: string;
     captchaToken?: string;
   }) => {
+    const appCfg = getConfig();
+
     try {
       const usersByUsername = await userDAL.findUserEncKeyByUsername({
         username: email
@@ -440,15 +442,17 @@ export const authLoginServiceFactory = ({
         organizationId
       });
 
-      authAttemptCounter.add(1, {
-        "infisical.organization.id": organizationId,
-        "infisical.user.email": email,
-        "infisical.user.id": userEnc.userId,
-        "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
-        "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-        "client.address": ip,
-        "user_agent.original": userAgent
-      });
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.organization.id": organizationId,
+          "infisical.user.email": email,
+          "infisical.user.id": userEnc.userId,
+          "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
+          "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": ip,
+          "user_agent.original": userAgent
+        });
+      }
 
       return {
         tokens: {
@@ -458,13 +462,15 @@ export const authLoginServiceFactory = ({
         user: userEnc
       } as const;
     } catch (error) {
-      authAttemptCounter.add(1, {
-        "infisical.user.email": email,
-        "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
-        "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-        "client.address": ip,
-        "user_agent.original": userAgent
-      });
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.user.email": email,
+          "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
+          "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+          "client.address": ip,
+          "user_agent.original": userAgent
+        });
+      }
 
       throw error;
     }

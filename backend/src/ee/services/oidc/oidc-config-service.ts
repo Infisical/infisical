@@ -757,29 +757,33 @@ export const oidcConfigServiceFactory = ({
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
           .then(({ isUserCompleted, providerAuthToken, user }) => {
-            authAttemptCounter.add(1, {
-              "infisical.user.email": claims?.email?.toLowerCase(),
-              "infisical.user.id": user.id,
-              "infisical.organization.id": org.id,
-              "infisical.organization.name": org.name,
-              "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
-              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.user.id": user.id,
+                "infisical.organization.id": org.id,
+                "infisical.organization.name": org.name,
+                "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
+                "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             cb(null, { isUserCompleted, providerAuthToken });
           })
           .catch((error) => {
-            authAttemptCounter.add(1, {
-              "infisical.user.email": claims?.email?.toLowerCase(),
-              "infisical.organization.id": org.id,
-              "infisical.organization.name": org.name,
-              "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
-              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.organization.id": org.id,
+                "infisical.organization.name": org.name,
+                "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
+                "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             cb(error);
           });

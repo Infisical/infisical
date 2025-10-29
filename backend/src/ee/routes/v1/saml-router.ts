@@ -157,26 +157,30 @@ export const registerSamlRouter = async (server: FastifyZodProvider) => {
             metadata: userMetadata
           });
 
-          authAttemptCounter.add(1, {
-            "infisical.user.email": email.toLowerCase(),
-            "infisical.user.id": user.id,
-            "infisical.organization.id": organization.id,
-            "infisical.organization.name": organization.name,
-            "infisical.auth.method": AuthAttemptAuthMethod.SAML,
-            "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-            "client.address": requestContext.get("ip"),
-            "user_agent.original": requestContext.get("userAgent")
-          });
+          if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email.toLowerCase(),
+              "infisical.user.id": user.id,
+              "infisical.organization.id": organization.id,
+              "infisical.organization.name": organization.name,
+              "infisical.auth.method": AuthAttemptAuthMethod.SAML,
+              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
+            });
+          }
 
           cb(null, { isUserCompleted, providerAuthToken });
         } catch (error) {
-          authAttemptCounter.add(1, {
-            "infisical.user.email": email.toLowerCase(),
-            "infisical.auth.method": AuthAttemptAuthMethod.SAML,
-            "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-            "client.address": requestContext.get("ip"),
-            "user_agent.original": requestContext.get("userAgent")
-          });
+          if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email.toLowerCase(),
+              "infisical.auth.method": AuthAttemptAuthMethod.SAML,
+              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
+            });
+          }
 
           logger.error(error);
           cb(error as Error);

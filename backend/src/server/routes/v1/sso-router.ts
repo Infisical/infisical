@@ -76,28 +76,31 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 orgSlug
               });
 
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.user.id": user.id,
-              "infisical.organization.id": orgId,
-              "infisical.organization.name": orgName,
-              "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
-              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.user.id": user.id,
+                "infisical.organization.id": orgId,
+                "infisical.organization.name": orgName,
+                "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
+                "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
-              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
-
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
+                "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
             cb(error as Error, false);
           }
         }
@@ -144,27 +147,30 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 callbackPort
               });
 
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.user.id": user.id,
-              "infisical.organization.id": orgId,
-              "infisical.organization.name": orgName,
-              "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
-              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.user.id": user.id,
+                "infisical.organization.id": orgId,
+                "infisical.organization.name": orgName,
+                "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
+                "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             done(null, { isUserCompleted, providerAuthToken, externalProviderAccessToken: accessToken });
           } catch (err) {
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
-              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
-
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
+                "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
             logger.error(err);
             done(err as Error, false);
           }
@@ -204,26 +210,30 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
                 callbackPort
               });
 
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.user.id": user.id,
-              "infisical.organization.id": orgId,
-              "infisical.organization.name": orgName,
-              "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
-              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.user.id": user.id,
+                "infisical.organization.id": orgId,
+                "infisical.organization.name": orgName,
+                "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
+                "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
-            authAttemptCounter.add(1, {
-              "infisical.user.email": email,
-              "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
-              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
-              "client.address": requestContext.get("ip"),
-              "user_agent.original": requestContext.get("userAgent")
-            });
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": email,
+                "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
+                "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
 
             logger.error(error);
             cb(error as Error, false);
