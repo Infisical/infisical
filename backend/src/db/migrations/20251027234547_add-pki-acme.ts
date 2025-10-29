@@ -10,6 +10,8 @@ import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintI
 const OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollmentType_check";
 const NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollment_type_check";
 
+const PUBLIC_KEY_ALG_INDEX = "pki_acme_accounts_publicKey_alg_index";
+
 export async function up(knex: Knex): Promise<void> {
   // Create PkiAcmeEnrollmentConfig table
   if (!(await knex.schema.hasTable(TableName.PkiAcmeEnrollmentConfig))) {
@@ -56,6 +58,9 @@ export async function up(knex: Knex): Promise<void> {
 
       // Public key (JWK format)
       t.jsonb("publicKey").notNullable();
+      // The JWS algorithm used to sign the public key when creating the account, e.g. "RS256", "ES256", "PS256", etc.
+      t.string("alg").notNullable();
+      t.index(["publicKey", "alg"], PUBLIC_KEY_ALG_INDEX);
 
       t.timestamps(true, true, true);
     });
