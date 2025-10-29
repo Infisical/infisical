@@ -234,7 +234,10 @@ export const rsaPkcsEncryptionProvider = ({
       // Generate RSA keypair (2048-bit)
       pkcs11.C_GenerateKeyPair(
         sessionHandle,
-        { mechanism: pkcs11js.CKM_RSA_PKCS_KEY_PAIR_GEN },
+        {
+          mechanism: pkcs11js.CKM_RSA_PKCS_KEY_PAIR_GEN,
+          parameter: Buffer.from([0x00, 0x00, 0x08, 0x00]) // 2048-bit modulus
+        },
         publicKeyTemplate,
         privateKeyTemplate
       );
