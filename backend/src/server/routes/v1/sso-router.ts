@@ -7,6 +7,7 @@
 // All the any rules are disabled because passport typesense with fastify is really poor
 
 import { Authenticator } from "@fastify/passport";
+import { requestContext } from "@fastify/request-context";
 import fastifySession from "@fastify/session";
 import RedisStore from "connect-redis";
 import { CronJob } from "cron";
@@ -21,6 +22,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { fetchGithubEmails, fetchGithubUser } from "@app/lib/requests/github";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { authRateLimit } from "@app/server/config/rateLimiter";
 import { addAuthOriginDomainCookie } from "@app/server/lib/cookie";
 import { AuthMethod } from "@app/services/auth/auth-type";
@@ -51,30 +53,51 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req, _accessToken, _refreshToken, profile, cb) => {
-          try {
-            // @ts-expect-error this is because this is express type and not fastify
-            const callbackPort = req.session.get("callbackPort");
-            // @ts-expect-error this is because this is express type and not fastify
-            const orgSlug = req.session.get("orgSlug");
+          // @ts-expect-error this is because this is express type and not fastify
+          const callbackPort = req.session.get("callbackPort");
+          // @ts-expect-error this is because this is express type and not fastify
+          const orgSlug = req.session.get("orgSlug");
 
-            const email = profile?.emails?.[0]?.value;
-            if (!email)
-              throw new NotFoundError({
-                message: "Email not found",
-                name: "OauthGoogleRegister"
+          const email = profile?.emails?.[0]?.value;
+          if (!email)
+            throw new NotFoundError({
+              message: "Email not found",
+              name: "OauthGoogleRegister"
+            });
+
+          try {
+            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
+              await server.services.login.oauth2Login({
+                email,
+                firstName: profile?.name?.givenName || "",
+                lastName: profile?.name?.familyName || "",
+                authMethod: AuthMethod.GOOGLE,
+                callbackPort,
+                orgSlug
               });
 
-            const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
-              email,
-              firstName: profile?.name?.givenName || "",
-              lastName: profile?.name?.familyName || "",
-              authMethod: AuthMethod.GOOGLE,
-              callbackPort,
-              orgSlug
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.user.id": user.id,
+              "infisical.organization.id": orgId,
+              "infisical.organization.name": orgName,
+              "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
+              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
             });
+
             cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
             logger.error(error);
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.auth.method": AuthAttemptAuthMethod.GOOGLE,
+              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
+            });
+
             cb(error as Error, false);
           }
         }
@@ -101,27 +124,47 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
         },
         // eslint-disable-next-line
         async (req: any, accessToken: string, _refreshToken: string, _profile: any, done: Function) => {
+          const ghEmails = await fetchGithubEmails(accessToken);
+          const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
+
+          if (!email) throw new Error("No primary email found");
+
           try {
-            const ghEmails = await fetchGithubEmails(accessToken);
-            const { email } = ghEmails.filter((gitHubEmail) => gitHubEmail.primary)[0];
-
-            if (!email) throw new Error("No primary email found");
-
             // profile does not get automatically populated so we need to manually fetch user info
-            const user = await fetchGithubUser(accessToken);
+            const githubUser = await fetchGithubUser(accessToken);
 
             const callbackPort = req.session.get("callbackPort");
 
-            const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
-              email,
-              firstName: user.name || user.login,
-              lastName: "",
-              authMethod: AuthMethod.GITHUB,
-              callbackPort
+            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
+              await server.services.login.oauth2Login({
+                email,
+                firstName: githubUser.name || githubUser.login,
+                lastName: "",
+                authMethod: AuthMethod.GITHUB,
+                callbackPort
+              });
+
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.user.id": user.id,
+              "infisical.organization.id": orgId,
+              "infisical.organization.name": orgName,
+              "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
+              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
             });
 
             done(null, { isUserCompleted, providerAuthToken, externalProviderAccessToken: accessToken });
           } catch (err) {
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.auth.method": AuthAttemptAuthMethod.GITHUB,
+              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
+            });
+
             logger.error(err);
             done(err as Error, false);
           }
@@ -147,20 +190,41 @@ export const registerOauthMiddlewares = (server: FastifyZodProvider) => {
           pkce: true
         },
         async (req: any, _accessToken: string, _refreshToken: string, profile: any, cb: any) => {
+          const email = profile.emails[0].value;
+
           try {
             const callbackPort = req.session.get("callbackPort");
 
-            const email = profile.emails[0].value;
-            const { isUserCompleted, providerAuthToken } = await server.services.login.oauth2Login({
-              email,
-              firstName: profile.displayName || profile.username || "",
-              lastName: "",
-              authMethod: AuthMethod.GITLAB,
-              callbackPort
+            const { isUserCompleted, providerAuthToken, user, orgId, orgName } =
+              await server.services.login.oauth2Login({
+                email,
+                firstName: profile.displayName || profile.username || "",
+                lastName: "",
+                authMethod: AuthMethod.GITLAB,
+                callbackPort
+              });
+
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.user.id": user.id,
+              "infisical.organization.id": orgId,
+              "infisical.organization.name": orgName,
+              "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
+              "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
             });
 
             return cb(null, { isUserCompleted, providerAuthToken });
           } catch (error) {
+            authAttemptCounter.add(1, {
+              "infisical.user.email": email,
+              "infisical.auth.method": AuthAttemptAuthMethod.GITLAB,
+              "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+              "client.address": requestContext.get("ip"),
+              "user_agent.original": requestContext.get("userAgent")
+            });
+
             logger.error(error);
             cb(error as Error, false);
           }
