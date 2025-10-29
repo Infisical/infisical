@@ -275,7 +275,7 @@ export const certificateProfileServiceFactory = ({
       }
 
       // Create the profile with the created config IDs
-      const { estConfig, apiConfig, ...profileData } = data;
+      const { estConfig, apiConfig, acmeConfig, ...profileData } = data;
       const profileResult = await certificateProfileDAL.create(
         {
           ...profileData,
