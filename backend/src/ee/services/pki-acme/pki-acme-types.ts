@@ -42,6 +42,9 @@ export type TJwsPayload<T> = {
   protectedHeader: TProtectedHeader;
   payload: T;
 };
+export type TAuthenciatedJwsPayload<T> = TJwsPayload<T> & {
+  accountId: string;
+};
 export type TAcmeResponse<TPayload> = {
   status: number;
   headers: Record<string, string>;
@@ -55,6 +58,11 @@ export type TPkiAcmeServiceFactory = {
     schema: z.ZodSchema<T>
   ) => Promise<TJwsPayload<T>>;
   validateNewAccountJwsPayload: (rawJwsPayload: TRawJwsPayload) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
+  validateExistingAccountJwsPayload: <T>(
+    profileId: string,
+    rawJwsPayload: TRawJwsPayload,
+    schema: z.ZodSchema<T>
+  ) => Promise<TAuthenciatedJwsPayload<T>>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: ({
@@ -68,10 +76,15 @@ export type TPkiAcmeServiceFactory = {
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
   }) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
-  createAcmeOrder: (
-    profileId: string,
-    body: TCreateAcmeOrderPayload
-  ) => Promise<TAcmeResponse<TCreateAcmeOrderResponse>>;
+  createAcmeOrder: ({
+    profileId,
+    accountId,
+    payload
+  }: {
+    profileId: string;
+    accountId: string;
+    payload: TCreateAcmeOrderPayload;
+  }) => Promise<TAcmeResponse<TCreateAcmeOrderResponse>>;
   deactivateAcmeAccount: (
     profileId: string,
     accountId: string,

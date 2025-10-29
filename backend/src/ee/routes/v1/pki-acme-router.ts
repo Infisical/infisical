@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
 import { z } from "zod";
 
-import { AcmeBadPublicKeyError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
-  CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
+  CreateAcmeOrderBodySchema,
   CreateAcmeOrderResponseSchema,
-  CreateAcmeOrderSchema,
   DeactivateAcmeAccountResponseSchema,
   DeactivateAcmeAccountSchema,
   DownloadAcmeCertificateSchema,
@@ -25,7 +23,6 @@ import {
   RespondToAcmeChallengeResponseSchema,
   RespondToAcmeChallengeSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
-import { TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
@@ -104,29 +101,23 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Account - register a new account or find existing one",
-      ...RawJwsPayloadSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid()
+      }),
+      body: RawJwsPayloadSchema,
       response: {
         201: CreateAcmeAccountResponseSchema
       }
     },
     handler: async (req, res) => {
-      const { payload, protectedHeader } = await server.services.pkiAcme.validateJwsPayload(
-        req.body as TRawJwsPayload,
-        async (protectedHeader) => {
-          if (!protectedHeader.jwk) {
-            throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
-          }
-          return protectedHeader.jwk as unknown as JsonWebKey;
-        },
-        CreateAcmeAccountBodySchema
-      );
+      const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload(req.body);
       const { alg, jwk } = protectedHeader;
-      const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount(
-        req.params.profileId,
+      const { status, body, headers } = await server.services.pkiAcme.createAcmeAccount({
+        profileId: req.params.profileId,
         alg,
-        jwk!,
+        jwk: jwk!,
         payload
-      );
+      });
       // TODO: DRY
       res.code(status);
       for (const [key, value] of Object.entries(headers)) {
@@ -153,7 +144,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Order - apply for a new certificate",
-      ...CreateAcmeOrderSchema.shape,
+      params: z.object({
+        profileId: z.string().uuid()
+      }),
+      body: RawJwsPayloadSchema,
       response: {
         201: CreateAcmeOrderResponseSchema
       }
@@ -161,6 +155,11 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
+      const { payload, protectedHeader, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload(
+        req.params.profileId,
+        req.body,
+        CreateAcmeOrderBodySchema
+      );
       const order = await server.services.pkiAcme.createAcmeOrder(req.params.profileId, req.body);
       res.code(201);
       return order;
