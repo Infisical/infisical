@@ -319,79 +319,136 @@ helm install otel-collector open-telemetry/opentelemetry-collector \
   --set config.exporters.prometheus.endpoint=0.0.0.0:8889
 ```
 
-## Alternative Backends
-
-Since Infisical exports in OpenTelemetry format, you can easily configure the collector to send metrics to other backends instead of (or in addition to) Prometheus:
-
-### Cloud-Native Examples
-
-```yaml
-# Add to your otel-collector-config.yaml exporters section
-exporters:
-  # AWS CloudWatch
-  awsemf:
-    region: us-west-2
-    log_group_name: /aws/emf/infisical
-    log_stream_name: metrics
-
-  # Google Cloud Monitoring
-  googlecloud:
-    project_id: your-project-id
-
-  # Azure Monitor
-  azuremonitor:
-    connection_string: "your-connection-string"
-
-  # Datadog
-  datadog:
-    api:
-      key: "your-api-key"
-      site: "datadoghq.com"
-
-  # New Relic
-  newrelic:
-    apikey: "your-api-key"
-    host_override: "otlp.nr-data.net"
-```
-
-### Multi-Backend Configuration
-
-```yaml
-service:
-  pipelines:
-    metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus, awsemf, datadog] # Send to multiple backends
-```
-
-## Setting Up Grafana
-
-1. **Access Grafana**: Navigate to your Grafana instance
-2. **Login**: Use your configured credentials
-3. **Add Prometheus Data Source**:
-   - Go to Configuration → Data Sources
-   - Click "Add data source"
-   - Select "Prometheus"
-   - Set URL to your Prometheus endpoint
-   - Click "Save & Test"
-
 ## Available Metrics
 
 Infisical exposes the following key metrics in OpenTelemetry format:
 
-### API Performance Metrics
+### Core API Metrics
 
-- `API_latency` - API request latency histogram in milliseconds
+These metrics track all HTTP API requests to Infisical, including request counts, latency, and errors. Use these to monitor overall API health, identify performance bottlenecks, and track usage patterns across users and machine identities.
 
-  - **Labels**: `route`, `method`, `statusCode`
-  - **Example**: Monitor response times for specific endpoints
+#### Total API Requests
 
-- `API_errors` - API error count histogram
-  - **Labels**: `route`, `method`, `type`, `name`
-  - **Example**: Track error rates by endpoint and error type
+- **Metric Name**: `infisical.http.server.request.count`
+- **Type**: Counter
+- **Unit**: `{request}`
+- **Description**: Total number of API requests to Infisical (covers both human users and machine identities)
+- **Attributes**:
+  - `infisical.organization.id` (string): Organization ID
+  - `infisical.organization.name` (string): Organization name (e.g., "Platform Engineering Team")
+  - `infisical.user.id` (string, optional): User ID if human user
+  - `infisical.user.email` (string, optional): User email (e.g., "jane.doe@cisco.com")
+  - `infisical.identity.id` (string, optional): Machine identity ID
+  - `infisical.identity.name` (string, optional): Machine identity name (e.g., "prod-k8s-operator")
+  - `infisical.auth.method` (string, optional): Auth method used
+  - `http.request.method` (string): HTTP method (GET, POST, PUT, DELETE)
+  - `http.route` (string): API endpoint route pattern
+  - `http.response.status_code` (int): HTTP status code
+  - `infisical.project.id` (string, optional): Project ID
+  - `infisical.project.name` (string, optional): Project name
+  - `user_agent.original` (string, optional): User agent string
+  - `client.address` (string, optional): IP address
+
+#### Request Duration
+
+- **Metric Name**: `infisical.http.server.request.duration`
+- **Type**: Histogram
+- **Unit**: `s` (seconds)
+- **Description**: API request latency
+- **Buckets**: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+- **Attributes**:
+  - `infisical.organization.id` (string): Organization ID
+  - `infisical.organization.name` (string): Organization name
+  - `infisical.user.id` (string, optional): User ID if human user
+  - `infisical.user.email` (string, optional): User email
+  - `infisical.identity.id` (string, optional): Machine identity ID
+  - `infisical.identity.name` (string, optional): Machine identity name
+  - `http.request.method` (string): HTTP method
+  - `http.route` (string): API endpoint route pattern
+  - `http.response.status_code` (int): HTTP status code
+  - `infisical.project.id` (string, optional): Project ID
+  - `infisical.project.name` (string, optional): Project name
+
+#### API Errors by Actor
+
+- **Metric Name**: `infisical.http.server.error.count`
+- **Type**: Counter
+- **Unit**: `{error}`
+- **Description**: API errors grouped by actor (for identifying misconfigured services)
+- **Attributes**:
+  - `infisical.organization.id` (string): Organization ID
+  - `infisical.organization.name` (string): Organization name
+  - `infisical.user.id` (string, optional): User ID if human
+  - `infisical.user.email` (string, optional): User email
+  - `infisical.identity.id` (string, optional): Identity ID if machine
+  - `infisical.identity.name` (string, optional): Identity name
+  - `http.route` (string): API endpoint where error occurred
+  - `http.request.method` (string): HTTP method
+  - `error.type` (string): Error category/type (client_error, server_error, auth_error, rate_limit_error, etc.)
+  - `infisical.project.id` (string, optional): Project ID
+  - `infisical.project.name` (string, optional): Project name
+  - `client.address` (string, optional): IP address
+  - `user_agent.original` (string, optional): User agent information
+
+### Secret Operations Metrics
+
+These metrics provide visibility into secret access patterns, helping you understand which secrets are being accessed, by whom, and from where. Essential for security auditing and access pattern analysis.
+
+#### Secret Read Operations
+
+- **Metric Name**: `infisical.secret.read.count`
+- **Type**: Counter
+- **Unit**: `{operation}`
+- **Description**: Number of secret read operations
+- **Attributes**:
+  - `infisical.organization.id` (string): Organization ID
+  - `infisical.organization.name` (string): Organization name
+  - `infisical.project.id` (string): Project ID
+  - `infisical.project.name` (string): Project name (e.g., "payment-service-secrets")
+  - `infisical.environment` (string): Environment (dev, staging, prod)
+  - `infisical.secret.path` (string): Path to secrets (e.g., "/microservice-a/database")
+  - `infisical.secret.name` (string, optional): Name of secret
+  - `infisical.user.id` (string, optional): User ID if human
+  - `infisical.user.email` (string, optional): User email
+  - `infisical.identity.id` (string, optional): Machine identity ID
+  - `infisical.identity.name` (string, optional): Machine identity name
+  - `user_agent.original` (string, optional): User agent/SDK information
+  - `client.address` (string, optional): IP address
+
+### Authentication Metrics
+
+These metrics track authentication attempts and outcomes, enabling you to monitor login success rates, detect potential security threats, and identify authentication issues.
+
+#### Login Attempts
+
+- **Metric Name**: `infisical.auth.attempt.count`
+- **Type**: Counter
+- **Unit**: `{attempt}`
+- **Description**: Authentication attempts (both successful and failed)
+- **Attributes**:
+  - `infisical.organization.id` (string): Organization ID
+  - `infisical.organization.name` (string): Organization name
+  - `infisical.user.id` (string, optional): User ID if human (if identifiable)
+  - `infisical.user.email` (string, optional): User email (if identifiable)
+  - `infisical.identity.id` (string, optional): Identity ID if machine (if identifiable)
+  - `infisical.identity.name` (string, optional): Identity name (if identifiable)
+  - `infisical.auth.method` (string): Authentication method attempted
+  - `infisical.auth.result` (string): success or failure
+  - `error.type` (string, optional): Reason for failure if failed (invalid_credentials, expired_token, invalid_token, etc.)
+  - `client.address` (string): IP address
+  - `user_agent.original` (string, optional): User agent/client information
+  - `infisical.auth.attempt.username` (string, optional): Attempted username/email (if available)
+
+### Legacy Metrics
+
+These metrics are from the previous instrumentation and may be deprecated in future versions. Consider migrating to the new Core API Metrics for more comprehensive observability.
+
+- `API_latency` - API request latency histogram in milliseconds (Labels: `route`, `method`, `statusCode`)
+- `API_errors` - API error count histogram (Labels: `route`, `method`, `type`, `name`)
 
 ### Integration & Secret Sync Metrics
+
+These metrics monitor secret synchronization operations between Infisical and external systems, helping you track sync health, identify integration failures, and troubleshoot connectivity issues.
 
 - `integration_secret_sync_errors` - Integration secret sync error count
 
@@ -414,15 +471,10 @@ Infisical exposes the following key metrics in OpenTelemetry format:
 
 ### System Metrics
 
-These metrics are automatically collected by OpenTelemetry's HTTP instrumentation:
+These low-level HTTP metrics are automatically collected by OpenTelemetry's instrumentation layer, providing baseline performance data for all HTTP traffic.
 
 - `http_server_duration` - HTTP server request duration metrics (histogram buckets, count, sum)
 - `http_client_duration` - HTTP client request duration metrics (histogram buckets, count, sum)
-
-### Custom Business Metrics
-
-- `infisical_secret_operations_total` - Total secret operations
-- `infisical_secrets_processed_total` - Total secrets processed
 
 ## Troubleshooting
 
