@@ -233,6 +233,12 @@ import {
   TZabbixConnectionConfig,
   TZabbixConnectionInput
 } from "./zabbix";
+import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefConnectionInput,
+  TValidateChefConnectionCredentialsSchema
+} from "./chef";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection
@@ -275,6 +281,7 @@ export type TAppConnection = { id: string } & (
   | TNetlifyConnection
   | TOktaConnection
   | TRedisConnection
+  | TChefConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -322,6 +329,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNetlifyConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TChefConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -386,7 +394,8 @@ export type TAppConnectionConfig =
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
   | TOktaConnectionConfig
-  | TRedisConnectionConfig;
+  | TRedisConnectionConfig
+  | TChefConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -428,7 +437,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
-  | TValidateRedisConnectionCredentialsSchema;
+  | TValidateRedisConnectionCredentialsSchema
+  | TValidateChefConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

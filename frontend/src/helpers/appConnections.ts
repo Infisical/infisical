@@ -54,6 +54,7 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -127,7 +128,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Laravel Forge",
     image: "Laravel Forge.png",
     size: 65
-  }
+  },
+  [AppConnection.Chef]: { name: "Chef", image: "Chef.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -199,6 +201,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case ChefConnectionMethod.UserKey:
+      return { name: "User Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:

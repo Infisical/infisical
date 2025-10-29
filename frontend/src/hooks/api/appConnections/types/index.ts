@@ -40,6 +40,7 @@ import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
+import { TChefConnection } from "./chef-connection";
 
 export * from "./1password-connection";
 export * from "./auth0-connection";
@@ -79,6 +80,7 @@ export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
+export * from "./chef-connection";
 
 export type TAppConnection =
   | TAwsConnection
@@ -120,7 +122,8 @@ export type TAppConnection =
   | TDigitalOceanConnection
   | TNetlifyConnection
   | TOktaConnection
-  | TRedisConnection;
+  | TRedisConnection
+  | TChefConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

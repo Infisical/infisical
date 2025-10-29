@@ -40,7 +40,8 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.DigitalOcean]: "DigitalOcean App Platform",
   [AppConnection.Netlify]: "Netlify",
   [AppConnection.Okta]: "Okta",
-  [AppConnection.Redis]: "Redis"
+  [AppConnection.Redis]: "Redis",
+  [AppConnection.Chef]: "Chef"
 };
 
 export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanType> = {
@@ -83,5 +84,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.DigitalOcean]: AppConnectionPlanType.Regular,
   [AppConnection.Netlify]: AppConnectionPlanType.Regular,
   [AppConnection.Okta]: AppConnectionPlanType.Regular,
-  [AppConnection.Redis]: AppConnectionPlanType.Regular
+  [AppConnection.Redis]: AppConnectionPlanType.Regular,
+  [AppConnection.Chef]: AppConnectionPlanType.Regular
 };

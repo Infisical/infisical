@@ -142,6 +142,7 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
+import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -204,7 +205,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
     getOktaConnectionListItem(),
-    getRedisConnectionListItem()
+    getRedisConnectionListItem(),
+    getChefConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -334,7 +336,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -401,6 +404,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case ChefConnectionMethod.UserKey:
+      return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     default:
@@ -474,7 +479,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
-  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
+  [AppConnection.Chef]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

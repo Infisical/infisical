@@ -67,6 +67,8 @@ import { ValidateCamundaConnectionCredentialsSchema } from "./camunda";
 import { camundaConnectionService } from "./camunda/camunda-connection-service";
 import { ValidateChecklyConnectionCredentialsSchema } from "./checkly";
 import { checklyConnectionService } from "./checkly/checkly-connection-service";
+import { ValidateChefConnectionCredentialsSchema } from "./chef";
+import { chefConnectionService } from "./chef/chef-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
@@ -171,7 +173,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
-  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema
+  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
+  [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -877,6 +880,7 @@ export const appConnectionServiceFactory = ({
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
-    laravelForge: laravelForgeConnectionService(connectAppConnectionById)
+    laravelForge: laravelForgeConnectionService(connectAppConnectionById),
+    chef: chefConnectionService(connectAppConnectionById)
   };
 };
