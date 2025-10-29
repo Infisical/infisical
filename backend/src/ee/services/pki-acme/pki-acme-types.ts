@@ -40,7 +40,6 @@ export type TFinalizeAcmeOrderPayload = z.infer<typeof FinalizeAcmeOrderBodySche
 
 export type TJwsPayload<T> = {
   protectedHeader: TProtectedHeader;
-  jwk?: JsonWebKey;
   payload: T;
 };
 export type TAcmeResponse<TPayload> = {
