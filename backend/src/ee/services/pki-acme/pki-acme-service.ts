@@ -11,6 +11,7 @@ import {
 } from "./pki-acme-errors";
 
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
+import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { logger } from "@app/lib/logger";
 import {
   EnrollmentType,
@@ -21,6 +22,7 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
+import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import {
   AcmeAuthStatus,
   AcmeIdentifierType,
@@ -54,13 +56,15 @@ type TPkiAcmeServiceFactoryDep = {
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
+  acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
 
 export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
   acmeAccountDAL,
   acmeOrderDAL,
-  acmeAuthDAL
+  acmeAuthDAL,
+  acmeOrderAuthDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -260,7 +264,7 @@ export const pkiAcmeServiceFactory = ({
       accountId: account.id,
       status: AcmeOrderStatus.Pending
     });
-    const authorizations = await Promise.all(
+    const authorizations: TPkiAcmeAuths[] = await Promise.all(
       payload.identifiers.map(async (identifier) => {
         if (identifier.type === AcmeIdentifierType.DNS) {
           // TODO: reuse existing authorizations for this identifier if they exist
@@ -276,6 +280,13 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
         }
       })
+    );
+
+    await acmeOrderAuthDAL.insertMany(
+      authorizations.map((auth) => ({
+        orderId: order.id,
+        authId: auth.id
+      }))
     );
 
     // FIXME: Implement ACME new order creation
