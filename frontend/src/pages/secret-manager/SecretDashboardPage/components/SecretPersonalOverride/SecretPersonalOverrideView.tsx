@@ -1,17 +1,17 @@
+import { useCallback, useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+import { createNotification } from "@app/components/notifications";
+import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { SecretType } from "@app/hooks/api/types";
 import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
-import { z } from "zod";
-
-import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
 import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
-import { SecretType } from "@app/hooks/api/types";
-import { createNotification } from "@app/components/notifications";
 
 import { FontAwesomeSpriteName } from "../SecretListView/SecretListView.utils";
 

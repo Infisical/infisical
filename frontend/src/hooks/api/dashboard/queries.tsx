@@ -527,13 +527,13 @@ export const useGetSecretValue = (
 };
 
 export function useFetchSecretValue() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   return useCallback((params: TGetSecretValueDTO) => {
-    const data = fetchSecretValue(params)
+    const data = fetchSecretValue(params);
 
     queryClient.setQueryData(dashboardKeys.getSecretValue(params), data);
 
-    return data
-  }, [])
+    return data;
+  }, []);
 }

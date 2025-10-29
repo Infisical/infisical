@@ -4,10 +4,10 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useDeleteSharedSecret } from "@app/hooks/api";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { ShareSecretsTable } from "./ShareSecretsTable";
-import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 
 type DeleteModalData = { name: string; id: string };
 

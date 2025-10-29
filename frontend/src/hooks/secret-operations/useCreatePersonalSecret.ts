@@ -1,6 +1,7 @@
 import { useCallback } from "react";
-import { useHandleSecretOperation } from "./useHandleSecretOperation";
+
 import { SecretType } from "../api/types";
+import { useHandleSecretOperation } from "./useHandleSecretOperation";
 
 interface CreatePersonalSecretParams {
   key: string;

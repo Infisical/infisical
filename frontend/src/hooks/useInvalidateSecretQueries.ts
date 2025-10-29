@@ -1,10 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
 import { dashboardKeys } from "./api/dashboard/queries";
-import { secretKeys } from "./api/secrets/queries";
-import { secretSnapshotKeys } from "./api/secretSnapshots/queries";
 import { commitKeys } from "./api/folderCommits/queries";
 import { secretApprovalRequestKeys } from "./api/secretApprovalRequest/queries";
+import { secretKeys } from "./api/secrets/queries";
+import { secretSnapshotKeys } from "./api/secretSnapshots/queries";
 
 export function useInvalidateSecretQueries(projectId: string) {
   const queryClient = useQueryClient();

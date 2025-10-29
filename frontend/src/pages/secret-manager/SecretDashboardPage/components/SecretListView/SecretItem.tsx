@@ -1,4 +1,14 @@
 /* eslint-disable no-nested-ternary */
+import { memo, useCallback, useEffect, useRef } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { subject } from "@casl/ability";
+import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { format } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
+
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -21,6 +31,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
@@ -28,33 +39,22 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
+import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
-import { subject } from "@casl/ability";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
-import { memo, useCallback, useEffect, useRef } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
-import { twMerge } from "tailwind-merge";
-
-import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
-import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
-import { PendingAction } from "@app/hooks/api/secretFolders/types";
-import { format } from "date-fns";
-import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
-import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
 import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
+import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
 import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
-import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
+import { CreateReminderForm } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CreateReminderForm";
 
-import { FontAwesomeSpriteName, formSchema, TFormSchema } from "./SecretListView.utils";
-import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { useBatchModeActions } from "../../SecretMainPage.store";
 import { SecretPersonalOverrideView } from "../SecretPersonalOverride/SecretPersonalOverrideView";
+import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
+import { FontAwesomeSpriteName, formSchema, TFormSchema } from "./SecretListView.utils";
 
 export const HIDDEN_SECRET_VALUE = "*************************";
 export const HIDDEN_SECRET_VALUE_API_MASK = "<hidden-by-infisical>";

@@ -1,10 +1,12 @@
-import { FontAwesomeSpriteName } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretListView.utils";
-import { IconButton } from "./IconButton";
-import { Tooltip } from "../Tooltip";
 import { forwardRef, MouseEventHandler } from "react";
-import { FontAwesomeSymbol } from "../FontAwesomeSymbol";
-import clsx from "clsx";
 import { ReactNode } from "@tanstack/react-router";
+import clsx from "clsx";
+
+import { FontAwesomeSpriteName } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretListView.utils";
+
+import { FontAwesomeSymbol } from "../FontAwesomeSymbol";
+import { Tooltip } from "../Tooltip";
+import { IconButton } from "./IconButton";
 
 interface InlineActionIconButtonProps {
   className?: string;

@@ -9,9 +9,9 @@ import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { WsTag } from "@app/hooks/api/types";
+import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
 
-import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import {
   PendingSecretChange,
   PendingSecretCreate,

@@ -11,9 +11,9 @@ import {
   useGetSecretApprovalRequestCount,
   useGetSecretRotations
 } from "@app/hooks/api";
+import { ShareSecretModalProvider } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/ShareSecretModalProvider";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
-import { ShareSecretModalProvider } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/ShareSecretModalProvider";
 
 export const SecretManagerLayout = () => {
   const { currentProject, projectId } = useProject();

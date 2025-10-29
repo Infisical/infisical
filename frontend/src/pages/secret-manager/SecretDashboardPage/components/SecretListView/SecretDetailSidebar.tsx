@@ -61,9 +61,9 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
-import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
 import { formSchema, TFormSchema } from "./SecretListView.utils";

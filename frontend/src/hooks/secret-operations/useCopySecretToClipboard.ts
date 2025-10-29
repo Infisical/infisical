@@ -1,46 +1,54 @@
-import { useCallback, useEffect } from "react"
-import { TGetSecretValueDTO } from "../api/dashboard/types"
-import { useFetchSecretValue } from "../api/dashboard/queries"
-import { createNotification } from "@app/components/notifications"
-import { useToggle } from "../useToggle"
+import { useCallback, useEffect } from "react";
+
+import { createNotification } from "@app/components/notifications";
+
+import { useFetchSecretValue } from "../api/dashboard/queries";
+import { TGetSecretValueDTO } from "../api/dashboard/types";
+import { useToggle } from "../useToggle";
 
 interface CopySecretHookParams {
-    getFetchedValue?: () => string
-    fetchSecretParams: TGetSecretValueDTO
+  getFetchedValue?: () => string;
+  fetchSecretParams: TGetSecretValueDTO;
 }
 
-export function useCopySecretToClipBoard({getFetchedValue, fetchSecretParams}: CopySecretHookParams) {
-    const fetchSecretValue = useFetchSecretValue();
-    const [isSecretValueCopied, setIsSecretValueCopied] = useToggle()
+export function useCopySecretToClipBoard({
+  getFetchedValue,
+  fetchSecretParams
+}: CopySecretHookParams) {
+  const fetchSecretValue = useFetchSecretValue();
+  const [isSecretValueCopied, setIsSecretValueCopied] = useToggle();
 
-    useEffect(() => {
-        if(!isSecretValueCopied) {
-            return
-        }
+  useEffect(() => {
+    if (!isSecretValueCopied) {
+      return;
+    }
 
-        const timer = setTimeout(() => setIsSecretValueCopied.off(), 2000);
-        return () => clearTimeout(timer);
-    }, [isSecretValueCopied]);
+    const timer = setTimeout(() => setIsSecretValueCopied.off(), 2000);
 
-    const copySecretToClipboard = useCallback(async () => {
-        if(getFetchedValue) {
-            navigator.clipboard.writeText(getFetchedValue());
-            setIsSecretValueCopied.on()
-            return
-        }
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isSecretValueCopied]);
 
-        try {
-            const data = await fetchSecretValue(fetchSecretParams);
-            navigator.clipboard.writeText(data.valueOverride ?? data.value);
-            setIsSecretValueCopied.on()
-        } catch(e) {
-            console.error(e);
-            createNotification({
-                type: "error",
-                text: "Failed to fetch secret value"
-            });
-        }
-    }, [])
+  const copySecretToClipboard = useCallback(async () => {
+    if (getFetchedValue) {
+      navigator.clipboard.writeText(getFetchedValue());
+      setIsSecretValueCopied.on();
+      return;
+    }
 
-    return {copySecretToClipboard, isSecretValueCopied}
+    try {
+      const data = await fetchSecretValue(fetchSecretParams);
+      navigator.clipboard.writeText(data.valueOverride ?? data.value);
+      setIsSecretValueCopied.on();
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to fetch secret value"
+      });
+    }
+  }, []);
+
+  return { copySecretToClipboard, isSecretValueCopied };
 }
