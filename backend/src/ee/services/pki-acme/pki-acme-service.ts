@@ -16,11 +16,11 @@ import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
-import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWK, JWSHeaderParameters } from "jose";
+import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderParameters } from "jose";
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
-import { ProtectedHeaderSchema } from "./pki-acme-schemas";
+import { CreateAcmeAccountBodySchema, ProtectedHeaderSchema } from "./pki-acme-schemas";
 import {
   TAcmeResponse,
   TCreateAcmeAccountPayload,
@@ -49,7 +49,8 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
-  acmeAccountDAL
+  acmeAccountDAL,
+  acmeOrderDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -112,6 +113,21 @@ export const pkiAcmeServiceFactory = ({
     }
   };
 
+  const validateNewAccountJwsPayload = async (
+    rawJwsPayload: TRawJwsPayload
+  ): Promise<TJwsPayload<TCreateAcmeAccountPayload>> => {
+    return await validateJwsPayload(
+      rawJwsPayload,
+      async (protectedHeader) => {
+        if (!protectedHeader.jwk) {
+          throw new AcmeBadPublicKeyError({ detail: "JWK is required in the protected header" });
+        }
+        return protectedHeader.jwk as unknown as JsonWebKey;
+      },
+      CreateAcmeAccountBodySchema
+    );
+  };
+
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
     await validateAcmeProfile(profileId);
     return {
@@ -128,12 +144,17 @@ export const pkiAcmeServiceFactory = ({
     return "FIXME-generate-nonce";
   };
 
-  const createAcmeAccount = async (
-    profileId: string,
-    alg: string,
-    jwk: JWK,
-    { onlyReturnExisting, contact }: TCreateAcmeAccountPayload
-  ): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
+  const createAcmeAccount = async ({
+    profileId,
+    alg,
+    jwk,
+    payload: { onlyReturnExisting, contact }
+  }: {
+    profileId: string;
+    alg: string;
+    jwk: JsonWebKey;
+    payload: TCreateAcmeAccountPayload;
+  }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByPublicKey(profileId, alg, jwk);
     if (onlyReturnExisting && !existingAccount) {
@@ -176,6 +197,7 @@ export const pkiAcmeServiceFactory = ({
 
   const createAcmeOrder = async (
     profileId: string,
+    account: TPkiAcmeAccounts,
     payload: TCreateAcmeOrderPayload
   ): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
     const profile = await validateAcmeProfile(profileId);
@@ -292,6 +314,7 @@ export const pkiAcmeServiceFactory = ({
 
   return {
     validateJwsPayload,
+    validateNewAccountJwsPayload,
     getAcmeDirectory,
     getAcmeNewNonce,
     createAcmeAccount,

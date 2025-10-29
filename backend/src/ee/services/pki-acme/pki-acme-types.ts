@@ -54,14 +54,20 @@ export type TPkiAcmeServiceFactory = {
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
     schema: z.ZodSchema<T>
   ) => Promise<TJwsPayload<T>>;
+  validateNewAccountJwsPayload: (rawJwsPayload: TRawJwsPayload) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
-  createAcmeAccount: (
-    profileId: string,
-    alg: string,
-    jwk: JsonWebKey,
-    body: TCreateAcmeAccountPayload
-  ) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
+  createAcmeAccount: ({
+    profileId,
+    alg,
+    jwk,
+    payload
+  }: {
+    profileId: string;
+    alg: string;
+    jwk: JsonWebKey;
+    payload: TCreateAcmeAccountPayload;
+  }) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
   createAcmeOrder: (
     profileId: string,
     body: TCreateAcmeOrderPayload
