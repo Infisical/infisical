@@ -11,11 +11,13 @@ import {
 } from "./pki-acme-errors";
 
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
+import { logger } from "@app/lib/logger";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
-import { flattenedVerify, FlattenedVerifyResult, importJWK, JWK, JWSHeaderParameters } from "jose";
+import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWK, JWSHeaderParameters } from "jose";
+import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import { ProtectedHeaderSchema } from "./pki-acme-schemas";
@@ -38,9 +40,6 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { JWSInvalid } from "jose/dist/types/util/errors";
-import { logger } from "@app/lib/logger";
-import { z, ZodError } from "zod";
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
@@ -87,7 +86,7 @@ export const pkiAcmeServiceFactory = ({
       if (error instanceof ZodError) {
         throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
       }
-      if (error instanceof JWSInvalid) {
+      if (error instanceof errors.JWSInvalid) {
         throw new AcmeBadPublicKeyError({ detail: "Invalid JWS payload" });
       }
       logger.error(error, "Unexpected error while verifying JWS payload");
