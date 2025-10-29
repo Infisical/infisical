@@ -1,10 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { withProjectPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
@@ -50,22 +51,9 @@ export const ServiceTokenSection = withProjectPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Service Tokens</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/token"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/token" />
             </div>
             <p className="text-sm text-bunker-300">
               {t("section.token.service-tokens-description")}

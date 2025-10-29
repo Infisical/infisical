@@ -1,10 +1,11 @@
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreateSecretScanningDataSourceModal } from "@app/components/secret-scanning";
 import { Button, Spinner } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionSub, useProject, useSubscription } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
@@ -40,22 +41,9 @@ export const SecretScanningDataSourcesSection = () => {
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Data Sources</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
             </div>
             <p className="text-sm text-bunker-300">
               Configure Data Sources to scan for secret leaks from third-party services.
@@ -72,7 +60,9 @@ export const SecretScanningDataSourcesSection = () => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   if (!subscription.secretScanning) {
-                    handlePopUpOpen("upgradePlan");
+                    handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true
+                    });
                     return;
                   }
 
@@ -95,6 +85,7 @@ export const SecretScanningDataSourcesSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text="You can create Data Sources by upgrading to Infisical's Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );

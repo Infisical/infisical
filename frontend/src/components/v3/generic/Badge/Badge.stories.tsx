@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Link } from "@tanstack/react-router";
 import {
+  AlertTriangleIcon,
+  AsteriskIcon,
   BanIcon,
-  BoxesIcon,
-  BoxIcon,
   CheckIcon,
   ChevronsUpDownIcon,
   CircleXIcon,
@@ -11,9 +11,11 @@ import {
   GlobeIcon,
   InfoIcon,
   RadarIcon,
-  TriangleAlertIcon
+  TriangleAlertIcon,
+  UserIcon
 } from "lucide-react";
 
+import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
 import { Badge } from "./Badge";
 
 /**
@@ -69,7 +71,29 @@ export const Neutral: Story = {
   parameters: {
     docs: {
       description: {
-        story: "Use this variant when indicating neutral or disabled states."
+        story:
+          "Use this variant when indicating neutral or disabled states or when linking to external documents."
+      }
+    }
+  }
+};
+
+export const Ghost: Story = {
+  name: "Variant: Ghost",
+  args: {
+    variant: "ghost",
+    children: (
+      <>
+        <UserIcon />
+        User
+      </>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use this variant when indicating a configuration or property value. Avoid using this variant as an interactive element as it is not intuitive to interact with."
       }
     }
   }
@@ -109,8 +133,7 @@ export const Info: Story = {
   parameters: {
     docs: {
       description: {
-        story:
-          "Use this variant when indicating informational states or linking to external references."
+        story: "Use this variant when indicating informational states."
       }
     }
   }
@@ -162,7 +185,7 @@ export const Organization: Story = {
     variant: "org",
     children: (
       <>
-        <GlobeIcon />
+        <OrgIcon />
         Organization
       </>
     )
@@ -182,7 +205,7 @@ export const SubOrganization: Story = {
     variant: "sub-org",
     children: (
       <>
-        <BoxesIcon />
+        <SubOrgIcon />
         Sub-Organization
       </>
     )
@@ -202,7 +225,7 @@ export const Project: Story = {
     variant: "project",
     children: (
       <>
-        <BoxIcon />
+        <ProjectIcon />
         Project
       </>
     )
@@ -283,10 +306,11 @@ export const AsButton: Story = {
 export const IsTruncatable: Story = {
   name: "Example: isTruncatable",
   args: {
+    variant: "org",
     isTruncatable: true,
     children: (
       <>
-        <GlobeIcon />
+        <OrgIcon />
         <span>Infisical Infrastructure</span>
       </>
     )
@@ -295,12 +319,57 @@ export const IsTruncatable: Story = {
     docs: {
       description: {
         story:
-          "Use the `isTruncatable` prop with a `span` tag wrapping the text content to support truncation."
+          "Use the `isTruncatable` prop with a `span` tag wrapping the text content to support truncation. Parent `div` should have a fixed width and `flex` class."
       }
     }
   },
   decorators: (Story) => (
     <div className="flex w-32">
+      <Story />
+    </div>
+  )
+};
+
+export const IsSquare: Story = {
+  name: "Example: isSquare",
+  args: {
+    variant: "danger",
+    isSquare: true,
+    children: <AlertTriangleIcon />
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use the `isSquare` prop when displaying a squared badge with 1-2 character text or only an icon."
+      }
+    }
+  }
+};
+
+export const IsFullWidth: Story = {
+  name: "Example: isFullWidth",
+  args: {
+    variant: "neutral",
+    isFullWidth: true,
+
+    children: (
+      <>
+        <AsteriskIcon />
+        Secret Value
+      </>
+    )
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "Use the `isFullWidth` prop to expand the badges width to fill it's parent container."
+      }
+    }
+  },
+  decorators: (Story) => (
+    <div className="w-32">
       <Story />
     </div>
   )

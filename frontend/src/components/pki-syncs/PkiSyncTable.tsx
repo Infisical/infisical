@@ -2,7 +2,6 @@ import { faPlug, faRefresh, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
-  Badge,
   EmptyState,
   IconButton,
   Table,
@@ -13,6 +12,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
@@ -29,10 +29,10 @@ const getSyncStatusBadge = (status?: string) => {
     case "FAILED":
       return <Badge variant="danger">Failed</Badge>;
     case "RUNNING":
-      return <Badge variant="primary">Running</Badge>;
+      return <Badge variant="warning">Running</Badge>;
     case "PENDING":
     default:
-      return <Badge variant="primary">Pending</Badge>;
+      return <Badge variant="warning">Pending</Badge>;
   }
 };
 
@@ -71,7 +71,7 @@ export const PkiSyncTable = ({ pkiSyncs, onEdit, onDelete, onTrigger }: Props) =
               <Td>{pkiSync.name}</Td>
               <Td>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="primary">{pkiSync.destination}</Badge>
+                  <Badge variant="warning">{pkiSync.destination}</Badge>
                 </div>
               </Td>
               <Td>{pkiSync.appConnectionName || "Unknown"}</Td>

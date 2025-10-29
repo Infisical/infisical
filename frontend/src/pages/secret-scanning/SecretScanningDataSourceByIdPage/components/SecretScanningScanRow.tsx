@@ -1,14 +1,14 @@
 import { useCallback } from "react";
-import { faCheck, faCopy, faEllipsisV, faWarning } from "@fortawesome/free-solid-svg-icons";
+import { faCheck, faCopy, faEllipsisV } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { AlertTriangleIcon, CheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { SecretScanningScanStatusBadge } from "@app/components/secret-scanning";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,6 +18,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
@@ -92,40 +93,33 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
           ) : // eslint-disable-next-line no-nested-ternary
           totalFindings ? (
             <div className="flex flex-col">
-              <Badge
-                onClick={() =>
-                  navigate({
-                    to: "/projects/secret-scanning/$projectId/findings",
-                    params: {
-                      projectId: currentProject.id
-                    },
-                    search: {
-                      search: `scanId:${id}`
-                    }
-                  })
-                }
-                variant={unresolvedFindings ? "primary" : undefined}
-                className={twMerge(
-                  "flex h-5 w-min cursor-pointer items-center gap-1.5 whitespace-nowrap",
-                  !unresolvedFindings && "bg-mineshaft-400/50 text-bunker-300"
-                )}
-              >
-                <FontAwesomeIcon icon={unresolvedFindings ? faWarning : faCheck} />
-                <span className="text-xs">
+              <Badge asChild variant={unresolvedFindings ? "warning" : "success"}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate({
+                      to: "/projects/secret-scanning/$projectId/findings",
+                      params: {
+                        projectId: currentProject.id
+                      },
+                      search: {
+                        search: `scanId:${id}`
+                      }
+                    })
+                  }
+                >
+                  {unresolvedFindings ? <AlertTriangleIcon /> : <CheckIcon />}
                   {totalFindings}{" "}
                   {unresolvedFindings
                     ? `Secret${totalFindings > 1 ? "s" : ""} Detected`
                     : "Leak Resolved"}
-                </span>
+                </button>
               </Badge>
             </div>
           ) : status === SecretScanningScanStatus.Failed ? (
             <span className="text-mineshaft-400">No findings</span>
           ) : (
-            <Badge
-              variant="success"
-              className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-            >
+            <Badge variant="success">
               <FontAwesomeIcon icon={faCheck} />
               No Secrets Detected
             </Badge>

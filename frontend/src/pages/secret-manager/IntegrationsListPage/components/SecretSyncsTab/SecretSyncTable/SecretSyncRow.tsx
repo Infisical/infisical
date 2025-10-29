@@ -13,12 +13,12 @@ import {
   faToggleOff,
   faToggleOn,
   faTrash,
-  faTriangleExclamation,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { AlertTriangleIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -29,7 +29,6 @@ import {
   SecretSyncStatusBadge
 } from "@app/components/secret-syncs";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -39,6 +38,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -173,15 +173,10 @@ export const SecretSyncRow = ({
       ) : (
         <Td>
           <Tooltip content="The source location for this sync has been deleted. Configure a new source or remove this sync.">
-            <div className="w-min">
-              <Badge
-                className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                variant="primary"
-              >
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-                <span>Source Folder Deleted</span>
-              </Badge>
-            </div>
+            <Badge variant="danger">
+              <AlertTriangleIcon />
+              <span>Source Folder Deleted</span>
+            </Badge>
           </Tooltip>
         </Td>
       )}
@@ -237,7 +232,7 @@ export const SecretSyncRow = ({
               content="Auto-Sync is disabled. Changes to the source location will not be automatically synced to the destination."
             >
               <div>
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
+                <Badge variant="neutral">
                   <FontAwesomeIcon icon={faBan} />
                   {!syncStatus && "Auto-Sync Disabled"}
                 </Badge>

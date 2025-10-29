@@ -11,19 +11,18 @@ import {
   faMagnifyingGlass,
   faSearch,
   faUsers,
-  faUserShield,
   faUserSlash,
   faUserXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { UserCogIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { LastLoginSection } from "@app/components/organization/LastLoginSection";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   Checkbox,
   DropdownMenu,
@@ -50,6 +49,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -133,7 +133,8 @@ export const OrgMembersTable = ({
 
       if (isCustomRole && subscription && !subscription?.rbac) {
         handlePopUpOpen("upgradePlan", {
-          description: "You can assign custom roles to members if you upgrade your Infisical plan."
+          description:
+            "You can assign custom roles to members if you switch to Infisical's Pro plan."
         });
         return;
       }
@@ -519,17 +520,17 @@ export const OrgMembersTable = ({
                       <Td
                         className={twMerge("group max-w-0", isActive ? "" : "text-mineshaft-400")}
                       >
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-x-2">
                           <p className="truncate">
                             {name ?? <span className="text-mineshaft-400">Not Set</span>}
                           </p>
                           {u.superAdmin && (
-                            <Badge variant="primary" className="ml-2 w-min whitespace-nowrap">
-                              <span className="mr-1 hidden xl:inline">Server Admin</span>
-                              <Tooltip content="Server Admin">
-                                <FontAwesomeIcon className="xl:hidden" icon={faUserShield} />
-                              </Tooltip>
-                            </Badge>
+                            <Tooltip content="Server Admin">
+                              <Badge variant="info">
+                                <UserCogIcon />
+                                <span className="hidden xl:inline">Server Admin</span>
+                              </Badge>
+                            </Tooltip>
                           )}
                           {lastLoginAuthMethod && lastLoginTime && (
                             <Tooltip

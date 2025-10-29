@@ -5,7 +5,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge, IconButton } from "@app/components/v2";
+import { IconButton } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP } from "@app/helpers/secretSyncs";
@@ -114,7 +115,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
             {AdditionalSyncOptionsComponent}
             {disableSecretDeletion && (
               <GenericFieldLabel label="Secret Deletion">
-                <Badge variant="primary">Disabled</Badge>
+                <Badge variant="neutral">Disabled</Badge>
               </GenericFieldLabel>
             )}
           </div>

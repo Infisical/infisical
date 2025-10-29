@@ -4,7 +4,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
-import { Badge, Tab, TabList, Tabs } from "@app/components/v2";
+import { Tab, TabList, Tabs } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
@@ -89,7 +90,7 @@ export const SecretManagerLayout = () => {
                         {Boolean(
                           secretApprovalReqCount?.open || accessApprovalRequestCount?.pendingCount
                         ) && (
-                          <Badge variant="primary" className="ml-1.5">
+                          <Badge variant="warning" isSquare className="ml-1.5">
                             {pendingRequestsCount}
                           </Badge>
                         )}

@@ -2751,7 +2751,7 @@ export const secretServiceFactory = ({
     const existingSecretTags = await secretDAL.getSecretTags(secret.id);
 
     if (existingSecretTags.some((tag) => tagSlugs.includes(tag.slug))) {
-      throw new BadRequestError({ message: "One or more tags already exist on the secret" });
+      throw new BadRequestError({ message: "One or more tags already exists on the secret" });
     }
 
     const combinedTags = new Set([...existingSecretTags.map((tag) => tag.id), ...tags.map((el) => el.id)]);

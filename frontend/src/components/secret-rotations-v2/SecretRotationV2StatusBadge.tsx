@@ -1,18 +1,17 @@
-import { faBan, faRotate, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistanceToNow } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { BanIcon, RefreshCwIcon, XIcon } from "lucide-react";
 
 import { Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge/Badge";
+import { Badge } from "@app/components/v3";
 import { SecretRotationStatus, TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 
 type Props = {
   secretRotation: TSecretRotationV2;
-  className?: string;
 };
 
-export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props) => {
+export const SecretRotationV2StatusBadge = ({ secretRotation }: Props) => {
   const { isAutoRotationEnabled, rotationStatus, nextRotationAt, lastRotationMessage } =
     secretRotation;
 
@@ -50,28 +49,18 @@ export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props
           </div>
         }
       >
-        <div>
-          <Badge
-            variant="danger"
-            className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
-          >
-            <FontAwesomeIcon icon={faXmark} />
-            Rotation Failed
-          </Badge>
-        </div>
+        <Badge variant="danger">
+          <XIcon />
+          Rotation Failed
+        </Badge>
       </Tooltip>
     );
   }
 
   if (!isAutoRotationEnabled) {
     return (
-      <Badge
-        className={twMerge(
-          "flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300",
-          className
-        )}
-      >
-        <FontAwesomeIcon icon={faBan} />
+      <Badge variant="neutral">
+        <BanIcon />
         Auto-Rotation Disabled
       </Badge>
     );
@@ -92,20 +81,12 @@ export const SecretRotationV2StatusBadge = ({ secretRotation, className }: Props
         </>
       }
     >
-      <div>
-        <Badge
-          variant={daysToRotation >= 7 ? "success" : "primary"}
-          className={twMerge(
-            "flex h-5 w-min items-center gap-1.5 whitespace-nowrap capitalize",
-            className
-          )}
-        >
-          <FontAwesomeIcon icon={faRotate} />
-          {daysToRotation < 0
-            ? "Rotating"
-            : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
-        </Badge>
-      </div>
+      <Badge variant={daysToRotation >= 7 ? "info" : "warning"} className="capitalize">
+        <RefreshCwIcon />
+        {daysToRotation < 0
+          ? "Rotating"
+          : `Rotates ${formatDistanceToNow(nextRotationAt, { addSuffix: true })}`}
+      </Badge>
     </Tooltip>
   );
 };

@@ -1,55 +1,51 @@
 import {
-  faCheck,
-  faExclamationTriangle,
-  faHourglass,
-  faRotate,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+  AlertTriangleIcon,
+  CheckIcon,
+  HourglassIcon,
+  LucideIcon,
+  RefreshCwIcon
+} from "lucide-react";
 
-import { Badge, BadgeProps } from "@app/components/v2/Badge/Badge";
+import { Badge, TBadgeProps } from "@app/components/v3";
 import { PkiSyncStatus } from "@app/hooks/api/pkiSyncs";
 
 type Props = {
   status: PkiSyncStatus;
-} & Omit<BadgeProps, "children" | "variant">;
+} & Omit<TBadgeProps, "children" | "variant">;
 
 export const PkiSyncStatusBadge = ({ status }: Props) => {
-  let variant: BadgeProps["variant"];
+  let variant: TBadgeProps["variant"];
   let text: string;
-  let icon: IconDefinition;
+  let Icon: LucideIcon;
 
   switch (status) {
     case PkiSyncStatus.Failed:
       variant = "danger";
       text = "Failed to Sync";
-      icon = faExclamationTriangle;
+      Icon = AlertTriangleIcon;
       break;
     case PkiSyncStatus.Succeeded:
       variant = "success";
       text = "Synced";
-      icon = faCheck;
+      Icon = CheckIcon;
       break;
     case PkiSyncStatus.Pending:
-      variant = "primary";
+      variant = "info";
       text = "Queued";
-      icon = faHourglass;
+      Icon = HourglassIcon;
       break;
     case PkiSyncStatus.Running:
     default:
-      variant = "primary";
+      variant = "info";
       text = "Syncing";
-      icon = faRotate;
+      Icon = RefreshCwIcon;
       break;
   }
 
   return (
-    <Badge className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap" variant={variant}>
-      <FontAwesomeIcon
-        icon={icon}
-        className={status === PkiSyncStatus.Running ? "animate-spin" : ""}
-      />
-      <span>{text}</span>
+    <Badge variant={variant}>
+      <Icon className={status === PkiSyncStatus.Running ? "animate-spin" : ""} />
+      {text}
     </Badge>
   );
 };

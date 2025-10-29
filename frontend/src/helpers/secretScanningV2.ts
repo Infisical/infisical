@@ -1,10 +1,6 @@
-import {
-  faBan,
-  faCheck,
-  faMagnifyingGlassMinus,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { AlertTriangleIcon, BanIcon, CheckIcon, LucideIcon, SearchSlashIcon } from "lucide-react";
 
+import { TBadgeProps } from "@app/components/v3";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   SecretScanningDataSource,
@@ -74,12 +70,28 @@ export const RESOURCE_DESCRIPTION_HELPER: Record<
   }
 };
 
-export const SECRET_SCANNING_FINDING_STATUS_ICON_MAP = {
-  [SecretScanningFindingStatus.Resolved]: { icon: faCheck, className: "text-green" },
-  [SecretScanningFindingStatus.Unresolved]: { icon: faWarning, className: "text-yellow" },
-  [SecretScanningFindingStatus.Ignore]: { icon: faBan, className: "text-mineshaft-400" },
+export const SECRET_SCANNING_FINDING_STATUS_MAP: Record<
+  SecretScanningFindingStatus,
+  { Icon: LucideIcon; variant: TBadgeProps["variant"]; className: string }
+> = {
+  [SecretScanningFindingStatus.Resolved]: {
+    Icon: CheckIcon,
+    variant: "success",
+    className: "text-success"
+  },
+  [SecretScanningFindingStatus.Unresolved]: {
+    Icon: AlertTriangleIcon,
+    variant: "warning",
+    className: "text-warning"
+  },
+  [SecretScanningFindingStatus.Ignore]: {
+    Icon: BanIcon,
+    variant: "neutral",
+    className: "text-neutral"
+  },
   [SecretScanningFindingStatus.FalsePositive]: {
-    icon: faMagnifyingGlassMinus,
-    className: "text-mineshaft-400"
+    Icon: SearchSlashIcon,
+    variant: "neutral",
+    className: "text-neutral"
   }
 };

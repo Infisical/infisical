@@ -1,27 +1,20 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
-import {
-  faCheck,
-  faDownload,
-  faTriangleExclamation,
-  faXmark,
-  IconDefinition
-} from "@fortawesome/free-solid-svg-icons";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { differenceInSeconds } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { AlertTriangleIcon, CheckIcon, DownloadIcon, LucideIcon } from "lucide-react";
 
-import { Badge, Tooltip } from "@app/components/v2";
-import { BadgeProps } from "@app/components/v2/Badge/Badge";
+import { Tooltip } from "@app/components/v2";
+import { Badge, TBadgeProps } from "@app/components/v3";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { SecretSyncStatus, TSecretSync } from "@app/hooks/api/secretSyncs";
 
 type Props = {
   secretSync: TSecretSync;
-  className?: string;
   mini?: boolean;
 };
 
-export const SecretSyncImportStatusBadge = ({ secretSync, className, mini }: Props) => {
+export const SecretSyncImportStatusBadge = ({ secretSync, mini }: Props) => {
   const { importStatus, lastImportMessage, lastImportedAt, destination } = secretSync;
   const [hide, setHide] = useState(importStatus === SecretSyncStatus.Succeeded);
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -50,24 +43,24 @@ export const SecretSyncImportStatusBadge = ({ secretSync, className, mini }: Pro
 
   if (!importStatus || hide) return null;
 
-  let variant: BadgeProps["variant"];
+  let variant: TBadgeProps["variant"];
   let label: string;
-  let icon: IconDefinition;
+  let Icon: LucideIcon;
   let tooltipContent: ReactNode;
 
   switch (importStatus) {
     case SecretSyncStatus.Pending:
     case SecretSyncStatus.Running:
-      variant = "primary";
+      variant = "warning";
       label = "Importing Secrets...";
       tooltipContent = `Importing secrets from ${destinationName}. This may take a moment.`;
-      icon = faDownload;
+      Icon = DownloadIcon;
 
       break;
     case SecretSyncStatus.Failed:
       variant = "danger";
       label = "Failed to Import Secrets";
-      icon = faTriangleExclamation;
+      Icon = AlertTriangleIcon;
       tooltipContent = (
         <div className="flex flex-col gap-2 py-1 whitespace-normal">
           {failureMessage && (
@@ -93,20 +86,15 @@ export const SecretSyncImportStatusBadge = ({ secretSync, className, mini }: Pro
       tooltipContent = "Successfully imported secrets.";
       variant = "success";
       label = "Secrets Imported";
-      icon = faCheck;
+      Icon = CheckIcon;
   }
 
   return (
     <Tooltip position="bottom" className="max-w-sm" content={tooltipContent}>
-      <div>
-        <Badge
-          className={twMerge("flex h-5 w-min items-center gap-1.5 whitespace-nowrap", className)}
-          variant={variant}
-        >
-          <FontAwesomeIcon icon={icon} />
-          {!mini && <span>{label}</span>}
-        </Badge>
-      </div>
+      <Badge isSquare={mini} variant={variant}>
+        <Icon />
+        {!mini && label}
+      </Badge>
     </Tooltip>
   );
 };

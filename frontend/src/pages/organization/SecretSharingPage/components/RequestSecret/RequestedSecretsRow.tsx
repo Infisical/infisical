@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { Badge, IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import {
   SecretSharingAccessType,
   TSharedSecret,
@@ -35,27 +36,23 @@ export const RequestedSecretsRow = ({
         {isExpired && !row.encryptedSecret ? (
           <Badge variant="danger">Expired</Badge>
         ) : (
-          <Badge variant={row.encryptedSecret ? "success" : "primary"}>
+          <Badge variant={row.encryptedSecret ? "success" : "warning"}>
             {row.encryptedSecret ? "Secret Provided" : "Pending Secret"}
           </Badge>
         )}
       </Td>
       <Td>
-        <Badge variant="primary">
-          <Tooltip
-            content={
-              row.accessType === SecretSharingAccessType.Anyone
-                ? "Anyone can input the secret."
-                : "Only members of the organization can input the secret."
-            }
-          >
-            <div>
-              {row.accessType === SecretSharingAccessType.Anyone
-                ? "Anyone"
-                : "Organization Members"}
-            </div>
-          </Tooltip>
-        </Badge>
+        <Tooltip
+          content={
+            row.accessType === SecretSharingAccessType.Anyone
+              ? "Anyone can input the secret."
+              : "Only members of the organization can input the secret."
+          }
+        >
+          <Badge variant="info">
+            {row.accessType === SecretSharingAccessType.Anyone ? "Anyone" : "Organization Members"}
+          </Badge>
+        </Tooltip>
       </Td>
       <Td>{`${format(new Date(row.createdAt), "yyyy-MM-dd - HH:mm a")}`}</Td>
       <Td>{row.expiresAt ? format(new Date(row.expiresAt), "yyyy-MM-dd - HH:mm a") : "-"}</Td>

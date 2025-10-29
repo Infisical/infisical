@@ -305,7 +305,7 @@ export const SecretDetailSidebar = ({
         onOpenChange={(isUpgradeModalOpen) =>
           handlePopUpToggle("secretAccessUpgradePlan", isUpgradeModalOpen)
         }
-        text="Secret access analysis is only available on Infisical's Pro plan and above."
+        text="You can access secret access analysis if you switch to Infisical's Pro plan."
       />
       <Modal
         isOpen={popUp.secretReferenceTree.isOpen}

@@ -5,13 +5,13 @@ export const getCertValidUntilBadgeDetails = (notAfter: string) => {
   const notAfterDate = new Date(notAfter).getTime();
   const diffInMs = notAfterDate - currentDate;
 
-  let variant: "success" | "primary" | "danger" = "success";
+  let variant: "success" | "warning" | "danger" = "success";
   let label = "Healthy";
 
   if (diffInMs > ms("60d")) {
     variant = "success";
   } else if (diffInMs > ms("30d")) {
-    variant = "primary";
+    variant = "warning";
   } else {
     variant = "danger";
   }

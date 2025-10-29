@@ -405,7 +405,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      blockDuplicateSecretSyncDestinations
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -516,7 +517,7 @@ export const orgServiceFactory = ({
     if (slug) {
       const existingOrg = await orgDAL.findOne({ slug, rootOrgId: null });
       if (existingOrg && existingOrg?.id !== orgId)
-        throw new BadRequestError({ message: `Organization with slug ${slug} already exist` });
+        throw new BadRequestError({ message: `Organization with slug ${slug} already exists` });
     }
 
     if (googleSsoAuthEnforced) {
@@ -589,7 +590,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      blockDuplicateSecretSyncDestinations
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
@@ -1147,7 +1149,7 @@ export const orgServiceFactory = ({
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
       throw new BadRequestError({
-        message: "Incident contact already exist",
+        message: "Incident contact already exists",
         name: "Incident contact exist"
       });
     }

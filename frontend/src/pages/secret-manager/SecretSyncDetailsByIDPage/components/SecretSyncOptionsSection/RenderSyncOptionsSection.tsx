@@ -1,5 +1,5 @@
 import { GenericFieldLabel } from "@app/components/secret-syncs";
-import { Badge } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { TRenderSync } from "@app/hooks/api/secretSyncs/types/render-sync";
 
 type Props = {

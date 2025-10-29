@@ -2,8 +2,6 @@ import { subject } from "@casl/ability";
 import {
   faArrowDown,
   faArrowUp,
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faCircleXmark,
   faClock,
   faEllipsisV,
@@ -44,6 +42,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
@@ -159,22 +158,9 @@ export const IdentityTab = withProjectPermission(
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Identities</p>
-            <a
-              href="https://infisical.com/docs/documentation/platform/identities/overview"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mt-[0.16rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
           </div>
           <ProjectPermissionCan
             I={ProjectPermissionActions.Create}
