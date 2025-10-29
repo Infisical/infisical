@@ -43,94 +43,75 @@ const formatPrivateKey = (key: string): string => {
   return formattedKey;
 };
 
-// Chef API authentication helper
 const getChefAuthHeaders = (
   method: string,
   path: string,
   body: string,
   userId: string,
   privateKey: string,
-  timestamp: string
+  apiVersion: "1.0" | "1.3" = "1.3"
 ) => {
-  const hashedPath = crypto.createHash("sha256").update(path).digest("base64");
-  const hashedBody = crypto.createHash("sha256").update(body).digest("base64");
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, "Z"); // Remove milliseconds from timestamp
 
-  console.log("1", {
-    method,
-    path,
-    body,
-    userId,
-    privateKey,
-    timestamp
-  });
-  const canonicalRequest = [
-    `Method:${method}`,
-    `Hashed Path:${hashedPath}`,
-    `X-Ops-Content-Hash:${hashedBody}`,
-    `X-Ops-Timestamp:${timestamp}`,
-    `X-Ops-UserId:${userId}`
-  ].join("\n");
+  // Calculate content hash based on version
+  let contentHash: string;
+  if (apiVersion === "1.3") {
+    contentHash = crypto.createHash("sha256").update(body).digest("base64");
+  } else {
+    contentHash = crypto.createHash("sha1").update(body).digest("base64");
+  }
+
+  // Build canonical request based on version
+  let canonicalRequest: string;
+  if (apiVersion === "1.3") {
+    canonicalRequest = [
+      `Method:${method}`,
+      `Path:${path}`,
+      `X-Ops-Content-Hash:${contentHash}`,
+      "X-Ops-Sign:version=1.3",
+      `X-Ops-Timestamp:${timestamp}`,
+      `X-Ops-UserId:${userId}`,
+      "X-Ops-Server-API-Version:1"
+    ].join("\n");
+  } else {
+    const hashedPath = crypto.createHash("sha1").update(path).digest("base64");
+    canonicalRequest = [
+      `Method:${method}`,
+      `Hashed Path:${hashedPath}`,
+      `X-Ops-Content-Hash:${contentHash}`,
+      `X-Ops-Timestamp:${timestamp}`,
+      `X-Ops-UserId:${userId}`
+    ].join("\n");
+  }
 
   // Format the private key properly
   const formattedKey = formatPrivateKey(privateKey);
 
-  console.log("Chef Auth Debug - Key format:", {
-    formattedKey,
-    hasHeader: formattedKey.includes("BEGIN"),
-    keyType: formattedKey.match(/-----BEGIN ([^-]+)-----/)?.[1],
-    keyLength: formattedKey.length,
-    startsCorrectly: formattedKey.startsWith("-----BEGIN"),
-    endsCorrectly: formattedKey.endsWith("-----")
-  });
+  console.log("formattedKey", formattedKey);
 
-  // Create key object with proper format
-  let keyObject;
-  try {
-    keyObject = crypto.createPrivateKey({
-      key: Buffer.from(formattedKey),
-      format: "pem"
-    });
-  } catch (error) {
-    console.error("Failed to create private key:", error);
-    console.error("Key preview (first 100 chars):", formattedKey.substring(0, 100));
-    throw new Error(`Invalid private key format: ${error instanceof Error ? error.message : "Unknown error"}`);
-  }
+  // Sign the canonical request
+  const sign = crypto.createSign(apiVersion === "1.3" ? "RSA-SHA256" : "RSA-SHA1");
+  sign.update(canonicalRequest);
+  const signature = sign.sign(formattedKey, "base64");
 
-  // Sign using the key object with SHA-256 (FIPS-compliant)
-  const signature = crypto.sign("sha256", Buffer.from(canonicalRequest), {
-    key: keyObject,
-    padding: crypto.constants.RSA_PKCS1_PADDING
-  });
-
-  const signatureBase64 = signature.toString("base64");
-
-  console.log("4", { signature, signatureBase64 });
-
-  // Split signature into 60 character chunks as required by Chef API
-  const signatureLines: string[] = [];
-  for (let i = 0; i < signatureBase64.length; i += 60) {
-    signatureLines.push(signatureBase64.substring(i, i + 60));
-  }
-
-  console.log("5", signatureLines);
-  const headers: Record<string, string> = {
-    "X-Ops-Sign": "algorithm=sha256;version=1.3",
-    "X-Ops-UserId": userId,
-    "X-Ops-Timestamp": timestamp,
-    "X-Ops-Content-Hash": hashedBody,
-    "X-Chef-Version": "12.0.2",
-    "X-Ops-Server-API-Version": "1"
-  };
-
-  console.log("6", headers);
-
+  // Split signature into 60-character chunks
+  const authHeaders: Record<string, string> = {};
+  const signatureLines = signature.match(/.{1,60}/g) || [];
   signatureLines.forEach((line, index) => {
-    headers[`X-Ops-Authorization-${index + 1}`] = line;
+    authHeaders[`X-Ops-Authorization-${index + 1}`] = line;
   });
 
-  console.log("7", headers);
-
-  return headers;
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    "X-Chef-Version": "14.0.0",
+    "X-Ops-Timestamp": timestamp,
+    "X-Ops-UserId": userId,
+    "X-Ops-Sign": apiVersion === "1.3" ? "version=1.3" : "algorithm=sha1;version=1.0",
+    "X-Ops-Content-Hash": contentHash,
+    ...(apiVersion === "1.3" && { "X-Ops-Server-API-Version": "1" }),
+    ...authHeaders
+  };
 };
 
 export const getChefConnectionListItem = () => {
@@ -148,18 +129,14 @@ export const listChefDataBags = async (appConnection: TChefConnection): Promise<
 
   try {
     const path = "/data";
-    const timestamp = `${new Date().toISOString().slice(0, -5)}Z`;
     const body = "";
 
     const hostServerUrl = await getChefServerUrl(serverUrl);
 
-    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey, timestamp);
+    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
     const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
-      headers: {
-        ...headers,
-        Accept: "application/json"
-      }
+      headers
     });
 
     // Chef returns data bags as an object with keys being data bag names
@@ -184,34 +161,18 @@ export const validateChefConnectionCredentials = async (config: TChefConnectionC
 
   try {
     const path = `/organizations/${inputCredentials.orgName}/users/${inputCredentials.userName}`;
-    const timestamp = `${new Date().toISOString().slice(0, -5)}Z`;
-    const body = "";
 
     const hostServerUrl = await getChefServerUrl(inputCredentials.serverUrl);
 
-    console.log("Chef validate - attempting connection to:", hostServerUrl);
-    const headers = getChefAuthHeaders(
-      "GET",
-      path,
-      body,
-      inputCredentials.userName,
-      inputCredentials.privateKey,
-      timestamp
-    );
+    const headers = getChefAuthHeaders("GET", path, "", inputCredentials.userName, inputCredentials.privateKey);
 
-    const data = await request.get(`${hostServerUrl}${path}`, {
-      headers: {
-        ...headers,
-        Accept: "application/json"
-      }
+    await request.get(`${hostServerUrl}${path}`, {
+      headers
     });
-    console.log("Chef validate - data:", data);
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
-      const errorData = error.response?.data as { error?: string } | undefined;
-      console.log("Chef validate - error:", errorData);
       throw new BadRequestError({
-        message: `Failed to validate Chef credentials: ${errorData?.error || error.message || "Unknown error"}`
+        message: `Failed to validate Chef credentials: ${error.message || "Unknown error"}`
       });
     }
     throw new BadRequestError({
@@ -232,18 +193,14 @@ export const listChefDataBagItems = async (
 
   try {
     const path = `/data/${dataBagName}`;
-    const timestamp = `${new Date().toISOString().slice(0, -5)}Z`;
     const body = "";
 
     const hostServerUrl = await getChefServerUrl(serverUrl);
 
-    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey, timestamp);
+    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
     const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
-      headers: {
-        ...headers,
-        Accept: "application/json"
-      }
+      headers
     });
 
     // Chef returns data bag items as an object with keys being item names
@@ -253,9 +210,9 @@ export const listChefDataBagItems = async (
     }));
   } catch (error) {
     if (error instanceof AxiosError) {
-      // throw new BadRequestError({
-      //   message: `Failed to list Chef data bag items: ${error.response?.data?.error || error.message}`
-      // });
+      throw new BadRequestError({
+        message: `Failed to list Chef data bag items: ${error.message || "Unknown error"}`
+      });
     }
     throw new BadRequestError({
       message: "Unable to list Chef data bag items"
