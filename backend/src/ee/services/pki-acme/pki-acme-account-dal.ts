@@ -49,9 +49,7 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
   return {
     ...pkiAcmeAccountOrm,
     create,
-    updateById,
     findById,
-    findByProfileId,
     findByPublicKey
   };
 };
