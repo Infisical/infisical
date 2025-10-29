@@ -156,6 +156,7 @@ export const pkiAcmeServiceFactory = ({
 
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
+      alg,
       publicKey: jwk,
       emails: contact ?? []
     });
