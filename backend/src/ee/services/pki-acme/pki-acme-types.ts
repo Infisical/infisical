@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { JWSHeaderParameters } from "jose";
 import {
   CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
@@ -12,7 +13,6 @@ import {
   GetAcmeAuthorizationResponseSchema,
   GetAcmeDirectoryResponseSchema,
   GetAcmeOrderResponseSchema,
-  JwsPayloadSchema,
   ListAcmeOrdersResponseSchema,
   ProtectedHeaderSchema,
   RawJwsPayloadSchema,
@@ -32,16 +32,16 @@ export type TRespondToAcmeChallengeResponse = z.infer<typeof RespondToAcmeChalle
 
 // Payload types
 export type TRawJwsPayload = z.infer<typeof RawJwsPayloadSchema>;
-export type TJwsPayload = z.infer<typeof JwsPayloadSchema>;
 export type TProtectedHeader = z.infer<typeof ProtectedHeaderSchema>;
 export type TCreateAcmeAccountPayload = z.infer<typeof CreateAcmeAccountBodySchema>;
 export type TCreateAcmeOrderPayload = z.infer<typeof CreateAcmeOrderBodySchema>;
 export type TDeactivateAcmeAccountPayload = z.infer<typeof DeactivateAcmeAccountBodySchema>;
 export type TFinalizeAcmeOrderPayload = z.infer<typeof FinalizeAcmeOrderBodySchema>;
 
-export type TJwsPayloadWithJwk = TJwsPayload & {
-  jwk: JsonWebKey;
-  alg: string;
+export type TJwsPayload<T> = {
+  protectedHeader: TProtectedHeader;
+  jwk?: JsonWebKey;
+  payload: T;
 };
 export type TAcmeResponse<TPayload> = {
   status: number;
@@ -50,7 +50,11 @@ export type TAcmeResponse<TPayload> = {
 };
 
 export type TPkiAcmeServiceFactory = {
-  validateCreateAcmeAccountJwsPayload(body: TRawJwsPayload): Promise<TJwsPayloadWithJwk>;
+  validateJwsPayload: <T>(
+    rawJwsPayload: TRawJwsPayload,
+    getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
+    schema: z.ZodSchema<T>
+  ) => Promise<TJwsPayload<T>>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: (

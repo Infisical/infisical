@@ -20,11 +20,6 @@ export const RawJwsPayloadSchema = z.object({
   signature: z.string()
 });
 
-export const JwsPayloadSchema = z.object({
-  protectedHeader: ProtectedHeaderSchema,
-  payload: z.unknown()
-});
-
 // Directory endpoint
 export const GetAcmeDirectorySchema = z.object({
   params: z.object({
