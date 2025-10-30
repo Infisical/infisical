@@ -45,12 +45,12 @@ Feature: Order
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.body with jq .identifiers should be equal to json
+    Then the value order.body with jq .identifiers | sort_by(.value) should be equal to json
       """
       [
-        {"type": "dns", "value": "localhost"},
         {"type": "dns", "value": "example.com"},
-        {"type": "dns", "value": "infisical.com"}
+        {"type": "dns", "value": "infisical.com"},
+        {"type": "dns", "value": "localhost"}
       ]
       """
 
