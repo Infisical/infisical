@@ -1,4 +1,4 @@
-Feature: New Order
+Feature: Order
 
   Scenario: Create a new order
     Given I have an ACME cert profile as "acme_profile"
