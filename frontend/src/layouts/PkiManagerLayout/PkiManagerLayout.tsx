@@ -52,9 +52,7 @@ export const PkiManagerLayout = () => {
                       projectId: currentProject.id
                     }}
                   >
-                    {({ isActive }) => (
-                      <Tab value={isActive ? "selected" : ""}>Certificate Management</Tab>
-                    )}
+                    {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Certificates</Tab>}
                   </Link>
                   <Link
                     to="/projects/cert-management/$projectId/certificate-authorities"

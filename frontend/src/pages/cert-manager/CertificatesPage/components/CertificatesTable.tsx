@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   faBan,
   faCertificate,
+  faClockRotateLeft,
   faEllipsis,
   faEye,
   faFileExport,
@@ -11,11 +12,14 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
-import { CircleQuestionMarkIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import {
+  CertificateDisplayName,
+  getCertificateDisplayName
+} from "@app/components/utilities/certificateDisplayUtils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +49,6 @@ import { caSupportsCapability } from "@app/hooks/api/ca/constants";
 import { CaCapability, CaType } from "@app/hooks/api/ca/enums";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import { CertStatus } from "@app/hooks/api/certificates/enums";
-import { TCertificate } from "@app/hooks/api/certificates/types";
 import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -56,93 +59,6 @@ const isExpiringWithinOneDay = (notAfter: string): boolean => {
   const now = new Date();
   const oneDayFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   return expiryDate <= oneDayFromNow;
-};
-
-const getAutoRenewalInfo = (certificate: TCertificate) => {
-  if (certificate.renewedByCertificateId) {
-    return { text: "Renewed", variant: "neutral" as const };
-  }
-
-  const isRevoked = certificate.status === CertStatus.REVOKED;
-  const isExpired = new Date(certificate.notAfter) < new Date();
-  const hasNoProfile = !certificate.profileId;
-  const isExpiringWithinDay = isExpiringWithinOneDay(certificate.notAfter);
-
-  if (isRevoked) {
-    return {
-      text: "Not Available",
-      variant: "neutral" as const,
-      tooltip: "Renewal is not available for revoked certificates"
-    };
-  }
-
-  if (isExpired) {
-    return {
-      text: "Not Available",
-      variant: "neutral" as const,
-      tooltip: "Renewal is not available for expired certificates"
-    };
-  }
-
-  if (hasNoProfile) {
-    return {
-      text: "Not Available",
-      variant: "neutral" as const,
-      tooltip: "Renewal requires a certificate profile"
-    };
-  }
-
-  if (certificate.hasPrivateKey === false) {
-    return {
-      text: "Not Available",
-      variant: "neutral" as const,
-      tooltip: "Renewal is not available for certificates with externally generated private keys"
-    };
-  }
-
-  if (isExpiringWithinDay) {
-    return {
-      text: "Not Available",
-      variant: "neutral" as const,
-      tooltip: "Auto-renewal is not available for certificates expiring within 24 hours"
-    };
-  }
-
-  if (certificate.renewalError) {
-    return {
-      text: "Failed",
-      variant: "danger" as const,
-      tooltip: certificate.renewalError
-    };
-  }
-
-  if (!certificate.renewBeforeDays) {
-    return { text: "Auto-Renewal Disabled", variant: "warning" as const };
-  }
-
-  const notAfterDate = new Date(certificate.notAfter);
-  const renewalDate = new Date(
-    notAfterDate.getTime() - certificate.renewBeforeDays * 24 * 60 * 60 * 1000
-  );
-  const now = new Date();
-
-  if (renewalDate <= now) {
-    return { text: "Due Now", variant: "danger" as const };
-  }
-
-  const daysUntilRenewal = Math.floor(
-    (renewalDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
-  );
-
-  if (daysUntilRenewal === 0) {
-    return { text: "Renews today", variant: "warning" as const };
-  }
-
-  if (daysUntilRenewal <= 7) {
-    return { text: `Renews in ${daysUntilRenewal}d`, variant: "warning" as const };
-  }
-
-  return { text: `Renews in ${daysUntilRenewal}d`, variant: "success" as const };
 };
 
 type Props = {
@@ -236,20 +152,18 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
       <Table>
         <THead>
           <Tr>
-            <Th>Common Name</Th>
-            <Th>Status</Th>
-            <Th>Not Before</Th>
-            <Th>Not After</Th>
-            <Th>Renewal Status</Th>
-            <Th />
+            <Th className="w-1/2">SAN / CN</Th>
+            <Th className="w-1/6">Status</Th>
+            <Th className="w-1/6">Not Before</Th>
+            <Th className="w-1/6">Not After</Th>
+            <Th className="w-12" />
           </Tr>
         </THead>
         <TBody>
-          {isPending && <TableSkeleton columns={5} innerKey="project-cas" />}
+          {isPending && <TableSkeleton columns={4} innerKey="project-cas" />}
           {!isPending &&
             data?.certificates.map((certificate) => {
               const { variant, label } = getCertValidUntilBadgeDetails(certificate.notAfter);
-              const autoRenewalInfo = getAutoRenewalInfo(certificate);
 
               const isRevoked = certificate.status === CertStatus.REVOKED;
               const isExpired = new Date(certificate.notAfter) < new Date();
@@ -258,9 +172,24 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
               const isAutoRenewalEnabled = Boolean(
                 certificate.renewBeforeDays && certificate.renewBeforeDays > 0
               );
+
+              const canShowAutoRenewalIcon = Boolean(
+                certificate.profileId &&
+                certificate.hasPrivateKey !== false &&
+                !certificate.renewedByCertificateId &&
+                !isRevoked &&
+                !isExpired &&
+                !isExpiringWithinDay
+              );
+
+              // Still need originalDisplayName for other uses in the component
+              const { originalDisplayName } = getCertificateDisplayName(certificate, 64, "—");
+
               return (
-                <Tr className="h-10" key={`certificate-${certificate.id}`}>
-                  <Td>{certificate.commonName}</Td>
+                <Tr className="group h-10" key={`certificate-${certificate.id}`}>
+                  <Td className="max-w-0">
+                    <CertificateDisplayName cert={certificate} maxLength={64} fallback="—" />
+                  </Td>
                   <Td>
                     {certificate.status === CertStatus.REVOKED ? (
                       <Badge variant="danger">Revoked</Badge>
@@ -278,22 +207,64 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                       ? format(new Date(certificate.notAfter), "yyyy-MM-dd")
                       : "-"}
                   </Td>
-                  <Td>
-                    {autoRenewalInfo &&
-                      (autoRenewalInfo.tooltip ? (
-                        <div className="flex items-center gap-2">
-                          <Tooltip content={autoRenewalInfo.tooltip}>
-                            <Badge variant={autoRenewalInfo.variant}>
-                              {autoRenewalInfo.text}
-                              <CircleQuestionMarkIcon />
-                            </Badge>
-                          </Tooltip>
-                        </div>
-                      ) : (
-                        <Badge variant={autoRenewalInfo.variant}>{autoRenewalInfo.text}</Badge>
-                      ))}
-                  </Td>
-                  <Td className="flex justify-end">
+                  <Td className="flex items-center justify-end gap-2">
+                    <div
+                      className={`transition-opacity ${(() => {
+                        if (!canShowAutoRenewalIcon) return "";
+                        if (isAutoRenewalEnabled) return "opacity-100";
+                        return "opacity-0 group-hover:opacity-100";
+                      })()}`}
+                    >
+                      {canShowAutoRenewalIcon && (
+                        <Tooltip
+                          content={(() => {
+                            if (hasFailed && certificate.renewalError) {
+                              return `Auto-renewal failed: ${certificate.renewalError}`;
+                            }
+                            if (isAutoRenewalEnabled) {
+                              const expiryDate = new Date(certificate.notAfter);
+                              const now = new Date();
+                              const daysUntilExpiry = Math.ceil(
+                                (expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+                              );
+                              const daysUntilRenewal = Math.max(
+                                0,
+                                daysUntilExpiry - (certificate.renewBeforeDays || 0)
+                              );
+                              return `Auto-renews in ${daysUntilRenewal}d`;
+                            }
+                            return "Set auto renewal";
+                          })()}
+                        >
+                          <button
+                            type="button"
+                            className={(() => {
+                              if (hasFailed) return "pr-1 text-red-500 hover:text-red-400";
+                              return "pr-1 text-primary-500 hover:text-primary-400";
+                            })()}
+                            aria-label="Certificate auto-renewal"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (hasFailed) return;
+
+                              handlePopUpOpen("manageRenewal", {
+                                certificateId: certificate.id,
+                                commonName: originalDisplayName,
+                                profileId: certificate.profileId || "",
+                                renewBeforeDays: certificate.renewBeforeDays || 7,
+                                ttlDays: Math.ceil(
+                                  (new Date(certificate.notAfter).getTime() -
+                                    new Date(certificate.notBefore).getTime()) /
+                                  (24 * 60 * 60 * 1000)
+                                )
+                              });
+                            }}
+                          >
+                            <FontAwesomeIcon icon={faClockRotateLeft} />
+                          </button>
+                        </Tooltip>
+                      )}
+                    </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
                         <div className="hover:text-primary-400 data-[state=open]:text-primary-400">
@@ -370,20 +341,20 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   <DropdownMenuItem
                                     className={twMerge(
                                       !isAllowed &&
-                                        "pointer-events-none cursor-not-allowed opacity-50"
+                                      "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
                                     onClick={async () => {
                                       const notAfterDate = new Date(certificate.notAfter);
                                       const notBeforeDate = certificate.notBefore
                                         ? new Date(certificate.notBefore)
                                         : new Date(
-                                            notAfterDate.getTime() - 365 * 24 * 60 * 60 * 1000
-                                          );
+                                          notAfterDate.getTime() - 365 * 24 * 60 * 60 * 1000
+                                        );
                                       const ttlDays = Math.max(
                                         1,
                                         Math.ceil(
                                           (notAfterDate.getTime() - notBeforeDate.getTime()) /
-                                            (24 * 60 * 60 * 1000)
+                                          (24 * 60 * 60 * 1000)
                                         )
                                       );
                                       handlePopUpOpen("manageRenewal", {
@@ -433,7 +404,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                    "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () => {
                                     await handleDisableAutoRenewal(
@@ -470,7 +441,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                    "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () => {
                                     handlePopUpOpen("renewCertificate", {
@@ -532,7 +503,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                    "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () =>
                                     handlePopUpOpen("revokeCertificate", {

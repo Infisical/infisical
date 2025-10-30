@@ -180,6 +180,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
     certificateDetails: (TCertificateSyncs & {
       certificateSerialNumber?: string;
       certificateCommonName?: string;
+      certificateAltNames?: string;
       certificateStatus?: string;
       certificateNotBefore?: Date;
       certificateNotAfter?: Date;
@@ -211,6 +212,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         .select(
           db.ref("serialNumber").withSchema(TableName.Certificate).as("certificateSerialNumber"),
           db.ref("commonName").withSchema(TableName.Certificate).as("certificateCommonName"),
+          db.ref("altNames").withSchema(TableName.Certificate).as("certificateAltNames"),
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
@@ -229,6 +231,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       const certificateDetails = (await query) as (TCertificateSyncs & {
         certificateSerialNumber?: string;
         certificateCommonName?: string;
+        certificateAltNames?: string;
         certificateStatus?: string;
         certificateNotBefore?: Date;
         certificateNotAfter?: Date;

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import { faEdit, faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faCertificate, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import {
@@ -13,6 +13,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -76,25 +77,71 @@ export const PkiSyncCertificatesFields = () => {
               >
                 Add Certificates
               </Button>
-              {selectedCertificates.length === 0 ? (
-                <EmptyState title="No certificates selected" icon={faPlus} />
-              ) : (
-                <div className="max-h-64 overflow-y-auto">
-                  <TableContainer>
-                    <Table>
-                      <THead>
-                        <Tr>
-                          <Th className="w-2/5">Common Name</Th>
-                          <Th className="w-2/5">Serial Number</Th>
-                          <Th className="w-1/5">Remove</Th>
-                        </Tr>
-                      </THead>
-                      <TBody>
-                        {selectedCertificates.map((cert) => (
+              <div className="max-h-64 overflow-y-auto">
+                <TableContainer>
+                  <Table>
+                    <THead>
+                      <Tr>
+                        <Th className="w-1/3">SAN / CN</Th>
+                        <Th className="w-1/4">Serial Number</Th>
+                        <Th className="w-1/6">Issued At</Th>
+                        <Th className="w-1/6">Expires At</Th>
+                        <Th className="w-12">Remove</Th>
+                      </Tr>
+                    </THead>
+                    <TBody>
+                      {selectedCertificates.map((cert) => {
+                        let originalDisplayName = "—";
+                        if (cert.altNames && cert.altNames.trim()) {
+                          originalDisplayName = cert.altNames.trim();
+                        } else if (cert.commonName && cert.commonName.trim()) {
+                          originalDisplayName = cert.commonName.trim();
+                        }
+
+                        let displayName = originalDisplayName;
+                        let isTruncated = false;
+                        if (originalDisplayName.length > 34) {
+                          displayName = `${originalDisplayName.substring(0, 34)}...`;
+                          isTruncated = true;
+                        }
+
+                        const truncatedSerial =
+                          cert.serialNumber.length > 8
+                            ? `${cert.serialNumber.slice(0, 4)}...${cert.serialNumber.slice(-4)}`
+                            : cert.serialNumber;
+
+                        const isExpired = new Date(cert.notAfter) < new Date();
+
+                        return (
                           <Tr key={cert.id}>
-                            <Td className="max-w-xs truncate">{cert.commonName}</Td>
-                            <Td className="font-mono text-xs text-bunker-300">
-                              {cert.serialNumber}
+                            <Td className="max-w-0">
+                              {isTruncated ? (
+                                <Tooltip content={originalDisplayName} className="max-w-lg">
+                                  <div className="truncate">{displayName}</div>
+                                </Tooltip>
+                              ) : (
+                                <div className="truncate">{displayName}</div>
+                              )}
+                            </Td>
+                            <Td className="max-w-0">
+                              <div
+                                className="font-mono text-xs text-bunker-300"
+                                title={cert.serialNumber}
+                              >
+                                {truncatedSerial}
+                              </div>
+                            </Td>
+                            <Td className="max-w-0">
+                              <span className="text-sm text-bunker-300">
+                                {new Date(cert.notBefore).toLocaleDateString()}
+                              </span>
+                            </Td>
+                            <Td className="max-w-0">
+                              <span
+                                className={`text-sm ${isExpired ? "text-red-400" : "text-bunker-300"}`}
+                              >
+                                {new Date(cert.notAfter).toLocaleDateString()}
+                              </span>
                             </Td>
                             <Td>
                               <Button
@@ -112,12 +159,15 @@ export const PkiSyncCertificatesFields = () => {
                               </Button>
                             </Td>
                           </Tr>
-                        ))}
-                      </TBody>
-                    </Table>
-                  </TableContainer>
-                </div>
-              )}
+                        );
+                      })}
+                    </TBody>
+                  </Table>
+                  {selectedCertificates.length === 0 && (
+                    <EmptyState title="No certificates selected" icon={faCertificate} />
+                  )}
+                </TableContainer>
+              </div>
             </div>
           </FormControl>
         )}

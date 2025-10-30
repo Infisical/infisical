@@ -12,7 +12,6 @@ import {
   faToggleOff,
   faToggleOn,
   faTrash,
-  faTriangleExclamation,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -47,7 +46,6 @@ import { useToggle } from "@app/hooks";
 import { PkiSyncStatus, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationCol } from "./PkiSyncDestinationCol";
-import { PkiSyncTableCell } from "./PkiSyncTableCell";
 
 type Props = {
   pkiSync: TPkiSync;
@@ -163,23 +161,6 @@ export const PkiSyncRow = ({
           <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
         </div>
       </Td>
-      {subscriberId ? (
-        <PkiSyncTableCell
-          primaryText={pkiSync.subscriber?.name || subscriberId}
-          secondaryText="PKI Subscriber"
-        />
-      ) : (
-        <Td>
-          <Tooltip content="The PKI subscriber for this sync has been deleted. Configure a new source or remove this sync.">
-            <div className="w-min">
-              <Badge variant="warning">
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-                <span>Source Deleted</span>
-              </Badge>
-            </div>
-          </Tooltip>
-        </Td>
-      )}
       <PkiSyncDestinationCol pkiSync={pkiSync} />
       <Td>
         <div className="flex items-center gap-1">

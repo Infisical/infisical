@@ -36,7 +36,7 @@ export const PoliciesPage = () => {
         <PageHeader
           scope={ProjectType.CertificateManager}
           title="Certificate Management"
-          description="Manage certificate templates, profiles, certificates, and PKI collections for unified certificate issuance"
+          description="Streamline certificate management by creating and maintaining templates, profiles, and certificates in one place"
         />
 
         <Tabs

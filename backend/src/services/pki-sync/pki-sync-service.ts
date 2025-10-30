@@ -606,6 +606,7 @@ export const pkiSyncServiceFactory = ({
       updatedAt: detail.updatedAt,
       certificateSerialNumber: detail.certificateSerialNumber || undefined,
       certificateCommonName: detail.certificateCommonName || undefined,
+      certificateAltNames: detail.certificateAltNames || undefined,
       certificateStatus: detail.certificateStatus || undefined,
       certificateNotBefore: detail.certificateNotBefore || undefined,
       certificateNotAfter: detail.certificateNotAfter || undefined,

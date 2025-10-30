@@ -520,7 +520,7 @@ export const awsCertificateManagerPkiSyncFactory = ({
             try {
               // Small delay to ensure AWS ACM has processed the certificate import
               await new Promise<void>((resolve) => {
-                setTimeout(() => resolve(), 100);
+                setTimeout(() => resolve(), 500);
               });
 
               await withRateLimitRetry(

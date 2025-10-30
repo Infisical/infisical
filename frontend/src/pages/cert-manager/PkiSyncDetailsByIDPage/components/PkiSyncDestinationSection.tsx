@@ -11,12 +11,15 @@ import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionC
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
-import { AzureKeyVaultPkiSyncDestinationSection } from "./PkiSyncDestinationSection/index";
+import {
+  AwsCertificateManagerPkiSyncDestinationSection,
+  AzureKeyVaultPkiSyncDestinationSection
+} from "./PkiSyncDestinationSection/index";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div>
-    <label className="text-sm text-bunker-300">{label}</label>
-    <div className="mt-1">{children}</div>
+  <div className="mb-4">
+    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
+    <div className="text-sm text-mineshaft-300">{children}</div>
   </div>
 );
 
@@ -32,6 +35,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
 
   let DestinationComponents: ReactNode;
   switch (destination) {
+    case PkiSync.AwsCertificateManager:
+      DestinationComponents = <AwsCertificateManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
     case PkiSync.AzureKeyVault:
       DestinationComponents = <AzureKeyVaultPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
@@ -47,7 +53,7 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-        <h3 className="font-medium text-mineshaft-100">Destination Configuration</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Destination Configuration</h3>
         <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
           {(isAllowed) => (
             <IconButton
@@ -62,7 +68,7 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
           )}
         </ProjectPermissionCan>
       </div>
-      <div className="flex w-full flex-wrap gap-8">
+      <div className="flex w-full flex-wrap gap-8 pt-2">
         <GenericFieldLabel label={`${destinationDetails.name} Connection`}>
           {pkiSync.appConnectionName || "Default Connection"}
         </GenericFieldLabel>

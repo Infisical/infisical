@@ -57,6 +57,7 @@ export type TPkiSyncCertificate = {
   updatedAt: string;
   certificateSerialNumber?: string;
   certificateCommonName?: string;
+  certificateAltNames?: string;
   certificateStatus?: string;
   certificateNotBefore?: Date;
   certificateNotAfter?: Date;

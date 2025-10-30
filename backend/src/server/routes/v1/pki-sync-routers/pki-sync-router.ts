@@ -89,6 +89,7 @@ const PkiSyncCertificateSchema = z.object({
   updatedAt: z.date(),
   certificateSerialNumber: z.string().optional(),
   certificateCommonName: z.string().optional(),
+  certificateAltNames: z.string().optional(),
   certificateStatus: z.string().optional(),
   certificateNotBefore: z.date().optional(),
   certificateNotAfter: z.date().optional(),

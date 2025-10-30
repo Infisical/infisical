@@ -170,13 +170,14 @@ export type TPkiSyncCertificate = {
   lastSyncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
-  certificate?: {
-    serialNumber: string;
-    commonName: string;
-    status: string;
-    notBefore: Date;
-    notAfter: Date;
-  };
+  certificateSerialNumber?: string;
+  certificateCommonName?: string;
+  certificateAltNames?: string;
+  certificateStatus?: string;
+  certificateNotBefore?: Date;
+  certificateNotAfter?: Date;
+  pkiSyncName?: string;
+  pkiSyncDestination?: string;
 };
 
 export type TPkiSyncRaw = NonNullable<Awaited<ReturnType<TPkiSyncDALFactory["findById"]>>>;
