@@ -47,6 +47,7 @@ import { TerraformCloudSyncReviewFields } from "./TerraformCloudSyncReviewFields
 import { VercelSyncReviewFields } from "./VercelSyncReviewFields";
 import { WindmillSyncReviewFields } from "./WindmillSyncReviewFields";
 import { ZabbixSyncReviewFields } from "./ZabbixSyncReviewFields";
+import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 
 export const SecretSyncReviewFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -172,6 +173,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.LaravelForge:
       DestinationFieldsComponent = <LaravelForgeSyncReviewFields />;
+      break;
+    case SecretSync.Chef:
+      DestinationFieldsComponent = <ChefSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

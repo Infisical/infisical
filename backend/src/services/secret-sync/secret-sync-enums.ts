@@ -29,7 +29,8 @@ export enum SecretSync {
   DigitalOceanAppPlatform = "digital-ocean-app-platform",
   Netlify = "netlify",
   Bitbucket = "bitbucket",
-  LaravelForge = "laravel-forge"
+  LaravelForge = "laravel-forge",
+  Chef = "chef"
 }
 
 export enum SecretSyncInitialSyncBehavior {

@@ -2626,6 +2626,10 @@ export const SecretSyncs = {
       siteName: "The name of the Netlify site to sync secrets to.",
       siteId: "The ID of the Netlify site to sync secrets to.",
       context: "The Netlify context to sync secrets to."
+    },
+    CHEF: {
+      dataBagName: "The name of the Chef data bag to sync secrets to.",
+      dataBagItemName: "The name of the Chef data bag item to sync secrets to."
     }
   }
 };

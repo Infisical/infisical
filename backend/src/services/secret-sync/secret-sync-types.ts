@@ -21,6 +21,7 @@ import {
   TCamundaSyncListItem,
   TCamundaSyncWithCredentials
 } from "@app/services/secret-sync/camunda";
+import { TChefSync, TChefSyncInput, TChefSyncListItem, TChefSyncWithCredentials } from "@app/services/secret-sync/chef";
 import {
   TDatabricksSync,
   TDatabricksSyncInput,
@@ -163,6 +164,7 @@ export type TSecretSync =
   | TGitHubSync
   | TGcpSync
   | TAzureKeyVaultSync
+  | TChefSync
   | TAzureAppConfigurationSync
   | TAzureDevOpsSync
   | TDatabricksSync
@@ -195,6 +197,7 @@ export type TSecretSyncWithCredentials =
   | TGitHubSyncWithCredentials
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
+  | TChefSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
   | TAzureDevOpsSyncWithCredentials
   | TDatabricksSyncWithCredentials
@@ -228,6 +231,7 @@ export type TSecretSyncInput =
   | TGitHubSyncInput
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
+  | TChefSyncInput
   | TAzureAppConfigurationSyncInput
   | TAzureDevOpsSyncInput
   | TDatabricksSyncInput
@@ -261,6 +265,7 @@ export type TSecretSyncListItem =
   | TGitHubSyncListItem
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
+  | TChefSyncListItem
   | TAzureAppConfigurationSyncListItem
   | TAzureDevOpsSyncListItem
   | TDatabricksSyncListItem

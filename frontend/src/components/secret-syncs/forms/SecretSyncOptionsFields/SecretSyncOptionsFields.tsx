@@ -70,6 +70,7 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
     case SecretSync.Netlify:
     case SecretSync.Bitbucket:
     case SecretSync.LaravelForge:
+    case SecretSync.Chef:
       AdditionalSyncOptionsFieldsComponent = null;
       break;
     default:

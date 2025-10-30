@@ -42,6 +42,7 @@ import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestin
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
+import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
@@ -151,6 +152,9 @@ export const SecretSyncDestinationSection = ({ secretSync, onEditDestination }: 
       break;
     case SecretSync.LaravelForge:
       DestinationComponents = <LaravelForgeSyncDestinationSection secretSync={secretSync} />;
+      break;
+    case SecretSync.Chef:
+      DestinationComponents = <ChefSyncDestinationSection secretSync={secretSync} />;
       break;
     default:
       throw new Error(`Unhandled Destination Section components: ${destination}`);

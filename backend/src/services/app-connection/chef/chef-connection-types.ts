@@ -18,15 +18,13 @@ export type TChefConnectionInput = z.infer<typeof CreateChefConnectionSchema> & 
 export type TValidateChefConnectionCredentialsSchema = typeof ValidateChefConnectionCredentialsSchema;
 
 export type TChefConnectionConfig = DiscriminativePick<TChefConnectionInput, "method" | "app" | "credentials"> & {
-  orgId: string;
+  orgName: string;
 };
 
 export type TChefDataBag = {
   name: string;
-  id: string;
 };
 
 export type TChefDataBagItem = {
   name: string;
-  id: string;
 };

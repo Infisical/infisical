@@ -31,6 +31,7 @@ import { TerraformCloudSyncDestinationSchema } from "./terraform-cloud-destinati
 import { VercelSyncDestinationSchema } from "./vercel-sync-destination-schema";
 import { WindmillSyncDestinationSchema } from "./windmill-sync-destination-schema";
 import { ZabbixSyncDestinationSchema } from "./zabbix-sync-destination-schema";
+import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 
 const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   AwsParameterStoreSyncDestinationSchema,
@@ -63,7 +64,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   DigitalOceanAppPlatformSyncDestinationSchema,
   NetlifySyncDestinationSchema,
   BitbucketSyncDestinationSchema,
-  LaravelForgeSyncDestinationSchema
+  LaravelForgeSyncDestinationSchema,
+  ChefSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

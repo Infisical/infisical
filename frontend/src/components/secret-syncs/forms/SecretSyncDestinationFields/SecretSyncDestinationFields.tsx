@@ -34,6 +34,7 @@ import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
 import { ZabbixSyncFields } from "./ZabbixSyncFields";
+import { ChefSyncFields } from "./ChefSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();
@@ -103,6 +104,8 @@ export const SecretSyncDestinationFields = () => {
       return <BitbucketSyncFields />;
     case SecretSync.LaravelForge:
       return <LaravelForgeSyncFields />;
+    case SecretSync.Chef:
+      return <ChefSyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }

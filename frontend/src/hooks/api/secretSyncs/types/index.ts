@@ -32,6 +32,7 @@ import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
+import { TChefSync } from "./chef-sync";
 
 export type TSecretSyncOption = {
   name: string;
@@ -71,7 +72,8 @@ export type TSecretSync =
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
   | TBitbucketSync
-  | TLaravelForgeSync;
+  | TLaravelForgeSync
+  | TChefSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

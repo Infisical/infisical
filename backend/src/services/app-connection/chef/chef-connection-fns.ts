@@ -7,9 +7,10 @@ import { removeTrailingSlash } from "@app/lib/fn";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
+import { TChefDataBagItemContent } from "../../secret-sync/chef/chef-sync-types";
 import { AppConnection } from "../app-connection-enums";
 import { ChefConnectionMethod } from "./chef-connection-enums";
-import { TChefConnection, TChefConnectionConfig, TChefDataBag } from "./chef-connection-types";
+import { TChefConnection, TChefConnectionConfig, TChefDataBag, TChefDataBagItem } from "./chef-connection-types";
 
 export const getChefServerUrl = async (serverUrl?: string) => {
   const chefServerUrl = serverUrl ? removeTrailingSlash(serverUrl) : IntegrationUrls.CHEF_API_URL;
@@ -120,40 +121,6 @@ export const getChefConnectionListItem = () => {
   };
 };
 
-export const listChefDataBags = async (appConnection: TChefConnection): Promise<TChefDataBag[]> => {
-  const {
-    credentials: { serverUrl, userName, privateKey }
-  } = appConnection;
-
-  try {
-    const path = "/data";
-    const body = "";
-
-    const hostServerUrl = await getChefServerUrl(serverUrl);
-
-    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
-
-    const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
-      headers
-    });
-
-    // Chef returns data bags as an object with keys being data bag names
-    return Object.keys(res.data).map((name) => ({
-      name,
-      id: name
-    }));
-  } catch (error) {
-    if (error instanceof AxiosError) {
-      // throw new BadRequestError({
-      //   message: `Failed to list Chef data bags: ${error.response?.data?.error || error.message}`
-      // });
-    }
-    throw new BadRequestError({
-      message: "Unable to list Chef data bags"
-    });
-  }
-};
-
 export const validateChefConnectionCredentials = async (config: TChefConnectionConfig) => {
   const { credentials: inputCredentials } = config;
 
@@ -181,16 +148,13 @@ export const validateChefConnectionCredentials = async (config: TChefConnectionC
   return inputCredentials;
 };
 
-export const listChefDataBagItems = async (
-  appConnection: TChefConnection,
-  dataBagName: string
-): Promise<TChefDataBag[]> => {
+export const listChefDataBags = async (appConnection: TChefConnection): Promise<TChefDataBag[]> => {
   const {
-    credentials: { serverUrl, userName, privateKey }
+    credentials: { serverUrl, userName, privateKey, orgName }
   } = appConnection;
 
   try {
-    const path = `/data/${dataBagName}`;
+    const path = `/organizations/${orgName}/data`;
     const body = "";
 
     const hostServerUrl = await getChefServerUrl(serverUrl);
@@ -201,10 +165,43 @@ export const listChefDataBagItems = async (
       headers
     });
 
-    // Chef returns data bag items as an object with keys being item names
     return Object.keys(res.data).map((name) => ({
-      name,
-      id: name
+      name
+    }));
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to list Chef data bags: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to list Chef data bags"
+    });
+  }
+};
+
+export const listChefDataBagItems = async (
+  appConnection: TChefConnection,
+  dataBagName: string
+): Promise<TChefDataBagItem[]> => {
+  const {
+    credentials: { serverUrl, userName, privateKey, orgName }
+  } = appConnection;
+
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}`;
+    const body = "";
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
+
+    const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
+      headers
+    });
+
+    return Object.keys(res.data).map((name) => ({
+      name
     }));
   } catch (error) {
     if (error instanceof AxiosError) {
@@ -214,6 +211,90 @@ export const listChefDataBagItems = async (
     }
     throw new BadRequestError({
       message: "Unable to list Chef data bag items"
+    });
+  }
+};
+
+type TGetChefDataBagItem = {
+  serverUrl?: string;
+  userName: string;
+  privateKey: string;
+  orgName: string;
+  dataBagName: string;
+  dataBagItemName: string;
+};
+
+export const getChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  dataBagItemName
+}: TGetChefDataBagItem): Promise<TChefDataBagItemContent> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
+    const body = "";
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
+
+    const res = await request.get<TChefDataBagItemContent>(`${hostServerUrl}${path}`, {
+      headers
+    });
+
+    return res.data;
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to get Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to get Chef data bag item"
+    });
+  }
+};
+
+type TUpdateChefDataBagItem = {
+  serverUrl?: string;
+  userName: string;
+  privateKey: string;
+  orgName: string;
+  dataBagName: string;
+  dataBagItemName: string;
+  data: TChefDataBagItemContent;
+};
+
+export const updateChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  dataBagItemName,
+  data
+}: TUpdateChefDataBagItem): Promise<void> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
+    const body = JSON.stringify(data);
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("PUT", path, body, userName, privateKey);
+
+    await request.put(`${hostServerUrl}${path}`, data, {
+      headers
+    });
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to update Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to update Chef data bag item"
     });
   }
 };

@@ -31,6 +31,7 @@ import { TerraformCloudSyncDestinationCol } from "./TerraformCloudSyncDestinatio
 import { VercelSyncDestinationCol } from "./VercelSyncDestinationCol";
 import { WindmillSyncDestinationCol } from "./WindmillSyncDestinationCol";
 import { ZabbixSyncDestinationCol } from "./ZabbixSyncDestinationCol";
+import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 
 type Props = {
   secretSync: TSecretSync;
@@ -100,6 +101,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <BitbucketSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.LaravelForge:
       return <LaravelForgeSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Chef:
+      return <ChefSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`
