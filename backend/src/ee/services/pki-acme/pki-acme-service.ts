@@ -339,7 +339,11 @@ export const pkiAcmeServiceFactory = ({
       const createdOrder = await acmeOrderDAL.create(
         {
           accountId: account.id,
-          status: AcmeOrderStatus.Pending
+          status: AcmeOrderStatus.Pending,
+          notBefore: payload.notBefore ? new Date(payload.notBefore) : undefined,
+          notAfter: payload.notAfter ? new Date(payload.notAfter) : undefined,
+          // TODO: read config from the profile to get the expiration time instead
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
         },
         tx
       );

@@ -78,6 +78,11 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("accountId").notNullable();
       t.foreign("accountId").references("id").inTable(TableName.PkiAcmeAccount).onDelete("CASCADE");
 
+      t.timestamp("notBefore").nullable();
+      t.timestamp("notAfter").nullable();
+
+      t.timestamp("expiresAt").notNullable();
+
       // Order status
       t.string("status").notNullable(); // pending, ready, processing, valid, invalid
 
