@@ -26,7 +26,7 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findById = async (profileId: string, id: string, tx?: Knex) => {
+  const findByProjectIdAndAccountId = async (profileId: string, id: string, tx?: Knex) => {
     try {
       const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, id }).first();
 
@@ -49,7 +49,7 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
   return {
     ...pkiAcmeAccountOrm,
     create,
-    findById,
+    findByProjectIdAndAccountId,
     findByPublicKey
   };
 };
