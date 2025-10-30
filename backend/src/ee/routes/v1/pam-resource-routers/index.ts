@@ -1,14 +1,14 @@
+import {
+  CreateMySQLResourceSchema,
+  MySQLResourceSchema,
+  UpdateMySQLResourceSchema
+} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import {
   CreatePostgresResourceSchema,
   SanitizedPostgresResourceSchema,
   UpdatePostgresResourceSchema
 } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
-import {
-  CreateMySQLResourceSchema,
-  MySQLResourceSchema,
-  UpdateMySQLResourceSchema
-} from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 
 import { registerPamResourceEndpoints } from "./pam-resource-endpoints";
 
