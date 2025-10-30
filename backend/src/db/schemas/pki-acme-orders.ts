@@ -12,7 +12,9 @@ export const PkiAcmeOrdersSchema = z.object({
   accountId: z.string().uuid(),
   status: z.string(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  notBefore: z.date().nullable().optional(),
+  notAfter: z.date().nullable().optional()
 });
 
 export type TPkiAcmeOrders = z.infer<typeof PkiAcmeOrdersSchema>;
