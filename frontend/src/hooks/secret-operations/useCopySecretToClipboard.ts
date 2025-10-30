@@ -25,9 +25,8 @@ export function useCopySecretToClipBoard({
 
     const timer = setTimeout(() => setIsSecretValueCopied.off(), 2000);
 
-    return () => {
-      clearTimeout(timer);
-    };
+    // eslint-disable-next-line consistent-return
+    return () => clearTimeout(timer);
   }, [isSecretValueCopied]);
 
   const copySecretToClipboard = useCallback(async () => {

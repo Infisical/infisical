@@ -3,13 +3,11 @@ import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faCheck,
-  faCodeBranch,
   faEye,
   faEyeSlash,
   faFileImport,
   faKey,
   faRotate,
-  faUser,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";

@@ -12,10 +12,8 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import {
@@ -36,11 +34,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
-import {
-  dashboardKeys,
-  fetchSecretValue,
-  useGetSecretValue
-} from "@app/hooks/api/dashboard/queries";
+import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
 import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
@@ -115,8 +109,6 @@ export const SecretEditRow = ({
     "editSecret"
   ] as const);
 
-  const queryClient = useQueryClient();
-
   const { currentProject } = useProject();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
@@ -148,7 +140,6 @@ export const SecretEditRow = ({
   });
 
   const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
-  const isSecretValueFetched = Boolean(secretValueData);
 
   const {
     handleSubmit,

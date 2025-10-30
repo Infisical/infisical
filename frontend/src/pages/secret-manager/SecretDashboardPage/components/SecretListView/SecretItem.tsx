@@ -37,7 +37,6 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Spinner,
   TextArea,
   Tooltip
 } from "@app/components/v2";
@@ -198,7 +197,7 @@ export const SecretItem = memo(
       reset,
       getValues,
       trigger,
-      formState: { isDirty, isSubmitting, errors },
+      formState: { isDirty, isSubmitting },
       getFieldState
     } = useForm<TFormSchema>({
       defaultValues: {
@@ -351,8 +350,6 @@ export const SecretItem = memo(
       getFetchedValue: () => getValues("value") as string,
       fetchSecretParams: fetchSecretValueParams
     });
-
-    const isInAutoSaveMode = isDirty && !isSubmitting;
 
     const keyInputWarning = useCallback(
       (value?: string) => {

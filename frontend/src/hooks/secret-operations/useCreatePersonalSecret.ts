@@ -16,6 +16,7 @@ export function useCreatePersonalSecretOverride(projectId: string) {
 
   const createPersonalSecretOverride = useCallback(
     async ({ key, secretPath, environment }: CreatePersonalSecretParams, value?: string) => {
+      let overrideValue = value;
       if (!value) {
         // Default to using current value of the secret
         const result = await fetchSecretValue({
@@ -24,7 +25,7 @@ export function useCreatePersonalSecretOverride(projectId: string) {
           secretKey: key,
           secretPath
         });
-        value = result.value;
+        overrideValue = result.value;
       }
       return handleSecretOperation(
         {
@@ -35,7 +36,7 @@ export function useCreatePersonalSecretOverride(projectId: string) {
           environment
         },
         {
-          value
+          value: overrideValue
         }
       );
     },
