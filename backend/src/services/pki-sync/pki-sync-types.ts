@@ -73,7 +73,7 @@ export type TPkiSyncListItem = TPkiSync & {
 
 export type TCertificateMap = Record<
   string,
-  { cert: string; privateKey: string; certificateChain?: string; alternativeNames?: string[] }
+  { cert: string; privateKey: string; certificateChain?: string; alternativeNames?: string[]; certificateId?: string }
 >;
 
 export type TCreatePkiSyncDTO = {
@@ -176,6 +176,8 @@ export type TPkiSyncCertificate = {
   certificateStatus?: string;
   certificateNotBefore?: Date;
   certificateNotAfter?: Date;
+  certificateRenewBeforeDays?: number;
+  certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
 };

@@ -2,5 +2,6 @@ export enum CertificateSyncStatus {
   Pending = "pending",
   Syncing = "syncing",
   Succeeded = "succeeded",
-  Failed = "failed"
+  Failed = "failed",
+  Running = "running"
 }

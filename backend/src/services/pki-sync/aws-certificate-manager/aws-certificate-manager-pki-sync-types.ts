@@ -56,4 +56,5 @@ export interface CertificateImportRequest {
   privateKey: string;
   certificateChain?: string;
   existingArn?: string;
+  certificateId?: string;
 }

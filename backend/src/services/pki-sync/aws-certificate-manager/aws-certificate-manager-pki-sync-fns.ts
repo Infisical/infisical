@@ -15,6 +15,9 @@ import {
   AwsConnectionAssumeRoleCredentialsSchema
 } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
@@ -182,6 +185,8 @@ const generateCertificateName = (certificateName: string, pkiSync: TPkiSyncWithC
 type TAwsCertificateManagerPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "removeCertificates">;
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
 
 const getAwsAcmClient = async (
@@ -240,7 +245,9 @@ const getAwsAcmClient = async (
 
 export const awsCertificateManagerPkiSyncFactory = ({
   kmsService,
-  appConnectionDAL
+  appConnectionDAL,
+  certificateSyncDAL,
+  certificateDAL
 }: TAwsCertificateManagerPkiSyncFactoryDeps) => {
   const deleteCertificateFromAcm = async (
     acm: AWS.ACM,
@@ -415,11 +422,12 @@ export const awsCertificateManagerPkiSyncFactory = ({
     const validationErrors: Array<{ name: string; error: string }> = [];
 
     const activeCertificateNames = Object.keys(certificateMap);
-    const syncOptions = pkiSync.syncOptions as { preserveArn?: boolean } | undefined;
+    const syncOptions = pkiSync.syncOptions as { preserveArn?: boolean; canRemoveCertificates?: boolean } | undefined;
     const preserveArn = syncOptions?.preserveArn ?? true;
+    const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
 
-    Object.entries(certificateMap).forEach(([certName, certData]) => {
-      const { cert, privateKey, certificateChain, alternativeNames } = certData;
+    for (const [certName, certData] of Object.entries(certificateMap)) {
+      const { cert, privateKey, certificateChain, alternativeNames, certificateId } = certData;
 
       try {
         validateCertificateContent(cert, privateKey);
@@ -429,7 +437,16 @@ export const awsCertificateManagerPkiSyncFactory = ({
           name: certName,
           error: `Certificate validation failed: ${errorMessage}`
         });
-        return;
+        // eslint-disable-next-line no-continue
+        continue;
+      }
+
+      if (preserveArn && certificateId) {
+        const certificate = await certificateDAL.findById(certificateId);
+        if (certificate?.renewedByCertificateId) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
       }
 
       const certificateName = generateCertificateName(certName, pkiSync);
@@ -451,44 +468,47 @@ export const awsCertificateManagerPkiSyncFactory = ({
         cert,
         privateKey,
         certificateChain,
-        existingArn
+        existingArn,
+        certificateId
       });
-    });
+    }
 
-    const certificatesToRemove = Object.values(acmCertificates)
-      .filter((acmCert) => {
-        if (!acmCert.arn || !acmCert.Tags) {
-          return false;
-        }
+    const certificatesToRemove = canRemoveCertificates
+      ? Object.values(acmCertificates)
+          .filter((acmCert) => {
+            if (!acmCert.arn || !acmCert.Tags) {
+              return false;
+            }
 
-        const certNameTag = findInfisicalCertificateTag(acmCert.Tags);
-        if (!certNameTag || !certNameTag.Value) {
-          return false;
-        }
+            const certNameTag = findInfisicalCertificateTag(acmCert.Tags);
+            if (!certNameTag || !certNameTag.Value) {
+              return false;
+            }
 
-        const isActive = activeCertificateNames.some((activeCertName) => {
-          const certData = certificateMap[activeCertName];
-          if (!certData) return false;
+            const isActive = activeCertificateNames.some((activeCertName) => {
+              const certData = certificateMap[activeCertName];
+              if (!certData) return false;
 
-          return validateCertificateIdentification(activeCertName, acmCert, certData.alternativeNames);
-        });
+              return validateCertificateIdentification(activeCertName, acmCert, certData.alternativeNames);
+            });
 
-        if (!isActive) {
-          return true;
-        }
+            if (!isActive) {
+              return true;
+            }
 
-        if (!preserveArn && isActive) {
-          return true;
-        }
+            if (!preserveArn && isActive) {
+              return true;
+            }
 
-        return false;
-      })
-      .map((acmCert) => acmCert.arn!)
-      .filter((arn) => arn);
+            return false;
+          })
+          .map((acmCert) => acmCert.arn!)
+          .filter((arn) => arn)
+      : [];
 
     const uploadResults = await executeWithConcurrencyLimit(
       setCertificates,
-      async ({ key, name, cert, privateKey, certificateChain, existingArn }) => {
+      async ({ key, name, cert, privateKey, certificateChain, existingArn, certificateId }) => {
         try {
           const importParams: AWS.ACM.ImportCertificateRequest = {
             Certificate: cert,
@@ -546,6 +566,13 @@ export const awsCertificateManagerPkiSyncFactory = ({
               logger.warn(
                 `Failed to add tags to certificate ${key} (ARN: ${response.CertificateArn}): ${errorMessage}`
               );
+            }
+          }
+
+          if (existingArn && preserveArn && certificateId) {
+            const currentCertificate = await certificateDAL.findById(certificateId);
+            if (currentCertificate?.renewedFromCertificateId) {
+              await certificateSyncDAL.removeCertificates(pkiSync.id, [currentCertificate.renewedFromCertificateId]);
             }
           }
 
@@ -644,7 +671,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
   const removeCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
-    certificateNames: string[]
+    certificateNames: string[],
+    deps?: { certificateSyncDAL?: TCertificateSyncDALFactory; certificateMap?: TCertificateMap }
   ): Promise<RemoveCertificatesResult> => {
     const destinationConfig = pkiSync.destinationConfig as TAwsCertificateManagerPkiSyncConfig;
     const acm = await getAwsAcmClient(
@@ -685,6 +713,43 @@ export const awsCertificateManagerPkiSyncFactory = ({
     );
 
     const failedRemovals = results.filter((result) => result.status === "rejected");
+
+    if (failedRemovals.length > 0 && deps?.certificateSyncDAL && deps?.certificateMap) {
+      const certificateNameToArnMap = new Map<string, string>();
+      for (const certName of certificateNames) {
+        const matchingCerts = Object.values(acmCertificates).filter((acmCert) =>
+          validateCertificateIdentification(certName, acmCert)
+        );
+        for (const acmCert of matchingCerts) {
+          if (acmCert.arn) {
+            certificateNameToArnMap.set(acmCert.arn, certName);
+          }
+        }
+      }
+
+      for (const failure of failedRemovals) {
+        if (failure.status === "rejected") {
+          const failedArn = certificateArnsToRemove[results.indexOf(failure)];
+          const certificateName = certificateNameToArnMap.get(failedArn);
+          if (certificateName && deps.certificateMap[certificateName]?.certificateId) {
+            const { certificateId } = deps.certificateMap[certificateName];
+            if (certificateId) {
+              const errorMessage = failure.reason instanceof Error ? failure.reason.message : "Unknown error";
+              try {
+                await deps.certificateSyncDAL.updateSyncStatus(
+                  pkiSync.id,
+                  certificateId,
+                  CertificateSyncStatus.Failed,
+                  `Failed to remove from AWS: ${errorMessage}`
+                );
+              } catch (updateError) {
+                logger.warn(`Failed to update sync status for certificate ${certificateId}:`, String(updateError));
+              }
+            }
+          }
+        }
+      }
+    }
 
     if (failedRemovals.length > 0) {
       const failedReasons = failedRemovals.map((failure) => {

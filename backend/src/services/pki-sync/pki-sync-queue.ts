@@ -27,6 +27,7 @@ import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/ce
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
 import { PkiSyncStatus } from "./pki-sync-enums";
 import { PkiSyncError } from "./pki-sync-errors";
@@ -57,23 +58,12 @@ type TPkiSyncQueueFactoryDep = {
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
   projectDAL: TProjectDALFactory;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  certificateDAL: Pick<
-    TCertificateDALFactory,
-    | "findLatestActiveCertForSubscriber"
-    | "findAllActiveCertsForSubscriber"
-    | "findActiveCertificatesByIds"
-    | "create"
-    | "findById"
-    | "find"
-  >;
+  certificateDAL: TCertificateDALFactory;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
-  certificateSyncDAL: Pick<
-    TCertificateSyncDALFactory,
-    "findCertificateIdsByPkiSyncId" | "updateSyncStatus" | "bulkUpdateSyncStatus"
-  >;
+  certificateSyncDAL: TCertificateSyncDALFactory;
 };
 
 type PkiSyncActionJob = Job<
@@ -303,7 +293,8 @@ export const pkiSyncQueueFactory = ({
               cert: certificatePem,
               privateKey: certPrivateKey || "",
               certificateChain,
-              alternativeNames
+              alternativeNames,
+              certificateId: certificate.id
             };
 
             certificateMetadata.set(certificateName, {
@@ -427,7 +418,7 @@ export const pkiSyncQueueFactory = ({
       const statusUpdates = Array.from(certificateMetadata.entries()).map(([, metadata]) => ({
         pkiSyncId: pkiSync.id,
         certificateId: metadata.id,
-        status: "running",
+        status: CertificateSyncStatus.Running,
         message: "Syncing certificate to destination"
       }));
 
@@ -437,7 +428,9 @@ export const pkiSyncQueueFactory = ({
 
       const syncResult = await PkiSyncFns.syncCertificates(pkiSyncWithCredentials, certificateMap, {
         appConnectionDAL,
-        kmsService
+        kmsService,
+        certificateDAL,
+        certificateSyncDAL
       });
 
       logger.info(
@@ -462,7 +455,7 @@ export const pkiSyncQueueFactory = ({
         postSyncUpdates.push({
           pkiSyncId: pkiSync.id,
           certificateId: metadata.id,
-          status: "succeeded",
+          status: CertificateSyncStatus.Succeeded,
           message: "Certificate successfully synced to destination"
         });
       }
@@ -476,7 +469,7 @@ export const pkiSyncQueueFactory = ({
               postSyncUpdates[updateIndex] = {
                 pkiSyncId: pkiSync.id,
                 certificateId: metadata.id,
-                status: "failed",
+                status: CertificateSyncStatus.Failed,
                 message: `${validationError.error}`
               };
             }
@@ -493,7 +486,7 @@ export const pkiSyncQueueFactory = ({
               postSyncUpdates[updateIndex] = {
                 pkiSyncId: pkiSync.id,
                 certificateId: metadata.id,
-                status: "failed",
+                status: CertificateSyncStatus.Failed,
                 message: `Failed to sync certificate: ${failure.error}`
               };
             }
@@ -699,7 +692,10 @@ export const pkiSyncQueueFactory = ({
         Object.keys(certificateMap),
         {
           appConnectionDAL,
-          kmsService
+          kmsService,
+          certificateSyncDAL,
+          certificateDAL,
+          certificateMap
         }
       );
 

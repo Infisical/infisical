@@ -4,6 +4,8 @@ import { z, ZodSchema } from "zod";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { BadRequestError } from "@app/lib/errors";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
@@ -184,6 +186,8 @@ export const PkiSyncFns = {
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      certificateDAL: TCertificateDALFactory;
+      certificateSyncDAL: TCertificateSyncDALFactory;
     }
   ): Promise<{
     uploaded: number;
@@ -205,7 +209,12 @@ export const PkiSyncFns = {
       }
       case PkiSync.AwsCertificateManager: {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
-        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory(dependencies);
+        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
         return awsCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
@@ -219,19 +228,33 @@ export const PkiSyncFns = {
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      certificateSyncDAL: TCertificateSyncDALFactory;
+      certificateDAL: TCertificateDALFactory;
+      certificateMap: TCertificateMap;
     }
   ): Promise<void> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory(dependencies);
-        await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames);
+        await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
         break;
       }
       case PkiSync.AwsCertificateManager: {
         checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
-        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory(dependencies);
-        await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames);
+        const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
         break;
       }
       default:

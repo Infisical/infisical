@@ -71,14 +71,14 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               isChecked={value}
             >
               <p>
-                Enable Certificate Removal{" "}
+                Enable Inactive Certificate Removal{" "}
                 <Tooltip
                   className="max-w-md"
                   content={
                     <>
                       <p>
                         When enabled, Infisical will remove certificates from the destination during
-                        a sync if they are no longer managed by Infisical.
+                        a sync if they are no longer active in Infisical.
                       </p>
                       <p className="mt-4">
                         Disable this option if you intend to manage some certificates manually

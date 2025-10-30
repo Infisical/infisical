@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { subject } from "@casl/ability";
-import { faCertificate, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCertificate,
+  faClockRotateLeft,
+  faEdit,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
@@ -47,6 +52,18 @@ const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Syncing) return "Syncing";
   if (status === CertificateSyncStatus.Pending) return "Pending";
   return "Unknown";
+};
+
+const getCertificateStatusVariant = (isExpired: boolean, isRevoked: boolean) => {
+  if (isRevoked) return "danger";
+  if (isExpired) return "danger";
+  return "success";
+};
+
+const getCertificateStatusText = (isExpired: boolean, isRevoked: boolean) => {
+  if (isRevoked) return "Revoked";
+  if (isExpired) return "Expired";
+  return "Active";
 };
 
 export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
@@ -128,11 +145,12 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               <Table>
                 <THead>
                   <Tr>
-                    <Th className="w-1/3">SAN / CN</Th>
-                    <Th className="w-1/3">Serial Number</Th>
-                    <Th className="w-1/9">Status</Th>
-                    <Th className="w-1/9">Expires</Th>
-                    <Th className="w-1/9">Actions</Th>
+                    <Th className="w-3/8">SAN / CN</Th>
+                    <Th className="w-1/8">Status</Th>
+                    <Th className="w-1/8">Serial Number</Th>
+                    <Th className="w-1/8">Sync Status</Th>
+                    <Th className="w-1/8">Expires At</Th>
+                    <Th className="w-1/8" />
                   </Tr>
                 </THead>
                 <TBody>
@@ -140,6 +158,29 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                     const isExpired = syncCert.certificateNotAfter
                       ? new Date(syncCert.certificateNotAfter) < new Date()
                       : false;
+                    const isRevoked = syncCert.certificateStatus === "revoked";
+
+                    // Calculate auto-renewal timeline
+                    const hasAutoRenewal = Boolean(
+                      syncCert.certificateRenewBeforeDays &&
+                        syncCert.certificateRenewBeforeDays > 0 &&
+                        !syncCert.certificateRenewalError &&
+                        syncCert.certificateNotAfter
+                    );
+
+                    const daysUntilRenewal =
+                      hasAutoRenewal && syncCert.certificateNotAfter
+                        ? (() => {
+                            const expiryDate = new Date(syncCert.certificateNotAfter);
+                            const renewalDate = new Date(
+                              expiryDate.getTime() -
+                                syncCert.certificateRenewBeforeDays! * 24 * 60 * 60 * 1000
+                            );
+                            const now = new Date();
+                            const diffInMs = renewalDate.getTime() - now.getTime();
+                            return Math.max(0, Math.ceil(diffInMs / (24 * 60 * 60 * 1000)));
+                          })()
+                        : null;
 
                     const { originalDisplayName } = getCertificateDisplayName(
                       {
@@ -162,12 +203,22 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                             fallback="Unknown"
                           />
                         </Td>
+                        <Td>
+                          <Badge variant={getCertificateStatusVariant(isExpired, isRevoked)}>
+                            {getCertificateStatusText(isExpired, isRevoked)}
+                          </Badge>
+                        </Td>
                         <Td className="max-w-0">
                           <div
                             className="truncate text-xs"
                             title={syncCert.certificateSerialNumber || "Unknown"}
                           >
-                            {syncCert.certificateSerialNumber || "Unknown"}
+                            {(() => {
+                              const serial = syncCert.certificateSerialNumber;
+                              if (!serial || serial === "Unknown") return "Unknown";
+                              if (serial.length <= 8) return serial;
+                              return `${serial.substring(0, 4)}...${serial.substring(serial.length - 4)}`;
+                            })()}
                           </div>
                         </Td>
                         <Td>
@@ -191,7 +242,14 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                               : "Unknown"}
                           </span>
                         </Td>
-                        <Td className="flex items-center">
+                        <Td className="flex items-center justify-end gap-2 pr-4">
+                          {hasAutoRenewal && daysUntilRenewal !== null && (
+                            <Tooltip content={`Auto-renews in ${daysUntilRenewal}d`}>
+                              <div className="text-primary-500">
+                                <FontAwesomeIcon icon={faClockRotateLeft} size="sm" />
+                              </div>
+                            </Tooltip>
+                          )}
                           <ProjectPermissionCan
                             I={ProjectPermissionPkiSyncActions.Edit}
                             a={permissionSubject}

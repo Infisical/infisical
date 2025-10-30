@@ -184,6 +184,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       certificateStatus?: string;
       certificateNotBefore?: Date;
       certificateNotAfter?: Date;
+      certificateRenewBeforeDays?: number;
+      certificateRenewedByCertificateId?: string;
+      certificateRenewalError?: string;
       pkiSyncName?: string;
       pkiSyncDestination?: string;
     })[];
@@ -216,6 +219,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
           db.ref("status").withSchema(TableName.Certificate).as("certificateStatus"),
           db.ref("notBefore").withSchema(TableName.Certificate).as("certificateNotBefore"),
           db.ref("notAfter").withSchema(TableName.Certificate).as("certificateNotAfter"),
+          db.ref("renewBeforeDays").withSchema(TableName.Certificate).as("certificateRenewBeforeDays"),
+          db.ref("renewedByCertificateId").withSchema(TableName.Certificate).as("certificateRenewedByCertificateId"),
+          db.ref("renewalError").withSchema(TableName.Certificate).as("certificateRenewalError"),
           db.ref("name").withSchema(TableName.PkiSync).as("pkiSyncName"),
           db.ref("destination").withSchema(TableName.PkiSync).as("pkiSyncDestination")
         )
@@ -235,6 +241,9 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
         certificateStatus?: string;
         certificateNotBefore?: Date;
         certificateNotAfter?: Date;
+        certificateRenewBeforeDays?: number;
+        certificateRenewedByCertificateId?: string;
+        certificateRenewalError?: string;
         pkiSyncName?: string;
         pkiSyncDestination?: string;
       })[];

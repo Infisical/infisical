@@ -59,7 +59,7 @@ export const triggerAutoSyncForCertificate = async (
   }
 };
 
-export const replaceCertificateInSyncs = async (
+export const addRenewedCertificateToSyncs = async (
   oldCertificateId: string,
   newCertificateId: string,
   dependencies: {
@@ -77,18 +77,15 @@ export const replaceCertificateInSyncs = async (
       return;
     }
 
-    const replacementPromises = pkiSyncIds.map(async (pkiSyncId) => {
-      await dependencies.certificateSyncDAL.removeCertificates(pkiSyncId, [oldCertificateId], tx);
+    const addPromises = pkiSyncIds.map(async (pkiSyncId) => {
       await dependencies.certificateSyncDAL.addCertificates(pkiSyncId, [newCertificateId], tx);
     });
 
-    await Promise.all(replacementPromises);
+    await Promise.all(addPromises);
 
-    logger.info(
-      `Successfully replaced certificate ${oldCertificateId} with ${newCertificateId} in ${pkiSyncIds.length} PKI sync(s)`
-    );
+    logger.info(`Successfully added renewed certificate ${newCertificateId} to ${pkiSyncIds.length} PKI sync(s)`);
   } catch (error) {
-    logger.error(error, `Failed to replace certificate ${oldCertificateId} with ${newCertificateId} in syncs:`);
+    logger.error(error, `Failed to add renewed certificate ${newCertificateId} to syncs:`);
     throw error;
   }
 };

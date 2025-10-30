@@ -61,6 +61,8 @@ export type TPkiSyncCertificate = {
   certificateStatus?: string;
   certificateNotBefore?: Date;
   certificateNotAfter?: Date;
+  certificateRenewBeforeDays?: number;
+  certificateRenewalError?: string;
   pkiSyncName?: string;
   pkiSyncDestination?: string;
 };

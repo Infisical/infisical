@@ -65,7 +65,7 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
               </Badge>
             </GenericFieldLabel>
             */}
-          <GenericFieldLabel label="Certificate Removal" labelClassName="mb-1">
+          <GenericFieldLabel label="Inactive Certificate Removal" labelClassName="mb-1">
             <Badge variant={canRemoveCertificates ? "success" : "danger"}>
               {canRemoveCertificates ? "Enabled" : "Disabled"}
             </Badge>

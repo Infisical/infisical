@@ -610,6 +610,10 @@ export const pkiSyncServiceFactory = ({
       certificateStatus: detail.certificateStatus || undefined,
       certificateNotBefore: detail.certificateNotBefore || undefined,
       certificateNotAfter: detail.certificateNotAfter || undefined,
+      certificateRenewBeforeDays: !detail.certificateRenewedByCertificateId
+        ? detail.certificateRenewBeforeDays
+        : undefined,
+      certificateRenewalError: detail.certificateRenewalError || undefined,
       pkiSyncName: detail.pkiSyncName || undefined,
       pkiSyncDestination: detail.pkiSyncDestination || undefined
     }));

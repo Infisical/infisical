@@ -93,6 +93,8 @@ const PkiSyncCertificateSchema = z.object({
   certificateStatus: z.string().optional(),
   certificateNotBefore: z.date().optional(),
   certificateNotAfter: z.date().optional(),
+  certificateRenewBeforeDays: z.number().optional(),
+  certificateRenewalError: z.string().optional(),
   pkiSyncName: z.string().optional(),
   pkiSyncDestination: z.string().optional()
 });

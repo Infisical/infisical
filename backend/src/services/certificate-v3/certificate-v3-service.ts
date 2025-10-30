@@ -51,7 +51,7 @@ import {
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
-import { replaceCertificateInSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
+import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import {
   TCertificateFromProfileResponse,
   TCertificateOrderResponse,
@@ -885,7 +885,7 @@ export const certificateV3ServiceFactory = ({
         tx
       );
 
-      await replaceCertificateInSyncs(originalCert.id, newCert.id, { certificateSyncDAL }, tx);
+      await addRenewedCertificateToSyncs(originalCert.id, newCert.id, { certificateSyncDAL }, tx);
 
       return {
         certificate,
