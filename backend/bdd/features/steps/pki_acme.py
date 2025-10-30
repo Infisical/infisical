@@ -163,5 +163,5 @@ def step_impl(context: Context, var_path: str, query: str):
     value = context.vars[parts[0]]
     for part in parts[1:]:
         value = getattr(value, part)
-    result = jq.compile(query).input_value(value).first()
+    result = jq.compile(replace_vars(query, context.vars)).input_value(value).first()
     assert result, f"{value} does not match {query}"
