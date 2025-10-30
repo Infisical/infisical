@@ -43,6 +43,7 @@ export type TJwsPayload<T> = {
   payload: T;
 };
 export type TAuthenciatedJwsPayload<T> = TJwsPayload<T> & {
+  profileId: string;
   accountId: string;
 };
 export type TAcmeResponse<TPayload> = {
@@ -52,13 +53,19 @@ export type TAcmeResponse<TPayload> = {
 };
 
 export type TPkiAcmeServiceFactory = {
-  validateJwsPayload: <T>(
+  validateJwsPayload: <
+    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    T = TSchema extends z.ZodSchema<infer R> ? R : string
+  >(
     rawJwsPayload: TRawJwsPayload,
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
-    schema: z.ZodSchema<T>
+    schema?: TSchema
   ) => Promise<TJwsPayload<T>>;
   validateNewAccountJwsPayload: (rawJwsPayload: TRawJwsPayload) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
-  validateExistingAccountJwsPayload: <T>({
+  validateExistingAccountJwsPayload: <
+    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    T = TSchema extends z.ZodSchema<infer R> ? R : string
+  >({
     profileId,
     rawJwsPayload,
     schema,
@@ -66,7 +73,7 @@ export type TPkiAcmeServiceFactory = {
   }: {
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
-    schema: z.ZodSchema<T>;
+    schema?: TSchema;
     expectedAccountId?: string;
   }) => Promise<TAuthenciatedJwsPayload<T>>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
@@ -118,10 +125,12 @@ export type TPkiAcmeServiceFactory = {
   }) => Promise<TAcmeResponse<TGetAcmeOrderResponse>>;
   finalizeAcmeOrder: ({
     profileId,
+    accountId,
     orderId,
     payload
   }: {
     profileId: string;
+    accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }) => Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>>;

@@ -93,10 +93,13 @@ export const pkiAcmeServiceFactory = ({
     return kid.slice(kidPrefix.length);
   };
 
-  const validateJwsPayload = async <T>(
+  const validateJwsPayload = async <
+    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    T = TSchema extends z.ZodSchema<infer R> ? R : string
+  >(
     rawJwsPayload: TRawJwsPayload,
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
-    schema: z.ZodSchema<T>
+    schema?: TSchema
   ): Promise<TJwsPayload<T>> => {
     let result: FlattenedVerifyResult;
     try {
@@ -122,8 +125,8 @@ export const pkiAcmeServiceFactory = ({
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
       // TODO: consume the nonce here
       const decoder = new TextDecoder();
-      const jsonPayload = JSON.parse(decoder.decode(rawPayload));
-      const payload = schema.parse(jsonPayload);
+      const textPayload = decoder.decode(rawPayload);
+      const payload = schema ? schema.parse(JSON.parse(textPayload)) : textPayload;
       return {
         protectedHeader,
         payload
@@ -152,7 +155,10 @@ export const pkiAcmeServiceFactory = ({
     );
   };
 
-  const validateExistingAccountJwsPayload = async <T>({
+  const validateExistingAccountJwsPayload = async <
+    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    T = TSchema extends z.ZodSchema<infer R> ? R : string
+  >({
     profileId,
     rawJwsPayload,
     schema,
@@ -160,7 +166,7 @@ export const pkiAcmeServiceFactory = ({
   }: {
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
-    schema: z.ZodSchema<T>;
+    schema?: TSchema;
     expectedAccountId?: string;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
     const profile = await validateAcmeProfile(profileId);
@@ -187,7 +193,8 @@ export const pkiAcmeServiceFactory = ({
     );
     return {
       ...result,
-      accountId: extractAccountIdFromKid(result.protectedHeader.kid!, profileId)
+      accountId: extractAccountIdFromKid(result.protectedHeader.kid!, profileId),
+      profileId
     };
   };
 
@@ -406,10 +413,12 @@ export const pkiAcmeServiceFactory = ({
 
   const finalizeAcmeOrder = async ({
     profileId,
+    accountId,
     orderId,
     payload
   }: {
     profileId: string;
+    accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>> => {
@@ -453,12 +462,18 @@ export const pkiAcmeServiceFactory = ({
 
   const getAcmeAuthorization = async ({
     profileId,
+    accountId,
     authzId
   }: {
     profileId: string;
+    accountId: string;
     authzId: string;
   }): Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>> => {
     const profile = await validateAcmeProfile(profileId);
+    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
+    if (!order || order.accountId !== accountId) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
     // FIXME: Implement ACME authorization retrieval
     return {
       status: 200,
