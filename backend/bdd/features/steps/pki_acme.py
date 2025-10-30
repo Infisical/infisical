@@ -7,6 +7,7 @@ from behave.runner import Context
 from behave import given
 from behave import when
 from behave import then
+import glom
 from josepy.jwk import JWKRSA
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -159,9 +160,9 @@ def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
 
 @then("the value {var_path} should be true for {query}")
 def step_impl(context: Context, var_path: str, query: str):
-    parts = var_path.split(".")
+    parts = var_path.split(".", 1)
     value = context.vars[parts[0]]
-    for part in parts[1:]:
-        value = getattr(value, part)
+    if len(parts) == 2:
+        value = glom.glom(value, parts[1])
     result = jq.compile(replace_vars(query, context.vars)).input_value(value).first()
     assert result, f"{value} does not match {query}"
