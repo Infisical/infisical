@@ -9,6 +9,7 @@ from behave import when
 from behave import then
 import glom
 from josepy.jwk import JWKRSA
+from josepy import JSONObjectWithFields
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
@@ -38,11 +39,14 @@ def replace_vars(payload: dict | list | int | float | str, vars: dict):
         return payload
 
 
-def eval_var(context: Context, var_path: str):
+def eval_var(context: Context, var_path: str, as_json: bool = True):
     parts = var_path.split(".", 1)
     value = context.vars[parts[0]]
     if len(parts) == 2:
         value = glom.glom(value, parts[1])
+    if as_json:
+        if isinstance(value, JSONObjectWithFields):
+            value = value.to_json()
     return value
 
 
@@ -173,8 +177,31 @@ def step_impl(context: Context, var_path: str, query: str):
     assert result, f"{value} does not match {query}"
 
 
-@then("the value {var_path} should be {expected}")
+def match_value_with_jq(context: Context, var_path: str, jq_query: str, expected: str):
+    value = eval_var(context, var_path)
+    result = jq.compile(replace_vars(jq_query, context.vars)).input_value(value).first()
+    expected_value = json.loads(expected)
+    assert result == expected_value, (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {json.dumps(expected_value)!r}"
+    )
+
+
+@then("the value {var_path} with jq {jq_query} should be equal to json")
+def step_impl(context: Context, var_path: str, jq_query: str):
+    return match_value_with_jq(
+        context=context, var_path=var_path, jq_query=jq_query, expected=context.text
+    )
+
+
+@then("the value {var_path} with jq {jq_query} should be equal to {expected}")
+def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
+    return match_value_with_jq(
+        context=context, var_path=var_path, jq_query=jq_query, expected=expected
+    )
+
+
+@then("the value {var_path} should be equal to {expected}")
 def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
     expected_value = json.loads(expected)
-    assert value == expected_value, f"{value:!r} does not match {expected_value:!r}"
+    assert value == expected_value, f"{value!r} does not match {expected_value!r}"
