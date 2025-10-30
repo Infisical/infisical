@@ -401,13 +401,6 @@ export const kmsServiceFactory = ({
 
     const cipher = symmetricCipherService(SymmetricKeyAlgorithm.AES_GCM_256);
 
-    const expectedByteLength = getByteLengthForSymmetricEncryptionAlgorithm(algorithm as SymmetricKeyAlgorithm);
-    if (key.byteLength !== expectedByteLength) {
-      throw new BadRequestError({
-        message: `Invalid key length for ${algorithm}. Expected ${expectedByteLength} bytes but got ${key.byteLength} bytes`
-      });
-    }
-
     const encryptedKeyMaterial = cipher.encrypt(key, ROOT_ENCRYPTION_KEY);
     const sanitizedName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
     const dbQuery = async (db: Knex) => {
