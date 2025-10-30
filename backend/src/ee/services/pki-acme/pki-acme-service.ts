@@ -37,16 +37,14 @@ import {
   TCreateAcmeAccountPayload,
   TCreateAcmeAccountResponse,
   TCreateAcmeOrderPayload,
-  TCreateAcmeOrderResponse,
   TDeactivateAcmeAccountPayload,
   TDeactivateAcmeAccountResponse,
   TFinalizeAcmeOrderPayload,
-  TFinalizeAcmeOrderResponse,
   TGetAcmeAuthorizationResponse,
   TGetAcmeDirectoryResponse,
-  TGetAcmeOrderResponse,
   TJwsPayload,
   TListAcmeOrdersResponse,
+  TAcmeOrderResource,
   TPkiAcmeServiceFactory,
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
@@ -206,6 +204,36 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
+  const buildAcmeOrderResource = ({
+    profileId,
+    order
+  }: {
+    order: {
+      id: string;
+      status: string;
+      expiresAt: Date;
+      notBefore?: Date | null;
+      notAfter?: Date | null;
+      authorizations: TPkiAcmeAuths[];
+    };
+    profileId: string;
+  }) => {
+    return {
+      status: order.status,
+      expires: order.expiresAt.toISOString(),
+      notBefore: order.notBefore?.toISOString(),
+      notAfter: order.notAfter?.toISOString(),
+      identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
+        type: auth.identifierType,
+        value: auth.identifierValue
+      })),
+      authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
+        buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${auth.id}`)
+      ),
+      finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${order.id}/finalize`)
+    };
+  };
+
   const getAcmeNewNonce = async (profileId: string): Promise<string> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME new nonce generation
@@ -213,6 +241,9 @@ export const pkiAcmeServiceFactory = ({
     return "FIXME-generate-nonce";
   };
 
+  /** --------------------------------------------------------------
+   * ACME Account
+   * -------------------------------------------------------------- */
   const createAcmeAccount = async ({
     profileId,
     alg,
@@ -251,6 +282,7 @@ export const pkiAcmeServiceFactory = ({
       publicKey: jwk,
       emails: contact ?? []
     });
+    // TODO: create audit log here
     // TODO: check EAB authentication here
     return {
       status: 201,
@@ -265,6 +297,31 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
+  const deactivateAcmeAccount = async ({
+    profileId,
+    accountId,
+    payload: { status } = { status: "deactivated" }
+  }: {
+    profileId: string;
+    accountId: string;
+    payload?: TDeactivateAcmeAccountPayload;
+  }): Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>> => {
+    const profile = await validateAcmeProfile(profileId);
+    // FIXME: Implement ACME account deactivation
+    return {
+      status: 200,
+      body: {
+        status: "deactivated"
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}`)
+      }
+    };
+  };
+
+  /** --------------------------------------------------------------
+   * ACME Order
+   * -------------------------------------------------------------- */
   const createAcmeOrder = async ({
     profileId,
     accountId,
@@ -273,7 +330,7 @@ export const pkiAcmeServiceFactory = ({
     profileId: string;
     accountId: string;
     payload: TCreateAcmeOrderPayload;
-  }): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
+  }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
 
@@ -314,47 +371,68 @@ export const pkiAcmeServiceFactory = ({
         })),
         tx
       );
+      // TODO: create audit log here
       return { ...createdOrder, authorizations, account };
     });
 
     return {
       status: 201,
-      body: {
-        status: order.status,
-        expires: order.expiresAt.toISOString(),
-        identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
-          type: auth.identifierType,
-          value: auth.identifierValue
-        })),
-        authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
-          buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/authorizations/${auth.id}`)
-        ),
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}/finalize`)
-      },
+      body: buildAcmeOrderResource({
+        profileId,
+        order
+      }),
       headers: {
         Location: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}`)
       }
     };
   };
 
-  const deactivateAcmeAccount = async ({
+  const getAcmeOrder = async ({
     profileId,
     accountId,
-    payload: { status } = { status: "deactivated" }
+    orderId
   }: {
     profileId: string;
     accountId: string;
-    payload?: TDeactivateAcmeAccountPayload;
-  }): Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>> => {
+    orderId: string;
+  }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
+    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
+    if (!order || order.accountId !== accountId) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
+    return {
+      status: 200,
+      body: buildAcmeOrderResource({ profileId, order }),
+      headers: { Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`) }
+    };
+  };
+
+  const finalizeAcmeOrder = async ({
+    profileId,
+    accountId,
+    orderId,
+    payload
+  }: {
+    profileId: string;
+    accountId: string;
+    orderId: string;
+    payload: TFinalizeAcmeOrderPayload;
+  }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME account deactivation
+    const { csr } = payload;
+    // FIXME: Implement ACME finalize order
     return {
       status: 200,
       body: {
-        status: "deactivated"
+        status: "processing",
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        identifiers: [],
+        authorizations: [],
+        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`),
+        certificate: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}`)
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`)
       }
     };
   };
@@ -379,67 +457,6 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
-  const getAcmeOrder = async ({
-    profileId,
-    accountId,
-    orderId
-  }: {
-    profileId: string;
-    accountId: string;
-    orderId: string;
-  }): Promise<TAcmeResponse<TGetAcmeOrderResponse>> => {
-    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
-    if (!order || order.accountId !== accountId) {
-      throw new NotFoundError({ message: "ACME order not found" });
-    }
-    return {
-      status: 200,
-      body: {
-        status: order.status,
-        expires: order.expiresAt.toISOString(),
-        identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
-          type: auth.identifierType,
-          value: auth.identifierValue
-        })),
-        authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
-          buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${auth.id}`)
-        ),
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`)
-      },
-      headers: { Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`) }
-    };
-  };
-
-  const finalizeAcmeOrder = async ({
-    profileId,
-    accountId,
-    orderId,
-    payload
-  }: {
-    profileId: string;
-    accountId: string;
-    orderId: string;
-    payload: TFinalizeAcmeOrderPayload;
-  }): Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
-    const { csr } = payload;
-    // FIXME: Implement ACME finalize order
-    return {
-      status: 200,
-      body: {
-        status: "processing",
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        identifiers: [],
-        authorizations: [],
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`),
-        certificate: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
-      },
-      headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`)
-      }
-    };
-  };
-
   const downloadAcmeCertificate = async ({
     profileId,
     orderId
@@ -459,6 +476,9 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
+  /** --------------------------------------------------------------
+   * ACME Authorization
+   * -------------------------------------------------------------- */
   const getAcmeAuthorization = async ({
     profileId,
     accountId,

@@ -2,17 +2,15 @@ import { z } from "zod";
 
 import { JWSHeaderParameters } from "jose";
 import {
+  AcmeOrderResourceSchema,
   CreateAcmeAccountBodySchema,
   CreateAcmeAccountResponseSchema,
   CreateAcmeOrderBodySchema,
-  CreateAcmeOrderResponseSchema,
   DeactivateAcmeAccountBodySchema,
   DeactivateAcmeAccountResponseSchema,
   FinalizeAcmeOrderBodySchema,
-  FinalizeAcmeOrderResponseSchema,
   GetAcmeAuthorizationResponseSchema,
   GetAcmeDirectoryResponseSchema,
-  GetAcmeOrderResponseSchema,
   ListAcmeOrdersResponseSchema,
   ProtectedHeaderSchema,
   RawJwsPayloadSchema,
@@ -21,11 +19,9 @@ import {
 
 export type TGetAcmeDirectoryResponse = z.infer<typeof GetAcmeDirectoryResponseSchema>;
 export type TCreateAcmeAccountResponse = z.infer<typeof CreateAcmeAccountResponseSchema>;
-export type TCreateAcmeOrderResponse = z.infer<typeof CreateAcmeOrderResponseSchema>;
+export type TAcmeOrderResource = z.infer<typeof AcmeOrderResourceSchema>;
 export type TDeactivateAcmeAccountResponse = z.infer<typeof DeactivateAcmeAccountResponseSchema>;
 export type TListAcmeOrdersResponse = z.infer<typeof ListAcmeOrdersResponseSchema>;
-export type TGetAcmeOrderResponse = z.infer<typeof GetAcmeOrderResponseSchema>;
-export type TFinalizeAcmeOrderResponse = z.infer<typeof FinalizeAcmeOrderResponseSchema>;
 export type TDownloadAcmeCertificateDTO = string;
 export type TGetAcmeAuthorizationResponse = z.infer<typeof GetAcmeAuthorizationResponseSchema>;
 export type TRespondToAcmeChallengeResponse = z.infer<typeof RespondToAcmeChallengeResponseSchema>;
@@ -89,15 +85,6 @@ export type TPkiAcmeServiceFactory = {
     jwk: JsonWebKey;
     payload: TCreateAcmeAccountPayload;
   }) => Promise<TAcmeResponse<TCreateAcmeAccountResponse>>;
-  createAcmeOrder: ({
-    profileId,
-    accountId,
-    payload
-  }: {
-    profileId: string;
-    accountId: string;
-    payload: TCreateAcmeOrderPayload;
-  }) => Promise<TAcmeResponse<TCreateAcmeOrderResponse>>;
   deactivateAcmeAccount: ({
     profileId,
     accountId,
@@ -107,13 +94,15 @@ export type TPkiAcmeServiceFactory = {
     accountId: string;
     payload?: TDeactivateAcmeAccountPayload;
   }) => Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>>;
-  listAcmeOrders: ({
+  createAcmeOrder: ({
     profileId,
-    accountId
+    accountId,
+    payload
   }: {
     profileId: string;
     accountId: string;
-  }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
+    payload: TCreateAcmeOrderPayload;
+  }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
   getAcmeOrder: ({
     profileId,
     accountId,
@@ -122,7 +111,7 @@ export type TPkiAcmeServiceFactory = {
     profileId: string;
     accountId: string;
     orderId: string;
-  }) => Promise<TAcmeResponse<TGetAcmeOrderResponse>>;
+  }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
   finalizeAcmeOrder: ({
     profileId,
     accountId,
@@ -133,12 +122,21 @@ export type TPkiAcmeServiceFactory = {
     accountId: string;
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
-  }) => Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>>;
+  }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
+  listAcmeOrders: ({
+    profileId,
+    accountId
+  }: {
+    profileId: string;
+    accountId: string;
+  }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
   downloadAcmeCertificate: ({
     profileId,
+    accountId,
     orderId
   }: {
     profileId: string;
+    accountId: string;
     orderId: string;
   }) => Promise<TAcmeResponse<string>>;
   getAcmeAuthorization: ({
