@@ -288,7 +288,7 @@ export const pkiAcmeServiceFactory = ({
 
       await acmeOrderAuthDAL.insertMany(
         authorizations.map((auth) => ({
-          orderId: order.id,
+          orderId: createdOrder.id,
           authId: auth.id
         }))
       );
