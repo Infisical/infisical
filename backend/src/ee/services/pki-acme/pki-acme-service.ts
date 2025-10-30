@@ -208,6 +208,7 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
+    // TODO: ensure unique account per public key
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByPublicKey(profileId, alg, jwk);
     if (onlyReturnExisting && !existingAccount) {
       throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
@@ -272,14 +273,17 @@ export const pkiAcmeServiceFactory = ({
         payload.identifiers.map(async (identifier) => {
           if (identifier.type === AcmeIdentifierType.DNS) {
             // TODO: reuse existing authorizations for this identifier if they exist
-            return await acmeAuthDAL.create({
-              accountId: account.id,
-              status: AcmeAuthStatus.Pending,
-              identifierType: identifier.type,
-              identifierValue: identifier.value,
-              // TODO: read config from the profile to get the expiration time instead
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-            });
+            return await acmeAuthDAL.create(
+              {
+                accountId: account.id,
+                status: AcmeAuthStatus.Pending,
+                identifierType: identifier.type,
+                identifierValue: identifier.value,
+                // TODO: read config from the profile to get the expiration time instead
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+              },
+              tx
+            );
           } else {
             throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
           }
@@ -290,7 +294,8 @@ export const pkiAcmeServiceFactory = ({
         authorizations.map((auth) => ({
           orderId: createdOrder.id,
           authId: auth.id
-        }))
+        })),
+        tx
       );
       return { ...createdOrder, authorizations, account };
     });
@@ -301,18 +306,13 @@ export const pkiAcmeServiceFactory = ({
         status: "pending",
         // TODO: read config from the profile to get the expiration time instead
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        identifiers: order.authorizations.map((auth) => ({
+        identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
           type: auth.identifierType,
           value: auth.identifierValue
         })),
-        authorizations: order.authorizations.map((auth) => ({
-          id: auth.id,
-          status: auth.status,
-          identifier: {
-            type: auth.identifierType,
-            value: auth.identifierValue
-          }
-        })),
+        authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
+          buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/authorizations/${auth.id}`)
+        ),
         finalize: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}/finalize`)
       },
       headers: {
