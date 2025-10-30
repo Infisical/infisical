@@ -1,6 +1,8 @@
 import json
+import re
 
 import jq
+import requests
 from acme import client
 from acme import messages
 from behave.runner import Context
@@ -47,6 +49,8 @@ def eval_var(context: Context, var_path: str, as_json: bool = True):
     if as_json:
         if isinstance(value, JSONObjectWithFields):
             value = value.to_json()
+        elif isinstance(value, requests.Response):
+            value = value.json()
     return value
 
 
@@ -121,6 +125,12 @@ def step_impl(context: Context, pem_var: str, order_var: str):
     context.vars[order_var] = context.acme_client.new_order(context.vars[pem_var])
 
 
+@then("I send an ACME post-as-get to {uri_path} as {res_var}")
+def step_impl(context: Context, uri_path: str, res_var: str):
+    uri_value = eval_var(context, uri_path)
+    context.vars[res_var] = context.acme_client._post_as_get(uri_value)
+
+
 @when("I create certificate signing request as {csr_var}")
 def step_impl(context: Context, csr_var: str):
     context.vars[csr_var] = x509.CertificateSigningRequestBuilder()
@@ -177,26 +187,48 @@ def step_impl(context: Context, var_path: str, query: str):
     assert result, f"{value} does not match {query}"
 
 
-def match_value_with_jq(context: Context, var_path: str, jq_query: str, expected: str):
+def apply_value_with_jq(context: Context, var_path: str, jq_query: str):
     value = eval_var(context, var_path)
-    result = jq.compile(replace_vars(jq_query, context.vars)).input_value(value).first()
+    return value, jq.compile(replace_vars(jq_query, context.vars)).input_value(
+        value
+    ).first()
+
+
+@then("the value {var_path} with jq {jq_query} should be equal to json")
+def step_impl(context: Context, var_path: str, jq_query: str):
+    value, result = apply_value_with_jq(
+        context=context,
+        var_path=var_path,
+        jq_query=jq_query,
+    )
+    expected_value = json.loads(context.text)
+    assert result == expected_value, (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {json.dumps(expected_value)!r}"
+    )
+
+
+@then("the value {var_path} with jq {jq_query} should be equal to {expected}")
+def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
+    value, result = apply_value_with_jq(
+        context=context,
+        var_path=var_path,
+        jq_query=jq_query,
+    )
     expected_value = json.loads(expected)
     assert result == expected_value, (
         f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {json.dumps(expected_value)!r}"
     )
 
 
-@then("the value {var_path} with jq {jq_query} should be equal to json")
-def step_impl(context: Context, var_path: str, jq_query: str):
-    return match_value_with_jq(
-        context=context, var_path=var_path, jq_query=jq_query, expected=context.text
+@then("the value {var_path} with jq {jq_query} should match pattern {regex}")
+def step_impl(context: Context, var_path: str, jq_query: str, regex: str):
+    value, result = apply_value_with_jq(
+        context=context,
+        var_path=var_path,
+        jq_query=jq_query,
     )
-
-
-@then("the value {var_path} with jq {jq_query} should be equal to {expected}")
-def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
-    return match_value_with_jq(
-        context=context, var_path=var_path, jq_query=jq_query, expected=expected
+    assert re.match(replace_vars(regex, context.vars), result), (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {regex!r}"
     )
 
 
@@ -205,3 +237,9 @@ def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
     expected_value = json.loads(expected)
     assert value == expected_value, f"{value!r} does not match {expected_value!r}"
+
+
+@then("I print the value {var_path}")
+def step_impl(context: Context, var_path: str):
+    value = eval_var(context, var_path)
+    print(json.dumps(value.json(), indent=2))
