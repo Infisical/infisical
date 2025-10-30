@@ -515,7 +515,7 @@ export const pkiAcmeServiceFactory = ({
             type: "http-01",
             url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
             status: "pending",
-            token: "FIXME-challenge-token"
+            token: auth.token
           }
         ]
       },
