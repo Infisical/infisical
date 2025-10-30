@@ -109,9 +109,11 @@ export type TPkiAcmeServiceFactory = {
   }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
   getAcmeOrder: ({
     profileId,
+    accountId,
     orderId
   }: {
     profileId: string;
+    accountId: string;
     orderId: string;
   }) => Promise<TAcmeResponse<TGetAcmeOrderResponse>>;
   finalizeAcmeOrder: ({
