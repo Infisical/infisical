@@ -80,10 +80,10 @@ export const CreateAcmeAccountResponseSchema = z.object({
 export const CreateAcmeOrderBodySchema = z.object({
   identifiers: z.array(
     z.object({
-      type: z
+      type: z.enum(Object.values(AcmeIdentifierType) as [string, ...string[]]),
+      value: z
         .string()
-        .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/, "Invalid DNS identifier"),
-      value: z.enum(Object.values(AcmeIdentifierType) as [string, ...string[]])
+        .regex(/^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/, "Invalid DNS identifier")
     })
   ),
   notBefore: z.string().optional(),
