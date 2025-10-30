@@ -99,10 +99,10 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
 
 
 @then(
-    "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server"
+    "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server as {order_var}"
 )
-def step_impl(context: Context, pem_var: str):
-    context.acme_order = context.acme_client.new_order(context.vars[pem_var])
+def step_impl(context: Context, pem_var: str, order_var: str):
+    context.vars[order_var] = context.acme_client.new_order(context.vars[pem_var])
 
 
 @when("I create certificate signing request as {csr_var}")
