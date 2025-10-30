@@ -1,5 +1,6 @@
 import json
 
+import jq
 from acme import client
 from acme import messages
 from behave.runner import Context
@@ -104,8 +105,7 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server as {order_var}"
 )
 def step_impl(context: Context, pem_var: str, order_var: str):
-    order = context.acme_client.new_order(context.vars[pem_var])
-    context.vars[order_var] = order
+    context.vars[order_var] = context.acme_client.new_order(context.vars[pem_var])
 
 
 @when("I create certificate signing request as {csr_var}")
@@ -155,3 +155,13 @@ def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
         .sign(context.vars[pk_var], hashes.SHA256())
         .public_bytes(serialization.Encoding.PEM)
     )
+
+
+@then("the value {var_path} should be true for {query}")
+def step_impl(context: Context, var_path: str, query: str):
+    parts = var_path.split(".")
+    value = context.vars[parts[0]]
+    for part in parts[1:]:
+        value = getattr(value, part)
+    result = jq.compile(query).input_value(value).first()
+    assert result, f"{value} does not match {query}"
