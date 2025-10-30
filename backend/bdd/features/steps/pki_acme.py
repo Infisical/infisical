@@ -232,6 +232,13 @@ def step_impl(context: Context, var_path: str, jq_query: str, regex: str):
     )
 
 
+@then("the value {var_path} should be equal to json")
+def step_impl(context: Context, var_path: str):
+    value = eval_var(context, var_path)
+    expected_value = json.loads(context.text)
+    assert value == expected_value, f"{value!r} does not match {expected_value!r}"
+
+
 @then("the value {var_path} should be equal to {expected}")
 def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
