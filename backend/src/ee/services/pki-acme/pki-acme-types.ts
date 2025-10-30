@@ -90,14 +90,48 @@ export type TPkiAcmeServiceFactory = {
     accountId: string,
     body?: TDeactivateAcmeAccountPayload
   ) => Promise<TDeactivateAcmeAccountResponse>;
-  listAcmeOrders: (profileId: string, accountId: string) => Promise<TListAcmeOrdersResponse>;
-  getAcmeOrder: (profileId: string, orderId: string) => Promise<TGetAcmeOrderResponse>;
-  finalizeAcmeOrder: (
-    profileId: string,
-    orderId: string,
-    body: TFinalizeAcmeOrderPayload
-  ) => Promise<TFinalizeAcmeOrderResponse>;
-  downloadAcmeCertificate: (profileId: string, orderId: string) => Promise<string>;
-  getAcmeAuthorization: (profileId: string, authzId: string) => Promise<TGetAcmeAuthorizationResponse>;
-  respondToAcmeChallenge: (profileId: string, authzId: string) => Promise<TRespondToAcmeChallengeResponse>;
+  listAcmeOrders: ({
+    profileId,
+    accountId
+  }: {
+    profileId: string;
+    accountId: string;
+  }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
+  getAcmeOrder: ({
+    profileId,
+    orderId
+  }: {
+    profileId: string;
+    orderId: string;
+  }) => Promise<TAcmeResponse<TGetAcmeOrderResponse>>;
+  finalizeAcmeOrder: ({
+    profileId,
+    orderId,
+    payload
+  }: {
+    profileId: string;
+    orderId: string;
+    payload: TFinalizeAcmeOrderPayload;
+  }) => Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>>;
+  downloadAcmeCertificate: ({
+    profileId,
+    orderId
+  }: {
+    profileId: string;
+    orderId: string;
+  }) => Promise<TAcmeResponse<string>>;
+  getAcmeAuthorization: ({
+    profileId,
+    authzId
+  }: {
+    profileId: string;
+    authzId: string;
+  }) => Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>>;
+  respondToAcmeChallenge: ({
+    profileId,
+    authzId
+  }: {
+    profileId: string;
+    authzId: string;
+  }) => Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>>;
 };
