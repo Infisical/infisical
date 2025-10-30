@@ -1,4 +1,4 @@
-Feature: New Account
+Feature: Account
   Scenario: Create a new account
     Given I have an ACME cert profile as "acme_profile"
      When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
