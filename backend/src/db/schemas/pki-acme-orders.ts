@@ -15,7 +15,7 @@ export const PkiAcmeOrdersSchema = z.object({
   updatedAt: z.date(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
-  expiresAt: z.date().nullable().optional()
+  expiresAt: z.date()
 });
 
 export type TPkiAcmeOrders = z.infer<typeof PkiAcmeOrdersSchema>;
