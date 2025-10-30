@@ -58,11 +58,17 @@ export type TPkiAcmeServiceFactory = {
     schema: z.ZodSchema<T>
   ) => Promise<TJwsPayload<T>>;
   validateNewAccountJwsPayload: (rawJwsPayload: TRawJwsPayload) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
-  validateExistingAccountJwsPayload: <T>(
-    profileId: string,
-    rawJwsPayload: TRawJwsPayload,
-    schema: z.ZodSchema<T>
-  ) => Promise<TAuthenciatedJwsPayload<T>>;
+  validateExistingAccountJwsPayload: <T>({
+    profileId,
+    rawJwsPayload,
+    schema,
+    expectedAccountId
+  }: {
+    profileId: string;
+    rawJwsPayload: TRawJwsPayload;
+    schema: z.ZodSchema<T>;
+    expectedAccountId?: string;
+  }) => Promise<TAuthenciatedJwsPayload<T>>;
   getAcmeDirectory: (profileId: string) => Promise<TGetAcmeDirectoryResponse>;
   getAcmeNewNonce: (profileId: string) => Promise<string>;
   createAcmeAccount: ({

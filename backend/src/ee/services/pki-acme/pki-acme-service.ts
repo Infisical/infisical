@@ -53,7 +53,7 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById" | "findByPublicKey" | "create">;
+  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
@@ -150,11 +150,17 @@ export const pkiAcmeServiceFactory = ({
     );
   };
 
-  const validateExistingAccountJwsPayload = async <T>(
-    profileId: string,
-    rawJwsPayload: TRawJwsPayload,
-    schema: z.ZodSchema<T>
-  ): Promise<TAuthenciatedJwsPayload<T>> => {
+  const validateExistingAccountJwsPayload = async <T>({
+    profileId,
+    rawJwsPayload,
+    schema,
+    expectedAccountId
+  }: {
+    profileId: string;
+    rawJwsPayload: TRawJwsPayload;
+    schema: z.ZodSchema<T>;
+    expectedAccountId?: string;
+  }): Promise<TAuthenciatedJwsPayload<T>> => {
     const profile = await validateAcmeProfile(profileId);
     const result = await validateJwsPayload(
       rawJwsPayload,
@@ -163,7 +169,10 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeMalformedError({ detail: "KID is required in the protected header" });
         }
         const accountId = extractAccountIdFromKid(protectedHeader.kid, profileId);
-        const account = await acmeAccountDAL.findById(profile.id, accountId);
+        if (expectedAccountId && accountId !== expectedAccountId) {
+          throw new AcmeAccountDoesNotExistError({ message: "ACME account ID mismatch" });
+        }
+        const account = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         if (!account) {
           throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
         }
@@ -261,7 +270,7 @@ export const pkiAcmeServiceFactory = ({
     //       if we do, return the existing order
 
     const order = await acmeOrderDAL.transaction(async (tx) => {
-      const account = await acmeAccountDAL.findById(profileId, accountId)!;
+      const account = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId)!;
       const createdOrder = await acmeOrderDAL.create(
         {
           accountId: account.id,

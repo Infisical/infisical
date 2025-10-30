@@ -114,6 +114,8 @@ export const DeactivateAcmeAccountResponseSchema = z.object({
 });
 
 // List Orders endpoint
+export const ListAcmeOrdersPayloadSchema = z.object({}).strict();
+
 export const ListAcmeOrdersResponseSchema = z.object({
   orders: z.array(z.string())
 });
