@@ -49,12 +49,13 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
+import { TPkiAcmeChallenges } from "@app/db/schemas";
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
-  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findById">;
+  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
 
@@ -514,8 +515,8 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     authzId: string;
   }): Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>> => {
-    const auth = await acmeAuthDAL.findById(authzId);
-    if (!auth || auth.accountId !== accountId) {
+    const auth = await acmeAuthDAL.findByAccountIdAndAuthIdWithChallenges(accountId, authzId);
+    if (!auth) {
       throw new NotFoundError({ message: "ACME authorization not found" });
     }
     return {
@@ -527,15 +528,16 @@ export const pkiAcmeServiceFactory = ({
           type: auth.identifierType,
           value: auth.identifierValue
         },
-        challenges: [
-          // TODO: fixme
-          {
-            type: "http-01",
-            url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
-            status: "pending",
+        challenges: auth.challenges.map((challenge: TPkiAcmeChallenges) => {
+          return {
+            type: challenge.type,
+            url: buildUrl(
+              `/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/${challenge.id}`
+            ),
+            status: challenge.status,
             token: auth.token
-          }
-        ]
+          };
+        })
       },
       headers: {
         Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}`)
