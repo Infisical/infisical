@@ -90,9 +90,11 @@ export const CreateAcmeOrderBodySchema = z.object({
   notAfter: z.string().optional()
 });
 
-export const CreateAcmeOrderResponseSchema = z.object({
-  status: z.string(),
-  expires: z.string(),
+export const AcmeOrderResourceSchema = z.object({
+  status: z.enum(Object.values(AcmeOrderStatus) as [string, ...string[]]),
+  expires: z.string().optional(),
+  notBefore: z.string().optional(),
+  notAfter: z.string().optional(),
   identifiers: z.array(
     z.object({
       type: z.string(),
@@ -120,37 +122,9 @@ export const ListAcmeOrdersResponseSchema = z.object({
   orders: z.array(z.string())
 });
 
-export const GetAcmeOrderResponseSchema = z.object({
-  status: z.enum(Object.values(AcmeOrderStatus) as [string, ...string[]]),
-  expires: z.string().optional(),
-  identifiers: z.array(
-    z.object({
-      type: z.string(),
-      value: z.string()
-    })
-  ),
-  authorizations: z.array(z.string()),
-  finalize: z.string(),
-  certificate: z.string().optional()
-});
-
 // Finalize Order payload schema
 export const FinalizeAcmeOrderBodySchema = z.object({
   csr: z.string()
-});
-
-export const FinalizeAcmeOrderResponseSchema = z.object({
-  status: z.enum(Object.values(AcmeOrderStatus) as [string, ...string[]]),
-  expires: z.string().optional(),
-  identifiers: z.array(
-    z.object({
-      type: z.string(),
-      value: z.string()
-    })
-  ),
-  authorizations: z.array(z.string()),
-  finalize: z.string(),
-  certificate: z.string().optional()
 });
 
 export const GetAcmeAuthorizationResponseSchema = z.object({

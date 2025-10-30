@@ -4,16 +4,14 @@ import { FastifyReply } from "fastify";
 import { z } from "zod";
 
 import {
+  AcmeOrderResourceSchema,
   CreateAcmeAccountResponseSchema,
   CreateAcmeOrderBodySchema,
-  CreateAcmeOrderResponseSchema,
   DeactivateAcmeAccountBodySchema,
   DeactivateAcmeAccountResponseSchema,
   FinalizeAcmeOrderBodySchema,
-  FinalizeAcmeOrderResponseSchema,
   GetAcmeAuthorizationResponseSchema,
   GetAcmeDirectoryResponseSchema,
-  GetAcmeOrderResponseSchema,
   ListAcmeOrdersPayloadSchema,
   ListAcmeOrdersResponseSchema,
   RawJwsPayloadSchema,
@@ -138,46 +136,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/new-order
-  // New Certificate Order (RFC 8555 Section 7.4)
-  server.route({
-    method: "POST",
-    url: "/profiles/:profileId/new-order",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiAcme],
-      description: "ACME New Order - apply for a new certificate",
-      params: z.object({
-        profileId: z.string().uuid()
-      }),
-      body: RawJwsPayloadSchema,
-      response: {
-        201: CreateAcmeOrderResponseSchema
-      }
-    },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req, res) => {
-      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body,
-        schema: CreateAcmeOrderBodySchema
-      });
-      return sendAcmeResponse(
-        res,
-        profileId,
-        await server.services.pkiAcme.createAcmeOrder({
-          profileId,
-          accountId,
-          payload
-        })
-      );
-    }
-  });
-
   // POST /api/v1/pki/acme/profiles/<profile_id>/accounts/<account_id>
   // Account Deactivation (RFC 8555 Section 7.3.6)
   server.route({
@@ -220,42 +178,41 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/accounts/<account_id>/orders
-  // List Orders (RFC 8555 Section 7.1.2.1)
+  // POST /api/v1/pki/acme/profiles/<profile_id>/new-order
+  // New Certificate Order (RFC 8555 Section 7.4)
   server.route({
     method: "POST",
-    url: "/profiles/:profileId/accounts/:accountId/orders",
+    url: "/profiles/:profileId/new-order",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     schema: {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
-      description: "ACME List Orders - get existing orders from current account",
+      description: "ACME New Order - apply for a new certificate",
       params: z.object({
-        profileId: z.string().uuid(),
-        accountId: z.string()
+        profileId: z.string().uuid()
       }),
       body: RawJwsPayloadSchema,
       response: {
-        200: ListAcmeOrdersResponseSchema
+        201: AcmeOrderResourceSchema
       }
     },
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
         profileId: req.params.profileId,
         rawJwsPayload: req.body,
-        schema: ListAcmeOrdersPayloadSchema,
-        expectedAccountId: req.params.accountId
+        schema: CreateAcmeOrderBodySchema
       });
       return sendAcmeResponse(
         res,
         profileId,
-        await server.services.pkiAcme.listAcmeOrders({
+        await server.services.pkiAcme.createAcmeOrder({
           profileId,
-          accountId
+          accountId,
+          payload
         })
       );
     }
@@ -279,7 +236,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }),
       body: RawJwsPayloadSchema,
       response: {
-        200: GetAcmeOrderResponseSchema
+        200: AcmeOrderResourceSchema
       }
     },
     // TODO: replace with verify ACME signature here instead
@@ -319,16 +276,16 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }),
       body: RawJwsPayloadSchema,
       response: {
-        200: FinalizeAcmeOrderResponseSchema
+        200: AcmeOrderResourceSchema
       }
     },
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const {  profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
         profileId: req.params.profileId,
-        rawJwsPayload: req.body
-        schema: FinalizeAcmeOrderBodySchema,
+        rawJwsPayload: req.body,
+        schema: FinalizeAcmeOrderBodySchema
       });
       return sendAcmeResponse(
         res,
@@ -338,6 +295,46 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
           accountId,
           orderId: req.params.orderId,
           payload
+        })
+      );
+    }
+  });
+  // POST /api/v1/pki/acme/profiles/<profile_id>/accounts/<account_id>/orders
+  // List Orders (RFC 8555 Section 7.1.2.1)
+  server.route({
+    method: "POST",
+    url: "/profiles/:profileId/accounts/:accountId/orders",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiAcme],
+      description: "ACME List Orders - get existing orders from current account",
+      params: z.object({
+        profileId: z.string().uuid(),
+        accountId: z.string()
+      }),
+      body: RawJwsPayloadSchema,
+      response: {
+        200: ListAcmeOrdersResponseSchema
+      }
+    },
+    // TODO: replace with verify ACME signature here instead
+    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req, res) => {
+      const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        profileId: req.params.profileId,
+        rawJwsPayload: req.body,
+        schema: ListAcmeOrdersPayloadSchema,
+        expectedAccountId: req.params.accountId
+      });
+      return sendAcmeResponse(
+        res,
+        profileId,
+        await server.services.pkiAcme.listAcmeOrders({
+          profileId,
+          accountId
         })
       );
     }
