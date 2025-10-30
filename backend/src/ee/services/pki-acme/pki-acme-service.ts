@@ -19,6 +19,7 @@ import {
   AcmeBadPublicKeyError,
   AcmeMalformedError,
   AcmeServerInternalError,
+  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
@@ -92,11 +93,17 @@ export const pkiAcmeServiceFactory = ({
   const validateJwsPayload = async <
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
-  >(
-    rawJwsPayload: TRawJwsPayload,
-    getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
-    schema?: TSchema
-  ): Promise<TJwsPayload<T>> => {
+  >({
+    url,
+    rawJwsPayload,
+    getJWK,
+    schema
+  }: {
+    url: string;
+    rawJwsPayload: TRawJwsPayload;
+    getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>;
+    schema?: TSchema;
+  }): Promise<TJwsPayload<T>> => {
     let result: FlattenedVerifyResult;
     try {
       result = await flattenedVerify(rawJwsPayload, async (protectedHeader: JWSHeaderParameters | undefined) => {
@@ -119,6 +126,9 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      if (protectedHeader.url !== url) {
+        throw new AcmeUnauthorizedError({ detail: "URL mismatch in the protected header" });
+      }
       // TODO: consume the nonce here
       const decoder = new TextDecoder();
       const textPayload = decoder.decode(rawPayload);
@@ -136,39 +146,47 @@ export const pkiAcmeServiceFactory = ({
     }
   };
 
-  const validateNewAccountJwsPayload = async (
-    rawJwsPayload: TRawJwsPayload
-  ): Promise<TJwsPayload<TCreateAcmeAccountPayload>> => {
-    return await validateJwsPayload(
+  const validateNewAccountJwsPayload = async ({
+    url,
+    rawJwsPayload
+  }: {
+    url: string;
+    rawJwsPayload: TRawJwsPayload;
+  }): Promise<TJwsPayload<TCreateAcmeAccountPayload>> => {
+    return await validateJwsPayload({
+      url,
       rawJwsPayload,
-      async (protectedHeader) => {
+      getJWK: async (protectedHeader) => {
         if (!protectedHeader.jwk) {
           throw new AcmeMalformedError({ detail: "JWK is required in the protected header" });
         }
         return protectedHeader.jwk as unknown as JsonWebKey;
       },
-      CreateAcmeAccountBodySchema
-    );
+      schema: CreateAcmeAccountBodySchema
+    });
   };
 
   const validateExistingAccountJwsPayload = async <
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
+    url,
     profileId,
     rawJwsPayload,
     schema,
     expectedAccountId
   }: {
+    url: string;
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
     schema?: TSchema;
     expectedAccountId?: string;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
     const profile = await validateAcmeProfile(profileId);
-    const result = await validateJwsPayload(
+    const result = await validateJwsPayload({
+      url,
       rawJwsPayload,
-      async (protectedHeader) => {
+      getJWK: async (protectedHeader) => {
         if (!protectedHeader.kid) {
           throw new AcmeMalformedError({ detail: "KID is required in the protected header" });
         }
@@ -186,20 +204,11 @@ export const pkiAcmeServiceFactory = ({
         return account.publicKey as JsonWebKey;
       },
       schema
-    );
+    });
     return {
       ...result,
       accountId: extractAccountIdFromKid(result.protectedHeader.kid!, profileId),
       profileId
-    };
-  };
-
-  const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
-    const profile = await validateAcmeProfile(profileId);
-    return {
-      newNonce: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-nonce`),
-      newAccount: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-account`),
-      newOrder: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-order`)
     };
   };
 
@@ -230,6 +239,15 @@ export const pkiAcmeServiceFactory = ({
         buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${auth.id}`)
       ),
       finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${order.id}/finalize`)
+    };
+  };
+
+  const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
+    const profile = await validateAcmeProfile(profileId);
+    return {
+      newNonce: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-nonce`),
+      newAccount: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-account`),
+      newOrder: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-order`)
     };
   };
 

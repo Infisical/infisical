@@ -52,21 +52,35 @@ export type TPkiAcmeServiceFactory = {
   validateJwsPayload: <
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
-  >(
-    rawJwsPayload: TRawJwsPayload,
-    getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>,
-    schema?: TSchema
-  ) => Promise<TJwsPayload<T>>;
-  validateNewAccountJwsPayload: (rawJwsPayload: TRawJwsPayload) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
+  >({
+    url,
+    rawJwsPayload,
+    getJWK,
+    schema
+  }: {
+    url: string;
+    rawJwsPayload: TRawJwsPayload;
+    getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>;
+    schema?: z.ZodSchema<any>;
+  }) => Promise<TJwsPayload<any>>;
+  validateNewAccountJwsPayload: ({
+    url,
+    rawJwsPayload
+  }: {
+    url: string;
+    rawJwsPayload: TRawJwsPayload;
+  }) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
   validateExistingAccountJwsPayload: <
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
+    url,
     profileId,
     rawJwsPayload,
     schema,
     expectedAccountId
   }: {
+    url: string;
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
     schema?: TSchema;
