@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import { useFetchSecretValue } from "../api/dashboard/queries";
 import { SecretType } from "../api/types";
 import { useHandleSecretOperation } from "./useHandleSecretOperation";
 
@@ -11,9 +12,20 @@ interface CreatePersonalSecretParams {
 
 export function useCreatePersonalSecretOverride(projectId: string) {
   const handleSecretOperation = useHandleSecretOperation(projectId);
+  const fetchSecretValue = useFetchSecretValue();
 
   const createPersonalSecretOverride = useCallback(
-    ({ key, secretPath, environment }: CreatePersonalSecretParams, value?: string) => {
+    async ({ key, secretPath, environment }: CreatePersonalSecretParams, value?: string) => {
+      if (!value) {
+        // Default to using current value of the secret
+        const result = await fetchSecretValue({
+          environment,
+          projectId,
+          secretKey: key,
+          secretPath
+        });
+        value = result.value;
+      }
       return handleSecretOperation(
         {
           operation: "create",
@@ -27,7 +39,7 @@ export function useCreatePersonalSecretOverride(projectId: string) {
         }
       );
     },
-    []
+    [fetchSecretValue]
   );
   return createPersonalSecretOverride;
 }

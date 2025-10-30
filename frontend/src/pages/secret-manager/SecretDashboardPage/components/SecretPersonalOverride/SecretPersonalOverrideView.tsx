@@ -1,9 +1,21 @@
 import { useCallback, useEffect } from "react";
 import { Controller, useForm } from "react-hook-form";
+import {
+  faCheck,
+  faClose,
+  faCodeBranch,
+  faCopy,
+  faShare,
+  faTrash,
+  faUser
+} from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import clsx from "clsx";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import { DeleteActionModal, Tooltip } from "@app/components/v2";
 import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import { useToggle } from "@app/hooks";
@@ -13,14 +25,13 @@ import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySe
 import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 
-import { FontAwesomeSpriteName } from "../SecretListView/SecretListView.utils";
-
 export interface SecretOverrideView {
   secretPath: string;
   secretKey: string;
   environment: string;
   projectId: string;
   isVisible?: boolean;
+  className?: string;
 }
 
 const personalSecretFormSchema = z.object({
@@ -34,10 +45,12 @@ export function SecretPersonalOverrideView({
   secretPath,
   environment,
   projectId,
-  isVisible
+  isVisible,
+  className
 }: SecretOverrideView) {
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const handleSecretOperation = useHandleSecretOperation(projectId);
+  const [isDeleteModalOpen, toggleDeleteModal] = useToggle();
 
   const getSecretParams = {
     secretKey,
@@ -124,7 +137,7 @@ export function SecretPersonalOverrideView({
     [environment, secretKey, secretPath]
   );
 
-  const deletePersonalSecret = useCallback(() => {
+  const deletePersonalSecret = useCallback(async () => {
     handleSecretOperation({
       operation: "delete",
       environment,
@@ -148,7 +161,13 @@ export function SecretPersonalOverrideView({
   }, []);
 
   return (
-    <div className="group flex">
+    <div className={clsx("group flex items-center", className)}>
+      <Tooltip content="Personal Override">
+        <span className="ml-1 flex cursor-default gap-1">
+          <FontAwesomeIcon className="rotate-90" icon={faCodeBranch} />
+          <FontAwesomeIcon icon={faUser} />
+        </span>
+      </Tooltip>
       <Controller
         control={control}
         name="valueOverride"
@@ -173,34 +192,32 @@ export function SecretPersonalOverrideView({
           />
         )}
       />
-      <div className="flex">
+      <div className="flex items-center space-x-3">
         <InlineActionIconButton
           isHidden={isDirty}
           revealOnGroupHover
           hint="Copy override"
           onClick={copySecretToClipboard}
-          icon={
-            isSecretValueCopied ? FontAwesomeSpriteName.Check : FontAwesomeSpriteName.ClipboardCopy
-          }
+          icon={isSecretValueCopied ? faCheck : faCopy}
         />
         <InlineActionIconButton
           isHidden={isDirty}
           revealOnGroupHover
           hint="Share override"
           onClick={openCreateSharedSecretPopup}
-          icon={FontAwesomeSpriteName.ShareSecret}
+          icon={faShare}
         />
         <InlineActionIconButton
           isHidden={!isDirty}
           hint="Save"
           onClick={handleSubmit(submitForm)}
           isDisabled={isSubmitting}
-          icon={FontAwesomeSpriteName.Check}
+          icon={faCheck}
         />
         <InlineActionIconButton
           isHidden={!isDirty}
           hint="cancel"
-          icon={FontAwesomeSpriteName.Close}
+          icon={faClose}
           isDisabled={isSubmitting}
           onClick={() => reset()}
           className="hover:text-red"
@@ -209,11 +226,18 @@ export function SecretPersonalOverrideView({
           isHidden={isDirty}
           revealOnGroupHover
           hint="Remove Personal Override"
-          onClick={deletePersonalSecret}
+          onClick={() => toggleDeleteModal.on()}
           className="hover:text-red"
-          icon={FontAwesomeSpriteName.Trash}
+          icon={faTrash}
         />
       </div>
+      <DeleteActionModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => toggleDeleteModal.off()}
+        title="Do you want to delete your personal override for the selected secret?"
+        deleteKey={secretKey}
+        onDeleteApproved={deletePersonalSecret}
+      />
     </div>
   );
 }

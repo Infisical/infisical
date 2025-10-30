@@ -1,8 +1,18 @@
-/* eslint-disable no-nested-ternary */
 import { memo, useCallback, useEffect, useRef } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
-import { faEyeSlash, faKey, faRotate, faWarning } from "@fortawesome/free-solid-svg-icons";
+import {
+  faBell,
+  faCheck,
+  faCodeBranch,
+  faCopy,
+  faEyeSlash,
+  faInfoCircle,
+  faKey,
+  faRotate,
+  faShare,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
@@ -114,7 +124,8 @@ export const SecretItem = memo(
     const { permission } = useProjectPermission();
     const { removePendingChange } = useBatchModeActions();
 
-    const [isFieldFocused, setIsFieldFocused] = useToggle();
+    const [isSecretFieldFocused, setSecretIsFieldFocused] = useToggle();
+    const [isKeyFieldFocused, setIsKeyFieldFocused] = useToggle();
 
     const canFetchSecretValue =
       !originalSecret.secretValueHidden &&
@@ -134,7 +145,7 @@ export const SecretItem = memo(
       isPending: isPendingSecretValueData,
       isError: isErrorFetchingSecretValue
     } = useGetSecretValue(fetchSecretValueParams, {
-      enabled: canFetchSecretValue && (isVisible || isFieldFocused)
+      enabled: canFetchSecretValue && (isVisible || isSecretFieldFocused)
     });
 
     const isLoadingSecretValue = canFetchSecretValue && isPendingSecretValueData;
@@ -295,7 +306,7 @@ export const SecretItem = memo(
 
     const createPersonalSecretOverride = useCreatePersonalSecretOverride(currentProject.id);
 
-    const handleAddPersonalOverride = () => {
+    const handleAddPersonalOverride = useCallback(async () => {
       createPersonalSecretOverride(
         {
           key: originalSecret.key,
@@ -304,7 +315,7 @@ export const SecretItem = memo(
         },
         secretValueData?.value
       );
-    };
+    }, [createPersonalSecretOverride, secretValueData?.value]);
 
     const handleFormSubmit = async (data: TFormSchema) => {
       const hasDirectReferences = importedBy?.some(({ folders }) =>
@@ -342,6 +353,43 @@ export const SecretItem = memo(
     });
 
     const isInAutoSaveMode = isDirty && !isSubmitting;
+
+    const keyInputWarning = useCallback(
+      (value?: string) => {
+        if (value !== (originalSecret.originalKey || originalSecret.key) && value?.includes(" ")) {
+          return (
+            <Tooltip
+              className="w-full max-w-72"
+              content={
+                <div>
+                  Secret key contains whitespaces.
+                  <br />
+                  <br /> If this is the desired format, you need to provide it as{" "}
+                  <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                    {encodeURIComponent(value.trim())}
+                  </code>{" "}
+                  when making API requests.
+                </div>
+              }
+            >
+              <FontAwesomeIcon icon={faWarning} className="text-yellow-600 opacity-60" />
+            </Tooltip>
+          );
+        }
+        if (hasOverride && isKeyFieldFocused) {
+          return (
+            <Tooltip
+              className="w-full max-w-72"
+              content="Remove personal override before changing the key"
+            >
+              <FontAwesomeIcon icon={faInfoCircle} className="text-yellow-600 opacity-60" />
+            </Tooltip>
+          );
+        }
+        return null;
+      },
+      [originalSecret.originalKey, originalSecret.key, hasOverride, isKeyFieldFocused]
+    );
 
     return (
       <form onSubmit={handleSubmit(handleFormSubmit)}>
@@ -404,37 +452,21 @@ export const SecretItem = memo(
                     placeholder={error?.message}
                     isError={Boolean(error)}
                     onKeyUp={() => trigger("key")}
-                    warning={
-                      field?.value !== (originalSecret.originalKey || originalSecret.key) &&
-                      field.value?.includes(" ") ? (
-                        <Tooltip
-                          className="w-full max-w-72"
-                          content={
-                            <div>
-                              Secret key contains whitespaces.
-                              <br />
-                              <br /> If this is the desired format, you need to provide it as{" "}
-                              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                                {encodeURIComponent(field.value.trim())}
-                              </code>{" "}
-                              when making API requests.
-                            </div>
-                          }
-                        >
-                          <FontAwesomeIcon
-                            icon={faWarning}
-                            className="text-yellow-600 opacity-60"
-                          />
-                        </Tooltip>
-                      ) : undefined
-                    }
+                    warning={keyInputWarning(field?.value)}
                     {...field}
+                    onFocus={() => {
+                      setIsKeyFieldFocused.on();
+                    }}
+                    onBlur={() => {
+                      setIsKeyFieldFocused.off();
+                      field.onBlur();
+                    }}
                     className="w-full px-0 placeholder:text-red-500 focus:text-bunker-100 focus:ring-transparent"
                   />
                 )}
               />
             </div>
-            <div className="flex grow flex-col border-x border-mineshaft-600">
+            <div className="flex grow flex-col divide-y divide-mineshaft-600 border-x border-mineshaft-600">
               <div className="flex">
                 <div
                   className="flex w-80 grow items-center py-1 pr-2 pl-4"
@@ -464,10 +496,10 @@ export const SecretItem = memo(
                         secretPath={secretPath}
                         {...field}
                         onFocus={() => {
-                          setIsFieldFocused.on();
+                          setSecretIsFieldFocused.on();
                         }}
                         onBlur={() => {
-                          setIsFieldFocused.off();
+                          setSecretIsFieldFocused.off();
                           field.onBlur();
                         }}
                         defaultValue={
@@ -486,11 +518,7 @@ export const SecretItem = memo(
                         <InlineActionIconButton
                           isDisabled={secret.secretValueHidden}
                           hint="Copy secret"
-                          icon={
-                            isSecretValueCopied
-                              ? FontAwesomeSpriteName.Check
-                              : FontAwesomeSpriteName.ClipboardCopy
-                          }
+                          icon={isSecretValueCopied ? faCheck : faCopy}
                           onClick={copySecretToClipboard}
                           revealOnGroupHover
                         />
@@ -510,7 +538,7 @@ export const SecretItem = memo(
                               revealOnGroupHover
                               onClick={() => handlePopUpOpen("reminder")}
                               className={secret?.reminder && "text-primary"}
-                              icon={FontAwesomeSpriteName.Reminder}
+                              icon={faBell}
                               hint={
                                 secret.reminder ? (
                                   <div className="flex flex-col gap-y-1">
@@ -627,7 +655,7 @@ export const SecretItem = memo(
                             <InlineActionIconButton
                               hint="Add Override"
                               isHidden={hasOverride}
-                              icon={FontAwesomeSpriteName.Override}
+                              icon={faCodeBranch}
                               isDisabled={!isAllowed}
                               onClick={handleAddPersonalOverride}
                               revealOnGroupHover
@@ -670,7 +698,7 @@ export const SecretItem = memo(
                             isDisabled={secret.secretValueHidden || !currentProject.secretSharing}
                             revealOnGroupHover
                             onClick={openCreateSharedSecretPopup}
-                            icon={FontAwesomeSpriteName.ShareSecret}
+                            icon={faShare}
                             hint="Share Secret"
                           />
                           <PopoverContent
@@ -779,170 +807,75 @@ export const SecretItem = memo(
                   )}
                 </div>
                 <AnimatePresence mode="wait">
-                  {isInAutoSaveMode ? (
-                    <motion.div
-                      key="auto-save-mode"
-                      className="flex w-[63px] shrink-0 items-center justify-between px-3"
-                      initial={{ x: -10, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: -10, opacity: 0 }}
-                    >
-                      <div className="h-10 w-12" />
-                    </motion.div>
-                  ) : !isDirty ? (
-                    isPending ? (
-                      <motion.div
-                        key="options"
-                        className="flex w-[63px] shrink-0 items-center justify-between px-3"
-                        initial={{ x: 0, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 10, opacity: 0 }}
+                  <motion.div
+                    key="options"
+                    className="flex w-[63px] shrink-0 items-center justify-between px-3"
+                    initial={{ x: 0, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: 10, opacity: 0 }}
+                  >
+                    <Tooltip content="More">
+                      <IconButton
+                        ariaLabel="more"
+                        variant="plain"
+                        size="md"
+                        className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={() => onDetailViewSecret(secret)}
                       >
-                        <Tooltip content="More">
-                          <IconButton
-                            ariaLabel="more"
-                            variant="plain"
-                            size="md"
-                            className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
-                            onClick={() => onDetailViewSecret(secret)}
-                            isDisabled={pendingAction !== "update"}
-                          >
-                            <FontAwesomeSymbol
-                              symbolName={FontAwesomeSpriteName.More}
-                              className="h-5 w-4"
-                            />
-                          </IconButton>
-                        </Tooltip>
-
-                        <Tooltip content="Discard">
+                        <FontAwesomeSymbol
+                          symbolName={FontAwesomeSpriteName.More}
+                          className="h-5 w-4"
+                        />
+                      </IconButton>
+                    </Tooltip>
+                    {isPending && (
+                      <Tooltip content="Discard">
+                        <IconButton
+                          ariaLabel="discard-change"
+                          variant="plain"
+                          colorSchema="danger"
+                          size="md"
+                          className="p-0 opacity-0 group-hover:opacity-100"
+                          onClick={() => handleDeletePending(secret)}
+                        >
+                          <FontAwesomeSymbol
+                            symbolName={FontAwesomeSpriteName.Close}
+                            className="h-5 w-4"
+                          />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {!isPending && (
+                      <ProjectPermissionCan
+                        I={ProjectPermissionActions.Delete}
+                        a={subject(ProjectPermissionSub.Secrets, {
+                          environment,
+                          secretPath,
+                          secretName,
+                          secretTags: selectedTagSlugs
+                        })}
+                        renderTooltip
+                        allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
+                      >
+                        {(isAllowed) => (
                           <IconButton
                             ariaLabel="delete-value"
                             variant="plain"
                             colorSchema="danger"
                             size="md"
                             className="p-0 opacity-0 group-hover:opacity-100"
-                            onClick={() => handleDeletePending(secret)}
+                            onClick={() => onDeleteSecret(secret)}
+                            isDisabled={!isAllowed || isRotatedSecret}
                           >
                             <FontAwesomeSymbol
-                              symbolName={FontAwesomeSpriteName.Close}
-                              className="h-5 w-4"
+                              symbolName={FontAwesomeSpriteName.Trash}
+                              className="h-4 w-3"
                             />
                           </IconButton>
-                        </Tooltip>
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="options"
-                        className="flex w-[63px] shrink-0 items-center justify-between px-3"
-                        initial={{ x: 0, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: 10, opacity: 0 }}
-                      >
-                        <Tooltip content="More">
-                          <IconButton
-                            ariaLabel="more"
-                            variant="plain"
-                            size="md"
-                            className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
-                            onClick={() => onDetailViewSecret(secret)}
-                          >
-                            <FontAwesomeSymbol
-                              symbolName={FontAwesomeSpriteName.More}
-                              className="h-5 w-4"
-                            />
-                          </IconButton>
-                        </Tooltip>
-                        <ProjectPermissionCan
-                          I={ProjectPermissionActions.Delete}
-                          a={subject(ProjectPermissionSub.Secrets, {
-                            environment,
-                            secretPath,
-                            secretName,
-                            secretTags: selectedTagSlugs
-                          })}
-                          renderTooltip
-                          allowedLabel={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}
-                        >
-                          {(isAllowed) => (
-                            <IconButton
-                              ariaLabel="delete-value"
-                              variant="plain"
-                              colorSchema="danger"
-                              size="md"
-                              className="p-0 opacity-0 group-hover:opacity-100"
-                              onClick={() => onDeleteSecret(secret)}
-                              isDisabled={!isAllowed || isRotatedSecret}
-                            >
-                              <FontAwesomeSymbol
-                                symbolName={FontAwesomeSpriteName.Trash}
-                                className="h-4 w-3"
-                              />
-                            </IconButton>
-                          )}
-                        </ProjectPermissionCan>
-                      </motion.div>
-                    )
-                  ) : (
-                    <motion.div
-                      key="options-save"
-                      className="flex w-[63px] shrink-0 items-center justify-between px-3"
-                      initial={{ x: -10, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: -10, opacity: 0 }}
-                    >
-                      <Tooltip
-                        content={
-                          Object.keys(errors || {}).length
-                            ? Object.entries(errors)
-                                .map(([key, { message }]) => `Field ${key}: ${message}`)
-                                .join("\n")
-                            : "Save"
-                        }
-                      >
-                        <IconButton
-                          ariaLabel="more"
-                          variant="plain"
-                          type="submit"
-                          size="md"
-                          className={twMerge(
-                            "p-0 text-primary opacity-0 group-hover:opacity-100",
-                            isDirty && "opacity-100"
-                          )}
-                          isDisabled={isSubmitting || Boolean(errors.key)}
-                        >
-                          {isSubmitting ? (
-                            <Spinner className="m-0 h-4 w-4 p-0" />
-                          ) : (
-                            <FontAwesomeSymbol
-                              symbolName={FontAwesomeSpriteName.Check}
-                              className={twMerge(
-                                "h-4 w-4 text-primary",
-                                Boolean(Object.keys(errors || {}).length) && "text-red"
-                              )}
-                            />
-                          )}
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip content="Cancel">
-                        <IconButton
-                          ariaLabel="more"
-                          variant="plain"
-                          size="md"
-                          className={twMerge(
-                            "p-0 opacity-0 group-hover:opacity-100",
-                            isDirty && "opacity-100"
-                          )}
-                          onClick={() => reset()}
-                          isDisabled={isSubmitting}
-                        >
-                          <FontAwesomeSymbol
-                            symbolName={FontAwesomeSpriteName.Close}
-                            className="h-4 w-4 text-primary"
-                          />
-                        </IconButton>
-                      </Tooltip>
-                    </motion.div>
-                  )}
+                        )}
+                      </ProjectPermissionCan>
+                    )}
+                  </motion.div>
                 </AnimatePresence>
               </div>
               {hasOverride && (
@@ -952,6 +885,7 @@ export const SecretItem = memo(
                   environment={environment}
                   isVisible={isVisible}
                   projectId={currentProject.id}
+                  className="space-x-2 py-1 pr-2 pl-4"
                 />
               )}
             </div>

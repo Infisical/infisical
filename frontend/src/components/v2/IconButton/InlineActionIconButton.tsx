@@ -1,10 +1,9 @@
 import { forwardRef, MouseEventHandler } from "react";
+import { IconProp } from "@fortawesome/fontawesome-svg-core";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ReactNode } from "@tanstack/react-router";
 import clsx from "clsx";
 
-import { FontAwesomeSpriteName } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretListView.utils";
-
-import { FontAwesomeSymbol } from "../FontAwesomeSymbol";
 import { Tooltip } from "../Tooltip";
 import { IconButton } from "./IconButton";
 
@@ -12,7 +11,7 @@ interface InlineActionIconButtonProps {
   className?: string;
   onClick?: MouseEventHandler;
   type?: "submit" | "button";
-  icon: FontAwesomeSpriteName;
+  icon: IconProp;
   hint: ReactNode;
   isDisabled?: boolean;
   revealOnGroupHover?: boolean;
@@ -46,7 +45,7 @@ export const InlineActionIconButton = forwardRef<HTMLButtonElement, InlineAction
           onClick={onClick}
           type={type}
         >
-          <FontAwesomeSymbol className={clsx("h-3.5 w-3", className)} symbolName={icon} />
+          <FontAwesomeIcon icon={icon} className={clsx("h-3.5 w-3", className)} />
         </IconButton>
       </Tooltip>
     );
