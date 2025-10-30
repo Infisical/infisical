@@ -530,8 +530,8 @@ export function useFetchSecretValue() {
   const queryClient = useQueryClient();
 
   return useCallback(
-    (params: TGetSecretValueDTO) => {
-      const data = fetchSecretValue(params);
+    async (params: TGetSecretValueDTO) => {
+      const data = await fetchSecretValue(params);
 
       queryClient.setQueryData(dashboardKeys.getSecretValue(params), data);
 

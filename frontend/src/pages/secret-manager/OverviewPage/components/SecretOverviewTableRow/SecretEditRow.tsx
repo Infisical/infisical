@@ -157,7 +157,7 @@ export const SecretEditRow = ({
     if (secretValueData && !isDirty) {
       setValue("value", secretValueData.value || "");
     }
-  }, [secretValueData]);
+  }, [secretValueData, setValue]);
 
   const { permission } = useProjectPermission();
 

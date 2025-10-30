@@ -116,7 +116,7 @@ export function useHandleSecretOperation(projectId: string) {
         {}
       ).then((result) => invalidateSecretQueries({ environment, secretPath, key }, result));
     },
-    [projectId, deleteSecretV3, createSecretV3, updateSecretV3]
+    [projectId, deleteSecretV3, createSecretV3, updateSecretV3, invalidateSecretQueries]
   );
 
   return handleSecretOperation;
