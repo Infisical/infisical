@@ -175,11 +175,11 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
 
               const canShowAutoRenewalIcon = Boolean(
                 certificate.profileId &&
-                certificate.hasPrivateKey !== false &&
-                !certificate.renewedByCertificateId &&
-                !isRevoked &&
-                !isExpired &&
-                !isExpiringWithinDay
+                  certificate.hasPrivateKey !== false &&
+                  !certificate.renewedByCertificateId &&
+                  !isRevoked &&
+                  !isExpired &&
+                  !isExpiringWithinDay
               );
 
               // Still need originalDisplayName for other uses in the component
@@ -255,7 +255,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 ttlDays: Math.ceil(
                                   (new Date(certificate.notAfter).getTime() -
                                     new Date(certificate.notBefore).getTime()) /
-                                  (24 * 60 * 60 * 1000)
+                                    (24 * 60 * 60 * 1000)
                                 )
                               });
                             }}
@@ -341,20 +341,20 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   <DropdownMenuItem
                                     className={twMerge(
                                       !isAllowed &&
-                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                        "pointer-events-none cursor-not-allowed opacity-50"
                                     )}
                                     onClick={async () => {
                                       const notAfterDate = new Date(certificate.notAfter);
                                       const notBeforeDate = certificate.notBefore
                                         ? new Date(certificate.notBefore)
                                         : new Date(
-                                          notAfterDate.getTime() - 365 * 24 * 60 * 60 * 1000
-                                        );
+                                            notAfterDate.getTime() - 365 * 24 * 60 * 60 * 1000
+                                          );
                                       const ttlDays = Math.max(
                                         1,
                                         Math.ceil(
                                           (notAfterDate.getTime() - notBeforeDate.getTime()) /
-                                          (24 * 60 * 60 * 1000)
+                                            (24 * 60 * 60 * 1000)
                                         )
                                       );
                                       handlePopUpOpen("manageRenewal", {
@@ -404,7 +404,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                    "pointer-events-none cursor-not-allowed opacity-50"
+                                      "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () => {
                                     await handleDisableAutoRenewal(
@@ -441,7 +441,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                    "pointer-events-none cursor-not-allowed opacity-50"
+                                      "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () => {
                                     handlePopUpOpen("renewCertificate", {
@@ -503,7 +503,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 <DropdownMenuItem
                                   className={twMerge(
                                     !isAllowed &&
-                                    "pointer-events-none cursor-not-allowed opacity-50"
+                                      "pointer-events-none cursor-not-allowed opacity-50"
                                   )}
                                   onClick={async () =>
                                     handlePopUpOpen("revokeCertificate", {
