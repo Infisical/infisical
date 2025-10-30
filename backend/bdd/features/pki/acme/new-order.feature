@@ -16,4 +16,5 @@ Feature: New Order
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.uri should be true for startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/")
+    Then the value order.uri should be true for jq startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/")
+    Then the value order.body.status.name should be "pending"

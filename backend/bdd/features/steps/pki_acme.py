@@ -38,6 +38,14 @@ def replace_vars(payload: dict | list | int | float | str, vars: dict):
         return payload
 
 
+def eval_var(context: Context, var_path: str):
+    parts = var_path.split(".", 1)
+    value = context.vars[parts[0]]
+    if len(parts) == 2:
+        value = glom.glom(value, parts[1])
+    return value
+
+
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     # TODO: Fixed value for now, just to make test much easier,
@@ -158,11 +166,15 @@ def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
     )
 
 
-@then("the value {var_path} should be true for {query}")
+@then("the value {var_path} should be true for jq {query}")
 def step_impl(context: Context, var_path: str, query: str):
-    parts = var_path.split(".", 1)
-    value = context.vars[parts[0]]
-    if len(parts) == 2:
-        value = glom.glom(value, parts[1])
+    value = eval_var(context, var_path)
     result = jq.compile(replace_vars(query, context.vars)).input_value(value).first()
     assert result, f"{value} does not match {query}"
+
+
+@then("the value {var_path} should be {expected}")
+def step_impl(context: Context, var_path: str, expected: str):
+    value = eval_var(context, var_path)
+    expected_value = json.loads(expected)
+    assert value == expected_value, f"{value:!r} does not match {expected_value:!r}"
