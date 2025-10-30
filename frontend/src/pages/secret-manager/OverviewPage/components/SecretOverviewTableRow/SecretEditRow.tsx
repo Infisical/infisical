@@ -249,7 +249,7 @@ export const SecretEditRow = ({
   const deleteLabel = useMemo(() => {
     if (isRotatedSecret) return "Cannot Delete Rotated Secret";
     return "Delete";
-  }, []);
+  }, [isRotatedSecret]);
 
   const createPersonalSecretOverride = useCreatePersonalSecretOverride(currentProject.id);
 
@@ -262,7 +262,7 @@ export const SecretEditRow = ({
       },
       secretValueData?.value
     );
-  }, [createPersonalSecretOverride, secretValueData?.value]);
+  }, [secretName, environment, secretPath, createPersonalSecretOverride, secretValueData?.value]);
 
   return (
     <div className="flex w-full cursor-text items-center space-x-2">
