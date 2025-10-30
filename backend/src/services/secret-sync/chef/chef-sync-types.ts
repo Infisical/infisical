@@ -23,9 +23,16 @@ export type TGetChefSecrets = {
   dataBagItemName: string;
 };
 
+export type TChefSecret = string | number | boolean | null;
+
 export type TChefDataBagItemContent = {
   id: string;
-  [key: string]: string | number | boolean | null;
+  [key: string]: TChefSecret;
+};
+
+export type TChefSecrets = {
+  id: string;
+  secrets: ChefSecret[];
 };
 
 export type ChefSecret = {

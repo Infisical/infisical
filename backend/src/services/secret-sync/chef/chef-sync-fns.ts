@@ -2,7 +2,14 @@ import { getChefDataBagItem, updateChefDataBagItem } from "@app/services/app-con
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
-import { ChefSecret, TChefDataBagItemContent, TChefSyncWithCredentials, TGetChefSecrets } from "./chef-sync-types";
+import {
+  ChefSecret,
+  TChefDataBagItemContent,
+  TChefSecret,
+  TChefSecrets,
+  TChefSyncWithCredentials,
+  TGetChefSecrets
+} from "./chef-sync-types";
 
 const getChefSecretsRaw = async ({
   serverUrl,
@@ -29,7 +36,7 @@ const getChefSecretsRaw = async ({
   return dataBagItem;
 };
 
-const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<ChefSecret[]> => {
+const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<TChefSecrets> => {
   const {
     connection,
     destinationConfig: { dataBagName, dataBagItemName }
@@ -46,21 +53,23 @@ const getChefSecrets = async (secretSync: TChefSyncWithCredentials): Promise<Che
     dataBagItemName
   });
 
+  const { id, ...existingSecrets } = dataBagItem;
+
   // Convert data bag item to key-value pairs
-  // Exclude the 'id' field as it's metadata
   const secrets: ChefSecret[] = [];
-  Object.entries(dataBagItem).forEach(([key, value]) => {
+  Object.entries(existingSecrets).forEach(([key, value]) => {
     if (key !== "id" && value !== null && value !== undefined) {
       secrets.push({ key, value: String(value) });
     }
   });
 
-  return secrets;
+  return { id, secrets };
 };
 
 const updateChefSecrets = async (
   secretSync: TChefSyncWithCredentials,
-  secrets: Record<string, string | number | boolean>
+  id: string,
+  secrets: Record<string, TChefSecret>
 ) => {
   const {
     connection,
@@ -71,7 +80,7 @@ const updateChefSecrets = async (
 
   // Chef data bag items must have an 'id' field
   const dataBagItemContent: TChefDataBagItemContent = {
-    id: dataBagItemName,
+    id,
     ...secrets
   };
 
@@ -93,7 +102,7 @@ export const ChefSyncFns = {
       syncOptions: { disableSecretDeletion, keySchema }
     } = secretSync;
 
-    const secrets = await getChefSecrets(secretSync);
+    const { id, secrets } = await getChefSecrets(secretSync);
 
     // Create a map of the existing secrets
     const updatedSecretsMap = new Map(secrets.map((secret) => [secret.key, secret.value]));
@@ -117,27 +126,26 @@ export const ChefSyncFns = {
     // Convert map to object for Chef API
     const updatedSecrets = Object.fromEntries(updatedSecretsMap.entries());
 
-    await updateChefSecrets(secretSync, updatedSecrets);
+    await updateChefSecrets(secretSync, id, updatedSecrets);
   },
 
   async getSecrets(secretSync: TChefSyncWithCredentials): Promise<TSecretMap> {
-    const secrets = await getChefSecrets(secretSync);
+    const { secrets } = await getChefSecrets(secretSync);
+
     return Object.fromEntries(secrets.map((secret) => [secret.key, { value: secret.value }]));
   },
 
   async removeSecrets(secretSync: TChefSyncWithCredentials, secretMap: TSecretMap) {
-    const existingSecrets = await getChefSecrets(secretSync);
+    const { id, secrets: existingSecrets } = await getChefSecrets(secretSync);
 
     const newSecrets = existingSecrets.filter((secret) => !Object.hasOwn(secretMap, secret.key));
 
-    // If nothing changed, return early
     if (newSecrets.length === existingSecrets.length) {
       return;
     }
 
-    // Convert to object for Chef API
     const updatedSecrets = Object.fromEntries(newSecrets.map((secret) => [secret.key, secret.value]));
 
-    await updateChefSecrets(secretSync, updatedSecrets);
+    await updateChefSecrets(secretSync, id, updatedSecrets);
   }
 };
