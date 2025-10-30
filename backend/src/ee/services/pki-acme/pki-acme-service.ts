@@ -7,7 +7,9 @@ import {
   AcmeAccountDoesNotExistError,
   AcmeBadPublicKeyError,
   AcmeMalformedError,
-  AcmeServerInternalError
+  AcmeServerInternalError,
+  AcmeUnauthorizedError,
+  AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
@@ -54,7 +56,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
-  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction">;
+  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByIdWithAuthorizations">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
@@ -170,7 +172,7 @@ export const pkiAcmeServiceFactory = ({
         }
         const accountId = extractAccountIdFromKid(protectedHeader.kid, profileId);
         if (expectedAccountId && accountId !== expectedAccountId) {
-          throw new AcmeAccountDoesNotExistError({ message: "ACME account ID mismatch" });
+          throw new NotFoundError({ message: "ACME resource not found" });
         }
         const account = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         if (!account) {
@@ -294,7 +296,7 @@ export const pkiAcmeServiceFactory = ({
               tx
             );
           } else {
-            throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
+            throw new AcmeUnsupportedIdentifierError({ detail: "Only DNS identifiers are supported" });
           }
         })
       );
@@ -373,20 +375,29 @@ export const pkiAcmeServiceFactory = ({
 
   const getAcmeOrder = async ({
     profileId,
+    accountId,
     orderId
   }: {
     profileId: string;
+    accountId: string;
     orderId: string;
   }): Promise<TAcmeResponse<TGetAcmeOrderResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME get order
+    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
+    if (!order || order.accountId !== accountId) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
     return {
       status: 200,
       body: {
-        status: "pending",
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        identifiers: [],
-        authorizations: [],
+        status: order.status,
+        expires: order.expiresAt.toISOString(),
+        identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
+          type: auth.identifierType,
+          value: auth.identifierValue
+        })),
+        authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
+          buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${auth.id}`)
+        ),
         finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`)
       },
       headers: { Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`) }

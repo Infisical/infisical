@@ -1,10 +1,10 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TPkiAcmeAuths } from "@app/db/schemas";
 import { TPkiAcmeOrdersInsert, TPkiAcmeOrdersUpdate } from "@app/db/schemas/pki-acme-orders";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TPkiAcmeOrderDALFactory = ReturnType<typeof pkiAcmeOrderDALFactory>;
 
@@ -51,54 +51,35 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByAccountId = async (accountId: string, tx?: Knex) => {
+  const findByIdWithAuthorizations = async (id: string, tx?: Knex) => {
     try {
-      const orders = await (tx || db)(TableName.PkiAcmeOrder).where({ accountId });
+      const order = await (tx || db)(TableName.PkiAcmeOrder)
+        .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrderAuth}.orderId`, `${TableName.PkiAcmeOrder}.id`)
+        .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+        .select(
+          selectAllTableCols(TableName.PkiAcmeOrder),
+          db.ref("id").withSchema(TableName.PkiAcmeAuth).as("authId"),
+          db.ref("identifierType").withSchema(TableName.PkiAcmeAuth).as("identifierType"),
+          db.ref("identifierValue").withSchema(TableName.PkiAcmeAuth).as("identifierValue"),
+          db.ref("expiresAt").withSchema(TableName.PkiAcmeAuth).as("expiresAt")
+        )
+        .where(`${TableName.PkiAcmeOrder}.id`, id)
+        .first();
 
-      return orders;
+      if (!order) {
+        return null;
+      }
+      return {
+        ...order,
+        authorizations: order.authorizations.map((auth: TPkiAcmeAuths) => ({
+          id: auth.id,
+          identifierType: auth.identifierType,
+          identifierValue: auth.identifierValue,
+          expiresAt: auth.expiresAt
+        }))
+      };
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME orders by account id" });
-    }
-  };
-
-  const findByStatus = async (status: string, tx?: Knex) => {
-    try {
-      const orders = await (tx || db)(TableName.PkiAcmeOrder).where({ status });
-
-      return orders;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME orders by status" });
-    }
-  };
-
-  const findByAccountIdAndStatus = async (accountId: string, status: string, tx?: Knex) => {
-    try {
-      const orders = await (tx || db)(TableName.PkiAcmeOrder).where({ accountId, status });
-
-      return orders;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME orders by account id and status" });
-    }
-  };
-
-  const deleteById = async (id: string, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeOrder).where({ id }).delete().returning("*");
-      const [order] = result;
-
-      return order || null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete PKI ACME order by id" });
-    }
-  };
-
-  const deleteByAccountId = async (accountId: string, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeOrder).where({ accountId }).delete().returning("*");
-
-      return result;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete PKI ACME orders by account id" });
+      throw new DatabaseError({ error, name: "Find PKI ACME order by id" });
     }
   };
 
@@ -107,10 +88,6 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
     create,
     updateById,
     findById,
-    findByAccountId,
-    findByStatus,
-    findByAccountIdAndStatus,
-    deleteById,
-    deleteByAccountId
+    findByIdWithAuthorizations
   };
 };
