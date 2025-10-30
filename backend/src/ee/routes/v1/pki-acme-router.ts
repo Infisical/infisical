@@ -121,7 +121,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload(req.body);
+      const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload({
+        url: req.url,
+        rawJwsPayload: req.body
+      });
       const { alg, jwk } = protectedHeader;
       return sendAcmeResponse(
         res,
@@ -161,6 +164,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { payload, profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body,
         schema: DeactivateAcmeAccountBodySchema,
@@ -202,6 +206,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body,
         schema: CreateAcmeOrderBodySchema
@@ -243,6 +248,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body
       });
@@ -283,6 +289,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body,
         schema: FinalizeAcmeOrderBodySchema
@@ -324,6 +331,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body,
         schema: ListAcmeOrdersPayloadSchema,
@@ -365,6 +373,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body
       });
@@ -401,6 +410,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
+        url: req.url,
         profileId: req.params.profileId,
         rawJwsPayload: req.body
       });
