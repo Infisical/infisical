@@ -22,16 +22,18 @@ class AcmeProfile:
         self.id = id
 
 
-def replace_vars(payload: dict, vars: dict):
-    for key, value in payload.items():
-        if isinstance(value, dict):
-            replace_vars(value, vars)
-        elif isinstance(value, list):
-            payload[key] = [replace_vars(item, vars) for item in value]
-        elif isinstance(value, str):
-            payload[key] = value.format(**vars)
-        else:
-            payload[key] = value
+def replace_vars(payload: dict | list | int | float | str, vars: dict):
+    if isinstance(payload, dict):
+        return {
+            replace_vars(key, vars): replace_vars(value, vars)
+            for key, value in payload.items()
+        }
+    elif isinstance(payload, list):
+        return [replace_vars(item, vars) for item in payload]
+    elif isinstance(payload, str):
+        return payload.format(**vars)
+    else:
+        return payload
 
 
 @given('I have an ACME cert profile as "{profile_var}"')
@@ -85,8 +87,8 @@ def step_impl(context: Context, header: str):
 def step_impl(context: Context):
     payload = context.response.json()
     expected = json.loads(context.text)
-    replace_vars(expected, context.vars)
-    assert payload == expected, f"{payload} != {expected}"
+    replaced = replace_vars(expected, context.vars)
+    assert payload == replaced, f"{payload} != {replaced}"
 
 
 @then(
@@ -102,7 +104,8 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server as {order_var}"
 )
 def step_impl(context: Context, pem_var: str, order_var: str):
-    context.vars[order_var] = context.acme_client.new_order(context.vars[pem_var])
+    order = context.acme_client.new_order(context.vars[pem_var])
+    context.vars[order_var] = order
 
 
 @when("I create certificate signing request as {csr_var}")
