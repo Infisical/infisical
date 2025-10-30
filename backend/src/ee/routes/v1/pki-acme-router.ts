@@ -198,9 +198,16 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const result = await server.services.pkiAcme.deactivateAcmeAccount(req.params.profileId, req.params.accountId);
-      return result;
+    handler: async (req, res) => {
+      return sendAcmeResponse(
+        res,
+        req.params.profileId,
+        await server.services.pkiAcme.deactivateAcmeAccount({
+          profileId: req.params.profileId,
+          accountId: req.params.accountId,
+          payload: req.body
+        })
+      );
     }
   });
 

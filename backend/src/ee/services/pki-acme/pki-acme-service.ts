@@ -303,9 +303,8 @@ export const pkiAcmeServiceFactory = ({
     return {
       status: 201,
       body: {
-        status: "pending",
-        // TODO: read config from the profile to get the expiration time instead
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        status: order.status,
+        expires: order.expiresAt.toISOString(),
         identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
           type: auth.identifierType,
           value: auth.identifierValue

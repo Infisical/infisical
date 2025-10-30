@@ -85,11 +85,15 @@ export type TPkiAcmeServiceFactory = {
     accountId: string;
     payload: TCreateAcmeOrderPayload;
   }) => Promise<TAcmeResponse<TCreateAcmeOrderResponse>>;
-  deactivateAcmeAccount: (
-    profileId: string,
-    accountId: string,
-    body?: TDeactivateAcmeAccountPayload
-  ) => Promise<TDeactivateAcmeAccountResponse>;
+  deactivateAcmeAccount: ({
+    profileId,
+    accountId,
+    payload
+  }: {
+    profileId: string;
+    accountId: string;
+    payload?: TDeactivateAcmeAccountPayload;
+  }) => Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>>;
   listAcmeOrders: ({
     profileId,
     accountId
