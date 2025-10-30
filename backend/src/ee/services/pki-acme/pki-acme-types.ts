@@ -123,13 +123,6 @@ export type TPkiAcmeServiceFactory = {
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }) => Promise<TAcmeResponse<TAcmeOrderResource>>;
-  listAcmeOrders: ({
-    profileId,
-    accountId
-  }: {
-    profileId: string;
-    accountId: string;
-  }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
   downloadAcmeCertificate: ({
     profileId,
     accountId,
@@ -139,6 +132,13 @@ export type TPkiAcmeServiceFactory = {
     accountId: string;
     orderId: string;
   }) => Promise<TAcmeResponse<string>>;
+  listAcmeOrders: ({
+    profileId,
+    accountId
+  }: {
+    profileId: string;
+    accountId: string;
+  }) => Promise<TAcmeResponse<TListAcmeOrdersResponse>>;
   getAcmeAuthorization: ({
     profileId,
     accountId,

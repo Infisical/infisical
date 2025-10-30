@@ -53,7 +53,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
-  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByIdWithAuthorizations">;
+  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findById">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
@@ -396,8 +396,8 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     orderId: string;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
-    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
-    if (!order || order.accountId !== accountId) {
+    const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
+    if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
     return {
@@ -418,21 +418,41 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
-    const profile = await validateAcmeProfile(profileId);
+    const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
+    if (!order) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
     const { csr } = payload;
     // FIXME: Implement ACME finalize order
     return {
       status: 200,
-      body: {
-        status: "processing",
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        identifiers: [],
-        authorizations: [],
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`),
-        certificate: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
-      },
+      body: buildAcmeOrderResource({ profileId, order }),
       headers: {
         Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`)
+      }
+    };
+  };
+
+  const downloadAcmeCertificate = async ({
+    profileId,
+    accountId,
+    orderId
+  }: {
+    profileId: string;
+    accountId: string;
+    orderId: string;
+  }): Promise<TAcmeResponse<string>> => {
+    const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
+    if (!order) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
+    // FIXME: Implement ACME certificate download
+    // Return the certificate in PEM format
+    return {
+      status: 200,
+      body: "FIXME-certificate-pem",
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
       }
     };
   };
@@ -453,25 +473,6 @@ export const pkiAcmeServiceFactory = ({
       },
       headers: {
         Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}/orders`)
-      }
-    };
-  };
-
-  const downloadAcmeCertificate = async ({
-    profileId,
-    orderId
-  }: {
-    profileId: string;
-    orderId: string;
-  }): Promise<TAcmeResponse<string>> => {
-    const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME certificate download
-    // Return the certificate in PEM format
-    return {
-      status: 200,
-      body: "FIXME-certificate-pem",
-      headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
       }
     };
   };

@@ -371,11 +371,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       return sendAcmeResponse(
         res,
         profileId,
-        await server.services.pkiAcme.downloadAcmeCertificate({
-          profileId,
-          accountId,
-          orderId: req.params.orderId
-        })
+        await server.services.pkiAcme.downloadAcmeCertificate({ profileId, accountId, orderId: req.params.orderId })
       );
     }
   });

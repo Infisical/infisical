@@ -51,7 +51,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByIdWithAuthorizations = async (id: string, tx?: Knex) => {
+  const findByAccountAndOrderIdWithAuthorizations = async (accountId: string, orderId: string, tx?: Knex) => {
     try {
       const order = await (tx || db)(TableName.PkiAcmeOrder)
         .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrderAuth}.orderId`, `${TableName.PkiAcmeOrder}.id`)
@@ -63,7 +63,8 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
           db.ref("identifierValue").withSchema(TableName.PkiAcmeAuth).as("identifierValue"),
           db.ref("expiresAt").withSchema(TableName.PkiAcmeAuth).as("expiresAt")
         )
-        .where(`${TableName.PkiAcmeOrder}.id`, id)
+        .where(`${TableName.PkiAcmeOrder}.id`, orderId)
+        .where(`${TableName.PkiAcmeOrder}.accountId`, accountId)
         .first();
 
       if (!order) {
@@ -88,6 +89,6 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
     create,
     updateById,
     findById,
-    findByIdWithAuthorizations
+    findByAccountAndOrderIdWithAuthorizations
   };
 };
