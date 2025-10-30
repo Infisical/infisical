@@ -8,7 +8,6 @@ import {
   AcmeBadPublicKeyError,
   AcmeMalformedError,
   AcmeServerInternalError,
-  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 
@@ -23,8 +22,8 @@ import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderPar
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
-import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
+import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
   AcmeAuthStatus,
   AcmeIdentifierType,

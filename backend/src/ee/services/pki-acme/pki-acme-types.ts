@@ -143,9 +143,11 @@ export type TPkiAcmeServiceFactory = {
   }) => Promise<TAcmeResponse<string>>;
   getAcmeAuthorization: ({
     profileId,
+    accountId,
     authzId
   }: {
     profileId: string;
+    accountId: string;
     authzId: string;
   }) => Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>>;
   respondToAcmeChallenge: ({
