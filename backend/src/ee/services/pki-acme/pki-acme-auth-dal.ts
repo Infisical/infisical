@@ -2,59 +2,53 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { TPkiAcmeAuthsInsert, TPkiAcmeAuthsUpdate } from "@app/db/schemas/pki-acme-auths";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
+import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
 export type TPkiAcmeAuthDALFactory = ReturnType<typeof pkiAcmeAuthDALFactory>;
 
 export const pkiAcmeAuthDALFactory = (db: TDbClient) => {
   const pkiAcmeAuthOrm = ormify(db, TableName.PkiAcmeAuth);
 
-  const create = async (data: TPkiAcmeAuthsInsert, tx?: Knex) => {
+  const findByAccountIdAndAuthIdWithChallenges = async (accountId: string, authId: string, tx?: Knex) => {
     try {
-      const result = await (tx || db)(TableName.PkiAcmeAuth).insert(data).returning("*");
-      const [auth] = result;
+      const rows = await (tx || db)(TableName.PkiAcmeAuth)
+        .join(TableName.PkiAcmeChallenge, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
+        .select(
+          selectAllTableCols(TableName.PkiAcmeAuth),
+          db.ref("id").withSchema(TableName.PkiAcmeChallenge).as("challengeId"),
+          db.ref("token").withSchema(TableName.PkiAcmeChallenge).as("challengeToken"),
+          db.ref("status").withSchema(TableName.PkiAcmeChallenge).as("challengeStatus")
+        )
+        .where(`${TableName.PkiAcmeAuth}.accountId`, accountId)
+        .where(`${TableName.PkiAcmeAuth}.id`, authId);
 
-      if (!auth) {
-        throw new Error("Failed to create PKI ACME auth");
-      }
-
-      return auth;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Create PKI ACME auth" });
-    }
-  };
-
-  const updateById = async (id: string, data: TPkiAcmeAuthsUpdate, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeAuth).where({ id }).update(data).returning("*");
-      const [auth] = result;
-
-      if (!auth) {
+      if (rows.length === 0) {
         return null;
       }
-
-      return auth;
+      return sqlNestRelationships({
+        data: rows,
+        key: "id",
+        parentMapper: (row) => row,
+        childrenMapper: [
+          {
+            key: "challengeId",
+            label: "challenges" as const,
+            mapper: ({ challengeId, challengeToken, challengeStatus }) => ({
+              id: challengeId,
+              token: challengeToken,
+              status: challengeStatus
+            })
+          }
+        ]
+      })?.[0];
     } catch (error) {
-      throw new DatabaseError({ error, name: "Update PKI ACME auth" });
-    }
-  };
-
-  const findById = async (id: string, tx?: Knex) => {
-    try {
-      const auth = await (tx || db)(TableName.PkiAcmeAuth).where({ id }).first();
-
-      return auth || null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auth by id" });
+      throw new DatabaseError({ error, name: "Find PKI ACME auth by account id and auth id with challenges" });
     }
   };
 
   return {
     ...pkiAcmeAuthOrm,
-    create,
-    updateById,
-    findById
+    findByAccountIdAndAuthIdWithChallenges
   };
 };
