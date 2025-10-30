@@ -321,96 +321,171 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
-  const deactivateAcmeAccount = async (
-    profileId: string,
-    accountId: string,
-    payload?: TDeactivateAcmeAccountPayload
-  ): Promise<TDeactivateAcmeAccountResponse> => {
+  const deactivateAcmeAccount = async ({
+    profileId,
+    accountId,
+    payload: { status } = { status: "deactivated" }
+  }: {
+    profileId: string;
+    accountId: string;
+    payload?: TDeactivateAcmeAccountPayload;
+  }): Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME account deactivation
     return {
-      status: "deactivated"
+      status: 200,
+      body: {
+        status: "deactivated"
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}`)
+      }
     };
   };
 
-  const listAcmeOrders = async (profileId: string, accountId: string): Promise<TListAcmeOrdersResponse> => {
+  const listAcmeOrders = async ({
+    profileId,
+    accountId
+  }: {
+    profileId: string;
+    accountId: string;
+  }): Promise<TAcmeResponse<TListAcmeOrdersResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME list orders
     return {
-      orders: []
+      status: 200,
+      body: {
+        orders: []
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}/orders`)
+      }
     };
   };
 
-  const getAcmeOrder = async (profileId: string, orderId: string): Promise<TGetAcmeOrderResponse> => {
+  const getAcmeOrder = async ({
+    profileId,
+    orderId
+  }: {
+    profileId: string;
+    orderId: string;
+  }): Promise<TAcmeResponse<TGetAcmeOrderResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME get order
     return {
-      status: "pending",
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      identifiers: [],
-      authorizations: [],
-      finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`)
+      status: 200,
+      body: {
+        status: "pending",
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        identifiers: [],
+        authorizations: [],
+        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`)
+      },
+      headers: { Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`) }
     };
   };
 
-  const finalizeAcmeOrder = async (
-    profileId: string,
-    orderId: string,
-    payload: TFinalizeAcmeOrderPayload
-  ): Promise<TFinalizeAcmeOrderResponse> => {
+  const finalizeAcmeOrder = async ({
+    profileId,
+    orderId,
+    payload
+  }: {
+    profileId: string;
+    orderId: string;
+    payload: TFinalizeAcmeOrderPayload;
+  }): Promise<TAcmeResponse<TFinalizeAcmeOrderResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     const { csr } = payload;
     // FIXME: Implement ACME finalize order
     return {
-      status: "processing",
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      identifiers: [],
-      authorizations: [],
-      finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`),
-      certificate: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
+      status: 200,
+      body: {
+        status: "processing",
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        identifiers: [],
+        authorizations: [],
+        finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/finalize`),
+        certificate: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`)
+      }
     };
   };
 
-  const downloadAcmeCertificate = async (profileId: string, orderId: string): Promise<string> => {
+  const downloadAcmeCertificate = async ({
+    profileId,
+    orderId
+  }: {
+    profileId: string;
+    orderId: string;
+  }): Promise<TAcmeResponse<string>> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME certificate download
     // Return the certificate in PEM format
-    return "FIXME-certificate-pem";
-  };
-
-  const getAcmeAuthorization = async (profileId: string, authzId: string): Promise<TGetAcmeAuthorizationResponse> => {
-    const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME authorization retrieval
     return {
-      status: "pending",
-      expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-      identifier: {
-        type: "dns",
-        value: "FIXME-domain-name"
-      },
-      challenges: [
-        {
-          type: "http-01",
-          url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
-          status: "pending",
-          token: "FIXME-challenge-token"
-        }
-      ]
+      status: 200,
+      body: "FIXME-certificate-pem",
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
+      }
     };
   };
 
-  const respondToAcmeChallenge = async (
-    profileId: string,
-    authzId: string
-  ): Promise<TRespondToAcmeChallengeResponse> => {
+  const getAcmeAuthorization = async ({
+    profileId,
+    authzId
+  }: {
+    profileId: string;
+    authzId: string;
+  }): Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>> => {
+    const profile = await validateAcmeProfile(profileId);
+    // FIXME: Implement ACME authorization retrieval
+    return {
+      status: 200,
+      body: {
+        status: "pending",
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        identifier: {
+          type: "dns",
+          value: "FIXME-domain-name"
+        },
+        challenges: [
+          {
+            type: "http-01",
+            url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
+            status: "pending",
+            token: "FIXME-challenge-token"
+          }
+        ]
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}`)
+      }
+    };
+  };
+
+  const respondToAcmeChallenge = async ({
+    profileId,
+    authzId
+  }: {
+    profileId: string;
+    authzId: string;
+  }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     // FIXME: Implement ACME challenge response
     // Trigger verification process
     return {
-      type: "http-01",
-      url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
-      status: "pending",
-      token: "FIXME-challenge-token"
+      status: 200,
+      body: {
+        type: "http-01",
+        url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
+        status: "pending",
+        token: "FIXME-challenge-token"
+      },
+      headers: {
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`)
+      }
     };
   };
 
