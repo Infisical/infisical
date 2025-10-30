@@ -20,7 +20,6 @@ export const ChefSyncFields = () => {
 
   const connectionId = useWatch({ name: "connection.id", control });
   const dataBagName = useWatch({ name: "destinationConfig.dataBagName", control });
-  const dataBagItemName = useWatch({ name: "destinationConfig.dataBagItemName", control });
 
   const { data: dataBags, isLoading: isDataBagsLoading } = useChefConnectionListDataBags(
     connectionId,
@@ -33,8 +32,6 @@ export const ChefSyncFields = () => {
     useChefConnectionListDataBagItems(connectionId, dataBagName, {
       enabled: Boolean(connectionId && dataBagName)
     });
-
-  console.log({ dataBags, dataBagItems });
 
   const handleChangeConnection = () => {
     setValue("destinationConfig.dataBagName", "");
