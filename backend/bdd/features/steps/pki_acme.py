@@ -9,6 +9,9 @@ from behave import then
 from josepy.jwk import JWKRSA
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import hashes
 
 ACC_KEY_BITS = 2048
 ACC_KEY_PUBLIC_EXPONENT = 65537
@@ -93,3 +96,53 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     # TODO: add EAB info here
     registration = messages.NewRegistration.from_data(email=email)
     context.vars[account_var] = context.acme_client.new_account(registration)
+
+
+@when("I create certificate signing request as {csr_var}")
+def step_impl(context: Context, csr_var: str):
+    context.vars[csr_var] = x509.CertificateSigningRequestBuilder()
+
+
+@then("I add names to certificate signing request {csr_var}")
+def step_impl(context: Context, csr_var: str):
+    names = json.loads(context.text)
+    builder: x509.CertificateSigningRequestBuilder = context.vars[csr_var]
+    builder.subject_name(
+        x509.Name(
+            [
+                x509.NameAttribute(getattr(NameOID, name), value)
+                for name, value in names.items()
+            ]
+        )
+    )
+
+
+@then("I add subject alternative name to certificate signing request {csr_var}")
+def step_impl(context: Context, csr_var: str):
+    names = json.loads(context.text)
+    builder: x509.CertificateSigningRequestBuilder = context.vars[csr_var]
+    builder.add_extension(
+        x509.SubjectAlternativeName([x509.DNSName(name) for name in names]),
+        critical=False,
+    )
+
+
+@then("I create a RSA private key pair as {rsa_key_var}")
+def step_impl(context: Context, rsa_key_var: str):
+    context.vars[rsa_key_var] = rsa.generate_private_key(
+        # TODO: make them configurable if we need to
+        public_exponent=65537,
+        key_size=2048,
+    )
+
+
+@then(
+    "I sign the certificate signing request {csr_var} with private key {pk_var} and output it as {pem_var} in PEM format"
+)
+def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
+    context.vars[pem_var] = (
+        context.vars[csr_var]
+        .sign(context.vars[pk_var], hashes.SHA256())
+        .public_bytes(serialization.Encoding.PEM)
+        .decode("utf-8")
+    )
