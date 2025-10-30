@@ -54,7 +54,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById" | "findByPublicKey" | "create">;
-  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create">;
+  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
@@ -256,52 +256,67 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     payload: TCreateAcmeOrderPayload;
   }): Promise<TAcmeResponse<TCreateAcmeOrderResponse>> => {
-    const account = await acmeAccountDAL.findById(profileId, accountId)!;
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
 
-    const order = await acmeOrderDAL.create({
-      accountId: account.id,
-      status: AcmeOrderStatus.Pending
+    const order = await acmeOrderDAL.transaction(async (tx) => {
+      const account = await acmeAccountDAL.findById(profileId, accountId)!;
+      const createdOrder = await acmeOrderDAL.create(
+        {
+          accountId: account.id,
+          status: AcmeOrderStatus.Pending
+        },
+        tx
+      );
+      const authorizations: TPkiAcmeAuths[] = await Promise.all(
+        payload.identifiers.map(async (identifier) => {
+          if (identifier.type === AcmeIdentifierType.DNS) {
+            // TODO: reuse existing authorizations for this identifier if they exist
+            return await acmeAuthDAL.create({
+              accountId: account.id,
+              status: AcmeAuthStatus.Pending,
+              identifierType: identifier.type,
+              identifierValue: identifier.value,
+              // TODO: read config from the profile to get the expiration time instead
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            });
+          } else {
+            throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
+          }
+        })
+      );
+
+      await acmeOrderAuthDAL.insertMany(
+        authorizations.map((auth) => ({
+          orderId: order.id,
+          authId: auth.id
+        }))
+      );
+      return { ...createdOrder, authorizations, account };
     });
-    const authorizations: TPkiAcmeAuths[] = await Promise.all(
-      payload.identifiers.map(async (identifier) => {
-        if (identifier.type === AcmeIdentifierType.DNS) {
-          // TODO: reuse existing authorizations for this identifier if they exist
-          return await acmeAuthDAL.create({
-            accountId: account.id,
-            status: AcmeAuthStatus.Pending,
-            identifierType: identifier.type,
-            identifierValue: identifier.value,
-            // TODO: read config from the profile to get the expiration time instead
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-          });
-        } else {
-          throw new AcmeMalformedError({ detail: "Only DNS identifiers are supported" });
-        }
-      })
-    );
 
-    await acmeOrderAuthDAL.insertMany(
-      authorizations.map((auth) => ({
-        orderId: order.id,
-        authId: auth.id
-      }))
-    );
-
-    // FIXME: Implement ACME new order creation
-    const orderId = "FIXME-order-id";
     return {
       status: 201,
       body: {
         status: "pending",
+        // TODO: read config from the profile to get the expiration time instead
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        identifiers: [],
-        authorizations: [],
-        finalize: buildUrl(`/api/v1/pki/acme/profiles/${account.profileId}/orders/${orderId}/finalize`)
+        identifiers: order.authorizations.map((auth) => ({
+          type: auth.identifierType,
+          value: auth.identifierValue
+        })),
+        authorizations: order.authorizations.map((auth) => ({
+          id: auth.id,
+          status: auth.status,
+          identifier: {
+            type: auth.identifierType,
+            value: auth.identifierValue
+          }
+        })),
+        finalize: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}/finalize`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${account.profileId}/orders/${orderId}`)
+        Location: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}`)
       }
     };
   };
