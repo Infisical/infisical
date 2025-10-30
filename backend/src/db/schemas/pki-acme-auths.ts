@@ -16,7 +16,8 @@ export const PkiAcmeAuthsSchema = z.object({
   expiresAt: z.date(),
   certificateId: z.string().uuid().nullable().optional(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  token: z.string().nullable().optional()
 });
 
 export type TPkiAcmeAuths = z.infer<typeof PkiAcmeAuthsSchema>;
