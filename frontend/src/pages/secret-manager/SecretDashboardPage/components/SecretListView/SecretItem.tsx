@@ -818,6 +818,7 @@ export const SecretItem = memo(
                         size="md"
                         className="h-5 w-4 p-0 opacity-0 group-hover:opacity-100"
                         onClick={() => onDetailViewSecret(secret)}
+                        isDisabled={originalSecret.pendingAction === "create"}
                       >
                         <FontAwesomeSymbol
                           symbolName={FontAwesomeSpriteName.More}
