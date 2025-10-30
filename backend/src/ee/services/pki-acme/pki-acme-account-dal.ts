@@ -2,7 +2,6 @@ import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
-import { TPkiAcmeAccountsInsert, TPkiAcmeAccountsUpdate } from "@app/db/schemas/pki-acme-accounts";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
@@ -10,21 +9,6 @@ export type TPkiAcmeAccountDALFactory = ReturnType<typeof pkiAcmeAccountDALFacto
 
 export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
   const pkiAcmeAccountOrm = ormify(db, TableName.PkiAcmeAccount);
-
-  const create = async (data: TPkiAcmeAccountsInsert, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeAccount).insert(data).returning("*");
-      const [account] = result;
-
-      if (!account) {
-        throw new Error("Failed to create PKI ACME account");
-      }
-
-      return account;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Create PKI ACME account" });
-    }
-  };
 
   const findByProjectIdAndAccountId = async (profileId: string, id: string, tx?: Knex) => {
     try {
@@ -48,7 +32,6 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
 
   return {
     ...pkiAcmeAccountOrm,
-    create,
     findByProjectIdAndAccountId,
     findByPublicKey
   };
