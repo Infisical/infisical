@@ -98,7 +98,7 @@ export function SecretPersonalOverrideView({
     if (secretValueData?.valueOverride && !isDirty) {
       setValue("valueOverride", secretValueData.valueOverride);
     }
-  });
+  }, [secretValueData?.valueOverride, isDirty, setValue]);
 
   const { copySecretToClipboard, isSecretValueCopied } = useCopySecretToClipBoard({
     getFetchedValue: () => getValues("valueOverride"),
@@ -134,7 +134,7 @@ export function SecretPersonalOverrideView({
           });
         });
     },
-    [environment, secretKey, secretPath]
+    [environment, secretKey, secretPath, handleSecretOperation, reset]
   );
 
   const deletePersonalSecret = useCallback(async () => {
@@ -158,7 +158,7 @@ export function SecretPersonalOverrideView({
           text: "Error removing secret override"
         });
       });
-  }, []);
+  }, [handleSecretOperation]);
 
   return (
     <div className={clsx("group flex items-center", className)}>

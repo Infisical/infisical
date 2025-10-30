@@ -27,7 +27,7 @@ export function useCreateSharedSecretPopup({
     }
 
     handleOpenPopup?.(value || "");
-  }, []);
+  }, [getFetchedValue, fetchSecretParams, fetchSecretValue, handleOpenPopup]);
 
   return createSharedSecret;
 }

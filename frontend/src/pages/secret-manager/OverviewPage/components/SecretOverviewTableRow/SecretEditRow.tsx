@@ -35,7 +35,7 @@ import {
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
-import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { ProjectEnv, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
 import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
 import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
@@ -234,7 +234,7 @@ export const SecretEditRow = ({
     setIsModalOpen(false);
 
     try {
-      await onSecretDelete(environment, secretName, SecretType.Shared);
+      await onSecretDelete(environment, secretName, secretId);
       reset({ value: null });
     } finally {
       setIsDeleting.off();
@@ -265,7 +265,7 @@ export const SecretEditRow = ({
   }, [createPersonalSecretOverride, secretValueData?.value]);
 
   return (
-    <div className="divide flex w-full cursor-text items-center space-x-2">
+    <div className="flex w-full cursor-text items-center space-x-2">
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}

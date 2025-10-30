@@ -82,7 +82,7 @@ export function useInvalidateSecretQueries(projectId: string) {
 
       return result;
     },
-    []
+    [queryClient, projectId]
   );
 
   return invalidSecretQueries;

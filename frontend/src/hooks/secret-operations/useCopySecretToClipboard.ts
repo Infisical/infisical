@@ -47,7 +47,7 @@ export function useCopySecretToClipBoard({
         text: "Failed to fetch secret value"
       });
     }
-  }, []);
+  }, [getFetchedValue, setIsSecretValueCopied, fetchSecretValue, fetchSecretParams]);
 
   return { copySecretToClipboard, isSecretValueCopied };
 }

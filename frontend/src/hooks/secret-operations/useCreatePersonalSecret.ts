@@ -40,7 +40,7 @@ export function useCreatePersonalSecretOverride(projectId: string) {
         }
       );
     },
-    [fetchSecretValue]
+    [fetchSecretValue, handleSecretOperation, projectId]
   );
   return createPersonalSecretOverride;
 }
