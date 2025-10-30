@@ -17,7 +17,7 @@ export const pkiAcmeAuthDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.PkiAcmeAuth),
           db.ref("id").withSchema(TableName.PkiAcmeChallenge).as("challengeId"),
-          db.ref("token").withSchema(TableName.PkiAcmeChallenge).as("challengeToken"),
+          db.ref("type").withSchema(TableName.PkiAcmeChallenge).as("challengeType"),
           db.ref("status").withSchema(TableName.PkiAcmeChallenge).as("challengeStatus")
         )
         .where(`${TableName.PkiAcmeAuth}.accountId`, accountId)
@@ -34,9 +34,9 @@ export const pkiAcmeAuthDALFactory = (db: TDbClient) => {
           {
             key: "challengeId",
             label: "challenges" as const,
-            mapper: ({ challengeId, challengeToken, challengeStatus }) => ({
+            mapper: ({ challengeId, challengeType, challengeStatus }) => ({
               id: challengeId,
-              token: challengeToken,
+              type: challengeType,
               status: challengeStatus
             })
           }
