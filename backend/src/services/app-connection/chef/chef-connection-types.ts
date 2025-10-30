@@ -1,6 +1,7 @@
 import z from "zod";
 
 import { DiscriminativePick } from "@app/lib/types";
+import { TChefDataBagItemContent } from "@app/services/secret-sync/chef";
 
 import { AppConnection } from "../app-connection-enums";
 import {
@@ -27,4 +28,23 @@ export type TChefDataBag = {
 
 export type TChefDataBagItem = {
   name: string;
+};
+
+export type TGetChefDataBagItem = {
+  serverUrl?: string;
+  userName: string;
+  privateKey: string;
+  orgName: string;
+  dataBagName: string;
+  dataBagItemName: string;
+};
+
+export type TUpdateChefDataBagItem = {
+  serverUrl?: string;
+  userName: string;
+  privateKey: string;
+  orgName: string;
+  dataBagName: string;
+  dataBagItemName: string;
+  data: TChefDataBagItemContent;
 };

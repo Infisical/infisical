@@ -10,7 +10,14 @@ import { IntegrationUrls } from "@app/services/integration-auth/integration-list
 import { TChefDataBagItemContent } from "../../secret-sync/chef/chef-sync-types";
 import { AppConnection } from "../app-connection-enums";
 import { ChefConnectionMethod } from "./chef-connection-enums";
-import { TChefConnection, TChefConnectionConfig, TChefDataBag, TChefDataBagItem } from "./chef-connection-types";
+import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefDataBag,
+  TChefDataBagItem,
+  TGetChefDataBagItem,
+  TUpdateChefDataBagItem
+} from "./chef-connection-types";
 
 export const getChefServerUrl = async (serverUrl?: string) => {
   const chefServerUrl = serverUrl ? removeTrailingSlash(serverUrl) : IntegrationUrls.CHEF_API_URL;
@@ -215,15 +222,6 @@ export const listChefDataBagItems = async (
   }
 };
 
-type TGetChefDataBagItem = {
-  serverUrl?: string;
-  userName: string;
-  privateKey: string;
-  orgName: string;
-  dataBagName: string;
-  dataBagItemName: string;
-};
-
 export const getChefDataBagItem = async ({
   serverUrl,
   userName,
@@ -255,16 +253,6 @@ export const getChefDataBagItem = async ({
       message: "Unable to get Chef data bag item"
     });
   }
-};
-
-type TUpdateChefDataBagItem = {
-  serverUrl?: string;
-  userName: string;
-  privateKey: string;
-  orgName: string;
-  dataBagName: string;
-  dataBagItemName: string;
-  data: TChefDataBagItemContent;
 };
 
 export const updateChefDataBagItem = async ({
