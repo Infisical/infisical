@@ -154,7 +154,7 @@ def step_impl(context: Context, csr_var: str):
 def step_impl(context: Context, csr_var: str):
     names = json.loads(context.text)
     builder: x509.CertificateSigningRequestBuilder = context.vars[csr_var]
-    context[csr_var] = builder.add_extension(
+    context.vars[csr_var] = builder.add_extension(
         x509.SubjectAlternativeName([x509.DNSName(name) for name in names]),
         critical=False,
     )
