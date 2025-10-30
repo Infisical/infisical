@@ -51,88 +51,10 @@ export const pkiAcmeAuthDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByAccountId = async (accountId: string, tx?: Knex) => {
-    try {
-      const auths = await (tx || db)(TableName.PkiAcmeAuth).where({ accountId });
-
-      return auths;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auths by account id" });
-    }
-  };
-
-  const findByStatus = async (status: string, tx?: Knex) => {
-    try {
-      const auths = await (tx || db)(TableName.PkiAcmeAuth).where({ status });
-
-      return auths;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auths by status" });
-    }
-  };
-
-  const findByAccountIdAndStatus = async (accountId: string, status: string, tx?: Knex) => {
-    try {
-      const auths = await (tx || db)(TableName.PkiAcmeAuth).where({ accountId, status });
-
-      return auths;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auths by account id and status" });
-    }
-  };
-
-  const findByIdentifier = async (identifierType: string, identifierValue: string, tx?: Knex) => {
-    try {
-      const auths = await (tx || db)(TableName.PkiAcmeAuth).where({ identifierType, identifierValue });
-
-      return auths;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auths by identifier" });
-    }
-  };
-
-  const findByCertificateId = async (certificateId: string, tx?: Knex) => {
-    try {
-      const auths = await (tx || db)(TableName.PkiAcmeAuth).where({ certificateId });
-
-      return auths;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME auths by certificate id" });
-    }
-  };
-
-  const deleteById = async (id: string, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeAuth).where({ id }).delete().returning("*");
-      const [auth] = result;
-
-      return auth || null;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete PKI ACME auth by id" });
-    }
-  };
-
-  const deleteByAccountId = async (accountId: string, tx?: Knex) => {
-    try {
-      const result = await (tx || db)(TableName.PkiAcmeAuth).where({ accountId }).delete().returning("*");
-
-      return result;
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Delete PKI ACME auths by account id" });
-    }
-  };
-
   return {
     ...pkiAcmeAuthOrm,
     create,
     updateById,
-    findById,
-    findByAccountId,
-    findByStatus,
-    findByAccountIdAndStatus,
-    findByIdentifier,
-    findByCertificateId,
-    deleteById,
-    deleteByAccountId
+    findById
   };
 };
