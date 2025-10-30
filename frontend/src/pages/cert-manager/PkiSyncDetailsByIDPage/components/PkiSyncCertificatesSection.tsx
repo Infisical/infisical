@@ -145,9 +145,9 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
               <Table>
                 <THead>
                   <Tr>
-                    <Th className="w-3/8">SAN / CN</Th>
-                    <Th className="w-1/8">Status</Th>
-                    <Th className="w-1/8">Serial Number</Th>
+                    <Th className="w-2/8">SAN / CN</Th>
+                    <Th className="w-3/16">Certificate Status</Th>
+                    <Th className="w-3/16">Serial Number</Th>
                     <Th className="w-1/8">Sync Status</Th>
                     <Th className="w-1/8">Expires At</Th>
                     <Th className="w-1/8" />
@@ -163,23 +163,23 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                     // Calculate auto-renewal timeline
                     const hasAutoRenewal = Boolean(
                       syncCert.certificateRenewBeforeDays &&
-                        syncCert.certificateRenewBeforeDays > 0 &&
-                        !syncCert.certificateRenewalError &&
-                        syncCert.certificateNotAfter
+                      syncCert.certificateRenewBeforeDays > 0 &&
+                      !syncCert.certificateRenewalError &&
+                      syncCert.certificateNotAfter
                     );
 
                     const daysUntilRenewal =
                       hasAutoRenewal && syncCert.certificateNotAfter
                         ? (() => {
-                            const expiryDate = new Date(syncCert.certificateNotAfter);
-                            const renewalDate = new Date(
-                              expiryDate.getTime() -
-                                syncCert.certificateRenewBeforeDays! * 24 * 60 * 60 * 1000
-                            );
-                            const now = new Date();
-                            const diffInMs = renewalDate.getTime() - now.getTime();
-                            return Math.max(0, Math.ceil(diffInMs / (24 * 60 * 60 * 1000)));
-                          })()
+                          const expiryDate = new Date(syncCert.certificateNotAfter);
+                          const renewalDate = new Date(
+                            expiryDate.getTime() -
+                            syncCert.certificateRenewBeforeDays! * 24 * 60 * 60 * 1000
+                          );
+                          const now = new Date();
+                          const diffInMs = renewalDate.getTime() - now.getTime();
+                          return Math.max(0, Math.ceil(diffInMs / (24 * 60 * 60 * 1000)));
+                        })()
                         : null;
 
                     const { originalDisplayName } = getCertificateDisplayName(
@@ -223,7 +223,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                         </Td>
                         <Td>
                           {syncCert.lastSyncMessage &&
-                          syncCert.syncStatus === CertificateSyncStatus.Failed ? (
+                            syncCert.syncStatus === CertificateSyncStatus.Failed ? (
                             <Tooltip content={syncCert.lastSyncMessage}>
                               <Badge variant="danger">Failed</Badge>
                             </Tooltip>
@@ -290,7 +290,7 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
                   page={currentPage}
                   perPage={pageSize}
                   onChangePage={(page: number) => setCurrentPage(page)}
-                  onChangePerPage={() => {}}
+                  onChangePerPage={() => { }}
                 />
               </div>
             )}
