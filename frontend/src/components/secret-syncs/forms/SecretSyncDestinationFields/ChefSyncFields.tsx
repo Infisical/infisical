@@ -79,7 +79,6 @@ export const ChefSyncFields = () => {
               onChange={(option) => {
                 const selectedDataBagItem = option as SingleValue<TChefDataBagItem>;
                 onChange(selectedDataBagItem?.name ?? "");
-                setValue("destinationConfig.dataBagItemName", selectedDataBagItem?.name ?? "");
               }}
               options={dataBagItems}
               placeholder="Select a data bag item..."

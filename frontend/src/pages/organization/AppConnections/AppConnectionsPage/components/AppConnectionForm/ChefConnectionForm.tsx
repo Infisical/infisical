@@ -60,8 +60,6 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
-  console.log("form", form.formState.errors, form.getValues());
-
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit)}>
