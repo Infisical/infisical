@@ -197,7 +197,9 @@ function SecretRenameRow({ environments, getSecretByKey, secretKey, secretPath }
       </div>
 
       {isReadOnly || isOverridden ? (
-        <Tooltip content="Remove personal overrides to change the key">
+        <Tooltip
+          content={isReadOnly ? "Not allowed" : "Remove personal overrides to change the key"}
+        >
           <span className="mr-5 rounded-md bg-mineshaft-500 px-2">Read Only</span>
         </Tooltip>
       ) : (
