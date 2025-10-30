@@ -104,6 +104,9 @@ export async function up(knex: Knex): Promise<void> {
       // Authorization status
       t.string("status").notNullable(); // pending, valid, invalid, deactivated, expired, revoked
 
+      // Token used to validate the authorization through ACME challenge
+      t.timestamp("token").nullable();
+
       // Identifier type and value
       t.string("identifierType").notNullable(); // dns
       t.string("identifierValue").notNullable(); // domain name

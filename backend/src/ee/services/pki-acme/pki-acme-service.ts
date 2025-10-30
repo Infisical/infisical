@@ -1,19 +1,11 @@
-import { getConfig } from "@app/lib/config/env";
-import { NotFoundError } from "@app/lib/errors";
-
-import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
-
-import {
-  AcmeAccountDoesNotExistError,
-  AcmeBadPublicKeyError,
-  AcmeMalformedError,
-  AcmeServerInternalError,
-  AcmeUnsupportedIdentifierError
-} from "./pki-acme-errors";
-
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
+import { getConfig } from "@app/lib/config/env";
+import { crypto } from "@app/lib/crypto/cryptography";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
@@ -22,6 +14,13 @@ import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderPar
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
+import {
+  AcmeAccountDoesNotExistError,
+  AcmeBadPublicKeyError,
+  AcmeMalformedError,
+  AcmeServerInternalError,
+  AcmeUnsupportedIdentifierError
+} from "./pki-acme-errors";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
@@ -32,6 +31,7 @@ import {
   ProtectedHeaderSchema
 } from "./pki-acme-schemas";
 import {
+  TAcmeOrderResource,
   TAcmeResponse,
   TAuthenciatedJwsPayload,
   TCreateAcmeAccountPayload,
@@ -44,7 +44,6 @@ import {
   TGetAcmeDirectoryResponse,
   TJwsPayload,
   TListAcmeOrdersResponse,
-  TAcmeOrderResource,
   TPkiAcmeServiceFactory,
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
@@ -357,6 +356,10 @@ export const pkiAcmeServiceFactory = ({
                 status: AcmeAuthStatus.Pending,
                 identifierType: identifier.type,
                 identifierValue: identifier.value,
+                // RFC 8555 suggests a token with at least 128 bits of entropy
+                // We are using 256 bits of entropy here, should be enough for now
+                // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
+                token: crypto.randomBytes(32).toString("base64"),
                 // TODO: read config from the profile to get the expiration time instead
                 expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
               },
