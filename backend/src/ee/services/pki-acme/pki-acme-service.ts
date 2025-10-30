@@ -56,7 +56,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
   acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByIdWithAuthorizations">;
-  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create">;
+  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findById">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
 };
 
@@ -468,22 +468,21 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     authzId: string;
   }): Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
-    const order = await acmeOrderDAL.findByIdWithAuthorizations(orderId);
-    if (!order || order.accountId !== accountId) {
-      throw new NotFoundError({ message: "ACME order not found" });
+    const auth = await acmeAuthDAL.findById(authzId);
+    if (!auth || auth.accountId !== accountId) {
+      throw new NotFoundError({ message: "ACME authorization not found" });
     }
-    // FIXME: Implement ACME authorization retrieval
     return {
       status: 200,
       body: {
-        status: "pending",
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        status: auth.status,
+        expires: auth.expiresAt.toISOString(),
         identifier: {
-          type: "dns",
-          value: "FIXME-domain-name"
+          type: auth.identifierType,
+          value: auth.identifierValue
         },
         challenges: [
+          // TODO: fixme
           {
             type: "http-01",
             url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
