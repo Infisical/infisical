@@ -60,10 +60,9 @@ type Props = {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, type: SecretType, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isRotatedSecret?: boolean;
   isEmpty?: boolean;
   importedSecret?:
@@ -197,14 +196,7 @@ export const SecretEditRow = ({
           handlePopUpOpen("editSecret", { secretValue: value });
           return;
         }
-        await onSecretUpdate(
-          environment,
-          secretName,
-          value,
-          secretValueHidden,
-          SecretType.Shared,
-          secretId
-        );
+        await onSecretUpdate(environment, secretName, value, secretValueHidden, secretId);
       }
     }
     if (secretValueHidden) {
@@ -217,14 +209,7 @@ export const SecretEditRow = ({
   };
 
   const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
-    await onSecretUpdate(
-      environment,
-      secretName,
-      secretValue,
-      secretValueHidden,
-      SecretType.Shared,
-      secretId
-    );
+    await onSecretUpdate(environment, secretName, secretValue, secretValueHidden, secretId);
     reset({ value: secretValue });
     handlePopUpClose("editSecret");
   };
@@ -249,7 +234,7 @@ export const SecretEditRow = ({
     setIsModalOpen(false);
 
     try {
-      await onSecretDelete(environment, secretName, SecretType.Shared, secretId);
+      await onSecretDelete(environment, secretName, SecretType.Shared);
       reset({ value: null });
     } finally {
       setIsDeleting.off();

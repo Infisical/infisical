@@ -554,8 +554,7 @@ export const OverviewPage = () => {
     env: string,
     key: string,
     value: string,
-    secretValueHidden: boolean,
-    type = SecretType.Shared
+    secretValueHidden: boolean
   ) => {
     let secretValue: string | undefined = value;
 
@@ -573,7 +572,7 @@ export const OverviewPage = () => {
           environment: env,
           key,
           secretPath,
-          type
+          type: SecretType.Shared
         },
         {
           value: secretValue
@@ -600,12 +599,7 @@ export const OverviewPage = () => {
     }
   };
 
-  const handleSecretDelete = async (
-    env: string,
-    key: string,
-    type: SecretType,
-    secretId?: string
-  ) => {
+  const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
     try {
       const result = await handleSecretOperation(
         {
@@ -613,7 +607,7 @@ export const OverviewPage = () => {
           environment: env,
           key,
           secretPath,
-          type
+          type: SecretType.Shared
         },
         {
           secretId

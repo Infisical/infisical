@@ -20,7 +20,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -42,10 +42,9 @@ type Props = {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type?: SecretType,
     secretId?: string
   ) => Promise<void>;
-  onSecretDelete: (env: string, key: string, type: SecretType, secretId?: string) => Promise<void>;
+  onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
   isImportedSecretPresentInEnv: (env: string, secretName: string) => boolean;
   getImportedSecretByKey: (
     env: string,
