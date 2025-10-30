@@ -98,6 +98,13 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     context.vars[account_var] = context.acme_client.new_account(registration)
 
 
+@then(
+    "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server"
+)
+def step_impl(context: Context, pem_var: str):
+    context.acme_order = context.acme_client.new_order(context.vars[pem_var])
+
+
 @when("I create certificate signing request as {csr_var}")
 def step_impl(context: Context, csr_var: str):
     context.vars[csr_var] = x509.CertificateSigningRequestBuilder()
@@ -144,5 +151,4 @@ def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
         context.vars[csr_var]
         .sign(context.vars[pk_var], hashes.SHA256())
         .public_bytes(serialization.Encoding.PEM)
-        .decode("utf-8")
     )
