@@ -37,29 +37,22 @@ export const DeleteSecretRotationV2Modal = ({
   const handleDeleteSecretRotation = async () => {
     const rotationType = SECRET_ROTATION_MAP[type].name;
 
-    try {
-      await deleteSecretRotation.mutateAsync({
-        rotationId,
-        type,
-        revokeGeneratedCredentials,
-        deleteSecrets,
-        projectId,
-        secretPath: folder.path
-      });
+    await deleteSecretRotation.mutateAsync({
+      rotationId,
+      type,
+      revokeGeneratedCredentials,
+      deleteSecrets,
+      projectId,
+      secretPath: folder.path
+    });
 
-      createNotification({
-        text: `Successfully deleted ${rotationType} Rotation`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted ${rotationType} Rotation`,
+      type: "success"
+    });
 
-      if (onComplete) onComplete();
-      onOpenChange(false);
-    } catch {
-      createNotification({
-        text: `Failed to delete ${rotationType} Rotation`,
-        type: "error"
-      });
-    }
+    if (onComplete) onComplete();
+    onOpenChange(false);
   };
 
   return (

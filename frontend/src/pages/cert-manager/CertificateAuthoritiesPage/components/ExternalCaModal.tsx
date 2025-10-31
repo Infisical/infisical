@@ -297,63 +297,55 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     status,
     configuration: formConfiguration
   }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      let configPayload: any;
+    let configPayload: any;
 
-      if (type === CaType.ACME && "dnsAppConnection" in formConfiguration) {
-        configPayload = {
-          dnsProviderConfig: formConfiguration.dnsProviderConfig,
-          directoryUrl: formConfiguration.directoryUrl,
-          accountEmail: formConfiguration.accountEmail,
-          dnsAppConnectionId: formConfiguration.dnsAppConnection.id,
-          eabKid: formConfiguration.eabKid,
-          eabHmacKey: formConfiguration.eabHmacKey
-        };
-      } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
-        configPayload = {
-          azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
-        };
-      } else {
-        throw new Error("Invalid certificate authority configuration");
-      }
+    if (type === CaType.ACME && "dnsAppConnection" in formConfiguration) {
+      configPayload = {
+        dnsProviderConfig: formConfiguration.dnsProviderConfig,
+        directoryUrl: formConfiguration.directoryUrl,
+        accountEmail: formConfiguration.accountEmail,
+        dnsAppConnectionId: formConfiguration.dnsAppConnection.id,
+        eabKid: formConfiguration.eabKid,
+        eabHmacKey: formConfiguration.eabHmacKey
+      };
+    } else if (type === CaType.AZURE_AD_CS && "azureAdcsConnection" in formConfiguration) {
+      configPayload = {
+        azureAdcsConnectionId: formConfiguration.azureAdcsConnection.id
+      };
+    } else {
+      throw new Error("Invalid certificate authority configuration");
+    }
 
-      if (ca) {
-        await updateMutateAsync({
-          caName: ca.name,
-          projectId: currentProject.id,
-          name,
-          type,
-          status,
-          enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
-          configuration: configPayload
-        });
-      } else {
-        await createMutateAsync({
-          projectId: currentProject.id,
-          name,
-          type,
-          status,
-          enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
-          configuration: configPayload
-        });
-      }
-
-      reset();
-      handlePopUpToggle("ca", false);
-
-      createNotification({
-        text: `Successfully ${ca ? "updated" : "created"} CA`,
-        type: "success"
+    if (ca) {
+      await updateMutateAsync({
+        caName: ca.name,
+        projectId: currentProject.id,
+        name,
+        type,
+        status,
+        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
+        configuration: configPayload
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create CA",
-        type: "error"
+    } else {
+      await createMutateAsync({
+        projectId: currentProject.id,
+        name,
+        type,
+        status,
+        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
+        configuration: configPayload
       });
     }
+
+    reset();
+    handlePopUpToggle("ca", false);
+
+    createNotification({
+      text: `Successfully ${ca ? "updated" : "created"} CA`,
+      type: "success"
+    });
   };
 
   return (

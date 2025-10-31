@@ -10,23 +10,15 @@ export const UsageReportSection = () => {
   const generateUsageReport = useGenerateUsageReport();
 
   const handleGenerateReport = async () => {
-    try {
-      const response = await generateUsageReport.mutateAsync();
-      const { csvContent, filename } = response;
+    const response = await generateUsageReport.mutateAsync();
+    const { csvContent, filename } = response;
 
-      downloadFile(csvContent, filename, "text/csv");
+    downloadFile(csvContent, filename, "text/csv");
 
-      createNotification({
-        text: `Usage report downloaded: "${filename}"`,
-        type: "success"
-      });
-    } catch (error) {
-      console.error("Failed to generate usage report:", error);
-      createNotification({
-        text: "Failed to generate usage report. Please try again.",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Usage report downloaded: "${filename}"`,
+      type: "success"
+    });
   };
 
   return (

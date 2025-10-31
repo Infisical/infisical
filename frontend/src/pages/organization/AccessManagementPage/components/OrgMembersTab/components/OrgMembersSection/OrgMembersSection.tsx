@@ -85,46 +85,30 @@ export const OrgMembersSection = () => {
   };
 
   const onDeactivateMemberSubmit = async (orgMembershipId: string) => {
-    try {
-      await updateOrgMembership({
-        organizationId: orgId,
-        membershipId: orgMembershipId,
-        isActive: false
-      });
+    await updateOrgMembership({
+      organizationId: orgId,
+      membershipId: orgMembershipId,
+      isActive: false
+    });
 
-      createNotification({
-        text: "Successfully deactivated user in organization",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to deactivate user in organization",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deactivated user in organization",
+      type: "success"
+    });
 
     handlePopUpClose("deactivateMember");
   };
 
   const onRemoveMemberSubmit = async (orgMembershipId: string) => {
-    try {
-      await deleteMutateAsync({
-        orgId,
-        membershipId: orgMembershipId
-      });
+    await deleteMutateAsync({
+      orgId,
+      membershipId: orgMembershipId
+    });
 
-      createNotification({
-        text: "Successfully removed user from org",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to remove user from the organization",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully removed user from org",
+      type: "success"
+    });
 
     handlePopUpClose("removeMember");
   };
@@ -132,27 +116,20 @@ export const OrgMembersSection = () => {
   const { data: members = [] } = useGetOrgUsers(orgId);
 
   const handleRemoveMembers = async (selectedMembers: OrgUser[]) => {
-    try {
-      await deleteBatchMutateAsync({
-        orgId,
-        membershipIds: selectedMembers
-          .filter((member) => member.user.id !== userId)
-          .map((member) => member.id)
-      });
+    await deleteBatchMutateAsync({
+      orgId,
+      membershipIds: selectedMembers
+        .filter((member) => member.user.id !== userId)
+        .map((member) => member.id)
+    });
 
-      createNotification({
-        text: "Successfully removed users from organization",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed users from organization",
+      type: "success"
+    });
 
-      setSelectedMemberIds([]);
-      handlePopUpClose("removeMembers");
-    } catch {
-      createNotification({
-        text: "Failed to remove users from the organization",
-        type: "error"
-      });
-    }
+    setSelectedMemberIds([]);
+    handlePopUpClose("removeMembers");
   };
 
   return (

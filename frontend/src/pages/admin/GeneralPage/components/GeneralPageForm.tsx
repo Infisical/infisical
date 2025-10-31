@@ -68,37 +68,29 @@ export const GeneralPageForm = () => {
   const organizations = useGetOrganizations();
 
   const onFormSubmit = async (formData: TDashboardForm) => {
-    try {
-      const {
-        allowedSignUpDomain,
-        trustSamlEmails,
-        trustLdapEmails,
-        trustOidcEmails,
-        authConsentContent,
-        pageFrameContent
-      } = formData;
+    const {
+      allowedSignUpDomain,
+      trustSamlEmails,
+      trustLdapEmails,
+      trustOidcEmails,
+      authConsentContent,
+      pageFrameContent
+    } = formData;
 
-      await updateServerConfig({
-        defaultAuthOrgId: defaultAuthOrgId || null,
-        allowSignUp: signUpMode !== SignUpModes.Disabled,
-        allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
-        trustSamlEmails,
-        trustLdapEmails,
-        trustOidcEmails,
-        authConsentContent,
-        pageFrameContent
-      });
-      createNotification({
-        text: "Successfully changed sign up setting.",
-        type: "success"
-      });
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        type: "error",
-        text: "Failed to update sign up setting."
-      });
-    }
+    await updateServerConfig({
+      defaultAuthOrgId: defaultAuthOrgId || null,
+      allowSignUp: signUpMode !== SignUpModes.Disabled,
+      allowedSignUpDomain: signUpMode === SignUpModes.Anyone ? allowedSignUpDomain : null,
+      trustSamlEmails,
+      trustLdapEmails,
+      trustOidcEmails,
+      authConsentContent,
+      pageFrameContent
+    });
+    createNotification({
+      text: "Successfully changed sign up setting.",
+      type: "success"
+    });
   };
 
   return (

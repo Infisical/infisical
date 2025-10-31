@@ -44,34 +44,23 @@ const Page = () => {
   ] as const);
 
   const onDeleteIdentitySubmit = async (id: string) => {
-    try {
-      await deleteIdentity({
-        identityId: id,
-        organizationId: orgId
-      });
+    await deleteIdentity({
+      identityId: id,
+      organizationId: orgId
+    });
 
-      createNotification({
-        text: "Successfully deleted identity",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted identity",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteIdentity");
-      navigate({
-        to: "/organization/access-management",
-        search: {
-          selectedTab: OrgAccessControlTabSections.Identities
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete identity";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteIdentity");
+    navigate({
+      to: "/organization/access-management",
+      search: {
+        selectedTab: OrgAccessControlTabSections.Identities
+      }
+    });
   };
 
   return (

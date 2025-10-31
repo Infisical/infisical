@@ -140,93 +140,84 @@ export const SshHostModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [sshHost]);
 
   const onFormSubmit = async ({ hostname, alias, userCertTtl, loginMappings }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      // Filter out login mappings that are from host groups
-      const hostLoginMappings = loginMappings.filter(
-        (mapping) => mapping.source === LoginMappingSource.HOST
-      );
+    // Filter out login mappings that are from host groups
+    const hostLoginMappings = loginMappings.filter(
+      (mapping) => mapping.source === LoginMappingSource.HOST
+    );
 
-      // check if there is already a different host with the same hostname
-      const existingHostnames =
-        sshHosts?.filter((h) => h.id !== sshHost?.id).map((h) => h.hostname) || [];
+    // check if there is already a different host with the same hostname
+    const existingHostnames =
+      sshHosts?.filter((h) => h.id !== sshHost?.id).map((h) => h.hostname) || [];
 
-      if (existingHostnames.includes(hostname.trim())) {
+    if (existingHostnames.includes(hostname.trim())) {
+      createNotification({
+        text: "A host with this hostname already exists.",
+        type: "error"
+      });
+      return;
+    }
+
+    const trimmedAlias = alias.trim();
+
+    // check if there is already a different host with the same non-null alias
+    if (trimmedAlias) {
+      const existingAliases =
+        sshHosts?.filter((h) => h.id !== sshHost?.id && h.alias !== null).map((h) => h.alias) || [];
+
+      if (existingAliases.includes(trimmedAlias)) {
         createNotification({
-          text: "A host with this hostname already exists.",
+          text: "A host with this alias already exists.",
           type: "error"
         });
         return;
       }
+    }
 
-      const trimmedAlias = alias.trim();
+    const transformedLoginMappings = hostLoginMappings.map(({ loginUser, allowedPrincipals }) => {
+      const usernames = allowedPrincipals
+        .filter((p) => p.type === "user" && p.value)
+        .map((p) => p.value);
 
-      // check if there is already a different host with the same non-null alias
-      if (trimmedAlias) {
-        const existingAliases =
-          sshHosts?.filter((h) => h.id !== sshHost?.id && h.alias !== null).map((h) => h.alias) ||
-          [];
+      const groupNames = allowedPrincipals
+        .filter((p) => p.type === "group" && p.value)
+        .map((p) => p.value);
 
-        if (existingAliases.includes(trimmedAlias)) {
-          createNotification({
-            text: "A host with this alias already exists.",
-            type: "error"
-          });
-          return;
+      return {
+        loginUser,
+        allowedPrincipals: {
+          usernames,
+          groups: groupNames
         }
-      }
+      };
+    });
 
-      const transformedLoginMappings = hostLoginMappings.map(({ loginUser, allowedPrincipals }) => {
-        const usernames = allowedPrincipals
-          .filter((p) => p.type === "user" && p.value)
-          .map((p) => p.value);
-
-        const groupNames = allowedPrincipals
-          .filter((p) => p.type === "group" && p.value)
-          .map((p) => p.value);
-
-        return {
-          loginUser,
-          allowedPrincipals: {
-            usernames,
-            groups: groupNames
-          }
-        };
+    if (sshHost) {
+      await updateMutateAsync({
+        sshHostId: sshHost.id,
+        hostname,
+        alias: trimmedAlias,
+        userCertTtl,
+        loginMappings: transformedLoginMappings
       });
-
-      if (sshHost) {
-        await updateMutateAsync({
-          sshHostId: sshHost.id,
-          hostname,
-          alias: trimmedAlias,
-          userCertTtl,
-          loginMappings: transformedLoginMappings
-        });
-      } else {
-        await createMutateAsync({
-          projectId,
-          hostname,
-          alias: trimmedAlias,
-          userCertTtl,
-          loginMappings: transformedLoginMappings
-        });
-      }
-
-      reset();
-      handlePopUpToggle("sshHost", false);
-
-      createNotification({
-        text: `Successfully ${sshHost ? "updated" : "added"} SSH host`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${sshHost ? "update" : "add"} SSH host`,
-        type: "error"
+    } else {
+      await createMutateAsync({
+        projectId,
+        hostname,
+        alias: trimmedAlias,
+        userCertTtl,
+        loginMappings: transformedLoginMappings
       });
     }
+
+    reset();
+    handlePopUpToggle("sshHost", false);
+
+    createNotification({
+      text: `Successfully ${sshHost ? "updated" : "added"} SSH host`,
+      type: "success"
+    });
   };
 
   const toggleMapping = (index: number) => {
