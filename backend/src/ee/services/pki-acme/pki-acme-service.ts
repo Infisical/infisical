@@ -11,7 +11,14 @@ import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
-import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderParameters } from "jose";
+import {
+  calculateJwkThumbprint,
+  errors,
+  flattenedVerify,
+  FlattenedVerifyResult,
+  importJWK,
+  JWSHeaderParameters
+} from "jose";
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
@@ -57,7 +64,10 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findByProjectIdAndAccountId" | "findByPublicKey" | "create">;
+  acmeAccountDAL: Pick<
+    TPkiAcmeAccountDALFactory,
+    "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
+  >;
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
@@ -286,8 +296,12 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
-    // TODO: ensure unique account per public key
-    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByPublicKey(profileId, alg, jwk);
+    const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
+    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
+      profileId,
+      alg,
+      publicKeyThumbprint
+    );
     if (onlyReturnExisting && !existingAccount) {
       throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
     }
@@ -311,6 +325,7 @@ export const pkiAcmeServiceFactory = ({
       profileId: profile.id,
       alg,
       publicKey: jwk,
+      publicKeyThumbprint,
       emails: contact ?? []
     });
     // TODO: create audit log here
