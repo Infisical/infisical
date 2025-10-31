@@ -21,23 +21,33 @@ import {
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
+const SharedParamsSchema = z.object({
+  profileId: z.string().uuid()
+});
+
+export interface MyRequestInterface {
+  Params: { profileId: string; accountId?: string };
+  Body: TRawJwsPayload;
+}
+
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const validateExistingAccount = async <
+    R extends FastifyRequest<any>,
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
     req,
     schema
   }: {
-    req: FastifyRequest<{ Params: { profileId: string; accountId?: string }; Body: TRawJwsPayload }>;
+    req: R;
     schema?: TSchema;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
     return await server.services.pkiAcme.validateExistingAccountJwsPayload({
       url: new URL(req.url, `${req.protocol}://${req.hostname}`),
-      profileId: req.params.profileId,
-      rawJwsPayload: req.body,
+      profileId: (req.params as { profileId: string }).profileId,
+      rawJwsPayload: req.body as TRawJwsPayload,
       schema,
-      expectedAccountId: req.params.accountId
+      expectedAccountId: (req.params as { accountId?: string }).accountId
     });
   };
 
@@ -131,9 +141,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Account - register a new account or find existing one",
-      params: z.object({
-        profileId: z.string().uuid()
-      }),
+      params: SharedParamsSchema,
       body: RawJwsPayloadSchema,
       response: {
         201: CreateAcmeAccountResponseSchema
@@ -141,7 +149,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const { payload, protectedHeader } = await server.services.pkiAcme.validateNewAccountJwsPayload({
-        url: req.url,
+        url: new URL(req.url, `${req.protocol}://${req.hostname}`),
         rawJwsPayload: req.body
       });
       const { alg, jwk } = protectedHeader;
@@ -170,8 +178,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Account Deactivation",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         accountId: z.string()
       }),
       body: RawJwsPayloadSchema,
@@ -210,9 +217,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME New Order - apply for a new certificate",
-      params: z.object({
-        profileId: z.string().uuid()
-      }),
+      params: SharedParamsSchema,
       body: RawJwsPayloadSchema,
       response: {
         201: AcmeOrderResourceSchema
@@ -249,8 +254,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Get Order - return status and details of the order",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         orderId: z.string().uuid()
       }),
       body: RawJwsPayloadSchema,
@@ -289,8 +293,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Finalize Order - finalize cert order by providing CSR",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         orderId: z.string().uuid()
       }),
       body: RawJwsPayloadSchema,
@@ -329,8 +332,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME List Orders - get existing orders from current account",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         accountId: z.string()
       }),
       body: RawJwsPayloadSchema,
@@ -368,8 +370,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Download Certificate - download certificate when ready",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         orderId: z.string().uuid()
       }),
       body: RawJwsPayloadSchema,
@@ -404,8 +405,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Identifier Authorization - get authorization info (challenges)",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         authzId: z.string().uuid()
       }),
       body: RawJwsPayloadSchema,
@@ -447,8 +447,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Respond to Challenge - let ACME server know challenge is ready",
-      params: z.object({
-        profileId: z.string().uuid(),
+      params: SharedParamsSchema.extend({
         authzId: z.string().uuid()
       }),
       response: {
