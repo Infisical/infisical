@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-import type { TAcmeResponse } from "@app/ee/services/pki-acme/pki-acme-types";
-import { FastifyReply } from "fastify";
+import type { TAcmeResponse, TAuthenciatedJwsPayload, TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
+import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
+import { AcmeMalformedError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
   AcmeOrderResourceSchema,
   CreateAcmeAccountResponseSchema,
@@ -19,9 +20,27 @@ import {
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { AcmeAccountDoesNotExistError, AcmeMalformedError } from "@app/ee/services/pki-acme/pki-acme-errors";
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
+  const validateExistingAccount = async <
+    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    T = TSchema extends z.ZodSchema<infer R> ? R : string
+  >({
+    req,
+    schema
+  }: {
+    req: FastifyRequest<{ Params: { profileId: string; accountId?: string }; Body: TRawJwsPayload }>;
+    schema?: TSchema;
+  }): Promise<TAuthenciatedJwsPayload<T>> => {
+    return await server.services.pkiAcme.validateExistingAccountJwsPayload({
+      url: new URL(req.url, `${req.protocol}://${req.hostname}`),
+      profileId: req.params.profileId,
+      rawJwsPayload: req.body,
+      schema,
+      expectedAccountId: req.params.accountId
+    });
+  };
+
   const sendAcmeResponse = async <T>(res: FastifyReply, profileId: string, response: TAcmeResponse<T>): Promise<T> => {
     res.code(response.status);
     for (const [key, value] of Object.entries(response.headers)) {
@@ -163,12 +182,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { payload, profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body,
-        schema: DeactivateAcmeAccountBodySchema,
-        expectedAccountId: req.params.accountId
+      const { payload, profileId, accountId } = await validateExistingAccount({
+        req,
+        schema: DeactivateAcmeAccountBodySchema
       });
       return sendAcmeResponse(
         res,
@@ -205,10 +221,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body,
+      const { profileId, accountId, payload } = await validateExistingAccount({
+        req,
         schema: CreateAcmeOrderBodySchema
       });
       return sendAcmeResponse(
@@ -247,10 +261,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body
+      const { profileId, accountId } = await validateExistingAccount({
+        req,
+        schema: FinalizeAcmeOrderBodySchema
       });
       return sendAcmeResponse(
         res,
@@ -288,10 +301,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body,
+      const { profileId, accountId, payload } = await validateExistingAccount({
+        req,
         schema: FinalizeAcmeOrderBodySchema
       });
       return sendAcmeResponse(
@@ -330,12 +341,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body,
-        schema: ListAcmeOrdersPayloadSchema,
-        expectedAccountId: req.params.accountId
+      const { profileId, accountId } = await validateExistingAccount({
+        req,
+        schema: ListAcmeOrdersPayloadSchema
       });
       return sendAcmeResponse(
         res,
@@ -372,10 +380,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body
+      const { profileId, accountId } = await validateExistingAccount({
+        req,
+        schema: FinalizeAcmeOrderBodySchema
       });
       return sendAcmeResponse(
         res,
@@ -409,10 +416,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await server.services.pkiAcme.validateExistingAccountJwsPayload({
-        url: req.url,
-        profileId: req.params.profileId,
-        rawJwsPayload: req.body
+      const { profileId, accountId, payload } = await validateExistingAccount({
+        req,
+        schema: GetAcmeAuthorizationBodySchema
       });
       if (payload !== "") {
         throw new AcmeMalformedError({ detail: "Payload should be empty" });
