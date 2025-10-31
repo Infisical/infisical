@@ -16,5 +16,5 @@ Feature: Challenge
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then I select challenge with type http-01 from order as challenge
+    Then I select challenge with type http-01 for domain localhost from order at order as challenge
 
