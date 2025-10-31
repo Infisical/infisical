@@ -186,8 +186,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: DeactivateAcmeAccountResponseSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { payload, profileId, accountId } = await validateExistingAccount({
         req,
@@ -223,8 +221,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         201: AcmeOrderResourceSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await validateExistingAccount({
         req,
@@ -262,8 +258,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: AcmeOrderResourceSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await validateExistingAccount({
         req,
@@ -301,8 +295,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: AcmeOrderResourceSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await validateExistingAccount({
         req,
@@ -378,8 +370,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: z.string()
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await validateExistingAccount({
         req,
@@ -413,8 +403,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: GetAcmeAuthorizationResponseSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await validateExistingAccount({ req });
       if (payload !== "") {
@@ -451,10 +439,16 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: RespondToAcmeChallengeResponseSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const challenge = await server.services.pkiAcme.respondToAcmeChallenge(req.params.profileId, req.params.authzId);
+    handler: async (req, res) => {
+      const { profileId, accountId, payload } = await validateExistingAccount({ req });
+      if (payload !== "") {
+        throw new AcmeMalformedError({ detail: "Payload should be empty" });
+      }
+      return sendAcmeResponse(
+        res,
+        profileId,
+        await server.services.pkiAcme.respondToAcmeChallenge({ profileId, authzId: req.params.authzId })
+      );
       return challenge;
     }
   });

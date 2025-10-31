@@ -21,6 +21,12 @@ export enum AcmeAuthStatus {
   Revoked = "revoked"
 }
 
+export enum AcmeChallengeType {
+  HTTP_01 = "http-01",
+  DNS_01 = "dns-01",
+  TLS_ALPN_01 = "tls-alpn-01"
+}
+
 export const ProtectedHeaderSchema = z
   .object({
     alg: z.string(),
@@ -136,7 +142,7 @@ export const GetAcmeAuthorizationResponseSchema = z.object({
   }),
   challenges: z.array(
     z.object({
-      type: z.string(),
+      type: z.enum(Object.values(AcmeChallengeType) as [string, ...string[]]),
       url: z.string(),
       status: z.string(),
       token: z.string(),
@@ -146,7 +152,7 @@ export const GetAcmeAuthorizationResponseSchema = z.object({
 });
 
 export const RespondToAcmeChallengeResponseSchema = z.object({
-  type: z.string(),
+  type: z.enum(Object.values(AcmeChallengeType) as [string, ...string[]]),
   url: z.string(),
   status: z.string(),
   token: z.string(),

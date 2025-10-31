@@ -18,6 +18,7 @@ Feature: Order
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     Then the value order.authorizations[0].uri with jq . should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/(.+)
     Then the value order.authorizations[0].body with jq .status should be equal to "pending"
+    Then the value order.authorizations[0].body with jq .challenge should be equal to "pending"
     Then the value order.authorizations[0].body with jq .identifier should be equal to json
       """
       {

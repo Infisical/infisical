@@ -15,6 +15,7 @@ import { errors, flattenedVerify, FlattenedVerifyResult, importJWK, JWSHeaderPar
 import { z, ZodError } from "zod";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
+import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import {
   AcmeAccountDoesNotExistError,
   AcmeBadPublicKeyError,
@@ -28,6 +29,7 @@ import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
   AcmeAuthStatus,
+  AcmeChallengeType,
   AcmeIdentifierType,
   AcmeOrderStatus,
   CreateAcmeAccountBodySchema,
@@ -58,6 +60,7 @@ type TPkiAcmeServiceFactoryDep = {
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
+  acmeChallengeDAL: Pick<TPkiAcmeChallengeDALFactory, "create">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -65,7 +68,8 @@ export const pkiAcmeServiceFactory = ({
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
-  acmeOrderAuthDAL
+  acmeOrderAuthDAL,
+  acmeChallengeDAL
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -376,7 +380,7 @@ export const pkiAcmeServiceFactory = ({
         payload.identifiers.map(async (identifier) => {
           if (identifier.type === AcmeIdentifierType.DNS) {
             // TODO: reuse existing authorizations for this identifier if they exist
-            return await acmeAuthDAL.create(
+            const auth = await acmeAuthDAL.create(
               {
                 accountId: account.id,
                 status: AcmeAuthStatus.Pending,
@@ -391,6 +395,15 @@ export const pkiAcmeServiceFactory = ({
               },
               tx
             );
+            // TODO: support other challenge types here. Currently only HTTP-01 is supported.
+            await acmeChallengeDAL.create(
+              {
+                authId: auth.id,
+                type: AcmeChallengeType.HTTP_01
+              },
+              tx
+            );
+            return auth;
           } else {
             throw new AcmeUnsupportedIdentifierError({ detail: "Only DNS identifiers are supported" });
           }
