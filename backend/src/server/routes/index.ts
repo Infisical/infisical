@@ -75,6 +75,7 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
+import { pkiAcmeChallengeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-service";
 import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
@@ -1174,13 +1175,18 @@ export const registerRoutes = async (
     projectDAL
   });
 
+  const acmeChallengeService = pkiAcmeChallengeServiceFactory({
+    acmeAuthDAL,
+    acmeChallengeDAL
+  });
   const pkiAcmeService = pkiAcmeServiceFactory({
     certificateProfileDAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
     acmeOrderAuthDAL,
-    acmeChallengeDAL
+    acmeChallengeDAL,
+    acmeChallengeService
   });
 
   const pkiAlertService = pkiAlertServiceFactory({
