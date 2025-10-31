@@ -6,6 +6,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
+import { TPkiAcmeChallenges } from "@app/db/schemas";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
@@ -17,6 +18,7 @@ import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import {
   AcmeAccountDoesNotExistError,
   AcmeBadPublicKeyError,
+  AcmeError,
   AcmeMalformedError,
   AcmeServerInternalError,
   AcmeUnauthorizedError,
@@ -49,7 +51,6 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { TPkiAcmeChallenges } from "@app/db/schemas";
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
@@ -100,7 +101,7 @@ export const pkiAcmeServiceFactory = ({
     getJWK,
     schema
   }: {
-    url: string;
+    url: URL;
     rawJwsPayload: TRawJwsPayload;
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>;
     schema?: TSchema;
@@ -115,6 +116,9 @@ export const pkiAcmeServiceFactory = ({
         return await importJWK(jwk, protectedHeader.alg);
       });
     } catch (error) {
+      if (error instanceof AcmeError) {
+        throw error;
+      }
       if (error instanceof ZodError) {
         throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
       }
@@ -127,7 +131,7 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
-      if (protectedHeader.url !== url) {
+      if (new URL(protectedHeader.url).href !== url.href) {
         throw new AcmeUnauthorizedError({ detail: "URL mismatch in the protected header" });
       }
       // TODO: consume the nonce here
@@ -139,6 +143,9 @@ export const pkiAcmeServiceFactory = ({
         payload
       };
     } catch (error) {
+      if (error instanceof AcmeError) {
+        throw error;
+      }
       if (error instanceof ZodError) {
         throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
       }
@@ -151,7 +158,7 @@ export const pkiAcmeServiceFactory = ({
     url,
     rawJwsPayload
   }: {
-    url: string;
+    url: URL;
     rawJwsPayload: TRawJwsPayload;
   }): Promise<TJwsPayload<TCreateAcmeAccountPayload>> => {
     return await validateJwsPayload({
@@ -177,7 +184,7 @@ export const pkiAcmeServiceFactory = ({
     schema,
     expectedAccountId
   }: {
-    url: string;
+    url: URL;
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
     schema?: TSchema;
