@@ -16,4 +16,5 @@ Feature: Order
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.authorizations[0].uri with jq . should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/(.+)
+    Then the value order.authorizations[0] with jq .uri should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/(.+)
+    Then the value order.authorizations[0] with jq . should be equal to {}
