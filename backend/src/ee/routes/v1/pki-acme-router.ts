@@ -53,7 +53,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
 
   const sendAcmeResponse = async <T>(res: FastifyReply, profileId: string, response: TAcmeResponse<T>): Promise<T> => {
     res.code(response.status);
-    for (const [key, value] of Object.entries(response.headers)) {
+    for (const [key, value] of response.headers) {
       res.header(key, value);
     }
 
