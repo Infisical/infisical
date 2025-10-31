@@ -44,7 +44,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
               .groupBy(`${TableName.PkiAcmeOrder}.id`)
               // All auths should be valid for the order to be ready
               .havingRaw(
-                `SUM(CASE WHEN :authTable:.status = :authStatus: THEN 1 ELSE 0 END) = COUNT(DISTINCT :authTable:.id)`,
+                "SUM(CASE WHEN :authTable:.status = :authStatus THEN 1 ELSE 0 END) = COUNT(DISTINCT :authTable:.id)",
                 {
                   authTable: TableName.PkiAcmeAuth,
                   authStatus: AcmeAuthStatus.Valid
