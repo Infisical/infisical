@@ -204,14 +204,17 @@ The Infisical Secrets Operator integrates with the [Sprig library](https://githu
 
 ## Global configuration
 
-To configure global settings that will apply to all instances of `InfisicalSecret`, you can define these configurations in a Kubernetes ConfigMap.
-For example, you can configure all `InfisicalSecret` instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
+To configure global settings that will apply to all CRD instances (`InfisicalSecret`, `InfisicalPushSecret`, and `InfisicalDynamicSecret`), you can define these configurations in a Kubernetes ConfigMap.
+For example, you can configure all CRD instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
 
 ### Available global properties
 
 | Property | Description                                                                       | Default value                 |
 | -------- | --------------------------------------------------------------------------------- | ----------------------------- |
-| hostAPI  | If `hostAPI` in `InfisicalSecret` instance is left empty, this value will be used | https://app.infisical.com/api |
+| hostAPI  | If `hostAPI` in a CRD instance is left empty, this value will be used | https://app.infisical.com/api |
+| tls.caRef.secretName | If `tls.caRef.secretName` in a CRD instance is left empty, this value will be used | - |
+| tls.caRef.secretNamespace | If `tls.caRef.secretNamespace` in a CRD instance is left empty, this value will be used | - |
+| tls.caRef.key | If `tls.caRef.key` in a CRD instance is left empty, this value will be used | - |
 
 ### Applying global configurations
 
@@ -231,6 +234,9 @@ metadata:
   namespace: infisical-operator-system
 data:
   hostAPI: https://example.com/api # <-- global hostAPI
+  tls.caRef.secretName: custom-ca-certificate # <-- global TLS CA secret name
+  tls.caRef.secretNamespace: default # <-- global TLS CA secret namespace
+  tls.caRef.key: ca.crt # <-- global TLS CA secret key
 ```
 
 Then apply this change via kubectl by running the following
