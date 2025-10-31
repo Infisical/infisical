@@ -11,7 +11,7 @@ export const PkiAcmeAuthsSchema = z.object({
   id: z.string().uuid(),
   accountId: z.string().uuid(),
   status: z.string(),
-  token: z.date().nullable().optional(),
+  token: z.string().nullable().optional(),
   identifierType: z.string(),
   identifierValue: z.string(),
   expiresAt: z.date(),
