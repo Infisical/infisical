@@ -2,11 +2,10 @@ import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
-import { TPkiAcmeChallenges } from "@app/db/schemas";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
@@ -57,6 +56,7 @@ import {
   TGetAcmeDirectoryResponse,
   TJwsPayload,
   TListAcmeOrdersResponse,
+  TPkiAcmeChallengeServiceFactory,
   TPkiAcmeServiceFactory,
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
