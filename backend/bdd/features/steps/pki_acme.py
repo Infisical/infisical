@@ -301,3 +301,24 @@ def step_impl(context: Context, var_path: str, expected: str):
 def step_impl(context: Context, var_path: str):
     value = eval_var(context, var_path)
     print(json.dumps(value.json(), indent=2))
+
+
+@then(
+    "I select challenge with type {challenge_type} from {var_path} as {challenge_var}"
+)
+def step_impl(context: Context, challenge_type: str, var_path: str, challenge_var: str):
+    order = eval_var(context, var_path)
+    if not isinstance(order, messages.OrderResource):
+        raise ValueError(
+            f"Expected OrderResource but got {(type(order),)!r} at {var_path!r}"
+        )
+    auths = list(filter(lambda a: a.type == challenge_type, order.authorizations))
+    if not auths:
+        raise ValueError(
+            f"Authorization type {challenge_type!r} not found in {var_path!r}"
+        )
+    if len(auths) > 1:
+        raise ValueError(
+            f"More than one authorization for type {challenge_type!r} found in {var_path!r}"
+        )
+    context.vars[challenge_var] = auths[0]
