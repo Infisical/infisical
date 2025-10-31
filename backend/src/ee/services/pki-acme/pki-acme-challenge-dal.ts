@@ -25,34 +25,29 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
 
       if (updatedAuths.length > 0) {
         // Find all the orders that are involved in the challenge validation
-        const involvedOrderIds = await (tx || db)(TableName.PkiAcmeOrder)
-          .distinct("id")
-          .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
-          .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+        const involvedOrderIds = (tx || db)({ o: TableName.PkiAcmeOrder })
+          .distinct("o.id")
+          .join({ oa: TableName.PkiAcmeOrderAuth }, "o.id", "oa.orderId")
+          .join({ a: TableName.PkiAcmeAuth }, "oa.authId", `a.id`)
           .whereIn(
-            `${TableName.PkiAcmeAuth}.id`,
+            "a.id",
             updatedAuths.map((auth) => auth.id)
-          )
-          .as("involvedOrderIds");
+          );
         // Update status for pending orders that have all auths valid
         await (tx || db)(TableName.PkiAcmeOrder)
           .whereIn("id", (qb) => {
-            qb.select("id")
-              .from(TableName.PkiAcmeOrder)
-              .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
-              .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
-              .groupBy(`${TableName.PkiAcmeOrder}.id`)
+            qb.select("o2.id")
+              .from({ o2: TableName.PkiAcmeOrder })
+              .join({ oa2: TableName.PkiAcmeOrderAuth }, "o2.id", "oa2.orderId")
+              .join({ a2: TableName.PkiAcmeAuth }, "oa2.authId", "a2.id")
+              .groupBy("o2.id")
               // All auths should be valid for the order to be ready
-              .havingRaw(
-                "SUM(CASE WHEN :authTable:.status = :authStatus THEN 1 ELSE 0 END) = COUNT(DISTINCT :authTable:.id)",
-                {
-                  authTable: TableName.PkiAcmeAuth,
-                  authStatus: AcmeAuthStatus.Valid
-                }
-              )
+              .havingRaw("SUM(CASE WHEN a2.status = ? THEN 1 ELSE 0 END) = COUNT(DISTINCT a2.id)", [
+                AcmeAuthStatus.Valid
+              ])
               // Only update orders that are pending
-              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
-              .whereIn(`${TableName.PkiAcmeOrder}.id`, involvedOrderIds);
+              .where("o2.status", AcmeOrderStatus.Pending)
+              .whereIn("o2.id", involvedOrderIds);
           })
           .update({ status: AcmeOrderStatus.Ready });
       }
