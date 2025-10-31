@@ -6,7 +6,7 @@ import { getConfig } from "@app/lib/config/env";
 import { calculateJwkThumbprint } from "jose";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
-  acmeChallengeDAL: Pick<TPkiAcmeChallengeDALFactory, "transaction" | "findByIdWithAuthForUpdate">;
+  acmeChallengeDAL: Pick<TPkiAcmeChallengeDALFactory, "transaction" | "findByIdForChallengeValidation">;
 };
 
 export const pkiAcmeChallengeServiceFactory = ({
@@ -16,7 +16,7 @@ export const pkiAcmeChallengeServiceFactory = ({
 
   const validateChallengeResponse = async (challengeId: string): Promise<void> => {
     return await acmeChallengeDAL.transaction(async (tx) => {
-      const challenge = await acmeChallengeDAL.findByIdWithAuthForUpdate(challengeId, tx);
+      const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
       if (!challenge) {
         throw new NotFoundError({ message: "ACME challenge not found" });
       }
