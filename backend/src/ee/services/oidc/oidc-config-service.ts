@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import { Issuer, Issuer as OpenIdIssuer, Strategy as OpenIdStrategy, TokenSet } from "openid-client";
 
 import { AccessScope, OrganizationActionScope, OrgMembershipStatus, TableName, TUsers } from "@app/db/schemas";
@@ -15,6 +16,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, OidcAuthError } from "@app/lib/errors";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, AuthMethod, AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -471,7 +473,7 @@ export const oidcConfigServiceFactory = ({
         });
     }
 
-    return { isUserCompleted, providerAuthToken };
+    return { isUserCompleted, providerAuthToken, user };
   };
 
   const updateOidcCfg = async ({
@@ -754,10 +756,35 @@ export const oidcConfigServiceFactory = ({
           callbackPort,
           manageGroupMemberships: oidcCfg.manageGroupMemberships
         })
-          .then(({ isUserCompleted, providerAuthToken }) => {
+          .then(({ isUserCompleted, providerAuthToken, user }) => {
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.user.id": user.id,
+                "infisical.organization.id": org.id,
+                "infisical.organization.name": org.name,
+                "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
+                "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
+
             cb(null, { isUserCompleted, providerAuthToken });
           })
           .catch((error) => {
+            if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+              authAttemptCounter.add(1, {
+                "infisical.user.email": claims?.email?.toLowerCase(),
+                "infisical.organization.id": org.id,
+                "infisical.organization.name": org.name,
+                "infisical.auth.method": AuthAttemptAuthMethod.OIDC,
+                "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+                "client.address": requestContext.get("ip"),
+                "user_agent.original": requestContext.get("userAgent")
+              });
+            }
+
             cb(error);
           });
       }

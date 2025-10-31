@@ -210,6 +210,7 @@ export const identityAccessTokenServiceFactory = ({
       });
     }
     let orgId = "";
+    let orgName = "";
     let parentOrgId = "";
     const identityOrgDetails = await orgDAL.findOne({ id: identityAccessToken.identityScopeOrgId });
     const rootOrgId = identityOrgDetails.rootOrgId || identityOrgDetails.id;
@@ -229,8 +230,12 @@ export const identityAccessTokenServiceFactory = ({
         throw new BadRequestError({ message: "Identity does not belong to any organization" });
       }
       orgId = subOrganization.id;
+      orgName = subOrganization.name;
+
       parentOrgId = subOrganization.parentOrgId as string;
     } else {
+      const organization = await orgDAL.findOne({ id: rootOrgId });
+
       const identityOrgMembership = await membershipIdentityDAL.findOne({
         scope: AccessScope.Organization,
         actorIdentityId: identityAccessToken.identityId,
@@ -242,6 +247,7 @@ export const identityAccessTokenServiceFactory = ({
       }
 
       orgId = rootOrgId;
+      orgName = organization.name;
       parentOrgId = rootOrgId;
     }
 
@@ -253,7 +259,7 @@ export const identityAccessTokenServiceFactory = ({
     await validateAccessTokenExp({ ...identityAccessToken, accessTokenNumUses });
 
     await accessTokenQueue.updateIdentityAccessTokenStatus(identityAccessToken.id, Number(accessTokenNumUses) + 1);
-    return { ...identityAccessToken, orgId, rootOrgId, parentOrgId };
+    return { ...identityAccessToken, orgId, rootOrgId, parentOrgId, orgName };
   };
 
   return { renewAccessToken, revokeAccessToken, fnValidateIdentityAccessToken };
