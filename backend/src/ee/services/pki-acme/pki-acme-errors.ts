@@ -434,3 +434,27 @@ export class AcmeUserActionRequiredError extends AcmeError {
     };
   }
 }
+
+/**
+ * incorrectResponse - The response is incorrect (RFC 8555 Section 6.7.16)
+ */
+export class AcmeIncorrectResponseError extends AcmeError {
+  constructor({
+    detail = "The response is incorrect",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: "incorrectResponse",
+      detail,
+      status: 400,
+      error,
+      message
+    });
+    this.name = "AcmeIncorrectResponseError";
+  }
+}

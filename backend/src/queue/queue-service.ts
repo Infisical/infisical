@@ -42,7 +42,6 @@ import {
 } from "@app/services/secret-sync/secret-sync-types";
 import { CacheType } from "@app/services/super-admin/super-admin-types";
 import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
-import { TValidateAcmeChallengeResponseDTO } from "@app/ee/services/pki-acme/pki-acme-challenge-queue";
 
 export enum QueueName {
   SecretRotation = "secret-rotation",
@@ -80,8 +79,7 @@ export enum QueueName {
   UserNotification = "user-notification",
   HealthAlert = "health-alert",
   CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
-  PamAccountRotation = "pam-account-rotation",
-  PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
+  PamAccountRotation = "pam-account-rotation"
 }
 
 export enum QueueJobs {
@@ -132,8 +130,7 @@ export enum QueueJobs {
   UserNotification = "user-notification-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
-  PamAccountRotation = "pam-account-rotation",
-  ValidateAcmeChallengeResponse = "validate-acme-challenge-response"
+  PamAccountRotation = "pam-account-rotation"
 }
 
 export type TQueueJobTypes = {
@@ -371,10 +368,6 @@ export type TQueueJobTypes = {
   [QueueName.PamAccountRotation]: {
     name: QueueJobs.PamAccountRotation;
     payload: undefined;
-  };
-  [QueueName.PkiAcmeChallengeValidation]: {
-    name: QueueJobs.ValidateAcmeChallengeResponse;
-    payload: TValidateAcmeChallengeResponseDTO;
   };
 };
 

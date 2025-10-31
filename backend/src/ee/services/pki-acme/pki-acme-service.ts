@@ -75,6 +75,7 @@ type TPkiAcmeServiceFactoryDep = {
     TPkiAcmeChallengeDALFactory,
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
+  acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -83,7 +84,8 @@ export const pkiAcmeServiceFactory = ({
   acmeOrderDAL,
   acmeAuthDAL,
   acmeOrderAuthDAL,
-  acmeChallengeDAL
+  acmeChallengeDAL,
+  acmeChallengeService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findById(profileId);
@@ -610,35 +612,7 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "ACME challenge not found" });
     }
     const challenge = await acmeChallengeDAL.transaction(async (tx) => {
-      const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
-      if (!challenge) {
-        throw new NotFoundError({ message: "ACME challenge not found" });
-      }
-      if (challenge.status !== AcmeChallengeStatus.Pending) {
-        // Ideally this should be an ACME error, but RFC 8555 doesn't say much about corner cases like this...
-        throw new BadRequestError({
-          message: `ACME challenge is ${challenge.status} instead of ${AcmeChallengeStatus.Pending}`
-        });
-      }
-      if (challenge.auth.expiresAt < new Date()) {
-        throw new BadRequestError({ message: "ACME auth has expired" });
-      }
-      if (challenge.auth.status !== AcmeAuthStatus.Pending) {
-        throw new BadRequestError({
-          message: `ACME auth status is ${challenge.auth.status} instead of ${AcmeAuthStatus.Pending}`
-        });
-      }
-      if (!challenge.auth.token) {
-        throw new AcmeServerInternalError({ message: "ACME challenge token is required" });
-      }
-      if (challenge.type !== AcmeChallengeType.HTTP_01) {
-        throw new BadRequestError({ message: "Only HTTP-01 challenges are supported for now" });
-      }
-      const updatedChallenge = await acmeChallengeDAL.updateById(
-        challengeId,
-        { status: AcmeChallengeStatus.Pending },
-        tx
-      );
+      await acmeChallengeService.validateChallengeResponse(challengeId, tx);
       return {
         ...challenge,
         ...updatedChallenge

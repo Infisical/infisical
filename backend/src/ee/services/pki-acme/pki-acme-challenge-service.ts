@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
+import { AcmeIncorrectResponseError } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
@@ -62,7 +63,7 @@ export const pkiAcmeChallengeServiceFactory = ({
         const thumbprint = Buffer.from(challenge.auth.account.publicKeyThumbprint, "utf-8").toString("base64url");
         const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
         if (challengeResponseBody !== expectedChallengeResponseBody) {
-          throw new BadRequestError({ message: "ACME challenge response is not correct" });
+          throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
         }
         await acmeChallengeDAL.updateById(
           challengeId,
@@ -70,12 +71,13 @@ export const pkiAcmeChallengeServiceFactory = ({
           tx
         );
         await acmeAuthDAL.updateById(challenge.auth.account.id, { status: AcmeAuthStatus.Valid }, tx);
-        await acmeAuthDAL.updateById(challenge.auth.account.id, { status: AcmeAuthStatus.Valid }, tx);
+        // TODO: trigger a check for order status as well
       } catch (error) {
         logger.error(error, "Error validating ACME challenge response");
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
         await acmeChallengeDAL.updateById(challengeId, { status: AcmeChallengeStatus.Invalid }, tx);
         await acmeAuthDAL.updateById(challenge.auth.account.id, { status: AcmeAuthStatus.Invalid }, tx);
+        // TODO: trigger a check for order status as well
         throw error;
       }
     });
