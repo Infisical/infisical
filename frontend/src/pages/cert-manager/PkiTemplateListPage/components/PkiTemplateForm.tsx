@@ -140,10 +140,10 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage),
+            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())),
           extendedKeyUsages: Object.entries(extendedKeyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertExtendedKeyUsage)
+            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
         });
 
         createNotification({
@@ -160,10 +160,10 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage),
+            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())),
           extendedKeyUsages: Object.entries(extendedKeyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key as CertExtendedKeyUsage)
+            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
         });
 
         createNotification({

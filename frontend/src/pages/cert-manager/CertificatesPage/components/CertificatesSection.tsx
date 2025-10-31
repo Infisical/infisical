@@ -7,8 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -24,10 +23,10 @@ import { CertificatesTable } from "./CertificatesTable";
 
 export const CertificatesSection = () => {
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
   const { mutateAsync: deleteCert } = useDeleteCert();
 
-  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
+  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
+  const isLegacyTemplatesEnabled = true;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "certificateIssuance",
