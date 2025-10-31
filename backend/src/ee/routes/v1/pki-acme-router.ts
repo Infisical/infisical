@@ -424,7 +424,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   // Respond to Challenge (RFC 8555 Section 7.5.1)
   server.route({
     method: "POST",
-    url: "/profiles/:profileId/authorizations/:authzId/challenges/http-01",
+    url: "/profiles/:profileId/authorizations/:authzId/challenges/:challengeId",
     config: {
       rateLimit: writeLimit
     },
@@ -433,7 +433,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiAcme],
       description: "ACME Respond to Challenge - let ACME server know challenge is ready",
       params: SharedParamsSchema.extend({
-        authzId: z.string().uuid()
+        authzId: z.string().uuid(),
+        challengeId: z.string().uuid()
       }),
       response: {
         200: RespondToAcmeChallengeResponseSchema
@@ -447,9 +448,13 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       return sendAcmeResponse(
         res,
         profileId,
-        await server.services.pkiAcme.respondToAcmeChallenge({ profileId, authzId: req.params.authzId })
+        await server.services.pkiAcme.respondToAcmeChallenge({
+          profileId,
+          accountId,
+          authzId: req.params.authzId,
+          challengeId: req.params.challengeId
+        })
       );
-      return challenge;
     }
   });
 };
