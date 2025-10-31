@@ -50,6 +50,8 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
                   authStatus: AcmeAuthStatus.Valid
                 }
               )
+              // Only update orders that are pending
+              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
               .whereIn(`${TableName.PkiAcmeOrder}.id`, involvedOrderIds);
           })
           .update({ status: AcmeOrderStatus.Ready });
