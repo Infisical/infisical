@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { TPkiAcmeChallenges } from "@app/db/schemas";
 import { JWSHeaderParameters } from "jose";
 import {
   AcmeOrderResourceSchema,
