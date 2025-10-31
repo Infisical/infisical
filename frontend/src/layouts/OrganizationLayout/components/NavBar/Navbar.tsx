@@ -146,9 +146,7 @@ export const Navbar = () => {
 
   const isCardDeclined = Boolean(subscription?.cardDeclined);
   const isCardDeclinedMoreThan30Days = Boolean(
-    isCardDeclined &&
-      subscription?.cardDeclinedDays !== undefined &&
-      subscription?.cardDeclinedDays >= 30
+    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
   );
 
   const { data: orgs } = useGetOrganizations();
