@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import slugify from "@sindresorhus/slugify";
 
 import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -29,6 +30,7 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -151,6 +153,7 @@ export const identityLdapAuthServiceFactory = ({
   };
 
   const login = async ({ identityId }: TLoginLdapAuthDTO) => {
+    const appCfg = getConfig();
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
     if (!identityLdapAuth) {
@@ -162,6 +165,7 @@ export const identityLdapAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityLdapAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
+    const org = await orgDAL.findById(identity.orgId);
     const plan = await licenseService.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -170,44 +174,72 @@ export const identityLdapAuthServiceFactory = ({
       });
     }
 
-    const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        { lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH, lastLoginTime: new Date() },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+    try {
+      const identityAccessToken = await identityLdapAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          { lastLoginAuthMethod: IdentityAuthMethod.LDAP_AUTH, lastLoginTime: new Date() },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityLdapAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityLdapAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.LDAP_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityLdapAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityLdapAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.LDAP_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityLdapAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityLdapAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    return { accessToken, identityLdapAuth, identityAccessToken, identity };
+      return { accessToken, identityLdapAuth, identityAccessToken, identity };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityLdapAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.LDAP_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachLdapAuth = async ({

@@ -68,6 +68,7 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
+import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -113,6 +114,11 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
+import {
+  getNorthflankConnectionListItem,
+  NorthflankConnectionMethod,
+  validateNorthflankConnectionCredentials
+} from "./northflank";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -142,7 +148,6 @@ import {
   WindmillConnectionMethod
 } from "./windmill";
 import { getZabbixConnectionListItem, validateZabbixConnectionCredentials, ZabbixConnectionMethod } from "./zabbix";
-import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 
 const SECRET_SYNC_APP_CONNECTION_MAP = Object.fromEntries(
   Object.entries(SECRET_SYNC_CONNECTION_MAP).map(([key, value]) => [value, key])
@@ -204,6 +209,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
+    getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
     getChefConnectionListItem()
@@ -334,10 +340,11 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -379,6 +386,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return "API Token";
@@ -477,6 +485,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
+  [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,

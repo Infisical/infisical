@@ -1,4 +1,4 @@
-import { requestContext } from "@fastify/request-context";
+import { requestContext, RequestContextData } from "@fastify/request-context";
 import { FastifyRequest } from "fastify";
 import fp from "fastify-plugin";
 import type { JwtPayload } from "jsonwebtoken";
@@ -159,10 +159,11 @@ export const injectIdentity = fp(
 
       switch (authMode) {
         case AuthMode.JWT: {
-          const { user, tokenVersionId, orgId, rootOrgId, parentOrgId } =
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
             await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
           requestContext.set("orgId", orgId);
-
+          requestContext.set("orgName", orgName);
+          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.JWT,
             user,
@@ -186,6 +187,7 @@ export const injectIdentity = fp(
           );
           const serverCfg = await getServerCfg();
           requestContext.set("orgId", identity.orgId);
+          requestContext.set("orgName", identity.orgName);
           req.auth = {
             authMode: AuthMode.IDENTITY_ACCESS_TOKEN,
             actor,
@@ -198,24 +200,23 @@ export const injectIdentity = fp(
             isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
             token
           };
+          const identityAuthInfo: RequestContextData["identityAuthInfo"] = {
+            identityId: identity.identityId,
+            identityName: identity.name,
+            authMethod: identity.authMethod
+          };
+
           if (token?.identityAuth?.oidc) {
-            requestContext.set("identityAuthInfo", {
-              identityId: identity.identityId,
-              oidc: token?.identityAuth?.oidc
-            });
+            identityAuthInfo.oidc = token?.identityAuth?.oidc;
           }
           if (token?.identityAuth?.kubernetes) {
-            requestContext.set("identityAuthInfo", {
-              identityId: identity.identityId,
-              kubernetes: token?.identityAuth?.kubernetes
-            });
+            identityAuthInfo.kubernetes = token?.identityAuth?.kubernetes;
           }
           if (token?.identityAuth?.aws) {
-            requestContext.set("identityAuthInfo", {
-              identityId: identity.identityId,
-              aws: token?.identityAuth?.aws
-            });
+            identityAuthInfo.aws = token?.identityAuth?.aws;
           }
+
+          requestContext.set("identityAuthInfo", identityAuthInfo);
           break;
         }
         case AuthMode.SERVICE_TOKEN: {

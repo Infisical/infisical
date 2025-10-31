@@ -39,7 +39,8 @@ export enum AppConnection {
   Okta = "okta",
   Redis = "redis",
   LaravelForge = "laravel-forge",
-  Chef = "chef"
+  Chef = "chef",
+  Northflank = "northflank"
 }
 
 export enum AWSRegion {

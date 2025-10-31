@@ -2348,6 +2348,9 @@ export const AppConnections = {
     RAILWAY: {
       apiToken: "The API token used to authenticate with Railway."
     },
+    NORTHFLANK: {
+      apiToken: "The API token used to authenticate with Northflank."
+    },
     CHECKLY: {
       apiKey: "The API key used to authenticate with Checkly."
     },
@@ -2630,6 +2633,12 @@ export const SecretSyncs = {
     CHEF: {
       dataBagName: "The name of the Chef data bag to sync secrets to.",
       dataBagItemName: "The name of the Chef data bag item to sync secrets to."
+    },
+    NORTHFLANK: {
+      projectId: "The ID of the Northflank project to sync secrets to.",
+      projectName: "The name of the Northflank project to sync secrets to.",
+      secretGroupId: "The ID of the Northflank secret group to sync secrets to.",
+      secretGroupName: "The name of the Northflank secret group to sync secrets to."
     }
   }
 };

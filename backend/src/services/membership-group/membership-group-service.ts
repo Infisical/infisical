@@ -1,5 +1,15 @@
-import { AccessScope, ProjectMembershipRole, TemporaryPermissionMode, TMembershipRolesInsert } from "@app/db/schemas";
+import {
+  AccessScope,
+  ProjectMembershipRole,
+  TableName,
+  TemporaryPermissionMode,
+  TMembershipRolesInsert
+} from "@app/db/schemas";
+import { TAccessApprovalPolicyApproverDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-approver-dal";
+import { TAccessApprovalPolicyDALFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TSecretApprovalPolicyApproverDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-approver-dal";
+import { TSecretApprovalPolicyDALFactory } from "@app/ee/services/secret-approval-policy/secret-approval-policy-dal";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { groupBy } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -23,6 +33,10 @@ import { newProjectMembershipGroupFactory } from "./project/project-membership-g
 type TMembershipGroupServiceFactoryDep = {
   membershipGroupDAL: TMembershipGroupDALFactory;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "insertMany" | "delete">;
+  accessApprovalPolicyDAL: Pick<TAccessApprovalPolicyDALFactory, "find">;
+  accessApprovalPolicyApproverDAL: Pick<TAccessApprovalPolicyApproverDALFactory, "find">;
+  secretApprovalPolicyDAL: Pick<TSecretApprovalPolicyDALFactory, "find">;
+  secretApprovalPolicyApproverDAL: Pick<TSecretApprovalPolicyApproverDALFactory, "find">;
   roleDAL: Pick<TRoleDALFactory, "find">;
   permissionService: TPermissionServiceFactory;
   orgDAL: TOrgDALFactory;
@@ -33,6 +47,10 @@ export type TMembershipGroupServiceFactory = ReturnType<typeof membershipGroupSe
 export const membershipGroupServiceFactory = ({
   membershipGroupDAL,
   roleDAL,
+  accessApprovalPolicyDAL,
+  accessApprovalPolicyApproverDAL,
+  secretApprovalPolicyDAL,
+  secretApprovalPolicyApproverDAL,
   membershipRoleDAL,
   orgDAL,
   permissionService
@@ -267,6 +285,48 @@ export const membershipGroupServiceFactory = ({
       throw new BadRequestError({
         message: "You can't delete your own membership"
       });
+
+    const accessApprovalPolicyApprovers = await accessApprovalPolicyApproverDAL.find({
+      approverGroupId: dto.selector.groupId
+    });
+
+    // check if group is assigned to any access approval policy
+    const accessApprovalPolicyApproverGroupIds = accessApprovalPolicyApprovers.map(({ policyId }) => policyId);
+    if (accessApprovalPolicyApprovers.length > 0) {
+      const accessApprovalPolicies = await accessApprovalPolicyDAL.find({
+        $in: {
+          [`${TableName.AccessApprovalPolicy}.id` as "id"]: [...new Set(accessApprovalPolicyApproverGroupIds)]
+        },
+        projectId: existingMembership.scopeProjectId ?? undefined,
+        deletedAt: null
+      });
+
+      if (accessApprovalPolicies.length > 0) {
+        throw new BadRequestError({
+          message: "This group is assigned to an approval policy and cannot be deleted"
+        });
+      }
+    }
+
+    // check if group is assigned to any secret approval policy
+    const secretApprovalPolicyApprovers = await secretApprovalPolicyApproverDAL.find({
+      approverGroupId: dto.selector.groupId
+    });
+    const secretApprovalPolicyApproverGroupIds = secretApprovalPolicyApprovers.map(({ policyId }) => policyId);
+    if (secretApprovalPolicyApprovers.length > 0) {
+      const secretApprovalPolicies = await secretApprovalPolicyDAL.find({
+        $in: {
+          [`${TableName.SecretApprovalPolicy}.id` as "id"]: [...new Set(secretApprovalPolicyApproverGroupIds)]
+        },
+        projectId: existingMembership.scopeProjectId ?? undefined,
+        deletedAt: null
+      });
+      if (secretApprovalPolicies.length > 0) {
+        throw new BadRequestError({
+          message: "This group is assigned to a secret approval policy and cannot be deleted"
+        });
+      }
+    }
 
     const membershipDoc = await membershipGroupDAL.transaction(async (tx) => {
       await membershipRoleDAL.delete({ membershipId: existingMembership.id }, tx);

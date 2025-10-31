@@ -27,6 +27,7 @@ import { TLdapConnection } from "./ldap-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TNetlifyConnection } from "./netlify-connection";
+import { TNorthflankConnection } from "./northflank-connection";
 import { TOCIConnection } from "./oci-connection";
 import { TOktaConnection } from "./okta-connection";
 import { TOracleDBConnection } from "./oracledb-connection";
@@ -67,6 +68,8 @@ export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
+export * from "./netlify-connection";
+export * from "./northflank-connection";
 export * from "./oci-connection";
 export * from "./okta-connection";
 export * from "./oracledb-connection";
@@ -121,6 +124,7 @@ export type TAppConnection =
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
+  | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
   | TChefConnection;

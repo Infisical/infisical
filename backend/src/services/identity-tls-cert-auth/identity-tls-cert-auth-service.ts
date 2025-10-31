@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -19,6 +20,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -27,6 +29,7 @@ import { TIdentityAccessTokenJwtPayload } from "../identity-access-token/identit
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { KmsDataKey } from "../kms/kms-types";
 import { TMembershipIdentityDALFactory } from "../membership-identity/membership-identity-dal";
+import { TOrgDALFactory } from "../org/org-dal";
 import { validateIdentityUpdateForSuperAdminPrivileges } from "../super-admin/super-admin-fns";
 import { TIdentityTlsCertAuthDALFactory } from "./identity-tls-cert-auth-dal";
 import { TIdentityTlsCertAuthServiceFactory } from "./identity-tls-cert-auth-types";
@@ -42,6 +45,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  orgDAL: Pick<TOrgDALFactory, "findById">;
 };
 
 const parseSubjectDetails = (data: string) => {
@@ -60,9 +64,11 @@ export const identityTlsCertAuthServiceFactory = ({
   membershipIdentityDAL,
   licenseService,
   permissionService,
-  kmsService
+  kmsService,
+  orgDAL
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
   const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({ identityId, clientCertificate }) => {
+    const appCfg = getConfig();
     const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
     if (!identityTlsCertAuth) {
       throw new NotFoundError({
@@ -73,94 +79,124 @@ export const identityTlsCertAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityTlsCertAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identity.orgId
-    });
+    const org = await orgDAL.findById(identity.orgId);
 
-    const caCertificate = decryptor({
-      cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
-    }).toString();
-
-    const leafCertificate = extractX509CertFromChain(decodeURIComponent(clientCertificate))?.[0];
-    if (!leafCertificate) {
-      throw new BadRequestError({ message: "Missing client certificate" });
-    }
-
-    const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
-    const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
-
-    const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
-    if (!isValidCertificate)
-      throw new UnauthorizedError({
-        message: "Access denied: Certificate not issued by the provided CA."
+    try {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: identity.orgId
       });
 
-    if (new Date(clientCertificateX509.validTo) < new Date()) {
-      throw new UnauthorizedError({
-        message: "Access denied: Certificate has expired."
-      });
-    }
+      const caCertificate = decryptor({
+        cipherTextBlob: identityTlsCertAuth.encryptedCaCertificate
+      }).toString();
 
-    if (new Date(clientCertificateX509.validFrom) > new Date()) {
-      throw new UnauthorizedError({
-        message: "Access denied: Certificate not yet valid."
-      });
-    }
+      const leafCertificate = extractX509CertFromChain(decodeURIComponent(clientCertificate))?.[0];
+      if (!leafCertificate) {
+        throw new BadRequestError({ message: "Missing client certificate" });
+      }
 
-    const subjectDetails = parseSubjectDetails(clientCertificateX509.subject);
-    if (identityTlsCertAuth.allowedCommonNames) {
-      const isValidCommonName = identityTlsCertAuth.allowedCommonNames.split(",").includes(subjectDetails.CN);
-      if (!isValidCommonName) {
+      const clientCertificateX509 = new crypto.nativeCrypto.X509Certificate(leafCertificate);
+      const caCertificateX509 = new crypto.nativeCrypto.X509Certificate(caCertificate);
+
+      const isValidCertificate = clientCertificateX509.verify(caCertificateX509.publicKey);
+      if (!isValidCertificate)
         throw new UnauthorizedError({
-          message: "Access denied: TLS Certificate Auth common name not allowed."
+          message: "Access denied: Certificate not issued by the provided CA."
+        });
+
+      if (new Date(clientCertificateX509.validTo) < new Date()) {
+        throw new UnauthorizedError({
+          message: "Access denied: Certificate has expired."
         });
       }
-    }
 
-    // Generate the token
-    const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        { lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH, lastLoginTime: new Date() },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+      if (new Date(clientCertificateX509.validFrom) > new Date()) {
+        throw new UnauthorizedError({
+          message: "Access denied: Certificate not yet valid."
+        });
+      }
+
+      const subjectDetails = parseSubjectDetails(clientCertificateX509.subject);
+      if (identityTlsCertAuth.allowedCommonNames) {
+        const isValidCommonName = identityTlsCertAuth.allowedCommonNames.split(",").includes(subjectDetails.CN);
+        if (!isValidCommonName) {
+          throw new UnauthorizedError({
+            message: "Access denied: TLS Certificate Auth common name not allowed."
+          });
+        }
+      }
+
+      // Generate the token
+      const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          { lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH, lastLoginTime: new Date() },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityTlsCertAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityTlsCertAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityTlsCertAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.TLS_CERT_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityTlsCertAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityTlsCertAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.TLS_CERT_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    return {
-      identityTlsCertAuth,
-      accessToken,
-      identityAccessToken,
-      identity
-    };
+      return {
+        identityTlsCertAuth,
+        accessToken,
+        identityAccessToken,
+        identity
+      };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityTlsCertAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.TLS_CERT_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachTlsCertAuth: TIdentityTlsCertAuthServiceFactory["attachTlsCertAuth"] = async ({

@@ -169,6 +169,12 @@ import {
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
 import {
+  TNorthflankConnection,
+  TNorthflankConnectionConfig,
+  TNorthflankConnectionInput,
+  TValidateNorthflankConnectionCredentialsSchema
+} from "./northflank";
+import {
   TOktaConnection,
   TOktaConnectionConfig,
   TOktaConnectionInput,
@@ -279,6 +285,7 @@ export type TAppConnection = { id: string } & (
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
+  | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
   | TChefConnection
@@ -327,6 +334,7 @@ export type TAppConnectionInput = { id: string } & (
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
+  | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
   | TChefConnectionInput
@@ -393,6 +401,7 @@ export type TAppConnectionConfig =
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
+  | TNorthflankConnectionConfig
   | TOktaConnectionConfig
   | TRedisConnectionConfig
   | TChefConnectionConfig;
@@ -436,6 +445,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
+  | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
   | TValidateRedisConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema;

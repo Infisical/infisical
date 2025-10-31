@@ -36,6 +36,7 @@ export enum AppConnection {
   Supabase = "supabase",
   DigitalOcean = "digital-ocean",
   Netlify = "netlify",
+  Northflank = "northflank",
   Okta = "okta",
   Redis = "redis",
   LaravelForge = "laravel-forge",

@@ -608,6 +608,10 @@ export const registerRoutes = async (
   const membershipGroupService = membershipGroupServiceFactory({
     membershipGroupDAL,
     membershipRoleDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    secretApprovalPolicyDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
     orgDAL
@@ -1705,7 +1709,8 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({

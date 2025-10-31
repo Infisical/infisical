@@ -194,6 +194,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.workspaceSlug;
       secondaryText = destinationConfig.repositorySlug;
       break;
+    case SecretSync.Northflank:
+      primaryText = destinationConfig.projectName || destinationConfig.projectId;
+      secondaryText = destinationConfig.secretGroupName || destinationConfig.secretGroupId;
+      break;
     case SecretSync.LaravelForge:
       primaryText = destinationConfig.siteName || destinationConfig.siteId;
       secondaryText = destinationConfig.orgName || destinationConfig.orgSlug;

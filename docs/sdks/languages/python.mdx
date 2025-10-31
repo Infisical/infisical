@@ -72,6 +72,7 @@ The SDK methods are organized into the following high-level categories:
 1. `auth`: Handles authentication methods.
 2. `secrets`: Manages CRUD operations for secrets.
 3. `kms`: Perform cryptographic operations with Infisical KMS.
+4. `folders`: Manages folder-related operations.
 
 ### `auth`
 
@@ -416,3 +417,65 @@ decrypted_data = client.kms.decrypt_data(
 
 **Returns:**
 - `str`: The base64 encoded plaintext.
+
+### `folders`
+
+This sub-class handles operations related to folders:
+
+#### List Folders
+
+```python
+folders = client.folders.list_folders(
+    project_id="<project-id>",
+    environment_slug="dev",
+    path="/",
+    recursive=False, # Optional
+    last_secret_modified=None # Optional
+)
+```
+
+**Parameters:**
+- `project_id` (str): The ID of your project.
+- `environment_slug` (str): The environment in which to list folders.
+- `path` (str): The path to list folders from.
+- `recursive` (bool, optional): Whether to list folders recursively from the specified path and downwards. Defaults to `False`.
+- `last_secret_modified` (datetime, optional): The timestamp used to filter folders with secrets modified after the specified date. Defaults to `None`.
+
+**Returns:**
+- `ListFoldersResponse`: The response containing the list of folders.
+
+#### Create Folder
+
+```python
+new_folder = client.folders.create_folder(
+    name="my-folder",
+    environment_slug="dev",
+    project_id="<project-id>",
+    path="/", # Optional
+    description=None # Optional
+)
+```
+
+**Parameters:**
+- `name` (str): The name of the folder to create.
+- `environment_slug` (str): The slug of the environment to create the folder in.
+- `project_id` (str): The ID of your project to create the folder in.
+- `path` (str, optional): The path to create the folder in. Defaults to `/`.
+- `description` (str, optional): An optional description label for the folder. Defaults to `None`.
+
+**Returns:**
+- `CreateFolderResponseItem`: The response containing the created folder.
+
+#### Get Folder by ID
+
+```python
+folder = client.folders.get_folder_by_id(
+    id="<folder-id>"
+)
+```
+
+**Parameters:**
+- `id` (str): The ID of the folder to retrieve.
+
+**Returns:**
+- `SingleFolderResponseItem`: The response containing the folder details.
