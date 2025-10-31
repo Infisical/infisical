@@ -388,7 +388,7 @@ export const pkiAcmeServiceFactory = ({
     //       if we do, return the existing order
 
     const order = await acmeOrderDAL.transaction(async (tx) => {
-      const account = await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId)!;
+      const account = (await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId))!;
       const createdOrder = await acmeOrderDAL.create(
         {
           accountId: account.id,
@@ -585,7 +585,7 @@ export const pkiAcmeServiceFactory = ({
             type: challenge.type,
             url: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challenge.id}`),
             status: challenge.status,
-            token: auth.token
+            token: auth.token!
           };
         })
       },
