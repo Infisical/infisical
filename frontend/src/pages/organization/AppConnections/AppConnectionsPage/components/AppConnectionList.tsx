@@ -72,6 +72,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
 
           return (
             <button
+              key={option.app}
               type="button"
               onClick={() =>
                 enterprise && !subscription.enterpriseAppConnections
