@@ -5,7 +5,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
-import { AcmeIncorrectResponseError } from "./pki-acme-errors";
+import { AcmeConnectionError, AcmeDnsFailureError, AcmeIncorrectResponseError } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 import { TPkiAcmeChallenges } from "@app/db/schemas";
@@ -25,7 +25,7 @@ export const pkiAcmeChallengeServiceFactory = ({
   const appCfg = getConfig();
 
   const validateChallengeResponse = async (challengeId: string): Promise<void> => {
-    return await acmeChallengeDAL.transaction(async (tx) => {
+    const error = await acmeChallengeDAL.transaction(async (tx) => {
       logger.info({ challengeId }, "Validating ACME challenge response");
       const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
       if (!challenge) {
@@ -54,6 +54,7 @@ export const pkiAcmeChallengeServiceFactory = ({
         ? `${baseUrl}:${appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_PORT}`
         : baseUrl;
       const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, actualBaseUrl);
+      logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
       try {
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
         //         a long running operation for long time. But assuming we are not performing a tons of
@@ -66,17 +67,34 @@ export const pkiAcmeChallengeServiceFactory = ({
         const challengeResponseBody = await challengeResponse.text();
         const thumbprint = Buffer.from(challenge.auth.account.publicKeyThumbprint, "utf-8").toString("base64url");
         const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
-        if (challengeResponseBody !== expectedChallengeResponseBody) {
+        if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
           throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
         }
         await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
       } catch (error) {
-        logger.error(error, "Error validating ACME challenge response");
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
         await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
-        throw error;
+        // Properly type and inspect the error
+        if (error instanceof TypeError && error.message.includes("fetch failed")) {
+          const cause = error.cause as AggregateError;
+          if (cause?.errors?.[0]?.code === "ECONNREFUSED") {
+            logger.error(error, "Connection refused.");
+            return new AcmeConnectionError({ message: "Connection refused." });
+          } else if (cause?.errors?.[0]?.code === "ENOTFOUND") {
+            logger.error(error, "Hostname could not be resolved (DNS failure).");
+            return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)." });
+          }
+        } else if (error instanceof Error) {
+          logger.error(error, "Error validating ACME challenge response");
+        } else {
+          logger.error(error, "Unknown error validating ACME challenge response");
+        }
+        return error;
       }
     });
+    if (error) {
+      throw error;
+    }
   };
 
   return { validateChallengeResponse };
