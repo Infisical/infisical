@@ -416,10 +416,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // TODO: replace with verify ACME signature here instead
     // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({
-        req,
-        schema: GetAcmeAuthorizationBodySchema
-      });
+      const { profileId, accountId, payload } = await validateExistingAccount({ req });
       if (payload !== "") {
         throw new AcmeMalformedError({ detail: "Payload should be empty" });
       }
