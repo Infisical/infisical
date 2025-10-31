@@ -24,6 +24,16 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         .returning("id");
 
       if (updatedAuths.length > 0) {
+        // Find all the orders that are involved in the challenge validation
+        const involvedOrderIds = await (tx || db)(TableName.PkiAcmeOrder)
+          .distinct("id")
+          .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
+          .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+          .whereIn(
+            `${TableName.PkiAcmeAuth}.id`,
+            updatedAuths.map((auth) => auth.id)
+          )
+          .as("involvedOrderIds");
         // Update status for pending orders that have all auths valid
         await (tx || db)(TableName.PkiAcmeOrder)
           .whereIn("id", (qb) => {
@@ -40,12 +50,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
                   authStatus: AcmeAuthStatus.Valid
                 }
               )
-              // We only update orders that are pending
-              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
-              .whereIn(
-                `${TableName.PkiAcmeAuth}.id`,
-                updatedAuths.map((auth) => auth.id)
-              );
+              .whereIn(`${TableName.PkiAcmeOrder}.id`, involvedOrderIds);
           })
           .update({ status: AcmeOrderStatus.Ready });
       }
@@ -62,7 +67,32 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         .where({ id })
         .update({ status: AcmeChallengeStatus.Valid, validatedAt: new Date() })
         .returning("*")) as [TPkiAcmeChallenges];
-      // TODO:
+
+      // Update pending auth to valid as well
+      const updatedAuths = await (tx || db)(TableName.PkiAcmeAuth)
+        .where({ id: challenge.authId, status: AcmeAuthStatus.Pending })
+        .update({ status: AcmeAuthStatus.Invalid })
+        .returning("id");
+
+      if (updatedAuths.length > 0) {
+        // Update status for pending orders that have all auths valid
+        await (tx || db)(TableName.PkiAcmeOrder)
+          .whereIn("id", (qb) => {
+            qb.select("id")
+              .from(TableName.PkiAcmeOrder)
+              .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
+              .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+              // We only update orders that are pending
+              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
+              .whereIn(
+                `${TableName.PkiAcmeAuth}.id`,
+                updatedAuths.map((auth) => auth.id)
+              );
+          })
+          .update({ status: AcmeOrderStatus.Invalid });
+      }
+
+      // TODO: update order status to invalid as well
       return challenge;
     } catch (error) {
       throw new DatabaseError({ error, name: "Update certificate profile" });
