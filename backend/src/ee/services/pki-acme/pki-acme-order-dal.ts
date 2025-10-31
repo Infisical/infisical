@@ -1,7 +1,7 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TPkiAcmeAuths, TPkiAcmeOrderAuths } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
 
@@ -13,8 +13,16 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
   const findByAccountAndOrderIdWithAuthorizations = async (accountId: string, orderId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db)(TableName.PkiAcmeOrder)
-        .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrderAuth}.orderId`, `${TableName.PkiAcmeOrder}.id`)
-        .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+        .join<TPkiAcmeOrderAuths>(
+          TableName.PkiAcmeOrderAuth,
+          `${TableName.PkiAcmeOrderAuth}.orderId`,
+          `${TableName.PkiAcmeOrder}.id`
+        )
+        .join<TPkiAcmeAuths>(
+          TableName.PkiAcmeAuth,
+          `${TableName.PkiAcmeOrderAuth}.authId`,
+          `${TableName.PkiAcmeAuth}.id`
+        )
         .select(
           selectAllTableCols(TableName.PkiAcmeOrder),
           db.ref("id").withSchema(TableName.PkiAcmeAuth).as("authId"),
