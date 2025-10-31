@@ -6,6 +6,7 @@ import requests
 import glom
 from acme import client
 from acme import messages
+from acme import standalone
 from behave.runner import Context
 from behave import given
 from behave import when
@@ -340,4 +341,21 @@ def step_impl(
         raise ValueError(
             f"More than one authorization for type {challenge_type!r} found in {var_path!r}"
         )
-    context.vars[challenge_var] = auths[0]
+    context.vars[challenge_var] = challenges[0]
+
+
+@then("I serve challenge response for {var_path} at {hostname}")
+def step_impl(context: Context, var_path: str, hostname: str):
+    if hostname != "localhost":
+        raise ValueError("Currently only localhost is supported")
+    challenge = eval_var(context, var_path, as_json=False)
+    acme_challenge = challenge.chall
+    response, validation = acme_challenge.response_and_validation(
+        context.acme_client.net.key
+    )
+    resource = standalone.HTTP01RequestHandler.HTTP01Resource(
+        chall=acme_challenge, response=response, validation=validation
+    )
+    servers = standalone.HTTP01DualNetworkedServers(("", 8087), resource)
+    # Start client standalone web server.
+    servers.serve_forever()
