@@ -44,7 +44,7 @@ export type TAuthenciatedJwsPayload<T> = TJwsPayload<T> & {
 };
 export type TAcmeResponse<TPayload> = {
   status: number;
-  headers: [string, string][];
+  headers: Record<string, string | string[]>;
   body: TPayload;
 };
 

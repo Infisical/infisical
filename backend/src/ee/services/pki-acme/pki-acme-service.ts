@@ -300,10 +300,10 @@ export const pkiAcmeServiceFactory = ({
           contact: existingAccount.emails,
           orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
         },
-        headers: [
-          ["Location", buildUrl(profile.id, `/accounts/${existingAccount.id}`)],
-          ["Link", `<${buildUrl(profile.id, "/directory")}>;rel="index"`]
-        ]
+        headers: {
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+        }
       };
     }
 
@@ -322,10 +322,10 @@ export const pkiAcmeServiceFactory = ({
         contact: newAccount.emails,
         orders: buildUrl(profile.id, `/accounts/${newAccount.id}/orders`)
       },
-      headers: [
-        ["Location", buildUrl(profile.id, `/accounts/${newAccount.id}`)],
-        ["Link", `<${buildUrl(profile.id, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profile.id, `/accounts/${newAccount.id}`),
+        Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -345,10 +345,10 @@ export const pkiAcmeServiceFactory = ({
       body: {
         status: "deactivated"
       },
-      headers: [
-        ["Location", buildUrl(profileId, `/accounts/${accountId}`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/accounts/${accountId}`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -432,10 +432,10 @@ export const pkiAcmeServiceFactory = ({
         profileId,
         order
       }),
-      headers: [
-        ["Location", buildUrl(profileId, `/orders/${order.id}`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/orders/${order.id}`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -455,10 +455,10 @@ export const pkiAcmeServiceFactory = ({
     return {
       status: 200,
       body: buildAcmeOrderResource({ profileId, order }),
-      headers: [
-        ["Location", buildUrl(profileId, `/orders/${orderId}`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/orders/${orderId}`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -482,10 +482,10 @@ export const pkiAcmeServiceFactory = ({
     return {
       status: 200,
       body: buildAcmeOrderResource({ profileId, order }),
-      headers: [
-        ["Location", buildUrl(profileId, `/orders/${orderId}`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/orders/${orderId}`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -507,10 +507,10 @@ export const pkiAcmeServiceFactory = ({
     return {
       status: 200,
       body: "FIXME-certificate-pem",
-      headers: [
-        ["Location", buildUrl(profileId, `/orders/${orderId}/certificate`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/orders/${orderId}/certificate`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -528,10 +528,10 @@ export const pkiAcmeServiceFactory = ({
       body: {
         orders: []
       },
-      headers: [
-        ["Location", buildUrl(profileId, `/accounts/${accountId}/orders`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/accounts/${accountId}/orders`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -569,10 +569,10 @@ export const pkiAcmeServiceFactory = ({
           };
         })
       },
-      headers: [
-        ["Location", buildUrl(profileId, `/authorizations/${authzId}`)],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/authorizations/${authzId}`),
+        Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
+      }
     };
   };
 
@@ -600,11 +600,13 @@ export const pkiAcmeServiceFactory = ({
         status: challenge.status,
         token: challenge.token
       },
-      headers: [
-        ["Location", buildUrl(profileId, `/authorizations/${authzId}/challenges/http-01`)],
-        ["Link", `<${buildUrl(profileId, `/authorizations/${authzId}`)}>;rel="up"`],
-        ["Link", `<${buildUrl(profileId, "/directory")}>;rel="index"`]
-      ]
+      headers: {
+        Location: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challengeId}`),
+        Link: [
+          `<${buildUrl(profileId, `/authorizations/${authzId}`)}>;rel="up"`,
+          `<${buildUrl(profileId, "/directory")}>;rel="index"`
+        ]
+      }
     };
   };
 
