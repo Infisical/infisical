@@ -371,8 +371,10 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
   };
 
   const listAvailableIdentities = async (scopeData: AccessScopeData, rootOrgId: string) => {
+    // TODO (akhil/scott): need to implement filters
+
     try {
-      const identitesConnectedToOrg = db
+      const identitiesConnectedToOrg = db
         .replicaNode()(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
@@ -389,6 +391,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.projectId`)
         .where((qb) => {
           // if sub org pick from root and if project pick from org of project
           if (scopeData.scope === AccessScope.Organization) {
@@ -397,7 +400,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             void qb.where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId);
           }
         })
-        .whereNotIn(`${TableName.Membership}.actorIdentityId`, identitesConnectedToOrg)
+        .whereNotIn(`${TableName.Membership}.actorIdentityId`, identitiesConnectedToOrg)
         .select(
           db.ref("id").withSchema(TableName.Identity),
           db.ref("name").withSchema(TableName.Identity),

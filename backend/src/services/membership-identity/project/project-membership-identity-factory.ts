@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import {
@@ -119,7 +119,7 @@ export const newProjectMembershipIdentityFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
     const identityDetails = await identityDAL.findById(dto.selector.identityId);
@@ -168,7 +168,7 @@ export const newProjectMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Delete,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
 
     const identityDetails = await identityDAL.findById(dto.selector.identityId);
@@ -210,7 +210,7 @@ export const newProjectMembershipIdentityFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionIdentityActions.Read,
-        ProjectPermissionSub.Identity
+        subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
       );
     };
 

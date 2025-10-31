@@ -1,28 +1,18 @@
+import { TIdentity, TMetadata } from "@app/hooks/api/shared";
+
 export type TProjectIdentityMetadata = {
   key: string;
   value: string;
   id: string;
 };
 
-export type TProjectIdentity = {
-  id: string;
-  name: string;
-  orgId: string;
-  projectId: string | null;
-  createdAt: string;
-  updatedAt: string;
-  hasDeleteProtection: boolean;
-  metadata?: TProjectIdentityMetadata[];
-};
+export type TProjectIdentity = TIdentity;
 
 export type TCreateProjectIdentityDTO = {
   projectId: string;
   name: string;
   hasDeleteProtection?: boolean;
-  metadata?: Array<{
-    key: string;
-    value: string;
-  }>;
+  metadata?: TMetadata[];
 };
 
 export type TUpdateProjectIdentityDTO = {
@@ -30,10 +20,7 @@ export type TUpdateProjectIdentityDTO = {
   identityId: string;
   name?: string;
   hasDeleteProtection?: boolean;
-  metadata?: Array<{
-    key: string;
-    value: string;
-  }>;
+  metadata?: TMetadata[];
 };
 
 export type TGetProjectIdentityByIdDTO = {

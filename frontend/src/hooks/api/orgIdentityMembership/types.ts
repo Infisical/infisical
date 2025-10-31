@@ -1,6 +1,4 @@
-export enum TemporaryPermissionMode {
-  Relative = "relative"
-}
+import { TRoles } from "@app/hooks/api/shared";
 
 export type TOrgIdentityMembership = {
   id: string;
@@ -12,21 +10,24 @@ export type TOrgIdentityMembership = {
 
 export type TCreateOrgIdentityMembershipDTO = {
   identityId: string;
-  roles: Array<
-    | {
-        role: string;
-        isTemporary?: false;
-      }
-    | {
-        role: string;
-        isTemporary: true;
-        temporaryMode: TemporaryPermissionMode;
-        temporaryRange: string;
-        temporaryAccessStartTime: string;
-      }
-  >;
+  roles: TRoles;
 };
 
 export type TDeleteOrgIdentityMembershipDTO = {
   identityId: string;
 };
+
+export type TListOrgIdentityMembershipsDTO = {
+  offset?: number;
+  limit?: number;
+  identityName?: string;
+  roles?: string[];
+};
+
+export type TListAvailableOrganizationIdentitiesDTO = {
+  offset?: number;
+  limit?: number;
+  identityName?: string;
+};
+
+export type TAvailableOrganizationIdentities = Array<{ id: string; name: string }>;

@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -70,7 +71,9 @@ export const IdentityAzureAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityAzureAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityAzureAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -148,7 +151,7 @@ export const IdentityAzureAuthForm = ({
 
       if (data) {
         await updateMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           tenantId,
           resource,
@@ -160,7 +163,7 @@ export const IdentityAzureAuthForm = ({
         });
       } else {
         await addMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           tenantId: tenantId || "",
           resource: resource || "",

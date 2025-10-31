@@ -34,7 +34,7 @@ import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
-import { registerIdentityProjectMembershipRouter } from "./identity-project-router";
+import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";

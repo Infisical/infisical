@@ -8,10 +8,8 @@ export {
   useUpdateProjectSshConfig
 } from "./mutations";
 export {
-  useAddIdentityToWorkspace,
   useCreateWorkspace,
   useCreateWsEnvironment,
-  useDeleteIdentityFromWorkspace,
   useDeleteUserFromWorkspace,
   useDeleteWorkspace,
   useDeleteWsEnvironment,
@@ -21,8 +19,6 @@ export {
   useGetUserWorkspaceMemberships,
   useGetWorkspaceAuthorizations,
   useGetWorkspaceById,
-  useGetWorkspaceIdentityMembershipDetails,
-  useGetWorkspaceIdentityMemberships,
   useGetWorkspaceIndexStatus,
   useGetWorkspaceIntegrations,
   useGetWorkspaceUserDetails,
@@ -41,7 +37,6 @@ export {
   useListWorkspaceSshHostGroups,
   useListWorkspaceSshHosts,
   useSearchProjects,
-  useUpdateIdentityWorkspaceRole,
   useUpdateProject,
   useUpdateUserWorkspaceRole,
   useUpdateWsEnvironment,

@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
-import { useDeleteIdentityFromWorkspace } from "@app/hooks/api";
+import { useDeleteProjectIdentityMembership } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAddToProjectModal } from "./IdentityAddToProjectModal";
@@ -14,7 +14,7 @@ type Props = {
 };
 
 export const IdentityProjectsSection = ({ identityId }: Props) => {
-  const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
+  const { mutateAsync: deleteMutateAsync } = useDeleteProjectIdentityMembership();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "addIdentityToProject",

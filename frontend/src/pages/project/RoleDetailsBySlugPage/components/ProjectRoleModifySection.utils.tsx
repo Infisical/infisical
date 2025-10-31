@@ -180,7 +180,11 @@ const IdentityPolicyActionSchema = z.object({
   [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional()
+  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
 });
 
 const GroupPolicyActionSchema = z.object({
@@ -962,6 +966,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canAssumePrivileges = action.includes(
         ProjectPermissionIdentityActions.AssumePrivileges
       );
+      const canRevokeAuth = action.includes(ProjectPermissionIdentityActions.RevokeAuth);
+      const canCreateToken = action.includes(ProjectPermissionIdentityActions.CreateToken);
+      const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
+      const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
 
       if (!formVal[subject]) formVal[subject] = [{ conditions: [] }];
 
@@ -974,6 +982,10 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionIdentityActions.GrantPrivileges] = true;
       if (canAssumePrivileges)
         formVal[subject]![0][ProjectPermissionIdentityActions.AssumePrivileges] = true;
+      if (canRevokeAuth) formVal[subject]![0][ProjectPermissionIdentityActions.RevokeAuth] = true;
+      if (canCreateToken) formVal[subject]![0][ProjectPermissionIdentityActions.CreateToken] = true;
+      if (canGetToken) formVal[subject]![0][ProjectPermissionIdentityActions.GetToken] = true;
+      if (canDeleteToken) formVal[subject]![0][ProjectPermissionIdentityActions.DeleteToken] = true;
       return;
     }
 
@@ -1453,7 +1465,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: ProjectPermissionIdentityActions.Edit },
       { label: "Remove", value: ProjectPermissionIdentityActions.Delete },
       { label: "Grant Privileges", value: ProjectPermissionIdentityActions.GrantPrivileges },
-      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges }
+      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges },
+      { label: "Revoke Auth", value: ProjectPermissionIdentityActions.RevokeAuth },
+      { label: "Create Token", value: ProjectPermissionIdentityActions.CreateToken },
+      { label: "Get Token", value: ProjectPermissionIdentityActions.GetToken },
+      { label: "Delete Token", value: ProjectPermissionIdentityActions.DeleteToken }
     ]
   },
   [ProjectPermissionSub.Groups]: {

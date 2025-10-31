@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -47,7 +47,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
   };
 
@@ -63,7 +63,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Delete,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
   };
 
@@ -95,7 +95,7 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Read,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
   };
 

@@ -1,7 +1,9 @@
 import { AccessScope, OrgMembershipRole } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TIdentityMetadataDALFactory } from "../identity/identity-metadata-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -24,6 +26,7 @@ type TScopedIdentityV2ServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
+  keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
 };
 
 export type TScopedIdentityV2ServiceFactory = ReturnType<typeof identityV2ServiceFactory>;
@@ -34,7 +37,8 @@ export const identityV2ServiceFactory = ({
   licenseService,
   membershipIdentityDAL,
   membershipRoleDAL,
-  identityMetadataDAL
+  identityMetadataDAL,
+  keyStore
 }: TScopedIdentityV2ServiceFactoryDep) => {
   const orgFactory = newOrgIdentityFactory({
     permissionService
@@ -217,7 +221,9 @@ export const identityV2ServiceFactory = ({
     const identity = await identityDAL.getIdentityById(dto.scopeData, dto.selector.identityId);
     if (!identity) throw new NotFoundError({ message: `Identity with id ${dto.selector.identityId} not found` });
 
-    return { identity };
+    const activeLockoutAuthMethods = await getIdentityActiveLockoutAuthMethods(identity.id, keyStore);
+
+    return { identity: { ...identity, activeLockoutAuthMethods } };
   };
 
   const listIdentities = async (dto: TListIdentityV2DTO) => {

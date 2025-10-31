@@ -340,7 +340,8 @@ export const membershipIdentityServiceFactory = ({
 
     await factory.onListMembershipIdentityGuard(dto);
 
-    if (dto.permission.rootOrgId === dto.permission.orgId) return { identities: [] };
+    if (scopeData.scope !== AccessScope.Project && dto.permission.rootOrgId === dto.permission.orgId)
+      return { identities: [] };
 
     const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.permission.rootOrgId);
 
