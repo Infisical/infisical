@@ -7,8 +7,8 @@ export const ChefSyncDestinationSchema = BaseSecretSyncSchema().merge(
   z.object({
     destination: z.literal(SecretSync.Chef),
     destinationConfig: z.object({
-      dataBagName: z.string().trim().min(1, "Data Bag Name required"),
-      dataBagItemName: z.string().trim().min(1, "Data Bag Item Name required")
+      dataBagName: z.string().trim().min(1, "Data Bag required"),
+      dataBagItemName: z.string().trim().min(1, "Data Bag Item required")
     })
   })
 );

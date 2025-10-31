@@ -36,8 +36,8 @@ description: "Learn how to configure a Chef Sync for Infisical."
         ![Configure Destination](/images/secret-syncs/chef/sync-destination.png)
 
         - **Chef Connection**: The Chef Connection to authenticate with.
-        - **Data Bag**: The Data Bag Name to sync secrets to.
-        - **Data Bag Item**: The Data Bag Item Name to sync secrets to.
+        - **Data Bag**: The Data Bag to sync secrets to.
+        - **Data Bag Item**: The Data Bag Item to sync secrets to.
       </Step>
       <Step title="Configure Sync Options">
         Configure the **Sync Options** to specify how secrets should be synced, then click **Next**.
@@ -46,8 +46,8 @@ description: "Learn how to configure a Chef Sync for Infisical."
 
         - **Initial Sync Behavior**: Determines how Infisical should resolve the initial sync.
             - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
-            - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Laravel Forge when keys conflict.
-            - **Import Secrets (Prioritize Laravel Forge)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Laravel Forge over Infisical when keys conflict.
+            - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Chef when keys conflict.
+            - **Import Secrets (Prioritize Chef)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Chef over Infisical when keys conflict.
         - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
         <Note>
           We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.

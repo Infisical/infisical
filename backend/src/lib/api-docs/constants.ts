@@ -2382,7 +2382,7 @@ export const AppConnections = {
     },
     CHEF: {
       serverUrl: "The URL of the Chef server to connect to.",
-      orgName: "The name of the Chef organization to connect to.",
+      orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
       privateKey: "The private key used to access Chef."
     }

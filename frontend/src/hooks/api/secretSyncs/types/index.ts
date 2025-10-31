@@ -10,6 +10,7 @@ import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TBitbucketSync } from "./bitbucket-sync";
 import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
+import { TChefSync } from "./chef-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -33,7 +34,6 @@ import { TTerraformCloudSync } from "./terraform-cloud-sync";
 import { TVercelSync } from "./vercel-sync";
 import { TWindmillSync } from "./windmill-sync";
 import { TZabbixSync } from "./zabbix-sync";
-import { TChefSync } from "./chef-sync";
 
 export type TSecretSyncOption = {
   name: string;

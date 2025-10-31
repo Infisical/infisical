@@ -12,6 +12,7 @@ import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { BitbucketSyncFields } from "./BitbucketSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
+import { ChefSyncFields } from "./ChefSyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
@@ -35,7 +36,6 @@ import { TerraformCloudSyncFields } from "./TerraformCloudSyncFields";
 import { VercelSyncFields } from "./VercelSyncFields";
 import { WindmillSyncFields } from "./WindmillSyncFields";
 import { ZabbixSyncFields } from "./ZabbixSyncFields";
-import { ChefSyncFields } from "./ChefSyncFields";
 
 export const SecretSyncDestinationFields = () => {
   const { watch } = useFormContext<TSecretSyncForm>();

@@ -83,6 +83,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefConnectionInput,
+  TValidateChefConnectionCredentialsSchema
+} from "./chef";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -239,12 +245,6 @@ import {
   TZabbixConnectionConfig,
   TZabbixConnectionInput
 } from "./zabbix";
-import {
-  TChefConnection,
-  TChefConnectionConfig,
-  TChefConnectionInput,
-  TValidateChefConnectionCredentialsSchema
-} from "./chef";
 
 export type TAppConnection = { id: string } & (
   | TAwsConnection

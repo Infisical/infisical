@@ -123,7 +123,7 @@ export const ChefConnectionForm = ({ appConnection, onSubmit }: Props) => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              label="Organization Name"
+              label="Organization Short Name"
             >
               <Input
                 className="border border-mineshaft-500 bg-mineshaft-900"

@@ -5,9 +5,9 @@ import { SecretSyncConnectionField } from "@app/components/secret-syncs/forms/Se
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import {
   TChefDataBag,
-  useChefConnectionListDataBags,
+  TChefDataBagItem,
   useChefConnectionListDataBagItems,
-  TChefDataBagItem
+  useChefConnectionListDataBags
 } from "@app/hooks/api/appConnections/chef";
 import { SecretSync } from "@app/hooks/api/secretSyncs";
 

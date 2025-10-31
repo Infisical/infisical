@@ -1,5 +1,4 @@
 import { ForbiddenRequestError } from "@app/lib/errors";
-// import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
 import { AppConnection } from "../app-connection-enums";

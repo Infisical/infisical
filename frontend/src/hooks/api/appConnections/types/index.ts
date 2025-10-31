@@ -11,6 +11,7 @@ import { TAzureKeyVaultConnection } from "./azure-key-vault-connection";
 import { TBitbucketConnection } from "./bitbucket-connection";
 import { TCamundaConnection } from "./camunda-connection";
 import { TChecklyConnection } from "./checkly-connection";
+import { TChefConnection } from "./chef-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
@@ -41,7 +42,6 @@ import { TTerraformCloudConnection } from "./terraform-cloud-connection";
 import { TVercelConnection } from "./vercel-connection";
 import { TWindmillConnection } from "./windmill-connection";
 import { TZabbixConnection } from "./zabbix-connection";
-import { TChefConnection } from "./chef-connection";
 
 export * from "./1password-connection";
 export * from "./auth0-connection";
@@ -54,6 +54,7 @@ export * from "./azure-key-vault-connection";
 export * from "./bitbucket-connection";
 export * from "./camunda-connection";
 export * from "./checkly-connection";
+export * from "./chef-connection";
 export * from "./cloudflare-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
@@ -83,7 +84,6 @@ export * from "./terraform-cloud-connection";
 export * from "./vercel-connection";
 export * from "./windmill-connection";
 export * from "./zabbix-connection";
-export * from "./chef-connection";
 
 export type TAppConnection =
   | TAwsConnection

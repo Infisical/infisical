@@ -20,6 +20,7 @@ import { AzureKeyVaultSyncDestinationSection } from "./AzureKeyVaultSyncDestinat
 import { BitbucketSyncDestinationSection } from "./BitbucketSyncDestinationSection";
 import { CamundaSyncDestinationSection } from "./CamundaSyncDestinationSection";
 import { ChecklySyncDestinationSection } from "./ChecklySyncDestinationSection";
+import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 import { CloudflarePagesSyncDestinationSection } from "./CloudflarePagesSyncDestinationSection";
 import { CloudflareWorkersSyncDestinationSection } from "./CloudflareWorkersSyncDestinationSection";
 import { DatabricksSyncDestinationSection } from "./DatabricksSyncDestinationSection";
@@ -43,7 +44,6 @@ import { TerraformCloudSyncDestinationSection } from "./TerraformCloudSyncDestin
 import { VercelSyncDestinationSection } from "./VercelSyncDestinationSection";
 import { WindmillSyncDestinationSection } from "./WindmillSyncDestinationSection";
 import { ZabbixSyncDestinationSection } from "./ZabbixSyncDestinationSection";
-import { ChefSyncDestinationSection } from "./ChefSyncDestinationSection";
 
 type Props = {
   secretSync: TSecretSync;
