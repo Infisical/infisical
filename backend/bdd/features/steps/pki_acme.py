@@ -364,3 +364,12 @@ def step_impl(context: Context, var_path: str, hostname: str):
     web_server.daemon = True
     web_server.start()
     context.web_server = web_server
+
+
+@then("I tell ACME server that {var_path} is ready to be verified")
+def step_impl(context: Context, var_path: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    acme_challenge = challenge.chall
+    acme_client = challenge.acme_client
+    response, validation = acme_challenge.response_and_validation(acme_client.net.key)
+    acme_client.answer_challenge(acme_challenge, response)
