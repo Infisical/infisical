@@ -1,4 +1,4 @@
-Feature: Order
+Feature: Authorization
 
   Scenario: Get authorization
     Given I have an ACME cert profile as "acme_profile"
@@ -18,7 +18,16 @@ Feature: Order
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     Then the value order.authorizations[0].uri with jq . should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/(.+)
     Then the value order.authorizations[0].body with jq .status should be equal to "pending"
-    Then the value order.authorizations[0].body with jq .challenge should be equal to "pending"
+    Then the value order.authorizations[0].body with jq .challenges | map(pick(.type, .status)) | sort_by(.type) should be equal to json
+      """
+        [
+          {
+            "type": "http-01",
+            "status": "pending"
+          }
+        ]
+      """
+    Then the value order.authorizations[0].body with jq .challenges | map(.status) | sort should be equal to ["pending"]
     Then the value order.authorizations[0].body with jq .identifier should be equal to json
       """
       {
