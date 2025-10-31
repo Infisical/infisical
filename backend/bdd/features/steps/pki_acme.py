@@ -3,13 +3,13 @@ import re
 
 import jq
 import requests
+import glom
 from acme import client
 from acme import messages
 from behave.runner import Context
 from behave import given
 from behave import when
 from behave import then
-import glom
 from josepy.jwk import JWKRSA
 from josepy import JSONObjectWithFields
 from cryptography.hazmat.primitives import serialization
@@ -41,11 +41,64 @@ def replace_vars(payload: dict | list | int | float | str, vars: dict):
         return payload
 
 
+def parse_glom_path(path_str: str):
+    """
+    Parse a glom path string with 'attr[index]' syntax into a Path object.
+
+    Examples:
+    >>> parse_glom_path('authorizations[0].name')
+    Path('authorizations', 0, 'name')
+
+    >>> parse_glom_path('items[1].user[0].id')
+    Path('items', 1, 'user', 0, 'id')
+
+    >>> parse_glom_path('simple_attr')
+    Path('simple_attr')
+
+    >>> parse_glom_path('nested.attr')
+    Path('nested', 'attr')
+    """
+    # Pattern to match attr[index] or just attr
+    # Groups: (attr_name)(?:\[(index)\])?
+    pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)(?:\[(\d+)\])?"
+
+    # Split on dots, but preserve the parts
+    parts = []
+    current_pos = 0
+
+    # Find all matches in the string
+    for match in re.finditer(pattern, path_str):
+        # Add any literal text before this match
+        if match.start() > current_pos:
+            before = path_str[current_pos : match.start()]
+            raise ValueError(f"Invalid path syntax: unexpected text '{before}'")
+
+        attr_name = match.group(1)
+        index = match.group(2)
+
+        # Add the attribute name
+        parts.append(attr_name)
+
+        # Add index if present
+        if index is not None:
+            parts.append(int(index))
+
+        current_pos = match.end()
+
+    # Check for trailing text
+    if current_pos < len(path_str):
+        after = path_str[current_pos:]
+        if after != ".":
+            raise ValueError(f"Invalid path syntax: unexpected text '{after}'")
+
+    return glom.Path(*parts)
+
+
 def eval_var(context: Context, var_path: str, as_json: bool = True):
     parts = var_path.split(".", 1)
     value = context.vars[parts[0]]
     if len(parts) == 2:
-        value = glom.glom(value, parts[1])
+        value = glom.glom(value, parse_glom_path(parts[1]))
     if as_json:
         if isinstance(value, JSONObjectWithFields):
             value = value.to_json()
