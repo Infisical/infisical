@@ -248,6 +248,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         .type("application/problem+json")
         .status(error.status)
         .send({
+          reqId: req.id,
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
           detail: error.detail

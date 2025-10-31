@@ -58,16 +58,16 @@ export type TPkiAcmeServiceFactory = {
     getJWK,
     schema
   }: {
-    url: string;
+    url: URL;
     rawJwsPayload: TRawJwsPayload;
     getJWK: (protectedHeader: JWSHeaderParameters) => Promise<JsonWebKey>;
-    schema?: z.ZodSchema<any>;
-  }) => Promise<TJwsPayload<any>>;
+    schema?: TSchema;
+  }) => Promise<TJwsPayload<T>>;
   validateNewAccountJwsPayload: ({
     url,
     rawJwsPayload
   }: {
-    url: string;
+    url: URL;
     rawJwsPayload: TRawJwsPayload;
   }) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
   validateExistingAccountJwsPayload: <
@@ -80,7 +80,7 @@ export type TPkiAcmeServiceFactory = {
     schema,
     expectedAccountId
   }: {
-    url: string;
+    url: URL;
     profileId: string;
     rawJwsPayload: TRawJwsPayload;
     schema?: TSchema;
