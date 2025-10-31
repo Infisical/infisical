@@ -421,7 +421,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/authorizations/<authz_id>/challenges/http-01
+  // POST /api/v1/pki/acme/profiles/<profile_id>/authorizations/<authz_id>/challenges/<challenge_id>
   // Respond to Challenge (RFC 8555 Section 7.5.1)
   server.route({
     method: "POST",
