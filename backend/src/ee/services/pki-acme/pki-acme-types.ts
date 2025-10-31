@@ -175,4 +175,6 @@ export type TPkiAcmeServiceFactory = {
   }) => Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>>;
 };
 
-export type TPkiAcmeChallengeServiceFactory = {};
+export type TPkiAcmeChallengeServiceFactory = {
+  validateChallengeResponse: (challengeId: string) => Promise<void>;
+};
