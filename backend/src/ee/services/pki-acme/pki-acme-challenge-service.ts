@@ -11,7 +11,10 @@ import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "updateById">;
-  acmeChallengeDAL: Pick<TPkiAcmeChallengeDALFactory, "transaction" | "findByIdForChallengeValidation" | "updateById">;
+  acmeChallengeDAL: Pick<
+    TPkiAcmeChallengeDALFactory,
+    "transaction" | "findByIdForChallengeValidation" | "markAsValidCascadeById"
+  >;
 };
 
 export const pkiAcmeChallengeServiceFactory = ({
@@ -65,13 +68,7 @@ export const pkiAcmeChallengeServiceFactory = ({
         if (challengeResponseBody !== expectedChallengeResponseBody) {
           throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
         }
-        await acmeChallengeDAL.updateById(
-          challengeId,
-          { status: AcmeChallengeStatus.Valid, validatedAt: new Date() },
-          tx
-        );
-        await acmeAuthDAL.updateById(challenge.auth.account.id, { status: AcmeAuthStatus.Valid }, tx);
-        // TODO: trigger a check for order status as well
+        await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
       } catch (error) {
         logger.error(error, "Error validating ACME challenge response");
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
