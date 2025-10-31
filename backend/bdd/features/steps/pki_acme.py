@@ -1,5 +1,6 @@
 import json
 import re
+import threading
 
 import jq
 import requests
@@ -356,6 +357,10 @@ def step_impl(context: Context, var_path: str, hostname: str):
     resource = standalone.HTTP01RequestHandler.HTTP01Resource(
         chall=acme_challenge, response=response, validation=validation
     )
+    # TODO: make port configurable
     servers = standalone.HTTP01DualNetworkedServers(("", 8087), resource)
     # Start client standalone web server.
-    servers.serve_forever()
+    web_server = threading.Thread(name="web_server", target=servers.serve_forever)
+    web_server.daemon = True
+    web_server.start()
+    context.web_server = web_server
