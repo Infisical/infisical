@@ -13,7 +13,7 @@ export const pkiAcmeAuthDALFactory = (db: TDbClient) => {
   const findByAccountIdAndAuthIdWithChallenges = async (accountId: string, authId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db)(TableName.PkiAcmeAuth)
-        .join(TableName.PkiAcmeChallenge, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
+        .leftJoin(TableName.PkiAcmeChallenge, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
         .select(
           selectAllTableCols(TableName.PkiAcmeAuth),
           db.ref("id").withSchema(TableName.PkiAcmeChallenge).as("challengeId"),
