@@ -1,0 +1,26 @@
+---
+title: "Certificate Enrollment via API"
+sidebarTitle: "API"
+---
+
+<Tabs>
+  <Tab title="API">
+    <ul>
+      <li>
+        Enable Auto-Renewal: Whether or not to opt-in issued certificates for
+        (server-side) auto-renewal.
+      </li>
+      <li>
+        Auto-Renewal Days: The number of days before the certificate expires to
+        trigger certificate renewal.
+      </li>
+    </ul>
+    <Note>
+      Note that auto-renewal only applies to certificates issued through
+      CSR-less enrollment where key generation is done internally by
+      Infisical; conversely certificates issued via CSR submission are not eligible for auto-renewal.
+    </Note>
+
+  </Tab>
+  <Tab title="EST">Test</Tab>
+</Tabs>
