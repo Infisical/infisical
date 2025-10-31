@@ -21,6 +21,13 @@ export enum AcmeAuthStatus {
   Revoked = "revoked"
 }
 
+export enum AcmeChallengeStatus {
+  Pending = "pending",
+  Processing = "processing",
+  Valid = "valid",
+  Invalid = "invalid"
+}
+
 export enum AcmeChallengeType {
   HTTP_01 = "http-01",
   DNS_01 = "dns-01",
