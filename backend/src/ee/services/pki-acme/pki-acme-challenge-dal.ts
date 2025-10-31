@@ -20,7 +20,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
         .select(
           selectAllTableCols(TableName.PkiAcmeChallenge),
-          db.ref("token").withSchema(TableName.PkiAcmeChallenge).as("token")
+          db.ref("token").withSchema(TableName.PkiAcmeAuth).as("token")
         )
         .where(`${TableName.PkiAcmeChallenge}.id`, challengeId)
         .where(`${TableName.PkiAcmeChallenge}.authId`, authId)

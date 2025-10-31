@@ -158,6 +158,8 @@ export const GetAcmeAuthorizationResponseSchema = z.object({
   )
 });
 
+export const RespondToAcmeChallengeBodySchema = z.object({});
+
 export const RespondToAcmeChallengeResponseSchema = z.object({
   type: z.enum(Object.values(AcmeChallengeType) as [string, ...string[]]),
   url: z.string(),
