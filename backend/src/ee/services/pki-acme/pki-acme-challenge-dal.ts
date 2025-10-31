@@ -9,19 +9,11 @@ export type TPkiAcmeChallengeDALFactory = ReturnType<typeof pkiAcmeChallengeDALF
 export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
   const pkiAcmeChallengeOrm = ormify(db, TableName.PkiAcmeChallenge);
 
-  const findByAccountAuthAndChallengeIdWithToken = async (
-    accountId: string,
-    authId: string,
-    challengeId: string,
-    tx?: Knex
-  ) => {
+  const findByAccountAuthAndChallengeId = async (accountId: string, authId: string, challengeId: string, tx?: Knex) => {
     try {
       const challenge = await (tx || db)(TableName.PkiAcmeChallenge)
         .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
-        .select(
-          selectAllTableCols(TableName.PkiAcmeChallenge),
-          db.ref("token").withSchema(TableName.PkiAcmeAuth).as("token")
-        )
+        .select(selectAllTableCols(TableName.PkiAcmeChallenge))
         .where(`${TableName.PkiAcmeChallenge}.id`, challengeId)
         .where(`${TableName.PkiAcmeChallenge}.authId`, authId)
         .where(`${TableName.PkiAcmeAuth}.accountId`, accountId)
@@ -34,14 +26,11 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
       throw new DatabaseError({ error, name: "Find PKI ACME challenge by account id, auth id and challenge id" });
     }
   };
+
   const findByIdForChallengeValidation = async (id: string, tx?: Knex) => {
-    const rows = await (tx || db)(TableName.PkiAcmeChallenge)
-      .join<TPkiAcmeAuths>(TableName.PkiAcmeAuth, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
-      .join<TPkiAcmeAccounts>(
-        TableName.PkiAcmeAccount,
-        `${TableName.PkiAcmeAuth}.accountId`,
-        `${TableName.PkiAcmeAccount}.id`
-      )
+    const result = await (tx || db)(TableName.PkiAcmeChallenge)
+      .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeChallenge}.authId`, `${TableName.PkiAcmeAuth}.id`)
+      .join(TableName.PkiAcmeAccount, `${TableName.PkiAcmeAuth}.accountId`, `${TableName.PkiAcmeAccount}.id`)
       .select(
         selectAllTableCols(TableName.PkiAcmeChallenge),
         db.ref("id").withSchema(TableName.PkiAcmeAuth).as("authId"),
@@ -55,45 +44,41 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
       )
       // For all challenges, acquire update lock on the auth to avoid race conditions
       .forUpdate(TableName.PkiAcmeAuth)
-      .where(`${TableName.PkiAcmeChallenge}.id`, id);
-
-    if (rows.length === 0) {
+      .where(`${TableName.PkiAcmeChallenge}.id`, id)
+      .first();
+    if (!result) {
       return null;
     }
-    return sqlNestRelationships({
-      data: rows,
-      key: "id",
-      parentMapper: (row) => row,
-      childrenMapper: [
-        {
-          key: "authId",
-          label: "auth" as const,
-          mapper: ({ authId, authToken, authStatus, authIdentifierType, authIdentifierValue, authExpiresAt }) => ({
-            id: authId,
-            token: authToken,
-            status: authStatus,
-            identifierType: authIdentifierType,
-            identifierValue: authIdentifierValue,
-            expiresAt: authExpiresAt
-          }),
-          childrenMapper: [
-            {
-              key: "accountId",
-              label: "account" as const,
-              mapper: ({ accountId, accountPublicKeyThumbprint }) => ({
-                id: accountId,
-                publicKeyThumbprint: accountPublicKeyThumbprint
-              })
-            }
-          ]
+    const {
+      authId,
+      authToken,
+      authStatus,
+      authIdentifierType,
+      authIdentifierValue,
+      authExpiresAt,
+      accountId,
+      accountPublicKeyThumbprint,
+      ...challenge
+    } = result;
+    return {
+      ...challenge,
+      auth: {
+        token: authToken,
+        status: authStatus,
+        identifierType: authIdentifierType,
+        identifierValue: authIdentifierValue,
+        expiresAt: authExpiresAt,
+        account: {
+          id: accountId,
+          publicKeyThumbprint: accountPublicKeyThumbprint
         }
-      ]
-    })?.[0];
+      }
+    };
   };
 
   return {
     ...pkiAcmeChallengeOrm,
-    findByAccountAuthAndChallengeIdWithToken,
+    findByAccountAuthAndChallengeId,
     findByIdForChallengeValidation
   };
 };

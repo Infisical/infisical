@@ -2,7 +2,7 @@ import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
@@ -71,7 +71,10 @@ type TPkiAcmeServiceFactoryDep = {
   acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
-  acmeChallengeDAL: Pick<TPkiAcmeChallengeDALFactory, "create" | "findByAccountAuthAndChallengeIdWithToken">;
+  acmeChallengeDAL: Pick<
+    TPkiAcmeChallengeDALFactory,
+    "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
+  >;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -575,7 +578,7 @@ export const pkiAcmeServiceFactory = ({
           type: auth.identifierType,
           value: auth.identifierValue
         },
-        challenges: auth.challenges.map((challenge: TPkiAcmeChallenges) => {
+        challenges: auth.challenges.map((challenge) => {
           return {
             type: challenge.type,
             url: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challenge.id}`),
@@ -602,10 +605,42 @@ export const pkiAcmeServiceFactory = ({
     authzId: string;
     challengeId: string;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
-    const challenge = await acmeChallengeDAL.findByAccountAuthAndChallengeIdWithToken(accountId, authzId, challengeId);
-    if (!challenge) {
+    const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
+    if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
     }
+    const challenge = await acmeChallengeDAL.transaction(async (tx) => {
+      const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
+      if (!challenge) {
+        throw new NotFoundError({ message: "ACME challenge not found" });
+      }
+      if (challenge.status !== AcmeChallengeStatus.Pending) {
+        // Ideally this should be an ACME error, but RFC 8555 doesn't say much about corner cases like this...
+        throw new BadRequestError({
+          message: `ACME challenge is ${challenge.status} instead of ${AcmeChallengeStatus.Pending}`
+        });
+      }
+      if (challenge.auth.expiresAt < new Date()) {
+        throw new BadRequestError({ message: "ACME auth has expired" });
+      }
+      if (challenge.auth.status !== AcmeAuthStatus.Pending) {
+        throw new BadRequestError({
+          message: `ACME auth status is ${challenge.auth.status} instead of ${AcmeAuthStatus.Pending}`
+        });
+      }
+      if (!challenge.auth.token) {
+        throw new AcmeServerInternalError({ message: "ACME challenge token is required" });
+      }
+      const updatedChallenge = await acmeChallengeDAL.updateById(
+        challengeId,
+        { status: AcmeChallengeStatus.Pending },
+        tx
+      );
+      return {
+        ...challenge,
+        ...updatedChallenge
+      };
+    });
     // TODO: Implement ACME challenge response
     return {
       status: 200,
@@ -613,7 +648,7 @@ export const pkiAcmeServiceFactory = ({
         type: challenge.type,
         url: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challengeId}`),
         status: challenge.status,
-        token: challenge.token
+        token: challenge.auth.token!
       },
       headers: {
         Location: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challengeId}`),
