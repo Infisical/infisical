@@ -47,42 +47,52 @@ OTEL_EXPORT_TYPE=prometheus
 
     ### Configuration
 
-    1. **Enable Prometheus export in Infisical**:
+<Steps>
+  <Step title="Enable Prometheus export in Infisical">
+```bash
+OTEL_TELEMETRY_COLLECTION_ENABLED=true
+OTEL_EXPORT_TYPE=prometheus
+```
+  </Step>
 
-       ```bash
-       OTEL_TELEMETRY_COLLECTION_ENABLED=true
-       OTEL_EXPORT_TYPE=prometheus
-       ```
+  <Step title="Expose the metrics port">
+    Expose the metrics port in your Infisical backend:
 
-    2. **Expose the metrics port** in your Infisical backend:
+    - **Docker**: Expose port 9464
+    - **Kubernetes**: Create a service exposing port 9464
+    - **Other**: Ensure port 9464 is accessible to your monitoring stack
+  </Step>
 
-       - **Docker**: Expose port 9464
-       - **Kubernetes**: Create a service exposing port 9464
-       - **Other**: Ensure port 9464 is accessible to your monitoring stack
+  <Step title="Create Prometheus configuration">
+Create `prometheus.yml`:
 
-    3. **Create Prometheus configuration** (`prometheus.yml`):
+```yaml
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
 
-       ```yaml
-       global:
-         scrape_interval: 30s
-         evaluation_interval: 30s
+scrape_configs:
+  - job_name: "infisical"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["infisical-backend:9464"] # Adjust hostname/port based on your deployment
+    metrics_path: "/metrics"
+```
 
-       scrape_configs:
-         - job_name: "infisical"
-           scrape_interval: 30s
-           static_configs:
-             - targets: ["infisical-backend:9464"] # Adjust hostname/port based on your deployment
-           metrics_path: "/metrics"
-       ```
+<Note>
+Replace `infisical-backend:9464` with the actual hostname and port where your Infisical backend is running. This could be:
 
-       **Note**: Replace `infisical-backend:9464` with the actual hostname and port where your Infisical backend is running. This could be:
-
-       - **Docker Compose**: `infisical-backend:9464` (service name)
-       - **Kubernetes**: `infisical-backend.default.svc.cluster.local:9464` (service name)
-       - **Bare Metal**: `192.168.1.100:9464` (actual IP address)
-       - **Cloud**: `your-infisical.example.com:9464` (domain name)
+- **Docker Compose**: `infisical-backend:9464` (service name)
+- **Kubernetes**: `infisical-backend.default.svc.cluster.local:9464` (service name)
+- **Bare Metal**: `192.168.1.100:9464` (actual IP address)
+- **Cloud**: `your-infisical.example.com:9464` (domain name)
+</Note>
+  </Step>
+</Steps>
 
     ### Deployment Options
+
+    Once you've configured Infisical to expose metrics, you'll need to deploy Prometheus to scrape and store them. Below are examples for different deployment environments. Choose the option that matches your infrastructure.
 
     <Tabs>
       <Tab title="Docker Compose">
@@ -168,93 +178,105 @@ OTEL_EXPORT_TYPE=prometheus
 
     ### Configuration
 
-    1. **Enable OTLP export in Infisical**:
+<Steps>
+  <Step title="Enable OTLP export in Infisical">
+```bash
+OTEL_TELEMETRY_COLLECTION_ENABLED=true
+OTEL_EXPORT_TYPE=otlp
+OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318/v1/metrics
+OTEL_COLLECTOR_BASIC_AUTH_USERNAME=infisical
+OTEL_COLLECTOR_BASIC_AUTH_PASSWORD=infisical
+OTEL_OTLP_PUSH_INTERVAL=30000
+```
+  </Step>
 
-       ```bash
-       OTEL_TELEMETRY_COLLECTION_ENABLED=true
-       OTEL_EXPORT_TYPE=otlp
-       OTEL_EXPORT_OTLP_ENDPOINT=http://otel-collector:4318/v1/metrics
-       OTEL_COLLECTOR_BASIC_AUTH_USERNAME=infisical
-       OTEL_COLLECTOR_BASIC_AUTH_PASSWORD=infisical
-       OTEL_OTLP_PUSH_INTERVAL=30000
-       ```
+  <Step title="Create OpenTelemetry Collector configuration">
+Create `otel-collector-config.yaml`:
 
-    2. **Create OpenTelemetry Collector configuration** (`otel-collector-config.yaml`):
+```yaml
+extensions:
+  health_check:
+  pprof:
+  zpages:
+  basicauth/server:
+    htpasswd:
+      inline: |
+        your_username:your_password
 
-       ```yaml
-       extensions:
-         health_check:
-         pprof:
-         zpages:
-         basicauth/server:
-           htpasswd:
-             inline: |
-               your_username:your_password
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+        auth:
+          authenticator: basicauth/server
 
-       receivers:
-         otlp:
-           protocols:
-             http:
-               endpoint: 0.0.0.0:4318
-               auth:
-                 authenticator: basicauth/server
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: otel-collector
+          scrape_interval: 30s
+          static_configs:
+            - targets: [infisical-backend:9464]
+          metric_relabel_configs:
+            - action: labeldrop
+              regex: "service_instance_id|service_name"
 
-         prometheus:
-           config:
-             scrape_configs:
-               - job_name: otel-collector
-                 scrape_interval: 30s
-                 static_configs:
-                   - targets: [infisical-backend:9464]
-                 metric_relabel_configs:
-                   - action: labeldrop
-                     regex: "service_instance_id|service_name"
+processors:
+  batch:
 
-       processors:
-         batch:
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    auth:
+      authenticator: basicauth/server
+    resource_to_telemetry_conversion:
+      enabled: true
 
-       exporters:
-         prometheus:
-           endpoint: "0.0.0.0:8889"
-           auth:
-             authenticator: basicauth/server
-           resource_to_telemetry_conversion:
-             enabled: true
+service:
+  extensions: [basicauth/server, health_check, pprof, zpages]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+```
 
-       service:
-         extensions: [basicauth/server, health_check, pprof, zpages]
-         pipelines:
-           metrics:
-             receivers: [otlp]
-             processors: [batch]
-             exporters: [prometheus]
-       ```
+<Warning>
+Replace `your_username:your_password` with your chosen credentials. These must match the values you set in Infisical's `OTEL_COLLECTOR_BASIC_AUTH_USERNAME` and `OTEL_COLLECTOR_BASIC_AUTH_PASSWORD` environment variables.
+</Warning>
+  </Step>
 
-       **Important**: Replace `your_username:your_password` with your chosen credentials. These must match the values you set in Infisical's `OTEL_COLLECTOR_BASIC_AUTH_USERNAME` and `OTEL_COLLECTOR_BASIC_AUTH_PASSWORD` environment variables.
+  <Step title="Create Prometheus configuration">
+Create Prometheus configuration for the collector:
 
-    3. **Create Prometheus configuration** for the collector:
+```yaml
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
 
-       ```yaml
-       global:
-         scrape_interval: 30s
-         evaluation_interval: 30s
+scrape_configs:
+  - job_name: "otel-collector"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["otel-collector:8889"] # Adjust hostname/port based on your deployment
+    metrics_path: "/metrics"
+```
 
-       scrape_configs:
-         - job_name: "otel-collector"
-           scrape_interval: 30s
-           static_configs:
-             - targets: ["otel-collector:8889"] # Adjust hostname/port based on your deployment
-           metrics_path: "/metrics"
-       ```
+<Note>
+Replace `otel-collector:8889` with the actual hostname and port where your OpenTelemetry Collector is running. This could be:
 
-       **Note**: Replace `otel-collector:8889` with the actual hostname and port where your OpenTelemetry Collector is running. This could be:
-
-       - **Docker Compose**: `otel-collector:8889` (service name)
-       - **Kubernetes**: `otel-collector.default.svc.cluster.local:8889` (service name)
-       - **Bare Metal**: `192.168.1.100:8889` (actual IP address)
-       - **Cloud**: `your-collector.example.com:8889` (domain name)
+- **Docker Compose**: `otel-collector:8889` (service name)
+- **Kubernetes**: `otel-collector.default.svc.cluster.local:8889` (service name)
+- **Bare Metal**: `192.168.1.100:8889` (actual IP address)
+- **Cloud**: `your-collector.example.com:8889` (domain name)
+</Note>
+  </Step>
+</Steps>
 
     ### Deployment Options
+
+    After configuring Infisical and the OpenTelemetry Collector, you'll need to deploy the collector to receive metrics from Infisical. Below are examples for different deployment environments. Choose the option that matches your infrastructure.
 
     <Tabs>
       <Tab title="Docker Compose">
@@ -463,24 +485,6 @@ These metrics track authentication attempts and outcomes, enabling you to monito
   </Accordion>
 </AccordionGroup>
 
-### Legacy Metrics
-
-These metrics are from the previous instrumentation and may be deprecated in future versions. Consider migrating to the new Core API Metrics for more comprehensive observability.
-
-<AccordionGroup>
-  <Accordion title="API_latency">
-    API request latency histogram in milliseconds
-    
-    - **Labels**: `route`, `method`, `statusCode`
-  </Accordion>
-  
-  <Accordion title="API_errors">
-    API error count histogram
-    
-    - **Labels**: `route`, `method`, `type`, `name`
-  </Accordion>
-</AccordionGroup>
-
 ### Integration & Secret Sync Metrics
 
 These metrics monitor secret synchronization operations between Infisical and external systems, helping you track sync health, identify integration failures, and troubleshoot connectivity issues.
@@ -531,15 +535,22 @@ These low-level HTTP metrics are automatically collected by OpenTelemetry's inst
 
 ## Troubleshooting
 
-### Common Issues
+<Accordion title="Metrics not appearing">
+  If your metrics are not showing up in Prometheus or your monitoring system, check the following:
 
-1. **Metrics not appearing**:
+  - Verify `OTEL_TELEMETRY_COLLECTION_ENABLED=true` is set in your Infisical environment variables
+  - Ensure the correct `OTEL_EXPORT_TYPE` is set (`prometheus` or `otlp`)
+  - Check network connectivity between Infisical and your monitoring services (Prometheus or OTLP collector)
+  - For pull-based monitoring: Verify port 9464 is exposed and accessible
+  - For push-based monitoring: Verify the OTLP endpoint URL is correct and reachable
+  - Check Infisical backend logs for any errors related to metrics export
+</Accordion>
 
-   - Check if `OTEL_TELEMETRY_COLLECTION_ENABLED=true`
-   - Verify the correct `OTEL_EXPORT_TYPE` is set
-   - Check network connectivity between services
+<Accordion title="Authentication errors">
+  If you're experiencing authentication errors with the OpenTelemetry Collector:
 
-2. **Authentication errors**:
-
-   - Verify basic auth credentials in OTLP configuration
-   - Check if credentials match between Infisical and collector
+  - Verify basic auth credentials in your OTLP configuration match between Infisical and the collector
+  - Check that `OTEL_COLLECTOR_BASIC_AUTH_USERNAME` and `OTEL_COLLECTOR_BASIC_AUTH_PASSWORD` match the credentials in your `otel-collector-config.yaml`
+  - Ensure the htpasswd format in the collector configuration is correct
+  - Test the collector endpoint manually using curl with the same credentials to verify they work
+</Accordion>
