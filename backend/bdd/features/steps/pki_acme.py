@@ -304,20 +304,39 @@ def step_impl(context: Context, var_path: str):
 
 
 @then(
-    "I select challenge with type {challenge_type} from {var_path} as {challenge_var}"
+    "I select challenge with type {challenge_type} for domain {domain} from order at {var_path} as {challenge_var}"
 )
-def step_impl(context: Context, challenge_type: str, var_path: str, challenge_var: str):
-    order = eval_var(context, var_path)
+def step_impl(
+    context: Context,
+    challenge_type: str,
+    domain: str,
+    var_path: str,
+    challenge_var: str,
+):
+    order = eval_var(context, var_path, as_json=False)
     if not isinstance(order, messages.OrderResource):
         raise ValueError(
-            f"Expected OrderResource but got {(type(order),)!r} at {var_path!r}"
+            f"Expected OrderResource but got {type(order)!r} at {var_path!r}"
         )
-    auths = list(filter(lambda a: a.type == challenge_type, order.authorizations))
+    auths = list(
+        filter(lambda o: o.body.identifier.value == domain, order.authorizations)
+    )
     if not auths:
+        raise ValueError(
+            f"Authorization for domain {domain!r} not found in {var_path!r}"
+        )
+    if len(auths) > 1:
+        raise ValueError(
+            f"More than one order for domain {domain!r} found in {var_path!r}"
+        )
+    auth = auths[0]
+
+    challenges = list(filter(lambda a: a.typ == challenge_type, auth.body.challenges))
+    if not challenges:
         raise ValueError(
             f"Authorization type {challenge_type!r} not found in {var_path!r}"
         )
-    if len(auths) > 1:
+    if len(challenges) > 1:
         raise ValueError(
             f"More than one authorization for type {challenge_type!r} found in {var_path!r}"
         )
