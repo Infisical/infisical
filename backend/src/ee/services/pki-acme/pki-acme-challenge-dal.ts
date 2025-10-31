@@ -62,7 +62,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
     try {
       const [challenge] = (await (tx || db)(TableName.PkiAcmeChallenge)
         .where({ id })
-        .update({ status: AcmeChallengeStatus.Valid, validatedAt: new Date() })
+        .update({ status: AcmeChallengeStatus.Invalid })
         .returning("*")) as [TPkiAcmeChallenges];
 
       // Update pending auth to valid as well
