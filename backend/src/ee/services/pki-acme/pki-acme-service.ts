@@ -82,18 +82,18 @@ export const pkiAcmeServiceFactory = ({
     return profile;
   };
 
-  const buildUrl = (path: string): string => {
+  const buildUrl = (profileId: string, path: string): string => {
     const appCfg = getConfig();
     const baseUrl = appCfg.SITE_URL ?? "";
-    return `${baseUrl}${path}`;
+    return `${baseUrl}/api/v1/pki/acme/profiles/${profileId}${path}`;
   };
 
   const extractAccountIdFromKid = (kid: string, profileId: string): string => {
-    const kidPrefix = buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/`);
+    const kidPrefix = buildUrl(profileId, "/accounts/");
     if (!kid.startsWith(kidPrefix)) {
       throw new AcmeMalformedError({ detail: "KID must start with the profile account URL" });
     }
-    return kid.slice(kidPrefix.length);
+    return z.string().uuid().parse(kid.slice(kidPrefix.length));
   };
 
   const validateJwsPayload = async <
@@ -248,18 +248,18 @@ export const pkiAcmeServiceFactory = ({
         value: auth.identifierValue
       })),
       authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
-        buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${auth.id}`)
+        buildUrl(profileId, `/authorizations/${auth.id}`)
       ),
-      finalize: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${order.id}/finalize`)
+      finalize: buildUrl(profileId, `/orders/${order.id}/finalize`)
     };
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
     const profile = await validateAcmeProfile(profileId);
     return {
-      newNonce: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-nonce`),
-      newAccount: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-account`),
-      newOrder: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/new-order`)
+      newNonce: buildUrl(profile.id, "/new-nonce"),
+      newAccount: buildUrl(profile.id, "/new-account"),
+      newOrder: buildUrl(profile.id, "/new-order")
     };
   };
 
@@ -297,10 +297,10 @@ export const pkiAcmeServiceFactory = ({
         body: {
           status: "valid",
           contact: existingAccount.emails,
-          orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${existingAccount.id}/orders`)
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
         },
         headers: {
-          Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${existingAccount.id}`)
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`)
         }
       };
     }
@@ -318,10 +318,10 @@ export const pkiAcmeServiceFactory = ({
       body: {
         status: "valid",
         contact: newAccount.emails,
-        orders: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${newAccount.id}/orders`)
+        orders: buildUrl(profile.id, `/accounts/${newAccount.id}/orders`)
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profile.id}/accounts/${newAccount.id}`)
+        Location: buildUrl(profile.id, `/accounts/${newAccount.id}`)
       }
     };
   };
@@ -343,7 +343,7 @@ export const pkiAcmeServiceFactory = ({
         status: "deactivated"
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}`)
+        Location: buildUrl(profileId, `/accounts/${accountId}`)
       }
     };
   };
@@ -428,7 +428,7 @@ export const pkiAcmeServiceFactory = ({
         order
       }),
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${order.account.profileId}/orders/${order.id}`)
+        Location: buildUrl(profileId, `/orders/${order.id}`)
       }
     };
   };
@@ -449,7 +449,7 @@ export const pkiAcmeServiceFactory = ({
     return {
       status: 200,
       body: buildAcmeOrderResource({ profileId, order }),
-      headers: { Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`) }
+      headers: { Location: buildUrl(profileId, `/orders/${orderId}`) }
     };
   };
 
@@ -474,7 +474,7 @@ export const pkiAcmeServiceFactory = ({
       status: 200,
       body: buildAcmeOrderResource({ profileId, order }),
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}`)
+        Location: buildUrl(profileId, `/orders/${orderId}`)
       }
     };
   };
@@ -498,7 +498,7 @@ export const pkiAcmeServiceFactory = ({
       status: 200,
       body: "FIXME-certificate-pem",
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/orders/${orderId}/certificate`)
+        Location: buildUrl(profileId, `/orders/${orderId}/certificate`)
       }
     };
   };
@@ -518,7 +518,7 @@ export const pkiAcmeServiceFactory = ({
         orders: []
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/accounts/${accountId}/orders`)
+        Location: buildUrl(profileId, `/accounts/${accountId}/orders`)
       }
     };
   };
@@ -551,16 +551,14 @@ export const pkiAcmeServiceFactory = ({
         challenges: auth.challenges.map((challenge: TPkiAcmeChallenges) => {
           return {
             type: challenge.type,
-            url: buildUrl(
-              `/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/${challenge.id}`
-            ),
+            url: buildUrl(profileId, `/authorizations/${authzId}/challenges/${challenge.id}`),
             status: challenge.status,
             token: auth.token
           };
         })
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}`)
+        Location: buildUrl(profileId, `/authorizations/${authzId}`)
       }
     };
   };
@@ -579,12 +577,12 @@ export const pkiAcmeServiceFactory = ({
       status: 200,
       body: {
         type: "http-01",
-        url: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`),
+        url: buildUrl(profileId, `/authorizations/${authzId}/challenges/http-01`),
         status: "pending",
         token: "FIXME-challenge-token"
       },
       headers: {
-        Location: buildUrl(`/api/v1/pki/acme/profiles/${profileId}/authorizations/${authzId}/challenges/http-01`)
+        Location: buildUrl(profileId, `/authorizations/${authzId}/challenges/http-01`)
       }
     };
   };
