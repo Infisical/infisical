@@ -10,12 +10,12 @@ import { TImmutableDBKeys } from "./models";
 export const PkiAcmeOrdersSchema = z.object({
   id: z.string().uuid(),
   accountId: z.string().uuid(),
-  status: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
   notBefore: z.date().nullable().optional(),
   notAfter: z.date().nullable().optional(),
-  expiresAt: z.date()
+  expiresAt: z.date(),
+  status: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date()
 });
 
 export type TPkiAcmeOrders = z.infer<typeof PkiAcmeOrdersSchema>;

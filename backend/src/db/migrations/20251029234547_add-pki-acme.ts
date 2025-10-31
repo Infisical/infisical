@@ -10,7 +10,7 @@ import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintI
 const OLD_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollmentType_check";
 const NEW_ENROLLMENT_TYPE_CHECK_CONSTRAINT = "pki_certificate_profiles_enrollment_type_check";
 
-const PUBLIC_KEY_ALG_INDEX = "pki_acme_accounts_publicKey_alg_index";
+const PUBLIC_KEY_THUMBPRINT_ALG_INDEX = "pki_acme_accounts_publicKey_thumbprint_alg_index";
 
 export async function up(knex: Knex): Promise<void> {
   // Create PkiAcmeEnrollmentConfig table
@@ -56,12 +56,14 @@ export async function up(knex: Knex): Promise<void> {
       // Multi-value emails array
       t.specificType("emails", "text[]").notNullable();
 
-      // TODO: make public key a string instead of jsonb to make indexing much easier
       // Public key (JWK format)
       t.jsonb("publicKey").notNullable();
+      // Public key thumbprint
+      t.string("publicKeyThumbprint").notNullable();
       // The JWS algorithm used to sign the public key when creating the account, e.g. "RS256", "ES256", "PS256", etc.
       t.string("alg").notNullable();
-      t.index(["publicKey", "alg"], PUBLIC_KEY_ALG_INDEX);
+      // We may need to look up existing accounts by public key thumbprint and algorithm, so we index on both of them.
+      t.index(["publicKeyThumbprint", "alg"], PUBLIC_KEY_THUMBPRINT_ALG_INDEX);
 
       t.timestamps(true, true, true);
     });
