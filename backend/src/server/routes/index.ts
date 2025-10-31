@@ -75,8 +75,8 @@ import { permissionDALFactory } from "@app/ee/services/permission/permission-dal
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
 import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
-import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
+import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -352,6 +352,7 @@ import { workflowIntegrationDALFactory } from "@app/services/workflow-integratio
 import { workflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
 import { pkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { pkiAcmeChallengeDALFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-dal";
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
 import { injectAuditLogInfo } from "../plugins/audit-log";
 import { injectAssumePrivilege } from "../plugins/auth/inject-assume-privilege";
@@ -1072,6 +1073,7 @@ export const registerRoutes = async (
   const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
   const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
   const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
+  const acmeChallengeDAL = pkiAcmeChallengeDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -1177,7 +1179,8 @@ export const registerRoutes = async (
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
-    acmeOrderAuthDAL
+    acmeOrderAuthDAL,
+    acmeChallengeDAL
   });
 
   const pkiAlertService = pkiAlertServiceFactory({

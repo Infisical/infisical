@@ -29,6 +29,7 @@ import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
   AcmeAuthStatus,
+  AcmeChallengeStatus,
   AcmeChallengeType,
   AcmeIdentifierType,
   AcmeOrderStatus,
@@ -399,6 +400,7 @@ export const pkiAcmeServiceFactory = ({
             await acmeChallengeDAL.create(
               {
                 authId: auth.id,
+                status: AcmeChallengeStatus.Pending,
                 type: AcmeChallengeType.HTTP_01
               },
               tx
