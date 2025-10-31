@@ -430,7 +430,8 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
           .max(100)
           .default(20)
           .describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
-          .optional()
+          .optional(),
+        identityName: z.string().describe(ORG_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.identityName).optional()
       }),
       response: {
         200: z.object({
@@ -447,7 +448,8 @@ export const registerIdentityOrgMembershipRouter = async (server: FastifyZodProv
         },
         data: {
           offset: req.query.offset,
-          limit: req.query.limit
+          limit: req.query.limit,
+          identityName: req.query.identityName
         }
       });
 

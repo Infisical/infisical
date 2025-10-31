@@ -1,10 +1,7 @@
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { components, OptionProps } from "react-select";
-import { faCheckCircle } from "@fortawesome/free-regular-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -17,64 +14,47 @@ import {
   ModalContent,
   Spinner
 } from "@app/components/v2";
-import { Badge, OrgIcon } from "@app/components/v3";
-import { useOrganization, useProject } from "@app/context";
+import { useProject } from "@app/context";
 import {
-  useAddIdentityToWorkspace,
-  useGetIdentityMembershipOrgs,
+  projectIdentityMembershipQuery,
+  useCreateProjectIdentityMembership,
   useGetProjectRoles,
-  useGetWorkspaceIdentityMemberships
+  useListProjectIdentityMemberships
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z.object({
-  identity: z.object({ name: z.string(), id: z.string(), isManagedByRootOrg: z.boolean() }),
+  identity: z.object({
+    name: z.string(),
+    id: z.string()
+  }),
   role: z.object({ name: z.string(), slug: z.string() })
 });
 
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["identity"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
-};
-
-const Option = ({
-  isSelected,
-  children,
-  ...props
-}: OptionProps<{ name: string; id: string; isManagedByRootOrg: boolean }>) => {
-  return (
-    <components.Option isSelected={isSelected} {...props}>
-      <div className="flex flex-row items-center justify-between">
-        <p className="truncate">{children}</p>
-        {props.data.isManagedByRootOrg && (
-          <Badge variant="org" className="ml-auto">
-            <OrgIcon />
-            Organization
-          </Badge>
-        )}
-        {isSelected && (
-          <FontAwesomeIcon className="ml-2 text-primary" icon={faCheckCircle} size="sm" />
-        )}
-      </div>
-    </components.Option>
-  );
+  popUp: UsePopUpState<["linkIdentity"]>;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["linkIdentity"]>, state?: boolean) => void;
 };
 
 const Content = ({ popUp, handlePopUpToggle }: Props) => {
-  const { currentOrg } = useOrganization();
   const { projectId } = useProject();
 
-  const organizationId = currentOrg?.id || "";
+  // const [searchValue, setSearchValue] = useState("");
 
-  const { data: identityMembershipOrgsData, isPending: isMembershipsLoading } =
-    useGetIdentityMembershipOrgs({
-      organizationId,
-      limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will replace with combobox in separate PR
-    });
-  const identityMembershipOrgs = identityMembershipOrgsData?.identityMemberships;
-  const { data: identityMembershipsData } = useGetWorkspaceIdentityMemberships({
+  // const [debouncedSearchValue] = useDebounce(searchValue);
+
+  // TODO: name search needs to be implemented on the backend
+  const { data: identityMembershipOrgs, isPending: isMembershipsLoading } = useQuery({
+    ...projectIdentityMembershipQuery.listAvailable({
+      projectId
+      // identityName: debouncedSearchValue
+    }),
+    placeholderData: (prev) => prev
+  });
+
+  const { data: identityMembershipsData } = useListProjectIdentityMemberships({
     projectId,
     limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
   });
@@ -82,7 +62,8 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
 
   const { data: roles, isPending: isRolesLoading } = useGetProjectRoles(projectId);
 
-  const { mutateAsync: addIdentityToWorkspaceMutateAsync } = useAddIdentityToWorkspace();
+  const { mutateAsync: createProjectIdentityMembershipMutateAsync } =
+    useCreateProjectIdentityMembership();
 
   const filteredIdentityMembershipOrgs = useMemo(() => {
     const wsIdentityIds = new Map();
@@ -91,7 +72,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
       wsIdentityIds.set(identityMembership.identity.id, true);
     });
 
-    return (identityMembershipOrgs || []).filter(({ identity: i }) => !wsIdentityIds.has(i.id));
+    return (identityMembershipOrgs || []).filter((i) => !wsIdentityIds.has(i.id));
   }, [identityMembershipOrgs, identityMemberships]);
 
   const {
@@ -104,7 +85,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const onFormSubmit = async ({ identity, role }: FormData) => {
-    await addIdentityToWorkspaceMutateAsync({
+    await createProjectIdentityMembershipMutateAsync({
       projectId,
       identityId: identity.id,
       role: role.slug || undefined
@@ -116,17 +97,17 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
     });
 
     const nextAvailableMembership = filteredIdentityMembershipOrgs.filter(
-      (membership) => membership.identity.id !== identity.id
+      (membership) => membership.id !== identity.id
     )[0];
 
     // prevents combobox from displaying previously added identity
     reset({
       identity: {
-        name: nextAvailableMembership?.identity.name,
-        id: nextAvailableMembership?.identity.id
+        name: nextAvailableMembership?.name,
+        id: nextAvailableMembership?.id
       }
     });
-    handlePopUpToggle("identity", false);
+    handlePopUpToggle("linkIdentity", false);
   };
 
   if (isMembershipsLoading || isRolesLoading)
@@ -136,7 +117,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
       </div>
     );
 
-  return filteredIdentityMembershipOrgs.length ? (
+  return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
@@ -147,15 +128,13 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
               value={value}
               onChange={onChange}
               placeholder="Select identity..."
+              // onInputChange={setSearchValue}
               options={filteredIdentityMembershipOrgs.map((membership) => ({
-                ...membership.identity,
-                isManagedByRootOrg: membership.identity.orgId !== currentOrg.id
+                name: membership.name,
+                id: membership.id
               }))}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
-              components={{
-                Option
-              }}
             />
           </FormControl>
         )}
@@ -189,7 +168,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {popUp?.identity?.data ? "Update" : "Add"}
+          {popUp?.linkIdentity?.data ? "Update" : "Link"}
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
@@ -198,29 +177,22 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
         </ModalClose>
       </div>
     </form>
-  ) : (
-    <div className="flex flex-col space-y-4">
-      <div className="text-sm">
-        All identities in your organization have already been added to this project.
-      </div>
-      <Link to={"/organization/access-management" as const}>
-        <Button isDisabled={isRolesLoading} isLoading={isRolesLoading} variant="outline_bg">
-          Create a new identity
-        </Button>
-      </Link>
-    </div>
   );
 };
 
-export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const ProjectLinkIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Modal
-      isOpen={popUp?.identity?.isOpen}
+      isOpen={popUp?.linkIdentity?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("identity", isOpen);
+        handlePopUpToggle("linkIdentity", isOpen);
       }}
     >
-      <ModalContent title="Add Identity to Project" bodyClassName="overflow-visible">
+      <ModalContent
+        title="Assign Existing Identity"
+        subTitle="Assign an existing identity from the parent organization to this project. The identity will continue to be managed at its original scope."
+        bodyClassName="overflow-visible"
+      >
         <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>

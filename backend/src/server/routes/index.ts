@@ -1666,7 +1666,8 @@ export const registerRoutes = async (
     identityMetadataDAL,
     licenseService,
     permissionService,
-    identityDAL: identityV2DAL
+    identityDAL: identityV2DAL,
+    keyStore
   });
 
   const identityProjectService = identityProjectServiceFactory({

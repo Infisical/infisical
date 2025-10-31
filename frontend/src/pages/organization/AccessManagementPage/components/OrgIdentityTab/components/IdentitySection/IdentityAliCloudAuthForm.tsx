@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -76,7 +77,9 @@ export const IdentityAliCloudAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityAliCloudAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityAliCloudAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -144,7 +147,7 @@ export const IdentityAliCloudAuthForm = ({
 
     if (data) {
       await updateMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         allowedArns,
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
@@ -154,7 +157,7 @@ export const IdentityAliCloudAuthForm = ({
       });
     } else {
       await addMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         identityId,
         allowedArns,
         accessTokenTTL: Number(accessTokenTTL),

@@ -1,10 +1,18 @@
-import { faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
+import {
+  Button,
+  DeleteActionModal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+  Modal,
+  ModalContent
+} from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -14,17 +22,17 @@ import {
 } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { useDeleteIdentity } from "@app/hooks/api";
+import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
 import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
-import { IdentityLinkForm } from "./IdentityLinkForm";
-import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
+import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
+import { OrgIdentityModal } from "./OrgIdentityModal";
 
 export const IdentitySection = withPermission(
   () => {
@@ -32,7 +40,7 @@ export const IdentitySection = withPermission(
     const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
+    const { mutateAsync: deleteMutateAsync } = useDeleteOrgIdentity();
     const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -46,7 +54,8 @@ export const IdentitySection = withPermission(
       "editTemplate",
       "deleteTemplate",
       "viewUsages",
-      "linkIdentity"
+      "linkIdentity",
+      "addOptions"
     ] as const);
 
     const isMoreIdentitiesAllowed = subscription?.identityLimit
@@ -58,7 +67,7 @@ export const IdentitySection = withPermission(
     const onDeleteIdentitySubmit = async (identityId: string) => {
       await deleteMutateAsync({
         identityId,
-        organizationId: orgId
+        orgId
       });
 
       createNotification({
@@ -91,50 +100,70 @@ export const IdentitySection = withPermission(
               <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
-            {isSubOrganization && (
+            <div className="flex items-center">
               <OrgPermissionCan
                 I={OrgPermissionIdentityActions.Create}
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (
                   <Button
-                    variant="plain"
-                    colorSchema="secondary"
-                    leftIcon={<FontAwesomeIcon icon={faLink} />}
+                    variant="outline_bg"
+                    className={isSubOrganization ? "rounded-r-none" : ""}
+                    type="submit"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                      handlePopUpOpen("linkIdentity");
+                      if (!isMoreIdentitiesAllowed && !isEnterprise) {
+                        handlePopUpOpen("upgradePlan", {
+                          description:
+                            "You can add more identities if you upgrade your Infisical Pro plan."
+                        });
+                        return;
+                      }
+                      handlePopUpOpen("identity");
                     }}
                     isDisabled={!isAllowed}
                   >
-                    Link Identity
+                    Create Identity
                   </Button>
                 )}
               </OrgPermissionCan>
-            )}
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Create}
-              a={OrgPermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="secondary"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                      handlePopUpOpen("upgradePlan", {
-                        text: "You have reached the maximum number of identities allowed on your current plan. Upgrade to Infisical Pro plan to add more identities."
-                      });
-                      return;
-                    }
-                    handlePopUpOpen("identity");
-                  }}
-                  isDisabled={!isAllowed}
+              {isSubOrganization && (
+                <DropdownMenu
+                  open={popUp.addOptions.isOpen}
+                  onOpenChange={(isOpen) => handlePopUpToggle("addOptions", isOpen)}
                 >
-                  Create Identity
-                </Button>
+                  <DropdownMenuTrigger>
+                    <Button
+                      variant="outline_bg"
+                      className="rounded-l-none border-l-mineshaft-800 px-3"
+                    >
+                      <FontAwesomeIcon icon={faChevronDown} />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" sideOffset={6} className="p-1">
+                    <OrgPermissionCan
+                      I={OrgPermissionIdentityActions.Create}
+                      a={OrgPermissionSubjects.Identity}
+                    >
+                      {(isAllowed) => (
+                        <Button
+                          variant="outline_bg"
+                          className="w-full"
+                          isDisabled={!isAllowed}
+                          leftIcon={<FontAwesomeIcon icon={faLink} />}
+                          onClick={() => {
+                            handlePopUpClose("addOptions");
+                            handlePopUpOpen("linkIdentity");
+                          }}
+                        >
+                          Assign Org Identity
+                        </Button>
+                      )}
+                    </OrgPermissionCan>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-            </OrgPermissionCan>
+            </div>
           </div>
           <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         </div>
@@ -173,7 +202,7 @@ export const IdentitySection = withPermission(
           </div>
           <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
         </div>
-        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <MachineAuthTemplateUsagesModal
           isOpen={popUp.viewUsages.isOpen}
@@ -193,10 +222,10 @@ export const IdentitySection = withPermission(
         >
           <ModalContent
             title="Assign Existing Identity"
-            subTitle="Assign an existing identity from your root organization to the sub organization. The identity will continue to be managed at its original scope."
+            subTitle="Assign an existing identity from your root organization to this sub organization. The identity will continue to be managed at its original scope."
             bodyClassName="overflow-visible"
           >
-            <IdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
+            <OrgIdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
           </ModalContent>
         </Modal>
         <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

@@ -2,16 +2,17 @@ import { subject } from "@casl/ability";
 import {
   faArrowDown,
   faArrowUp,
+  faChevronDown,
   faCircleXmark,
   faClock,
   faEllipsisV,
+  faLink,
   faMagnifyingGlass,
   faPlus,
   faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -42,8 +43,19 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  Badge,
+  DocumentationLinkBadge,
+  OrgIcon,
+  ProjectIcon,
+  SubOrgIcon
+} from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -53,12 +65,17 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
+import {
+  useDeleteProjectIdentity,
+  useDeleteProjectIdentityMembership,
+  useListProjectIdentityMemberships
+} from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
-import { IdentityModal } from "./components/IdentityModal";
+import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -66,6 +83,7 @@ export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
+    const { isSubOrganization } = useOrganization();
 
     const {
       offset,
@@ -90,7 +108,7 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const { data, isPending, isFetching } = useGetWorkspaceIdentityMemberships(
+    const { data, isPending, isFetching } = useListProjectIdentityMemberships(
       {
         projectId,
         offset,
@@ -110,24 +128,39 @@ export const IdentityTab = withProjectPermission(
       setPage
     });
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
+    const { mutateAsync: deleteMembershipMutateAsync } = useDeleteProjectIdentityMembership();
+    const { mutateAsync: deleteProjectIdentity } = useDeleteProjectIdentity();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "identity",
+      "createIdentity",
+      "linkIdentity",
       "deleteIdentity",
-      "upgradePlan"
+      "upgradePlan",
+      "addOptions"
     ] as const);
 
-    const onRemoveIdentitySubmit = async (identityId: string) => {
-      await deleteMutateAsync({
-        identityId,
-        projectId
-      });
+    const onRemoveIdentitySubmit = async (identityId: string, isProjectIdentity: boolean) => {
+      if (isProjectIdentity) {
+        await deleteProjectIdentity({
+          identityId,
+          projectId
+        });
 
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
+        createNotification({
+          text: "Successfully deleted project identity",
+          type: "success"
+        });
+      } else {
+        await deleteMembershipMutateAsync({
+          identityId,
+          projectId
+        });
+
+        createNotification({
+          text: "Successfully removed identity from project",
+          type: "success"
+        });
+      }
 
       handlePopUpClose("deleteIdentity");
     };
@@ -151,22 +184,55 @@ export const IdentityTab = withProjectPermission(
             <p className="text-xl font-medium text-mineshaft-100">Identities</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
           </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.Identity}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("identity")}
-                isDisabled={!isAllowed}
-              >
-                Add Identity
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          <div className="flex items-center">
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Identity}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline_bg"
+                  className="rounded-r-none"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("createIdentity")}
+                  isDisabled={!isAllowed}
+                >
+                  Create Identity
+                </Button>
+              )}
+            </ProjectPermissionCan>
+            <DropdownMenu
+              open={popUp.addOptions.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("addOptions", isOpen)}
+            >
+              <DropdownMenuTrigger>
+                <Button variant="outline_bg" className="rounded-l-none border-l-mineshaft-800 px-3">
+                  <FontAwesomeIcon icon={faChevronDown} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={6} className="p-1">
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Create}
+                  a={ProjectPermissionSub.Identity}
+                >
+                  {(isAllowed) => (
+                    <Button
+                      variant="outline_bg"
+                      className="w-full"
+                      isDisabled={!isAllowed}
+                      leftIcon={<FontAwesomeIcon icon={faLink} />}
+                      onClick={() => {
+                        handlePopUpOpen("linkIdentity");
+                        handlePopUpClose("addOptions");
+                      }}
+                    >
+                      Assign Org Identity
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <Input
           containerClassName="mb-4"
@@ -202,7 +268,7 @@ export const IdentityTab = withProjectPermission(
                   </div>
                 </Th>
                 <Th className="w-1/3">Role</Th>
-                <Th>Added on</Th>
+                <Th>Managed by</Th>
                 <Th className="w-5">{isFetching ? <Spinner size="xs" /> : null}</Th>
               </Tr>
             </THead>
@@ -213,9 +279,8 @@ export const IdentityTab = withProjectPermission(
                 data.identityMemberships.length > 0 &&
                 data.identityMemberships.map((identityMember) => {
                   const {
-                    identity: { id, name },
-                    roles,
-                    createdAt
+                    identity: { id, name, projectId: identityProjectId },
+                    roles
                   } = identityMember;
                   return (
                     <Tr
@@ -339,7 +404,27 @@ export const IdentityTab = withProjectPermission(
                           )}
                         </div>
                       </Td>
-                      <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                      <Td>
+                        <Badge variant="ghost">
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {identityProjectId ? (
+                            <>
+                              <ProjectIcon />
+                              Project
+                            </>
+                          ) : isSubOrganization ? (
+                            <>
+                              <SubOrgIcon />
+                              Sub-Organization
+                            </>
+                          ) : (
+                            <>
+                              <OrgIcon />
+                              Organization
+                            </>
+                          )}
+                        </Badge>
+                      </Td>
                       <Td className="flex justify-end space-x-2">
                         <Tooltip className="max-w-sm text-center" content="Options">
                           <DropdownMenu>
@@ -369,11 +454,14 @@ export const IdentityTab = withProjectPermission(
                                       evt.preventDefault();
                                       handlePopUpOpen("deleteIdentity", {
                                         identityId: id,
-                                        name
+                                        name,
+                                        isProjectIdentity: Boolean(identityProjectId)
                                       });
                                     }}
                                   >
-                                    Remove Identity From Project
+                                    {identityProjectId
+                                      ? "Delete Project Identity"
+                                      : "Remove Identity From Project"}
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
@@ -406,7 +494,11 @@ export const IdentityTab = withProjectPermission(
             />
           )}
         </TableContainer>
-        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <ProjectIdentityModal
+          isOpen={popUp.createIdentity.isOpen}
+          onOpenChange={(isOpen) => handlePopUpToggle("createIdentity", isOpen)}
+        />
+        <ProjectLinkIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${
@@ -416,7 +508,8 @@ export const IdentityTab = withProjectPermission(
           deleteKey="confirm"
           onDeleteApproved={() =>
             onRemoveIdentitySubmit(
-              (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+              popUp?.deleteIdentity?.data?.identityId,
+              popUp?.deleteIdentity?.data?.isProjectIdentity
             )
           }
         />

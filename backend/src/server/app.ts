@@ -14,6 +14,7 @@ import { fastifyRequestContext } from "@fastify/request-context";
 import fastify from "fastify";
 import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
+import { monitorEventLoopDelay } from "perf_hooks";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
 import { TKeyStoreFactory } from "@app/keystore/keystore";

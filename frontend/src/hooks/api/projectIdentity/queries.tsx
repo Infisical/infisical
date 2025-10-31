@@ -2,11 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import {
-  TGetProjectIdentityByIdDTO,
-  TListProjectIdentitiesDTO,
-  TProjectIdentity
-} from "./types";
+import { TGetProjectIdentityByIdDTO, TListProjectIdentitiesDTO, TProjectIdentity } from "./types";
 
 export const projectIdentityQuery = {
   allKey: () => ["project-identities"] as const,

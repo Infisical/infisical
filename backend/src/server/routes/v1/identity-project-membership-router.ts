@@ -293,7 +293,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
                 authMethods: z.array(z.string())
               }),
               project: SanitizedProjectSchema.pick({ name: true, id: true })
@@ -362,7 +362,9 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
                 temporaryAccessEndTime: z.date().nullable().optional()
               })
             ),
-            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+            lastLoginAuthMethod: z.string().nullable().optional(),
+            lastLoginTime: z.date().nullable().optional(),
+            identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
               authMethods: z.array(z.string())
             }),
             project: SanitizedProjectSchema.pick({ name: true, id: true })
@@ -469,6 +471,11 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
           .max(100)
           .default(20)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
+          .optional(),
+        identityName: z
+          .string()
+          .trim()
+          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.identityName)
           .optional()
       }),
       response: {
@@ -487,7 +494,8 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         },
         data: {
           offset: req.query.offset,
-          limit: req.query.limit
+          limit: req.query.limit,
+          identityName: req.query.identityName
         }
       });
 

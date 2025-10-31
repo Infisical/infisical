@@ -20,7 +20,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
-import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { useCreateOrgIdentity, useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -47,7 +47,7 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
 };
 
-export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -55,8 +55,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: roles } = useGetOrgRoles(orgId);
   const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
-  const { mutateAsync: createMutateAsync } = useCreateIdentity();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
+  const { mutateAsync: createMutateAsync } = useCreateOrgIdentity();
+  const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {

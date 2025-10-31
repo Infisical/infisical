@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
@@ -26,10 +27,13 @@ import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
 import { usePopUp } from "@app/hooks";
 import {
   useAssumeProjectPrivileges,
-  useDeleteIdentityFromWorkspace,
-  useGetWorkspaceIdentityMembershipDetails
+  useDeleteProjectIdentityMembership,
+  useGetProjectIdentityMembership
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
+import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
+import { ProjectIdentityAuthenticationSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityAuthSection";
+import { ProjectIdentityDetailsSection } from "@app/pages/project/IdentityDetailsByIDPage/components/ProjectIdentityDetailsSection";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
 import { IdentityProjectAdditionalPrivilegeSection } from "./components/IdentityProjectAdditionalPrivilegeSection";
@@ -44,10 +48,24 @@ const Page = () => {
   const { currentProject, projectId } = useProject();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetWorkspaceIdentityMembershipDetails(projectId, identityId);
+    useGetProjectIdentityMembership(projectId, identityId);
 
   const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } =
-    useDeleteIdentityFromWorkspace();
+    useDeleteProjectIdentityMembership();
+
+  const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
+
+  const {
+    data: identity,
+    isPending: isProjectIdentityPending,
+    refetch: refetchIdentity
+  } = useQuery({
+    ...projectIdentityQuery.getById({
+      identityId: identityMembershipDetails?.identity.id as string,
+      projectId: identityMembershipDetails?.identity.projectId as string
+    }),
+    enabled: isProjectIdentity
+  });
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "deleteIdentity",
@@ -96,7 +114,7 @@ const Page = () => {
     });
   };
 
-  if (isMembershipDetailsLoading) {
+  if (isMembershipDetailsLoading || (isProjectIdentity && isProjectIdentityPending)) {
     return (
       <div className="flex w-full items-center justify-center p-24">
         <Spinner />
@@ -124,7 +142,7 @@ const Page = () => {
           <PageHeader
             scope={currentProject.type}
             title={identityMembershipDetails?.identity?.name}
-            description={`Identity joined on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
+            description={`Identity ${isProjectIdentity ? "created" : "added"} on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
           >
             <div className="flex items-center gap-2">
               <Button
@@ -142,7 +160,9 @@ const Page = () => {
               </Button>
               <ProjectPermissionCan
                 I={ProjectPermissionIdentityActions.AssumePrivileges}
-                a={ProjectPermissionSub.Identity}
+                a={subject(ProjectPermissionSub.Identity, {
+                  identityId: identityMembershipDetails?.identity.id
+                })}
                 renderTooltip
                 allowedLabel="Assume privileges of the user"
                 passThrough={false}
@@ -158,36 +178,54 @@ const Page = () => {
                   </Button>
                 )}
               </ProjectPermissionCan>
-              <ProjectPermissionCan
-                I={ProjectPermissionActions.Delete}
-                a={subject(ProjectPermissionSub.Identity, {
-                  identityId: identityMembershipDetails?.identity?.id
-                })}
-                renderTooltip
-                allowedLabel="Remove from project"
-              >
-                {(isAllowed) => (
-                  <Button
-                    colorSchema="danger"
-                    variant="outline_bg"
-                    size="xs"
-                    isDisabled={!isAllowed}
-                    isLoading={isDeletingIdentity}
-                    onClick={() => handlePopUpOpen("deleteIdentity")}
-                  >
-                    Remove Identity
-                  </Button>
-                )}
-              </ProjectPermissionCan>
+              {!isProjectIdentity && (
+                <ProjectPermissionCan
+                  I={ProjectPermissionActions.Delete}
+                  a={subject(ProjectPermissionSub.Identity, {
+                    identityId: identityMembershipDetails?.identity?.id
+                  })}
+                  renderTooltip
+                  allowedLabel="Remove from project"
+                >
+                  {(isAllowed) => (
+                    <Button
+                      colorSchema="danger"
+                      variant="outline_bg"
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      isLoading={isDeletingIdentity}
+                      onClick={() => handlePopUpOpen("deleteIdentity")}
+                    >
+                      Remove Identity
+                    </Button>
+                  )}
+                </ProjectPermissionCan>
+              )}
             </div>
           </PageHeader>
-          <IdentityRoleDetailsSection
-            identityMembershipDetails={identityMembershipDetails}
-            isMembershipDetailsLoading={isMembershipDetailsLoading}
-          />
-          <IdentityProjectAdditionalPrivilegeSection
-            identityMembershipDetails={identityMembershipDetails}
-          />
+          <div className="flex gap-x-4">
+            {identity && (
+              <div className="flex w-72 flex-col gap-y-4">
+                <ProjectIdentityDetailsSection
+                  identity={identity}
+                  membership={identityMembershipDetails!}
+                />
+                <ProjectIdentityAuthenticationSection
+                  identity={identity}
+                  refetchIdentity={() => refetchIdentity()}
+                />
+              </div>
+            )}
+            <div className="flex-1">
+              <IdentityRoleDetailsSection
+                identityMembershipDetails={identityMembershipDetails}
+                isMembershipDetailsLoading={isMembershipDetailsLoading}
+              />
+              <IdentityProjectAdditionalPrivilegeSection
+                identityMembershipDetails={identityMembershipDetails}
+              />
+            </div>
+          </div>
           <DeleteActionModal
             isOpen={popUp.deleteIdentity.isOpen}
             title={`Are you sure you want to remove ${identityMembershipDetails?.identity?.name} from the project?`}
