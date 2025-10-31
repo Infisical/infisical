@@ -20,19 +20,23 @@ export const pkiAcmeAccountDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByPublicKey = async (profileId: string, alg: string, publicKey: unknown, tx?: Knex) => {
+  const findByProfileIdAndPublicKeyThumbprintAndAlg = async (
+    profileId: string,
+    alg: string,
+    publicKeyThumbprint: string,
+    tx?: Knex
+  ) => {
     try {
-      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, alg, publicKey }).first();
-
+      const account = await (tx || db)(TableName.PkiAcmeAccount).where({ profileId, alg, publicKeyThumbprint }).first();
       return account || null;
     } catch (error) {
-      throw new DatabaseError({ error, name: "Find PKI ACME account by public key and alg" });
+      throw new DatabaseError({ error, name: "Find PKI ACME account by profile id, public key thumbprint and alg" });
     }
   };
 
   return {
     ...pkiAcmeAccountOrm,
     findByProjectIdAndAccountId,
-    findByPublicKey
+    findByProfileIdAndPublicKeyThumbprintAndAlg
   };
 };
