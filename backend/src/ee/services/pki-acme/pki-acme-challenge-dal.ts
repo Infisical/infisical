@@ -75,12 +75,12 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
         // Update status for pending orders that have all auths valid
         await (tx || db)(TableName.PkiAcmeOrder)
           .whereIn("id", (qb) => {
-            qb.select("id")
-              .from(TableName.PkiAcmeOrder)
-              .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
+            qb.select("o.id")
+              .from({ o: TableName.PkiAcmeOrder })
+              .join(TableName.PkiAcmeOrderAuth, "o.id", `${TableName.PkiAcmeOrderAuth}.orderId`)
               .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
               // We only update orders that are pending
-              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
+              .where("o.status", AcmeOrderStatus.Pending)
               .whereIn(
                 `${TableName.PkiAcmeAuth}.id`,
                 updatedAuths.map((auth) => auth.id)
