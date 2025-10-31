@@ -1,13 +1,60 @@
 import { TDbClient } from "@app/db";
-import { TableName, TPkiAcmeAccounts, TPkiAcmeAuths } from "@app/db/schemas";
+import { TableName, TPkiAcmeChallenges } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify, selectAllTableCols, sqlNestRelationships } from "@app/lib/knex";
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { Knex } from "knex";
+import { AcmeAuthStatus, AcmeChallengeStatus, AcmeOrderStatus } from "./pki-acme-schemas";
 
 export type TPkiAcmeChallengeDALFactory = ReturnType<typeof pkiAcmeChallengeDALFactory>;
 
 export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
   const pkiAcmeChallengeOrm = ormify(db, TableName.PkiAcmeChallenge);
+
+  const markAsValidCascadeById = async (id: string, tx?: Knex): Promise<TPkiAcmeChallenges> => {
+    try {
+      const [challenge] = (await (tx || db)(TableName.PkiAcmeChallenge)
+        .where({ id })
+        .update({ status: AcmeChallengeStatus.Valid, validatedAt: new Date() })
+        .returning("*")) as [TPkiAcmeChallenges];
+
+      // Update pending auth to valid as well
+      const updatedAuths = await (tx || db)(TableName.PkiAcmeAuth)
+        .where({ id: challenge.authId, status: AcmeAuthStatus.Pending })
+        .update({ status: AcmeAuthStatus.Valid })
+        .returning("id");
+
+      if (updatedAuths.length > 0) {
+        // Update status for pending orders that have all auths valid
+        await (tx || db)(TableName.PkiAcmeOrder)
+          .whereIn("id", (qb) => {
+            qb.select("id")
+              .from(TableName.PkiAcmeOrder)
+              .join(TableName.PkiAcmeOrderAuth, `${TableName.PkiAcmeOrder}.id`, `${TableName.PkiAcmeOrderAuth}.orderId`)
+              .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
+              .groupBy(`${TableName.PkiAcmeOrder}.id`)
+              // All auths should be valid for the order to be ready
+              .havingRaw(
+                `SUM(CASE WHEN :authTable:.status = :authStatus: THEN 1 ELSE 0 END) = COUNT(DISTINCT :authTable:.id)`,
+                {
+                  authTable: TableName.PkiAcmeAuth,
+                  authStatus: AcmeAuthStatus.Valid
+                }
+              )
+              // We only update orders that are pending
+              .where(`${TableName.PkiAcmeOrder}.status`, AcmeOrderStatus.Pending)
+              .whereIn(
+                `${TableName.PkiAcmeAuth}.id`,
+                updatedAuths.map((auth) => auth.id)
+              );
+          })
+          .update({ status: AcmeOrderStatus.Ready });
+      }
+
+      return challenge;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update certificate profile" });
+    }
+  };
 
   const findByAccountAuthAndChallengeId = async (accountId: string, authId: string, challengeId: string, tx?: Knex) => {
     try {
@@ -78,6 +125,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
 
   return {
     ...pkiAcmeChallengeOrm,
+    markAsValidCascadeById,
     findByAccountAuthAndChallengeId,
     findByIdForChallengeValidation
   };
