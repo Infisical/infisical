@@ -251,7 +251,8 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           reqId: req.id,
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
-          detail: error.detail
+          detail: error.detail,
+          message: error.message
           // TODO: add subproblems if they exist
         });
     } else {
