@@ -3,15 +3,43 @@
  * https://datatracker.ietf.org/doc/html/rfc8555#section-6.2
  */
 
+// RFC 8555 Section 6.7 - Error Types
+export enum AcmeErrorType {
+  AccountDoesNotExist = "accountDoesNotExist",
+  AlreadyRevoked = "alreadyRevoked",
+  BadCsr = "badCSR",
+  BadNonce = "badNonce",
+  BadPublicKey = "badPublicKey",
+  BadRevocationReason = "badRevocationReason",
+  BadSignatureAlgorithm = "badSignatureAlgorithm",
+  CAA = "CAA",
+  Compound = "compound",
+  Connection = "connection",
+  DNS = "DNS",
+  ExternalAccountRequired = "externalAccountRequired",
+  IncorrectResponse = "incorrectResponse",
+  IncorrectContact = "incorrectContact",
+  Malformed = "malformed",
+  OrderNotReady = "orderNotReady",
+  RateLimited = "rateLimited",
+  RejectedIdentifier = "rejectedIdentifier",
+  ServerInternal = "serverInternal",
+  TLS = "tls",
+  Unauthorized = "unauthorized",
+  UnsupportedContact = "unsupportedContact",
+  UnsupportedIdentifier = "unsupportedIdentifier",
+  UserActionRequired = "userActionRequired"
+}
+
 export interface IAcmeError {
-  type: string;
+  type: AcmeErrorType;
   detail: string;
   status: number;
   subproblems?: Array<{ type: string; detail: string; identifier?: { type: string; value: string } }>;
 }
 
 export class AcmeError extends Error implements IAcmeError {
-  type: string;
+  type: AcmeErrorType;
 
   detail: string;
 
@@ -29,7 +57,7 @@ export class AcmeError extends Error implements IAcmeError {
     error,
     message
   }: {
-    type: string;
+    type: AcmeErrorType;
     detail: string;
     status: number;
     subproblems?: Array<{ type: string; detail: string; identifier?: { type: string; value: string } }>;
@@ -69,7 +97,7 @@ export class AcmeMalformedError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "malformed",
+      type: AcmeErrorType.Malformed,
       detail,
       status: 400,
       error,
@@ -93,7 +121,7 @@ export class AcmeUnauthorizedError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "unauthorized",
+      type: AcmeErrorType.Unauthorized,
       detail,
       status: 403,
       error,
@@ -118,7 +146,7 @@ export class AcmeAccountDoesNotExistError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "accountDoesNotExist",
+      type: AcmeErrorType.AccountDoesNotExist,
       detail,
       status: 400,
       error,
@@ -142,7 +170,7 @@ export class AcmeBadNonceError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "badNonce",
+      type: AcmeErrorType.BadNonce,
       detail,
       status: 400,
       error,
@@ -153,11 +181,11 @@ export class AcmeBadNonceError extends AcmeError {
 }
 
 /**
- * badSignature - The JWS signature is invalid (RFC 8555 Section 6.7.5)
+ * badSignatureAlgorithm - The signature algorithm is invalid (RFC 8555 Section 6.7.5)
  */
-export class AcmeBadSignatureError extends AcmeError {
+export class AcmeBadSignatureAlgorithmError extends AcmeError {
   constructor({
-    detail = "The JWS signature is invalid",
+    detail = "The signature algorithm is invalid",
     error,
     message
   }: {
@@ -166,13 +194,13 @@ export class AcmeBadSignatureError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "badSignature",
+      type: AcmeErrorType.BadSignatureAlgorithm,
       detail,
       status: 401,
       error,
       message
     });
-    this.name = "AcmeBadSignatureError";
+    this.name = "AcmeBadSignatureAlgorithmError";
   }
 }
 
@@ -190,7 +218,7 @@ export class AcmeBadPublicKeyError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "badPublicKey",
+      type: AcmeErrorType.BadPublicKey,
       detail,
       status: 400,
       error,
@@ -214,7 +242,7 @@ export class AcmeBadCsrError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "badCSR",
+      type: AcmeErrorType.BadCsr,
       detail,
       status: 400,
       error,
@@ -239,7 +267,7 @@ export class AcmeBadRevocationReasonError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "badRevocationReason",
+      type: AcmeErrorType.BadRevocationReason,
       detail,
       status: 400,
       error,
@@ -263,7 +291,7 @@ export class AcmeRateLimitedError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "rateLimited",
+      type: AcmeErrorType.RateLimited,
       detail,
       status: 429,
       error,
@@ -290,7 +318,7 @@ export class AcmeRejectedIdentifierError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "rejectedIdentifier",
+      type: AcmeErrorType.RejectedIdentifier,
       detail,
       status: 400,
       subproblems,
@@ -315,37 +343,13 @@ export class AcmeServerInternalError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "serverInternal",
+      type: AcmeErrorType.ServerInternal,
       detail,
       status: 500,
       error,
       message
     });
     this.name = "AcmeServerInternalError";
-  }
-}
-
-/**
- * serviceUnavailable - The service is unavailable (RFC 8555 Section 6.7.12)
- */
-export class AcmeServiceUnavailableError extends AcmeError {
-  constructor({
-    detail = "The service is unavailable",
-    error,
-    message
-  }: {
-    detail?: string;
-    error?: unknown;
-    message?: string;
-  } = {}) {
-    super({
-      type: "serviceUnavailable",
-      detail,
-      status: 503,
-      error,
-      message
-    });
-    this.name = "AcmeServiceUnavailableError";
   }
 }
 
@@ -363,7 +367,7 @@ export class AcmeUnsupportedContactError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "unsupportedContact",
+      type: AcmeErrorType.UnsupportedContact,
       detail,
       status: 400,
       error,
@@ -388,7 +392,7 @@ export class AcmeUnsupportedIdentifierError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "unsupportedIdentifier",
+      type: AcmeErrorType.UnsupportedIdentifier,
       detail,
       status: 400,
       error,
@@ -417,7 +421,7 @@ export class AcmeUserActionRequiredError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "userActionRequired",
+      type: AcmeErrorType.UserActionRequired,
       detail,
       status: 403,
       error,
@@ -449,12 +453,57 @@ export class AcmeIncorrectResponseError extends AcmeError {
     message?: string;
   } = {}) {
     super({
-      type: "incorrectResponse",
+      type: AcmeErrorType.IncorrectResponse,
       detail,
       status: 400,
       error,
       message
     });
     this.name = "AcmeIncorrectResponseError";
+  }
+}
+
+/**
+ * connectionError - A connection error occurred (RFC 8555 Section 6.7.17)
+ */
+export class AcmeConnectionError extends AcmeError {
+  constructor({
+    detail = "A connection error occurred",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: AcmeErrorType.Connection,
+      detail,
+      status: 400,
+      error,
+      message
+    });
+    this.name = "AcmeConnectionError";
+  }
+}
+
+export class AcmeDnsFailureError extends AcmeError {
+  constructor({
+    detail = "Hostname could not be resolved (DNS failure)",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: AcmeErrorType.DNS,
+      detail,
+      status: 400,
+      error,
+      message
+    });
+    this.name = "AcmeDnsFailureError";
   }
 }
