@@ -41,55 +41,53 @@ def replace_vars(payload: dict | list | int | float | str, vars: dict):
         return payload
 
 
-def parse_glom_path(path_str: str):
+def parse_glom_path(path_str: str) -> glom.Path:
     """
     Parse a glom path string with 'attr[index]' syntax into a Path object.
 
     Examples:
-    >>> parse_glom_path('authorizations[0].name')
-    Path('authorizations', 0, 'name')
-
-    >>> parse_glom_path('items[1].user[0].id')
-    Path('items', 1, 'user', 0, 'id')
-
-    >>> parse_glom_path('simple_attr')
-    Path('simple_attr')
-
-    >>> parse_glom_path('nested.attr')
-    Path('nested', 'attr')
+    >>> parse_glom_path('authorizations[0]') == Path('authorizations', 0)
+    True
+    >>> parse_glom_path('data.items[1].name') == Path('data', 'items', 1, 'name')
+    True
+    >>> parse_glom_path('user.addresses[0].street') == Path('user', 'addresses', 0, 'street')
+    True
     """
-    # Pattern to match attr[index] or just attr
-    # Groups: (attr_name)(?:\[(index)\])?
-    pattern = r"([a-zA-Z_][a-zA-Z0-9_]*)(?:\[(\d+)\])?"
-
-    # Split on dots, but preserve the parts
     parts = []
-    current_pos = 0
 
-    # Find all matches in the string
-    for match in re.finditer(pattern, path_str):
-        # Add any literal text before this match
-        if match.start() > current_pos:
-            before = path_str[current_pos : match.start()]
-            raise ValueError(f"Invalid path syntax: unexpected text '{before}'")
+    # Split by dots, but preserve bracketed content
+    tokens = re.split(r"(?<!\[)\.(?![^\[]*\])", path_str)
 
-        attr_name = match.group(1)
-        index = match.group(2)
+    for token in tokens:
+        token = token.strip()
+        if not token:
+            continue
 
-        # Add the attribute name
-        parts.append(attr_name)
+        # Check for attr[index] pattern
+        match = re.match(r"^(.+?)\[([^\]]+)\]$", token)
+        if match:
+            attr_name = match.group(1).strip()
+            index_str = match.group(2).strip()
 
-        # Add index if present
-        if index is not None:
-            parts.append(int(index))
+            # Parse index (support integers, slices, etc.)
+            if index_str.isdigit():
+                index = int(index_str)
+            elif "-" in index_str:
+                # Handle negative indices like [-1]
+                index = int(index_str)
+            elif ":" in index_str:
+                # Handle slices like [0:10]
+                index = slice(
+                    *map(int, [x.strip() for x in index_str.split(":") if x.strip()])
+                )
+            else:
+                # Treat as string key
+                index = index_str
 
-        current_pos = match.end()
-
-    # Check for trailing text
-    if current_pos < len(path_str):
-        after = path_str[current_pos:]
-        if after != ".":
-            raise ValueError(f"Invalid path syntax: unexpected text '{after}'")
+            parts.extend([attr_name, index])
+        else:
+            # Plain attribute/key
+            parts.append(token)
 
     return glom.Path(*parts)
 
