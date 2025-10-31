@@ -631,6 +631,9 @@ export const pkiAcmeServiceFactory = ({
       if (!challenge.auth.token) {
         throw new AcmeServerInternalError({ message: "ACME challenge token is required" });
       }
+      if (challenge.type !== AcmeChallengeType.HTTP_01) {
+        throw new BadRequestError({ message: "Only HTTP-01 challenges are supported for now" });
+      }
       const updatedChallenge = await acmeChallengeDAL.updateById(
         challengeId,
         { status: AcmeChallengeStatus.Pending },
