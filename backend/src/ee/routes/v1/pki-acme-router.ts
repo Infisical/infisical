@@ -16,6 +16,7 @@ import {
   ListAcmeOrdersPayloadSchema,
   ListAcmeOrdersResponseSchema,
   RawJwsPayloadSchema,
+  RespondToAcmeChallengeBodySchema,
   RespondToAcmeChallengeResponseSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
 import { ApiDocsTags } from "@app/lib/api-docs";
@@ -53,7 +54,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
 
   const sendAcmeResponse = async <T>(res: FastifyReply, profileId: string, response: TAcmeResponse<T>): Promise<T> => {
     res.code(response.status);
-    for (const [key, value] of response.headers) {
+    for (const [key, value] of Object.entries(response.headers)) {
       res.header(key, value);
     }
 
@@ -441,10 +442,10 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({ req });
-      if (payload !== "") {
-        throw new AcmeMalformedError({ detail: "Payload should be empty" });
-      }
+      const { profileId, accountId } = await validateExistingAccount({
+        req,
+        schema: RespondToAcmeChallengeBodySchema
+      });
       return sendAcmeResponse(
         res,
         profileId,
