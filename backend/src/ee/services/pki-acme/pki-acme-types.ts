@@ -44,7 +44,7 @@ export type TAuthenciatedJwsPayload<T> = TJwsPayload<T> & {
 };
 export type TAcmeResponse<TPayload> = {
   status: number;
-  headers: Record<string, string>;
+  headers: [string, string][];
   body: TPayload;
 };
 
@@ -164,9 +164,13 @@ export type TPkiAcmeServiceFactory = {
   }) => Promise<TAcmeResponse<TGetAcmeAuthorizationResponse>>;
   respondToAcmeChallenge: ({
     profileId,
-    authzId
+    accountId,
+    authzId,
+    challengeId
   }: {
     profileId: string;
+    accountId: string;
     authzId: string;
+    challengeId: string;
   }) => Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>>;
 };
