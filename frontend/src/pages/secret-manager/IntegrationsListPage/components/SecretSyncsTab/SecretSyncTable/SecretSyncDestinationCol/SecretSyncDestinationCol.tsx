@@ -22,6 +22,7 @@ import { HerokuSyncDestinationCol } from "./HerokuSyncDestinationCol";
 import { HumanitecSyncDestinationCol } from "./HumanitecSyncDestinationCol";
 import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol";
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
+import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
@@ -96,6 +97,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <DigitalOceanAppPlatformSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Netlify:
       return <NetlifySyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Northflank:
+      return <NorthflankSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Bitbucket:
       return <BitbucketSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.LaravelForge:

@@ -88,6 +88,10 @@ import {
   NetlifyConnectionListItemSchema,
   SanitizedNetlifyConnectionSchema
 } from "@app/services/app-connection/netlify";
+import {
+  NorthflankConnectionListItemSchema,
+  SanitizedNorthflankConnectionSchema
+} from "@app/services/app-connection/northflank";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -160,6 +164,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
+  ...SanitizedNorthflankConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
@@ -203,6 +208,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
+  NorthflankConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,

@@ -34,6 +34,7 @@ import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -1052,6 +1053,11 @@ export const secretV2BridgeServiceFactory = ({
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
+    recordSecretReadMetric({
+      environment,
+      secretPath: path
+    });
+
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
@@ -1480,6 +1486,12 @@ export const secretV2BridgeServiceFactory = ({
       secretPath: path,
       secretName,
       secretTags: (secret?.tags || []).map((el) => el.slug)
+    });
+
+    recordSecretReadMetric({
+      environment,
+      secretPath: path,
+      name: secretName
     });
 
     // this will throw if the user doesn't have read value permission no matter what

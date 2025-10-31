@@ -141,12 +141,10 @@ export const Navbar = () => {
     enabled: Boolean(subscription.subOrganization)
   });
 
-  useEffect(() => {
-    if (subscription?.cardDeclined && !sessionStorage.getItem("paymentFailed")) {
-      sessionStorage.setItem("paymentFailed", "true");
-      setShowCardDeclinedModal(true);
-    }
-  }, [subscription]);
+  const isCardDeclined = Boolean(subscription?.cardDeclined);
+  const isCardDeclinedMoreThan30Days = Boolean(
+    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
+  );
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -158,6 +156,23 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
+  const isBillingPage = location.pathname === "/organization/billing";
+
+  const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
+
+  useEffect(() => {
+    if (isModalIntrusive) {
+      setShowCardDeclinedModal(true);
+      sessionStorage.setItem("paymentFailed", "true");
+      return;
+    }
+
+    if (isCardDeclined && !sessionStorage.getItem("paymentFailed")) {
+      sessionStorage.setItem("paymentFailed", "true");
+      setShowCardDeclinedModal(true);
+    }
+  }, [subscription, isBillingPage, isModalIntrusive]);
+
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
@@ -689,7 +704,10 @@ export const Navbar = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Modal isOpen={showCardDeclinedModal} onOpenChange={setShowCardDeclinedModal}>
+      <Modal
+        isOpen={showCardDeclinedModal}
+        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
+      >
         <ModalContent
           title={
             <div className="flex items-center gap-2">
@@ -697,6 +715,7 @@ export const Navbar = () => {
               Your payment could not be processed.
             </div>
           }
+          showCloseButton={!isModalIntrusive}
         >
           <div>
             <div>
@@ -717,15 +736,16 @@ export const Navbar = () => {
                     >
                       Update Payment Method
                     </Button>
+                  </Link>
+                  {!isModalIntrusive && (
                     <Button
                       colorSchema="secondary"
                       variant="outline"
-                      className="ml-2"
                       onClick={() => setShowCardDeclinedModal(false)}
                     >
                       Dismiss
                     </Button>
-                  </Link>
+                  )}
                 </div>
               </div>
             </div>

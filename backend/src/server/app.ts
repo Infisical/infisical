@@ -141,7 +141,9 @@ export const main = async ({
     await server.register(fastifyRequestContext, {
       defaultStoreValues: (req) => ({
         reqId: req.id,
-        log: req.log.child({ reqId: req.id })
+        log: req.log.child({ reqId: req.id }),
+        ip: req.realIp,
+        userAgent: req.headers["user-agent"]
       })
     });
 

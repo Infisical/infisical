@@ -1,4 +1,4 @@
-import { TSamlConfigs } from "@app/db/schemas";
+import { TOrganizations, TSamlConfigs, TUsers } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 
@@ -78,5 +78,7 @@ export type TSamlConfigServiceFactory = {
   samlLogin: (arg: TSamlLoginDTO) => Promise<{
     isUserCompleted: boolean;
     providerAuthToken: string;
+    user: TUsers;
+    organization: TOrganizations;
   }>;
 };

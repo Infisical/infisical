@@ -71,6 +71,7 @@ export const SecretSyncOptionsSection = ({ secretSync, onEditOptions }: Props) =
     case SecretSync.Checkly:
     case SecretSync.DigitalOceanAppPlatform:
     case SecretSync.Netlify:
+    case SecretSync.Northflank:
     case SecretSync.Bitbucket:
     case SecretSync.LaravelForge:
       AdditionalSyncOptionsComponent = null;

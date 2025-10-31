@@ -46,6 +46,7 @@ import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
 import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/services/secret-sync/laravel-forge";
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
+import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/services/secret-sync/northflank";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -85,6 +86,7 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ChecklySyncSchema,
   DigitalOceanAppPlatformSyncSchema,
   NetlifySyncSchema,
+  NorthflankSyncSchema,
   BitbucketSyncSchema,
   LaravelForgeSyncSchema
 ]);
@@ -119,6 +121,7 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
   NetlifySyncListItemSchema,
+  NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,
   LaravelForgeSyncListItemSchema
 ]);

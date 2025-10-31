@@ -769,7 +769,7 @@ export const samlConfigServiceFactory = ({
       });
     }
 
-    return { isUserCompleted, providerAuthToken };
+    return { isUserCompleted, providerAuthToken, user, organization };
   };
 
   return {

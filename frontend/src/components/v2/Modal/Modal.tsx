@@ -14,6 +14,7 @@ export type ModalContentProps = Omit<DialogPrimitive.DialogContentProps, "title"
   bodyClassName?: string;
   onClose?: () => void;
   overlayClassName?: string;
+  showCloseButton?: boolean;
 };
 
 export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
@@ -27,6 +28,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
       footerContent,
       bodyClassName,
       onClose,
+      showCloseButton = true,
       ...props
     },
     forwardedRef
@@ -57,15 +59,17 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
             {children}
           </CardBody>
           {footerContent && <CardFooter>{footerContent}</CardFooter>}
-          <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
-            <IconButton
-              variant="plain"
-              ariaLabel="close"
-              className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
-            >
-              <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
-            </IconButton>
-          </DialogPrimitive.Close>
+          {showCloseButton && (
+            <DialogPrimitive.Close aria-label="Close" asChild onClick={onClose}>
+              <IconButton
+                variant="plain"
+                ariaLabel="close"
+                className="absolute top-4 right-6 rounded-sm text-bunker-400 hover:text-bunker-50"
+              >
+                <FontAwesomeIcon icon={faTimes} size="lg" className="cursor-pointer" />
+              </IconButton>
+            </DialogPrimitive.Close>
+          )}
         </Card>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
@@ -74,7 +78,9 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
 
 ModalContent.displayName = "ModalContent";
 
-export type ModalProps = Omit<DialogPrimitive.DialogProps, "open"> & { isOpen?: boolean };
+export type ModalProps = Omit<DialogPrimitive.DialogProps, "open"> & {
+  isOpen?: boolean;
+};
 export const Modal = ({ isOpen, ...props }: ModalProps) => (
   <DialogPrimitive.Root open={isOpen} {...props} />
 );

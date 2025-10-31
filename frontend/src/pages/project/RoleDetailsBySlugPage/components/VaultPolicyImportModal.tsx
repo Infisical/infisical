@@ -21,7 +21,9 @@ import {
 } from "@app/hooks/api/migration/queries";
 
 import { TFormSchema } from "./ProjectRoleModifySection.utils";
+import { analyzeVaultPolicy, PolicyBlock, PolicyLine } from "./VaultPolicyAnalyzer.utils";
 import { parseVaultPolicyToInfisical } from "./VaultPolicyImportModal.utils";
+import { VaultPolicyPreview } from "./VaultPolicyPreview";
 
 type Props = {
   isOpen: boolean;
@@ -39,6 +41,10 @@ const Content = ({ onClose }: ContentProps) => {
   const [hclPolicy, setHclPolicy] = useState<string>("");
   const [shouldFetchPolicies, setShouldFetchPolicies] = useState(false);
   const [shouldFetchMounts, setShouldFetchMounts] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<{
+    blocks: PolicyBlock[];
+    lines: PolicyLine[];
+  } | null>(null);
 
   const { data: namespaces, isLoading: isLoadingNamespaces } = useGetVaultNamespaces();
   const { data: policies, isLoading: isLoadingPolicies } = useGetVaultPolicies(
@@ -67,6 +73,49 @@ const Content = ({ onClose }: ContentProps) => {
       }
     }
   }, [selectedPolicy, policies]);
+
+  // Automatically analyze policy when it changes (with debouncing)
+  useEffect(() => {
+    if (!hclPolicy.trim() || !mounts || mounts.length === 0) {
+      setAnalysisResult(null);
+      return undefined;
+    }
+
+    const timeoutId = setTimeout(() => {
+      const result = analyzeVaultPolicy(hclPolicy, mounts);
+      setAnalysisResult(result);
+    }, 300); // Debounce for 300ms
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [hclPolicy, mounts]);
+
+  const renderEmptyState = () => {
+    if (!selectedNamespace) {
+      return (
+        <div>
+          <p>Select a namespace to enable preview</p>
+        </div>
+      );
+    }
+
+    if (isLoadingMounts) {
+      return <div>Loading mounts...</div>;
+    }
+
+    if (!mounts || mounts.length === 0) {
+      return (
+        <div>
+          <p className="font-medium text-yellow-400">No KV mounts found</p>
+          <p className="mt-1 text-xs">This namespace has no KV secret engines configured.</p>
+          <p className="mt-1 text-xs">Policy translation requires KV mounts.</p>
+        </div>
+      );
+    }
+
+    return <div>Enter a policy to see translation preview</div>;
+  };
 
   const handleTranslateAndApply = () => {
     if (!hclPolicy.trim()) {
@@ -211,27 +260,40 @@ const Content = ({ onClose }: ContentProps) => {
         </>
       </FormControl>
 
-      <FormControl label="Vault HCL Policy" className="mb-6">
-        <>
-          <TextArea
-            value={hclPolicy}
-            onChange={(e) => setHclPolicy(e.target.value)}
-            placeholder={`path "secret/data/prod/app/*" {
+      <div className="grid grid-cols-2 gap-4">
+        <FormControl label="Vault HCL Policy" className="mb-4">
+          <>
+            <TextArea
+              value={hclPolicy}
+              onChange={(e) => setHclPolicy(e.target.value)}
+              placeholder={`path "secret/data/prod/app/*" {
   capabilities = ["create", "read", "update", "delete"]
 }
 
 path "secret/metadata/prod/*" {
   capabilities = ["list"]
 }`}
-            rows={12}
-            className="font-mono text-sm"
-          />
-          <p className="mt-1 text-xs text-mineshaft-400">
-            Paste your HCL policy here or select one from the dropdown above. The translator will
-            extract environments and paths automatically.
-          </p>
-        </>
-      </FormControl>
+              rows={20}
+              className="h-[30rem] px-4 py-0.5 font-mono text-xs leading-6"
+            />
+            <p className="mt-1 text-xs text-mineshaft-400">
+              Paste your HCL policy here or select one from the dropdown above.
+            </p>
+          </>
+        </FormControl>
+
+        <div className="mb-4">
+          <FormControl label="Translation Preview" className="mb-4">
+            {analysisResult ? (
+              <VaultPolicyPreview blocks={analysisResult.blocks} lines={analysisResult.lines} />
+            ) : (
+              <div className="flex h-[30rem] items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-900 text-center text-sm text-mineshaft-400">
+                {renderEmptyState()}
+              </div>
+            )}
+          </FormControl>
+        </div>
+      </div>
 
       <div className="mt-8 flex space-x-4">
         <Button
@@ -256,7 +318,7 @@ export const VaultPolicyImportModal = ({ isOpen, onOpenChange }: Props) => {
       <ModalContent
         title="Import from HashiCorp Vault"
         subTitle="Select a policy from your Vault namespace or paste your own HCL policy to translate it into Infisical permissions."
-        className="max-w-3xl"
+        className="max-w-4xl"
       >
         <Content onClose={() => onOpenChange(false)} />
       </ModalContent>
