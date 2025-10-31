@@ -175,48 +175,40 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     status,
     configuration
   }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      if (ca) {
-        // update
-        await updateMutateAsync({
-          caName: ca.name,
-          projectId: currentProject.id,
-          name,
-          type: CaType.INTERNAL,
-          status,
-          enableDirectIssuance
-        });
-      } else {
-        // create
-        await createMutateAsync({
-          projectId: currentProject.id,
-          name,
-          type,
-          status,
-          enableDirectIssuance,
-          configuration: {
-            ...configuration,
-            maxPathLength: Number(configuration.maxPathLength)
-          }
-        });
-      }
-
-      reset();
-      handlePopUpToggle("ca", false);
-
-      createNotification({
-        text: `Successfully ${ca ? "updated" : "created"} CA`,
-        type: "success"
+    if (ca) {
+      // update
+      await updateMutateAsync({
+        caName: ca.name,
+        projectId: currentProject.id,
+        name,
+        type: CaType.INTERNAL,
+        status,
+        enableDirectIssuance
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create CA",
-        type: "error"
+    } else {
+      // create
+      await createMutateAsync({
+        projectId: currentProject.id,
+        name,
+        type,
+        status,
+        enableDirectIssuance,
+        configuration: {
+          ...configuration,
+          maxPathLength: Number(configuration.maxPathLength)
+        }
       });
     }
+
+    reset();
+    handlePopUpToggle("ca", false);
+
+    createNotification({
+      text: `Successfully ${ca ? "updated" : "created"} CA`,
+      type: "success"
+    });
   };
 
   return (

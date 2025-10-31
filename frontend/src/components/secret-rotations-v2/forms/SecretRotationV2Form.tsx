@@ -120,21 +120,13 @@ export const SecretRotationV2Form = ({
           environment: environment.slug,
           projectId: currentProject.id
         });
-    try {
-      const rotation = await mutation;
+    const rotation = await mutation;
 
-      createNotification({
-        text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} Rotation`,
-        type: "success"
-      });
-      onComplete(rotation);
-    } catch (err: any) {
-      createNotification({
-        title: `Failed to ${secretRotation ? "update" : "create"} ${rotationType} Rotation`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${secretRotation ? "updated" : "created"} ${rotationType} Rotation`,
+      type: "success"
+    });
+    onComplete(rotation);
   };
 
   const handlePrev = () => {

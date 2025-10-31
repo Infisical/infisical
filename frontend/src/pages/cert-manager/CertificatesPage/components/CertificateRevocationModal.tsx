@@ -48,31 +48,23 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   });
 
   const onFormSubmit = async ({ revocationReason }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      const { serialNumber } = popUp.revokeCertificate.data as { serialNumber: string };
+    const { serialNumber } = popUp.revokeCertificate.data as { serialNumber: string };
 
-      await revokeCertificate({
-        projectSlug: currentProject.slug,
-        serialNumber,
-        revocationReason
-      });
+    await revokeCertificate({
+      projectSlug: currentProject.slug,
+      serialNumber,
+      revocationReason
+    });
 
-      reset();
-      handlePopUpToggle("revokeCertificate", false);
+    reset();
+    handlePopUpToggle("revokeCertificate", false);
 
-      createNotification({
-        text: "Successfully revoked certificate",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to revoke certificate",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully revoked certificate",
+      type: "success"
+    });
   };
 
   return (

@@ -81,24 +81,17 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const navigate = useNavigate();
 
   const handleTriggerScan = async () => {
-    try {
-      await triggerDataSourceScan.mutateAsync({
-        dataSourceId: dataSource.id,
-        type: dataSource.type,
-        projectId: dataSource.projectId,
-        resourceId: id
-      });
+    await triggerDataSourceScan.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      projectId: dataSource.projectId,
+      resourceId: id
+    });
 
-      createNotification({
-        text: `Successfully triggered scan for ${name}`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to trigger scan for ${name}`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully triggered scan for ${name}`,
+      type: "success"
+    });
   };
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);

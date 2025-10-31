@@ -20,28 +20,19 @@ export const DeletePkiSyncModal = ({ isOpen, onOpenChange, pkiSync, onComplete }
   const handleDeletePkiSync = async () => {
     const destinationName = PKI_SYNC_MAP[destination].name;
 
-    try {
-      await deleteSync.mutateAsync({
-        syncId,
-        projectId,
-        destination
-      });
+    await deleteSync.mutateAsync({
+      syncId,
+      projectId,
+      destination
+    });
 
-      createNotification({
-        text: `Successfully deleted ${destinationName} PKI Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted ${destinationName} PKI Sync`,
+      type: "success"
+    });
 
-      if (onComplete) onComplete();
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to delete ${destinationName} PKI Sync`,
-        type: "error"
-      });
-    }
+    if (onComplete) onComplete();
+    onOpenChange(false);
   };
 
   return (

@@ -19,34 +19,26 @@ export const CertificateRenewalDisableModal = ({ popUp, handlePopUpToggle }: Pro
   };
 
   const onDisableConfirm = async () => {
-    try {
-      if (!currentProject?.slug) {
-        createNotification({
-          text: "Project not found",
-          type: "error"
-        });
-        return;
-      }
-
-      await updateRenewalConfig({
-        certificateId: certificateData.certificateId,
-        projectSlug: currentProject.slug,
-        enableAutoRenewal: false
-      });
-
+    if (!currentProject?.slug) {
       createNotification({
-        text: "Successfully disabled auto-renewal",
-        type: "success"
-      });
-
-      handlePopUpToggle("disableRenewal", false);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to disable auto-renewal",
+        text: "Project not found",
         type: "error"
       });
+      return;
     }
+
+    await updateRenewalConfig({
+      certificateId: certificateData.certificateId,
+      projectSlug: currentProject.slug,
+      enableAutoRenewal: false
+    });
+
+    createNotification({
+      text: "Successfully disabled auto-renewal",
+      type: "success"
+    });
+
+    handlePopUpToggle("disableRenewal", false);
   };
 
   return (

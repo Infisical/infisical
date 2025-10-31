@@ -407,59 +407,51 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   };
 
   const onFormSubmit = async (data: FormData) => {
-    try {
-      if (!currentProject?.id && !isEdit) return;
+    if (!currentProject?.id && !isEdit) return;
 
-      const hasEmptyAttributeValues = data.attributes?.some(
-        (attr) => !attr.value || attr.value.length === 0 || attr.value.some((v) => !v.trim())
-      );
+    const hasEmptyAttributeValues = data.attributes?.some(
+      (attr) => !attr.value || attr.value.length === 0 || attr.value.some((v) => !v.trim())
+    );
 
-      const hasEmptySanValues = data.subjectAlternativeNames?.some(
-        (san) => !san.value || san.value.length === 0 || san.value.some((v) => !v.trim())
-      );
+    const hasEmptySanValues = data.subjectAlternativeNames?.some(
+      (san) => !san.value || san.value.length === 0 || san.value.some((v) => !v.trim())
+    );
 
-      if (hasEmptyAttributeValues || hasEmptySanValues) {
-        createNotification({
-          text: "All values must be non-empty. Use wildcards (*) if needed.",
-          type: "error"
-        });
-        return;
-      }
-
-      const transformedData = transformToApiFormat(data);
-
-      if (isEdit) {
-        const updateData = {
-          templateId: template.id,
-          ...transformedData
-        };
-        await updateTemplate.mutateAsync(updateData);
-      } else {
-        if (!currentProject?.id) {
-          throw new Error("Project ID is required for creating a template");
-        }
-
-        const createData = {
-          projectId: currentProject.id,
-          ...transformedData
-        };
-        await createTemplate.mutateAsync(createData);
-      }
-
+    if (hasEmptyAttributeValues || hasEmptySanValues) {
       createNotification({
-        text: `Certificate template ${isEdit ? "updated" : "created"} successfully`,
-        type: "success"
-      });
-
-      reset();
-      onClose();
-    } catch (error) {
-      console.error(`Error ${isEdit ? "updating" : "creating"} template:`, error);
-      createNotification({
-        text: `Failed to ${isEdit ? "update" : "create"} certificate template`,
+        text: "All values must be non-empty. Use wildcards (*) if needed.",
         type: "error"
       });
+      return;
     }
+
+    const transformedData = transformToApiFormat(data);
+
+    if (isEdit) {
+      const updateData = {
+        templateId: template.id,
+        ...transformedData
+      };
+      await updateTemplate.mutateAsync(updateData);
+    } else {
+      if (!currentProject?.id) {
+        throw new Error("Project ID is required for creating a template");
+      }
+
+      const createData = {
+        projectId: currentProject.id,
+        ...transformedData
+      };
+      await createTemplate.mutateAsync(createData);
+    }
+
+    createNotification({
+      text: `Certificate template ${isEdit ? "updated" : "created"} successfully`,
+      type: "success"
+    });
+
+    reset();
+    onClose();
   };
 
   const addAttribute = () => {

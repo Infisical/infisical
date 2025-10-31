@@ -38,27 +38,18 @@ const CreateForm = ({
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
   ) => {
-    try {
-      const account = await createPamAccount.mutateAsync({
-        ...formData,
-        folderId,
-        resourceId,
-        resourceType,
-        projectId
-      });
-      createNotification({
-        text: "Successfully created account",
-        type: "success"
-      });
-      onComplete(account);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: "Failed to create account",
-        text: err.message,
-        type: "error"
-      });
-    }
+    const account = await createPamAccount.mutateAsync({
+      ...formData,
+      folderId,
+      resourceId,
+      resourceType,
+      projectId
+    });
+    createNotification({
+      text: "Successfully created account",
+      type: "success"
+    });
+    onComplete(account);
   };
 
   switch (resourceType) {
@@ -85,25 +76,16 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
   ) => {
-    try {
-      const updatedAccount = await updatePamAccount.mutateAsync({
-        accountId: account.id,
-        resourceType: account.resource.resourceType,
-        ...formData
-      });
-      createNotification({
-        text: "Successfully updated account",
-        type: "success"
-      });
-      onComplete(updatedAccount);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: "Failed to update account",
-        text: err.message,
-        type: "error"
-      });
-    }
+    const updatedAccount = await updatePamAccount.mutateAsync({
+      accountId: account.id,
+      resourceType: account.resource.resourceType,
+      ...formData
+    });
+    createNotification({
+      text: "Successfully updated account",
+      type: "success"
+    });
+    onComplete(updatedAccount);
   };
 
   switch (account.resource.resourceType) {

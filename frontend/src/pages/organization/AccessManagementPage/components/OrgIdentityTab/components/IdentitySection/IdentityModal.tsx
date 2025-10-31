@@ -108,81 +108,68 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.identity?.data, roles]);
 
   const onFormSubmit = async ({ name, role, metadata, hasDeleteProtection }: FormData) => {
-    try {
-      const identity = popUp?.identity?.data as {
-        identityId: string;
-        name: string;
-        role: string;
-        hasDeleteProtection: boolean;
-        orgId: string;
-      };
+    const identity = popUp?.identity?.data as {
+      identityId: string;
+      name: string;
+      role: string;
+      hasDeleteProtection: boolean;
+      orgId: string;
+    };
 
-      if (identity) {
-        // update
+    if (identity) {
+      // update
 
-        await updateMutateAsync({
-          identityId: identity.identityId,
-          name,
-          role: role.slug || undefined,
-          hasDeleteProtection,
-          organizationId: orgId,
-          metadata
-        });
-
-        handlePopUpToggle("identity", false);
-      } else {
-        // create
-
-        const { id: createdId } = await createMutateAsync({
-          name,
-          role: role.slug || undefined,
-          hasDeleteProtection,
-          organizationId: orgId,
-          metadata
-        });
-
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId: createdId,
-          clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
-          accessTokenTTL: 2592000,
-          accessTokenMaxTTL: 2592000,
-          accessTokenNumUsesLimit: 0,
-          accessTokenPeriod: 0,
-          lockoutEnabled: true,
-          lockoutThreshold: 3,
-          lockoutDurationSeconds: 300,
-          lockoutCounterResetSeconds: 30
-        });
-
-        handlePopUpToggle("identity", false);
-        navigate({
-          to: "/organization/identities/$identityId",
-          params: {
-            identityId: createdId
-          }
-        });
-      }
-
-      createNotification({
-        text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} identity`,
-        type: "success"
+      await updateMutateAsync({
+        identityId: identity.identityId,
+        name,
+        role: role.slug || undefined,
+        hasDeleteProtection,
+        organizationId: orgId,
+        metadata
       });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${popUp?.identity?.data ? "update" : "create"} identity`;
+      handlePopUpToggle("identity", false);
+    } else {
+      // create
 
-      createNotification({
-        text,
-        type: "error"
+      const { id: createdId } = await createMutateAsync({
+        name,
+        role: role.slug || undefined,
+        hasDeleteProtection,
+        organizationId: orgId,
+        metadata
+      });
+
+      await addMutateAsync({
+        organizationId: orgId,
+        identityId: createdId,
+        clientSecretTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        accessTokenTrustedIps: [{ ipAddress: "0.0.0.0/0" }, { ipAddress: "::/0" }],
+        accessTokenTTL: 2592000,
+        accessTokenMaxTTL: 2592000,
+        accessTokenNumUsesLimit: 0,
+        accessTokenPeriod: 0,
+        lockoutEnabled: true,
+        lockoutThreshold: 3,
+        lockoutDurationSeconds: 300,
+        lockoutCounterResetSeconds: 30
+      });
+
+      handlePopUpToggle("identity", false);
+      navigate({
+        to: "/organization/identities/$identityId",
+        params: {
+          identityId: createdId
+        }
       });
     }
+
+    createNotification({
+      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} identity`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

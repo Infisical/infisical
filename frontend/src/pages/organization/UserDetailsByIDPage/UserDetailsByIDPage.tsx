@@ -64,56 +64,38 @@ const Page = withPermission(
     ] as const);
 
     const onDeactivateMemberSubmit = async (orgMembershipId: string) => {
-      try {
-        await updateOrgMembership({
-          organizationId: orgId,
-          membershipId: orgMembershipId,
-          isActive: false
-        });
+      await updateOrgMembership({
+        organizationId: orgId,
+        membershipId: orgMembershipId,
+        isActive: false
+      });
 
-        createNotification({
-          text: "Successfully deactivated user in organization",
-          type: "success"
-        });
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to deactivate user in organization",
-          type: "error"
-        });
-      }
+      createNotification({
+        text: "Successfully deactivated user in organization",
+        type: "success"
+      });
 
       handlePopUpClose("deactivateMember");
     };
 
     const onRemoveMemberSubmit = async (orgMembershipId: string) => {
-      try {
-        await deleteOrgMembership({
-          orgId,
-          membershipId: orgMembershipId
-        });
+      await deleteOrgMembership({
+        orgId,
+        membershipId: orgMembershipId
+      });
 
-        createNotification({
-          text: "Successfully removed user from org",
-          type: "success"
-        });
-
-        handlePopUpClose("removeMember");
-        navigate({
-          to: "/organization/access-management" as const,
-          search: {
-            selectedTab: OrgAccessControlTabSections.Member
-          }
-        });
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to remove user from the organization",
-          type: "error"
-        });
-      }
+      createNotification({
+        text: "Successfully removed user from org",
+        type: "success"
+      });
 
       handlePopUpClose("removeMember");
+      navigate({
+        to: "/organization/access-management" as const,
+        search: {
+          selectedTab: OrgAccessControlTabSections.Member
+        }
+      });
     };
 
     return (

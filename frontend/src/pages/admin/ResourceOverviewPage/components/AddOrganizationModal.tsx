@@ -81,25 +81,18 @@ const Content = ({ onClose }: ContentProps) => {
   const { users = [] } = data ?? {};
 
   const onSubmit = async ({ name, invitees }: FormData) => {
-    try {
-      await createOrg.mutateAsync({
-        name,
-        inviteAdminEmails: invitees
-          .filter((user) => Boolean(user.email))
-          .map((user) => user.email) as string[]
-      });
+    await createOrg.mutateAsync({
+      name,
+      inviteAdminEmails: invitees
+        .filter((user) => Boolean(user.email))
+        .map((user) => user.email) as string[]
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully created organization"
-      });
-      onClose();
-    } catch {
-      createNotification({
-        text: "Failed to create organization",
-        type: "error"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Successfully created organization"
+    });
+    onClose();
   };
 
   const { append } = useFieldArray<FormData>({ control, name: "invitees" });

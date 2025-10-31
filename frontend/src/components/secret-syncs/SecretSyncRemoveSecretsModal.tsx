@@ -21,27 +21,18 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
   const triggerSyncImport = useTriggerSecretSyncRemoveSecrets();
 
   const handleTriggerRemoveSecrets = async () => {
-    try {
-      await triggerSyncImport.mutateAsync({
-        syncId,
-        destination,
-        projectId
-      });
+    await triggerSyncImport.mutateAsync({
+      syncId,
+      destination,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered secret removal for ${destinationName} Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully triggered secret removal for ${destinationName} Sync`,
+      type: "success"
+    });
 
-      onComplete();
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to trigger secret removal for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    onComplete();
   };
 
   return (

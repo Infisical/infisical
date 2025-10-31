@@ -31,15 +31,10 @@ export const CachingPageForm = () => {
   const handleInvalidateCacheSubmit = async () => {
     if (!type || isInvalidating) return;
 
-    try {
-      await invalidateCache({ type });
-      createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
-      setShouldPoll(true);
-      handlePopUpClose("invalidateCache");
-    } catch (err) {
-      console.error(err);
-      createNotification({ text: `Failed to invalidate ${type} cache`, type: "error" });
-    }
+    await invalidateCache({ type });
+    createNotification({ text: `Began invalidating ${type} cache`, type: "success" });
+    setShouldPoll(true);
+    handlePopUpClose("invalidateCache");
   };
 
   useEffect(() => {

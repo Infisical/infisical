@@ -51,22 +51,15 @@ export const CertificateProfilesTab = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedProfile) return;
 
-    try {
-      await deleteProfile.mutateAsync({
-        profileId: selectedProfile.id
-      });
-      setIsDeleteModalOpen(false);
-      setSelectedProfile(null);
-      createNotification({
-        text: `Certificate profile "${selectedProfile.slug}" deleted successfully`,
-        type: "success"
-      });
-    } catch (error) {
-      console.error(
-        `Failed to delete profile "${selectedProfile.slug}" (ID: ${selectedProfile.id}):`,
-        error
-      );
-    }
+    await deleteProfile.mutateAsync({
+      profileId: selectedProfile.id
+    });
+    setIsDeleteModalOpen(false);
+    setSelectedProfile(null);
+    createNotification({
+      text: `Certificate profile "${selectedProfile.slug}" deleted successfully`,
+      type: "success"
+    });
   };
 
   return (

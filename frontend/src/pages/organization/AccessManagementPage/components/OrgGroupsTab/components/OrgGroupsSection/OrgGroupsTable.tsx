@@ -79,23 +79,15 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
   const { data: roles } = useGetOrgRoles(orgId);
 
   const handleChangeRole = async ({ id, role }: { id: string; role: string }) => {
-    try {
-      await updateMutateAsync({
-        id,
-        role
-      });
+    await updateMutateAsync({
+      id,
+      role
+    });
 
-      createNotification({
-        text: "Successfully updated group role",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update group role",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated group role",
+      type: "success"
+    });
   };
 
   const {

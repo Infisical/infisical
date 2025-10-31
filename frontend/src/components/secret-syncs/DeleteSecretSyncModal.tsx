@@ -23,29 +23,20 @@ export const DeleteSecretSyncModal = ({ isOpen, onOpenChange, secretSync, onComp
   const handleDeleteSecretSync = async () => {
     const destinationName = SECRET_SYNC_MAP[destination].name;
 
-    try {
-      await deleteSync.mutateAsync({
-        syncId,
-        destination,
-        removeSecrets,
-        projectId
-      });
+    await deleteSync.mutateAsync({
+      syncId,
+      destination,
+      removeSecrets,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully removed ${destinationName} Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully removed ${destinationName} Sync`,
+      type: "success"
+    });
 
-      if (onComplete) onComplete();
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to remove ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    if (onComplete) onComplete();
+    onOpenChange(false);
   };
 
   return (

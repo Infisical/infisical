@@ -21,27 +21,18 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
   const triggerRemoveCertificates = useTriggerPkiSyncRemoveCertificates();
 
   const handleTriggerRemoveCertificates = async () => {
-    try {
-      await triggerRemoveCertificates.mutateAsync({
-        syncId,
-        destination,
-        projectId
-      });
+    await triggerRemoveCertificates.mutateAsync({
+      syncId,
+      destination,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered certificate removal for ${destinationName} Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully triggered certificate removal for ${destinationName} Sync`,
+      type: "success"
+    });
 
-      onComplete();
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to trigger certificate removal for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    onComplete();
   };
 
   return (

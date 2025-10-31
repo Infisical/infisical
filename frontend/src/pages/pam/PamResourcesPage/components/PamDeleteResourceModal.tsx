@@ -16,25 +16,17 @@ export const PamDeleteResourceModal = ({ isOpen, onOpenChange, resource }: Props
   const { id: resourceId, name, resourceType } = resource;
 
   const handleDelete = async () => {
-    try {
-      await deletePamResource.mutateAsync({
-        resourceId,
-        resourceType
-      });
+    await deletePamResource.mutateAsync({
+      resourceId,
+      resourceType
+    });
 
-      createNotification({
-        text: `Successfully removed ${PAM_RESOURCE_TYPE_MAP[resourceType].name} resource`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully removed ${PAM_RESOURCE_TYPE_MAP[resourceType].name} resource`,
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to remove ${PAM_RESOURCE_TYPE_MAP[resourceType].name} resource`,
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

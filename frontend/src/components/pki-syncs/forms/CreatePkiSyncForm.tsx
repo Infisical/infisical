@@ -72,14 +72,8 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
         type: "success"
       });
       onComplete(pkiSync);
-    } catch (err: Error | unknown) {
-      console.error(err);
+    } catch {
       setShowConfirmation(false);
-      createNotification({
-        title: `Failed to add ${destinationName} Certificate Sync`,
-        text: err instanceof Error ? err.message : "An unknown error occurred",
-        type: "error"
-      });
     }
   };
 

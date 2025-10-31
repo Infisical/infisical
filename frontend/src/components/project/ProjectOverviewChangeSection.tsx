@@ -56,30 +56,22 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
   }, [currentProject, showSlugField]);
 
   const onFormSubmit = async (data: BaseFormData | FormDataWithSlug) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await mutateAsync({
-        projectId: currentProject.id,
-        newProjectName: data.name,
-        newProjectDescription: data.description,
-        ...(showSlugField &&
-          "slug" in data && {
-            newSlug: data.slug !== currentProject.slug ? data.slug : undefined
-          })
-      });
+    await mutateAsync({
+      projectId: currentProject.id,
+      newProjectName: data.name,
+      newProjectDescription: data.description,
+      ...(showSlugField &&
+        "slug" in data && {
+          newSlug: data.slug !== currentProject.slug ? data.slug : undefined
+        })
+    });
 
-      createNotification({
-        text: "Successfully updated project overview",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update project overview",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated project overview",
+      type: "success"
+    });
   };
 
   return (

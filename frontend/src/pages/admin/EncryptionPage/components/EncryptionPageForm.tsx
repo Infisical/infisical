@@ -60,19 +60,12 @@ export const EncryptionPageForm = () => {
       return;
     }
 
-    try {
-      await updateEncryptionStrategy(formData.encryptionStrategy);
+    await updateEncryptionStrategy(formData.encryptionStrategy);
 
-      createNotification({
-        type: "success",
-        text: "Encryption strategy updated successfully"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update encryption strategy"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Encryption strategy updated successfully"
+    });
   }, []);
 
   return (

@@ -20,25 +20,17 @@ export const PamDeleteAccountModal = ({ isOpen, onOpenChange, account }: Props) 
   } = account;
 
   const handleDelete = async () => {
-    try {
-      await deletePamAccount.mutateAsync({
-        accountId,
-        resourceType
-      });
+    await deletePamAccount.mutateAsync({
+      accountId,
+      resourceType
+    });
 
-      createNotification({
-        text: "Successfully deleted account",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted account",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete account",
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

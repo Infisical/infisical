@@ -127,17 +127,13 @@ export const MemberRbacSection = ({ projectMember, onOpenUpgradeModal }: Props) 
       return;
     }
 
-    try {
-      await updateMembershipRole.mutateAsync({
-        projectId,
-        membershipId: projectMember.id,
-        roles: sanitizedRoles
-      });
-      createNotification({ text: "Successfully updated roles", type: "success" });
-      roleForm.reset(undefined, { keepValues: true });
-    } catch {
-      createNotification({ text: "Failed to update role", type: "error" });
-    }
+    await updateMembershipRole.mutateAsync({
+      projectId,
+      membershipId: projectMember.id,
+      roles: sanitizedRoles
+    });
+    createNotification({ text: "Successfully updated roles", type: "success" });
+    roleForm.reset(undefined, { keepValues: true });
   };
 
   if (isRolesLoading)

@@ -48,29 +48,22 @@ export const ExternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   }, []);
 
   const onFormSubmit = async ({ certificate, certificateChain }: FormData) => {
-    try {
-      if (!csr || !caId || !currentProject?.slug) return;
+    if (!csr || !caId || !currentProject?.slug) return;
 
-      await importCaCertificate({
-        caId,
-        projectSlug: currentProject?.slug,
-        certificate,
-        certificateChain
-      });
+    await importCaCertificate({
+      caId,
+      projectSlug: currentProject?.slug,
+      certificate,
+      certificateChain
+    });
 
-      reset();
+    reset();
 
-      createNotification({
-        text: "Successfully installed certificate for CA",
-        type: "success"
-      });
-      handlePopUpToggle("installCaCert", false);
-    } catch {
-      createNotification({
-        text: "Failed to install certificate for CA",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully installed certificate for CA",
+      type: "success"
+    });
+    handlePopUpToggle("installCaCert", false);
   };
 
   const downloadTxtFile = (filename: string, content: string) => {

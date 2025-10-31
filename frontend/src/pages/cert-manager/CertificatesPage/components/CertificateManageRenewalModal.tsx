@@ -163,38 +163,28 @@ export const CertificateManageRenewalModal = ({ popUp, handlePopUpToggle }: Prop
   }, [popUp.manageRenewal.isOpen, defaultRenewalDays, reset]);
 
   const onUpdateRenewal = async (data: FormData) => {
-    try {
-      if (!currentProject?.slug) {
-        createNotification({
-          text: "Unable to update auto-renewal: Project not found. Please refresh the page and try again.",
-          type: "error"
-        });
-        return;
-      }
-
-      await updateRenewalConfig({
-        certificateId: certificateData.certificateId,
-        renewBeforeDays: data.renewBeforeDays,
-        projectSlug: currentProject.slug
-      });
-
+    if (!currentProject?.slug) {
       createNotification({
-        text: isAutoRenewalEnabled
-          ? "Auto-renewal configuration updated successfully"
-          : "Auto-renewal enabled successfully",
-        type: "success"
-      });
-
-      handlePopUpToggle("manageRenewal", false);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: isAutoRenewalEnabled
-          ? "Failed to update auto-renewal configuration. Please check your inputs and try again."
-          : "Failed to enable auto-renewal. Please check your inputs and try again.",
+        text: "Unable to update auto-renewal: Project not found. Please refresh the page and try again.",
         type: "error"
       });
+      return;
     }
+
+    await updateRenewalConfig({
+      certificateId: certificateData.certificateId,
+      renewBeforeDays: data.renewBeforeDays,
+      projectSlug: currentProject.slug
+    });
+
+    createNotification({
+      text: isAutoRenewalEnabled
+        ? "Auto-renewal configuration updated successfully"
+        : "Auto-renewal enabled successfully",
+      type: "success"
+    });
+
+    handlePopUpToggle("manageRenewal", false);
   };
 
   const getModalTitle = () => {

@@ -43,35 +43,27 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
   const { mutateAsync: selectOrg } = useSelectOrganization();
 
   const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      const organization = await createOrg({
-        name
-      });
+    const organization = await createOrg({
+      name
+    });
 
-      await selectOrg({
-        organizationId: organization.id
-      });
+    await selectOrg({
+      organizationId: organization.id
+    });
 
-      createNotification({
-        text: "Successfully created organization",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully created organization",
+      type: "success"
+    });
 
-      navigate({
-        to: "/organization/projects"
-      });
+    navigate({
+      to: "/organization/projects"
+    });
 
-      localStorage.setItem("orgData.id", organization.id);
+    localStorage.setItem("orgData.id", organization.id);
 
-      reset();
-      onClose();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to created organization",
-        type: "error"
-      });
-    }
+    reset();
+    onClose();
   };
 
   return (

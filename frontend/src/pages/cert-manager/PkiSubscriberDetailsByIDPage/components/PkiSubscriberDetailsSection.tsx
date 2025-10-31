@@ -70,36 +70,28 @@ export const PkiSubscriberDetailsSection = ({ subscriberName, handlePopUpOpen }:
     useOrderPkiSubscriberCert();
 
   const onIssuePkiSubscriberCert = async () => {
-    try {
-      if (pkiSubscriber?.supportsImmediateCertIssuance) {
-        const response = await issuePkiSubscriberCert({ subscriberName, projectId });
+    if (pkiSubscriber?.supportsImmediateCertIssuance) {
+      const response = await issuePkiSubscriberCert({ subscriberName, projectId });
 
-        setCertificateDetails({
-          serialNumber: response.serialNumber,
-          certificate: response.certificate,
-          certificateChain: response.certificateChain,
-          privateKey: response.privateKey
-        });
+      setCertificateDetails({
+        serialNumber: response.serialNumber,
+        certificate: response.certificate,
+        certificateChain: response.certificateChain,
+        privateKey: response.privateKey
+      });
 
-        setIsModalOpen(true);
+      setIsModalOpen(true);
 
-        createNotification({
-          text: "Successfully issued certificate",
-          type: "success"
-        });
-      } else {
-        await orderPkiSubscriberCert({ subscriberName, projectId });
-
-        createNotification({
-          text: "Successfully ordered certificate. It will be issued after CA processing which could take a few minutes.",
-          type: "info"
-        });
-      }
-    } catch (err) {
-      console.error(err);
       createNotification({
-        text: "Failed to issue certificate",
-        type: "error"
+        text: "Successfully issued certificate",
+        type: "success"
+      });
+    } else {
+      await orderPkiSubscriberCert({ subscriberName, projectId });
+
+      createNotification({
+        text: "Successfully ordered certificate. It will be issued after CA processing which could take a few minutes.",
+        type: "info"
       });
     }
   };

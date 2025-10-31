@@ -41,25 +41,17 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
       return;
     }
 
-    try {
-      await deleteCertTemplate({
-        id,
-        projectId: currentProject.id
-      });
+    await deleteCertTemplate({
+      id,
+      projectId: currentProject.id
+    });
 
-      createNotification({
-        text: "Successfully deleted certificate template",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted certificate template",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCertificateTemplate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete certificate template",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCertificateTemplate");
   };
 
   return (

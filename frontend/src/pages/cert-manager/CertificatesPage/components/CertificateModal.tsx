@@ -186,45 +186,37 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
     keyUsages,
     extendedKeyUsages
   }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
-        caId: !selectedCertTemplate ? caId : undefined,
-        certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
-        projectSlug: currentProject.slug,
-        pkiCollectionId: collectionId,
-        commonName,
-        subjectAltNames,
-        ttl,
-        keyUsages: Object.entries(keyUsages)
-          .filter(([, value]) => value)
-          .map(([key]) => key as CertKeyUsage),
-        extendedKeyUsages: Object.entries(extendedKeyUsages)
-          .filter(([, value]) => value)
-          .map(([key]) => key as CertExtendedKeyUsage)
-      });
+    const { serialNumber, certificate, certificateChain, privateKey } = await createCertificate({
+      caId: !selectedCertTemplate ? caId : undefined,
+      certificateTemplateId: selectedCertTemplate ? selectedCertTemplateId : undefined,
+      projectSlug: currentProject.slug,
+      pkiCollectionId: collectionId,
+      commonName,
+      subjectAltNames,
+      ttl,
+      keyUsages: Object.entries(keyUsages)
+        .filter(([, value]) => value)
+        .map(([key]) => key as CertKeyUsage),
+      extendedKeyUsages: Object.entries(extendedKeyUsages)
+        .filter(([, value]) => value)
+        .map(([key]) => key as CertExtendedKeyUsage)
+    });
 
-      reset();
+    reset();
 
-      setCertificateDetails({
-        serialNumber,
-        certificate,
-        certificateChain,
-        privateKey
-      });
+    setCertificateDetails({
+      serialNumber,
+      certificate,
+      certificateChain,
+      privateKey
+    });
 
-      createNotification({
-        text: "Successfully created certificate",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create certificate",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully created certificate",
+      type: "success"
+    });
   };
 
   useEffect(() => {

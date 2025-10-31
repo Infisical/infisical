@@ -51,28 +51,19 @@ const Content = ({ secretSync, onComplete }: ContentProps) => {
   const triggerImportSecrets = useTriggerSecretSyncImportSecrets();
 
   const handleTriggerImportSecrets = async ({ importBehavior }: TFormData) => {
-    try {
-      await triggerImportSecrets.mutateAsync({
-        syncId,
-        destination,
-        importBehavior,
-        projectId
-      });
+    await triggerImportSecrets.mutateAsync({
+      syncId,
+      destination,
+      importBehavior,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered secret import for ${destinationName} Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully triggered secret import for ${destinationName} Sync`,
+      type: "success"
+    });
 
-      onComplete();
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to trigger secret import for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    onComplete();
   };
 
   return (

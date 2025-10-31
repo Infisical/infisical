@@ -114,16 +114,12 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
       };
     });
 
-    try {
-      await updateIdentityWorkspaceRole.mutateAsync({
-        projectId,
-        identityId: identityProjectMembership.identity.id,
-        roles: sanitizedRoles
-      });
-      createNotification({ text: "Successfully updated roles", type: "success" });
-    } catch {
-      createNotification({ text: "Failed to update roles", type: "error" });
-    }
+    await updateIdentityWorkspaceRole.mutateAsync({
+      projectId,
+      identityId: identityProjectMembership.identity.id,
+      roles: sanitizedRoles
+    });
+    createNotification({ text: "Successfully updated roles", type: "success" });
   };
 
   if (isRolesLoading)

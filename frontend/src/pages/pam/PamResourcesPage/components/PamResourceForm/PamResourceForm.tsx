@@ -35,24 +35,15 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       "name" | "resourceType" | "connectionDetails" | "gatewayId"
     >
   ) => {
-    try {
-      const resource = await createPamResource.mutateAsync({
-        ...formData,
-        projectId
-      });
-      createNotification({
-        text: `Successfully created ${resourceName} resource`,
-        type: "success"
-      });
-      onComplete(resource);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to create ${resourceName} resource`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const resource = await createPamResource.mutateAsync({
+      ...formData,
+      projectId
+    });
+    createNotification({
+      text: `Successfully created ${resourceName} resource`,
+      type: "success"
+    });
+    onComplete(resource);
   };
 
   switch (resourceType) {
@@ -72,24 +63,15 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<TPamResource, "name" | "resourceType" | "connectionDetails">
   ) => {
-    try {
-      const updatedResource = await updatePamResource.mutateAsync({
-        resourceId: resource.id,
-        ...formData
-      });
-      createNotification({
-        text: `Successfully updated ${resourceName} resource`,
-        type: "success"
-      });
-      onComplete(updatedResource);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${resourceName} resource`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const updatedResource = await updatePamResource.mutateAsync({
+      resourceId: resource.id,
+      ...formData
+    });
+    createNotification({
+      text: `Successfully updated ${resourceName} resource`,
+      type: "success"
+    });
+    onComplete(updatedResource);
   };
 
   switch (resource.resourceType) {

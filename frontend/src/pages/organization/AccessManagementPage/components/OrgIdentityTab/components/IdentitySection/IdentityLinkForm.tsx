@@ -42,31 +42,20 @@ export const IdentityLinkForm = ({ onClose }: Props) => {
   });
 
   const onFormSubmit = async ({ identity, role }: FormData) => {
-    try {
-      await createMutateAsync({
-        identityId: identity.id,
-        roles: [{ role: role.slug, isTemporary: false }]
-      });
-      createNotification({
-        text: "Successfully linked identity",
-        type: "success"
-      });
-      navigate({
-        to: "/organization/identities/$identityId",
-        params: {
-          identityId: identity.id
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to link identity";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    await createMutateAsync({
+      identityId: identity.id,
+      roles: [{ role: role.slug, isTemporary: false }]
+    });
+    createNotification({
+      text: "Successfully linked identity",
+      type: "success"
+    });
+    navigate({
+      to: "/organization/identities/$identityId",
+      params: {
+        identityId: identity.id
+      }
+    });
   };
 
   return (

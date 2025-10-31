@@ -159,61 +159,53 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
       return;
     }
 
-    try {
-      if (certTemplate) {
-        await updateCertTemplate({
-          id: certTemplate.id,
-          projectId: currentProject.id,
-          pkiCollectionId: collectionId,
-          caId,
-          name,
-          commonName,
-          subjectAlternativeName,
-          ttl,
-          keyUsages: Object.entries(keyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage),
-          extendedKeyUsages: Object.entries(extendedKeyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key as CertExtendedKeyUsage)
-        });
+    if (certTemplate) {
+      await updateCertTemplate({
+        id: certTemplate.id,
+        projectId: currentProject.id,
+        pkiCollectionId: collectionId,
+        caId,
+        name,
+        commonName,
+        subjectAlternativeName,
+        ttl,
+        keyUsages: Object.entries(keyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key as CertKeyUsage),
+        extendedKeyUsages: Object.entries(extendedKeyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key as CertExtendedKeyUsage)
+      });
 
-        createNotification({
-          text: "Successfully updated certificate template",
-          type: "success"
-        });
-      } else {
-        await createCertTemplate({
-          projectId: currentProject.id,
-          pkiCollectionId: collectionId,
-          caId,
-          name,
-          commonName,
-          subjectAlternativeName,
-          ttl,
-          keyUsages: Object.entries(keyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key as CertKeyUsage),
-          extendedKeyUsages: Object.entries(extendedKeyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key as CertExtendedKeyUsage)
-        });
-
-        createNotification({
-          text: "Successfully created certificate template",
-          type: "success"
-        });
-      }
-
-      reset();
-      handlePopUpToggle("certificateTemplate", false);
-    } catch (err) {
-      console.error(err);
       createNotification({
-        text: "Failed to save changes",
-        type: "error"
+        text: "Successfully updated certificate template",
+        type: "success"
+      });
+    } else {
+      await createCertTemplate({
+        projectId: currentProject.id,
+        pkiCollectionId: collectionId,
+        caId,
+        name,
+        commonName,
+        subjectAlternativeName,
+        ttl,
+        keyUsages: Object.entries(keyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key as CertKeyUsage),
+        extendedKeyUsages: Object.entries(extendedKeyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key as CertExtendedKeyUsage)
+      });
+
+      createNotification({
+        text: "Successfully created certificate template",
+        type: "success"
       });
     }
+
+    reset();
+    handlePopUpToggle("certificateTemplate", false);
   };
 
   return (

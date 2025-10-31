@@ -35,23 +35,16 @@ export const WishForm = () => {
   const [isOpen, setIsOpen] = useToggle(false);
 
   const createWish = async (data: TFormData) => {
-    try {
-      await mutateAsync({
-        text: data.text
-      });
+    await mutateAsync({
+      text: data.text
+    });
 
-      createNotification({
-        text: "Your wish has been sent to the Infisical team!",
-        type: "success"
-      });
+    createNotification({
+      text: "Your wish has been sent to the Infisical team!",
+      type: "success"
+    });
 
-      setIsOpen.off();
-    } catch {
-      createNotification({
-        text: "An error occured while sending your wish to the Infisical team.",
-        type: "error"
-      });
-    }
+    setIsOpen.off();
   };
 
   return (

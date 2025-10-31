@@ -62,49 +62,41 @@ export const PkiCollectionModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [pkiCollection]);
 
   const onFormSubmit = async ({ name, description }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      if (pkiCollection) {
-        // update
-        await updatePkiCollection({
-          collectionId: pkiCollection.id,
-          name,
-          description,
-          projectId
-        });
-      } else {
-        // create
-        const { id: collectionId } = await createPkiCollection({
-          name,
-          description,
-          projectId
-        });
-
-        navigate({
-          to: "/projects/cert-management/$projectId/pki-collections/$collectionId",
-          params: {
-            projectId,
-            collectionId
-          }
-        });
-      }
-
-      handlePopUpToggle("pkiCollection", false);
-
-      reset();
-
-      createNotification({
-        text: `Successfully ${pkiCollection ? "updated" : "created"} PKI collection`,
-        type: "success"
+    if (pkiCollection) {
+      // update
+      await updatePkiCollection({
+        collectionId: pkiCollection.id,
+        name,
+        description,
+        projectId
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${pkiCollection ? "updated" : "created"} PKI collection`,
-        type: "error"
+    } else {
+      // create
+      const { id: collectionId } = await createPkiCollection({
+        name,
+        description,
+        projectId
+      });
+
+      navigate({
+        to: "/projects/cert-management/$projectId/pki-collections/$collectionId",
+        params: {
+          projectId,
+          collectionId
+        }
       });
     }
+
+    handlePopUpToggle("pkiCollection", false);
+
+    reset();
+
+    createNotification({
+      text: `Successfully ${pkiCollection ? "updated" : "created"} PKI collection`,
+      type: "success"
+    });
   };
 
   return (

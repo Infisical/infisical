@@ -22,28 +22,19 @@ const Content = ({ secretRotation, onComplete }: ContentProps) => {
   const rotationType = SECRET_ROTATION_MAP[type].name;
 
   const handleRotateSecrets = async () => {
-    try {
-      await rotateSecrets.mutateAsync({
-        rotationId,
-        type,
-        projectId,
-        secretPath: folder.path
-      });
+    await rotateSecrets.mutateAsync({
+      rotationId,
+      type,
+      projectId,
+      secretPath: folder.path
+    });
 
-      createNotification({
-        text: `Successfully rotated ${rotationType} secrets`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully rotated ${rotationType} secrets`,
+      type: "success"
+    });
 
-      onComplete();
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to rotate ${rotationType} secrets`,
-        type: "error"
-      });
-    }
+    onComplete();
   };
 
   return (

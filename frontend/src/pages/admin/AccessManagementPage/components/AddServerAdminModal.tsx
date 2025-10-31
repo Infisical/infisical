@@ -65,20 +65,13 @@ const Content = ({ onClose }: ContentProps) => {
   const users = usersData.filter((user) => !user.superAdmin);
 
   const onSubmit = async ({ user }: FormData) => {
-    try {
-      await grantAdmin.mutateAsync(user.id);
+    await grantAdmin.mutateAsync(user.id);
 
-      createNotification({
-        type: "success",
-        text: "Successfully granted server admin status"
-      });
-      onClose();
-    } catch {
-      createNotification({
-        text: "Failed to grant server admin status",
-        type: "error"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Successfully granted server admin status"
+    });
+    onClose();
   };
 
   return (

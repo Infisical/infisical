@@ -16,24 +16,15 @@ export const PamUpdateFolderModal = ({ isOpen, onOpenChange, folder }: Props) =>
   if (!folder) return null;
 
   const onSubmit = async (formData: Pick<TPamFolder, "name" | "description">) => {
-    try {
-      await updatePamFolder.mutateAsync({
-        ...formData,
-        folderId: folder.id
-      });
-      createNotification({
-        text: "Successfully updated folder",
-        type: "success"
-      });
-      onOpenChange(false);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: "Failed to updated folder",
-        text: err.message,
-        type: "error"
-      });
-    }
+    await updatePamFolder.mutateAsync({
+      ...formData,
+      folderId: folder.id
+    });
+    createNotification({
+      text: "Successfully updated folder",
+      type: "success"
+    });
+    onOpenChange(false);
   };
 
   return (

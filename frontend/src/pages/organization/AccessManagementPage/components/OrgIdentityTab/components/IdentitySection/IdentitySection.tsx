@@ -56,53 +56,31 @@ export const IdentitySection = withPermission(
     const isEnterprise = subscription?.slug === "enterprise";
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
-      try {
-        await deleteMutateAsync({
-          identityId,
-          organizationId: orgId
-        });
+      await deleteMutateAsync({
+        identityId,
+        organizationId: orgId
+      });
 
-        createNotification({
-          text: "Successfully deleted identity",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted identity",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteIdentity");
-      } catch (err) {
-        console.error(err);
-        const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to delete identity";
-
-        createNotification({
-          text,
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteIdentity");
     };
 
     const onDeleteTemplateSubmit = async (templateId: string) => {
-      try {
-        await deleteTemplateMutateAsync({
-          templateId,
-          organizationId: orgId
-        });
+      await deleteTemplateMutateAsync({
+        templateId,
+        organizationId: orgId
+      });
 
-        createNotification({
-          text: "Successfully deleted template",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted template",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteTemplate");
-      } catch (err) {
-        console.error(err);
-        const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to delete template";
-
-        createNotification({
-          text,
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteTemplate");
     };
 
     return (

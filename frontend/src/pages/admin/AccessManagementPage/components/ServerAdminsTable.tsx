@@ -303,18 +303,11 @@ export const ServerAdminsTable = () => {
   const handleRemoveUser = async () => {
     const { id } = popUp?.removeUser?.data as { id: string; username: string };
 
-    try {
-      await deleteUser(id);
-      createNotification({
-        type: "success",
-        text: "Successfully deleted user"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Error deleting user"
-      });
-    }
+    await deleteUser(id);
+    createNotification({
+      type: "success",
+      text: "Successfully deleted user"
+    });
 
     handlePopUpClose("removeUser");
   };
@@ -322,39 +315,25 @@ export const ServerAdminsTable = () => {
   const handleRemoveServerAdminAccess = async () => {
     const { id } = popUp?.removeServerAdmin?.data as { id: string; username: string };
 
-    try {
-      await removeAdminAccess(id);
-      createNotification({
-        type: "success",
-        text: "Successfully removed server admin access from user"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Error removing server admin access from user"
-      });
-    }
+    await removeAdminAccess(id);
+    createNotification({
+      type: "success",
+      text: "Successfully removed server admin access from user"
+    });
 
     handlePopUpClose("removeServerAdmin");
   };
 
   const handleRemoveUsers = async () => {
-    try {
-      await deleteUsers(selectedUsers.map((user) => user.id));
+    await deleteUsers(selectedUsers.map((user) => user.id));
 
-      createNotification({
-        text: "Successfully removed users",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed users",
+      type: "success"
+    });
 
-      setSelectedUsers([]);
-      handlePopUpClose("removeUsers");
-    } catch {
-      createNotification({
-        text: "Failed to remove users",
-        type: "error"
-      });
-    }
+    setSelectedUsers([]);
+    handlePopUpClose("removeUsers");
   };
 
   return (

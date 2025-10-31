@@ -74,43 +74,36 @@ export const OrgGroupModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Pr
   }, [popUp?.group?.data, roles]);
 
   const onGroupModalSubmit = async ({ name, slug, role }: TGroupFormData) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      const group = popUp?.group?.data as {
-        groupId: string;
-        name: string;
-        slug: string;
-      };
+    const group = popUp?.group?.data as {
+      groupId: string;
+      name: string;
+      slug: string;
+    };
 
-      if (group) {
-        await updateMutateAsync({
-          id: group.groupId,
-          name,
-          slug,
-          role: role.slug || undefined
-        });
-      } else {
-        await createMutateAsync({
-          name,
-          slug,
-          organizationId: currentOrg.id,
-          role: role.slug || undefined
-        });
-      }
-      handlePopUpToggle("group", false);
-      reset();
-
-      createNotification({
-        text: `Successfully ${popUp?.group?.data ? "updated" : "created"} group`,
-        type: "success"
+    if (group) {
+      await updateMutateAsync({
+        id: group.groupId,
+        name,
+        slug,
+        role: role.slug || undefined
       });
-    } catch {
-      createNotification({
-        text: `Failed to ${popUp?.group?.data ? "updated" : "created"} group`,
-        type: "error"
+    } else {
+      await createMutateAsync({
+        name,
+        slug,
+        organizationId: currentOrg.id,
+        role: role.slug || undefined
       });
     }
+    handlePopUpToggle("group", false);
+    reset();
+
+    createNotification({
+      text: `Successfully ${popUp?.group?.data ? "updated" : "created"} group`,
+      type: "success"
+    });
   };
 
   return (

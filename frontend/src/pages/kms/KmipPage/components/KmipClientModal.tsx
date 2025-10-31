@@ -98,20 +98,12 @@ const KmipClientForm = ({ onComplete, kmipClient }: FormProps) => {
             .map(([key]) => key as KmipPermission)
         });
 
-    try {
-      await mutation;
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "added"} KMIP client`,
-        type: "success"
-      });
-      onComplete();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "add"} KMIP client`,
-        type: "error"
-      });
-    }
+    await mutation;
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "added"} KMIP client`,
+      type: "success"
+    });
+    onComplete();
   };
 
   return (

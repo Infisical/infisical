@@ -176,31 +176,19 @@ export const EnvironmentPageForm = () => {
 
   const onSubmit = useCallback(
     async (formData: TForm) => {
-      try {
-        const filteredFormData = Object.fromEntries(
-          Object.entries(formData).filter(([, value]) => value !== "")
-        );
-        await updateServerConfig({
-          envOverrides: filteredFormData
-        });
+      const filteredFormData = Object.fromEntries(
+        Object.entries(formData).filter(([, value]) => value !== "")
+      );
+      await updateServerConfig({
+        envOverrides: filteredFormData
+      });
 
-        createNotification({
-          type: "success",
-          text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
-        });
+      createNotification({
+        type: "success",
+        text: "Environment overrides updated successfully. It can take up to 5 minutes to take effect."
+      });
 
-        reset(formData);
-      } catch (error) {
-        const errorMessage =
-          (error as any)?.response?.data?.message ||
-          (error as any)?.message ||
-          "An unknown error occurred";
-        createNotification({
-          type: "error",
-          title: "Failed to update environment overrides",
-          text: errorMessage
-        });
-      }
+      reset(formData);
     },
     [reset, updateServerConfig]
   );

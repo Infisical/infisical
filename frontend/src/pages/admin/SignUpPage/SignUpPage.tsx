@@ -6,7 +6,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 // TODO(akhilmhdh): rewrite this into module functions in lib
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, ContentLoader, FormControl, Input } from "@app/components/v2";
@@ -46,29 +45,21 @@ export const SignUpPage = () => {
   const handleFormSubmit = async ({ email, password, firstName, lastName }: TFormSchema) => {
     // avoid multi submission
     if (isSubmitting) return;
-    try {
-      const res = await createAdminUser({
-        email,
-        password,
-        firstName,
-        lastName
-      });
+    const res = await createAdminUser({
+      email,
+      password,
+      firstName,
+      lastName
+    });
 
-      SecurityClient.setToken(res.token);
-      await selectOrganization({ organizationId: res.organization.id });
+    SecurityClient.setToken(res.token);
+    await selectOrganization({ organizationId: res.organization.id });
 
-      // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
-      // Will be refactored in next iteration to make it url based rather than local storage ones
-      // Part of migration to nextjs 14
-      localStorage.setItem("orgData.id", res.organization.id);
-      navigate({ to: "/admin" });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to create admin"
-      });
-    }
+    // TODO(akhilmhdh): This is such a confusing pattern and too unreliable
+    // Will be refactored in next iteration to make it url based rather than local storage ones
+    // Part of migration to nextjs 14
+    localStorage.setItem("orgData.id", res.organization.id);
+    navigate({ to: "/admin" });
   };
 
   if (config?.initialized) return <ContentLoader text="Redirecting to admin page..." />;

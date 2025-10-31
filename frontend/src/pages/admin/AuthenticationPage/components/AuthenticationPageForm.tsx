@@ -54,59 +54,51 @@ export const AuthenticationPageForm = () => {
   });
 
   const onAuthFormSubmit = async (formData: TAuthForm) => {
-    try {
-      const enabledMethods: LoginMethod[] = [];
-      if (formData.isEmailEnabled) {
-        enabledMethods.push(LoginMethod.EMAIL);
-      }
+    const enabledMethods: LoginMethod[] = [];
+    if (formData.isEmailEnabled) {
+      enabledMethods.push(LoginMethod.EMAIL);
+    }
 
-      if (formData.isGoogleEnabled) {
-        enabledMethods.push(LoginMethod.GOOGLE);
-      }
+    if (formData.isGoogleEnabled) {
+      enabledMethods.push(LoginMethod.GOOGLE);
+    }
 
-      if (formData.isGithubEnabled) {
-        enabledMethods.push(LoginMethod.GITHUB);
-      }
+    if (formData.isGithubEnabled) {
+      enabledMethods.push(LoginMethod.GITHUB);
+    }
 
-      if (formData.isGitlabEnabled) {
-        enabledMethods.push(LoginMethod.GITLAB);
-      }
+    if (formData.isGitlabEnabled) {
+      enabledMethods.push(LoginMethod.GITLAB);
+    }
 
-      if (formData.isSamlEnabled) {
-        enabledMethods.push(LoginMethod.SAML);
-      }
+    if (formData.isSamlEnabled) {
+      enabledMethods.push(LoginMethod.SAML);
+    }
 
-      if (formData.isLdapEnabled) {
-        enabledMethods.push(LoginMethod.LDAP);
-      }
+    if (formData.isLdapEnabled) {
+      enabledMethods.push(LoginMethod.LDAP);
+    }
 
-      if (formData.isOidcEnabled) {
-        enabledMethods.push(LoginMethod.OIDC);
-      }
+    if (formData.isOidcEnabled) {
+      enabledMethods.push(LoginMethod.OIDC);
+    }
 
-      if (!enabledMethods.length) {
-        createNotification({
-          type: "error",
-          text: "At least one login method should be enabled."
-        });
-        return;
-      }
-
-      await updateServerConfig({
-        enabledLoginMethods: enabledMethods
-      });
-
-      createNotification({
-        text: "Login methods have been successfully updated.",
-        type: "success"
-      });
-    } catch (e) {
-      console.error(e);
+    if (!enabledMethods.length) {
       createNotification({
         type: "error",
-        text: "Failed to update login methods."
+        text: "At least one login method should be enabled."
       });
+      return;
     }
+
+    await updateServerConfig({
+      enabledLoginMethods: enabledMethods
+    });
+
+    createNotification({
+      text: "Login methods have been successfully updated.",
+      type: "success"
+    });
   };
 
   return (

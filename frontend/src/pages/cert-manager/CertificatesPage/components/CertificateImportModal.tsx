@@ -71,38 +71,30 @@ export const CertificateImportModal = ({ popUp, handlePopUpToggle }: Props) => {
     chainPem,
     collectionId
   }: FormData) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
-        projectSlug: currentProject.slug,
+    const { serialNumber, certificate, certificateChain, privateKey } = await importCertificate({
+      projectSlug: currentProject.slug,
 
-        certificatePem,
-        privateKeyPem,
-        chainPem,
-        pkiCollectionId: collectionId
-      });
+      certificatePem,
+      privateKeyPem,
+      chainPem,
+      pkiCollectionId: collectionId
+    });
 
-      reset();
+    reset();
 
-      setCertificateDetails({
-        serialNumber,
-        certificate,
-        certificateChain,
-        privateKey
-      });
+    setCertificateDetails({
+      serialNumber,
+      certificate,
+      certificateChain,
+      privateKey
+    });
 
-      createNotification({
-        text: "Successfully imported certificate",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to import certificate",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully imported certificate",
+      type: "success"
+    });
   };
 
   return (

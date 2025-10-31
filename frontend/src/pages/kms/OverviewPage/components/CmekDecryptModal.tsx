@@ -52,23 +52,15 @@ const DecryptForm = ({ cmek }: FormProps) => {
   });
 
   const handleDecryptData = async (formData: FormData) => {
-    try {
-      const data = await cmekDecrypt.mutateAsync({ ...formData, keyId: cmek.id });
-      createNotification({
-        text: "Successfully decrypted data",
-        type: "success"
-      });
+    const data = await cmekDecrypt.mutateAsync({ ...formData, keyId: cmek.id });
+    createNotification({
+      text: "Successfully decrypted data",
+      type: "success"
+    });
 
-      setPlaintext(
-        shouldDecode ? Buffer.from(decodeBase64(data.plaintext)).toString("utf8") : data.plaintext
-      );
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to decrypt data",
-        type: "error"
-      });
-    }
+    setPlaintext(
+      shouldDecode ? Buffer.from(decodeBase64(data.plaintext)).toString("utf8") : data.plaintext
+    );
   };
 
   useEffect(() => {

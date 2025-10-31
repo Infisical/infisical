@@ -73,67 +73,53 @@ export const EmailConfirmationStep = ({
   const { mutateAsync: verifyEmailVerificationCode } = useVerifyEmailVerificationCode();
 
   const checkCode = async () => {
-    try {
-      await verifyEmailVerificationCode({ username, code });
-      setCodeError(false);
+    await verifyEmailVerificationCode({ username, code });
+    setCodeError(false);
 
-      createNotification({
-        text: "Successfully verified code",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully verified code",
+      type: "success"
+    });
 
-      switch (authType) {
-        case UserAliasType.SAML: {
-          window.open(`/api/v1/sso/redirect/saml2/organizations/${organizationSlug}`);
-          window.close();
-          break;
-        }
-        case UserAliasType.LDAP: {
-          navigate({ to: "/login/ldap", search: { organizationSlug } });
-          break;
-        }
-        case UserAliasType.OIDC: {
-          window.open(`/api/v1/sso/oidc/login?orgSlug=${organizationSlug}`);
-          window.close();
-          break;
-        }
-        default: {
-          setStep(1);
-          break;
-        }
+    switch (authType) {
+      case UserAliasType.SAML: {
+        window.open(`/api/v1/sso/redirect/saml2/organizations/${organizationSlug}`);
+        window.close();
+        break;
       }
-    } catch {
-      createNotification({
-        text: "Failed to verify code",
-        type: "error"
-      });
+      case UserAliasType.LDAP: {
+        navigate({ to: "/login/ldap", search: { organizationSlug } });
+        break;
+      }
+      case UserAliasType.OIDC: {
+        window.open(`/api/v1/sso/oidc/login?orgSlug=${organizationSlug}`);
+        window.close();
+        break;
+      }
+      default: {
+        setStep(1);
+        break;
+      }
     }
 
     setCode("");
   };
 
   const resendCode = async () => {
-    try {
-      const queryParams = new URLSearchParams(window.location.search);
-      const token = queryParams.get("token");
-      if (!token) {
-        createNotification({
-          text: "Failed to resend code, no token found",
-          type: "error"
-        });
-        return;
-      }
-      await sendEmailVerificationCode(token);
+    const queryParams = new URLSearchParams(window.location.search);
+    const token = queryParams.get("token");
+    if (!token) {
       createNotification({
-        text: "Successfully resent code",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to resend code",
+        text: "Failed to resend code, no token found",
         type: "error"
       });
+      return;
     }
+    await sendEmailVerificationCode(token);
+    createNotification({
+      text: "Successfully resent code",
+      type: "success"
+    });
   };
 
   return (

@@ -78,25 +78,17 @@ export const PkiTemplateListPage = () => {
   const deleteCertTemplate = useDeleteCertTemplateV2();
 
   const onRemovePkiSubscriberSubmit = async () => {
-    try {
-      const pkiTemplate = await deleteCertTemplate.mutateAsync({
-        projectId: currentProject.id,
-        templateName: popUp?.deleteTemplate?.data?.name
-      });
+    const pkiTemplate = await deleteCertTemplate.mutateAsync({
+      projectId: currentProject.id,
+      templateName: popUp?.deleteTemplate?.data?.name
+    });
 
-      createNotification({
-        text: `Successfully deleted PKI template: ${pkiTemplate.name}`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted PKI template: ${pkiTemplate.name}`,
+      type: "success"
+    });
 
-      handlePopUpClose("deleteTemplate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete PKI subscriber",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteTemplate");
   };
 
   return (

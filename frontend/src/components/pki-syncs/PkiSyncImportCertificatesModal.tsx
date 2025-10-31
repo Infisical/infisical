@@ -21,27 +21,18 @@ const Content = ({ pkiSync, onComplete }: ContentProps) => {
   const triggerImportCertificates = useTriggerPkiSyncImportCertificates();
 
   const handleTriggerImportCertificates = async () => {
-    try {
-      await triggerImportCertificates.mutateAsync({
-        syncId,
-        destination,
-        projectId
-      });
+    await triggerImportCertificates.mutateAsync({
+      syncId,
+      destination,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered certificate import for ${destinationName} Sync`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully triggered certificate import for ${destinationName} Sync`,
+      type: "success"
+    });
 
-      onComplete();
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to trigger certificate import for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    onComplete();
   };
 
   return (

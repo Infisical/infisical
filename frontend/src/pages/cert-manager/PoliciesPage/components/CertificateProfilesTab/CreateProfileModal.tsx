@@ -236,64 +236,56 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }, [isEdit, profile, reset]);
 
   const onFormSubmit = async (data: FormData) => {
-    try {
-      if (!currentProject?.id && !isEdit) return;
+    if (!currentProject?.id && !isEdit) return;
 
-      if (isEdit) {
-        const updateData: TUpdateCertificateProfileDTO = {
-          profileId: profile.id,
-          slug: data.slug,
-          description: data.description
-        };
+    if (isEdit) {
+      const updateData: TUpdateCertificateProfileDTO = {
+        profileId: profile.id,
+        slug: data.slug,
+        description: data.description
+      };
 
-        if (data.enrollmentType === "est" && data.estConfig) {
-          updateData.estConfig = data.estConfig;
-        } else if (data.enrollmentType === "api" && data.apiConfig) {
-          updateData.apiConfig = data.apiConfig;
-        }
-
-        await updateProfile.mutateAsync(updateData);
-      } else {
-        if (!currentProject?.id) {
-          throw new Error("Project ID is required for creating a profile");
-        }
-
-        const createData: TCreateCertificateProfileDTO = {
-          projectId: currentProject.id,
-          slug: data.slug,
-          description: data.description,
-          enrollmentType: data.enrollmentType,
-          caId: data.certificateAuthorityId,
-          certificateTemplateId: data.certificateTemplateId
-        };
-
-        if (data.enrollmentType === "est" && data.estConfig) {
-          createData.estConfig = {
-            passphrase: data.estConfig.passphrase,
-            caChain: data.estConfig.caChain || undefined,
-            disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
-          };
-        } else if (data.enrollmentType === "api" && data.apiConfig) {
-          createData.apiConfig = data.apiConfig;
-        }
-
-        await createProfile.mutateAsync(createData);
+      if (data.enrollmentType === "est" && data.estConfig) {
+        updateData.estConfig = data.estConfig;
+      } else if (data.enrollmentType === "api" && data.apiConfig) {
+        updateData.apiConfig = data.apiConfig;
       }
 
-      createNotification({
-        text: `Certificate profile ${isEdit ? "updated" : "created"} successfully`,
-        type: "success"
-      });
+      await updateProfile.mutateAsync(updateData);
+    } else {
+      if (!currentProject?.id) {
+        throw new Error("Project ID is required for creating a profile");
+      }
 
-      reset();
-      onClose();
-    } catch (error) {
-      console.error(`Error ${isEdit ? "updating" : "creating"} profile:`, error);
-      createNotification({
-        text: `Failed to ${isEdit ? "update" : "create"} certificate profile`,
-        type: "error"
-      });
+      const createData: TCreateCertificateProfileDTO = {
+        projectId: currentProject.id,
+        slug: data.slug,
+        description: data.description,
+        enrollmentType: data.enrollmentType,
+        caId: data.certificateAuthorityId,
+        certificateTemplateId: data.certificateTemplateId
+      };
+
+      if (data.enrollmentType === "est" && data.estConfig) {
+        createData.estConfig = {
+          passphrase: data.estConfig.passphrase,
+          caChain: data.estConfig.caChain || undefined,
+          disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
+        };
+      } else if (data.enrollmentType === "api" && data.apiConfig) {
+        createData.apiConfig = data.apiConfig;
+      }
+
+      await createProfile.mutateAsync(createData);
     }
+
+    createNotification({
+      text: `Certificate profile ${isEdit ? "updated" : "created"} successfully`,
+      type: "success"
+    });
+
+    reset();
+    onClose();
   };
 
   return (

@@ -46,26 +46,18 @@ export const UserDetailsSection = ({ membershipId, handlePopUpOpen }: Props) => 
   const { mutateAsync: resendOrgMemberInvitation, isPending } = useResendOrgMemberInvitation();
 
   const onResendInvite = async () => {
-    try {
-      const signupToken = await resendOrgMemberInvitation({
-        membershipId
-      });
+    const signupToken = await resendOrgMemberInvitation({
+      membershipId
+    });
 
-      if (signupToken) {
-        return;
-      }
-
-      createNotification({
-        text: "Successfully resent org invitation",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to resend org invitation",
-        type: "error"
-      });
+    if (signupToken) {
+      return;
     }
+
+    createNotification({
+      text: "Successfully resent org invitation",
+      type: "success"
+    });
   };
 
   const getStatus = (m: OrgUser) => {

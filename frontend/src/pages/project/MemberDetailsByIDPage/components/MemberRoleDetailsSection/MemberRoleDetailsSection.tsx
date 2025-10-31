@@ -55,42 +55,37 @@ export const MemberRoleDetailsSection = ({
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
-    try {
-      const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
-      await updateUserWorkspaceRole({
-        projectId,
-        roles: updatedRoles.map(
-          ({
-            role,
-            customRoleSlug,
-            isTemporary,
-            temporaryMode,
-            temporaryRange,
-            temporaryAccessStartTime,
-            temporaryAccessEndTime
-          }) => ({
-            role: role === "custom" ? customRoleSlug : role,
-            ...(isTemporary
-              ? {
-                  isTemporary,
-                  temporaryMode,
-                  temporaryRange,
-                  temporaryAccessStartTime,
-                  temporaryAccessEndTime
-                }
-              : {
-                  isTemporary
-                })
-          })
-        ),
-        membershipId: membershipDetails.id
-      });
-      createNotification({ type: "success", text: "Successfully removed role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
-    }
+    const updatedRoles = membershipDetails?.roles?.filter((el) => el.id !== id);
+    await updateUserWorkspaceRole({
+      projectId,
+      roles: updatedRoles.map(
+        ({
+          role,
+          customRoleSlug,
+          isTemporary,
+          temporaryMode,
+          temporaryRange,
+          temporaryAccessStartTime,
+          temporaryAccessEndTime
+        }) => ({
+          role: role === "custom" ? customRoleSlug : role,
+          ...(isTemporary
+            ? {
+                isTemporary,
+                temporaryMode,
+                temporaryRange,
+                temporaryAccessStartTime,
+                temporaryAccessEndTime
+              }
+            : {
+                isTemporary
+              })
+        })
+      ),
+      membershipId: membershipDetails.id
+    });
+    createNotification({ type: "success", text: "Successfully removed role" });
+    handlePopUpClose("deleteRole");
   };
 
   return (
