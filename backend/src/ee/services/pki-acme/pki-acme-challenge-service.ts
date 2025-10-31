@@ -8,6 +8,7 @@ import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import { AcmeIncorrectResponseError } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
+import { TPkiAcmeChallenges } from "@app/db/schemas";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "updateById">;
@@ -23,8 +24,8 @@ export const pkiAcmeChallengeServiceFactory = ({
 }: TPkiAcmeChallengeServiceFactoryDep): TPkiAcmeChallengeServiceFactory => {
   const appCfg = getConfig();
 
-  const validateChallengeResponse = async (challengeId: string, tx?: Knex): Promise<void> => {
-    return await acmeChallengeDAL.transaction(async (tx: Knex) => {
+  const validateChallengeResponse = async (challengeId: string): Promise<void> => {
+    return await acmeChallengeDAL.transaction(async (tx) => {
       logger.info({ challengeId }, "Validating ACME challenge response");
       const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
       if (!challenge) {
@@ -72,9 +73,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       } catch (error) {
         logger.error(error, "Error validating ACME challenge response");
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
-        await acmeChallengeDAL.updateById(challengeId, { status: AcmeChallengeStatus.Invalid }, tx);
-        await acmeAuthDAL.updateById(challenge.auth.account.id, { status: AcmeAuthStatus.Invalid }, tx);
-        // TODO: trigger a check for order status as well
+        await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
         throw error;
       }
     });

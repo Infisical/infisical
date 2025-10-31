@@ -56,6 +56,19 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
     }
   };
 
+  const markAsInvalidCascadeById = async (id: string, tx?: Knex): Promise<TPkiAcmeChallenges> => {
+    try {
+      const [challenge] = (await (tx || db)(TableName.PkiAcmeChallenge)
+        .where({ id })
+        .update({ status: AcmeChallengeStatus.Valid, validatedAt: new Date() })
+        .returning("*")) as [TPkiAcmeChallenges];
+      // TODO:
+      return challenge;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Update certificate profile" });
+    }
+  };
+
   const findByAccountAuthAndChallengeId = async (accountId: string, authId: string, challengeId: string, tx?: Knex) => {
     try {
       const challenge = await (tx || db)(TableName.PkiAcmeChallenge)
@@ -126,6 +139,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
   return {
     ...pkiAcmeChallengeOrm,
     markAsValidCascadeById,
+    markAsInvalidCascadeById,
     findByAccountAuthAndChallengeId,
     findByIdForChallengeValidation
   };

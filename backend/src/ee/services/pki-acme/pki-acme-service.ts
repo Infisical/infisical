@@ -611,14 +611,8 @@ export const pkiAcmeServiceFactory = ({
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
     }
-    const challenge = await acmeChallengeDAL.transaction(async (tx) => {
-      await acmeChallengeService.validateChallengeResponse(challengeId, tx);
-      return {
-        ...challenge,
-        ...updatedChallenge
-      };
-    });
-    // TODO: Implement ACME challenge response
+    await acmeChallengeService.validateChallengeResponse(challengeId);
+    const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
     return {
       status: 200,
       body: {
