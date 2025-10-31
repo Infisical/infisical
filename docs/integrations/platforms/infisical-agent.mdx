@@ -60,9 +60,9 @@ While specifying an authentication method is mandatory to start the agent, confi
 | `templates[].source-path`                  | The path to the template file that should be used to render secrets.                                                                                                                              |
 | `templates[].template-content`             | The inline secret template to be used for rendering the secrets.                                                                                                                                                      |
 | `templates[].destination-path`             | The path where the rendered secrets from the source template will be saved to.                                                                                                                    |
-| `templates[].config.polling-interval`      | How frequently to check for secret changes. Default: `5 minutes` (optional)                                                                                                                       |
-| `templates[].config.execute.command`       | The command to execute when secret change is detected (optional)                                                                                                                                  |
-| `templates[].config.execute.timeout`       | How long in seconds to wait for command to execute before timing out (optional)                                                                                                                   |
+| `templates[].config.polling-interval`      | How frequently to check for secret changes (optional).<br/><br/>Minimum of `60s`. Default: `5m`                                                                                                                        |
+| `templates[].config.execute.command`       | The command to execute when secret change is detected (optional).                                                                                                                                  |
+| `templates[].config.execute.timeout`       | How long in seconds to wait for command to execute before timing out (optional).<br/><br/>Default: no timeout                                                                                                                   |
 
 ## Authentication
 
@@ -333,11 +333,11 @@ infisical agent --config example-agent-config-file.yaml
 {{- end }}
   ```
 
-  
+
 
 **Function name**: listSecrets
 
-**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
+**Description**: This function can be used to render the full list of secrets within a given project, environment and secret path.
 
 An optional JSON argument is also available. It includes the properties `recursive`, which defaults to false, and `expandSecretReferences`, which defaults to true and expands the returned secrets.
 
