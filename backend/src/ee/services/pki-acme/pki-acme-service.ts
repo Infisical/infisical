@@ -500,12 +500,12 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
-    const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
+    let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
     if (order.status === AcmeOrderStatus.Ready) {
-      await acmeOrderDAL.transaction(async (tx) => {
+      order = await acmeOrderDAL.transaction(async (tx) => {
         const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
         const profile = (await certificateProfileDAL.findById(profileId, tx))!;
         if (order.status !== AcmeOrderStatus.Ready) {
@@ -528,11 +528,12 @@ export const pkiAcmeServiceFactory = ({
           {
             status: AcmeOrderStatus.Valid,
             csr,
-            certificate,
-            certificateChain
+            certificateChain,
+            certificate: certificate.toString("pem")
           },
           tx
         );
+        return await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx);
       });
     } else if (order.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });

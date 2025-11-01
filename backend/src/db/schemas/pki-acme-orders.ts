@@ -18,7 +18,7 @@ export const PkiAcmeOrdersSchema = z.object({
   updatedAt: z.date(),
   csr: z.string().nullable().optional(),
   certificate: z.string().nullable().optional(),
-  certificatechain: z.string().nullable().optional()
+  certificateChain: z.string().nullable().optional()
 });
 
 export type TPkiAcmeOrders = z.infer<typeof PkiAcmeOrdersSchema>;
