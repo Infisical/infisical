@@ -24,6 +24,7 @@ import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { BitbucketSyncReviewFields } from "./BitbucketSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
+import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -176,6 +177,9 @@ export const SecretSyncReviewFields = () => {
       break;
     case SecretSync.LaravelForge:
       DestinationFieldsComponent = <LaravelForgeSyncReviewFields />;
+      break;
+    case SecretSync.Chef:
+      DestinationFieldsComponent = <ChefSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

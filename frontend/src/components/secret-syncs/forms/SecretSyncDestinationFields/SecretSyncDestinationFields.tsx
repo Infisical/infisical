@@ -12,6 +12,7 @@ import { AzureKeyVaultSyncFields } from "./AzureKeyVaultSyncFields";
 import { BitbucketSyncFields } from "./BitbucketSyncFields";
 import { CamundaSyncFields } from "./CamundaSyncFields";
 import { ChecklySyncFields } from "./ChecklySyncFields";
+import { ChefSyncFields } from "./ChefSyncFields";
 import { CloudflarePagesSyncFields } from "./CloudflarePagesSyncFields";
 import { CloudflareWorkersSyncFields } from "./CloudflareWorkersSyncFields";
 import { DatabricksSyncFields } from "./DatabricksSyncFields";
@@ -104,6 +105,8 @@ export const SecretSyncDestinationFields = () => {
       return <BitbucketSyncFields />;
     case SecretSync.LaravelForge:
       return <LaravelForgeSyncFields />;
+    case SecretSync.Chef:
+      return <ChefSyncFields />;
     case SecretSync.Northflank:
       return <NorthflankSyncFields />;
     default:

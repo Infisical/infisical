@@ -20,6 +20,7 @@ import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
+import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
@@ -164,6 +165,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Chef:
+      return <ChefConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DigitalOcean:
@@ -329,6 +332,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Chef:
+      return <ChefConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.DigitalOcean:

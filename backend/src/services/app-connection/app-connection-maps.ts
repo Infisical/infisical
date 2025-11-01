@@ -41,6 +41,7 @@ export const APP_CONNECTION_NAME_MAP: Record<AppConnection, string> = {
   [AppConnection.Netlify]: "Netlify",
   [AppConnection.Okta]: "Okta",
   [AppConnection.Redis]: "Redis",
+  [AppConnection.Chef]: "Chef",
   [AppConnection.Northflank]: "Northflank"
 };
 
@@ -85,5 +86,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Netlify]: AppConnectionPlanType.Regular,
   [AppConnection.Okta]: AppConnectionPlanType.Regular,
   [AppConnection.Redis]: AppConnectionPlanType.Regular,
+  [AppConnection.Chef]: AppConnectionPlanType.Regular,
   [AppConnection.Northflank]: AppConnectionPlanType.Regular
 };

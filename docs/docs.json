@@ -114,6 +114,7 @@
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
                       "integrations/app-connections/checkly",
+                      "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/digital-ocean",
@@ -540,6 +541,7 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
+                      "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -1659,6 +1661,18 @@
                     ]
                   },
                   {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/chef/list",
+                      "api-reference/endpoints/app-connections/chef/available",
+                      "api-reference/endpoints/app-connections/chef/get-by-id",
+                      "api-reference/endpoints/app-connections/chef/get-by-name",
+                      "api-reference/endpoints/app-connections/chef/create",
+                      "api-reference/endpoints/app-connections/chef/update",
+                      "api-reference/endpoints/app-connections/chef/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -2150,6 +2164,20 @@
                     ]
                   },
                   {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/chef/list",
+                      "api-reference/endpoints/secret-syncs/chef/get-by-id",
+                      "api-reference/endpoints/secret-syncs/chef/get-by-name",
+                      "api-reference/endpoints/secret-syncs/chef/create",
+                      "api-reference/endpoints/secret-syncs/chef/update",
+                      "api-reference/endpoints/secret-syncs/chef/delete",
+                      "api-reference/endpoints/secret-syncs/chef/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/chef/import-secrets",
+                      "api-reference/endpoints/secret-syncs/chef/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -2304,6 +2332,7 @@
                       "api-reference/endpoints/secret-syncs/laravel-forge/update",
                       "api-reference/endpoints/secret-syncs/laravel-forge/delete",
                       "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/import-secrets",
                       "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
                     ]
                   },

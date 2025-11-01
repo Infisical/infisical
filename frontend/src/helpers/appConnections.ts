@@ -46,6 +46,7 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
@@ -129,7 +130,8 @@ export const APP_CONNECTION_MAP: Record<
     name: "Laravel Forge",
     image: "Laravel Forge.png",
     size: 65
-  }
+  },
+  [AppConnection.Chef]: { name: "Chef", image: "Chef.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -202,6 +204,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case ChefConnectionMethod.UserKey:
+      return { name: "User Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:

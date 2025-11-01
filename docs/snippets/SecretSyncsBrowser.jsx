@@ -38,6 +38,7 @@ export const SecretSyncsBrowser = () => {
     {"name": "OCI Vault", "slug": "oci-vault", "path": "/integrations/secret-syncs/oci-vault", "description": "Learn how to sync secrets from Infisical to OCI Vault.", "category": "Cloud Providers"},
     {"name": "Zabbix", "slug": "zabbix", "path": "/integrations/secret-syncs/zabbix", "description": "Learn how to sync secrets from Infisical to Zabbix.", "category": "Monitoring"},
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/secret-syncs/laravel-forge", "description": "Learn how to sync secrets from Infisical to Laravel Forge.", "category": "Hosting"},
+    {"name": "Chef", "slug": "chef", "path": "/integrations/secret-syncs/chef", "description": "Learn how to sync secrets from Infisical to Chef.", "category": "DevOps Tools"},
     {"name": "Northflank", "slug": "northflank", "path": "/integrations/secret-syncs/northflank", "description": "Learn how to sync secrets from Infisical to Northflank projects.", "category": "Hosting"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

@@ -9,6 +9,7 @@ import { AzureKeyVaultSyncDestinationSchema } from "./azure-key-vault-sync-desti
 import { BitbucketSyncDestinationSchema } from "./bitbucket-sync-destination-schema";
 import { CamundaSyncDestinationSchema } from "./camunda-sync-destination-schema";
 import { ChecklySyncDestinationSchema } from "./checkly-sync-destination-schema";
+import { ChefSyncDestinationSchema } from "./chef-sync-destination-schema";
 import { CloudflarePagesSyncDestinationSchema } from "./cloudflare-pages-sync-destination-schema";
 import { CloudflareWorkersSyncDestinationSchema } from "./cloudflare-workers-sync-destination-schema";
 import { DatabricksSyncDestinationSchema } from "./databricks-sync-destination-schema";
@@ -65,7 +66,8 @@ const SecretSyncUnionSchema = z.discriminatedUnion("destination", [
   NetlifySyncDestinationSchema,
   NorthflankSyncDestinationSchema,
   BitbucketSyncDestinationSchema,
-  LaravelForgeSyncDestinationSchema
+  LaravelForgeSyncDestinationSchema,
+  ChefSyncDestinationSchema
 ]);
 
 export const SecretSyncFormSchema = SecretSyncUnionSchema;

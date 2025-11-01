@@ -68,6 +68,7 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
+import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -210,7 +211,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetlifyConnectionListItem(),
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
-    getRedisConnectionListItem()
+    getRedisConnectionListItem(),
+    getChefConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -341,6 +343,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -409,6 +412,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case ChefConnectionMethod.UserKey:
+      return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     default:
@@ -483,7 +488,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
-  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
+  [AppConnection.Chef]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

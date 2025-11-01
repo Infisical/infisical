@@ -83,6 +83,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefConnectionInput,
+  TValidateChefConnectionCredentialsSchema
+} from "./chef";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -282,6 +288,7 @@ export type TAppConnection = { id: string } & (
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
+  | TChefConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -330,6 +337,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TChefConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -395,7 +403,8 @@ export type TAppConnectionConfig =
   | TNetlifyConnectionConfig
   | TNorthflankConnectionConfig
   | TOktaConnectionConfig
-  | TRedisConnectionConfig;
+  | TRedisConnectionConfig
+  | TChefConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -438,7 +447,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNetlifyConnectionCredentialsSchema
   | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
-  | TValidateRedisConnectionCredentialsSchema;
+  | TValidateRedisConnectionCredentialsSchema
+  | TValidateChefConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
