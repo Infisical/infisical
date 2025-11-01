@@ -354,10 +354,10 @@ def step_impl(context: Context, var_path: str, hostname: str):
         context.acme_client.net.key
     )
     resource = standalone.HTTP01RequestHandler.HTTP01Resource(
-        chall=challenge, response=response, validation=validation
+        chall=challenge.chall, response=response, validation=validation
     )
     # TODO: make port configurable
-    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resource)
+    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
     # Start client standalone web server.
     web_server = threading.Thread(name="web_server", target=servers.serve_forever)
     web_server.daemon = True
