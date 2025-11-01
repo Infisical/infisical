@@ -66,7 +66,7 @@ export const pkiAcmeChallengeServiceFactory = ({
           throw new BadRequestError({ message: "ACME challenge response is not 200" });
         }
         const challengeResponseBody = await challengeResponse.text();
-        const thumbprint = Buffer.from(challenge.auth.account.publicKeyThumbprint, "utf-8").toString("base64url");
+        const thumbprint = challenge.auth.account.publicKeyThumbprint;
         const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
         if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
           throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
