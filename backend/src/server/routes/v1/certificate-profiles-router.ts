@@ -44,7 +44,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               autoRenew: z.boolean().default(false),
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
-            .optional()
+            .optional(),
+          acmeConfig: z.object({}).optional()
         })
         .refine(
           (data) => {
@@ -55,6 +56,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               if (data.apiConfig) {
                 return false;
               }
+              if (data.acmeConfig) {
+                return false;
+              }
             }
             if (data.enrollmentType === EnrollmentType.API) {
               if (!data.apiConfig) {
@@ -63,12 +67,26 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               if (data.estConfig) {
                 return false;
               }
+              if (data.acmeConfig) {
+                return false;
+              }
+            }
+            if (data.enrollmentType === EnrollmentType.ACME) {
+              if (!data.acmeConfig) {
+                return false;
+              }
+              if (data.estConfig) {
+                return false;
+              }
+              if (data.apiConfig) {
+                return false;
+              }
             }
             return true;
           },
           {
             message:
-              "EST enrollment type requires EST configuration and cannot have API configuration. API enrollment type requires API configuration and cannot have EST configuration."
+              "EST enrollment type requires EST configuration and cannot have API or ACME configuration. API enrollment type requires API configuration and cannot have EST or ACME configuration. ACME enrollment type requires ACME configuration and cannot have EST or API configuration."
           }
         ),
       response: {

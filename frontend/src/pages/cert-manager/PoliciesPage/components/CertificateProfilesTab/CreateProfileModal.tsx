@@ -45,7 +45,7 @@ const createSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est"]),
+    enrollmentType: z.enum(["api", "est", "acme"]),
     certificateAuthorityId: z.string().min(1, "Certificate Authority is required"),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
     estConfig: z
@@ -72,7 +72,8 @@ const createSchema = z
         autoRenew: z.boolean().optional(),
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -80,6 +81,9 @@ const createSchema = z
         return false;
       }
       if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
       return true;
@@ -188,7 +192,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   autoRenew: profile.apiConfig?.autoRenew || false,
                   renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
                 }
-              : undefined
+              : undefined,
+          acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
         }
       : {
           slug: "",
@@ -199,7 +204,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           apiConfig: {
             autoRenew: false,
             renewBeforeDays: 30
-          }
+          },
+          acmeConfig: {}
         }
   });
 
@@ -230,7 +236,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 autoRenew: profile.apiConfig?.autoRenew || false,
                 renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
               }
-            : undefined
+            : undefined,
+        acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
       });
     }
   }, [isEdit, profile, reset]);
@@ -275,6 +282,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           };
         } else if (data.enrollmentType === "api" && data.apiConfig) {
           createData.apiConfig = data.apiConfig;
+        } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+          createData.acmeConfig = data.acmeConfig;
         }
 
         await createProfile.mutateAsync(createData);
@@ -447,6 +456,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
+                  <SelectItem value="acme">ACME</SelectItem>
                 </Select>
               </FormControl>
             )}
@@ -556,6 +566,20 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </div>
           )}
 
+          {/* ACME Configuration */}
+          {watchedEnrollmentType === "acme" && (
+            <div className="mb-4 space-y-4">
+              <Controller
+                control={control}
+                name="acmeConfig"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div className="flex items-center gap-2">FIXME: ACME configuration</div>
+                  </FormControl>
+                )}
+              />
+            </div>
+          )}
           {watchedAutoRenew && (
             <div className="mb-4 space-y-4">
               <Controller
