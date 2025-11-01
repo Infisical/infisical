@@ -263,7 +263,7 @@ export const pkiAcmeServiceFactory = ({
       authorizations: TPkiAcmeAuths[];
     };
     profileId: string;
-  }) => {
+  }): TAcmeOrderResource => {
     return {
       status: order.status,
       expires: order.expiresAt.toISOString(),
