@@ -107,7 +107,16 @@ const envSchema = z
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    ACME_DEVELOPMENT_HTTP01_CHALLENGE_PORT: z.coerce.number().default(8087),
+    ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
+      z
+        .string()
+        .optional()
+        .transform((val) => {
+          if (!val) return {};
+          return JSON.parse(val) as Record<string, string>;
+        })
+        .default("{}")
+    ),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),

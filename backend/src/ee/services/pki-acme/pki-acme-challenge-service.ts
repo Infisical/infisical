@@ -49,11 +49,15 @@ export const pkiAcmeChallengeServiceFactory = ({
       if (challenge.type !== AcmeChallengeType.HTTP_01) {
         throw new BadRequestError({ message: "Only HTTP-01 challenges are supported for now" });
       }
-      const baseUrl = `http://${challenge.auth.identifierValue}`;
-      const actualBaseUrl = appCfg.isAcmeDevelopmentMode
-        ? `${baseUrl}:${appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_PORT}`
-        : baseUrl;
-      const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, actualBaseUrl);
+      let host = challenge.auth.identifierValue;
+      if (appCfg.isAcmeDevelopmentMode && appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host]) {
+        host = appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host];
+        logger.warn(
+          { srcHost: challenge.auth.identifierValue, dstHost: host },
+          "Using ACME development HTTP-01 challenge host override"
+        );
+      }
+      const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${host}`);
       logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
       try {
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
