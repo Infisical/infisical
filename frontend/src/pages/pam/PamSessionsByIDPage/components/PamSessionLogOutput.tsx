@@ -1,5 +1,6 @@
-import { PamResourceType } from "@app/hooks/api/pam";
 import { useState } from "react";
+
+import { PamResourceType } from "@app/hooks/api/pam";
 
 type TableLog = {
   command?: string;
@@ -34,7 +35,7 @@ export const PamSessionLogOutput = ({
       ) {
         parsedContent = parsed;
       }
-    } catch (error) {
+    } catch {
       // Not a valid JSON or doesn't match structure, will render as plain text
     }
   }
@@ -69,7 +70,7 @@ export const PamSessionLogOutput = ({
                       className="border-b border-mineshaft-700 bg-mineshaft-900 last:border-b-0 hover:bg-mineshaft-800/50"
                     >
                       {headers.map((header) => (
-                        <td key={`${header}-${rowIndex}`} className="p-2">
+                        <td key={header} className="p-2">
                           {String(row[header] ?? "")}
                         </td>
                       ))}

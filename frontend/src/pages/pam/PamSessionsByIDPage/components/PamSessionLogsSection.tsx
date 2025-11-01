@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { TPamSession } from "@app/hooks/api/pam";
+
 import { PamSessionLogOutput } from "./PamSessionLogOutput";
 import { formatLogContent } from "./PamSessionLogsSection.utils";
 
@@ -45,8 +47,11 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                 <div className="flex items-center justify-between text-bunker-400">
                   <div className="flex items-center gap-2 select-none">
                     <FontAwesomeIcon
-                      icon={isExpanded ? faChevronDown : faChevronRight}
-                      className="size-3 transition-transform duration-200"
+                      icon={faChevronRight}
+                      className={twMerge(
+                        "size-3 transition-transform duration-100 ease-in-out",
+                        isExpanded && "rotate-90"
+                      )}
                     />
                     <span>{new Date(log.timestamp).toLocaleString()}</span>
                   </div>
@@ -60,21 +65,30 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                   {formattedInput}
                 </div>
 
-                {isExpanded && log.output && (
-                  <>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="h-px w-full bg-mineshaft-400"></div>
-                      <span className="text-xs text-mineshaft-400">OUTPUT</span>
-                      <div className="h-px w-full bg-mineshaft-400"></div>
-                    </div>
-                    <div className="pt-2 text-bunker-300">
-                      <PamSessionLogOutput
-                        content={log.output}
-                        resourceType={session.resourceType}
-                      />
-                    </div>
-                  </>
-                )}
+                <div
+                  className={twMerge(
+                    "grid transition-all duration-100 ease-in-out",
+                    isExpanded && log.output ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    {log.output && (
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="h-px w-full bg-mineshaft-400" />
+                          <span className="text-xs text-mineshaft-400">OUTPUT</span>
+                          <div className="h-px w-full bg-mineshaft-400" />
+                        </div>
+                        <div className="pt-2 text-bunker-300">
+                          <PamSessionLogOutput
+                            content={log.output}
+                            resourceType={session.resourceType}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </button>
             );
           })
