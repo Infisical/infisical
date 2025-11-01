@@ -31,13 +31,6 @@ export const formSchema = z.object({
     .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
     .optional(),
   idOverride: z.string().trim().optional(),
-  valueOverride: z
-    .string()
-    .optional()
-    .transform((val) =>
-      typeof val === "string" ? (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()) : val
-    ),
-  overrideAction: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   skipMultilineEncoding: z.boolean().optional(),
 

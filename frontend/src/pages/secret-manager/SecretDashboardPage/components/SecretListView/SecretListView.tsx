@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 
 import { createNotification } from "@app/components/notifications";
 import { CreateTagModal } from "@app/components/tags/CreateTagModal";
 import { DeleteActionModal } from "@app/components/v2";
 import { usePopUp } from "@app/hooks";
-import { useCreateSecretV3, useDeleteSecretV3, useUpdateSecretV3 } from "@app/hooks/api";
-import { dashboardKeys } from "@app/hooks/api/dashboard/queries";
 import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
-import { commitKeys } from "@app/hooks/api/folderCommits/queries";
-import { secretApprovalRequestKeys } from "@app/hooks/api/secretApprovalRequest/queries";
 import { PendingAction } from "@app/hooks/api/secretFolders/types";
-import { secretKeys } from "@app/hooks/api/secrets/queries";
 import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
-import { secretSnapshotKeys } from "@app/hooks/api/secretSnapshots/queries";
 import { WsTag } from "@app/hooks/api/types";
+import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import { useNavigationBlocker } from "@app/hooks/useNavigationBlocker";
-import { AddShareSecretModal } from "@app/pages/organization/SecretSharingPage/components/ShareSecret/AddShareSecretModal";
 
 import {
   PendingSecretChange,
@@ -31,7 +24,7 @@ import {
 } from "../../SecretMainPage.store";
 import { CollapsibleSecretImports } from "./CollapsibleSecretImports";
 import { SecretDetailSidebar } from "./SecretDetailSidebar";
-import { HIDDEN_SECRET_VALUE, HIDDEN_SECRET_VALUE_API_MASK, SecretItem } from "./SecretItem";
+import { SecretItem } from "./SecretItem";
 import { FontAwesomeSpriteSymbols } from "./SecretListView.utils";
 
 type Props = {
@@ -66,24 +59,11 @@ export const SecretListView = ({
   importedBy,
   colWidth
 }: Props) => {
-  const queryClient = useQueryClient();
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "deleteSecret",
     "secretDetail",
-    "createTag",
-    "createSharedSecret"
+    "createTag"
   ] as const);
-
-  // strip of side effect queries
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3({
-    options: { onSuccess: undefined }
-  });
-  const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3({
-    options: { onSuccess: undefined }
-  });
 
   const selectedSecrets = useSelectedSecrets();
   const { toggle: toggleSelectedSecret } = useSelectedSecretActions();
@@ -105,95 +85,7 @@ export const SecretListView = ({
     pendingChangesRef.current = pendingChanges;
   }, [pendingChanges]);
 
-  const handleSecretOperation = async (
-    operation: "create" | "update" | "delete",
-    type: SecretType,
-    key: string,
-    {
-      secretValueHidden,
-      value,
-      comment,
-      reminderRepeatDays,
-      reminderNote,
-      reminderRecipients,
-      tags,
-      skipMultilineEncoding,
-      newKey,
-      secretId,
-      secretMetadata,
-      isRotatedSecret
-    }: Partial<{
-      secretValueHidden: boolean;
-      value: string;
-      comment: string;
-      reminderRepeatDays: number | null;
-      reminderNote: string | null;
-      reminderRecipients?: string[] | null;
-      tags: string[];
-      skipMultilineEncoding: boolean;
-      newKey: string;
-      secretId: string;
-      secretMetadata?: { key: string; value: string }[];
-      isRotatedSecret?: boolean;
-    }> = {}
-  ) => {
-    if (operation === "delete") {
-      await deleteSecretV3({
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        type,
-        secretId
-      });
-      return;
-    }
-
-    if (operation === "update") {
-      let secretValue = value;
-
-      if (
-        secretValueHidden &&
-        (value === HIDDEN_SECRET_VALUE_API_MASK || value === HIDDEN_SECRET_VALUE)
-      ) {
-        secretValue = undefined;
-      }
-
-      await updateSecretV3({
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        ...(!isRotatedSecret && {
-          newSecretName: newKey,
-          secretValue: secretValueHidden ? secretValue : secretValue || ""
-        }),
-        type,
-        tagIds: tags,
-        secretComment: comment,
-        secretReminderRepeatDays: reminderRepeatDays,
-        secretReminderNote: reminderNote,
-        secretReminderRecipients: reminderRecipients,
-        skipMultilineEncoding,
-        secretMetadata
-      });
-      return;
-    }
-
-    await createSecretV3(
-      {
-        environment,
-        projectId,
-        secretPath,
-        secretKey: key,
-        secretValue: value || "",
-        secretComment: "",
-        skipMultilineEncoding,
-        type
-      },
-      {}
-    );
-  };
+  const handleSecretOperation = useHandleSecretOperation(projectId);
 
   function getTrueOriginalSecret(
     currentSecret: SecretV3RawSanitized,
@@ -253,9 +145,6 @@ export const SecretListView = ({
       const {
         key,
         value,
-        overrideAction,
-        idOverride,
-        valueOverride,
         tags,
         comment,
         reminderRepeatDays,
@@ -294,30 +183,8 @@ export const SecretListView = ({
         isSameRecipients;
 
       try {
-        // personal secret change
-        let personalAction = false;
-        if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", SecretType.Personal, oldKey, {
-            secretId: orgSecret.idOverride
-          });
-          personalAction = true;
-        } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", SecretType.Personal, oldKey, {
-            value: valueOverride,
-            newKey: hasKeyChanged ? key : undefined,
-            secretId: orgSecret.idOverride,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
-          });
-          personalAction = true;
-        } else if (overrideAction) {
-          await handleSecretOperation("create", SecretType.Personal, oldKey, {
-            value: valueOverride
-          });
-          personalAction = true;
-        }
-
         // shared secret change
-        if (!isSharedSecUnchanged && !personalAction) {
+        if (!isSharedSecUnchanged) {
           if (isBatchMode) {
             const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
 
@@ -382,58 +249,26 @@ export const SecretListView = ({
             return;
           }
 
-          await handleSecretOperation("update", SecretType.Shared, oldKey, {
-            value,
-            tags: tagIds,
-            comment,
-            reminderRepeatDays,
-            reminderNote,
-            reminderRecipients,
-            secretId: orgSecret.id,
-            newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding,
-            secretMetadata,
-            isRotatedSecret: orgSecret.isRotatedSecret,
-            secretValueHidden
-          });
+          await handleSecretOperation(
+            { operation: "update", type: SecretType.Shared, key: oldKey, secretPath, environment },
+            {
+              value,
+              tags: tagIds,
+              comment,
+              reminderRepeatDays,
+              reminderNote,
+              reminderRecipients,
+              secretId: orgSecret.id,
+              newKey: hasKeyChanged ? key : undefined,
+              skipMultilineEncoding: modSecret.skipMultilineEncoding,
+              secretMetadata,
+              isRotatedSecret: orgSecret.isRotatedSecret,
+              secretValueHidden
+            }
+          );
           if (cb) cb();
         }
-        queryClient.invalidateQueries({
-          queryKey: dashboardKeys.getDashboardSecrets({
-            projectId,
-            secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.history({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretApprovalRequestKeys.count({ projectId })
-        });
+
         if (!isReminderEvent) {
           handlePopUpClose("secretDetail");
         }
@@ -448,11 +283,8 @@ export const SecretListView = ({
         }
 
         createNotification({
-          type: isProtectedBranch && !personalAction ? "info" : "success",
-          text:
-            isProtectedBranch && !personalAction
-              ? "Requested changes have been sent for review"
-              : successMessage
+          type: isProtectedBranch ? "info" : "success",
+          text: isProtectedBranch ? "Requested changes have been sent for review" : successMessage
         });
       } catch (error) {
         console.log(error);
@@ -511,37 +343,11 @@ export const SecretListView = ({
         return;
       }
 
-      await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
-      // wrap this in another function and then reuse
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ projectId })
-      });
+      await handleSecretOperation(
+        { operation: "delete", type: SecretType.Shared, key, secretPath, environment },
+        { secretId }
+      );
+
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
       createNotification({
@@ -583,13 +389,6 @@ export const SecretListView = ({
     (sec: SecretV3RawSanitized) => handlePopUpOpen("secretDetail", sec),
     []
   );
-  const onShareSecret = useCallback(
-    (sec: SecretV3RawSanitized) =>
-      handlePopUpOpen("createSharedSecret", {
-        value: sec.valueOverride ?? sec.value
-      }),
-    []
-  );
 
   return (
     <>
@@ -612,7 +411,6 @@ export const SecretListView = ({
           onDetailViewSecret={onDetailViewSecret}
           importedBy={importedBy}
           onCreateTag={onCreateTag}
-          onShareSecret={onShareSecret}
           isPending={secret.isPending}
           pendingAction={secret.pendingAction}
         />
@@ -656,7 +454,6 @@ export const SecretListView = ({
           onSaveSecret={handleSaveSecret}
           tags={wsTags}
           onCreateTag={() => handlePopUpOpen("createTag")}
-          handleSecretShare={(value: string) => handlePopUpOpen("createSharedSecret", { value })}
         />
       )}
       <CreateTagModal
@@ -665,7 +462,6 @@ export const SecretListView = ({
         append={append}
         currentSecret={popUp.createTag.data}
       />
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
     </>
   );
 };
