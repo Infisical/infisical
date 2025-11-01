@@ -350,15 +350,14 @@ def step_impl(context: Context, var_path: str, hostname: str):
     if hostname != "localhost":
         raise ValueError("Currently only localhost is supported")
     challenge = eval_var(context, var_path, as_json=False)
-    acme_challenge = challenge.chall
-    response, validation = acme_challenge.response_and_validation(
+    response, validation = challenge.response_and_validation(
         context.acme_client.net.key
     )
     resource = standalone.HTTP01RequestHandler.HTTP01Resource(
-        chall=acme_challenge, response=response, validation=validation
+        chall=challenge, response=response, validation=validation
     )
     # TODO: make port configurable
-    servers = standalone.HTTP01DualNetworkedServers(("", 8087), resource)
+    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resource)
     # Start client standalone web server.
     web_server = threading.Thread(name="web_server", target=servers.serve_forever)
     web_server.daemon = True
