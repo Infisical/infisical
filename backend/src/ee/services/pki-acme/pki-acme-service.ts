@@ -2,7 +2,7 @@ import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
@@ -25,6 +25,7 @@ import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import {
   AcmeAccountDoesNotExistError,
+  AcmeBadCSRError,
   AcmeBadPublicKeyError,
   AcmeError,
   AcmeMalformedError,
@@ -520,32 +521,51 @@ export const pkiAcmeServiceFactory = ({
         const { csr } = payload;
         // TODO: validate the CSR and return badCSR error if it's invalid
         // TODO: this should be the same transaction?
-        const { certificate, certificateChain, certificateId } = await certificateV3Service.signCertificateFromProfile({
-          actor: ActorType.ACME_ACCOUNT,
-          actorId: accountId,
-          actorAuthMethod: null,
-          actorOrgId,
-          profileId,
-          csr,
-          notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
-          notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
-          validity: {
-            // TODO: read config from the profile to get the expiration time instead
-            ttl: (24 * 60 * 60 * 1000).toString()
-          },
-          enrollmentType: EnrollmentType.ACME
-        });
-        // TODO: associate the certificate with the order
-        await acmeOrderDAL.updateById(
-          orderId,
-          {
-            status: AcmeOrderStatus.Valid,
-            csr,
-            certificateChain,
-            certificate
-          },
-          tx
-        );
+        try {
+          const { certificate, certificateChain, certificateId } =
+            await certificateV3Service.signCertificateFromProfile({
+              actor: ActorType.ACME_ACCOUNT,
+              actorId: accountId,
+              actorAuthMethod: null,
+              actorOrgId,
+              profileId,
+              csr,
+              notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
+              notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
+              validity: {
+                // TODO: read config from the profile to get the expiration time instead
+                ttl: (24 * 60 * 60 * 1000).toString()
+              },
+              enrollmentType: EnrollmentType.ACME
+            });
+          // TODO: associate the certificate with the order
+          await acmeOrderDAL.updateById(
+            orderId,
+            {
+              status: AcmeOrderStatus.Valid,
+              csr,
+              certificateChain,
+              certificate
+            },
+            tx
+          );
+        } catch (error) {
+          await acmeOrderDAL.updateById(
+            orderId,
+            {
+              csr,
+              status: AcmeOrderStatus.Invalid,
+              error: error instanceof Error ? error.message : "Unknown error"
+            },
+            tx
+          );
+          // TODO: log the error
+          // TODO: audit log the error
+          if (error instanceof BadRequestError) {
+            throw new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
+          }
+          throw new AcmeServerInternalError({ detail: "Failed to sign certificate" });
+        }
         return await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx);
       });
     } else if (order.status !== AcmeOrderStatus.Valid) {

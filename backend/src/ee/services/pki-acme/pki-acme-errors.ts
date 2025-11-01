@@ -528,3 +528,24 @@ export class AcmeOrderNotReadyError extends AcmeError {
     this.name = "AcmeOrderNotReadyError";
   }
 }
+
+export class AcmeBadCSRError extends AcmeError {
+  constructor({
+    detail = "The CSR is unacceptable",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: AcmeErrorType.BadCsr,
+      detail,
+      status: 400,
+      error,
+      message
+    });
+    this.name = "AcmeBadCSRError";
+  }
+}
