@@ -78,18 +78,12 @@ export const pkiAcmeChallengeServiceFactory = ({
         // Properly type and inspect the error
         if (error instanceof TypeError && error.message.includes("fetch failed")) {
           const cause = error.cause;
-          if (cause instanceof Error) {
-            if (cause.message.includes("ECONNREFUSED")) {
+          const errors = cause instanceof AggregateError ? cause.errors : cause instanceof Error ? [cause] : [];
+          for (const err of errors) {
+            // TODO: handle multiple errors, return a compound error instead of just the first error
+            if (err?.code === "ECONNREFUSED" || err?.message?.includes("ECONNREFUSED")) {
               return new AcmeConnectionError({ message: "Connection refused" });
-            } else if (cause.message.includes("ENOTFOUND")) {
-              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
-            }
-          } else if (cause instanceof AggregateError) {
-            // TODO: handle multiple errors
-            const firstError = cause.errors?.[0];
-            if (firstError?.code === "ECONNREFUSED") {
-              return new AcmeConnectionError({ message: "Connection refused" });
-            } else if (firstError?.code === "ENOTFOUND") {
+            } else if (err?.code === "ENOTFOUND" || err?.message?.includes("ENOTFOUND")) {
               return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
             }
           }
