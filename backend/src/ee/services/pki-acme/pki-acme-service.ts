@@ -413,7 +413,7 @@ export const pkiAcmeServiceFactory = ({
                 // RFC 8555 suggests a token with at least 128 bits of entropy
                 // We are using 256 bits of entropy here, should be enough for now
                 // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
-                token: crypto.randomBytes(32).toString("base64"),
+                token: crypto.randomBytes(32).toString("base64url"),
                 // TODO: read config from the profile to get the expiration time instead
                 expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
               },
