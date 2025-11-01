@@ -603,11 +603,12 @@ export const pkiAcmeServiceFactory = ({
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
-    // FIXME: Implement ACME certificate download
-    // Return the certificate in PEM format
+    if (order.status !== AcmeOrderStatus.Valid) {
+      throw new AcmeOrderNotReadyError({ message: "ACME order is not valid" });
+    }
     return {
       status: 200,
-      body: "FIXME-certificate-pem",
+      body: order.certificateChain! + "\n" + order.certificate!,
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}/certificate`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
