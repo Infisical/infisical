@@ -1268,15 +1268,17 @@ export const relayServiceFactory = ({
             }))
           );
 
-          await smtpService.sendMail({
-            recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-            subjectLine: "Relay Health Alert",
-            substitutions: {
-              type: "relay",
-              names: relayNames
-            },
-            template: SmtpTemplates.HealthAlert
-          });
+          // Temporarily disabled email notifications due to excessive noise. Will be revised later
+          //
+          // await smtpService.sendMail({
+          //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+          //   subjectLine: "Relay Health Alert",
+          //   substitutions: {
+          //     type: "relay",
+          //     names: relayNames
+          //   },
+          //   template: SmtpTemplates.HealthAlert
+          // });
         }
 
         await Promise.all(relays.map((r) => relayDAL.updateById(r.id, { healthAlertedAt: new Date() })));

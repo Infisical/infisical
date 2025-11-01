@@ -931,15 +931,17 @@ export const gatewayV2ServiceFactory = ({
           }))
         );
 
-        await smtpService.sendMail({
-          recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-          subjectLine: "Gateway Health Alert",
-          substitutions: {
-            type: "gateway",
-            names: gatewayNames
-          },
-          template: SmtpTemplates.HealthAlert
-        });
+        // Temporarily disabled email notifications due to excessive noise. Will be revised later
+        //
+        // await smtpService.sendMail({
+        //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+        //   subjectLine: "Gateway Health Alert",
+        //   substitutions: {
+        //     type: "gateway",
+        //     names: gatewayNames
+        //   },
+        //   template: SmtpTemplates.HealthAlert
+        // });
 
         await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
