@@ -77,13 +77,21 @@ export const pkiAcmeChallengeServiceFactory = ({
         await acmeChallengeDAL.markAsInvalidCascadeById(challengeId, tx);
         // Properly type and inspect the error
         if (error instanceof TypeError && error.message.includes("fetch failed")) {
-          const cause = error.cause as AggregateError;
-          if (cause?.errors?.[0]?.code === "ECONNREFUSED") {
-            logger.error(error, "Connection refused.");
-            return new AcmeConnectionError({ message: "Connection refused." });
-          } else if (cause?.errors?.[0]?.code === "ENOTFOUND") {
-            logger.error(error, "Hostname could not be resolved (DNS failure).");
-            return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)." });
+          const cause = error.cause;
+          if (cause instanceof Error) {
+            if (cause.message.includes("ECONNREFUSED")) {
+              return new AcmeConnectionError({ message: "Connection refused" });
+            } else if (cause.message.includes("ENOTFOUND")) {
+              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+            }
+          } else if (cause instanceof AggregateError) {
+            // TODO: handle multiple errors
+            const firstError = cause.errors?.[0];
+            if (firstError?.code === "ECONNREFUSED") {
+              return new AcmeConnectionError({ message: "Connection refused" });
+            } else if (firstError?.code === "ENOTFOUND") {
+              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+            }
           }
         } else if (error instanceof Error) {
           logger.error(error, "Error validating ACME challenge response");
