@@ -3,6 +3,7 @@ import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TPamSession } from "@app/hooks/api/pam";
+import { PamSessionLogOutput } from "./PamSessionLogOutput";
 
 const formatLogContent = (text: string | null | undefined): string => {
   if (!text) return "";
@@ -59,13 +60,10 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
   const toggleExpand = (timestamp: string) => {
     setExpandedLogTimestamps((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(timestamp)) {
-        newSet.delete(timestamp);
-      } else {
-        newSet.add(timestamp);
+      if (prev.has(timestamp)) {
+        return new Set();
       }
-      return newSet;
+      return new Set([timestamp]);
     });
   };
 
@@ -109,9 +107,16 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                 </div>
 
                 {isExpanded && log.output && (
-                  <div className="mt-2 border-t border-mineshaft-700 pt-2 font-mono break-all whitespace-pre-wrap text-bunker-300">
-                    {formattedOutput}
-                  </div>
+                  <>
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="h-px w-full bg-mineshaft-400"></div>
+                      <span className="text-xs text-mineshaft-400">OUTPUT</span>
+                      <div className="h-px w-full bg-mineshaft-400"></div>
+                    </div>
+                    <div className="pt-2 text-bunker-300">
+                      <PamSessionLogOutput content={formattedOutput} />
+                    </div>
+                  </>
                 )}
               </button>
             );
