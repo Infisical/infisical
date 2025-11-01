@@ -10,6 +10,15 @@ export type TPkiAcmeOrderDALFactory = ReturnType<typeof pkiAcmeOrderDALFactory>;
 export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
   const pkiAcmeOrderOrm = ormify(db, TableName.PkiAcmeOrder);
 
+  const findByIdForFinalization = async (id: string, tx?: Knex) => {
+    try {
+      const order = await (tx || db)(TableName.PkiAcmeOrder).forUpdate().where({ id }).first();
+      return order || null;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find PKI ACME order by id for finalization" });
+    }
+  };
+
   const findByAccountAndOrderIdWithAuthorizations = async (accountId: string, orderId: string, tx?: Knex) => {
     try {
       const rows = await (tx || db)(TableName.PkiAcmeOrder)
@@ -53,6 +62,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
 
   return {
     ...pkiAcmeOrderOrm,
+    findByIdForFinalization,
     findByAccountAndOrderIdWithAuthorizations
   };
 };

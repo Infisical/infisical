@@ -1,14 +1,12 @@
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
-import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import { AcmeConnectionError, AcmeDnsFailureError, AcmeIncorrectResponseError } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
-  acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "updateById">;
   acmeChallengeDAL: Pick<
     TPkiAcmeChallengeDALFactory,
     "transaction" | "findByIdForChallengeValidation" | "markAsValidCascadeById" | "markAsInvalidCascadeById"
@@ -16,7 +14,6 @@ type TPkiAcmeChallengeServiceFactoryDep = {
 };
 
 export const pkiAcmeChallengeServiceFactory = ({
-  acmeAuthDAL,
   acmeChallengeDAL
 }: TPkiAcmeChallengeServiceFactoryDep): TPkiAcmeChallengeServiceFactory => {
   const appCfg = getConfig();
