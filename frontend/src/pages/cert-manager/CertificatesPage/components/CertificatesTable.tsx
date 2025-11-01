@@ -36,8 +36,7 @@ import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { useListWorkspaceCertificates, useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -175,7 +174,6 @@ const PER_PAGE_INIT = 25;
 export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
-  const { subscription } = useSubscription();
 
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceCertificates({
@@ -185,7 +183,8 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   });
 
   const { mutateAsync: updateRenewalConfig } = useUpdateRenewalConfig();
-  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
+  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
+  const isLegacyTemplatesEnabled = true;
 
   const { data: caData } = useListCasByProjectId(currentProject?.id ?? "");
 
