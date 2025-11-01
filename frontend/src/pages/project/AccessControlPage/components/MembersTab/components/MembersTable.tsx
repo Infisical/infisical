@@ -60,10 +60,7 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
 type Props = {
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMember", "upgradePlan"]>,
-    data?: object
-  ) => void;
+  handlePopUpOpen: (popUpName: keyof UsePopUpState<["removeMember"]>, data?: object) => void;
 };
 
 enum MembersOrderBy {

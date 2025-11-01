@@ -58,9 +58,6 @@ import {
 import { User } from "@app/hooks/api/users/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-const addServerAdminUpgradePlanMessage = "Granting another user Server Admin permissions";
-const removeServerAdminUpgradePlanMessage = "Removing Server Admin permissions from user";
-
 const UserPanelTable = ({
   handlePopUpOpen,
   users,
@@ -84,7 +81,7 @@ const UserPanelTable = ({
     data?: {
       username: string;
       id: string;
-      message?: string;
+      text?: string;
     }
   ) => void;
   isPending: boolean;
@@ -260,7 +257,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        message: addServerAdminUpgradePlanMessage
+                                        text: "Your current plan does not allow setting additional server admins. To unlock this feature, please upgrade to Infisical Pro plan."
                                       });
                                       return;
                                     }
@@ -288,7 +285,7 @@ const UserPanelTable = ({
                                       handlePopUpOpen("upgradePlan", {
                                         username,
                                         id,
-                                        message: removeServerAdminUpgradePlanMessage
+                                        text: "Your current plan does not allow removing server admins. To unlock this feature, please upgrade to Infisical Pro plan."
                                       });
                                       return;
                                     }
@@ -530,7 +527,7 @@ export const UserIdentitiesTable = () => {
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={`${popUp?.upgradePlan?.data?.message} is only available on Infisical's Pro plan and above.`}
+          text={popUp.upgradePlan.data?.text}
         />
         <DeleteActionModal
           isOpen={popUp.removeUsers.isOpen}

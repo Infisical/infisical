@@ -18,8 +18,7 @@ export const SshCaSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "sshCa",
     "deleteSshCa",
-    "sshCaStatus", // enable / disable
-    "upgradePlan"
+    "sshCaStatus" // enable / disable
   ] as const);
 
   const onRemoveSshCaSubmit = async (caId: string) => {
@@ -110,11 +109,6 @@ export const SshCaSection = () => {
           onUpdateSshCaStatus(popUp?.sshCaStatus?.data as { caId: string; status: SshCaStatus })
         }
       />
-      {/* <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
-      /> */}
     </div>
   );
 };

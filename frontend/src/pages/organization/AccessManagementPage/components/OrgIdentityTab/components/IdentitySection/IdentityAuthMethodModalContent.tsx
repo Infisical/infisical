@@ -292,7 +292,7 @@ export const IdentityAuthMethodModalContent = ({
       <UpgradePlanModal
         isOpen={popUp?.upgradePlan?.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={`You can use ${popUp.upgradePlan.data?.featureName ?? "IP allowlisting"} if you switch to Infisical's ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
+        text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>

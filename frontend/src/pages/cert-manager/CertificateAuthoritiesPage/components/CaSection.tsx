@@ -1,7 +1,6 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
@@ -24,8 +23,7 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus", // enable / disable
-    "upgradePlan"
+    "caStatus" // enable / disable
   ] as const);
 
   const onRemoveCaSubmit = async (caName: string) => {
@@ -123,11 +121,6 @@ export const CaSection = () => {
         onDeleteApproved={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caName: string; status: CaStatus })
         }
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

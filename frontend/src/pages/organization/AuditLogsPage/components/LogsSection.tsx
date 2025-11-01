@@ -123,7 +123,7 @@ const LogsSectionComponent = ({
             onOpenChange={(isOpen) => {
               handlePopUpToggle("upgradePlan", isOpen);
             }}
-            text="You can use audit logs if you switch to Infisical's Pro plan."
+            text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
           />
         </div>
       </div>
@@ -167,7 +167,7 @@ const LogsSectionComponent = ({
         onOpenChange={(isOpen) => {
           handlePopUpToggle("upgradePlan", isOpen);
         }}
-        text="You can use audit logs if you switch to Infisical's Pro plan."
+        text="Your current plan does not include access to audit logs. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>
   );

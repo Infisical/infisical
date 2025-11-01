@@ -71,7 +71,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
                 enterprise && !subscription.enterpriseCertificateSyncs
                   ? handlePopUpOpen("upgradePlan", {
                       isEnterpriseFeature: true,
-                      text: "You can use every Certificate Sync if you switch to Infisical's Enterprise plan."
+                      text: "All Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
                     })
                   : onSelect(destination)
               }
@@ -152,7 +152,7 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text="You can use every Certificate Sync if you switch to Infisical's Enterprise plan."
+        text={popUp.upgradePlan.data?.text}
       />
     </div>
   );
