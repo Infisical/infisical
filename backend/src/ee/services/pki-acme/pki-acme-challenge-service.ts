@@ -1,5 +1,3 @@
-import { Knex } from "knex";
-
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -8,13 +6,12 @@ import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import { AcmeConnectionError, AcmeDnsFailureError, AcmeIncorrectResponseError } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
-import { TPkiAcmeChallenges } from "@app/db/schemas";
 
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "updateById">;
   acmeChallengeDAL: Pick<
     TPkiAcmeChallengeDALFactory,
-    "transaction" | "findByIdForChallengeValidation" | "markAsValidCascadeById"
+    "transaction" | "findByIdForChallengeValidation" | "markAsValidCascadeById" | "markAsInvalidCascadeById"
   >;
 };
 
