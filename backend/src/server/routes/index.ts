@@ -2213,7 +2213,7 @@ export const registerRoutes = async (
     internalCaFns
   });
 
-  await secretRotationV2QueueServiceFactory({
+  const secretRotationV2Queue = await secretRotationV2QueueServiceFactory({
     secretRotationV2Service,
     secretRotationV2DAL,
     queueService,
@@ -2310,8 +2310,6 @@ export const registerRoutes = async (
   // If FIPS is enabled, we check to ensure that the users license includes FIPS mode.
   crypto.verifyFipsLicense(licenseService);
 
-  await superAdminService.initServerCfg();
-
   // Start HSM service if it's configured/enabled.
   await hsmService.startService();
 
@@ -2336,21 +2334,60 @@ export const registerRoutes = async (
     }
   }
 
-  await telemetryQueue.startTelemetryCheck();
-  await telemetryQueue.startAggregatedEventsJob();
-  await dailyResourceCleanUp.init();
-  await healthAlert.init();
-  await pkiSyncCleanup.init();
-  await pamAccountRotation.init();
-  await dailyReminderQueueService.startDailyRemindersJob();
-  await dailyReminderQueueService.startSecretReminderMigrationJob();
-  await dailyExpiringPkiItemAlert.startSendingAlerts();
-  await pkiSubscriberQueue.startDailyAutoRenewalJob();
-  await certificateV3Queue.init();
-  await kmsService.startService(hsmStatus);
-  await microsoftTeamsService.start();
-  await dynamicSecretQueueService.init();
-  await eventBusService.init();
+  const completeServerInitialization = async () => {
+    await superAdminService.initServerCfg();
+
+    await telemetryQueue.startTelemetryCheck();
+    await telemetryQueue.startAggregatedEventsJob();
+    await dailyResourceCleanUp.init();
+    await healthAlert.init();
+    await pkiSyncCleanup.init();
+    await pamAccountRotation.init();
+    await dailyReminderQueueService.startDailyRemindersJob();
+    await dailyReminderQueueService.startSecretReminderMigrationJob();
+    await dailyExpiringPkiItemAlert.startSendingAlerts();
+    await pkiSubscriberQueue.startDailyAutoRenewalJob();
+    await certificateV3Queue.init();
+    await kmsService.startService(hsmStatus);
+    await microsoftTeamsService.start();
+    await dynamicSecretQueueService.init();
+    await secretScanningV2Queue.init();
+    await secretRotationV2Queue.init();
+    await notificationQueue.init();
+    await eventBusService.init();
+
+    const cronJobs: CronJob[] = [];
+    if (appCfg.isProductionMode) {
+      const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
+      if (rateLimitSyncJob) {
+        cronJobs.push(rateLimitSyncJob);
+      }
+      const licenseSyncJob = await licenseService.initializeBackgroundSync();
+      if (licenseSyncJob) {
+        cronJobs.push(licenseSyncJob);
+      }
+
+      const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
+      if (microsoftTeamsSyncJob) {
+        cronJobs.push(microsoftTeamsSyncJob);
+      }
+
+      const adminIntegrationsSyncJob = await superAdminService.initializeAdminIntegrationConfigSync();
+      if (adminIntegrationsSyncJob) {
+        cronJobs.push(adminIntegrationsSyncJob);
+      }
+    }
+
+    const configSyncJob = await superAdminService.initializeEnvConfigSync();
+    if (configSyncJob) {
+      cronJobs.push(configSyncJob);
+    }
+
+    const oauthConfigSyncJob = await initializeOauthConfigSync();
+    if (oauthConfigSyncJob) {
+      cronJobs.push(oauthConfigSyncJob);
+    }
+  };
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
@@ -2480,38 +2517,6 @@ export const registerRoutes = async (
     convertor: convertorService
   });
 
-  const cronJobs: CronJob[] = [];
-  if (appCfg.isProductionMode) {
-    const rateLimitSyncJob = await rateLimitService.initializeBackgroundSync();
-    if (rateLimitSyncJob) {
-      cronJobs.push(rateLimitSyncJob);
-    }
-    const licenseSyncJob = await licenseService.initializeBackgroundSync();
-    if (licenseSyncJob) {
-      cronJobs.push(licenseSyncJob);
-    }
-
-    const microsoftTeamsSyncJob = await microsoftTeamsService.initializeBackgroundSync();
-    if (microsoftTeamsSyncJob) {
-      cronJobs.push(microsoftTeamsSyncJob);
-    }
-
-    const adminIntegrationsSyncJob = await superAdminService.initializeAdminIntegrationConfigSync();
-    if (adminIntegrationsSyncJob) {
-      cronJobs.push(adminIntegrationsSyncJob);
-    }
-  }
-
-  const configSyncJob = await superAdminService.initializeEnvConfigSync();
-  if (configSyncJob) {
-    cronJobs.push(configSyncJob);
-  }
-
-  const oauthConfigSyncJob = await initializeOauthConfigSync();
-  if (oauthConfigSyncJob) {
-    cronJobs.push(oauthConfigSyncJob);
-  }
-
   server.decorate<FastifyZodProvider["store"]>("store", {
     user: userDAL,
     kmipClient: kmipClientDAL
@@ -2600,9 +2605,10 @@ export const registerRoutes = async (
   await server.register(registerV4Routes, { prefix: "/api/v4" });
 
   server.addHook("onClose", async () => {
-    cronJobs.forEach((job) => job.stop());
     await telemetryService.flushAll();
     await eventBusService.close();
     sseService.close();
   });
+
+  return completeServerInitialization;
 };

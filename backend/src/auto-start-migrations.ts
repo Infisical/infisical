@@ -12,6 +12,7 @@ type TArgs = {
   auditLogDb?: Knex;
   applicationDb: Knex;
   logger: Logger;
+  onMigrationLockAcquired?: () => void;
 };
 
 const isProduction = process.env.NODE_ENV === "production";
@@ -30,7 +31,7 @@ const migrationStatusCheckErrorHandler = (err: Error) => {
   throw err;
 };
 
-export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs) => {
+export const runMigrations = async ({ applicationDb, auditLogDb, logger, onMigrationLockAcquired }: TArgs) => {
   try {
     // akhilmhdh(Feb 10 2025): 2 years  from now remove this
     if (isProduction) {
@@ -85,6 +86,13 @@ export const runMigrations = async ({ applicationDb, auditLogDb, logger }: TArgs
 
     await applicationDb.transaction(async (tx) => {
       await tx.raw("SELECT pg_advisory_xact_lock(?)", [PgSqlLock.BootUpMigration]);
+
+      // Signal that this container is running migrations so that it can be marked as healthy/alive
+      // This is to prevent the container from being killed by the orchestrator
+      if (onMigrationLockAcquired) {
+        onMigrationLockAcquired();
+      }
+
       logger.info("Running application migrations.");
 
       const didPreviousInstanceRunMigration = !(await applicationDb.migrate
