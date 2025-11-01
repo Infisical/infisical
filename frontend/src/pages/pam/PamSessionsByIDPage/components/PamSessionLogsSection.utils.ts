@@ -35,7 +35,7 @@ export const formatLogContent = (text: string | null | undefined): string => {
       return match ? match[0].length : 0;
     });
 
-  const minIndentation = Math.min(...indentations);
+  const minIndentation = indentations.length > 0 ? Math.min(...indentations) : 0;
 
   // Remove the common indentation from all lines
   if (minIndentation > 0) {
