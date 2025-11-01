@@ -1,8 +1,12 @@
 import { useState } from "react";
-import { faChevronDown, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { twMerge } from "tailwind-merge";
 
 import { TPamSession } from "@app/hooks/api/pam";
+
+import { PamSessionLogOutput } from "./PamSessionLogOutput";
+import { formatLogContent } from "./PamSessionLogsSection.utils";
 
 type Props = {
   session: TPamSession;
@@ -13,13 +17,10 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
   const toggleExpand = (timestamp: string) => {
     setExpandedLogTimestamps((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(timestamp)) {
-        newSet.delete(timestamp);
-      } else {
-        newSet.add(timestamp);
+      if (prev.has(timestamp)) {
+        return new Set();
       }
-      return newSet;
+      return new Set([timestamp]);
     });
   };
 
@@ -32,11 +33,13 @@ export const PamSessionLogsSection = ({ session }: Props) => {
         {session.commandLogs.length > 0 ? (
           session.commandLogs.map((log) => {
             const isExpanded = expandedLogTimestamps.has(log.timestamp);
+            const formattedInput = formatLogContent(log.input);
+
             return (
               <button
                 type="button"
                 key={log.timestamp}
-                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:ring-2 focus:ring-mineshaft-400 focus:outline-hidden ${
+                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:inset-ring-2 focus:inset-ring-mineshaft-400 focus:outline-hidden ${
                   isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"
                 }`}
                 onClick={() => toggleExpand(log.timestamp)}
@@ -44,8 +47,11 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                 <div className="flex items-center justify-between text-bunker-400">
                   <div className="flex items-center gap-2 select-none">
                     <FontAwesomeIcon
-                      icon={isExpanded ? faChevronDown : faChevronRight}
-                      className="size-3 transition-transform duration-200"
+                      icon={faChevronRight}
+                      className={twMerge(
+                        "size-3 transition-transform duration-100 ease-in-out",
+                        isExpanded && "rotate-90"
+                      )}
                     />
                     <span>{new Date(log.timestamp).toLocaleString()}</span>
                   </div>
@@ -56,14 +62,33 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                     isExpanded ? "break-all whitespace-pre-wrap" : "truncate"
                   }`}
                 >
-                  {log.input}
+                  {formattedInput}
                 </div>
 
-                {isExpanded && log.output && (
-                  <div className="mt-2 border-t border-mineshaft-700 pt-2 font-mono break-all whitespace-pre-wrap text-bunker-300">
-                    {log.output}
+                <div
+                  className={twMerge(
+                    "grid transition-all duration-100 ease-in-out",
+                    isExpanded && log.output ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    {log.output && (
+                      <>
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="h-px w-full bg-mineshaft-400" />
+                          <span className="text-xs text-mineshaft-400">OUTPUT</span>
+                          <div className="h-px w-full bg-mineshaft-400" />
+                        </div>
+                        <div className="pt-2 text-bunker-300">
+                          <PamSessionLogOutput
+                            content={log.output}
+                            resourceType={session.resourceType}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </button>
             );
           })
