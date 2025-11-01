@@ -261,10 +261,12 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId } = await validateExistingAccount({
-        req,
-        schema: FinalizeAcmeOrderBodySchema
+      const { profileId, accountId, payload } = await validateExistingAccount({
+        req
       });
+      if (payload !== "") {
+        throw new AcmeMalformedError({ detail: "Payload should be empty" });
+      }
       return sendAcmeResponse(
         res,
         profileId,
