@@ -25,7 +25,7 @@ import { KmsDataKey } from "@app/services/kms/kms-types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TLicenseServiceFactory } from "../license/license-service";
 import { PamResource } from "../pam-resource/pam-resource-enums";
@@ -61,8 +61,7 @@ export const gatewayV2ServiceFactory = ({
   relayDAL,
   permissionService,
   orgDAL,
-  notificationService,
-  smtpService
+  notificationService
 }: TGatewayV2ServiceFactoryDep) => {
   const $validateIdentityAccessToGateway = async (orgId: string, actorId: string, actorAuthMethod: ActorAuthMethod) => {
     const orgLicensePlan = await licenseService.getPlan(orgId);
@@ -931,15 +930,17 @@ export const gatewayV2ServiceFactory = ({
           }))
         );
 
-        await smtpService.sendMail({
-          recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-          subjectLine: "Gateway Health Alert",
-          substitutions: {
-            type: "gateway",
-            names: gatewayNames
-          },
-          template: SmtpTemplates.HealthAlert
-        });
+        // Temporarily disabled email notifications due to excessive noise. Will be revised later
+        //
+        // await smtpService.sendMail({
+        //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+        //   subjectLine: "Gateway Health Alert",
+        //   substitutions: {
+        //     type: "gateway",
+        //     names: gatewayNames
+        //   },
+        //   template: SmtpTemplates.HealthAlert
+        // });
 
         await Promise.all(gateways.map((gw) => gatewayV2DAL.updateById(gw.id, { healthAlertedAt: new Date() })));
       } catch (error) {
