@@ -77,7 +77,7 @@ export const pkiAcmeChallengeServiceFactory = ({
         await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
       } catch (error) {
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
-        await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
+        await acmeChallengeDAL.markAsInvalidCascadeById(challengeId, tx);
         // Properly type and inspect the error
         if (error instanceof TypeError && error.message.includes("fetch failed")) {
           const cause = error.cause as AggregateError;
