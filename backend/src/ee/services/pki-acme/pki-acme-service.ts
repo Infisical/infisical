@@ -276,7 +276,9 @@ export const pkiAcmeServiceFactory = ({
       authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
         buildUrl(profileId, `/authorizations/${auth.id}`)
       ),
-      finalize: buildUrl(profileId, `/orders/${order.id}/finalize`)
+      finalize: buildUrl(profileId, `/orders/${order.id}/finalize`),
+      certificate:
+        order.status === AcmeOrderStatus.Valid ? buildUrl(profileId, `/orders/${order.id}/certificate`) : undefined
     };
   };
 
