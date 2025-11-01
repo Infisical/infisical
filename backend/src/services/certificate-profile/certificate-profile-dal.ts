@@ -74,7 +74,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .join(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(db.ref("orgId").withSchema(TableName.Project).as("ownerOrgId"))
-        .where({ id })
+        .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first()) as (TCertificateProfile & { ownerOrgId: string }) | undefined;
       return certificateProfile;
     } catch (error) {
