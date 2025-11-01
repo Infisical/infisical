@@ -172,7 +172,11 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())),
+            .map(([key]) =>
+              key === CertKeyUsage.CRL_SIGN
+                ? "cRLSign"
+                : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+            ),
           extendedKeyUsages: Object.entries(extendedKeyUsages)
             .filter(([, value]) => value)
             .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
@@ -193,7 +197,11 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
           ttl,
           keyUsages: Object.entries(keyUsages)
             .filter(([, value]) => value)
-            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())),
+            .map(([key]) =>
+              key === CertKeyUsage.CRL_SIGN
+                ? "cRLSign"
+                : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+            ),
           extendedKeyUsages: Object.entries(extendedKeyUsages)
             .filter(([, value]) => value)
             .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))

@@ -352,7 +352,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           subjectAlternativeNames: subjectAlternativeNamesList,
           ttl,
           keyUsages: keyUsagesList.map((key) =>
-            key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
           ),
           extendedKeyUsages: extendedKeyUsagesList.map((key) =>
             key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
@@ -370,7 +372,9 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
           subjectAlternativeNames: subjectAlternativeNamesList,
           ttl,
           keyUsages: keyUsagesList.map((key) =>
-            key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
           ),
           extendedKeyUsages: extendedKeyUsagesList.map((key) =>
             key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
