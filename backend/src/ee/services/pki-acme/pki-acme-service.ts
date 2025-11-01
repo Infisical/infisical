@@ -521,7 +521,7 @@ export const pkiAcmeServiceFactory = ({
         const { csr } = payload;
         // TODO: validate the CSR and return badCSR error if it's invalid
         // TODO: this should be the same transaction?
-        let error: Error | undefined;
+        let errorToReturn: Error | undefined;
         try {
           const { certificate, certificateChain, certificateId } =
             await certificateV3Service.signCertificateFromProfile({
@@ -563,14 +563,14 @@ export const pkiAcmeServiceFactory = ({
           // TODO: log the error
           // TODO: audit log the error
           if (error instanceof BadRequestError) {
-            error = new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
+            errorToReturn = new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
           } else {
-            error = new AcmeServerInternalError({ detail: "Failed to sign certificate" });
+            errorToReturn = new AcmeServerInternalError({ detail: "Failed to sign certificate with internal error" });
           }
         }
         return {
           order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
-          error
+          error: errorToReturn
         };
       });
       if (error) {
