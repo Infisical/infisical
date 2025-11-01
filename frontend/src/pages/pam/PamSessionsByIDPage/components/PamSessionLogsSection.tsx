@@ -4,6 +4,52 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { TPamSession } from "@app/hooks/api/pam";
 
+const formatLogContent = (text: string | null | undefined): string => {
+  if (!text) return "";
+
+  let lines = text.split("\n");
+
+  // Find the first and last non-empty lines to trim vertical padding
+  let firstLineIndex = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (lines[i].trim() !== "") {
+      firstLineIndex = i;
+      break;
+    }
+  }
+
+  if (firstLineIndex === -1) {
+    return "";
+  }
+
+  let lastLineIndex = -1;
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    if (lines[i].trim() !== "") {
+      lastLineIndex = i;
+      break;
+    }
+  }
+
+  lines = lines.slice(firstLineIndex, lastLineIndex + 1);
+
+  // Determine the minimum indentation of non-empty lines
+  const indentations = lines
+    .filter((line) => line.trim() !== "")
+    .map((line) => {
+      const match = line.match(/^\s*/);
+      return match ? match[0].length : 0;
+    });
+
+  const minIndentation = Math.min(...indentations);
+
+  // Remove the common indentation from all lines
+  if (minIndentation > 0) {
+    lines = lines.map((line) => line.substring(minIndentation));
+  }
+
+  return lines.join("\n");
+};
+
 type Props = {
   session: TPamSession;
 };
@@ -32,11 +78,14 @@ export const PamSessionLogsSection = ({ session }: Props) => {
         {session.commandLogs.length > 0 ? (
           session.commandLogs.map((log) => {
             const isExpanded = expandedLogTimestamps.has(log.timestamp);
+            const formattedInput = formatLogContent(log.input);
+            const formattedOutput = formatLogContent(log.output);
+
             return (
               <button
                 type="button"
                 key={log.timestamp}
-                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:ring-2 focus:ring-mineshaft-400 focus:outline-hidden ${
+                className={`flex w-full flex-col rounded-md border border-mineshaft-700 p-3 text-left focus:inset-ring-2 focus:inset-ring-mineshaft-400 focus:outline-hidden ${
                   isExpanded ? "bg-mineshaft-700" : "bg-mineshaft-800 hover:bg-mineshaft-700"
                 }`}
                 onClick={() => toggleExpand(log.timestamp)}
@@ -56,12 +105,12 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                     isExpanded ? "break-all whitespace-pre-wrap" : "truncate"
                   }`}
                 >
-                  {log.input}
+                  {formattedInput}
                 </div>
 
                 {isExpanded && log.output && (
                   <div className="mt-2 border-t border-mineshaft-700 pt-2 font-mono break-all whitespace-pre-wrap text-bunker-300">
-                    {log.output}
+                    {formattedOutput}
                   </div>
                 )}
               </button>
