@@ -55,7 +55,8 @@ export const membershipIdentityServiceFactory = ({
     [AccessScope.Project]: newProjectMembershipIdentityFactory({
       membershipIdentityDAL,
       orgDAL,
-      permissionService
+      permissionService,
+      identityDAL
     }),
     [AccessScope.Namespace]: newNamespaceMembershipIdentityFactory({})
   };
@@ -339,13 +340,10 @@ export const membershipIdentityServiceFactory = ({
 
     await factory.onListMembershipIdentityGuard(dto);
 
-    const organizationDetails = await orgDAL.findById(dto.scopeData.orgId);
-    if (!organizationDetails.rootOrgId) return { identities: [] };
+    if (scopeData.scope !== AccessScope.Project && dto.permission.rootOrgId === dto.permission.orgId)
+      return { identities: [] };
 
-    const identities = await membershipIdentityDAL.listAvailableIdentities(
-      organizationDetails.id,
-      organizationDetails.rootOrgId
-    );
+    const identities = await membershipIdentityDAL.listAvailableIdentities(dto.scopeData, dto.permission.rootOrgId);
 
     return { identities };
   };

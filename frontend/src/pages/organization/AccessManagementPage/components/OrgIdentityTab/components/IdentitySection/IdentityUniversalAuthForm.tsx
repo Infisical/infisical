@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import ms from "ms";
 import { z } from "zod";
 
@@ -102,6 +103,9 @@ export const IdentityUniversalAuthForm = ({
   identityId,
   isUpdate
 }: Props) => {
+  const { projectId } = useParams({
+    strict: false
+  });
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
@@ -230,7 +234,7 @@ export const IdentityUniversalAuthForm = ({
       if (data) {
         // update universal auth configuration
         await updateMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           clientSecretTrustedIps,
           accessTokenTTL: Number(accessTokenTTL),
@@ -247,7 +251,7 @@ export const IdentityUniversalAuthForm = ({
         // create new universal auth configuration
 
         await addMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           clientSecretTrustedIps,
           accessTokenTTL: Number(accessTokenTTL),

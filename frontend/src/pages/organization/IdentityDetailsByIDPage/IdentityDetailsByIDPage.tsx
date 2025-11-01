@@ -10,13 +10,13 @@ import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
+import { useDeleteOrgIdentity, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-import { IdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
+import { OrgIdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/OrgIdentityModal";
 import {
   IdentityAuthenticationSection,
   IdentityDetailsSection,
@@ -31,8 +31,8 @@ const Page = () => {
   const identityId = params.identityId as string;
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { data } = useGetIdentityById(identityId);
-  const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+  const { data } = useGetOrgIdentityMembershipById(identityId);
+  const { mutateAsync: deleteIdentity } = useDeleteOrgIdentity();
   const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -47,7 +47,7 @@ const Page = () => {
     try {
       await deleteIdentity({
         identityId: id,
-        organizationId: orgId
+        orgId
       });
 
       createNotification({
@@ -111,7 +111,7 @@ const Page = () => {
           </div>
         </div>
       )}
-      <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}

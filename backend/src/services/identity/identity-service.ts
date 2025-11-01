@@ -11,6 +11,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError, PermissionBoundaryError } from "@app/lib/errors";
 import { TIdentityProjectDALFactory } from "@app/services/identity-project/identity-project-dal";
+import { getIdentityActiveLockoutAuthMethods } from "@app/services/identity-v2/identity-fns";
 
 import { TAdditionalPrivilegeDALFactory } from "../additional-privilege/additional-privilege-dal";
 import { TMembershipRoleDALFactory } from "../membership/membership-role-dal";
@@ -142,7 +143,7 @@ export const identityServiceFactory = ({
       if (metadata && metadata.length) {
         const rowsToInsert = metadata.map(({ key, value }) => ({
           identityId: newIdentity.id,
-          orgId,
+          orgId: newIdentity.orgId,
           key,
           value
         }));
@@ -220,6 +221,13 @@ export const identityServiceFactory = ({
     }
 
     const identityDetails = await identityDAL.findById(id);
+
+    console.log("has project id", identityDetails);
+
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: `Identity is managed by project` });
+    }
+
     const identity = await identityDAL.transaction(async (tx) => {
       const newIdentity =
         identityDetails.orgId === actorOrgId && (name || hasDeleteProtection)
@@ -243,13 +251,13 @@ export const identityServiceFactory = ({
         value: string;
       }> = [];
 
-      if (metadata) {
-        await identityMetadataDAL.delete({ orgId: identityOrgMembership.scopeOrgId, identityId: id }, tx);
+      if (metadata && identityDetails.orgId === actorOrgId) {
+        await identityMetadataDAL.delete({ orgId: newIdentity.orgId, identityId: id }, tx);
 
         if (metadata.length) {
           const rowsToInsert = metadata.map(({ key, value }) => ({
             identityId: newIdentity.id,
-            orgId: identityOrgMembership.scopeOrgId,
+            orgId: newIdentity.orgId,
             key,
             value
           }));
@@ -286,25 +294,11 @@ export const identityServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const activeLockouts = await keyStore.getKeysByPattern(`lockout:identity:${id}:*`);
-
-    const activeLockoutAuthMethods = new Set<string>();
-    for await (const key of activeLockouts) {
-      const parts = key.split(":");
-      if (parts.length > 3) {
-        const lockoutRaw = await keyStore.getItem(key);
-        if (lockoutRaw) {
-          const lockout = JSON.parse(lockoutRaw) as { lockedOut: boolean };
-          if (lockout.lockedOut) {
-            activeLockoutAuthMethods.add(parts[3]);
-          }
-        }
-      }
-    }
+    const activeLockoutAuthMethods = await getIdentityActiveLockoutAuthMethods(id, keyStore);
 
     return {
       ...identity,
-      identity: { ...identity.identity, activeLockoutAuthMethods: Array.from(activeLockoutAuthMethods) }
+      identity: { ...identity.identity, activeLockoutAuthMethods }
     };
   };
 
@@ -340,7 +334,11 @@ export const identityServiceFactory = ({
     if (identityOrgMembership.identity.hasDeleteProtection)
       throw new BadRequestError({ message: "Identity has delete protection" });
 
-    if (identityOrgMembership.identity.identityOrgId === actorOrgId) {
+    if (identityOrgMembership.identity.projectId) {
+      throw new BadRequestError({ message: `Identity is managed by project` });
+    }
+
+    if (identityOrgMembership.identity.orgId === actorOrgId) {
       const deletedIdentity = await identityDAL.deleteById(id);
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };

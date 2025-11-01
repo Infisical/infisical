@@ -180,7 +180,11 @@ const IdentityPolicyActionSchema = z.object({
   [ProjectPermissionIdentityActions.Edit]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.Delete]: z.boolean().optional(),
   [ProjectPermissionIdentityActions.GrantPrivileges]: z.boolean().optional(),
-  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional()
+  [ProjectPermissionIdentityActions.AssumePrivileges]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.RevokeAuth]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.GetToken]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.CreateToken]: z.boolean().optional(),
+  [ProjectPermissionIdentityActions.DeleteToken]: z.boolean().optional()
 });
 
 const GroupPolicyActionSchema = z.object({
@@ -577,6 +581,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ProjectPermissionSub.IpAllowList,
         ProjectPermissionSub.CertificateAuthorities,
         ProjectPermissionSub.PkiAlerts,
+        ProjectPermissionSub.Identity,
         ProjectPermissionSub.PkiCollections,
         ProjectPermissionSub.Tags,
         ProjectPermissionSub.SecretRotation,
@@ -782,6 +787,41 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.Identity) {
+          const canRead = action.includes(ProjectPermissionIdentityActions.Read);
+          const canCreate = action.includes(ProjectPermissionIdentityActions.Create);
+          const canEdit = action.includes(ProjectPermissionIdentityActions.Edit);
+          const canDelete = action.includes(ProjectPermissionIdentityActions.Delete);
+          const canGrantPrivileges = action.includes(
+            ProjectPermissionIdentityActions.GrantPrivileges
+          );
+          const canAssumePrivileges = action.includes(
+            ProjectPermissionIdentityActions.AssumePrivileges
+          );
+          const canRevokeAuth = action.includes(ProjectPermissionIdentityActions.RevokeAuth);
+          const canCreateToken = action.includes(ProjectPermissionIdentityActions.CreateToken);
+          const canGetToken = action.includes(ProjectPermissionIdentityActions.GetToken);
+          const canDeleteToken = action.includes(ProjectPermissionIdentityActions.DeleteToken);
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionIdentityActions.Read]: canRead,
+            [ProjectPermissionIdentityActions.Create]: canCreate,
+            [ProjectPermissionIdentityActions.Edit]: canEdit,
+            [ProjectPermissionIdentityActions.Delete]: canDelete,
+            [ProjectPermissionIdentityActions.GrantPrivileges]: canGrantPrivileges,
+            [ProjectPermissionIdentityActions.AssumePrivileges]: canAssumePrivileges,
+            [ProjectPermissionIdentityActions.RevokeAuth]: canRevokeAuth,
+            [ProjectPermissionIdentityActions.CreateToken]: canCreateToken,
+            [ProjectPermissionIdentityActions.GetToken]: canGetToken,
+            [ProjectPermissionIdentityActions.DeleteToken]: canDeleteToken,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -950,30 +990,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         formVal[subject]![0][ProjectPermissionMemberActions.GrantPrivileges] = true;
       if (canAssumePrivileges)
         formVal[subject]![0][ProjectPermissionMemberActions.AssumePrivileges] = true;
-      return;
-    }
-
-    if (subject === ProjectPermissionSub.Identity) {
-      const canRead = action.includes(ProjectPermissionIdentityActions.Read);
-      const canCreate = action.includes(ProjectPermissionIdentityActions.Create);
-      const canEdit = action.includes(ProjectPermissionIdentityActions.Edit);
-      const canDelete = action.includes(ProjectPermissionIdentityActions.Delete);
-      const canGrantPrivileges = action.includes(ProjectPermissionIdentityActions.GrantPrivileges);
-      const canAssumePrivileges = action.includes(
-        ProjectPermissionIdentityActions.AssumePrivileges
-      );
-
-      if (!formVal[subject]) formVal[subject] = [{ conditions: [] }];
-
-      // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0][ProjectPermissionIdentityActions.Read] = true;
-      if (canCreate) formVal[subject]![0][ProjectPermissionIdentityActions.Create] = true;
-      if (canEdit) formVal[subject]![0][ProjectPermissionIdentityActions.Edit] = true;
-      if (canDelete) formVal[subject]![0][ProjectPermissionIdentityActions.Delete] = true;
-      if (canGrantPrivileges)
-        formVal[subject]![0][ProjectPermissionIdentityActions.GrantPrivileges] = true;
-      if (canAssumePrivileges)
-        formVal[subject]![0][ProjectPermissionIdentityActions.AssumePrivileges] = true;
       return;
     }
 
@@ -1453,7 +1469,11 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Modify", value: ProjectPermissionIdentityActions.Edit },
       { label: "Remove", value: ProjectPermissionIdentityActions.Delete },
       { label: "Grant Privileges", value: ProjectPermissionIdentityActions.GrantPrivileges },
-      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges }
+      { label: "Assume Privileges", value: ProjectPermissionIdentityActions.AssumePrivileges },
+      { label: "Revoke Auth", value: ProjectPermissionIdentityActions.RevokeAuth },
+      { label: "Create Token", value: ProjectPermissionIdentityActions.CreateToken },
+      { label: "Get Token", value: ProjectPermissionIdentityActions.GetToken },
+      { label: "Delete Token", value: ProjectPermissionIdentityActions.DeleteToken }
     ]
   },
   [ProjectPermissionSub.Groups]: {

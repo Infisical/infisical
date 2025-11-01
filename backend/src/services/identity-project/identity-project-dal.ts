@@ -293,7 +293,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           db.ref("authMethod").as("identityAuthMethod").withSchema(TableName.Identity),
           db.ref("id").as("identityId").withSchema(TableName.Identity),
           db.ref("name").as("identityName").withSchema(TableName.Identity),
+          db.ref("orgId").as("identityOrgId").withSchema(TableName.Identity),
+          db.ref("projectId").as("identityProjectId").withSchema(TableName.Identity),
           db.ref("id").withSchema(TableName.Membership),
+          db.ref("lastLoginAuthMethod").withSchema(TableName.Membership),
+          db.ref("lastLoginTime").withSchema(TableName.Membership),
           db.ref("role").withSchema(TableName.MembershipRole),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("customRoleId").withSchema(TableName.MembershipRole),
@@ -334,6 +338,8 @@ export const identityProjectDALFactory = (db: TDbClient) => {
         parentMapper: ({
           identityId,
           identityName,
+          identityOrgId,
+          identityProjectId,
           uaId,
           alicloudId,
           awsId,
@@ -346,7 +352,9 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           id,
           createdAt,
           updatedAt,
-          projectName
+          projectName,
+          lastLoginAuthMethod,
+          lastLoginTime
         }) => ({
           id,
           identityId,
@@ -355,6 +363,8 @@ export const identityProjectDALFactory = (db: TDbClient) => {
           identity: {
             id: identityId,
             name: identityName,
+            projectId: identityProjectId,
+            orgId: identityOrgId,
             authMethods: buildAuthMethods({
               uaId,
               alicloudId,
@@ -367,6 +377,11 @@ export const identityProjectDALFactory = (db: TDbClient) => {
               tokenId
             })
           },
+          // TODO: scott - not sure why these aren't properly typed?
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          lastLoginAuthMethod,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          lastLoginTime,
           project: {
             id: projectId,
             name: projectName

@@ -6,7 +6,6 @@ export {
   useDeleteOrgById,
   useDeleteOrgPmtMethod,
   useDeleteOrgTaxId,
-  useGetAvailableOrgIdentities,
   useGetIdentityMembershipOrgs,
   useGetOrganizationGroups,
   useGetOrganizations,

@@ -1,7 +1,7 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -9,6 +9,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -51,7 +52,7 @@ type TIdentityUaServiceFactoryDep = {
   identityUaClientSecretDAL: TIdentityUaClientSecretDALFactory;
   identityAccessTokenDAL: TIdentityAccessTokenDALFactory;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   keyStore: Pick<
@@ -231,7 +232,18 @@ export const identityUaServiceFactory = ({
       const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
         const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);
         await membershipIdentityDAL.update(
-          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          identity.projectId
+            ? {
+                scope: AccessScope.Project,
+                scopeOrgId: identity.orgId,
+                scopeProjectId: identity.projectId,
+                actorIdentityId: identity.id
+              }
+            : {
+                scope: AccessScope.Organization,
+                scopeOrgId: identity.orgId,
+                actorIdentityId: identity.id
+              },
           {
             lastLoginAuthMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
             lastLoginTime: new Date()
@@ -343,7 +355,7 @@ export const identityUaServiceFactory = ({
         message: "Failed to add universal auth to already configured identity"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -351,16 +363,35 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Create,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps.map((clientSecretTrustedIp) => {
@@ -456,7 +487,7 @@ export const identityUaServiceFactory = ({
       });
     }
 
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -467,15 +498,31 @@ export const identityUaServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Edit,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedClientSecretTrustedIps = clientSecretTrustedIps?.map((clientSecretTrustedIp) => {
@@ -550,19 +597,35 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
     return { ...uaIdentityAuth, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -587,46 +650,62 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.RevokeAuth,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke universal auth of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.RevokeAuth,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
 
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.RevokeAuth,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.RevokeAuth,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke universal auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.RevokeAuth,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
     const revokedIdentityUniversalAuth = await identityUaDAL.transaction(async (tx) => {
       const deletedUniversalAuth = await identityUaDAL.delete({ identityId }, tx);
       return { ...deletedUniversalAuth?.[0], orgId: identityMembershipOrg.scopeOrgId };
@@ -658,47 +737,65 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
-
-    const { permission: rolePermission } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.CreateToken,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to create client secret for identity.",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.CreateToken,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
 
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.CreateToken,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.CreateToken,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to create client secret for identity.",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.CreateToken,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
     const appCfg = getConfig();
     const clientSecret = crypto.randomBytes(32).toString("hex");
     const clientSecretHash = await crypto.hashing().createHash(clientSecret, appCfg.SALT_ROUNDS);
@@ -744,46 +841,62 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-
-    const { permission: rolePermission } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.GetToken,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to get identity client secret with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.GetToken,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.GetToken,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GetToken,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to get identity client secret with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GetToken,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const identityUniversalAuth = await identityUaDAL.findOne({
       identityId
@@ -818,7 +931,7 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -828,43 +941,57 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
-
-    const { permission: rolePermission } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.GetToken,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to read identity client secret of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.GetToken,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
 
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.GetToken,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+      const { permission: rolePermission } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.GetToken,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to read identity client secret of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.GetToken,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
     return { ...clientSecret, identityId, orgId: identityMembershipOrg.scopeOrgId };
   };
 
@@ -890,7 +1017,7 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -900,45 +1027,63 @@ export const identityUaServiceFactory = ({
     const clientSecret = await identityUaClientSecretDAL.findOne({ id: clientSecretId, identityUAId: identityUa.id });
     if (!clientSecret) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
-
-    const { permission: rolePermission } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-
-    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.DeleteToken,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-    if (!permissionBoundary.isValid) {
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke identity client secret with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.DeleteToken,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
-    }
 
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.DeleteToken,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Delete,
+        OrgPermissionSubjects.Identity
+      );
+
+      const { permission: rolePermission } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+
+      const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(identityMembershipOrg.scopeOrgId);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.DeleteToken,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+      if (!permissionBoundary.isValid) {
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke identity client secret with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.DeleteToken,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+      }
+    }
     const updatedClientSecret = await identityUaClientSecretDAL.updateById(clientSecretId, {
       isClientSecretRevoked: true
     });
@@ -967,20 +1112,35 @@ export const identityUaServiceFactory = ({
         message: "The identity does not have universal auth"
       });
     }
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
 
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Edit,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
     const deleted = await keyStore.deleteItems({
       pattern: `lockout:identity:${identityId}:${IdentityAuthMethod.UNIVERSAL_AUTH}:*`
     });

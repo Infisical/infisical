@@ -59,6 +59,7 @@ export const ViewIdentityKubernetesAuthContent = ({
     <ViewIdentityContentWrapper
       onEdit={() => handlePopUpOpen("identityAuthMethod")}
       onDelete={onDelete}
+      identityId={identityId}
     >
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}

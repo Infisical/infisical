@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -75,7 +76,9 @@ export const IdentityAwsAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityAwsAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityAwsAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -152,7 +155,7 @@ export const IdentityAwsAuthForm = ({
 
       if (data) {
         await updateMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           stsEndpoint,
           allowedPrincipalArns,
           allowedAccountIds,
@@ -164,7 +167,7 @@ export const IdentityAwsAuthForm = ({
         });
       } else {
         await addMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           stsEndpoint: stsEndpoint || "",
           allowedPrincipalArns: allowedPrincipalArns || "",

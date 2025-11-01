@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
+import { subject } from "@casl/ability";
 import { faChevronDown, faEdit, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useParams } from "@tanstack/react-router";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { VariablePermissionCan } from "@app/components/permissions";
 import {
   Button,
   DropdownMenu,
@@ -10,15 +12,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context";
 
 type Props = {
   children: ReactNode;
   onEdit: VoidFunction;
   onDelete: VoidFunction;
+  identityId: string;
 };
 
-export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props) => {
+export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit, identityId }: Props) => {
+  const { projectId } = useParams({
+    strict: false
+  });
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -36,9 +48,20 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
-                <OrgPermissionCan
-                  I={OrgPermissionIdentityActions.Edit}
-                  a={OrgPermissionSubjects.Identity}
+                <VariablePermissionCan
+                  type={projectId ? "project" : "org"}
+                  I={
+                    projectId
+                      ? ProjectPermissionIdentityActions.Edit
+                      : OrgPermissionIdentityActions.Edit
+                  }
+                  a={
+                    projectId
+                      ? subject(ProjectPermissionSub.Identity, {
+                          identityId
+                        })
+                      : OrgPermissionSubjects.Identity
+                  }
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
@@ -49,10 +72,21 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                       Edit
                     </DropdownMenuItem>
                   )}
-                </OrgPermissionCan>
-                <OrgPermissionCan
-                  I={OrgPermissionIdentityActions.Delete}
-                  a={OrgPermissionSubjects.Identity}
+                </VariablePermissionCan>
+                <VariablePermissionCan
+                  type={projectId ? "project" : "org"}
+                  I={
+                    projectId
+                      ? ProjectPermissionIdentityActions.Delete
+                      : OrgPermissionIdentityActions.Delete
+                  }
+                  a={
+                    projectId
+                      ? subject(ProjectPermissionSub.Identity, {
+                          identityId
+                        })
+                      : OrgPermissionSubjects.Identity
+                  }
                 >
                   {(isAllowed) => (
                     <DropdownMenuItem
@@ -63,7 +97,7 @@ export const ViewIdentityContentWrapper = ({ children, onDelete, onEdit }: Props
                       Delete
                     </DropdownMenuItem>
                   )}
-                </OrgPermissionCan>
+                </VariablePermissionCan>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

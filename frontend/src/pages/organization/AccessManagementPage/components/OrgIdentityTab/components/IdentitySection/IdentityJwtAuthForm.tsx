@@ -4,6 +4,7 @@ import { faQuestionCircle } from "@fortawesome/free-regular-svg-icons";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -106,7 +107,9 @@ export const IdentityJwtAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityJwtAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityJwtAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -225,7 +228,7 @@ export const IdentityJwtAuthForm = ({
       if (data) {
         await updateMutateAsync({
           identityId,
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           configurationType,
           jwksUrl,
           jwksCaCert,
@@ -250,7 +253,7 @@ export const IdentityJwtAuthForm = ({
           boundAudiences,
           boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
           boundSubject,
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           accessTokenTTL: Number(accessTokenTTL),
           accessTokenMaxTTL: Number(accessTokenMaxTTL),
           accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),

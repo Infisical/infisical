@@ -11,7 +11,7 @@ import {
   IconButton,
   Tooltip
 } from "@app/components/v2";
-import { useGetIdentityById, useGetIdentityTokensTokenAuth } from "@app/hooks/api";
+import { useGetIdentityTokensTokenAuth, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -23,7 +23,7 @@ type Props = {
 };
 
 export const IdentityTokens = ({ identityId, handlePopUpOpen }: Props) => {
-  const { data } = useGetIdentityById(identityId);
+  const { data } = useGetOrgIdentityMembershipById(identityId);
   const { data: tokens } = useGetIdentityTokensTokenAuth(identityId);
   return (
     <div>

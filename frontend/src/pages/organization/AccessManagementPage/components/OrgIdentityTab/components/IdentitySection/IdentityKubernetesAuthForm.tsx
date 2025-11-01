@@ -4,6 +4,7 @@ import { faInfoCircle, faPlus, faXmark } from "@fortawesome/free-solid-svg-icons
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -114,7 +115,9 @@ export const IdentityKubernetesAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityKubernetesAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityKubernetesAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -316,7 +319,7 @@ export const IdentityKubernetesAuthForm = ({
 
       if (data) {
         await updateMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
             ? {
                 kubernetesHost: kubernetesHost || ""
@@ -339,7 +342,7 @@ export const IdentityKubernetesAuthForm = ({
         });
       } else {
         await addMutateAsync({
-          organizationId: orgId,
+          ...(projectId ? { projectId } : { organizationId: orgId }),
           identityId,
           ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
             ? {
