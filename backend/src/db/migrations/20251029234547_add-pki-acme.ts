@@ -85,6 +85,12 @@ export async function up(knex: Knex): Promise<void> {
 
       t.timestamp("expiresAt").notNullable();
 
+      t.string("csr").nullable();
+      t.string("certificate").nullable();
+      t.string("certificateChain").nullable();
+
+      t.string("error").nullable();
+
       // Order status
       t.string("status").notNullable(); // pending, ready, processing, valid, invalid
 
@@ -159,6 +165,9 @@ export async function up(knex: Knex): Promise<void> {
 
       // Challenge status
       t.string("status").notNullable(); // pending, processing, valid, invalid
+
+      // Error message when the challenge fails
+      t.string("error").nullable();
 
       // Validation timestamp
       t.timestamp("validatedAt").nullable();

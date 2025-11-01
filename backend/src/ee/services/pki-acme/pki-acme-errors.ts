@@ -507,3 +507,24 @@ export class AcmeDnsFailureError extends AcmeError {
     this.name = "AcmeDnsFailureError";
   }
 }
+
+export class AcmeOrderNotReadyError extends AcmeError {
+  constructor({
+    detail = "The order is not ready",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: AcmeErrorType.OrderNotReady,
+      detail,
+      status: 403,
+      error,
+      message
+    });
+    this.name = "AcmeOrderNotReadyError";
+  }
+}

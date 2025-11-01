@@ -6,6 +6,7 @@ import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
+import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
@@ -27,6 +28,7 @@ import {
   AcmeBadPublicKeyError,
   AcmeError,
   AcmeMalformedError,
+  AcmeOrderNotReadyError,
   AcmeServerInternalError,
   AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
@@ -64,11 +66,15 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
+  internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
   >;
-  acmeOrderDAL: Pick<TPkiAcmeOrderDALFactory, "create" | "transaction" | "findByAccountAndOrderIdWithAuthorizations">;
+  acmeOrderDAL: Pick<
+    TPkiAcmeOrderDALFactory,
+    "create" | "transaction" | "updateById" | "findByAccountAndOrderIdWithAuthorizations" | "findByIdForFinalization"
+  >;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
   acmeChallengeDAL: Pick<
@@ -80,6 +86,7 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
+  internalCertificateAuthorityService,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -497,8 +504,39 @@ export const pkiAcmeServiceFactory = ({
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
-    const { csr } = payload;
-    // FIXME: Implement ACME finalize order
+    if (order.status === AcmeOrderStatus.Ready) {
+      await acmeOrderDAL.transaction(async (tx) => {
+        const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
+        const profile = (await certificateProfileDAL.findById(profileId, tx))!;
+        if (order.status !== AcmeOrderStatus.Ready) {
+          throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
+        }
+        if (order.expiresAt < new Date()) {
+          throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
+        }
+        const { csr } = payload;
+        // TODO: validate the CSR and return badCSR error if it's invalid
+        const { certificate, certificateChain } = await internalCertificateAuthorityService.signCertFromCa({
+          isInternal: true,
+          certificateTemplateId: profile.certificateTemplateId,
+          csr,
+          notBefore: order.notBefore?.toISOString(),
+          notAfter: order.notAfter?.toISOString()
+        });
+        await acmeOrderDAL.updateById(
+          orderId,
+          {
+            status: AcmeOrderStatus.Valid,
+            csr,
+            certificate,
+            certificateChain
+          },
+          tx
+        );
+      });
+    } else if (order.status !== AcmeOrderStatus.Valid) {
+      throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
+    }
     return {
       status: 200,
       body: buildAcmeOrderResource({ profileId, order }),
