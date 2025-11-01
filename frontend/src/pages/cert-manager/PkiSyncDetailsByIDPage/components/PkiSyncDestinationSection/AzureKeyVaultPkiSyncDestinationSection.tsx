@@ -2,9 +2,9 @@
 import { TAzureKeyVaultPkiSync } from "@app/hooks/api/pkiSyncs/types/azure-key-vault-sync";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div>
-    <label className="text-sm text-bunker-300">{label}</label>
-    <div className="mt-1">{children}</div>
+  <div className="mb-4">
+    <p className="text-sm font-medium text-mineshaft-300">{label}</p>
+    <div className="text-sm text-mineshaft-300">{children}</div>
   </div>
 );
 

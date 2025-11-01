@@ -14,6 +14,7 @@ export const AwsCertificateManagerPkiSyncConfigSchema = z.object({
 const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
+  preserveArn: z.boolean().default(true),
   certificateNameSchema: z
     .string()
     .optional()
@@ -28,6 +29,9 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
 
         const testName = schema
           .replace(new RE2("\\{\\{certificateId\\}\\}", "g"), "test-cert-id")
+          .replace(new RE2("\\{\\{profileId\\}\\}", "g"), "test-profile-id")
+          .replace(new RE2("\\{\\{commonName\\}\\}", "g"), "test-common-name")
+          .replace(new RE2("\\{\\{friendlyName\\}\\}", "g"), "test-friendly-name")
           .replace(new RE2("\\{\\{environment\\}\\}", "g"), "test-env");
 
         const hasForbiddenChars = AWS_CERTIFICATE_MANAGER_CERTIFICATE_NAMING.FORBIDDEN_CHARACTERS.split("").some(
@@ -43,7 +47,7 @@ const AwsCertificateManagerPkiSyncOptionsSchema = z.object({
       },
       {
         message:
-          "Certificate name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, spaces, hyphens, and underscores and be 1-256 characters long when compiled for AWS Certificate Manager"
+          "Certificate name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, spaces, hyphens, and underscores and be 1-256 characters long when compiled for AWS Certificate Manager. Available placeholders: {{certificateId}}, {{profileId}}, {{commonName}}, {{friendlyName}}, {{environment}}"
       }
     )
 });
@@ -60,9 +64,10 @@ export const CreateAwsCertificateManagerPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema,
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional().default({}),
-  subscriberId: z.string().optional(),
+  subscriberId: z.string().nullish(),
   connectionId: z.string(),
-  projectId: z.string().trim().min(1)
+  projectId: z.string().trim().min(1),
+  certificateIds: z.array(z.string().uuid()).optional()
 });
 
 export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
@@ -71,7 +76,7 @@ export const UpdateAwsCertificateManagerPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AwsCertificateManagerPkiSyncConfigSchema.optional(),
   syncOptions: AwsCertificateManagerPkiSyncOptionsSchema.optional(),
-  subscriberId: z.string().optional(),
+  subscriberId: z.string().nullish(),
   connectionId: z.string().optional()
 });
 

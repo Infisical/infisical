@@ -122,11 +122,12 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
-    includeMetrics: false,
     enrollmentType: "api"
   });
 
-  const { mutateAsync: createCertificate } = useCreateCertificateV3();
+  const { mutateAsync: createCertificate } = useCreateCertificateV3({
+    projectId: currentProject?.id
+  });
 
   const formResolver = useMemo(() => {
     return zodResolver(createSchema(shouldShowSubjectSection));

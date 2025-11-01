@@ -71,14 +71,14 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               isChecked={value}
             >
               <p>
-                Enable Certificate Removal{" "}
+                Enable Inactive Certificate Removal{" "}
                 <Tooltip
                   className="max-w-md"
                   content={
                     <>
                       <p>
                         When enabled, Infisical will remove certificates from the destination during
-                        a sync if they are no longer managed by Infisical.
+                        a sync if they are no longer active in Infisical.
                       </p>
                       <p className="mt-4">
                         Disable this option if you intend to manage some certificates manually
@@ -94,6 +94,49 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
           </FormControl>
         )}
       />
+
+      {currentDestination === PkiSync.AwsCertificateManager && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveArn"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-arn"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve ARN on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          When enabled, Infisical will replace the contents of existing certificates
+                          while preserving the same ARN during certificate renewal syncs.
+                        </p>
+                        <p className="mt-4">
+                          This allows consuming services like load balancers to continue using the
+                          same ARN without requiring manual updates.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, new certificates will be created with new ARNs, and old
+                          certificates will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
 
       <Controller
         control={control}

@@ -10,7 +10,6 @@ export type TCertificateProfile = {
   apiConfigId?: string;
   createdAt: string;
   updatedAt: string;
-  metrics?: TCertificateProfileMetrics;
 };
 
 export type TCertificateProfileWithDetails = TCertificateProfile & {
@@ -81,10 +80,8 @@ export type TListCertificateProfilesDTO = {
   limit?: number;
   offset?: number;
   search?: string;
-  includeMetrics?: boolean;
   includeConfigs?: boolean;
   enrollmentType?: "api" | "est";
-  expiringDays?: number;
 };
 
 export type TGetCertificateProfileByIdDTO = {
@@ -94,15 +91,6 @@ export type TGetCertificateProfileByIdDTO = {
 export type TGetCertificateProfileBySlugDTO = {
   projectId: string;
   slug: string;
-};
-
-export type TCertificateProfileMetrics = {
-  profileId: string;
-  totalCertificates: number;
-  activeCertificates: number;
-  expiredCertificates: number;
-  expiringCertificates: number;
-  revokedCertificates: number;
 };
 
 export type TProfileCertificate = {
@@ -126,5 +114,4 @@ export type TGetProfileCertificatesDTO = {
 
 export type TGetProfileMetricsDTO = {
   profileId: string;
-  expiringDays?: number;
 };

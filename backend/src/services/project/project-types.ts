@@ -142,6 +142,7 @@ export type TListProjectCertsDTO = {
   limit: number;
   friendlyName?: string;
   commonName?: string;
+  forPkiSync?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TListProjectAlertsDTO = TProjectPermission;

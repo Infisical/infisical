@@ -27,10 +27,8 @@ import {
   TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
-  TCertificateProfileMetrics,
   TCertificateProfileUpdate,
-  TCertificateProfileWithConfigs,
-  TCertificateProfileWithRawMetrics
+  TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
 
 const validateAndEncryptPemCaChain = async (
@@ -361,18 +359,14 @@ export const certificateProfileServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    profileId,
-    includeMetrics = false,
-    expiringDays = 30
+    profileId
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     profileId: string;
-    includeMetrics?: boolean;
-    expiringDays?: number;
-  }): Promise<TCertificateProfile & { metrics?: TCertificateProfileMetrics }> => {
+  }): Promise<TCertificateProfile> => {
     const profile = await certificateProfileDAL.findById(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
@@ -392,14 +386,6 @@ export const certificateProfileServiceFactory = ({
     );
 
     const converted = convertDalToService(profile);
-
-    if (includeMetrics) {
-      const metrics = await certificateProfileDAL.getProfileMetrics(profileId, expiringDays);
-      return {
-        ...converted,
-        metrics
-      };
-    }
 
     return converted;
   };
@@ -506,9 +492,7 @@ export const certificateProfileServiceFactory = ({
     limit = 20,
     search,
     enrollmentType,
-    caId,
-    includeMetrics = false,
-    expiringDays = 30
+    caId
   }: {
     actor: ActorType;
     actorId: string;
@@ -520,10 +504,8 @@ export const certificateProfileServiceFactory = ({
     search?: string;
     enrollmentType?: EnrollmentType;
     caId?: string;
-    includeMetrics?: boolean;
-    expiringDays?: number;
   }): Promise<{
-    profiles: (TCertificateProfileWithConfigs & { metrics?: TCertificateProfileMetrics })[];
+    profiles: TCertificateProfileWithConfigs[];
     totalCount: number;
   }> => {
     const { permission } = await permissionService.getProjectPermission({
@@ -544,9 +526,7 @@ export const certificateProfileServiceFactory = ({
       limit,
       search,
       enrollmentType,
-      caId,
-      includeMetrics,
-      expiringDays
+      caId
     });
 
     const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
@@ -591,26 +571,11 @@ export const certificateProfileServiceFactory = ({
         }
 
         const converted = convertDalToService(profileWithConfigs);
-        let result: TCertificateProfileWithConfigs & { metrics?: TCertificateProfileMetrics } = {
+        const result: TCertificateProfileWithConfigs = {
           ...converted,
           estConfig: decryptedEstConfig,
           apiConfig: profileWithConfigs.apiConfig
         };
-
-        if (includeMetrics) {
-          const profileWithMetrics = profile as TCertificateProfileWithRawMetrics;
-          result = {
-            ...result,
-            metrics: {
-              profileId: converted.id,
-              totalCertificates: parseInt(String(profileWithMetrics.total_certificates || 0), 10),
-              activeCertificates: parseInt(String(profileWithMetrics.active_certificates || 0), 10),
-              expiredCertificates: parseInt(String(profileWithMetrics.expired_certificates || 0), 10),
-              expiringCertificates: parseInt(String(profileWithMetrics.expiring_certificates || 0), 10),
-              revokedCertificates: parseInt(String(profileWithMetrics.revoked_certificates || 0), 10)
-            }
-          };
-        }
 
         return result;
       })
@@ -709,43 +674,6 @@ export const certificateProfileServiceFactory = ({
     return certificates;
   };
 
-  const getProfileMetrics = async ({
-    actor,
-    actorId,
-    actorAuthMethod,
-    actorOrgId,
-    profileId,
-    expiringDays = 30
-  }: {
-    actor: ActorType;
-    actorId: string;
-    actorAuthMethod: ActorAuthMethod;
-    actorOrgId: string;
-    profileId: string;
-    expiringDays?: number;
-  }): Promise<TCertificateProfileMetrics> => {
-    const profile = await certificateProfileDAL.findById(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
-    }
-
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: profile.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
-    );
-
-    const metrics = await certificateProfileDAL.getProfileMetrics(profileId, expiringDays);
-    return metrics;
-  };
-
   const getEstConfigurationByProfile = async (
     params:
       | {
@@ -818,7 +746,6 @@ export const certificateProfileServiceFactory = ({
     listProfiles,
     deleteProfile,
     getProfileCertificates,
-    getProfileMetrics,
     getEstConfigurationByProfile
   };
 };

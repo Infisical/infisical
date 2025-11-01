@@ -10,10 +10,8 @@ import {
   TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
-  TCertificateProfileMetrics,
   TCertificateProfileUpdate,
-  TCertificateProfileWithConfigs,
-  TCertificateProfileWithRawMetrics
+  TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
 
 export type TCertificateProfileDALFactory = ReturnType<typeof certificateProfileDALFactory>;
@@ -203,21 +201,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       search?: string;
       enrollmentType?: EnrollmentType;
       caId?: string;
-      includeMetrics?: boolean;
-      expiringDays?: number;
     } = {},
     tx?: Knex
-  ): Promise<TCertificateProfile[] | TCertificateProfileWithRawMetrics[] | TCertificateProfileWithConfigs[]> => {
+  ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
-      const {
-        offset = 0,
-        limit = 20,
-        search,
-        enrollmentType,
-        caId,
-        includeMetrics = false,
-        expiringDays = 7
-      } = options;
+      const { offset = 0, limit = 20, search, enrollmentType, caId } = options;
 
       let baseQuery = (tx || db)(TableName.PkiCertificateProfile).where(
         `${TableName.PkiCertificateProfile}.projectId`,
@@ -242,7 +230,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         baseQuery = baseQuery.where(`${TableName.PkiCertificateProfile}.caId`, caId);
       }
 
-      let query = baseQuery
+      const query = baseQuery
         .leftJoin(
           TableName.PkiEstEnrollmentConfig,
           `${TableName.PkiCertificateProfile}.estConfigId`,
@@ -266,52 +254,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays")
         );
-
-      if (includeMetrics) {
-        query = query.leftJoin(
-          TableName.Certificate,
-          `${TableName.PkiCertificateProfile}.id`,
-          `${TableName.Certificate}.profileId`
-        );
-
-        const now = new Date();
-        const expiringDate = new Date();
-        expiringDate.setDate(now.getDate() + expiringDays);
-
-        query = query
-          .select(
-            selectAllTableCols(TableName.PkiCertificateProfile),
-            db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estId"),
-            db
-              .ref("disableBootstrapCaValidation")
-              .withSchema(TableName.PkiEstEnrollmentConfig)
-              .as("estDisableBootstrapCaValidation"),
-            db.ref("hashedPassphrase").withSchema(TableName.PkiEstEnrollmentConfig).as("estHashedPassphrase"),
-            db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estEncryptedCaChain"),
-            db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
-            db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
-            db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
-            db.raw("COUNT(certificates.id) as total_certificates"),
-            db.raw(
-              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? THEN 1 END) as active_certificates',
-              [expiringDate]
-            ),
-            db.raw(
-              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" <= ? THEN 1 END) as expired_certificates',
-              [now]
-            ),
-            db.raw(
-              'COUNT(CASE WHEN certificates."revokedAt" IS NULL AND certificates."notAfter" > ? AND certificates."notAfter" <= ? THEN 1 END) as expiring_certificates',
-              [now, expiringDate]
-            ),
-            db.raw('COUNT(CASE WHEN certificates."revokedAt" IS NOT NULL THEN 1 END) as revoked_certificates')
-          )
-          .groupBy(
-            `${TableName.PkiCertificateProfile}.id`,
-            `${TableName.PkiEstEnrollmentConfig}.id`,
-            `${TableName.PkiApiEnrollmentConfig}.id`
-          );
-      }
 
       const results = (await query
         .orderBy(`${TableName.PkiCertificateProfile}.createdAt`, "desc")
@@ -352,17 +294,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           estConfig,
           apiConfig
         };
-
-        if (includeMetrics) {
-          return {
-            ...baseProfile,
-            total_certificates: result.total_certificates,
-            active_certificates: result.active_certificates,
-            expired_certificates: result.expired_certificates,
-            expiring_certificates: result.expiring_certificates,
-            revoked_certificates: result.revoked_certificates
-          } as TCertificateProfileWithRawMetrics & TCertificateProfileWithConfigs;
-        }
 
         return baseProfile as TCertificateProfileWithConfigs;
       });
@@ -485,45 +416,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
-  const getProfileMetrics = async (
-    profileId: string,
-    expiringDays: number = 7,
-    tx?: Knex
-  ): Promise<TCertificateProfileMetrics> => {
-    try {
-      const now = new Date();
-      const expiringDate = new Date();
-      expiringDate.setDate(now.getDate() + expiringDays);
-
-      const metrics = await (tx || db)(TableName.Certificate)
-        .where("profileId", profileId)
-        .select(
-          db.raw("COUNT(*) as total_certificates"),
-          db.raw('COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" > ? THEN 1 END) as active_certificates', [
-            expiringDate
-          ]),
-          db.raw('COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" <= ? THEN 1 END) as expired_certificates', [now]),
-          db.raw(
-            'COUNT(CASE WHEN "revokedAt" IS NULL AND "notAfter" > ? AND "notAfter" <= ? THEN 1 END) as expiring_certificates',
-            [now, expiringDate]
-          ),
-          db.raw('COUNT(CASE WHEN "revokedAt" IS NOT NULL THEN 1 END) as revoked_certificates')
-        )
-        .first();
-
-      return {
-        profileId,
-        totalCertificates: parseInt(String((metrics as Record<string, unknown>)?.total_certificates || 0), 10),
-        activeCertificates: parseInt(String((metrics as Record<string, unknown>)?.active_certificates || 0), 10),
-        expiredCertificates: parseInt(String((metrics as Record<string, unknown>)?.expired_certificates || 0), 10),
-        expiringCertificates: parseInt(String((metrics as Record<string, unknown>)?.expiring_certificates || 0), 10),
-        revokedCertificates: parseInt(String((metrics as Record<string, unknown>)?.revoked_certificates || 0), 10)
-      };
-    } catch (error) {
-      throw new DatabaseError({ error, name: "Get certificate profile metrics" });
-    }
-  };
-
   const isProfileInUse = async (profileId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.Certificate).where("profileId", profileId).count("*").first();
@@ -546,7 +438,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     countByProjectId,
     findByNameAndProjectId,
     getCertificatesByProfile,
-    getProfileMetrics,
     isProfileInUse
   };
 };

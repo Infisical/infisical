@@ -18,12 +18,13 @@ import { TCertificateAuthorityDALFactory } from "@app/services/certificate-autho
 import { CaCapability, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { caSupportsCapability } from "@app/services/certificate-authority/certificate-authority-maps";
 import { TCertificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
+import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { TPkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
 import { TPkiSyncQueueFactory } from "@app/services/pki-sync/pki-sync-queue";
-import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-utils";
+import { triggerAutoSyncForCertificate } from "@app/services/pki-sync/pki-sync-utils";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
@@ -57,6 +58,7 @@ type TCertificateServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
@@ -76,6 +78,7 @@ export const certificateServiceFactory = ({
   projectDAL,
   kmsService,
   permissionService,
+  certificateSyncDAL,
   pkiSyncDAL,
   pkiSyncQueue
 }: TCertificateServiceFactoryDep) => {
@@ -166,10 +169,12 @@ export const certificateServiceFactory = ({
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
 
-    // Trigger auto sync for PKI syncs connected to this certificate's subscriber
-    if (cert.pkiSubscriberId) {
-      await triggerAutoSyncForSubscriber(cert.pkiSubscriberId, { pkiSyncDAL, pkiSyncQueue });
-    }
+    // Trigger auto sync for PKI syncs connected to this certificate
+    await triggerAutoSyncForCertificate(cert.id, {
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue
+    });
 
     return {
       deletedCert
@@ -235,10 +240,12 @@ export const certificateServiceFactory = ({
       }
     );
 
-    // Trigger auto sync for PKI syncs connected to this certificate's subscriber
-    if (cert.pkiSubscriberId) {
-      await triggerAutoSyncForSubscriber(cert.pkiSubscriberId, { pkiSyncDAL, pkiSyncQueue });
-    }
+    // Trigger auto sync for PKI syncs connected to this certificate
+    await triggerAutoSyncForCertificate(cert.id, {
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue
+    });
 
     // Note: External CA revocation handling would go here for supported CA types
     // Currently, only internal CAs and ACME CAs support revocation

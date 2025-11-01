@@ -15,6 +15,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
+import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateModal } from "./CertificateModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
@@ -36,7 +37,8 @@ export const CertificatesSection = () => {
     "deleteCertificate",
     "revokeCertificate",
     "manageRenewal",
-    "renewCertificate"
+    "renewCertificate",
+    "managePkiSyncs"
   ] as const);
 
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
@@ -104,6 +106,10 @@ export const CertificatesSection = () => {
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateManagePkiSyncsModal
+        popUp={popUp.managePkiSyncs}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
         title={`Are you sure you want to remove the certificate ${

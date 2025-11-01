@@ -152,7 +152,7 @@ export const useCreateCertificate = () => {
   });
 };
 
-export const useCreateCertificateV3 = () => {
+export const useCreateCertificateV3 = (options?: { projectId?: string }) => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateV3Response, object, TCreateCertificateV3DTO>({
     mutationFn: async (body) => {
@@ -166,6 +166,12 @@ export const useCreateCertificateV3 = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.forProjectCertificates(projectSlug)
       });
+
+      if (options?.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: projectKeys.forProjectCertificates(options.projectId)
+        });
+      }
 
       queryClient.invalidateQueries({
         queryKey: ["certificate-profiles"]

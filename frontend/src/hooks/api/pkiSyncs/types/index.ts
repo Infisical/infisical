@@ -33,7 +33,8 @@ type TCreatePkiSyncDTOBase = {
     certificateNameSchema?: string;
   };
   isAutoSyncEnabled: boolean;
-  subscriberId?: string;
+  subscriberId?: string | null;
+  certificateIds?: string[];
   projectId: string;
 };
 

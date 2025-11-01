@@ -127,8 +127,3 @@ export const listCertificatesByProfileSchema = z.object({
   status: z.enum(["active", "expired", "revoked"]).optional(),
   search: z.string().optional()
 });
-
-export const getCertificateProfileMetricsSchema = z.object({
-  profileId: z.string().uuid(),
-  expiringDays: z.coerce.number().min(1).max(365).default(30)
-});

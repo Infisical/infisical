@@ -18,10 +18,10 @@ import { IntegrationsListPageTabs } from "@app/types/integrations";
 import {
   PkiSyncActionTriggers,
   PkiSyncAuditLogsSection,
+  PkiSyncCertificatesSection,
   PkiSyncDestinationSection,
   PkiSyncDetailsSection,
-  PkiSyncOptionsSection,
-  PkiSyncSourceSection
+  PkiSyncOptionsSection
 } from "./components";
 
 const PageContent = () => {
@@ -62,7 +62,6 @@ const PageContent = () => {
   const destinationDetails = PKI_SYNC_MAP[pkiSync.destination];
 
   const handleEditDetails = () => handlePopUpOpen("editSync", PkiSyncEditFields.Details);
-  const handleEditSource = () => handlePopUpOpen("editSync", PkiSyncEditFields.Source);
   const handleEditOptions = () => handlePopUpOpen("editSync", PkiSyncEditFields.Options);
   const handleEditDestination = () => handlePopUpOpen("editSync", PkiSyncEditFields.Destination);
 
@@ -103,7 +102,6 @@ const PageContent = () => {
           <div className="flex justify-center">
             <div className="mr-4 flex w-72 flex-col gap-4">
               <PkiSyncDetailsSection pkiSync={pkiSync} onEditDetails={handleEditDetails} />
-              <PkiSyncSourceSection pkiSync={pkiSync} onEditSource={handleEditSource} />
               <PkiSyncOptionsSection pkiSync={pkiSync} onEditOptions={handleEditOptions} />
             </div>
             <div className="flex flex-1 flex-col gap-4">
@@ -111,6 +109,7 @@ const PageContent = () => {
                 pkiSync={pkiSync}
                 onEditDestination={handleEditDestination}
               />
+              <PkiSyncCertificatesSection pkiSync={pkiSync} />
               <PkiSyncAuditLogsSection pkiSync={pkiSync} />
             </div>
           </div>

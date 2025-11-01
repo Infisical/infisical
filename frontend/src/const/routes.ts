@@ -301,10 +301,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/projects/cert-management/$projectId/subscribers",
       "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/subscribers"
     ),
-    CertificatesPage: setRoute(
-      "/projects/cert-management/$projectId/certificates",
-      "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificates"
-    ),
     CertificateAuthoritiesPage: setRoute(
       "/projects/cert-management/$projectId/certificate-authorities",
       "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/certificate-authorities"

@@ -8,7 +8,6 @@ export {
   useGetCertificateProfileById,
   useGetCertificateProfileBySlug,
   useGetProfileCertificates,
-  useGetProfileMetrics,
   useListCertificateProfiles
 } from "./queries";
 export type * from "./types";

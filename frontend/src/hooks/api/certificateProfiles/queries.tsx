@@ -4,7 +4,6 @@ import { apiRequest } from "@app/config/request";
 
 import {
   TCertificateProfile,
-  TCertificateProfileMetrics,
   TCertificateProfileWithDetails,
   TGetCertificateProfileByIdDTO,
   TGetCertificateProfileBySlugDTO,
@@ -20,7 +19,6 @@ export const certificateProfileKeys = {
     limit?: number;
     offset?: number;
     search?: string;
-    includeMetrics?: boolean;
     includeConfigs?: boolean;
     enrollmentType?: string;
     expiringDays?: number;
@@ -51,10 +49,8 @@ export const useListCertificateProfiles = ({
   limit = 20,
   offset = 0,
   search,
-  includeMetrics = false,
   includeConfigs = false,
-  enrollmentType,
-  expiringDays = 7
+  enrollmentType
 }: TListCertificateProfilesDTO) => {
   return useQuery({
     queryKey: certificateProfileKeys.list({
@@ -62,10 +58,8 @@ export const useListCertificateProfiles = ({
       limit,
       offset,
       search,
-      includeMetrics,
       includeConfigs,
-      enrollmentType,
-      expiringDays
+      enrollmentType
     }),
     queryFn: async () => {
       const { data } = await apiRequest.get<{
@@ -77,10 +71,8 @@ export const useListCertificateProfiles = ({
           limit,
           offset,
           search,
-          includeMetrics,
           includeConfigs,
-          enrollmentType,
-          expiringDays
+          enrollmentType
         }
       });
       return data;
@@ -141,21 +133,6 @@ export const useGetProfileCertificates = ({
         }
       });
       return data.certificates;
-    },
-    enabled: Boolean(profileId)
-  });
-};
-
-export const useGetProfileMetrics = ({ profileId, expiringDays = 7 }: TGetProfileMetricsDTO) => {
-  return useQuery({
-    queryKey: certificateProfileKeys.getMetrics(profileId, { expiringDays }),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{
-        metrics: TCertificateProfileMetrics;
-      }>(`/api/v1/pki/certificate-profiles/${profileId}/metrics`, {
-        params: { expiringDays }
-      });
-      return data.metrics;
     },
     enabled: Boolean(profileId)
   });

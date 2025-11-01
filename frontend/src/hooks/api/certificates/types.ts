@@ -9,6 +9,7 @@ export type TCertificate = {
   friendlyName: string;
   commonName: string;
   subjectAltNames: string;
+  altNames?: string;
   serialNumber: string;
   notBefore: string;
   notAfter: string;

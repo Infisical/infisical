@@ -5,13 +5,9 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Modal, ModalContent, Select, SelectItem } from "@app/components/v2";
 import { useProject } from "@app/context";
-import {
-  CaStatus,
-  useAddItemToPkiCollection,
-  useListWorkspaceCas,
-  useListWorkspaceCertificates
-} from "@app/hooks/api";
+import { CaStatus, useAddItemToPkiCollection, useListWorkspaceCas } from "@app/hooks/api";
 import { PkiItemType, pkiItemTypeToNameMap } from "@app/hooks/api/pkiCollections/constants";
+import { useListWorkspaceCertificates } from "@app/hooks/api/projects";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const schema = z

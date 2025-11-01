@@ -26,7 +26,7 @@ export const registerSyncPkiEndpoints = ({
     syncOptions?: Record<string, unknown>;
     description?: string;
     isAutoSyncEnabled?: boolean;
-    subscriberId?: string;
+    subscriberId?: string | null;
   }>;
   updateSchema: z.ZodType<{
     connectionId?: string;
@@ -35,7 +35,7 @@ export const registerSyncPkiEndpoints = ({
     syncOptions?: Record<string, unknown>;
     description?: string;
     isAutoSyncEnabled?: boolean;
-    subscriberId?: string;
+    subscriberId?: string | null;
   }>;
   responseSchema: z.ZodTypeAny;
   syncOptions: {

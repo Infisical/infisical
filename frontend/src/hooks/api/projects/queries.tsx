@@ -664,23 +664,42 @@ export const useListWorkspaceCas = ({
 export const useListWorkspaceCertificates = ({
   projectId,
   offset,
-  limit
+  limit,
+  friendlyName,
+  commonName,
+  forPkiSync
 }: {
   projectId: string;
   offset: number;
   limit: number;
+  friendlyName?: string;
+  commonName?: string;
+  forPkiSync?: boolean;
 }) => {
   return useQuery({
     queryKey: projectKeys.specificProjectCertificates({
       projectId,
       offset,
-      limit
+      limit,
+      friendlyName,
+      commonName,
+      forPkiSync
     }),
     queryFn: async () => {
       const params = new URLSearchParams({
         offset: String(offset),
         limit: String(limit)
       });
+
+      if (friendlyName) {
+        params.append("friendlyName", friendlyName);
+      }
+      if (commonName) {
+        params.append("commonName", commonName);
+      }
+      if (forPkiSync) {
+        params.append("forPkiSync", "true");
+      }
 
       const {
         data: { certificates, totalCount }
@@ -693,7 +712,8 @@ export const useListWorkspaceCertificates = ({
 
       return { certificates, totalCount };
     },
-    enabled: Boolean(projectId)
+    enabled: Boolean(projectId),
+    placeholderData: (previousData) => previousData
   });
 };
 
