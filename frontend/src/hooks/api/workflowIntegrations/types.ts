@@ -86,6 +86,8 @@ export type ProjectWorkflowIntegrationConfig =
       accessRequestChannels: string;
       isSecretRequestNotificationEnabled: boolean;
       secretRequestChannels: string;
+      isSecretSyncErrorNotificationEnabled: boolean;
+      secretSyncErrorChannels: string;
     }
   | {
       id: string;
@@ -112,6 +114,8 @@ export type TUpdateProjectWorkflowIntegrationConfigDTO =
       accessRequestChannels: string;
       isSecretRequestNotificationEnabled: boolean;
       secretRequestChannels: string;
+      isSecretSyncErrorNotificationEnabled: boolean;
+      secretSyncErrorChannels: string;
     }
   | {
       integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS;

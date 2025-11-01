@@ -10,6 +10,8 @@ import { TLicenseServiceFactory } from "@app/ee/services/license/license-service
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
+import { triggerWorkflowIntegrationNotification } from "@app/lib/workflow-integrations/trigger-notification";
+import { TriggerFeature } from "@app/lib/workflow-integrations/types";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { SecretNameSchema } from "@app/server/lib/schemas";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -62,8 +64,11 @@ import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 
 import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
+import { TMicrosoftTeamsServiceFactory } from "../microsoft-teams/microsoft-teams-service";
+import { TProjectMicrosoftTeamsConfigDALFactory } from "../microsoft-teams/project-microsoft-teams-config-dal";
 import { TNotificationServiceFactory } from "../notification/notification-service";
 import { NotificationType } from "../notification/notification-types";
+import { TProjectSlackConfigDALFactory } from "../slack/project-slack-config-dal";
 
 export type TSecretSyncQueueFactory = ReturnType<typeof secretSyncQueueFactory>;
 
@@ -104,6 +109,9 @@ type TSecretSyncQueueFactoryDep = {
   gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">;
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">;
   notificationService: Pick<TNotificationServiceFactory, "createUserNotifications">;
+  projectSlackConfigDAL: Pick<TProjectSlackConfigDALFactory, "getIntegrationDetailsByProject">;
+  projectMicrosoftTeamsConfigDAL: Pick<TProjectMicrosoftTeamsConfigDALFactory, "getIntegrationDetailsByProject">;
+  microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "sendNotification">;
 };
 
 type SecretSyncActionJob = Job<
@@ -147,7 +155,10 @@ export const secretSyncQueueFactory = ({
   licenseService,
   gatewayService,
   gatewayV2Service,
-  notificationService
+  notificationService,
+  projectSlackConfigDAL,
+  projectMicrosoftTeamsConfigDAL,
+  microsoftTeamsService
 }: TSecretSyncQueueFactoryDep) => {
   const appCfg = getConfig();
 
@@ -921,34 +932,65 @@ export const secretSyncQueueFactory = ({
         break;
     }
 
-    const syncPath = `/projects/secret-management/${projectId}/integrations/secret-syncs/${destination}/${secretSync.id}`;
+    const baseProjectPath = `/projects/secret-management/${projectId}`;
+    const overviewPath = `${baseProjectPath}/overview`;
+    const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
 
-    await notificationService.createUserNotifications(
-      projectAdmins.map((admin) => ({
-        userId: admin.userId,
-        orgId: project.orgId,
-        type: NotificationType.SECRET_SYNC_FAILED,
-        title: `Secret Sync Failed to ${actionLabel} Secrets`,
-        body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
-        link: syncPath
-      }))
-    );
+    const notifications = [
+      triggerWorkflowIntegrationNotification({
+        input: {
+          notification: {
+            type: TriggerFeature.SECRET_SYNC_ERROR,
+            payload: {
+              syncName: name,
+              syncDestination,
+              failureMessage: failureMessage || "An unknown error occurred",
+              syncUrl: `${appCfg.SITE_URL}${syncPath}`,
+              syncActionLabel: actionLabel,
+              environment: environment?.name || "-",
+              secretPath: folder?.path || "-",
+              projectName: project.name,
+              projectPath: overviewPath
+            }
+          },
+          projectId
+        },
+        dependencies: {
+          projectDAL,
+          projectSlackConfigDAL,
+          kmsService,
+          microsoftTeamsService,
+          projectMicrosoftTeamsConfigDAL
+        }
+      }),
+      notificationService.createUserNotifications(
+        projectAdmins.map((admin) => ({
+          userId: admin.userId,
+          orgId: project.orgId,
+          type: NotificationType.SECRET_SYNC_FAILED,
+          title: `Secret Sync Failed to ${actionLabel} Secrets`,
+          body: `Your **${syncDestination}** sync **${name}** failed to complete${failureMessage ? `: \`${failureMessage}\`` : ""}`,
+          link: syncPath
+        }))
+      ),
+      smtpService.sendMail({
+        recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
+        template: SmtpTemplates.SecretSyncFailed,
+        subjectLine: `Secret Sync Failed to ${actionLabel} Secrets`,
+        substitutions: {
+          syncName: name,
+          syncDestination,
+          content: `Your ${syncDestination} Sync named "${name}" failed while attempting to ${action.toLowerCase()} secrets.`,
+          failureMessage,
+          secretPath: folder?.path,
+          environment: environment?.name,
+          projectName: project.name,
+          syncUrl: `${appCfg.SITE_URL}${syncPath}`
+        }
+      })
+    ];
 
-    await smtpService.sendMail({
-      recipients: projectAdmins.map((member) => member.user.email!).filter(Boolean),
-      template: SmtpTemplates.SecretSyncFailed,
-      subjectLine: `Secret Sync Failed to ${actionLabel} Secrets`,
-      substitutions: {
-        syncName: name,
-        syncDestination,
-        content: `Your ${syncDestination} Sync named "${name}" failed while attempting to ${action.toLowerCase()} secrets.`,
-        failureMessage,
-        secretPath: folder?.path,
-        environment: environment?.name,
-        projectName: project.name,
-        syncUrl: `${appCfg.SITE_URL}${syncPath}`
-      }
-    });
+    await Promise.allSettled(notifications);
   };
 
   const queueSecretSyncsSyncSecretsByPath = async ({

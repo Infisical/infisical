@@ -1,8 +1,7 @@
-import { validateMicrosoftTeamsChannelsSchema } from "@app/services/microsoft-teams/microsoft-teams-fns";
-import { sendSlackNotification } from "@app/services/slack/slack-fns";
-
 import { logger } from "../logger";
-import { TriggerFeature, TTriggerWorkflowNotificationDTO } from "./types";
+import { triggerMicrosoftTeamsNotification } from "./notification-handlers/microsoft-teams";
+import { triggerSlackNotification } from "./notification-handlers/slack";
+import { TTriggerWorkflowNotificationDTO } from "./types";
 
 export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkflowNotificationDTO) => {
   try {
@@ -16,88 +15,25 @@ export const triggerWorkflowIntegrationNotification = async (dto: TTriggerWorkfl
       return;
     }
 
-    const microsoftTeamsConfig = await projectMicrosoftTeamsConfigDAL.getIntegrationDetailsByProject(projectId);
-    const slackConfig = await projectSlackConfigDAL.getIntegrationDetailsByProject(projectId);
+    const handlerPromises = [
+      triggerSlackNotification({
+        projectId,
+        notification,
+        orgId: project.orgId,
+        projectSlackConfigDAL,
+        kmsService
+      }),
 
-    if (slackConfig) {
-      if (
-        notification.type === TriggerFeature.ACCESS_REQUEST ||
-        notification.type === TriggerFeature.ACCESS_REQUEST_UPDATED
-      ) {
-        const targetChannelIds = slackConfig.accessRequestChannels?.split(", ") || [];
-        if (targetChannelIds.length && slackConfig.isAccessRequestNotificationEnabled) {
-          await sendSlackNotification({
-            orgId: project.orgId,
-            notification,
-            kmsService,
-            targetChannelIds,
-            slackIntegration: slackConfig
-          }).catch((error) => {
-            logger.error(error, "Error sending Slack notification");
-          });
-        }
-      } else if (notification.type === TriggerFeature.SECRET_APPROVAL) {
-        const targetChannelIds = slackConfig.secretRequestChannels?.split(", ") || [];
-        if (targetChannelIds.length && slackConfig.isSecretRequestNotificationEnabled) {
-          await sendSlackNotification({
-            orgId: project.orgId,
-            notification,
-            kmsService,
-            targetChannelIds,
-            slackIntegration: slackConfig
-          }).catch((error) => {
-            logger.error(error, "Error sending Slack notification");
-          });
-        }
-      }
-    }
+      triggerMicrosoftTeamsNotification({
+        projectId,
+        notification,
+        orgId: project.orgId,
+        projectMicrosoftTeamsConfigDAL,
+        microsoftTeamsService
+      })
+    ];
 
-    if (microsoftTeamsConfig) {
-      if (
-        notification.type === TriggerFeature.ACCESS_REQUEST ||
-        notification.type === TriggerFeature.ACCESS_REQUEST_UPDATED
-      ) {
-        if (microsoftTeamsConfig.isAccessRequestNotificationEnabled && microsoftTeamsConfig.accessRequestChannels) {
-          const { success, data } = validateMicrosoftTeamsChannelsSchema.safeParse(
-            microsoftTeamsConfig.accessRequestChannels
-          );
-
-          if (success && data) {
-            await microsoftTeamsService
-              .sendNotification({
-                notification,
-                target: data,
-                tenantId: microsoftTeamsConfig.tenantId,
-                microsoftTeamsIntegrationId: microsoftTeamsConfig.id,
-                orgId: project.orgId
-              })
-              .catch((error) => {
-                logger.error(error, "Error sending Microsoft Teams notification");
-              });
-          }
-        }
-      } else if (notification.type === TriggerFeature.SECRET_APPROVAL) {
-        if (microsoftTeamsConfig.isSecretRequestNotificationEnabled && microsoftTeamsConfig.secretRequestChannels) {
-          const { success, data } = validateMicrosoftTeamsChannelsSchema.safeParse(
-            microsoftTeamsConfig.secretRequestChannels
-          );
-
-          if (success && data) {
-            await microsoftTeamsService
-              .sendNotification({
-                notification,
-                target: data,
-                tenantId: microsoftTeamsConfig.tenantId,
-                microsoftTeamsIntegrationId: microsoftTeamsConfig.id,
-                orgId: project.orgId
-              })
-              .catch((error) => {
-                logger.error(error, "Error sending Microsoft Teams notification");
-              });
-          }
-        }
-      }
-    }
+    await Promise.allSettled(handlerPromises);
   } catch (error) {
     logger.error(error, "Error triggering workflow integration notification");
   }

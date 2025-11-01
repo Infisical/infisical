@@ -1582,8 +1582,14 @@ export const projectServiceFactory = ({
     isAccessRequestNotificationEnabled,
     accessRequestChannels,
     isSecretRequestNotificationEnabled,
-    secretRequestChannels
-  }: TUpdateProjectWorkflowIntegration) => {
+    secretRequestChannels,
+    secretSyncErrorChannels,
+    isSecretSyncErrorNotificationEnabled
+  }: TUpdateProjectWorkflowIntegration & {
+    // workaround intersection type while we don't have the microsoft teams integration for failed secret syncs
+    isSecretSyncErrorNotificationEnabled?: boolean;
+    secretSyncErrorChannels?: string;
+  }) => {
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
@@ -1605,6 +1611,7 @@ export const projectServiceFactory = ({
 
       const sanitizedAccessRequestChannels = validateSlackChannelsField.parse(accessRequestChannels);
       const sanitizedSecretRequestChannels = validateSlackChannelsField.parse(secretRequestChannels);
+      const sanitizedSecretSyncErrorChannels = validateSlackChannelsField.parse(secretSyncErrorChannels);
 
       const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(integrationId);
 
@@ -1642,7 +1649,9 @@ export const projectServiceFactory = ({
               isAccessRequestNotificationEnabled,
               accessRequestChannels: sanitizedAccessRequestChannels,
               isSecretRequestNotificationEnabled,
-              secretRequestChannels: sanitizedSecretRequestChannels
+              secretRequestChannels: sanitizedSecretRequestChannels,
+              isSecretSyncErrorNotificationEnabled,
+              secretSyncErrorChannels: sanitizedSecretSyncErrorChannels
             },
             tx
           );
@@ -1655,7 +1664,9 @@ export const projectServiceFactory = ({
             isAccessRequestNotificationEnabled,
             accessRequestChannels: sanitizedAccessRequestChannels,
             isSecretRequestNotificationEnabled,
-            secretRequestChannels: sanitizedSecretRequestChannels
+            secretRequestChannels: sanitizedSecretRequestChannels,
+            isSecretSyncErrorNotificationEnabled,
+            secretSyncErrorChannels: sanitizedSecretSyncErrorChannels
           },
           tx
         );
@@ -1665,6 +1676,7 @@ export const projectServiceFactory = ({
         ...updatedWorkflowIntegration,
         accessRequestChannels: sanitizedAccessRequestChannels,
         secretRequestChannels: sanitizedSecretRequestChannels,
+        secretSyncErrorChannels: sanitizedSecretSyncErrorChannels,
         integrationId: slackIntegration.id,
         integration: WorkflowIntegration.SLACK
       } as const;
