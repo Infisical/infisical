@@ -508,7 +508,7 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "ACME order not found" });
     }
     if (order.status === AcmeOrderStatus.Ready) {
-      order = await acmeOrderDAL.transaction(async (tx) => {
+      const { order: updatedOrder, error } = await acmeOrderDAL.transaction(async (tx) => {
         const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
         // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead
         const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
@@ -521,6 +521,7 @@ export const pkiAcmeServiceFactory = ({
         const { csr } = payload;
         // TODO: validate the CSR and return badCSR error if it's invalid
         // TODO: this should be the same transaction?
+        let error: Error | undefined;
         try {
           const { certificate, certificateChain, certificateId } =
             await certificateV3Service.signCertificateFromProfile({
@@ -562,12 +563,20 @@ export const pkiAcmeServiceFactory = ({
           // TODO: log the error
           // TODO: audit log the error
           if (error instanceof BadRequestError) {
-            throw new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
+            error = new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
+          } else {
+            error = new AcmeServerInternalError({ detail: "Failed to sign certificate" });
           }
-          throw new AcmeServerInternalError({ detail: "Failed to sign certificate" });
         }
-        return await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx);
+        return {
+          order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
+          error
+        };
       });
+      if (error) {
+        throw error;
+      }
+      order = updatedOrder;
     } else if (order.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
     }
