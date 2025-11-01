@@ -1,3 +1,4 @@
+import { PamResourceType } from "@app/hooks/api/pam";
 import { useState } from "react";
 
 type TableLog = {
@@ -6,26 +7,36 @@ type TableLog = {
   total_rows?: number;
 };
 
-export const PamSessionLogOutput = ({ content }: { content: string }) => {
+export const PamSessionLogOutput = ({
+  content,
+  resourceType
+}: {
+  content: string;
+  resourceType: PamResourceType;
+}) => {
   const [isRawView, setIsRawView] = useState(false);
 
   let parsedContent: TableLog | null = null;
-  try {
-    const parsed = JSON.parse(content);
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      !Array.isArray(parsed) &&
-      parsed.data_rows &&
-      Array.isArray(parsed.data_rows) &&
-      parsed.data_rows.length > 0 &&
-      typeof parsed.data_rows[0] === "object" &&
-      parsed.data_rows[0] !== null
-    ) {
-      parsedContent = parsed;
+
+  if (resourceType === PamResourceType.Postgres || resourceType === PamResourceType.MySQL) {
+    try {
+      const parsed = JSON.parse(content);
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed) &&
+        parsed.data_rows &&
+        Array.isArray(parsed.data_rows) &&
+        parsed.data_rows.length > 0 &&
+        typeof parsed.data_rows[0] === "object" &&
+        parsed.data_rows[0] !== null
+      ) {
+        parsedContent = parsed;
+      }
+    } catch (error) {
+      // Not a valid JSON or doesn't match structure, will render as plain text
     }
-  } catch (error) {
-    // Not a valid JSON or doesn't match structure, will render as plain text
   }
 
   if (parsedContent) {

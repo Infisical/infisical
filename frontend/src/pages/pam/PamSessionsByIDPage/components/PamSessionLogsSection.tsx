@@ -68,7 +68,10 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                       <div className="h-px w-full bg-mineshaft-400"></div>
                     </div>
                     <div className="pt-2 text-bunker-300">
-                      <PamSessionLogOutput content={log.output} />
+                      <PamSessionLogOutput
+                        content={log.output}
+                        resourceType={session.resourceType}
+                      />
                     </div>
                   </>
                 )}
