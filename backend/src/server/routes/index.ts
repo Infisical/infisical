@@ -1175,20 +1175,6 @@ export const registerRoutes = async (
     projectDAL
   });
 
-  const acmeChallengeService = pkiAcmeChallengeServiceFactory({
-    acmeAuthDAL,
-    acmeChallengeDAL
-  });
-  const pkiAcmeService = pkiAcmeServiceFactory({
-    certificateProfileDAL,
-    acmeAccountDAL,
-    acmeOrderDAL,
-    acmeAuthDAL,
-    acmeOrderAuthDAL,
-    acmeChallengeDAL,
-    acmeChallengeService
-  });
-
   const pkiAlertService = pkiAlertServiceFactory({
     pkiAlertDAL,
     pkiCollectionDAL,
@@ -2207,6 +2193,20 @@ export const registerRoutes = async (
     licenseService,
     certificateProfileDAL,
     estEnrollmentConfigDAL
+  });
+
+  const acmeChallengeService = pkiAcmeChallengeServiceFactory({
+    acmeChallengeDAL
+  });
+  const pkiAcmeService = pkiAcmeServiceFactory({
+    certificateV3Service,
+    certificateProfileDAL,
+    acmeAccountDAL,
+    acmeOrderDAL,
+    acmeAuthDAL,
+    acmeOrderAuthDAL,
+    acmeChallengeDAL,
+    acmeChallengeService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({

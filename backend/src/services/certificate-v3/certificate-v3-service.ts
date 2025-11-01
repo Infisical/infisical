@@ -107,6 +107,13 @@ const validateProfileAndPermissions = async (
     });
   }
 
+  // XXX: NOT SURE IF THIS IS SECURE TO BY PASS THE PERMISSION CHECK FOR ACME ACCOUNTS
+  //      may need to consider this carefully
+  // TODO: check actor/profile ownership as well
+  if (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) {
+    return profile;
+  }
+
   const { permission } = await permissionService.getProjectPermission({
     actor,
     actorId,
@@ -484,7 +491,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    enrollmentType
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -494,7 +502,7 @@ export const certificateV3ServiceFactory = ({
       actorOrgId,
       certificateProfileDAL,
       permissionService,
-      EnrollmentType.API
+      enrollmentType
     );
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);

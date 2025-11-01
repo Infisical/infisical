@@ -6,12 +6,6 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  ACMESANType,
-  CertificateOrderStatus,
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm
-} from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
@@ -20,7 +14,14 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
+import {
+  ACMESANType,
+  CertificateOrderStatus,
+  CertKeyAlgorithm,
+  CertSignatureAlgorithm
+} from "@app/services/certificate/certificate-types";
 
 interface CertificateRequestForService {
   commonName?: string;
@@ -204,7 +205,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           ttl: req.body.ttl
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+        enrollmentType: EnrollmentType.API
       });
 
       await server.services.auditLog.createAuditLog({

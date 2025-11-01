@@ -65,6 +65,23 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdWithOwnerOrgId = async (
+    id: string,
+    tx?: Knex
+  ): Promise<(TCertificateProfile & { ownerOrgId: string }) | undefined> => {
+    try {
+      const certificateProfile = (await (tx || db)(TableName.PkiCertificateProfile)
+        .join(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
+        .select(selectAllTableCols(TableName.PkiCertificateProfile))
+        .select(db.ref("orgId").withSchema(TableName.Project).as("ownerOrgId"))
+        .where({ id })
+        .first()) as (TCertificateProfile & { ownerOrgId: string }) | undefined;
+      return certificateProfile;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate profile by id with owner org id" });
+    }
+  };
+
   const findByIdWithConfigs = async (id: string, tx?: Knex): Promise<TCertificateProfileWithConfigs | undefined> => {
     try {
       const query = (tx || db)(TableName.PkiCertificateProfile)
@@ -444,6 +461,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     updateById,
     deleteById,
     findById,
+    findByIdWithOwnerOrgId,
     findByIdWithConfigs,
     findBySlugAndProjectId,
     findByProjectId,

@@ -1,11 +1,12 @@
 import { TProjectPermission } from "@app/lib/types";
 
-import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
+import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
@@ -35,6 +36,7 @@ export type TSignCertificateFromProfileDTO = {
   };
   notBefore?: Date;
   notAfter?: Date;
+  enrollmentType: EnrollmentType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

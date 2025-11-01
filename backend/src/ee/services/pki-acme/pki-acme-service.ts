@@ -63,10 +63,12 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
+import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { ActorType, AuthMode } from "@app/services/auth/auth-type";
 
 type TPkiAcmeServiceFactoryDep = {
-  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findById">;
-  internalCertificateAuthorityService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId">;
+  certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -86,7 +88,7 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
-  internalCertificateAuthorityService,
+  certificateV3Service,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -507,7 +509,8 @@ export const pkiAcmeServiceFactory = ({
     if (order.status === AcmeOrderStatus.Ready) {
       order = await acmeOrderDAL.transaction(async (tx) => {
         const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
-        const profile = (await certificateProfileDAL.findById(profileId, tx))!;
+        // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead
+        const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
         if (order.status !== AcmeOrderStatus.Ready) {
           throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
         }
@@ -516,20 +519,30 @@ export const pkiAcmeServiceFactory = ({
         }
         const { csr } = payload;
         // TODO: validate the CSR and return badCSR error if it's invalid
-        const { certificate, certificateChain } = await internalCertificateAuthorityService.signCertFromCa({
-          isInternal: true,
-          certificateTemplateId: profile.certificateTemplateId,
+        // TODO: this should be the same transaction?
+        const { certificate, certificateChain, certificateId } = await certificateV3Service.signCertificateFromProfile({
+          actor: ActorType.ACME_ACCOUNT,
+          actorId: accountId,
+          actorAuthMethod: null,
+          actorOrgId,
+          profileId,
           csr,
-          notBefore: order.notBefore?.toISOString(),
-          notAfter: order.notAfter?.toISOString()
+          notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
+          notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
+          validity: {
+            // TODO: read config from the profile to get the expiration time instead
+            ttl: (24 * 60 * 60 * 1000).toString()
+          },
+          enrollmentType: EnrollmentType.ACME
         });
+        // TODO: associate the certificate with the order
         await acmeOrderDAL.updateById(
           orderId,
           {
             status: AcmeOrderStatus.Valid,
             csr,
             certificateChain,
-            certificate: certificate.toString("pem")
+            certificate
           },
           tx
         );
