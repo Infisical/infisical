@@ -697,6 +697,7 @@ describe("CertificateV3Service", () => {
         profileId,
         csr: mockCSR,
         validity: mockValidity,
+        enrollmentType: EnrollmentType.API,
         ...mockActor
       });
 
@@ -731,6 +732,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow(ForbiddenRequestError);
@@ -740,6 +742,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");
