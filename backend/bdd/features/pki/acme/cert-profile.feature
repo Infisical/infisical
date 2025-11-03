@@ -41,3 +41,5 @@ Feature: ACME Cert Profile
     And I memorize response with jq ".certificateProfile.id" as profile_id
     When I send a GET request to "/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal"
     Then the value response.status_code should be equal to 200
+    Then the value response with jq .eabKid should be equal to "{profile_id}"
+    Then the value response with jq .eabSecret should be present
