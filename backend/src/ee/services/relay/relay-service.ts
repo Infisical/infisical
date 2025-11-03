@@ -1248,7 +1248,9 @@ export const relayServiceFactory = ({
             });
           }
         } else {
-          const admins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
+          const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
+            (admin) => admin.status !== "invited"
+          );
           if (admins.length === 0) {
             // eslint-disable-next-line no-continue
             continue;
