@@ -20,5 +20,5 @@ Feature: ACME Cert Profile
     Then the value response with jq .certificateProfile.caId should be equal to "{CERT_CA_ID}"
     Then the value response with jq .certificateProfile.certificateTemplateId should be equal to "{CERT_TEMPLATE_ID}"
     Then the value response with jq .certificateProfile.enrollmentType should be equal to "acme"
-    Then the value response with jq .certificateProfile.eab_kid should be present
-    Then the value response with jq .certificateProfile.eab_secret should be present
+    Then the value response with jq .certificateProfile.eabKid should be present
+    Then the value response with jq .certificateProfile.eabSecret should be present

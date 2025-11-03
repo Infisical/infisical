@@ -10,7 +10,6 @@ import {
   CreateAcmeOrderBodySchema,
   DeactivateAcmeAccountBodySchema,
   DeactivateAcmeAccountResponseSchema,
-  DownloadAcmeCertificateBodySchema,
   FinalizeAcmeOrderBodySchema,
   GetAcmeAuthorizationResponseSchema,
   GetAcmeDirectoryResponseSchema,
