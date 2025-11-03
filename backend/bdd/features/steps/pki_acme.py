@@ -149,14 +149,24 @@ def step_impl(context: Context, method: str, url: str):
 
 @when('I send a {method} request to "{url}" with JSON payload')
 def step_impl(context: Context, method: str, url: str):
+    json_payload = json.loads(context.text)
+    json_payload = replace_vars(json_payload, context.vars)
+    logger.debug(
+        "Sending %s request to %s with JSON payload: %s",
+        method,
+        url,
+        json.dumps(json_payload),
+    )
     response = context.http_client.request(
         method,
         url.format(**context.vars),
         headers=prepare_headers(context),
-        json=json.loads(context.text),
+        json=json_payload,
     )
     context.response = response
     context.vars["response"] = response
+    logger.debug("Response status: %r", response.status_code)
+    logger.debug("Response JSON payload: %r", response.json())
 
 
 @when("I have an ACME client connecting to {url}")
