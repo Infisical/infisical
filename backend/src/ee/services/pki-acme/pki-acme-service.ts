@@ -2,7 +2,7 @@ import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
@@ -12,6 +12,9 @@ import {
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 import {
   calculateJwkThumbprint,
   errors,
@@ -29,6 +32,7 @@ import {
   AcmeBadCSRError,
   AcmeBadPublicKeyError,
   AcmeError,
+  AcmeExternalAccountRequiredError,
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
@@ -67,8 +71,8 @@ import {
 } from "./pki-acme-types";
 
 type TPkiAcmeServiceFactoryDep = {
-  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId">;
-  certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -83,21 +87,25 @@ type TPkiAcmeServiceFactoryDep = {
     TPkiAcmeChallengeDALFactory,
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
+  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
 
 export const pkiAcmeServiceFactory = ({
+  projectDAL,
   certificateProfileDAL,
-  certificateV3Service,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
   acmeOrderAuthDAL,
   acmeChallengeDAL,
+  kmsService,
+  certificateV3Service,
   acmeChallengeService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
-    const profile = await certificateProfileDAL.findById(profileId);
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
       throw new NotFoundError({ message: "Certificate profile not found" });
     }
@@ -304,7 +312,7 @@ export const pkiAcmeServiceFactory = ({
     profileId,
     alg,
     jwk,
-    payload: { onlyReturnExisting, contact }
+    payload: { onlyReturnExisting, contact, externalAccountBinding }
   }: {
     profileId: string;
     alg: string;
@@ -312,6 +320,44 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
+    if (!externalAccountBinding) {
+      throw new AcmeExternalAccountRequiredError({ detail: "External account binding is required" });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: profile.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret });
+    const encodedSecret = new TextEncoder().encode(eabSecret.toString());
+    try {
+      const { payload: eabPayload, protectedHeader: eabProtectedHeader } = await flattenedVerify(
+        externalAccountBinding,
+        encodedSecret
+      );
+      const alg = eabProtectedHeader!.alg!;
+      if (!["HS256", "HS384", "HS512"].includes(alg)) {
+        throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
+      }
+      if ((eabPayload as unknown as { kid: string }).kid !== profile.id) {
+        throw new UnauthorizedError({ message: "External account binding KID mismatch" });
+      }
+    } catch (error) {
+      if (error instanceof errors.JWSInvalid) {
+        throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
+      }
+      if (error instanceof AcmeError) {
+        throw error;
+      }
+      logger.error(error, "Unexpected error while verifying EAB JWS payload");
+      throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS payload" });
+    }
+
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
       profileId,

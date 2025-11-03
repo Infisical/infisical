@@ -66,13 +66,7 @@ export const CreateAcmeAccountBodySchema = z.object({
   contact: z.array(z.string()).optional(),
   termsOfServiceAgreed: z.boolean().optional(),
   onlyReturnExisting: z.boolean().optional(),
-  externalAccountBinding: z
-    .object({
-      protected: z.string(),
-      payload: z.string(),
-      signature: z.string()
-    })
-    .optional()
+  externalAccountBinding: RawJwsPayloadSchema.optional()
 });
 
 // New Account endpoint

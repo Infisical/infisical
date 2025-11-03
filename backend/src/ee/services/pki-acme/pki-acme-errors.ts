@@ -549,3 +549,24 @@ export class AcmeBadCSRError extends AcmeError {
     this.name = "AcmeBadCSRError";
   }
 }
+
+export class AcmeExternalAccountRequiredError extends AcmeError {
+  constructor({
+    detail = "External account binding is required",
+    error,
+    message
+  }: {
+    detail?: string;
+    error?: unknown;
+    message?: string;
+  } = {}) {
+    super({
+      type: AcmeErrorType.ExternalAccountRequired,
+      detail,
+      status: 400,
+      error,
+      message
+    });
+    this.name = "AcmeExternalAccountRequiredError";
+  }
+}
