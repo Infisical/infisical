@@ -24,7 +24,7 @@ import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/s
 import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/secret-sync/bitbucket";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
-import { ChefSyncListItemSchema, ChefSyncSchema } from "@app/services/secret-sync/chef";
+import { ChefSyncListItemSchema, ChefSyncSchema } from "@app/ee/services/secret-sync/chef";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema

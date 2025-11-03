@@ -4,6 +4,7 @@ import handlebars from "handlebars";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
 import {
@@ -34,7 +35,6 @@ import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
-import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "./chef";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";
@@ -290,9 +290,7 @@ export const SecretSyncFns = {
       case SecretSync.Chef:
         return ChefSyncFns.syncSecrets(secretSync, schemaSecretMap);
       default:
-        throw new Error(
-          `Unhandled sync destination for sync secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
-        );
+        throw new Error(`Unhandled sync destination for sync secrets fns: ${secretSync.destination}`);
     }
   },
   getSecrets: async (
@@ -415,9 +413,7 @@ export const SecretSyncFns = {
         secretMap = await ChefSyncFns.getSecrets(secretSync);
         break;
       default:
-        throw new Error(
-          `Unhandled sync destination for get secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
-        );
+        throw new Error(`Unhandled sync destination for get secrets fns: ${secretSync.destination}`);
     }
 
     const filtered = filterForSchema(secretMap, secretSync.environment?.slug || "", secretSync.syncOptions.keySchema);
@@ -514,9 +510,7 @@ export const SecretSyncFns = {
       case SecretSync.Chef:
         return ChefSyncFns.removeSecrets(secretSync, schemaSecretMap);
       default:
-        throw new Error(
-          `Unhandled sync destination for remove secrets fns: ${(secretSync as TSecretSyncWithCredentials).destination}`
-        );
+        throw new Error(`Unhandled sync destination for remove secrets fns: ${secretSync.destination}`);
     }
   }
 };

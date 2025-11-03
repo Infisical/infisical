@@ -1,7 +1,7 @@
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
-import { AppConnection } from "../app-connection-enums";
+import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import { listChefDataBagItems, listChefDataBags } from "./chef-connection-fns";
 import { TChefConnection } from "./chef-connection-types";
 

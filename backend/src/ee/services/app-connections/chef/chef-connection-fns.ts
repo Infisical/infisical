@@ -8,7 +8,7 @@ import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
 import { TChefDataBagItemContent } from "../../secret-sync/chef/chef-sync-types";
-import { AppConnection } from "../app-connection-enums";
+import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import { ChefConnectionMethod } from "./chef-connection-enums";
 import {
   TChefConnection,

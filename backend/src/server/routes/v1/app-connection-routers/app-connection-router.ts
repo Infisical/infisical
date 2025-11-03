@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
+import { ChefConnectionListItemSchema, SanitizedChefConnectionSchema } from "@app/ee/services/app-connections/chef";
 import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import {
   OracleDBConnectionListItemSchema,
@@ -48,7 +49,6 @@ import {
   ChecklyConnectionListItemSchema,
   SanitizedChecklyConnectionSchema
 } from "@app/services/app-connection/checkly";
-import { ChefConnectionListItemSchema, SanitizedChefConnectionSchema } from "@app/services/app-connection/chef";
 import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema

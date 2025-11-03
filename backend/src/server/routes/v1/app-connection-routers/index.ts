@@ -1,3 +1,4 @@
+import { registerChefConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/chef-connection-router";
 import { registerOCIConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oci-connection-router";
 import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oracledb-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -13,7 +14,6 @@ import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connect
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
-import { registerChefConnectionRouter } from "./chef-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";

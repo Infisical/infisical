@@ -86,6 +86,6 @@ export const APP_CONNECTION_PLAN_MAP: Record<AppConnection, AppConnectionPlanTyp
   [AppConnection.Netlify]: AppConnectionPlanType.Regular,
   [AppConnection.Okta]: AppConnectionPlanType.Regular,
   [AppConnection.Redis]: AppConnectionPlanType.Regular,
-  [AppConnection.Chef]: AppConnectionPlanType.Regular,
+  [AppConnection.Chef]: AppConnectionPlanType.Enterprise,
   [AppConnection.Northflank]: AppConnectionPlanType.Regular
 };

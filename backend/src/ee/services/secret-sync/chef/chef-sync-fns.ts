@@ -1,4 +1,4 @@
-import { getChefDataBagItem, updateChefDataBagItem } from "@app/services/app-connection/chef";
+import { getChefDataBagItem, updateChefDataBagItem } from "@app/ee/services/app-connections/chef";
 import { matchesSchema } from "@app/services/secret-sync/secret-sync-fns";
 import { TSecretMap } from "@app/services/secret-sync/secret-sync-types";
 
