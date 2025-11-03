@@ -9,22 +9,10 @@ export const HighlightText = ({
 }) => {
   if (!text) return null;
 
-  const renderTextWithNewlines = (input: string, baseKeyPrefix: string = ""): React.ReactNode[] => {
-    if (!input) return [];
-    const lines = input.split("\n");
-    return lines.flatMap((line, index) => {
-      const nodes: React.ReactNode[] = [line];
-      if (index < lines.length - 1) {
-        nodes.push(<br key={`${baseKeyPrefix}-br-${line}`} />);
-      }
-      return nodes;
-    });
-  };
-
   const searchTerm = highlight.toLowerCase().trim();
 
   if (!searchTerm) {
-    return <span>{renderTextWithNewlines(text, "full-text")}</span>;
+    return <span>{text}</span>;
   }
 
   const parts: React.ReactNode[] = [];
@@ -36,16 +24,12 @@ export const HighlightText = ({
   text.replace(regex, (match: string, offset: number) => {
     if (offset > lastIndex) {
       const preMatchText = text.substring(lastIndex, offset);
-      parts.push(
-        <span key={`pre-${lastIndex}`}>
-          {renderTextWithNewlines(preMatchText, `pre-${lastIndex}`)}
-        </span>
-      );
+      parts.push(<span key={`pre-${lastIndex}`}>{preMatchText}</span>);
     }
 
     parts.push(
       <span key={`match-${offset}`} className={highlightClassName || "bg-yellow/30"}>
-        {renderTextWithNewlines(match, `match-${offset}`)}
+        {match}
       </span>
     );
 
@@ -56,11 +40,7 @@ export const HighlightText = ({
 
   if (lastIndex < text.length) {
     const postMatchText = text.substring(lastIndex);
-    parts.push(
-      <span key={`post-${lastIndex}`}>
-        {renderTextWithNewlines(postMatchText, `post-${lastIndex}`)}
-      </span>
-    );
+    parts.push(<span key={`post-${lastIndex}`}>{postMatchText}</span>);
   }
 
   return parts;
