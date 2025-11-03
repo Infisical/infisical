@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -1249,7 +1249,7 @@ export const relayServiceFactory = ({
           }
         } else {
           const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
-            (admin) => admin.status !== "invited"
+            (admin) => admin.status !== OrgMembershipStatus.Invited
           );
           if (admins.length === 0) {
             // eslint-disable-next-line no-continue
