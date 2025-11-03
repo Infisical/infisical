@@ -108,43 +108,27 @@ export const NativeIntegrationsTab = () => {
     shouldDeleteIntegrationSecrets: boolean,
     cb: () => void
   ) => {
-    try {
-      await deleteIntegration({ id: integrationId, workspaceId, shouldDeleteIntegrationSecrets });
-      if (cb) cb();
-      createNotification({
-        type: "success",
-        text: "Deleted integration"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to delete integration"
-      });
-    }
+    await deleteIntegration({ id: integrationId, workspaceId, shouldDeleteIntegrationSecrets });
+    if (cb) cb();
+    createNotification({
+      type: "success",
+      text: "Deleted integration"
+    });
   };
 
   const handleIntegrationAuthRevoke = async (provider: string, cb?: () => void) => {
     const integrationAuthForProvider = integrationAuths?.[provider];
     if (!integrationAuthForProvider) return;
 
-    try {
-      await deleteIntegrationAuths({
-        integration: provider,
-        workspaceId
-      });
-      if (cb) cb();
-      createNotification({
-        type: "success",
-        text: "Revoked provider authentication"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        type: "error",
-        text: "Failed to revoke provider authentication"
-      });
-    }
+    await deleteIntegrationAuths({
+      integration: provider,
+      workspaceId
+    });
+    if (cb) cb();
+    createNotification({
+      type: "success",
+      text: "Revoked provider authentication"
+    });
   };
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
