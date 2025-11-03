@@ -36,7 +36,6 @@ import { RelayOption } from "./RelayOption";
 
 const baseFormSchema = z.object({
   name: slugSchema({ field: "name" }),
-  instanceDomain: z.string().url("Must be a valid URL").or(z.literal("")),
   relay: z
     .object(
       {
@@ -78,7 +77,6 @@ export const GatewayCliDeploymentMethod = () => {
   const [autogenerateToken, setAutogenerateToken] = useState(true);
   const [step, setStep] = useState<"form" | "command">("form");
   const [name, setName] = useState("");
-  const [instanceDomain, setInstanceDomain] = useState(siteURL);
   const [relay, setRelay] = useState<null | {
     id: string;
     name: string;
@@ -131,8 +129,7 @@ export const GatewayCliDeploymentMethod = () => {
       const validation = formSchemaWithIdentity.safeParse({
         name,
         relay,
-        identity,
-        instanceDomain
+        identity
       });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
@@ -180,8 +177,7 @@ export const GatewayCliDeploymentMethod = () => {
       const validation = formSchemaWithToken.safeParse({
         name,
         relay,
-        identityToken,
-        instanceDomain
+        identityToken
       });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
@@ -192,11 +188,10 @@ export const GatewayCliDeploymentMethod = () => {
   };
 
   const command = useMemo(() => {
-    const domainFlag = instanceDomain ? ` --domain=${instanceDomain}` : "";
     return `infisical gateway start --name=${name} --relay=${
       relay?.name || ""
-    }${domainFlag} --token=${identityToken}`;
-  }, [name, relay, identityToken, instanceDomain]);
+    } --domain=${siteURL} --token=${identityToken}`;
+  }, [name, relay, identityToken, siteURL]);
 
   if (step === "command") {
     return (
@@ -278,19 +273,6 @@ export const GatewayCliDeploymentMethod = () => {
         components={{ Option: RelayOption }}
       />
       {errors.relay && <p className="mt-1 text-sm text-red">{errors.relay}</p>}
-
-      <FormLabel
-        label="Infisical Instance Host Address"
-        tooltipText="The host address of the infisical instance that's accessible by the gateway."
-        className="mt-4"
-      />
-      <Input
-        value={instanceDomain}
-        onChange={(e) => setInstanceDomain(e.target.value)}
-        placeholder="https://app.infisical.com"
-        isError={Boolean(errors.instanceDomain)}
-      />
-      {errors.instanceDomain && <p className="mt-1 text-sm text-red">{errors.instanceDomain}</p>}
 
       {canCreateToken && autogenerateToken ? (
         <>

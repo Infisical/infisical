@@ -31,8 +31,7 @@ import {
 import { slugSchema } from "@app/lib/schemas";
 
 const baseFormSchema = z.object({
-  name: slugSchema({ field: "name" }),
-  instanceDomain: z.string().url("Must be a valid URL").or(z.literal(""))
+  name: slugSchema({ field: "name" })
 });
 
 const formSchemaWithIdentity = baseFormSchema.extend({
@@ -70,7 +69,6 @@ export const RelayTerraformDeploymentMethod = () => {
   const [step, setStep] = useState<"form" | "command">("form");
   const [name, setName] = useState("");
 
-  const [instanceDomain, setInstanceDomain] = useState(siteURL);
   const [identity, setIdentity] = useState<null | {
     id: string;
     name: string;
@@ -173,7 +171,6 @@ export const RelayTerraformDeploymentMethod = () => {
     } else {
       const validation = formSchemaWithToken.safeParse({
         name,
-        instanceDomain,
         identityToken
       });
       if (!validation.success) {
@@ -202,7 +199,6 @@ export const RelayTerraformDeploymentMethod = () => {
   };
 
   const terraformCommand = useMemo(() => {
-    const domain = instanceDomain || "https://app.infisical.com";
     return `terraform {
   required_providers {
     aws = {
@@ -293,7 +289,7 @@ module "infisical_relay_instance" {
     export INFISICAL_TOKEN="${identityToken}"
     sudo -E infisical relay systemd install \\
       --name "${name}" \\
-      --domain "${domain}" \\
+      --domain "${siteURL}" \\
       --host "\${aws_eip.infisical_relay_eip.public_ip}"
 
     # Start and enable the service to run on boot
@@ -308,7 +304,7 @@ resource "aws_eip_association" "eip_assoc" {
   allocation_id = aws_eip.infisical_relay_eip.id
 }
 `;
-  }, [name, instanceDomain, identityToken, awsRegion, vpcId, ami, subnetId]);
+  }, [name, siteURL, identityToken, awsRegion, vpcId, ami, subnetId]);
 
   if (step === "command") {
     return (
@@ -357,19 +353,6 @@ resource "aws_eip_association" "eip_assoc" {
         isError={Boolean(errors.name)}
       />
       {errors.name && <p className="mt-1 text-sm text-red">{errors.name}</p>}
-
-      <FormLabel
-        label="Infisical Instance Host Address"
-        tooltipText="The host address of the infisical instance that's accessible by the relay."
-        className="mt-4"
-      />
-      <Input
-        value={instanceDomain}
-        onChange={(e) => setInstanceDomain(e.target.value)}
-        placeholder="https://app.infisical.com"
-        isError={Boolean(errors.instanceDomain)}
-      />
-      {errors.instanceDomain && <p className="mt-1 text-sm text-red">{errors.instanceDomain}</p>}
 
       {canCreateToken && autogenerateToken ? (
         <>
