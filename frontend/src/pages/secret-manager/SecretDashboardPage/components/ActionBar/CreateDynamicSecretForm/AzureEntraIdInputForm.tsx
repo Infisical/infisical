@@ -6,7 +6,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import {
   DropdownMenu,
@@ -112,34 +111,27 @@ export const AzureEntraIdInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
-        await createDynamicSecret.mutateAsync({
-          provider: {
-            type: DynamicSecretProviders.AzureEntraId,
-            inputs: {
-              userId: user.id,
-              tenantId: provider.tenantId,
-              email: user.email,
-              applicationId: provider.applicationId,
-              clientSecret: provider.clientSecret
-            }
-          },
-          maxTTL,
-          name: `${name}-${user.name}`,
-          path: secretPath,
-          defaultTTL,
-          projectSlug,
-          environmentSlug: environment.slug
-        });
+    selectedUsers.map(async (user: { id: string; name: string; email: string }) => {
+      await createDynamicSecret.mutateAsync({
+        provider: {
+          type: DynamicSecretProviders.AzureEntraId,
+          inputs: {
+            userId: user.id,
+            tenantId: provider.tenantId,
+            email: user.email,
+            applicationId: provider.applicationId,
+            clientSecret: provider.clientSecret
+          }
+        },
+        maxTTL,
+        name: `${name}-${user.name}`,
+        path: secretPath,
+        defaultTTL,
+        projectSlug,
+        environmentSlug: environment.slug
       });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    });
+    onCompleted();
   };
 
   return (

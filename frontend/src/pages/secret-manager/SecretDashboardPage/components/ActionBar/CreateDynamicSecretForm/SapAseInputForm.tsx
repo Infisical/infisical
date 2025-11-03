@@ -4,7 +4,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
   AccordionContent,
@@ -105,26 +104,19 @@ sp_droplogin '{{username}}';`
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.SapAse, inputs: provider },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
+    await createDynamicSecret.mutateAsync({
+      provider: { type: DynamicSecretProviders.SapAse, inputs: provider },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
+    onCompleted();
   };
 
   return (

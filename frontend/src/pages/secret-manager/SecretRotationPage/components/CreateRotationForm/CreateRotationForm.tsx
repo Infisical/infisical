@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { createNotification } from "@app/components/notifications";
 import { Modal, ModalContent, Step, Stepper } from "@app/components/v2";
 import { useCreateSecretRotation } from "@app/hooks/api";
 import { TSecretRotationProviderTemplate } from "@app/hooks/api/types";
@@ -54,27 +53,19 @@ export const CreateRotationForm = ({
 
   const handleFormSubmit = async () => {
     if (!wizardData.current.input || !wizardData.current.output) return;
-    try {
-      await createSecretRotation({
-        workspaceId,
-        provider: provider.name,
-        customProvider,
-        secretPath: wizardData.current.output.secretPath,
-        environment: wizardData.current.output.environment,
-        interval: wizardData.current.output.interval,
-        inputs: wizardData.current.input,
-        outputs: wizardData.current.output.secrets
-      });
-      setWizardStep(0);
-      onToggle(false);
-      wizardData.current = {};
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to create secret rotation"
-      });
-    }
+    await createSecretRotation({
+      workspaceId,
+      provider: provider.name,
+      customProvider,
+      secretPath: wizardData.current.output.secretPath,
+      environment: wizardData.current.output.environment,
+      interval: wizardData.current.output.interval,
+      inputs: wizardData.current.input,
+      outputs: wizardData.current.output.secrets
+    });
+    setWizardStep(0);
+    onToggle(false);
+    wizardData.current = {};
   };
 
   return (

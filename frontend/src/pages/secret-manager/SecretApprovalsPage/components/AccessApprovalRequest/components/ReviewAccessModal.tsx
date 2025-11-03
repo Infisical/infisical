@@ -178,8 +178,7 @@ export const ReviewAccessRequestModal = ({
           text: `The request has been ${status}`,
           type: status === "approved" ? "success" : "info"
         });
-      } catch (error) {
-        console.error(error);
+      } catch {
         setIsLoading(null);
         return;
       }

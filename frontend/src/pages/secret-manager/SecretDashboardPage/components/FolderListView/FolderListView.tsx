@@ -69,73 +69,65 @@ export const FolderListView = ({
     oldFolderName?: string,
     oldFolderDescription?: string
   ) => {
-    try {
-      const updateFolderData = popUp.updateFolder.data;
-      if (!updateFolderData) throw new Error("Update folder data is required");
-      const { id: folderId, pendingAction, isPending } = updateFolderData as TSecretFolder;
+    const updateFolderData = popUp.updateFolder.data;
+    if (!updateFolderData) throw new Error("Update folder data is required");
+    const { id: folderId, pendingAction, isPending } = updateFolderData as TSecretFolder;
 
-      if (isBatchMode) {
-        const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
+    if (isBatchMode) {
+      const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
 
-        if (isEditingPendingCreation) {
-          const updatedCreate: PendingFolderCreate = {
-            id: folderId,
-            type: PendingAction.Create,
-            folderName: newFolderName,
-            description: newFolderDescription || undefined,
-            parentPath: secretPath,
-            timestamp: Date.now(),
-            resourceType: "folder"
-          };
+      if (isEditingPendingCreation) {
+        const updatedCreate: PendingFolderCreate = {
+          id: folderId,
+          type: PendingAction.Create,
+          folderName: newFolderName,
+          description: newFolderDescription || undefined,
+          parentPath: secretPath,
+          timestamp: Date.now(),
+          resourceType: "folder"
+        };
 
-          addPendingChange(updatedCreate, {
-            projectId,
-            environment,
-            secretPath
-          });
-        } else {
-          const updateChange: PendingFolderUpdate = {
-            id: folderId,
-            type: PendingAction.Update,
-            originalFolderName: oldFolderName || "",
-            folderName: newFolderName,
-            originalDescription: oldFolderDescription,
-            description: newFolderDescription || undefined,
-            timestamp: Date.now(),
-            resourceType: "folder"
-          };
+        addPendingChange(updatedCreate, {
+          projectId,
+          environment,
+          secretPath
+        });
+      } else {
+        const updateChange: PendingFolderUpdate = {
+          id: folderId,
+          type: PendingAction.Update,
+          originalFolderName: oldFolderName || "",
+          folderName: newFolderName,
+          originalDescription: oldFolderDescription,
+          description: newFolderDescription || undefined,
+          timestamp: Date.now(),
+          resourceType: "folder"
+        };
 
-          addPendingChange(updateChange, {
-            projectId,
-            environment,
-            secretPath
-          });
-        }
-
-        handlePopUpClose("updateFolder");
-        return;
+        addPendingChange(updateChange, {
+          projectId,
+          environment,
+          secretPath
+        });
       }
 
-      await updateFolder({
-        folderId,
-        name: newFolderName,
-        path: secretPath,
-        environment,
-        projectId,
-        description: newFolderDescription
-      });
       handlePopUpClose("updateFolder");
-      createNotification({
-        type: "success",
-        text: "Successfully saved folder"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to save folder"
-      });
+      return;
     }
+
+    await updateFolder({
+      folderId,
+      name: newFolderName,
+      path: secretPath,
+      environment,
+      projectId,
+      description: newFolderDescription
+    });
+    handlePopUpClose("updateFolder");
+    createNotification({
+      type: "success",
+      text: "Successfully saved folder"
+    });
   };
 
   const handleDeletePending = (id: string) => {
@@ -147,48 +139,40 @@ export const FolderListView = ({
   };
 
   const handleFolderDelete = async () => {
-    try {
-      const folderData = popUp.deleteFolder?.data as TSecretFolder;
+    const folderData = popUp.deleteFolder?.data as TSecretFolder;
 
-      if (isBatchMode) {
-        const pendingFolderDelete: PendingFolderDelete = {
-          id: folderData.id,
-          folderName: folderData.name,
-          folderPath: secretPath,
-          resourceType: "folder",
-          type: PendingAction.Delete,
-          timestamp: Date.now()
-        };
+    if (isBatchMode) {
+      const pendingFolderDelete: PendingFolderDelete = {
+        id: folderData.id,
+        folderName: folderData.name,
+        folderPath: secretPath,
+        resourceType: "folder",
+        type: PendingAction.Delete,
+        timestamp: Date.now()
+      };
 
-        addPendingChange(pendingFolderDelete, {
-          projectId,
-          environment,
-          secretPath
-        });
-
-        handlePopUpClose("deleteFolder");
-        return;
-      }
-
-      await deleteFolder({
-        folderId: folderData.id,
-        path: secretPath,
+      addPendingChange(pendingFolderDelete, {
+        projectId,
         environment,
-        projectId
+        secretPath
       });
 
       handlePopUpClose("deleteFolder");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted folder"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete folder"
-      });
+      return;
     }
+
+    await deleteFolder({
+      folderId: folderData.id,
+      path: secretPath,
+      environment,
+      projectId
+    });
+
+    handlePopUpClose("deleteFolder");
+    createNotification({
+      type: "success",
+      text: "Successfully deleted folder"
+    });
   };
 
   const handleFolderClick = (name: string, isPending?: boolean) => {

@@ -5,7 +5,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Accordion,
@@ -171,29 +170,22 @@ export const AzureSqlDatabaseInputForm = ({
     if (createDynamicSecret.isPending) return;
 
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.AzureSqlDatabase,
-          inputs: { ...provider, masterDatabase: "master" }
-        },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug,
-        metadata,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: {
+        type: DynamicSecretProviders.AzureSqlDatabase,
+        inputs: { ...provider, masterDatabase: "master" }
+      },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug,
+      metadata,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
+    onCompleted();
   };
 
   return (

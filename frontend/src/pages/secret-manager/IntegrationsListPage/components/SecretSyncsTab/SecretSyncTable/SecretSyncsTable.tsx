@@ -235,46 +235,32 @@ export const SecretSyncsTable = ({ secretSyncs }: Props) => {
 
     const isAutoSyncEnabled = !secretSync.isAutoSyncEnabled;
 
-    try {
-      await updateSync.mutateAsync({
-        syncId: secretSync.id,
-        destination: secretSync.destination,
-        isAutoSyncEnabled,
-        projectId: secretSync.projectId
-      });
+    await updateSync.mutateAsync({
+      syncId: secretSync.id,
+      destination: secretSync.destination,
+      isAutoSyncEnabled,
+      projectId: secretSync.projectId
+    });
 
-      createNotification({
-        text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to ${isAutoSyncEnabled ? "enable" : "disable"} auto-sync for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
+      type: "success"
+    });
   };
 
   const handleTriggerSync = async (secretSync: TSecretSync) => {
     const destinationName = SECRET_SYNC_MAP[secretSync.destination].name;
 
-    try {
-      await triggerSync.mutateAsync({
-        syncId: secretSync.id,
-        destination: secretSync.destination,
-        projectId: secretSync.projectId
-      });
+    await triggerSync.mutateAsync({
+      syncId: secretSync.id,
+      destination: secretSync.destination,
+      projectId: secretSync.projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered ${destinationName} Sync`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to trigger ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully triggered ${destinationName} Sync`,
+      type: "success"
+    });
   };
 
   return (

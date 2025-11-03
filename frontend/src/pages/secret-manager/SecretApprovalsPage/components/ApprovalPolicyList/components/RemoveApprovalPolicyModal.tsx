@@ -32,29 +32,22 @@ export const RemoveApprovalPolicyModal = ({
   const { currentProject } = useProject();
 
   const handleDeletePolicy = async () => {
-    try {
-      if (policyType === PolicyType.ChangePolicy) {
-        await deleteSecretApprovalPolicy({
-          projectId: currentProject.id,
-          id: policyId
-        });
-      } else {
-        await deleteAccessApprovalPolicy({
-          projectSlug: currentProject.slug,
-          id: policyId
-        });
-      }
-      createNotification({
-        type: "success",
-        text: "Successfully deleted policy"
+    if (policyType === PolicyType.ChangePolicy) {
+      await deleteSecretApprovalPolicy({
+        projectId: currentProject.id,
+        id: policyId
       });
-      onOpenChange(false);
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to delete policy"
+    } else {
+      await deleteAccessApprovalPolicy({
+        projectSlug: currentProject.slug,
+        id: policyId
       });
     }
+    createNotification({
+      type: "success",
+      text: "Successfully deleted policy"
+    });
+    onOpenChange(false);
   };
 
   const deleteSecretApprovalData = useGetSecretApprovalRequestCount({

@@ -441,30 +441,22 @@ export const CreateKubernetesDynamicSecretLease = ({
 
   const handleDynamicSecretLeaseCreate = async ({ ttl, namespace }: TKubernetesForm) => {
     if (createDynamicSecretLease.isPending) return;
-    try {
-      await createDynamicSecretLease.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        ttl,
-        dynamicSecretName,
-        config: {
-          namespace: namespace || undefined
-        },
-        provider
-      });
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      config: {
+        namespace: namespace || undefined
+      },
+      provider
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully leased dynamic secret"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to lease dynamic secret"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
   };
 
   const handleLeaseRegeneration = async (data: { ttl?: string }) => {
@@ -590,29 +582,21 @@ export const CreateDynamicSecretLease = ({
 
   const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
     if (createDynamicSecretLease.isPending) return;
-    try {
-      await createDynamicSecretLease.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        ttl,
-        dynamicSecretName,
-        provider
-      });
+    await createDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      provider
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully leased dynamic secret"
-      });
+    createNotification({
+      type: "success",
+      text: "Successfully leased dynamic secret"
+    });
 
-      setIsPreloading.off();
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to lease dynamic secret"
-      });
-    }
+    setIsPreloading.off();
   };
 
   const handleLeaseRegeneration = async (data: { ttl?: string }) => {
