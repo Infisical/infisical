@@ -7,8 +7,8 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -489,6 +489,37 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       });
 
       return { certificates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/acme/eab-secret/reveal",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateProfiles],
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          eabSecret: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const eabSecret = await server.services.certificateProfile.revealAcmeEabSecret({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        profileId: req.params.id
+      });
+      return { eabSecret };
     }
   });
 };

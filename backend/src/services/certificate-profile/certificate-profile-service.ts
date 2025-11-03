@@ -782,6 +782,59 @@ export const certificateProfileServiceFactory = ({
     };
   };
 
+  const revealAcmeEabSecret = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    profileId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    profileId: string;
+  }) => {
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+      ProjectPermissionSub.CertificateProfiles
+    );
+
+    if (profile.enrollmentType !== EnrollmentType.ACME) {
+      throw new ForbiddenRequestError({
+        message: "Profile is not configured for ACME enrollment"
+      });
+    }
+    if (!profile.acmeConfig) {
+      throw new NotFoundError({ message: "ACME configuration not found for this profile" });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: profile.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret });
+    return eabSecret.toString();
+  };
+
   return {
     createProfile,
     updateProfile,
@@ -791,6 +844,7 @@ export const certificateProfileServiceFactory = ({
     listProfiles,
     deleteProfile,
     getProfileCertificates,
-    getEstConfigurationByProfile
+    getEstConfigurationByProfile,
+    revealAcmeEabSecret
   };
 };
