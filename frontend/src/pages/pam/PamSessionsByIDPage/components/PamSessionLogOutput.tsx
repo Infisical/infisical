@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { HighlightText } from "@app/components/v2/HighlightText";
 import { PamResourceType } from "@app/hooks/api/pam";
 
 type TableLog = {
@@ -10,10 +11,12 @@ type TableLog = {
 
 export const PamSessionLogOutput = ({
   content,
-  resourceType
+  resourceType,
+  search
 }: {
   content: string;
   resourceType: PamResourceType;
+  search: string;
 }) => {
   const [isRawView, setIsRawView] = useState(false);
 
@@ -45,7 +48,9 @@ export const PamSessionLogOutput = ({
     return (
       <div className="font-sans">
         {isRawView ? (
-          <div className="font-mono break-all whitespace-pre-wrap">{content}</div>
+          <div className="font-mono break-all whitespace-pre-wrap">
+            <HighlightText text={content} highlight={search} />
+          </div>
         ) : (
           <>
             {parsedContent.command && (
@@ -57,7 +62,7 @@ export const PamSessionLogOutput = ({
                   <tr className="border-b border-mineshaft-600">
                     {headers.map((header) => (
                       <th key={header} className="p-2 font-semibold text-mineshaft-200 capitalize">
-                        {header.replace(/_/g, " ")}
+                        <HighlightText text={header.replace(/_/g, " ")} highlight={search} />
                       </th>
                     ))}
                   </tr>
@@ -71,7 +76,7 @@ export const PamSessionLogOutput = ({
                     >
                       {headers.map((header) => (
                         <td key={header} className="p-2">
-                          {String(row[header] ?? "")}
+                          <HighlightText text={String(row[header] ?? "")} highlight={search} />
                         </td>
                       ))}
                     </tr>
@@ -103,5 +108,9 @@ export const PamSessionLogOutput = ({
     );
   }
 
-  return <div className="font-mono break-all whitespace-pre-wrap">{content}</div>;
+  return (
+    <div className="font-mono break-all whitespace-pre-wrap">
+      <HighlightText text={content} highlight={search} />
+    </div>
+  );
 };

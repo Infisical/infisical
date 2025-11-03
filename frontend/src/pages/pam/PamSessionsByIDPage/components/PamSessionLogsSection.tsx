@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { useMemo, useState } from "react";
+import { faChevronRight, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
+import { Input } from "@app/components/v2";
+import { HighlightText } from "@app/components/v2/HighlightText";
 import { TPamSession } from "@app/hooks/api/pam";
 
 import { PamSessionLogOutput } from "./PamSessionLogOutput";
@@ -14,6 +16,7 @@ type Props = {
 
 export const PamSessionLogsSection = ({ session }: Props) => {
   const [expandedLogTimestamps, setExpandedLogTimestamps] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
 
   const toggleExpand = (timestamp: string) => {
     setExpandedLogTimestamps((prev) => {
@@ -24,15 +27,43 @@ export const PamSessionLogsSection = ({ session }: Props) => {
     });
   };
 
+  const filteredLogs = useMemo(
+    () =>
+      session.commandLogs.filter((log) => {
+        const { input, output } = log;
+
+        const searchValue = search.trim().toLowerCase();
+
+        return (
+          input.toLowerCase().includes(searchValue) || output.toLowerCase().includes(searchValue)
+        );
+      }),
+    [session.commandLogs, search]
+  );
+
   return (
     <div className="flex h-full w-full flex-col gap-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-medium text-mineshaft-100">Session Logs</h3>
       </div>
-      <div className="flex flex-col gap-2 overflow-y-auto text-xs">
-        {session.commandLogs.length > 0 ? (
-          session.commandLogs.map((log) => {
-            const isExpanded = expandedLogTimestamps.has(log.timestamp);
+
+      <div className="flex gap-2">
+        <Input
+          value={search}
+          onChange={(e) => {
+            const newSearch = e.target.value;
+            setSearch(newSearch);
+          }}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search logs..."
+          className="flex-1 bg-mineshaft-800"
+          containerClassName="bg-transparent"
+        />
+      </div>
+      <div className="flex grow flex-col gap-2 overflow-y-auto text-xs">
+        {filteredLogs.length > 0 ? (
+          filteredLogs.map((log) => {
+            const isExpanded = search.length || expandedLogTimestamps.has(log.timestamp);
             const formattedInput = formatLogContent(log.input);
 
             return (
@@ -62,7 +93,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                     isExpanded ? "break-all whitespace-pre-wrap" : "truncate"
                   }`}
                 >
-                  {formattedInput}
+                  <HighlightText text={formattedInput} highlight={search} />
                 </div>
 
                 <div
@@ -83,6 +114,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                           <PamSessionLogOutput
                             content={log.output}
                             resourceType={session.resourceType}
+                            search={search}
                           />
                         </div>
                       </>
@@ -93,8 +125,12 @@ export const PamSessionLogsSection = ({ session }: Props) => {
             );
           })
         ) : (
-          <div className="flex w-full grow items-center justify-center text-bunker-300">
-            {session.startedAt && session.endedAt ? (
+          <div className="flex grow items-center justify-center text-bunker-300">
+            {search.length ? (
+              <div className="text-center">
+                <div className="mb-2">No logs match search criteria</div>
+              </div>
+            ) : (
               <div className="text-center">
                 <div className="mb-2">Session logs are not yet available</div>
                 <div className="text-xs text-bunker-400">
@@ -103,8 +139,6 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                   If logs do not appear after some time, please contact your Gateway administrators.
                 </div>
               </div>
-            ) : (
-              "No session logs"
             )}
           </div>
         )}
