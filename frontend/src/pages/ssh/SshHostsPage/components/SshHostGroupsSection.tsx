@@ -25,8 +25,7 @@ export const SshHostGroupsSection = () => {
   const handleAddSshHostGroupModal = () => {
     if (!subscription?.sshHostGroups) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "You can manage hosts more efficiently with SSH host groups if you upgrade your Infisical plan to an Enterprise license.",
+        text: "Managing SSH host groups can be unlocked if you upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true
       });
     } else {
@@ -106,10 +105,8 @@ export const SshHostGroupsSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
-        isEnterpriseFeature={
-          (popUp.upgradePlan?.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
-        }
+        text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
     </div>
   );
