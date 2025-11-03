@@ -10,7 +10,7 @@ Feature: ACME Cert Profile
         "slug": "{profile_slug}",
         "description": "",
         "enrollmentType": "acme",
-        "caId": "{CA_ID}",
+        "caId": "{CERT_CA_ID}",
         "certificateTemplateId": "{CERT_TEMPLATE_ID}",
         "acmeConfig": {}
       }
