@@ -165,7 +165,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               <LogFilterItem
                 label="Events"
                 onClear={() => {
-                  resetField("eventType");
+                  setValue("eventType", [], { shouldDirty: true });
                 }}
               >
                 <Controller
@@ -250,7 +250,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
               <LogFilterItem
                 label="Source"
                 onClear={() => {
-                  resetField("userAgentType");
+                  setValue("userAgentType", undefined, { shouldDirty: true });
                 }}
               >
                 <Controller
@@ -289,10 +289,10 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                 <LogFilterItem
                   label="Project"
                   onClear={() => {
-                    resetField("project");
-                    resetField("environment");
-                    setValue("secretPath", "");
-                    setValue("secretKey", "");
+                    setValue("project", null, { shouldDirty: true });
+                    setValue("environment", undefined, { shouldDirty: true });
+                    setValue("secretPath", "", { shouldDirty: true });
+                    setValue("secretKey", "", { shouldDirty: true });
                   }}
                 >
                   <Controller
@@ -350,7 +350,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       }
                       className={twMerge(!selectedProject && "opacity-50")}
                       onClear={() => {
-                        resetField("environment");
+                        setValue("environment", undefined, { shouldDirty: true });
                       }}
                     >
                       <Controller
@@ -391,7 +391,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       }
                       className={twMerge(!selectedProject && "opacity-50")}
                       onClear={() => {
-                        setValue("secretPath", "");
+                        setValue("secretPath", "", { shouldDirty: true });
                       }}
                     >
                       <Controller
@@ -422,7 +422,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                       className={twMerge(!selectedProject && "opacity-50")}
                       label="Secret Key"
                       onClear={() => {
-                        setValue("secretKey", "");
+                        setValue("secretKey", "", { shouldDirty: true });
                       }}
                     >
                       <Controller
