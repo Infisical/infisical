@@ -2,6 +2,7 @@ import json
 import re
 import threading
 
+import faker
 import jq
 import requests
 import glom
@@ -107,6 +108,11 @@ def eval_var(context: Context, var_path: str, as_json: bool = True):
     return value
 
 
+@given("I make a random {faker_type} as {var_name}")
+def step_impl(context: Context, faker_type: str, var_name: str):
+    context.vars[var_name] = getattr(faker, faker_type)()
+
+
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     # TODO: Fixed value for now, just to make test much easier,
@@ -119,6 +125,13 @@ def step_impl(context: Context, profile_var: str):
 @when('I send a {method} request to "{url}"')
 def step_impl(context: Context, method: str, url: str):
     context.response = context.http_client.request(method, url.format(**context.vars))
+
+
+@when('I send a {method} request to "{url}" with JSON payload')
+def step_impl(context: Context, method: str, url: str):
+    context.response = context.http_client.request(
+        method, url.format(**context.vars), json_payload=context.text
+    )
 
 
 @when("I have an ACME client connecting to {url}")
@@ -257,6 +270,18 @@ def step_impl(context: Context, var_path: str, jq_query: str):
     expected_value = json.loads(context.text)
     assert result == expected_value, (
         f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {json.dumps(expected_value)!r}"
+    )
+
+
+@then("the value {var_path} with jq {jq_query} should be present")
+def step_impl(context: Context, var_path: str, jq_query: str):
+    value, result = apply_value_with_jq(
+        context=context,
+        var_path=var_path,
+        jq_query=jq_query,
+    )
+    assert result, (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} is not present"
     )
 
 
