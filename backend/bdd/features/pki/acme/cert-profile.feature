@@ -43,3 +43,7 @@ Feature: ACME Cert Profile
     Then the value response.status_code should be equal to 200
     Then the value response with jq ".eabKid" should be equal to "{profile_id}"
     Then the value response with jq ".eabSecret" should be present
+    And I memorize response with jq ".eabKid" as eab_kid
+    And I memorize response with jq ".eabSecret" as eab_secret
+    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id {eab_kid} with secret {eab_secret} as acme_account
