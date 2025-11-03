@@ -168,12 +168,7 @@ export const GatewayCliDeploymentMethod = () => {
           type: "info"
         });
         setStep("command");
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to generate token for the selected identity",
-          type: "error"
-        });
+      } catch {
         setIdentityToken("");
       }
     } else {

@@ -131,33 +131,28 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
           temporaryAccessStartTime: el.temporaryAccess.temporaryAccessStartTime
         };
 
-    try {
-      if (isCreate) {
-        await createIdentityProjectAdditionalPrivilege({
-          permissions: formRolePermission2API(el.permissions),
-          identityId,
-          projectId,
-          slug: el.slug || undefined,
-          type: accessType
-        });
-        createNotification({ type: "success", text: "Successfully created privilege" });
-      } else {
-        if (!projectId || !privilegeDetails?.id) return;
-        await updateIdentityProjectAdditionalPrivilege({
-          privilegeId: privilegeDetails.id,
-          permissions: formRolePermission2API(el.permissions),
-          projectId,
-          identityId,
-          slug: el.slug || undefined,
-          type: accessType
-        });
-        createNotification({ type: "success", text: "Successfully updated privilege" });
-      }
-      onGoBack();
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to update privilege" });
+    if (isCreate) {
+      await createIdentityProjectAdditionalPrivilege({
+        permissions: formRolePermission2API(el.permissions),
+        identityId,
+        projectId,
+        slug: el.slug || undefined,
+        type: accessType
+      });
+      createNotification({ type: "success", text: "Successfully created privilege" });
+    } else {
+      if (!projectId || !privilegeDetails?.id) return;
+      await updateIdentityProjectAdditionalPrivilege({
+        privilegeId: privilegeDetails.id,
+        permissions: formRolePermission2API(el.permissions),
+        projectId,
+        identityId,
+        slug: el.slug || undefined,
+        type: accessType
+      });
+      createNotification({ type: "success", text: "Successfully updated privilege" });
     }
+    onGoBack();
   };
 
   const privilegeTemporaryAccess = form.watch("temporaryAccess");

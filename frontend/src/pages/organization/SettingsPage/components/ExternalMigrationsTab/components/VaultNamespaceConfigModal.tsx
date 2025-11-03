@@ -74,36 +74,28 @@ export const VaultNamespaceConfigModal = ({ isOpen, onOpenChange, editConfig }: 
   }, [isOpen, editConfig, reset]);
 
   const onFormSubmit = async (data: FormData) => {
-    try {
-      if (isEdit && editConfig) {
-        await updateConfig({
-          id: editConfig.id,
-          namespace: data.namespace,
-          connectionId: data.connectionId
-        });
-        createNotification({
-          type: "success",
-          text: "Namespace configuration updated successfully"
-        });
-      } else {
-        await createConfig({
-          namespace: data.namespace,
-          connectionId: data.connectionId
-        });
-        createNotification({
-          type: "success",
-          text: "Namespace configuration created successfully"
-        });
-      }
-      reset();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Failed to save namespace config:", error);
+    if (isEdit && editConfig) {
+      await updateConfig({
+        id: editConfig.id,
+        namespace: data.namespace,
+        connectionId: data.connectionId
+      });
       createNotification({
-        type: "error",
-        text: `Failed to ${isEdit ? "update" : "create"} namespace configuration`
+        type: "success",
+        text: "Namespace configuration updated successfully"
+      });
+    } else {
+      await createConfig({
+        namespace: data.namespace,
+        connectionId: data.connectionId
+      });
+      createNotification({
+        type: "success",
+        text: "Namespace configuration created successfully"
       });
     }
+    reset();
+    onOpenChange(false);
   };
 
   const handleClose = () => {

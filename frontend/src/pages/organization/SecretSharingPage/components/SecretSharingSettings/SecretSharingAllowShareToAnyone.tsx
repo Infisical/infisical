@@ -9,25 +9,17 @@ export const SecretSharingAllowShareToAnyone = () => {
   const { mutateAsync } = useUpdateOrg();
 
   const handleSecretSharingToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      await mutateAsync({
-        orgId: currentOrg.id,
-        allowSecretSharingOutsideOrganization: value
-      });
+    await mutateAsync({
+      orgId: currentOrg.id,
+      allowSecretSharingOutsideOrganization: value
+    });
 
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} secret sharing to members outside of this organization`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} secret sharing to members outside of this organization`,
+      type: "success"
+    });
   };
 
   return (

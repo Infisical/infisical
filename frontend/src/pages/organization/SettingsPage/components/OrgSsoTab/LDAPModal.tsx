@@ -122,53 +122,45 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     caCert,
     shouldCloseModal = true
   }: TLDAPFormData & { shouldCloseModal?: boolean }) => {
-    try {
-      if (!currentOrg) return;
+    if (!currentOrg) return;
 
-      if (!data) {
-        await createMutateAsync({
-          organizationId: currentOrg.id,
-          isActive: false,
-          url,
-          bindDN,
-          bindPass,
-          searchBase,
-          searchFilter,
-          uniqueUserAttribute,
-          groupSearchBase,
-          groupSearchFilter,
-          caCert
-        });
-      } else {
-        await updateMutateAsync({
-          organizationId: currentOrg.id,
-          url,
-          bindDN,
-          bindPass,
-          searchBase,
-          searchFilter,
-          uniqueUserAttribute,
-          groupSearchBase,
-          groupSearchFilter,
-          caCert
-        });
-      }
-
-      if (shouldCloseModal) {
-        handlePopUpClose("addLDAP");
-      }
-
-      createNotification({
-        text: `Successfully ${!data ? "added" : "updated"} LDAP configuration`,
-        type: "success"
+    if (!data) {
+      await createMutateAsync({
+        organizationId: currentOrg.id,
+        isActive: false,
+        url,
+        bindDN,
+        bindPass,
+        searchBase,
+        searchFilter,
+        uniqueUserAttribute,
+        groupSearchBase,
+        groupSearchFilter,
+        caCert
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${!data ? "add" : "update"} LDAP configuration`,
-        type: "error"
+    } else {
+      await updateMutateAsync({
+        organizationId: currentOrg.id,
+        url,
+        bindDN,
+        bindPass,
+        searchBase,
+        searchFilter,
+        uniqueUserAttribute,
+        groupSearchBase,
+        groupSearchFilter,
+        caCert
       });
     }
+
+    if (shouldCloseModal) {
+      handlePopUpClose("addLDAP");
+    }
+
+    createNotification({
+      text: `Successfully ${!data ? "added" : "updated"} LDAP configuration`,
+      type: "success"
+    });
   };
 
   const handleTestLDAPConnection = async () => {

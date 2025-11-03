@@ -56,35 +56,27 @@ export const RequestSecretForm = () => {
   const onFormSubmit = async ({ name, accessType, expiresIn }: FormData) => {
     const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
-    try {
-      const { id } = await createSecretRequest({
-        name,
-        accessType,
-        expiresAt
-      });
+    const { id } = await createSecretRequest({
+      name,
+      accessType,
+      expiresAt
+    });
 
-      const link = new URL(`${window.location.origin}/secret-request/secret/${id}`);
-      if (subOrganization) {
-        link.searchParams.set("subOrganization", subOrganization);
-      }
-
-      setSecretLink(link.toString());
-      reset();
-
-      navigator.clipboard.writeText(link.toString());
-      setCopyTextSecret("secret");
-
-      createNotification({
-        text: "Shared secret link copied to clipboard.",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to create a shared secret.",
-        type: "error"
-      });
+    const link = new URL(`${window.location.origin}/secret-request/secret/${id}`);
+    if (subOrganization) {
+      link.searchParams.set("subOrganization", subOrganization);
     }
+
+    setSecretLink(link.toString());
+    reset();
+
+    navigator.clipboard.writeText(link.toString());
+    setCopyTextSecret("secret");
+
+    createNotification({
+      text: "Shared secret link copied to clipboard.",
+      type: "success"
+    });
   };
 
   const hasSecretLink = Boolean(secretLink);

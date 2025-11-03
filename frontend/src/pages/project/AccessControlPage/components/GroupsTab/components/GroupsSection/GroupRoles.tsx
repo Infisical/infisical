@@ -253,18 +253,14 @@ const GroupRolesForm = ({ projectRoles, roles, groupId, onClose }: FormProps) =>
         };
       });
 
-    try {
-      await updateGroupWorkspaceRole.mutateAsync({
-        projectId: currentProject?.id || "",
-        groupId,
-        roles: selectedRoles
-      });
-      createNotification({ text: "Successfully updated group role", type: "success" });
-      onClose();
-      setSearchRoles("");
-    } catch {
-      createNotification({ text: "Failed to update group role", type: "error" });
-    }
+    await updateGroupWorkspaceRole.mutateAsync({
+      projectId: currentProject?.id || "",
+      groupId,
+      roles: selectedRoles
+    });
+    createNotification({ text: "Successfully updated group role", type: "success" });
+    onClose();
+    setSearchRoles("");
   };
 
   return (
