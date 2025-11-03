@@ -171,10 +171,14 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         ttl,
         keyUsages: Object.entries(keyUsages)
           .filter(([, value]) => value)
-          .map(([key]) => key as CertKeyUsage),
+          .map(([key]) =>
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+          ),
         extendedKeyUsages: Object.entries(extendedKeyUsages)
           .filter(([, value]) => value)
-          .map(([key]) => key as CertExtendedKeyUsage)
+          .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
       });
 
       createNotification({
@@ -192,10 +196,14 @@ export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Pro
         ttl,
         keyUsages: Object.entries(keyUsages)
           .filter(([, value]) => value)
-          .map(([key]) => key as CertKeyUsage),
+          .map(([key]) =>
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+          ),
         extendedKeyUsages: Object.entries(extendedKeyUsages)
           .filter(([, value]) => value)
-          .map(([key]) => key as CertExtendedKeyUsage)
+          .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
       });
 
       createNotification({
