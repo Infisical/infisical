@@ -2,8 +2,8 @@ import { CaCapability, CaType } from "./certificate-authority-enums";
 
 export const CERTIFICATE_AUTHORITIES_TYPE_MAP: Record<CaType, string> = {
   [CaType.INTERNAL]: "Internal",
-  [CaType.ACME]: "ACME",
-  [CaType.AZURE_AD_CS]: "Azure AD Certificate Service"
+  [CaType.ACME]: "ACME-compatible CA",
+  [CaType.AZURE_AD_CS]: "Active Directory Certificate Service"
 };
 
 export const CERTIFICATE_AUTHORITIES_CAPABILITIES_MAP: Record<CaType, CaCapability[]> = {

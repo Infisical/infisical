@@ -2193,12 +2193,13 @@ export const registerRoutes = async (
 
   const pkiSyncService = pkiSyncServiceFactory({
     pkiSyncDAL,
+    certificateDAL,
+    certificateSyncDAL,
     pkiSubscriberDAL,
     appConnectionService,
     permissionService,
     licenseService,
-    pkiSyncQueue,
-    certificateSyncDAL
+    pkiSyncQueue
   });
 
   const pkiTemplateService = pkiTemplatesServiceFactory({

@@ -93,8 +93,8 @@ const PkiSyncCertificateSchema = z.object({
   certificateStatus: z.string().optional(),
   certificateNotBefore: z.date().optional(),
   certificateNotAfter: z.date().optional(),
-  certificateRenewBeforeDays: z.number().optional(),
-  certificateRenewalError: z.string().optional(),
+  certificateRenewBeforeDays: z.number().nullish(),
+  certificateRenewalError: z.string().nullish(),
   pkiSyncName: z.string().optional(),
   pkiSyncDestination: z.string().optional()
 });
@@ -233,26 +233,26 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       const { pkiSyncId } = req.params;
       const { offset, limit } = req.query;
 
-      const result = await server.services.pkiSync.listPkiSyncCertificates(
+      const { certificates, totalCount, pkiSyncInfo } = await server.services.pkiSync.listPkiSyncCertificates(
         { pkiSyncId, offset, limit },
         req.permission
       );
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: pkiSync.projectId,
+        projectId: pkiSyncInfo.projectId,
         event: {
-          type: EventType.GET_PKI_SYNC,
+          type: EventType.GET_PKI_SYNC_CERTIFICATES,
           metadata: {
             syncId: pkiSyncId,
-            destination: pkiSync.destination
+            destination: pkiSyncInfo.destination,
+            count: certificates.length,
+            certificateIds: certificates.map((c) => c.certificateId)
           }
         }
       });
 
-      return result;
+      return { certificates, totalCount };
     }
   });
 
@@ -294,21 +294,19 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
 
-      const addedCertificates = await server.services.pkiSync.addCertificatesToPkiSync(
+      const { addedCertificates, pkiSyncInfo } = await server.services.pkiSync.addCertificatesToPkiSync(
         { pkiSyncId, certificateIds },
         req.permission
       );
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: pkiSync.projectId,
+        projectId: pkiSyncInfo.projectId,
         event: {
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSync.name
+            name: pkiSyncInfo.name
           }
         }
       });
@@ -344,26 +342,24 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       const { pkiSyncId } = req.params;
       const { certificateIds } = req.body;
 
-      const result = await server.services.pkiSync.removeCertificatesFromPkiSync(
+      const { removedCount, pkiSyncInfo } = await server.services.pkiSync.removeCertificatesFromPkiSync(
         { pkiSyncId, certificateIds },
         req.permission
       );
 
-      const pkiSync = await server.services.pkiSync.findPkiSyncById({ id: pkiSyncId }, req.permission);
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: pkiSync.projectId,
+        projectId: pkiSyncInfo.projectId,
         event: {
           type: EventType.UPDATE_PKI_SYNC,
           metadata: {
             pkiSyncId,
-            name: pkiSync.name
+            name: pkiSyncInfo.name
           }
         }
       });
 
-      return result;
+      return { removedCount };
     }
   });
 };

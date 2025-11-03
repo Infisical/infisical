@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { faPlus, faSearch } from "@fortawesome/free-solid-svg-icons";
+import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -18,12 +19,15 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import {
+  PkiSync,
   useAddCertificatesToPkiSync,
   useListPkiSyncsWithCertificate,
   useRemoveCertificatesFromPkiSync
 } from "@app/hooks/api/pkiSyncs";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 type Props = {
   popUp: {
@@ -46,6 +50,7 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
   const [searchTerm, setSearchTerm] = useState("");
 
   const { currentProject } = useProject();
+  const navigate = useNavigate();
   const { certificateId, commonName } = popUp.data || {};
 
   const { data: pkiSyncs = [], isPending } = useListPkiSyncsWithCertificate(
@@ -79,6 +84,32 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
     setInitialSyncIds(new Set());
     setSearchTerm("");
     setCurrentPage(1);
+  };
+
+  const handleNavigateToPkiSyncs = () => {
+    if (!currentProject?.id) return;
+
+    navigate({
+      to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.PkiSyncs
+      }
+    });
+    handleClose();
+  };
+
+  const getDestinationDisplayName = (destination: string) => {
+    switch (destination) {
+      case PkiSync.AzureKeyVault:
+        return "Azure Key Vault";
+      case PkiSync.AwsCertificateManager:
+        return "AWS Certificate Manager";
+      default:
+        return destination;
+    }
   };
 
   useEffect(() => {
@@ -161,7 +192,7 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
             placeholder="Search PKI syncs by name..."
           />
         </div>
-        <div className="max-h-96 overflow-y-auto">
+        <div className="mt-4 max-h-96 overflow-y-auto">
           {isPending && (
             <div className="flex h-32 items-center justify-center">
               <div className="text-bunker-300">Loading PKI syncs...</div>
@@ -169,12 +200,24 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
           )}
           {!isPending && pkiSyncs.length === 0 && (
             <EmptyState title="No PKI syncs available" icon={faPlus}>
-              Create a PKI sync first to manage certificate syncing.
+              <div className="mt-1">
+                Create a{" "}
+                <button
+                  type="button"
+                  onClick={handleNavigateToPkiSyncs}
+                  className="cursor-pointer underline hover:text-mineshaft-300"
+                >
+                  PKI sync
+                </button>{" "}
+                first to manage certificate syncing.
+              </div>
             </EmptyState>
           )}
           {!isPending && pkiSyncs.length > 0 && filteredSyncs.length === 0 && searchTerm && (
             <EmptyState title="No PKI syncs found" icon={faSearch}>
-              No PKI syncs match your search criteria. Try a different search term.
+              <div className="mt-1">
+                No PKI syncs match your search criteria. Try a different search term.
+              </div>
             </EmptyState>
           )}
           {!isPending && filteredSyncs.length > 0 && (
@@ -209,9 +252,9 @@ export const CertificateManagePkiSyncsModal = ({ popUp, handlePopUpToggle }: Pro
                       <Td className="w-1/2 max-w-0">
                         <div
                           className="truncate capitalize"
-                          title={sync.destination.replace(/-/g, " ")}
+                          title={getDestinationDisplayName(sync.destination)}
                         >
-                          {sync.destination.replace(/-/g, " ")}
+                          {getDestinationDisplayName(sync.destination)}
                         </div>
                       </Td>
                     </Tr>

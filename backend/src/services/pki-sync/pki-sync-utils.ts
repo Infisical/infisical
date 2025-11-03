@@ -45,12 +45,13 @@ export const triggerAutoSyncForCertificate = async (
     }
 
     const allPkiSyncs = await dependencies.pkiSyncDAL.find({
-      isAutoSyncEnabled: true
+      isAutoSyncEnabled: true,
+      $in: {
+        id: pkiSyncIds
+      }
     });
 
-    const pkiSyncs = allPkiSyncs.filter((sync) => pkiSyncIds.includes(sync.id));
-
-    const syncPromises = pkiSyncs.map((pkiSync) =>
+    const syncPromises = allPkiSyncs.map((pkiSync) =>
       dependencies.pkiSyncQueue.queuePkiSyncSyncCertificatesById({ syncId: pkiSync.id })
     );
     await Promise.all(syncPromises);
@@ -65,7 +66,7 @@ export const addRenewedCertificateToSyncs = async (
   dependencies: {
     certificateSyncDAL: Pick<
       TCertificateSyncDALFactory,
-      "findPkiSyncIdsByCertificateId" | "removeCertificates" | "addCertificates"
+      "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
     >;
   },
   tx?: Knex
@@ -78,12 +79,25 @@ export const addRenewedCertificateToSyncs = async (
     }
 
     const addPromises = pkiSyncIds.map(async (pkiSyncId) => {
-      await dependencies.certificateSyncDAL.addCertificates(pkiSyncId, [newCertificateId], tx);
-    });
+      const oldCertificateRecord = await dependencies.certificateSyncDAL.findByPkiSyncAndCertificate(
+        pkiSyncId,
+        oldCertificateId
+      );
 
+      await dependencies.certificateSyncDAL.addCertificates(
+        pkiSyncId,
+        [
+          {
+            certificateId: newCertificateId,
+            externalIdentifier: oldCertificateRecord?.externalIdentifier || undefined
+          }
+        ],
+        tx
+      );
+    });
     await Promise.all(addPromises);
 
-    logger.info(`Successfully added renewed certificate ${newCertificateId} to ${pkiSyncIds.length} PKI sync(s)`);
+    logger.info(`Successfully added renewed certificate ${newCertificateId} to PKI sync(s)`);
   } catch (error) {
     logger.error(error, `Failed to add renewed certificate ${newCertificateId} to syncs:`);
     throw error;

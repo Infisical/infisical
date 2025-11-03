@@ -71,7 +71,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               isChecked={value}
             >
               <p>
-                Enable Inactive Certificate Removal{" "}
+                Enable Removal of Active/Revoked Certificates{" "}
                 <Tooltip
                   className="max-w-md"
                   content={
@@ -124,6 +124,51 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         </p>
                         <p className="mt-4">
                           When disabled, new certificates will be created with new ARNs, and old
+                          certificates will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.AzureKeyVault && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveVersion"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-version"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Version on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          When enabled, Infisical will create a new version of the existing
+                          certificate in Azure Key Vault during certificate renewal syncs,
+                          preserving the certificate name.
+                        </p>
+                        <p className="mt-4">
+                          This allows consuming services to continue using the same certificate name
+                          while automatically using the latest version without requiring manual
+                          updates.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, new certificates will be created with new names, and old
                           certificates will be removed.
                         </p>
                       </>

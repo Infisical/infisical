@@ -478,7 +478,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 disabled={!isAllowed}
                                 icon={<FontAwesomeIcon icon={faLink} />}
                               >
-                                PKI Syncs
+                                Manage PKI Syncs
                               </DropdownMenuItem>
                             )}
                           </ProjectPermissionCan>

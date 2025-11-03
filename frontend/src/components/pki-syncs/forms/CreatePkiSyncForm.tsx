@@ -23,6 +23,7 @@ type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
   destination: PkiSync;
   onCancel: () => void;
+  initialData?: any;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[] = [
@@ -33,7 +34,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[]
   { name: "Review", key: "review", fields: [] }
 ];
 
-export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) => {
+export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialData }: Props) => {
   const createPkiSync = useCreatePkiSync();
   const { currentProject } = useProject();
   const { name: destinationName } = PKI_SYNC_MAP[destination];
@@ -55,7 +56,8 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
         canRemoveCertificates: false,
         preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema
-      }
+      },
+      ...initialData
     } as Partial<TPkiSyncForm>,
     reValidateMode: "onChange"
   });

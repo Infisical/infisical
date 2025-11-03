@@ -6,6 +6,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { getAzureConnectionAccessToken } from "@app/services/app-connection/azure-key-vault";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
@@ -50,6 +51,16 @@ const isInfisicalManagedCertificate = (certificateName: string, pkiSync: TPkiSyn
 type TAzureKeyVaultPkiSyncFactoryDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    | "removeCertificates"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateById"
+    | "findByPkiSyncId"
+    | "updateSyncStatus"
+  >;
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
 
 const parseCertificateX509Props = (certPem: string) => {
@@ -192,7 +203,12 @@ const parseCertificateKeyProps = (certPem: string) => {
   }
 };
 
-export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TAzureKeyVaultPkiSyncFactoryDeps) => {
+export const azureKeyVaultPkiSyncFactory = ({
+  kmsService,
+  appConnectionDAL,
+  certificateSyncDAL,
+  certificateDAL
+}: TAzureKeyVaultPkiSyncFactoryDeps) => {
   const $getAzureKeyVaultCertificates = async (accessToken: string, vaultBaseUrl: string, syncId = "unknown") => {
     const paginateAzureKeyVaultCertificates = async () => {
       let result: GetAzureKeyVaultCertificate[] = [];
@@ -329,6 +345,20 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
       pkiSync.id
     );
 
+    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+    type SyncRecord = (typeof existingSyncRecords)[0];
+    const syncRecordsByCertId = new Map<string, SyncRecord>();
+    const syncRecordsByExternalId = new Map<string, SyncRecord>();
+
+    existingSyncRecords.forEach((record: SyncRecord) => {
+      if (record.certificateId) {
+        syncRecordsByCertId.set(record.certificateId, record);
+      }
+      if (record.externalIdentifier) {
+        syncRecordsByExternalId.set(record.externalIdentifier, record);
+      }
+    });
+
     const setCertificates: {
       key: string;
       cert: string;
@@ -338,48 +368,104 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
     }[] = [];
 
     const syncOptions = pkiSync.syncOptions as
-      | { certificateNameSchema?: string; canRemoveCertificates?: boolean }
+      | { certificateNameSchema?: string; canRemoveCertificates?: boolean; preserveVersion?: boolean }
       | undefined;
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
+    const preserveVersion = syncOptions?.preserveVersion ?? true;
 
-    // Track which certificates should exist in Azure Key Vault
-    const activeCertificateNames = Object.keys(certificateMap);
+    const activeExternalIdentifiers = new Set<string>();
 
     // Iterate through certificates to sync to Azure Key Vault
-    Object.entries(certificateMap).forEach(([certName, { cert, privateKey, certificateChain, certificateId }]) => {
+    for (const [certName, { cert, privateKey, certificateChain, certificateId }] of Object.entries(certificateMap)) {
       if (disabledAzureKeyVaultCertificateKeys.includes(certName)) {
-        return;
+        // eslint-disable-next-line no-continue
+        continue;
       }
 
-      const existingCert = vaultCertificates[certName];
-      const shouldUpdateCert = !existingCert || existingCert.cert !== cert;
+      if (preserveVersion && typeof certificateId === "string") {
+        const certificate = await certificateDAL.findById(certificateId);
+        if (certificate?.renewedByCertificateId) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
 
-      if (shouldUpdateCert) {
+      let targetCertName = certName;
+      let shouldCreateNew = false;
+
+      if (typeof certificateId === "string") {
+        const existingSyncRecord = syncRecordsByCertId.get(certificateId);
+
+        if (existingSyncRecord?.externalIdentifier) {
+          const existingAzureCert = vaultCertificates[existingSyncRecord.externalIdentifier];
+
+          if (existingAzureCert && preserveVersion) {
+            targetCertName = existingSyncRecord.externalIdentifier;
+            activeExternalIdentifiers.add(targetCertName);
+
+            const shouldUpdateCert = existingAzureCert.cert !== cert;
+            if (shouldUpdateCert) {
+              shouldCreateNew = true;
+            }
+          } else if (!existingAzureCert) {
+            shouldCreateNew = true;
+          } else if (!preserveVersion) {
+            shouldCreateNew = true;
+          }
+        } else {
+          shouldCreateNew = true;
+        }
+      } else {
+        shouldCreateNew = true;
+      }
+
+      if (shouldCreateNew || !vaultCertificates[targetCertName] || vaultCertificates[targetCertName].cert !== cert) {
         setCertificates.push({
-          key: certName,
+          key: targetCertName,
           cert,
           privateKey,
           certificateChain,
           certificateId
         });
       }
-    });
 
-    // Identify expired/removed certificates that need to be cleaned up from Azure Key Vault
-    // Only remove certificates that were managed by Infisical (match naming schema)
-    const certificatesToRemove = canRemoveCertificates
-      ? Object.keys(vaultCertificates).filter(
-          (vaultCertName) =>
-            isInfisicalManagedCertificate(vaultCertName, pkiSync) &&
-            !activeCertificateNames.includes(vaultCertName) &&
-            !disabledAzureKeyVaultCertificateKeys.includes(vaultCertName)
-        )
-      : [];
+      if (targetCertName) {
+        activeExternalIdentifiers.add(targetCertName);
+      }
+    }
+
+    const certificatesToRemove: string[] = [];
+
+    if (canRemoveCertificates) {
+      existingSyncRecords.forEach((syncRecord) => {
+        if (syncRecord.externalIdentifier && !activeExternalIdentifiers.has(syncRecord.externalIdentifier)) {
+          if (vaultCertificates[syncRecord.externalIdentifier]) {
+            certificatesToRemove.push(syncRecord.externalIdentifier);
+          }
+        }
+      });
+
+      Object.keys(vaultCertificates).forEach((certificateName) => {
+        const isInfisicalManaged = isInfisicalManagedCertificate(certificateName, pkiSync);
+
+        if (isInfisicalManaged) {
+          const isTrackedInSyncRecords = existingSyncRecords.some(
+            (record) => record.externalIdentifier === certificateName
+          );
+
+          const isInActiveSet = activeExternalIdentifiers.has(certificateName);
+
+          if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(certificateName)) {
+            certificatesToRemove.push(certificateName);
+          }
+        }
+      });
+    }
 
     // Upload certificates to Azure Key Vault with rate limiting
     const uploadResults = await executeWithConcurrencyLimit(
       setCertificates,
-      async ({ key, cert, privateKey, certificateChain }) => {
+      async ({ key, cert, privateKey, certificateChain, certificateId }) => {
         try {
           // Combine private key, certificate, and certificate chain in PEM format for Azure Key Vault
           let combinedPem = "";
@@ -440,6 +526,31 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
               }
             }
           );
+
+          if (certificateId) {
+            const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+            if (existingCertSync) {
+              await certificateSyncDAL.updateById(existingCertSync.id, {
+                externalIdentifier: key,
+                syncStatus: CertificateSyncStatus.Succeeded,
+                lastSyncedAt: new Date()
+              });
+            } else {
+              await certificateSyncDAL.addCertificates(pkiSync.id, [
+                {
+                  certificateId,
+                  externalIdentifier: key
+                }
+              ]);
+            }
+
+            if (preserveVersion) {
+              const currentCertificate = await certificateDAL.findById(certificateId);
+              if (currentCertificate?.renewedFromCertificateId) {
+                await certificateSyncDAL.removeCertificates(pkiSync.id, [currentCertificate.renewedFromCertificateId]);
+              }
+            }
+          }
 
           return { key, success: true, response: response.data as unknown };
         } catch (error) {
@@ -622,13 +733,33 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
     // Cast destination config to Azure Key Vault config
     const destinationConfig = pkiSync.destinationConfig as TAzureKeyVaultPkiSyncConfig;
 
-    // Only remove certificates that are managed by Infisical (match naming schema)
-    const infisicalManagedCertNames = certificateNames.filter((certName) =>
-      isInfisicalManagedCertificate(certName, pkiSync)
-    );
+    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+    const certificateNamesToRemove: string[] = [];
+    const certificateIdToNameMap = new Map<string, string>();
+
+    for (const certName of certificateNames) {
+      if (deps?.certificateMap?.[certName]?.certificateId) {
+        const { certificateId } = deps.certificateMap[certName];
+
+        const syncRecord = existingSyncRecords.find((record) => record.certificateId === certificateId);
+
+        if (syncRecord?.externalIdentifier && typeof certificateId === "string") {
+          certificateNamesToRemove.push(syncRecord.externalIdentifier);
+          certificateIdToNameMap.set(certificateId, syncRecord.externalIdentifier);
+        }
+      }
+    }
+
+    if (certificateNamesToRemove.length === 0) {
+      return {
+        removed: 0,
+        failed: 0,
+        skipped: certificateNames.length
+      };
+    }
 
     const results = await executeWithConcurrencyLimit(
-      infisicalManagedCertNames,
+      certificateNamesToRemove,
       async (certName) => {
         try {
           const response = await request.delete(
@@ -663,26 +794,41 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
       },
       { operation: "remove-specific-certificates", syncId: pkiSync.id }
     );
+
     const failedRemovals = results.filter((result) => result.status === "rejected");
 
-    if (failedRemovals.length > 0 && deps?.certificateSyncDAL && deps?.certificateMap) {
+    if (failedRemovals.length > 0 && deps?.certificateSyncDAL) {
       for (const failure of failedRemovals) {
         if (failure.status === "rejected") {
-          const failedIndex = results.indexOf(failure);
-          const failedCertName = infisicalManagedCertNames[failedIndex];
-          if (failedCertName && deps.certificateMap[failedCertName]?.certificateId) {
-            const { certificateId } = deps.certificateMap[failedCertName];
-            if (certificateId) {
-              const errorMessage = (failure.reason as Error)?.message || "Unknown error";
-              await deps.certificateSyncDAL.updateSyncStatus(
-                pkiSync.id,
-                certificateId,
-                CertificateSyncStatus.Failed,
-                `Failed to remove from Azure: ${errorMessage}`
-              );
-            }
+          const failedCertName = certificateNamesToRemove[results.indexOf(failure)];
+
+          const certificateId = Array.from(certificateIdToNameMap.entries()).find(
+            ([, name]) => name === failedCertName
+          )?.[0];
+
+          if (certificateId) {
+            const errorMessage = (failure.reason as Error)?.message || "Unknown error";
+            await deps.certificateSyncDAL.updateSyncStatus(
+              pkiSync.id,
+              certificateId,
+              CertificateSyncStatus.Failed,
+              `Failed to remove from Azure: ${errorMessage}`
+            );
           }
         }
+      }
+    }
+
+    const successfulRemovals = results.filter((result) => result.status === "fulfilled");
+    if (successfulRemovals.length > 0) {
+      const successfulCertNames = new Set(successfulRemovals.map((_, index) => certificateNamesToRemove[index]));
+
+      const certificateIdsToRemove = Array.from(certificateIdToNameMap.entries())
+        .filter(([, name]) => successfulCertNames.has(name))
+        .map(([certificateId]) => certificateId);
+
+      if (certificateIdsToRemove.length > 0) {
+        await certificateSyncDAL.removeCertificates(pkiSync.id, certificateIdsToRemove);
       }
     }
 
@@ -698,16 +844,16 @@ export const azureKeyVaultPkiSyncFactory = ({ kmsService, appConnectionDAL }: TA
         message: `Failed to remove ${failedRemovals.length} certificate(s) from Azure Key Vault`,
         context: {
           failedReasons,
-          totalCertificates: infisicalManagedCertNames.length,
+          totalCertificates: certificateNamesToRemove.length,
           failedCount: failedRemovals.length
         }
       });
     }
 
     return {
-      removed: infisicalManagedCertNames.length - failedRemovals.length,
+      removed: certificateNamesToRemove.length - failedRemovals.length,
       failed: failedRemovals.length,
-      skipped: certificateNames.length - infisicalManagedCertNames.length
+      skipped: certificateNames.length - certificateNamesToRemove.length
     };
   };
 

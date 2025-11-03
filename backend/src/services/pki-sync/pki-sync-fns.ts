@@ -204,7 +204,12 @@ export const PkiSyncFns = {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
-        const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory(dependencies);
+        const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
         return azureKeyVaultPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.AwsCertificateManager: {
@@ -236,7 +241,12 @@ export const PkiSyncFns = {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
         checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
-        const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory(dependencies);
+        const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
+          appConnectionDAL: dependencies.appConnectionDAL,
+          kmsService: dependencies.kmsService,
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
         await azureKeyVaultPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap

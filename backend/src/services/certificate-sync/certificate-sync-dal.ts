@@ -72,14 +72,15 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
 
   const addCertificates = async (
     pkiSyncId: string,
-    certificateIds: string[],
+    certificateData: Array<{ certificateId: string; externalIdentifier?: string }>,
     tx?: Knex
   ): Promise<TCertificateSyncs[]> => {
     try {
-      const insertData = certificateIds.map((certificateId) => ({
+      const insertData = certificateData.map(({ certificateId, externalIdentifier }) => ({
         pkiSyncId,
         certificateId,
-        syncStatus: CertificateSyncStatus.Pending
+        syncStatus: CertificateSyncStatus.Pending,
+        externalIdentifier
       }));
 
       const docs = await (tx || db)(TableName.CertificateSync).insert(insertData).returning("*");
@@ -184,7 +185,7 @@ export const certificateSyncDALFactory = (db: TDbClient) => {
       certificateStatus?: string;
       certificateNotBefore?: Date;
       certificateNotAfter?: Date;
-      certificateRenewBeforeDays?: number;
+      certificateRenewBeforeDays?: number | null;
       certificateRenewedByCertificateId?: string;
       certificateRenewalError?: string;
       pkiSyncName?: string;
