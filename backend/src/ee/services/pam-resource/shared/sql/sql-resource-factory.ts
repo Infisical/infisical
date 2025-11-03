@@ -1,11 +1,10 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import * as pg from "pg";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
-import { BadRequestError } from "@app/lib/errors";
+import { BadRequestError, DatabaseError } from "@app/lib/errors";
 import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -97,7 +96,7 @@ const makeSqlConnection = (
           try {
             await client.raw(SIMPLE_QUERY);
           } catch (error) {
-            if (error instanceof pg.DatabaseError) {
+            if (error instanceof DatabaseError) {
               // Hacky way to know if we successfully hit the database.
               // TODO: potentially two approaches to solve the problem.
               //       1. change the work flow, add account first then resource
