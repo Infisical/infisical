@@ -419,13 +419,18 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" ${
-              orderDirection ?? OrderByDirection.ASC
-            }) as rank`
+            `DENSE_RANK() OVER (ORDER BY CASE WHEN ${TableName.SecretFolder}."name" LIKE '\\_%' THEN ${orderDirection === OrderByDirection.ASC ? "0" : "1"} ELSE ${orderDirection === OrderByDirection.ASC ? "1" : "0"} END,
+            LOWER(${TableName.SecretFolder}."name") ${orderDirection},
+            ${TableName.SecretFolder}."name" ${orderDirection}
+        ) as rank`
           ),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
-        .orderBy(`${TableName.SecretFolder}.${orderBy}`, orderDirection);
+        .orderByRaw(
+          `CASE WHEN ${TableName.SecretFolder}.${orderBy} LIKE '\\_%' THEN ${orderDirection === OrderByDirection.ASC ? "0" : "1"} ELSE ${orderDirection === OrderByDirection.ASC ? "1" : "0"} END`
+        )
+        .orderByRaw(`LOWER(${TableName.SecretFolder}.${orderBy}) ${orderDirection}`)
+        .orderByRaw(`${TableName.SecretFolder}.${orderBy} ${orderDirection}`);
 
       if (limit) {
         const rankOffset = offset + 1; // ranks start from 1
@@ -434,7 +439,12 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .select("*")
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
-          .andWhere("w.rank", "<", rankOffset + limit);
+          .andWhere("w.rank", "<", rankOffset + limit)
+          .orderByRaw(
+            `CASE WHEN "w"."${orderBy}" LIKE '\\_%' THEN ${orderDirection === OrderByDirection.ASC ? "0" : "1"} ELSE ${orderDirection === OrderByDirection.ASC ? "1" : "0"} END`
+          )
+          .orderByRaw(`LOWER("w"."${orderBy}") ${orderDirection}`)
+          .orderByRaw(`"w"."${orderBy}" ${orderDirection}`);
       }
 
       const folders = await query;
