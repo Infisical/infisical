@@ -145,9 +145,13 @@ def step_impl(context: Context, token_var: str):
 
 @when('I send a {method} request to "{url}"')
 def step_impl(context: Context, method: str, url: str):
-    context.response = context.http_client.request(
+    logger.debug("Sending %s request to %s", method, url)
+    response = context.http_client.request(
         method, url.format(**context.vars), headers=prepare_headers(context)
     )
+    context.vars["response"] = response
+    logger.debug("Response status: %r", response.status_code)
+    logger.debug("Response JSON payload: %r", response.json())
 
 
 @when('I send a {method} request to "{url}" with JSON payload')
@@ -166,7 +170,6 @@ def step_impl(context: Context, method: str, url: str):
         headers=prepare_headers(context),
         json=json_payload,
     )
-    context.response = response
     context.vars["response"] = response
     logger.debug("Response status: %r", response.status_code)
     logger.debug("Response JSON payload: %r", response.json())
@@ -360,6 +363,22 @@ def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
     expected_value = json.loads(expected)
     assert value == expected_value, f"{value!r} does not match {expected_value!r}"
+
+
+@then('I memorize {var_path} with jq "{jq_query}" as {var_name}')
+def step_impl(context: Context, var_path: str, jq_query, var_name: str):
+    _, value = apply_value_with_jq(
+        context=context,
+        var_path=var_path,
+        jq_query=jq_query,
+    )
+    context.vars[var_name] = value
+
+
+@then("I memorize {var_path} as {var_name}")
+def step_impl(context: Context, var_path: str, var_name: str):
+    value = eval_var(context, var_path)
+    context.vars[var_name] = value
 
 
 @then("I print the value {var_path}")
