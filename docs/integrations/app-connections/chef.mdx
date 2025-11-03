@@ -1,0 +1,142 @@
+---
+title: "Chef Connection"
+description: "Learn how to configure a Chef Connection for Infisical."
+---
+
+Infisical supports the use of User Private Key to connect with Chef Server.
+
+Please access your **starter kit** to get all the required information to create a Chef Connection.
+
+<Accordion title="If you don't have a starter kit">
+  <Warning>
+    If you download a new starter kit, your previous private key/user key will
+    no longer be valid. Please make sure to update all the places that use the
+    previous private key.
+  </Warning>
+  <Steps>
+    <Step title="Navigate to your Chef Server Dashboard, and click on the 'Organizations' tab">
+      ![Chef Server User Keys](/images/app-connections/chef/chef-dashboard.png)
+    </Step>
+    <Step title="Click on the organization you want to connect to, and then click on the 'Starter Kit' button">
+      ![Starter Kit](/images/app-connections/chef/starter-kit.png)
+    </Step>
+    <Step title="Click on the 'Download Starter Kit' button to download the starter kit">
+      ![Download Starter
+      Kit](/images/app-connections/chef/download-starter-kit.png)
+    </Step>
+    <Step title='Download the starter kit zip file and extract the contents'>
+      ![Extract Starter
+      Kit](/images/app-connections/chef/extract-starter-kit.png)
+    </Step>
+  </Steps>
+</Accordion>
+
+<Steps>
+  <Step title="Open your starter kit's folder">
+    Open your starter kit's folder(or `chef-repo`) and navigate to the `.chef`
+    folder.
+    <Note>
+      Please make sure you have hidden files visible in your file explorer.
+    </Note>
+    ![.chef folder](/images/app-connections/chef/chef-folder.png)
+  </Step>
+  <Step title='Copy the private key'>
+    In the `.chef` folder, you will find a `[your-username].pem` file. ![Private
+    Key File](/images/app-connections/chef/private-key-file.png)
+
+    **Private Key:** Copy the content of the private key file.
+
+  </Step>
+  <Step title='Open the config.rb file'>
+    Open the `config.rb` file and copy the content of the file.
+    ![Config.rb File Content](/images/app-connections/chef/chef-connection-details.png)
+
+    **User Name(1):** The user name of the chef user.
+
+    **Server URL(2):** The server url of the chef server.
+
+    **Organization Name(3):** The organization name of the chef server.
+
+  </Step>
+</Steps>
+
+## Create a Chef Connection in Infisical via UI
+
+<Tabs>
+  <Tab title="Infisical UI">
+    <Steps>
+      <Step title="Navigate to App Connections">
+        In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
+        ![App Connections Tab](/images/app-connections/general/add-connection.png)
+      </Step>
+      <Step title="Select Chef Connection">
+        Click **+ Add Connection** and choose **Chef** Connection from the list of integrations.
+        ![Select Chef Connection](/images/app-connections/chef/app-connection-option.png)
+      </Step>
+      <Step title="Fill out the Chef Connection form">
+        Complete the form by providing:
+        - A descriptive name for the connection
+        - An optional description
+        - Server URL(optional): The URL of the Chef server to connect with (defaults to https://api.chef.io)
+        - Organization short name
+        - User name
+        - Private key: Your Chef user's private key (.pem file)
+
+        ![Chef Connection Modal](/images/app-connections/chef/app-connection-form.png)
+      </Step>
+      <Step title="Connection created">
+        After submitting the form, your **Chef Connection** will be successfully created and ready to use with your Infisical project.
+        ![Chef Connection Created](/images/app-connections/chef/app-connection-generated.png)
+      </Step>
+    </Steps>
+
+  </Tab>
+
+  <Tab title="API">
+    To create a Chef Connection via API, send a request to the [Create Chef Connection](/api-reference/endpoints/app-connections/chef/create) endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl    --request POST \
+            --url https://app.infisical.com/api/v1/app-connections/chef \
+            --header 'Content-Type: application/json' \
+            --data '{
+                "name": "my-chef-connection",
+                "method": "user-key",
+                "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                "credentials": {
+                    "orgName": "my-org",
+                    "userName": "my-user",
+                    "privateKey": "your-private-key"
+                }
+            }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "appConnection": {
+          "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+          "name": "my-chef-connection",
+          "description": null,
+          "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+          "version": 1,
+          "orgId": "abcdef12-3456-7890-abcd-ef1234567890",
+          "createdAt": "2025-10-13T10:15:00.000Z",
+          "updatedAt": "2025-10-13T10:15:00.000Z",
+          "isPlatformManagedCredentials": false,
+          "credentialsHash": "d41d8cd98f00b204e9800998ecf8427e",
+          "app": "chef",
+          "method": "user-key",
+          "credentials": {
+            "orgName": "my-org",
+            "userName": "my-user",
+          }
+      }
+    }
+    ```
+
+  </Tab>
+</Tabs>

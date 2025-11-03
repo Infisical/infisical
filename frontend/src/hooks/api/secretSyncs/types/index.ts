@@ -10,6 +10,7 @@ import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TBitbucketSync } from "./bitbucket-sync";
 import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
+import { TChefSync } from "./chef-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -73,7 +74,8 @@ export type TSecretSync =
   | TNetlifySync
   | TNorthflankSync
   | TBitbucketSync
-  | TLaravelForgeSync;
+  | TLaravelForgeSync
+  | TChefSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

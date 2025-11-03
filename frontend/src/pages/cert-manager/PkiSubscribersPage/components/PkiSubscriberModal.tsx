@@ -350,8 +350,14 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName,
         subjectAlternativeNames: subjectAlternativeNamesList,
         ttl,
-        keyUsages: keyUsagesList,
-        extendedKeyUsages: extendedKeyUsagesList,
+        keyUsages: keyUsagesList.map((key) =>
+          key === CertKeyUsage.CRL_SIGN
+            ? "cRLSign"
+            : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+        ),
+        extendedKeyUsages: extendedKeyUsagesList.map((key) =>
+          key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+        ),
         enableAutoRenewal,
         autoRenewalPeriodInDays,
         properties: Object.keys(properties).length > 0 ? properties : undefined
@@ -364,8 +370,14 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
         commonName,
         subjectAlternativeNames: subjectAlternativeNamesList,
         ttl,
-        keyUsages: keyUsagesList,
-        extendedKeyUsages: extendedKeyUsagesList,
+        keyUsages: keyUsagesList.map((key) =>
+          key === CertKeyUsage.CRL_SIGN
+            ? "cRLSign"
+            : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+        ),
+        extendedKeyUsages: extendedKeyUsagesList.map((key) =>
+          key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+        ),
         enableAutoRenewal,
         autoRenewalPeriodInDays,
         properties: Object.keys(properties).length > 0 ? properties : undefined

@@ -48,6 +48,7 @@ import {
   ChecklyConnectionListItemSchema,
   SanitizedChecklyConnectionSchema
 } from "@app/services/app-connection/checkly";
+import { ChefConnectionListItemSchema, SanitizedChefConnectionSchema } from "@app/services/app-connection/chef";
 import {
   CloudflareConnectionListItemSchema,
   SanitizedCloudflareConnectionSchema
@@ -168,7 +169,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
-  ...SanitizedLaravelForgeConnectionSchema.options
+  ...SanitizedLaravelForgeConnectionSchema.options,
+  ...SanitizedChefConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -212,7 +214,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
-  LaravelForgeConnectionListItemSchema
+  LaravelForgeConnectionListItemSchema,
+  ChefConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

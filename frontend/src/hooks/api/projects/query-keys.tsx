@@ -39,12 +39,22 @@ export const projectKeys = {
   specificProjectCertificates: ({
     projectId,
     offset,
-    limit
+    limit,
+    friendlyName,
+    commonName,
+    forPkiSync
   }: {
     projectId: string;
     offset: number;
     limit: number;
-  }) => [...projectKeys.forProjectCertificates(projectId), { offset, limit }] as const,
+    friendlyName?: string;
+    commonName?: string;
+    forPkiSync?: boolean;
+  }) =>
+    [
+      ...projectKeys.forProjectCertificates(projectId),
+      { offset, limit, friendlyName, commonName, forPkiSync }
+    ] as const,
   getProjectPkiAlerts: (projectId: string) => [{ projectId }, "project-pki-alerts"] as const,
   getProjectPkiSubscribers: (projectId: string) =>
     [{ projectId }, "project-pki-subscribers"] as const,

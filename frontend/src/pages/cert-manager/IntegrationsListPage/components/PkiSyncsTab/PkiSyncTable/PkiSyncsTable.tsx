@@ -57,7 +57,6 @@ import { PkiSyncRow } from "./PkiSyncRow";
 
 enum PkiSyncsOrderBy {
   Destination = "destination",
-  Source = "source",
   Name = "name",
   Status = "status"
 }
@@ -160,14 +159,6 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
           const [syncOne, syncTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
 
           switch (orderBy) {
-            case PkiSyncsOrderBy.Source:
-              return (syncOne.subscriber?.name ?? syncOne.subscriberId ?? "")
-                .toLowerCase()
-                .localeCompare(
-                  syncTwo.subscriber?.name?.toLowerCase() ??
-                    syncTwo.subscriberId?.toLowerCase() ??
-                    ""
-                );
             case PkiSyncsOrderBy.Destination:
               return getPkiSyncDestinationColValues(syncOne)
                 .primaryText.toLowerCase()
@@ -356,7 +347,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
           <THead>
             <Tr>
               <Th className="w-2" />
-              <Th className="w-1/4">
+              <Th className="w-1/2">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -369,20 +360,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="w-1/3">
-                <div className="flex items-center">
-                  Source
-                  <IconButton
-                    variant="plain"
-                    className={getClassName(PkiSyncsOrderBy.Source)}
-                    ariaLabel="sort"
-                    onClick={() => handleSort(PkiSyncsOrderBy.Source)}
-                  >
-                    <FontAwesomeIcon icon={getColSortIcon(PkiSyncsOrderBy.Source)} />
-                  </IconButton>
-                </div>
-              </Th>
-              <Th className="w-1/3">
+              <Th className="w-1/4">
                 <div className="flex items-center">
                   Destination
                   <IconButton
@@ -395,7 +373,7 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th className="min-w-42">
+              <Th className="w-1/4 min-w-42">
                 <div className="flex items-center">
                   Status
                   <IconButton

@@ -10,6 +10,7 @@ import { registerAzureKeyVaultSyncRouter } from "./azure-key-vault-sync-router";
 import { registerBitbucketSyncRouter } from "./bitbucket-sync-router";
 import { registerCamundaSyncRouter } from "./camunda-sync-router";
 import { registerChecklySyncRouter } from "./checkly-sync-router";
+import { registerChefSyncRouter } from "./chef-sync-router";
 import { registerCloudflarePagesSyncRouter } from "./cloudflare-pages-sync-router";
 import { registerCloudflareWorkersSyncRouter } from "./cloudflare-workers-sync-router";
 import { registerDatabricksSyncRouter } from "./databricks-sync-router";
@@ -67,5 +68,6 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Netlify]: registerNetlifySyncRouter,
   [SecretSync.Northflank]: registerNorthflankSyncRouter,
   [SecretSync.Bitbucket]: registerBitbucketSyncRouter,
-  [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter
+  [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter,
+  [SecretSync.Chef]: registerChefSyncRouter
 };

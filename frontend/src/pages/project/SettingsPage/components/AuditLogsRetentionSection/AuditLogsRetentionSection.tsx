@@ -41,8 +41,7 @@ export const AuditLogsRetentionSection = () => {
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
     if (!subscription?.auditLogs) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "You can only configure audit logs retention if you switch to Infisical's Pro plan."
+        text: "Configuring audit logs retention can be unlocked if you upgrade to Infisical Pro plan."
       });
 
       return;
@@ -50,8 +49,7 @@ export const AuditLogsRetentionSection = () => {
 
     if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "To update your audit logs retention period to a higher value, switch to Infisical's Pro plan."
+        text: "Updating audit logs retention period to a higher value can be unlocked if you upgrade to Infisical Pro plan."
       });
 
       return;
@@ -116,7 +114,7 @@ export const AuditLogsRetentionSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
+        text={popUp.upgradePlan?.data?.text}
       />
     </>
   );

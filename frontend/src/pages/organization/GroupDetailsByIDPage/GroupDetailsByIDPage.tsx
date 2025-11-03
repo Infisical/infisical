@@ -5,7 +5,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -51,8 +50,7 @@ const Page = () => {
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "groupCreateUpdate",
-    "deleteGroup",
-    "upgradePlan"
+    "deleteGroup"
   ] as const);
 
   const onDeleteGroupSubmit = async ({ name, id }: { name: string; id: string }) => {
@@ -175,11 +173,6 @@ const Page = () => {
         onDeleteApproved={() =>
           onDeleteGroupSubmit(popUp?.deleteGroup?.data as { name: string; id: string })
         }
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

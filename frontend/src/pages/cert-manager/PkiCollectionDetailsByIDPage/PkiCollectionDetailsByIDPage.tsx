@@ -58,9 +58,9 @@ export const PkiCollectionPage = () => {
     });
     handlePopUpClose("deletePkiCollection");
     navigate({
-      to: "/projects/cert-management/$projectId/certificates",
+      to: "/projects/cert-management/$projectId/policies",
       params: {
-        projectId
+        projectId: params.projectId
       }
     });
   };
@@ -70,9 +70,9 @@ export const PkiCollectionPage = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/certificates"
+            to="/projects/cert-management/$projectId/policies"
             params={{
-              projectId
+              projectId: params.projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >

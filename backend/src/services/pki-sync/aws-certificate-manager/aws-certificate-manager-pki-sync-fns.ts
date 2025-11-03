@@ -3,7 +3,9 @@ import * as AWS from "aws-sdk";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TCertificateSyncs } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { AppConnection, AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { decryptAppConnectionCredentials } from "@app/services/app-connection/app-connection-fns";
@@ -14,6 +16,9 @@ import {
   AwsConnectionAssumeRoleCredentialsSchema
 } from "@app/services/app-connection/aws/aws-connection-schemas";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
+import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TCertificateMap } from "@app/services/pki-sync/pki-sync-types";
@@ -88,39 +93,6 @@ const shouldSkipCertificateExport = (certificate: AWS.ACM.CertificateSummary): b
   return isAwsIssuedCertificate(certificate);
 };
 
-const findTagByKey = (tags: AWS.ACM.TagList | undefined, key: string): AWS.ACM.Tag | undefined => {
-  if (!tags || !Array.isArray(tags)) {
-    return undefined;
-  }
-  return tags.find((tag: AWS.ACM.Tag) => tag.Key === key && tag.Value);
-};
-
-const findInfisicalCertificateTag = (tags: AWS.ACM.TagList | undefined): AWS.ACM.Tag | undefined => {
-  return findTagByKey(tags, INFISICAL_CERTIFICATE_TAG);
-};
-
-const validateCertificateIdentification = (
-  certName: string,
-  existingCert: { arn?: string; Tags?: AWS.ACM.TagList; cert?: string; privateKey?: string; certificateChain?: string }
-): boolean => {
-  if (!existingCert?.arn || !existingCert?.Tags) {
-    return false;
-  }
-
-  const certNameTag = findInfisicalCertificateTag(existingCert.Tags);
-
-  if (!certNameTag || !certNameTag.Value) {
-    return false;
-  }
-
-  return certNameTag.Value === certName;
-};
-
-type TAwsCertificateManagerPkiSyncFactoryDeps = {
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
-  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-};
-
 const validateCertificateNameSchema = (schema: string): void => {
   if (!schema.includes("{{certificateId}}")) {
     throw new Error(
@@ -172,6 +144,21 @@ const generateCertificateName = (certificateName: string, pkiSync: TPkiSyncWithC
   }
 
   return sanitizedCertificateName;
+};
+
+type TAwsCertificateManagerPkiSyncFactoryDeps = {
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    | "removeCertificates"
+    | "addCertificates"
+    | "findByPkiSyncAndCertificate"
+    | "updateSyncStatus"
+    | "updateById"
+    | "findByPkiSyncId"
+  >;
+  certificateDAL: Pick<TCertificateDALFactory, "findById">;
 };
 
 const getAwsAcmClient = async (
@@ -230,7 +217,9 @@ const getAwsAcmClient = async (
 
 export const awsCertificateManagerPkiSyncFactory = ({
   kmsService,
-  appConnectionDAL
+  appConnectionDAL,
+  certificateSyncDAL,
+  certificateDAL
 }: TAwsCertificateManagerPkiSyncFactoryDeps) => {
   const deleteCertificateFromAcm = async (
     acm: AWS.ACM,
@@ -392,79 +381,201 @@ export const awsCertificateManagerPkiSyncFactory = ({
       kmsService
     );
 
-    const { acmCertificates } = await $getAwsAcmCertificates(acm, pkiSync.id);
+    const {
+      acmCertificates
+    }: {
+      acmCertificates: Record<
+        string,
+        { cert: string; privateKey: string; certificateChain?: string; arn?: string; Tags?: AWS.ACM.TagList }
+      >;
+    } = await $getAwsAcmCertificates(acm, pkiSync.id);
+
+    const acmCertificatesByArn = new Map<string, (typeof acmCertificates)[string]>();
+    Object.values(acmCertificates).forEach((acmCert) => {
+      if (acmCert.arn) {
+        acmCertificatesByArn.set(acmCert.arn, acmCert);
+      }
+    });
+
+    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
+    const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
+    const syncRecordsByExternalId = new Map<string, TCertificateSyncs>();
+
+    existingSyncRecords.forEach((record: TCertificateSyncs) => {
+      if (record.certificateId) {
+        syncRecordsByCertId.set(record.certificateId, record);
+      }
+      if (record.externalIdentifier) {
+        syncRecordsByExternalId.set(record.externalIdentifier, record);
+      }
+    });
 
     const setCertificates: CertificateImportRequest[] = [];
+    const validationErrors: Array<{ name: string; error: string }> = [];
 
-    const activeCertificateNames = Object.keys(certificateMap);
+    const syncOptions = pkiSync.syncOptions as { preserveArn?: boolean; canRemoveCertificates?: boolean } | undefined;
+    const preserveArn = syncOptions?.preserveArn ?? true;
+    const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
 
-    Object.entries(certificateMap).forEach(([certName, certData]) => {
-      const { cert, privateKey, certificateChain } = certData;
-      const certificateName = generateCertificateName(certName, pkiSync);
+    const activeExternalIdentifiers = new Set<string>();
 
-      const existingCert = Object.values(acmCertificates).find((acmCert) =>
-        validateCertificateIdentification(certName, acmCert)
-      );
-
-      const shouldUpdateCert = !existingCert || existingCert.cert !== cert;
+    for (const [certName, certData] of Object.entries(certificateMap)) {
+      const { cert, privateKey, certificateChain, certificateId } = certData;
 
       try {
         validateCertificateContent(cert, privateKey);
       } catch (validationError) {
-        throw new PkiSyncError({
-          message: `Certificate validation failed for ${certName}: ${validationError instanceof Error ? validationError.message : String(validationError)}`,
-          shouldRetry: false,
-          context: {
-            certificateName,
-            certName
-          }
+        const errorMessage = validationError instanceof Error ? validationError.message : String(validationError);
+        validationErrors.push({
+          name: certName,
+          error: `Certificate validation failed: ${errorMessage}`
         });
+        // eslint-disable-next-line no-continue
+        continue;
       }
 
-      if (shouldUpdateCert) {
+      if (preserveArn && certificateId && typeof certificateId === "string") {
+        const certificate = await certificateDAL.findById(certificateId);
+        if (certificate?.renewedByCertificateId) {
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+      }
+
+      const certificateName = generateCertificateName(certName, pkiSync);
+
+      let targetArn: string | undefined;
+      let shouldCreateNew = false;
+
+      if (!certificateId || typeof certificateId !== "string") {
+        shouldCreateNew = true;
+      } else {
+        const currentCertificate = await certificateDAL.findById(certificateId);
+        const isRenewal = !!currentCertificate?.renewedFromCertificateId;
+
+        if (isRenewal) {
+          const currentSyncRecord = syncRecordsByCertId.get(certificateId);
+          const oldCertificateId = currentCertificate.renewedFromCertificateId;
+          const oldSyncRecord = oldCertificateId ? syncRecordsByCertId.get(oldCertificateId) : undefined;
+
+          if (currentSyncRecord?.externalIdentifier) {
+            const existingAcmCert = acmCertificatesByArn.get(currentSyncRecord.externalIdentifier);
+
+            if (existingAcmCert) {
+              if (!preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+                shouldCreateNew = true;
+              } else if (preserveArn && oldSyncRecord?.externalIdentifier === currentSyncRecord.externalIdentifier) {
+                targetArn = currentSyncRecord.externalIdentifier;
+                shouldCreateNew = true;
+                activeExternalIdentifiers.add(targetArn);
+
+                if (oldCertificateId && oldSyncRecord) {
+                  await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateId]);
+                }
+              } else {
+                targetArn = currentSyncRecord.externalIdentifier;
+                activeExternalIdentifiers.add(targetArn);
+                shouldCreateNew = false;
+              }
+            } else {
+              shouldCreateNew = true;
+            }
+          } else if (preserveArn && oldSyncRecord?.externalIdentifier) {
+            const existingAcmCert = acmCertificatesByArn.get(oldSyncRecord.externalIdentifier);
+
+            if (existingAcmCert) {
+              targetArn = oldSyncRecord.externalIdentifier;
+              shouldCreateNew = true;
+              activeExternalIdentifiers.add(targetArn);
+              if (oldCertificateId) {
+                await certificateSyncDAL.removeCertificates(pkiSync.id, [oldCertificateId]);
+              }
+            } else {
+              shouldCreateNew = true;
+            }
+          } else {
+            shouldCreateNew = true;
+          }
+        } else {
+          const existingSyncRecord = syncRecordsByCertId.get(certificateId);
+          if (existingSyncRecord?.externalIdentifier) {
+            const existingAcmCert = acmCertificatesByArn.get(existingSyncRecord.externalIdentifier);
+            if (existingAcmCert) {
+              targetArn = existingSyncRecord.externalIdentifier;
+              activeExternalIdentifiers.add(targetArn);
+              shouldCreateNew = false;
+            } else {
+              shouldCreateNew = true;
+            }
+          } else {
+            shouldCreateNew = true;
+          }
+        }
+      }
+
+      if (shouldCreateNew) {
         setCertificates.push({
           key: certName,
           name: certificateName,
           cert,
           privateKey,
           certificateChain,
-          existingArn: existingCert?.arn
+          existingArn: targetArn,
+          certificateId: certificateId as string
         });
       }
-    });
 
-    // Identify expired/removed certificates that need to be cleaned up from ACM
-    const certificatesToRemove = Object.values(acmCertificates)
-      .filter((acmCert) => {
-        if (!acmCert.arn || !acmCert.Tags) {
-          return false;
+      if (targetArn) {
+        activeExternalIdentifiers.add(targetArn);
+      }
+    }
+
+    const certificatesToRemove: string[] = [];
+
+    if (canRemoveCertificates) {
+      existingSyncRecords.forEach((syncRecord) => {
+        if (syncRecord.externalIdentifier && !activeExternalIdentifiers.has(syncRecord.externalIdentifier)) {
+          const acmCert = acmCertificatesByArn.get(syncRecord.externalIdentifier);
+          if (acmCert?.arn) {
+            certificatesToRemove.push(acmCert.arn);
+          }
         }
+      });
 
-        const certNameTag = findInfisicalCertificateTag(acmCert.Tags);
-        if (!certNameTag || !certNameTag.Value) {
-          return false;
+      Object.values(acmCertificates).forEach((acmCert) => {
+        if (acmCert.arn && acmCert.Tags) {
+          const hasInfisicalTag = acmCert.Tags.some((tag) => tag.Key === INFISICAL_CERTIFICATE_TAG && tag.Value);
+
+          if (hasInfisicalTag) {
+            const isTrackedInSyncRecords = existingSyncRecords.some(
+              (record) => record.externalIdentifier === acmCert.arn
+            );
+            const isInActiveSet = activeExternalIdentifiers.has(acmCert.arn);
+            if (!isTrackedInSyncRecords && !isInActiveSet && !certificatesToRemove.includes(acmCert.arn)) {
+              certificatesToRemove.push(acmCert.arn);
+            }
+          }
         }
-
-        const isActive = activeCertificateNames.includes(certNameTag.Value);
-        return !isActive;
-      })
-      .map((acmCert) => acmCert.arn!)
-      .filter((arn) => arn);
+      });
+    }
 
     const uploadResults = await executeWithConcurrencyLimit(
       setCertificates,
-      async ({ key, name, cert, privateKey, certificateChain, existingArn }) => {
+      async ({ key, name, cert, privateKey, certificateChain, existingArn, certificateId }) => {
         try {
           const importParams: AWS.ACM.ImportCertificateRequest = {
             Certificate: cert,
-            PrivateKey: privateKey,
-            Tags: [
+            PrivateKey: privateKey
+          };
+
+          if (!existingArn) {
+            importParams.Tags = [
               {
                 Key: INFISICAL_CERTIFICATE_TAG,
                 Value: key
               }
-            ]
-          };
+            ];
+          }
 
           if (certificateChain && certificateChain.trim().length > 0) {
             importParams.CertificateChain = certificateChain;
@@ -477,6 +588,57 @@ export const awsCertificateManagerPkiSyncFactory = ({
             operation: "import-certificate",
             syncId: pkiSync.id
           });
+
+          if (existingArn && response.CertificateArn) {
+            try {
+              // Small delay to ensure AWS ACM has processed the certificate import
+              await new Promise<void>((resolve) => {
+                setTimeout(() => resolve(), 500);
+              });
+
+              await withRateLimitRetry(
+                () =>
+                  acm
+                    .addTagsToCertificate({
+                      CertificateArn: response.CertificateArn!,
+                      Tags: [
+                        {
+                          Key: INFISICAL_CERTIFICATE_TAG,
+                          Value: key
+                        }
+                      ]
+                    })
+                    .promise(),
+                {
+                  operation: "add-tags-to-certificate",
+                  syncId: pkiSync.id
+                }
+              );
+            } catch (tagError) {
+              const errorMessage = tagError instanceof Error ? tagError.message : "Unknown tagging error";
+              logger.warn(
+                `Failed to add tags to certificate ${key} (ARN: ${response.CertificateArn}): ${errorMessage}`
+              );
+            }
+          }
+
+          if (response.CertificateArn && certificateId) {
+            const existingCertSync = await certificateSyncDAL.findByPkiSyncAndCertificate(pkiSync.id, certificateId);
+            if (existingCertSync) {
+              await certificateSyncDAL.updateById(existingCertSync.id, {
+                externalIdentifier: response.CertificateArn,
+                syncStatus: CertificateSyncStatus.Succeeded,
+                lastSyncedAt: new Date()
+              });
+            } else {
+              await certificateSyncDAL.addCertificates(pkiSync.id, [
+                {
+                  certificateId,
+                  externalIdentifier: response.CertificateArn
+                }
+              ]);
+            }
+          }
 
           return { key, name, success: true, response };
         } catch (error) {
@@ -520,15 +682,21 @@ export const awsCertificateManagerPkiSyncFactory = ({
     const details: {
       failedUploads?: Array<{ name: string; error: string }>;
       failedRemovals?: Array<{ name: string; error: string }>;
+      validationErrors?: Array<{ name: string; error: string }>;
     } = {};
+
+    if (validationErrors.length > 0) {
+      details.validationErrors = validationErrors;
+    }
 
     if (failedUploads.length > 0) {
       details.failedUploads = failedUploads.map((failure, index) => {
-        const certificateName = setCertificates[index]?.name || "unknown";
+        const certificateRequest = setCertificates[index];
+        const certificateName = certificateRequest?.name || certificateRequest?.key || "unknown";
         let errorMessage = "Unknown error";
 
         if (failure.status === "rejected") {
-          errorMessage = failure.reason instanceof Error ? failure.reason.message : "Unknown error";
+          errorMessage = failure.reason instanceof Error ? failure.reason.message : String(failure.reason);
         }
 
         return {
@@ -567,7 +735,8 @@ export const awsCertificateManagerPkiSyncFactory = ({
 
   const removeCertificates = async (
     pkiSync: TPkiSyncWithCredentials,
-    certificateNames: string[]
+    certificateNames: string[],
+    deps?: { certificateSyncDAL?: TCertificateSyncDALFactory; certificateMap?: TCertificateMap }
   ): Promise<RemoveCertificatesResult> => {
     const destinationConfig = pkiSync.destinationConfig as TAwsCertificateManagerPkiSyncConfig;
     const acm = await getAwsAcmClient(
@@ -577,20 +746,31 @@ export const awsCertificateManagerPkiSyncFactory = ({
       kmsService
     );
 
-    const { acmCertificates } = await $getAwsAcmCertificates(acm, pkiSync.id);
-
+    const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
     const certificateArnsToRemove: string[] = [];
-
+    const certificateIdToArnMap = new Map<string, string>();
     for (const certName of certificateNames) {
-      const matchingCerts = Object.values(acmCertificates).filter((acmCert) =>
-        validateCertificateIdentification(certName, acmCert)
-      );
+      const certificateData = deps?.certificateMap?.[certName];
+      if (certificateData?.certificateId) {
+        const { certificateId } = certificateData;
 
-      for (const acmCert of matchingCerts) {
-        if (acmCert.arn) {
-          certificateArnsToRemove.push(acmCert.arn);
+        if (typeof certificateId === "string") {
+          const syncRecord = existingSyncRecords.find((record) => record.certificateId === certificateId);
+
+          if (syncRecord?.externalIdentifier) {
+            certificateArnsToRemove.push(syncRecord.externalIdentifier);
+            certificateIdToArnMap.set(certificateId, syncRecord.externalIdentifier);
+          }
         }
       }
+    }
+
+    if (certificateArnsToRemove.length === 0) {
+      return {
+        removed: 0,
+        failed: 0,
+        skipped: certificateNames.length
+      };
     }
 
     const results = await executeWithConcurrencyLimit(
@@ -601,6 +781,38 @@ export const awsCertificateManagerPkiSyncFactory = ({
     );
 
     const failedRemovals = results.filter((result) => result.status === "rejected");
+
+    if (failedRemovals.length > 0 && deps?.certificateSyncDAL) {
+      for (const failure of failedRemovals) {
+        if (failure.status === "rejected") {
+          const failedArn = certificateArnsToRemove[results.indexOf(failure)];
+          const certificateId = Array.from(certificateIdToArnMap.entries()).find(([, arn]) => arn === failedArn)?.[0];
+
+          if (certificateId) {
+            const errorMessage = failure.reason instanceof Error ? failure.reason.message : "Unknown error";
+            await deps.certificateSyncDAL.updateSyncStatus(
+              pkiSync.id,
+              certificateId,
+              CertificateSyncStatus.Failed,
+              `Failed to remove from AWS: ${errorMessage}`
+            );
+          }
+        }
+      }
+    }
+
+    const successfulRemovals = results.filter((result) => result.status === "fulfilled");
+    if (successfulRemovals.length > 0) {
+      const successfulArns = new Set(successfulRemovals.map((_, index) => certificateArnsToRemove[index]));
+
+      const certificateIdsToRemove = Array.from(certificateIdToArnMap.entries())
+        .filter(([, arn]) => successfulArns.has(arn))
+        .map(([certificateId]) => certificateId);
+
+      if (certificateIdsToRemove.length > 0) {
+        await certificateSyncDAL.removeCertificates(pkiSync.id, certificateIdsToRemove);
+      }
+    }
 
     if (failedRemovals.length > 0) {
       const failedReasons = failedRemovals.map((failure) => {

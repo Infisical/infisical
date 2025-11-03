@@ -47,6 +47,7 @@ export const AppConnectionsBrowser = () => {
     {"name": "Auth0", "slug": "auth0", "path": "/integrations/app-connections/auth0", "description": "Learn how to connect your Auth0 to pull secrets from Infisical.", "category": "Identity & Auth"},
     {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"},
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/app-connections/laravel-forge", "description": "Learn how to connect your Laravel Forge to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "Chef", "slug": "chef", "path": "/integrations/app-connections/chef", "description": "Learn how to connect your Chef to pull secrets from Infisical.", "category": "DevOps Tools"},
     {"name": "Northflank", "slug": "northflank", "path": "/integrations/app-connections/northflank", "description": "Learn how to connect your Northflank projects to pull secrets from Infisical.", "category": "Hosting"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());

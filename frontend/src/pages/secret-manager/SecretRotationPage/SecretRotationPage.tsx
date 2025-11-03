@@ -381,7 +381,7 @@ const Page = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add secret rotation if you switch to Infisical's Pro plan."
+        text="Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
       />
       <Modal
         isOpen={popUp.secretRotationV2.isOpen}

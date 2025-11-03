@@ -53,7 +53,8 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
       .max(255, "Name must be less than 255 characters"),
     description: z.string().optional(),
     isAutoSyncEnabled: z.boolean().default(true),
-    subscriberId: z.string().min(1, "PKI Subscriber is required"),
+    subscriberId: z.string().nullable().optional(),
+    certificateIds: z.array(z.string()).optional(),
     connection: z.object({
       id: z.string().uuid("Invalid connection ID format"),
       name: z.string().max(255, "Connection name must be less than 255 characters")

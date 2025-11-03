@@ -13,27 +13,28 @@ import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { PkiSync, TPkiSync, useCreatePkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
+import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
-import { PkiSyncSourceFields } from "./PkiSyncSourceFields";
 
 type Props = {
   onComplete: (pkiSync: TPkiSync) => void;
   destination: PkiSync;
   onCancel: () => void;
+  initialData?: any;
 };
 
 const FORM_TABS: { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[] = [
-  { name: "Source", key: "source", fields: ["subscriberId"] },
   { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
   { name: "Sync Options", key: "options", fields: ["syncOptions"] },
   { name: "Details", key: "details", fields: ["name", "description"] },
+  { name: "Certificates", key: "certificates", fields: ["certificateIds"] },
   { name: "Review", key: "review", fields: [] }
 ];
 
-export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) => {
+export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialData }: Props) => {
   const createPkiSync = useCreatePkiSync();
   const { currentProject } = useProject();
   const { name: destinationName } = PKI_SYNC_MAP[destination];
@@ -49,26 +50,39 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
     defaultValues: {
       destination,
       isAutoSyncEnabled: false,
+      certificateIds: [],
       syncOptions: {
         canImportCertificates: false,
         canRemoveCertificates: false,
+        preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema
-      }
+      },
+      ...initialData
     } as Partial<TPkiSyncForm>,
     reValidateMode: "onChange"
   });
 
-  const onSubmit = async ({ connection, destinationConfig, ...formData }: TPkiSyncForm) => {
+  const onSubmit = async ({
+    connection,
+    destinationConfig,
+    certificateIds,
+    ...formData
+  }: TPkiSyncForm) => {
     try {
       const pkiSync = await createPkiSync.mutateAsync({
         ...formData,
         connectionId: connection.id,
         projectId: currentProject.id,
-        destinationConfig
+        destinationConfig,
+        certificateIds: certificateIds || []
       });
 
       createNotification({
-        text: `Successfully added ${destinationName} Certificate Sync`,
+        text: `Successfully created ${destinationName} Certificate Sync${
+          certificateIds && certificateIds.length > 0
+            ? ` with ${certificateIds.length} certificate(s)`
+            : ""
+        }`,
         type: "success"
       });
       onComplete(pkiSync);
@@ -179,9 +193,6 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
           </Tab.List>
           <Tab.Panels>
             <Tab.Panel>
-              <PkiSyncSourceFields />
-            </Tab.Panel>
-            <Tab.Panel>
               <PkiSyncDestinationFields />
             </Tab.Panel>
             <Tab.Panel>
@@ -194,8 +205,8 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
                     <FormControl
                       helperText={
                         value
-                          ? "Certificates will automatically be synced when changes occur in the source subscriber."
-                          : "Certificates will not automatically be synced when changes occur in the source subscriber. You can still trigger syncs manually."
+                          ? "Certificates will automatically be synced when changes occur in the selected certificates."
+                          : "Certificates will not automatically be synced when changes occur. You can still trigger syncs manually."
                       }
                       isError={Boolean(error)}
                       errorText={error?.message}
@@ -216,6 +227,9 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel }: Props) 
             </Tab.Panel>
             <Tab.Panel>
               <PkiSyncDetailsFields />
+            </Tab.Panel>
+            <Tab.Panel>
+              <PkiSyncCertificatesFields />
             </Tab.Panel>
             <Tab.Panel>
               <PkiSyncReviewFields />

@@ -7,8 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -19,10 +18,10 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
   const projectId = currentProject.id;
 
-  const canCreateLegacySubscribers = subscription.pkiLegacyTemplates;
+  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
+  const canCreateLegacySubscribers = true;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 

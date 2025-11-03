@@ -9,6 +9,7 @@ import { AzureKeyVaultDestinationSyncCol } from "./AzureKeyVaultDestinationSyncC
 import { BitbucketSyncDestinationCol } from "./BitbucketSyncDestinationCol";
 import { CamundaSyncDestinationCol } from "./CamundaSyncDestinationCol";
 import { ChecklySyncDestinationCol } from "./ChecklySyncDestinationCol";
+import { ChefSyncDestinationCol } from "./ChefSyncDestinationCol";
 import { CloudflarePagesSyncDestinationCol } from "./CloudflarePagesSyncDestinationCol";
 import { CloudflareWorkersSyncDestinationCol } from "./CloudflareWorkersSyncDestinationCol";
 import { DatabricksSyncDestinationCol } from "./DatabricksSyncDestinationCol";
@@ -103,6 +104,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <BitbucketSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.LaravelForge:
       return <LaravelForgeSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.Chef:
+      return <ChefSyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`

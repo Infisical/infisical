@@ -124,7 +124,7 @@ type Props = {
 
 const caTypes = [
   { label: "ACME", value: CaType.ACME },
-  { label: "Azure AD Certificate Service", value: CaType.AZURE_AD_CS }
+  { label: "Active Directory Certificate Services (AD CS)", value: CaType.AZURE_AD_CS }
 ];
 
 export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
