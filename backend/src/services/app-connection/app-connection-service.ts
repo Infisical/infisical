@@ -885,6 +885,6 @@ export const appConnectionServiceFactory = ({
     northflank: northflankConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
     laravelForge: laravelForgeConnectionService(connectAppConnectionById),
-    chef: chefConnectionService(connectAppConnectionById)
+    chef: chefConnectionService(connectAppConnectionById, licenseService)
   };
 };

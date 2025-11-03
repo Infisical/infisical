@@ -1,7 +1,7 @@
 import z from "zod";
 
-import { DiscriminativePick } from "@app/lib/types";
 import { TChefDataBagItemContent } from "@app/ee/services/secret-sync/chef";
+import { DiscriminativePick } from "@app/lib/types";
 
 import { AppConnection } from "../../../../services/app-connection/app-connection-enums";
 import {
