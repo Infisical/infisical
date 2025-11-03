@@ -76,35 +76,24 @@ const Page = () => {
   };
 
   const onRemoveIdentitySubmit = async () => {
-    try {
-      await deleteMutateAsync({
-        identityId,
+    await deleteMutateAsync({
+      identityId,
+      projectId
+    });
+    createNotification({
+      text: "Successfully removed identity from project",
+      type: "success"
+    });
+    handlePopUpClose("deleteIdentity");
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
+      params: {
         projectId
-      });
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
-      handlePopUpClose("deleteIdentity");
-      navigate({
-        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
-        params: {
-          projectId
-        },
-        search: {
-          selectedTab: "identities"
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to remove identity from project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+      },
+      search: {
+        selectedTab: "identities"
+      }
+    });
   };
 
   if (isMembershipDetailsLoading) {

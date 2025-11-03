@@ -62,31 +62,24 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     if (!currentOrg) {
       return;
     }
-    try {
-      await updateMutateAsync({
-        organizationId: currentOrg.id,
-        isActive: false,
-        url: "",
-        bindDN: "",
-        bindPass: "",
-        searchBase: "",
-        searchFilter: "",
-        uniqueUserAttribute: "",
-        groupSearchBase: "",
-        groupSearchFilter: "",
-        caCert: ""
-      });
+    await updateMutateAsync({
+      organizationId: currentOrg.id,
+      isActive: false,
+      url: "",
+      bindDN: "",
+      bindPass: "",
+      searchBase: "",
+      searchFilter: "",
+      uniqueUserAttribute: "",
+      groupSearchBase: "",
+      groupSearchFilter: "",
+      caCert: ""
+    });
 
-      createNotification({
-        text: "Successfully deleted OIDC configuration.",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed deleting OIDC configuration.",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted OIDC configuration.",
+      type: "success"
+    });
   };
 
   const watchUrl = watch("url");
@@ -164,33 +157,17 @@ export const LDAPModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
   };
 
   const handleTestLDAPConnection = async () => {
-    try {
-      const result = await testLDAPConnection({
-        url: watchUrl,
-        bindDN: watchBindDN,
-        bindPass: watchBindPass,
-        caCert: watchCaCert ?? ""
-      });
+    await testLDAPConnection({
+      url: watchUrl,
+      bindDN: watchBindDN,
+      bindPass: watchBindPass,
+      caCert: watchCaCert ?? ""
+    });
 
-      if (!result) {
-        createNotification({
-          text: "Failed to test the LDAP connection: Bind operation was unsuccessful",
-          type: "error"
-        });
-        return;
-      }
-
-      createNotification({
-        text: "Successfully tested the LDAP connection: Bind operation was successful",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to test the LDAP connection",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully tested the LDAP connection: Bind operation was successful",
+      type: "success"
+    });
   };
 
   return (

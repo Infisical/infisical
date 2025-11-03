@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { faCheck, faCopy, faPlus, faTrashCan } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AxiosError } from "axios";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -110,45 +109,29 @@ const ServiceTokenForm = () => {
   };
 
   const onFormSubmit = async ({ name, scopes, expiresIn, permissions }: FormData) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      const randomBytes = crypto.randomBytes(16).toString("hex");
+    const randomBytes = crypto.randomBytes(16).toString("hex");
 
-      const { serviceToken } = await createServiceToken.mutateAsync({
-        encryptedKey: "",
-        iv: "",
-        tag: "",
-        scopes,
-        expiresIn: Number(expiresIn),
-        name,
-        workspaceId: currentProject.id,
-        randomBytes,
-        permissions: Object.entries(permissions)
-          .filter(([, permissionsValue]) => permissionsValue)
-          .map(([permissionsKey]) => permissionsKey)
-      });
+    const { serviceToken } = await createServiceToken.mutateAsync({
+      encryptedKey: "",
+      iv: "",
+      tag: "",
+      scopes,
+      expiresIn: Number(expiresIn),
+      name,
+      workspaceId: currentProject.id,
+      randomBytes,
+      permissions: Object.entries(permissions)
+        .filter(([, permissionsValue]) => permissionsValue)
+        .map(([permissionsKey]) => permissionsKey)
+    });
 
-      setToken(serviceToken);
-      createNotification({
-        text: "Successfully created a service token",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const axiosError = err as AxiosError;
-      if (axiosError?.response?.status === 401) {
-        createNotification({
-          text: "You do not have access to the selected environment/path",
-          type: "error"
-        });
-      } else {
-        createNotification({
-          text: "Failed to create a service token",
-          type: "error"
-        });
-      }
-    }
+    setToken(serviceToken);
+    createNotification({
+      text: "Successfully created a service token",
+      type: "success"
+    });
   };
 
   return !hasServiceToken ? (

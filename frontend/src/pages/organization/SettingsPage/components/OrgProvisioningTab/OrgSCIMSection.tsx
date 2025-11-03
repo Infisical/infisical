@@ -36,30 +36,23 @@ export const OrgScimSection = () => {
   };
 
   const handleEnableSCIMToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.scim) {
-        handlePopUpOpen("upgradePlan", {
-          isEnterpriseFeature: true
-        });
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        scimEnabled: value
+    if (!currentOrg?.id) return;
+    if (!subscription?.scim) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
       });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} SCIM provisioning`,
-        type: "success"
-      });
-    } catch (err) {
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+      return;
     }
+
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      scimEnabled: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} SCIM provisioning`,
+      type: "success"
+    });
   };
 
   return (

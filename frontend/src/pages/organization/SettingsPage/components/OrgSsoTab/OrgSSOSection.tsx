@@ -34,63 +34,46 @@ export const OrgSSOSection = (): JSX.Element => {
   const { mutateAsync: createMutateAsync } = useCreateSSOConfig();
 
   const handleSamlSSOToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", {
-          description: "You can use SAML SSO if you switch to Infisical's Pro plan."
-        });
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        isActive: value
+    if (!subscription?.samlSSO) {
+      handlePopUpOpen("upgradePlan", {
+        description: "You can use SAML SSO if you switch to Infisical's Pro plan."
       });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} SAML SSO`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} SAML SSO`,
-        type: "error"
-      });
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      isActive: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} SAML SSO`,
+      type: "success"
+    });
   };
 
   const handleSamlGroupManagement = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.samlSSO || !subscription?.groups) {
-        handlePopUpOpen("upgradePlan", {
-          isEnterpriseFeature: true,
-          description:
-            "You can use SAML group mapping if you switch to Infisical's Enterprise plan."
-        });
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        enableGroupSync: value
+    if (!subscription?.samlSSO || !subscription?.groups) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        description: "You can use SAML group mapping if you switch to Infisical's Enterprise plan."
       });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} SAML group membership mapping`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} SAML group membership mapping`,
-        type: "error"
-      });
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      enableGroupSync: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} SAML group membership mapping`,
+      type: "success"
+    });
   };
 
   const addSSOBtnClick = async () => {

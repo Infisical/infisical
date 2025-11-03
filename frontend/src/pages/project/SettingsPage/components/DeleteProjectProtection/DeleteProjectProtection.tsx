@@ -10,24 +10,16 @@ export const DeleteProjectProtection = () => {
   const { mutateAsync } = useUpdateProject();
 
   const handleToggleDeleteProjectProtection = async (state: boolean) => {
-    try {
-      await mutateAsync({
-        projectId,
-        hasDeleteProtection: state
-      });
+    await mutateAsync({
+      projectId,
+      hasDeleteProtection: state
+    });
 
-      const text = `Successfully ${state ? "enabled" : "disabled"} delete protection`;
-      createNotification({
-        text,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update delete protection",
-        type: "error"
-      });
-    }
+    const text = `Successfully ${state ? "enabled" : "disabled"} delete protection`;
+    createNotification({
+      text,
+      type: "success"
+    });
   };
 
   return (
