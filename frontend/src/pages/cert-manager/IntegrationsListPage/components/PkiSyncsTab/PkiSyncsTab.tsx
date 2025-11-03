@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import { Button, Spinner } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { PkiSyncsTable } from "./PkiSyncTable";
 
 export const PkiSyncsTab = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addSync"] as const);
 
-  const { addSync, ...search } = useSearch({
+  const { addSync, connectionId, connectionName, ...search } = useSearch({
     from: ROUTE_PATHS.CertManager.IntegrationsListPage.id
   });
 
@@ -44,6 +46,42 @@ export const PkiSyncsTab = () => {
     navigateToBase();
   }, [addSync, handlePopUpOpen, navigateToBase]);
 
+  useEffect(() => {
+    const storedFormData = localStorage.getItem("pkiSyncFormData");
+    if (storedFormData && !popUp.addSync.isOpen) {
+      try {
+        const parsedData = JSON.parse(storedFormData);
+        if (connectionId && connectionName) {
+          const initialData = {
+            ...parsedData,
+            connection: { id: connectionId, name: connectionName }
+          };
+          handlePopUpOpen("addSync", { destination: parsedData.destination, initialData });
+          navigate({
+            to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
+            params: { projectId: currentProject?.id },
+            search: { selectedTab: IntegrationsListPageTabs.PkiSyncs },
+            replace: true
+          });
+        } else {
+          handlePopUpOpen("addSync", { destination: parsedData.destination });
+        }
+        localStorage.removeItem("pkiSyncFormData");
+      } catch (error) {
+        console.error("Failed to parse stored PKI sync form data:", error);
+        localStorage.removeItem("pkiSyncFormData");
+        handlePopUpOpen("addSync");
+      }
+    }
+  }, [
+    handlePopUpOpen,
+    popUp.addSync.isOpen,
+    connectionId,
+    connectionName,
+    navigate,
+    currentProject?.id
+  ]);
+
   const { data: pkiSyncs = [], isPending: isPkiSyncsPending } = useListPkiSyncs(
     currentProject?.id || "",
     {
@@ -64,21 +102,10 @@ export const PkiSyncsTab = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
-              <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
-              <a
-                href="https://infisical.com/docs/integrations/pki-syncs/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <div className="flex items-center gap-x-2">
+                <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificate-syncs/overview" />
+              </div>
             </div>
             <p className="text-sm text-bunker-300">
               Use App Connections to sync certificates to third-party services.
@@ -104,7 +131,8 @@ export const PkiSyncsTab = () => {
         <PkiSyncsTable pkiSyncs={pkiSyncs} />
       </div>
       <CreatePkiSyncModal
-        selectSync={popUp.addSync.data}
+        selectSync={popUp.addSync.data?.destination || popUp.addSync.data}
+        initialData={popUp.addSync.data?.initialData}
         isOpen={popUp.addSync.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSync", isOpen)}
       />

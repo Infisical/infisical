@@ -70,7 +70,9 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
               type="button"
               onClick={() => {
                 if (option.provider === LogProvider.QRadar) {
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    isEnterpriseFeature: true
+                  });
                 } else {
                   onSelect(option.provider);
                 }
@@ -109,7 +111,8 @@ export const LogStreamProviderSelect = ({ onSelect }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="This audit log stream provider requires an enterprise license."
+        text="Your current plan does not include access to this audit log stream provider. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>
   );

@@ -762,32 +762,36 @@ export const certificateTemplateV2ServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    templateId
+    templateId,
+    internal = false
   }: {
     actor: ActorType;
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actorOrgId: string;
     templateId: string;
+    internal?: boolean;
   }): Promise<TCertificateTemplateV2> => {
     const template = await certificateTemplateV2DAL.findById(templateId);
     if (!template) {
       throw new NotFoundError({ message: "Certificate template not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: template.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (!internal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: template.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPkiTemplateActions.Read,
+        ProjectPermissionSub.CertificateTemplates
+      );
+    }
 
     return template;
   };

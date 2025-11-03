@@ -62,6 +62,9 @@ import {
   TCertificateSecretsUpdate,
   TCertificatesInsert,
   TCertificatesUpdate,
+  TCertificateSyncs,
+  TCertificateSyncsInsert,
+  TCertificateSyncsUpdate,
   TCertificateTemplateEstConfigs,
   TCertificateTemplateEstConfigsInsert,
   TCertificateTemplateEstConfigsUpdate,
@@ -738,6 +741,11 @@ declare module "knex/types/tables" {
       TPkiSubscribersUpdate
     >;
     [TableName.PkiSync]: KnexOriginal.CompositeTableType<TPkiSyncs, TPkiSyncsInsert, TPkiSyncsUpdate>;
+    [TableName.CertificateSync]: KnexOriginal.CompositeTableType<
+      TCertificateSyncs,
+      TCertificateSyncsInsert,
+      TCertificateSyncsUpdate
+    >;
     [TableName.UserGroupMembership]: KnexOriginal.CompositeTableType<
       TUserGroupMembership,
       TUserGroupMembershipInsert,

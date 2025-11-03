@@ -83,6 +83,12 @@ import {
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
 import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefConnectionInput,
+  TValidateChefConnectionCredentialsSchema
+} from "./chef";
+import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,
   TCloudflareConnectionInput,
@@ -168,6 +174,12 @@ import {
   TNetlifyConnectionInput,
   TValidateNetlifyConnectionCredentialsSchema
 } from "./netlify";
+import {
+  TNorthflankConnection,
+  TNorthflankConnectionConfig,
+  TNorthflankConnectionInput,
+  TValidateNorthflankConnectionCredentialsSchema
+} from "./northflank";
 import {
   TOktaConnection,
   TOktaConnectionConfig,
@@ -273,8 +285,10 @@ export type TAppConnection = { id: string } & (
   | TSupabaseConnection
   | TDigitalOceanConnection
   | TNetlifyConnection
+  | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
+  | TChefConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -320,8 +334,10 @@ export type TAppConnectionInput = { id: string } & (
   | TSupabaseConnectionInput
   | TDigitalOceanConnectionInput
   | TNetlifyConnectionInput
+  | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TChefConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -385,8 +401,10 @@ export type TAppConnectionConfig =
   | TSupabaseConnectionConfig
   | TDigitalOceanConnectionConfig
   | TNetlifyConnectionConfig
+  | TNorthflankConnectionConfig
   | TOktaConnectionConfig
-  | TRedisConnectionConfig;
+  | TRedisConnectionConfig
+  | TChefConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -427,8 +445,10 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateSupabaseConnectionCredentialsSchema
   | TValidateDigitalOceanCredentialsSchema
   | TValidateNetlifyConnectionCredentialsSchema
+  | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
-  | TValidateRedisConnectionCredentialsSchema;
+  | TValidateRedisConnectionCredentialsSchema
+  | TValidateChefConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;

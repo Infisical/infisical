@@ -69,7 +69,10 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
               type="button"
               onClick={() =>
                 enterprise && !subscription.enterpriseCertificateSyncs
-                  ? handlePopUpOpen("upgradePlan")
+                  ? handlePopUpOpen("upgradePlan", {
+                      isEnterpriseFeature: true,
+                      text: "All Certificate Syncs can be unlocked if you switch to Infisical Enterprise plan."
+                    })
                   : onSelect(destination)
               }
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
@@ -148,7 +151,8 @@ export const PkiSyncSelect = ({ onSelect }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use every Certificate Sync if you switch to Infisical's Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        text={popUp.upgradePlan.data?.text}
       />
     </div>
   );

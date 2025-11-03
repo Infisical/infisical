@@ -6,7 +6,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -22,6 +21,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
@@ -34,15 +34,12 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<
-      ["installCaCert", "caCert", "ca", "deleteCa", "caStatus", "upgradePlan"]
-    >,
+    popUpName: keyof UsePopUpState<["installCaCert", "caCert", "ca", "deleteCa", "caStatus"]>,
     data?: {
       caId?: string;
       caName?: string;
       dn?: string;
       status?: CaStatus;
-      description?: string;
     }
   ) => void;
 };

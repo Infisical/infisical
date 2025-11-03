@@ -147,7 +147,10 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: { isEnterpriseFeature?: boolean; featureName?: string }
+  ) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
@@ -304,7 +307,10 @@ export const IdentityLdapAuthForm = ({
 
   useEffect(() => {
     if (!subscription?.ldap) {
-      handlePopUpOpen("upgradePlan");
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        featureName: "LDAP authentication"
+      });
       handlePopUpToggle("identityAuthMethod", false);
     }
   }, [subscription, handlePopUpOpen, handlePopUpToggle]);
@@ -831,7 +837,9 @@ export const IdentityLdapAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -846,7 +854,9 @@ export const IdentityLdapAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -869,7 +879,9 @@ export const IdentityLdapAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"

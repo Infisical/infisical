@@ -46,10 +46,12 @@ import {
 } from "@app/hooks/api/appConnections/types";
 import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/bitbucket-connection";
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
+import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
+import { NorthflankConnectionMethod } from "@app/hooks/api/appConnections/types/northflank-connection";
 import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-connection";
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
@@ -121,13 +123,15 @@ export const APP_CONNECTION_MAP: Record<
     name: "Netlify",
     image: "Netlify.png"
   },
+  [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png",
     size: 65
-  }
+  },
+  [AppConnection.Chef]: { name: "Chef", image: "Chef.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -135,6 +139,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case GitHubConnectionMethod.App:
     case GitHubRadarConnectionMethod.App:
       return { name: "GitHub App", icon: faGithub };
+    case GitHubConnectionMethod.Pat:
+      return { name: "Personal Access Token", icon: faKey };
     case AzureKeyVaultConnectionMethod.OAuth:
     case AzureAppConfigurationConnectionMethod.OAuth:
     case AzureClientSecretsConnectionMethod.OAuth:
@@ -162,6 +168,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return { name: "API Token", icon: faKey };
@@ -197,6 +204,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return { name: "API Key", icon: faKey };
+    case ChefConnectionMethod.UserKey:
+      return { name: "User Key", icon: faKey };
     case AzureClientSecretsConnectionMethod.ClientSecret:
     case AzureAppConfigurationConnectionMethod.ClientSecret:
     case AzureKeyVaultConnectionMethod.ClientSecret:

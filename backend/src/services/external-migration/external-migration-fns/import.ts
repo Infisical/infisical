@@ -82,7 +82,7 @@ export const importDataIntoInfisicalFn = async ({
 
         if (existingEnv) {
           throw new BadRequestError({
-            message: `Environment with slug '${slug}' already exist`,
+            message: `Environment with slug '${slug}' already exists`,
             name: "CreateEnvironment"
           });
         }
@@ -312,7 +312,7 @@ export const importDataIntoInfisicalFn = async ({
           );
           if (secretsByKeys.length) {
             throw new BadRequestError({
-              message: `Secret already exist: ${secretsByKeys.map((el) => el.key).join(",")}`
+              message: `Secret already exists: ${secretsByKeys.map((el) => el.key).join(",")}`
             });
           }
           await fnSecretBulkInsert({

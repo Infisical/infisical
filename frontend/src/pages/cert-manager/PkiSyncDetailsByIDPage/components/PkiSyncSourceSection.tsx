@@ -1,10 +1,12 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 import { subject } from "@casl/ability";
-import { faEdit, faTriangleExclamation } from "@fortawesome/free-solid-svg-icons";
+import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AlertTriangleIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Badge, IconButton, Tooltip } from "@app/components/v2";
+import { IconButton, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
@@ -36,15 +38,10 @@ export const PkiSyncSourceSection = ({ pkiSync, onEditSource }: Props) => {
           <div>
             {!subscriberId && (
               <Tooltip content="The PKI subscriber for this sync has been deleted. Configure a new source or remove this sync.">
-                <div className="mr-1 inline-block w-min">
-                  <Badge
-                    className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                    variant="primary"
-                  >
-                    <FontAwesomeIcon icon={faTriangleExclamation} />
-                    <span>Source Deleted</span>
-                  </Badge>
-                </div>
+                <Badge variant="danger" className="mr-1">
+                  <AlertTriangleIcon />
+                  Source Deleted
+                </Badge>
               </Tooltip>
             )}
             <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>

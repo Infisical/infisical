@@ -9,6 +9,7 @@ import {
   faUserSlash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon, CheckIcon, HourglassIcon } from "lucide-react";
 import ms from "ms";
 import { twMerge } from "tailwind-merge";
 
@@ -24,7 +25,7 @@ import {
   ModalContent,
   Tooltip
 } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useListWorkspaceGroups, useReviewAccessRequest } from "@app/hooks/api";
@@ -42,13 +43,13 @@ import { EditAccessRequestModal } from "@app/pages/secret-manager/SecretApproval
 const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?: boolean) => {
   if (status === ApprovalStatus.APPROVED)
     return (
-      <Badge variant="success" className="flex h-4 items-center justify-center">
+      <Badge variant="success">
         <FontAwesomeIcon icon={faCheck} size="xs" />
       </Badge>
     );
   if (status === ApprovalStatus.REJECTED)
     return (
-      <Badge variant="danger" className="flex h-4 items-center justify-center">
+      <Badge variant="danger">
         <FontAwesomeIcon icon={faBan} size="xs" />
       </Badge>
     );
@@ -58,13 +59,13 @@ const getReviewedStatusSymbol = (status?: ApprovalStatus, isOrgMembershipActive?
       // Can't do a tooltip here because nested tooltips doesn't work properly as of yet.
       // TODO(daniel): Fix nested tooltips in the future.
 
-      <Badge className="flex h-4 items-center justify-center bg-mineshaft-400/50 text-bunker-300">
+      <Badge variant="neutral">
         <FontAwesomeIcon size="xs" icon={faUserSlash} />
       </Badge>
     );
   }
   return (
-    <Badge variant="primary" className="flex h-4 items-center justify-center">
+    <Badge variant="warning">
       <FontAwesomeIcon icon={faHourglass} size="xs" />
     </Badge>
   );
@@ -346,9 +347,7 @@ export const ReviewAccessRequestModal = ({
             <span>Approvers</span>
             {approverSequence.isMyReviewInThisSequence &&
               request.status === ApprovalStatus.PENDING && (
-                <Badge variant="primary" className="h-min">
-                  Awaiting Your Review
-                </Badge>
+                <Badge variant="warning">Awaiting Your Review</Badge>
               )}
           </div>
           <div className="max-h-[40vh] thin-scrollbar overflow-y-auto rounded-sm py-2">
@@ -364,43 +363,28 @@ export const ReviewAccessRequestModal = ({
                 let BadgeComponent: ReactNode = null;
                 if (approver.hasRejected) {
                   StepComponent = (
-                    <Badge
-                      variant="danger"
-                      className="flex h-6 min-w-6 items-center justify-center"
-                    >
-                      <FontAwesomeIcon icon={faBan} />
+                    <Badge isSquare variant="danger">
+                      <BanIcon />
                     </Badge>
                   );
                   BadgeComponent = <Badge variant="danger">Rejected</Badge>;
                 } else if (approver.hasApproved) {
                   StepComponent = (
-                    <Badge
-                      variant="success"
-                      className="flex h-6 min-w-6 items-center justify-center"
-                    >
-                      <FontAwesomeIcon icon={faCheck} />
+                    <Badge isSquare variant="success">
+                      <CheckIcon />
                     </Badge>
                   );
                   BadgeComponent = <Badge variant="success">Approved</Badge>;
                 } else if (isPending) {
                   StepComponent = (
-                    <Badge
-                      variant="primary"
-                      className="flex h-6 min-w-6 items-center justify-center"
-                    >
-                      <FontAwesomeIcon icon={faHourglass} />
+                    <Badge isSquare variant="warning">
+                      <HourglassIcon />
                     </Badge>
                   );
-                  BadgeComponent = <Badge variant="primary">Pending</Badge>;
+                  BadgeComponent = <Badge variant="warning">Pending</Badge>;
                 } else {
                   StepComponent = (
-                    <Badge
-                      className={
-                        isInactive
-                          ? "py-auto my-auto flex h-6 min-w-6 items-center justify-center gap-1.5 bg-mineshaft-400/50 text-center whitespace-nowrap text-bunker-200"
-                          : ""
-                      }
-                    >
+                    <Badge isSquare variant="neutral">
                       <span>{index + 1}</span>
                     </Badge>
                   );
@@ -447,12 +431,10 @@ export const ReviewAccessRequestModal = ({
                                     {member.user.username}
                                     <span className="text-xs">
                                       <Tooltip content="This user has been deactivated and no longer has an active organization membership.">
-                                        <div>
-                                          <Badge className="pointer-events-none mr-auto ml-1 flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                                            <FontAwesomeIcon icon={faBan} />
-                                            Inactive
-                                          </Badge>
-                                        </div>
+                                        <Badge variant="neutral">
+                                          <BanIcon />
+                                          Inactive
+                                        </Badge>
                                       </Tooltip>
                                     </span>
                                   </span>

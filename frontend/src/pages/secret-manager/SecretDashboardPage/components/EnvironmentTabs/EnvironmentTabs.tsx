@@ -226,7 +226,7 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Pro plan."
+        text="Your current plan does not include access to adding custom environments. To unlock this feature, please upgrade to Infisical Pro plan."
       />
       <AddEnvironmentModal
         isOpen={popUp.createEnvironment.isOpen}

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Control, Controller, useForm, useWatch } from "react-hook-form";
 import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faChevronRight,
   faExclamationTriangle,
   faMagnifyingGlass
@@ -14,6 +12,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, SecretInput, Tooltip } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { useGetEnvOverrides, useUpdateServerConfig } from "@app/hooks/api";
 
 type TForm = Record<string, string>;
@@ -213,22 +212,9 @@ export const EnvironmentPageForm = () => {
     >
       <div className="flex w-full flex-row items-center justify-between">
         <div>
-          <div className="flex items-start gap-1">
+          <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Overrides</p>
-            <a
-              href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
+            <DocumentationLinkBadge href="https://infisical.com/docs/self-hosting/configuration/envars#environment-variable-overrides" />
           </div>
           <p className="text-sm text-bunker-300">
             Override specific environment variables. After saving, it may take up to 5 minutes for

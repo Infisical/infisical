@@ -36,6 +36,7 @@ type Props = {
     data?: {
       id?: string;
       name?: string;
+      isEnterpriseFeature?: boolean;
     }
   ) => void;
 };
@@ -90,7 +91,9 @@ export const CertificateTemplatesTable = ({ handlePopUpOpen, caId }: Props) => {
                               <DropdownMenuItem
                                 onClick={() => {
                                   if (!subscription?.pkiEst) {
-                                    handlePopUpOpen("upgradePlan");
+                                    handlePopUpOpen("upgradePlan", {
+                                      isEnterpriseFeature: true
+                                    });
                                     return;
                                   }
 

@@ -340,6 +340,8 @@ export enum EventType {
   ISSUE_PKI_SUBSCRIBER_CERT = "issue-pki-subscriber-cert",
   SIGN_PKI_SUBSCRIBER_CERT = "sign-pki-subscriber-cert",
   AUTOMATED_RENEW_SUBSCRIBER_CERT = "automated-renew-subscriber-cert",
+  AUTOMATED_RENEW_CERTIFICATE = "automated-renew-certificate",
+  AUTOMATED_RENEW_CERTIFICATE_FAILED = "automated-renew-certificate-failed",
   LIST_PKI_SUBSCRIBER_CERTS = "list-pki-subscriber-certs",
   GET_SUBSCRIBER_ACTIVE_CERT_BUNDLE = "get-subscriber-active-cert-bundle",
   CREATE_KMS = "create-kms",
@@ -367,6 +369,9 @@ export enum EventType {
   ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
+  RENEW_CERTIFICATE = "renew-certificate",
+  UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
+  DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -421,6 +426,7 @@ export enum EventType {
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
   GET_PKI_SYNCS = "get-pki-syncs",
   GET_PKI_SYNC = "get-pki-sync",
+  GET_PKI_SYNC_CERTIFICATES = "get-pki-sync-certificates",
   CREATE_PKI_SYNC = "create-pki-sync",
   UPDATE_PKI_SYNC = "update-pki-sync",
   DELETE_PKI_SYNC = "delete-pki-sync",
@@ -2458,6 +2464,29 @@ interface AutomatedRenewPkiSubscriberCert {
   };
 }
 
+interface AutomatedRenewCertificate {
+  type: EventType.AUTOMATED_RENEW_CERTIFICATE;
+  metadata: {
+    certificateId: string;
+    commonName: string;
+    profileId: string;
+    renewBeforeDays: string;
+    profileName: string;
+  };
+}
+
+interface AutomatedRenewCertificateFailed {
+  type: EventType.AUTOMATED_RENEW_CERTIFICATE_FAILED;
+  metadata: {
+    certificateId: string;
+    commonName: string;
+    profileId: string;
+    renewBeforeDays: string;
+    profileName: string;
+    error: string;
+  };
+}
+
 interface SignPkiSubscriberCert {
   type: EventType.SIGN_PKI_SUBSCRIBER_CERT;
   metadata: {
@@ -2717,6 +2746,16 @@ interface OrderCertificateFromProfile {
     certificateProfileId: string;
     orderId: string;
     profileName: string;
+  };
+}
+
+interface RenewCertificate {
+  type: EventType.RENEW_CERTIFICATE;
+  metadata: {
+    originalCertificateId: string;
+    newCertificateId: string;
+    profileName: string;
+    commonName: string;
   };
 }
 
@@ -3120,6 +3159,16 @@ interface GetPkiSyncEvent {
   metadata: {
     destination: string;
     syncId: string;
+  };
+}
+
+interface GetPkiSyncCertificatesEvent {
+  type: EventType.GET_PKI_SYNC_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    count: number;
+    certificateIds: string[];
+    destination: string;
   };
 }
 
@@ -4009,6 +4058,23 @@ interface PamResourceDeleteEvent {
   };
 }
 
+interface UpdateCertificateRenewalConfigEvent {
+  type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG;
+  metadata: {
+    certificateId: string;
+    renewBeforeDays: string;
+    commonName: string;
+  };
+}
+
+interface DisableCertificateRenewalConfigEvent {
+  type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG;
+  metadata: {
+    certificateId: string;
+    commonName: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4216,6 +4282,7 @@ export type Event =
   | IssueCertificateFromProfile
   | SignCertificateFromProfile
   | OrderCertificateFromProfile
+  | RenewCertificate
   | GetAzureAdCsTemplatesEvent
   | AttemptCreateSlackIntegration
   | AttemptReinstallSlackIntegration
@@ -4273,6 +4340,7 @@ export type Event =
   | SecretSyncRemoveSecretsEvent
   | GetPkiSyncsEvent
   | GetPkiSyncEvent
+  | GetPkiSyncCertificatesEvent
   | CreatePkiSyncEvent
   | UpdatePkiSyncEvent
   | DeletePkiSyncEvent
@@ -4373,4 +4441,8 @@ export type Event =
   | PamResourceGetEvent
   | PamResourceCreateEvent
   | PamResourceUpdateEvent
-  | PamResourceDeleteEvent;
+  | PamResourceDeleteEvent
+  | UpdateCertificateRenewalConfigEvent
+  | DisableCertificateRenewalConfigEvent
+  | AutomatedRenewCertificate
+  | AutomatedRenewCertificateFailed;

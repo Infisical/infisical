@@ -633,7 +633,9 @@ export const OAuthCallbackPage = () => {
                 connectionName: data.connection.name,
                 ...(data.returnUrl.includes("integrations")
                   ? {
-                      selectedTab: IntegrationsListPageTabs.SecretSyncs
+                      selectedTab: localStorage.getItem("pkiSyncFormData")
+                        ? IntegrationsListPageTabs.PkiSyncs
+                        : IntegrationsListPageTabs.SecretSyncs
                     }
                   : {})
               }

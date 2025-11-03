@@ -24,6 +24,7 @@ import { AzureKeyVaultSyncListItemSchema, AzureKeyVaultSyncSchema } from "@app/s
 import { BitbucketSyncListItemSchema, BitbucketSyncSchema } from "@app/services/secret-sync/bitbucket";
 import { CamundaSyncListItemSchema, CamundaSyncSchema } from "@app/services/secret-sync/camunda";
 import { ChecklySyncListItemSchema, ChecklySyncSchema } from "@app/services/secret-sync/checkly/checkly-sync-schemas";
+import { ChefSyncListItemSchema, ChefSyncSchema } from "@app/services/secret-sync/chef";
 import {
   CloudflarePagesSyncListItemSchema,
   CloudflarePagesSyncSchema
@@ -46,6 +47,7 @@ import { HerokuSyncListItemSchema, HerokuSyncSchema } from "@app/services/secret
 import { HumanitecSyncListItemSchema, HumanitecSyncSchema } from "@app/services/secret-sync/humanitec";
 import { LaravelForgeSyncListItemSchema, LaravelForgeSyncSchema } from "@app/services/secret-sync/laravel-forge";
 import { NetlifySyncListItemSchema, NetlifySyncSchema } from "@app/services/secret-sync/netlify";
+import { NorthflankSyncListItemSchema, NorthflankSyncSchema } from "@app/services/secret-sync/northflank";
 import { RailwaySyncListItemSchema, RailwaySyncSchema } from "@app/services/secret-sync/railway/railway-sync-schemas";
 import { RenderSyncListItemSchema, RenderSyncSchema } from "@app/services/secret-sync/render/render-sync-schemas";
 import { SupabaseSyncListItemSchema, SupabaseSyncSchema } from "@app/services/secret-sync/supabase";
@@ -85,8 +87,10 @@ const SecretSyncSchema = z.discriminatedUnion("destination", [
   ChecklySyncSchema,
   DigitalOceanAppPlatformSyncSchema,
   NetlifySyncSchema,
+  NorthflankSyncSchema,
   BitbucketSyncSchema,
-  LaravelForgeSyncSchema
+  LaravelForgeSyncSchema,
+  ChefSyncSchema
 ]);
 
 const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
@@ -119,8 +123,10 @@ const SecretSyncOptionsSchema = z.discriminatedUnion("destination", [
   ChecklySyncListItemSchema,
   SupabaseSyncListItemSchema,
   NetlifySyncListItemSchema,
+  NorthflankSyncListItemSchema,
   BitbucketSyncListItemSchema,
-  LaravelForgeSyncListItemSchema
+  LaravelForgeSyncListItemSchema,
+  ChefSyncListItemSchema
 ]);
 
 export const registerSecretSyncRouter = async (server: FastifyZodProvider) => {

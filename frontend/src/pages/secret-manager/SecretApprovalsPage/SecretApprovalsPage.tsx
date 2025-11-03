@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { useGetAccessRequestsCount, useGetSecretApprovalRequestCount } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -50,13 +50,17 @@ export const SecretApprovalsPage = () => {
             <Tab variant="project" value={TabSection.SecretApprovalRequests}>
               Change Requests
               {Boolean(secretApprovalReqCount?.open) && (
-                <Badge className="ml-2">{secretApprovalReqCount?.open}</Badge>
+                <Badge variant="warning" isSquare className="ml-2">
+                  {secretApprovalReqCount?.open}
+                </Badge>
               )}
             </Tab>
             <Tab variant="project" value={TabSection.ResourceApprovalRequests}>
               Access Requests
               {Boolean(accessApprovalRequestCount?.pendingCount) && (
-                <Badge className="ml-2">{accessApprovalRequestCount?.pendingCount}</Badge>
+                <Badge variant="warning" isSquare className="ml-2">
+                  {accessApprovalRequestCount?.pendingCount}
+                </Badge>
               )}
             </Tab>
             <Tab variant="project" value={TabSection.Policies}>

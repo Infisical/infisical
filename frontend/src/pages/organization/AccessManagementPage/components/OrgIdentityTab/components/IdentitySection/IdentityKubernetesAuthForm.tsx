@@ -22,11 +22,12 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useOrganization, useSubscription } from "@app/context";
+import { useOrganization, useOrgPermission, useSubscription } from "@app/context";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
+import { OrgMembershipRole } from "@app/helpers/roles";
 import {
   gatewaysQueryKeys,
   useAddIdentityKubernetesAuth,
@@ -95,7 +96,10 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: { featureName?: string }
+  ) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
@@ -129,6 +133,8 @@ export const IdentityKubernetesAuthForm = ({
   ] as const);
   const { data: vaultConfigs = [] } = useGetVaultExternalMigrationConfigs();
   const hasVaultConnection = vaultConfigs.some((config) => config.connectionId);
+  const { hasOrgRole } = useOrgPermission();
+  const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const {
     control,
@@ -409,20 +415,29 @@ export const IdentityKubernetesAuthForm = ({
                 <FontAwesomeIcon icon={faInfoCircle} className="mt-0.5 text-primary" />
                 <span className="text-mineshaft-200">Load values from HashiCorp Vault</span>
               </div>
-              <Button
-                variant="outline_bg"
-                size="xs"
-                leftIcon={
-                  <img
-                    src="/images/integrations/Vault.png"
-                    alt="HashiCorp Vault"
-                    className="h-4 w-4"
-                  />
+              <Tooltip
+                content={
+                  !isOrgAdmin
+                    ? "Only organization admins can import configurations from HashiCorp Vault"
+                    : undefined
                 }
-                onClick={() => handleImportPopUpToggle("importFromVault", true)}
               >
-                Load from Vault
-              </Button>
+                <Button
+                  variant="outline_bg"
+                  size="xs"
+                  leftIcon={
+                    <img
+                      src="/images/integrations/Vault.png"
+                      alt="HashiCorp Vault"
+                      className="h-4 w-4"
+                    />
+                  }
+                  onClick={() => handleImportPopUpToggle("importFromVault", true)}
+                  isDisabled={!isOrgAdmin}
+                >
+                  Load from Vault
+                </Button>
+              </Tooltip>
             </div>
           )}
           <div className="flex w-full items-center gap-2">
@@ -695,7 +710,9 @@ export const IdentityKubernetesAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -710,7 +727,9 @@ export const IdentityKubernetesAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -733,7 +752,9 @@ export const IdentityKubernetesAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"

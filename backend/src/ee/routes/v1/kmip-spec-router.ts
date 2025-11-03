@@ -182,7 +182,8 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
           algorithm: z.string(),
           isActive: z.boolean(),
           createdAt: z.date(),
-          updatedAt: z.date()
+          updatedAt: z.date(),
+          kmipMetadata: z.record(z.any()).nullish()
         })
       }
     },
@@ -384,7 +385,8 @@ export const registerKmipSpecRouter = async (server: FastifyZodProvider) => {
               isActive: z.boolean(),
               algorithm: z.string(),
               createdAt: z.date(),
-              updatedAt: z.date()
+              updatedAt: z.date(),
+              kmipMetadata: z.record(z.any()).nullish()
             })
             .array()
         })

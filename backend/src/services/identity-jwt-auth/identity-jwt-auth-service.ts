@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import https from "https";
 import jwt from "jsonwebtoken";
 import { JwksClient } from "jwks-rsa";
@@ -21,6 +22,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -67,6 +69,7 @@ export const identityJwtAuthServiceFactory = ({
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: jwtValue }: TLoginJwtAuthDTO) => {
+    const appCfg = getConfig();
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
     if (!identityJwtAuth) {
       throw new NotFoundError({ message: "JWT auth method not found for identity, did you configure JWT auth?" });
@@ -75,176 +78,205 @@ export const identityJwtAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityJwtAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identity.orgId
-    });
-
-    const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
-    if (!decodedToken) {
-      throw new UnauthorizedError({
-        message: "Invalid JWT"
+    const org = await orgDAL.findById(identity.orgId);
+    try {
+      const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: identity.orgId
       });
-    }
 
-    let tokenData: Record<string, string | boolean | number> = {};
-
-    if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
-      let client: JwksClient;
-      if (identityJwtAuth.jwksUrl.includes("https:")) {
-        const decryptedJwksCaCert = orgDataKeyDecryptor({
-          cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
-        }).toString();
-
-        const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
-        client = new JwksClient({
-          jwksUri: identityJwtAuth.jwksUrl,
-          requestAgent
-        });
-      } else {
-        client = new JwksClient({
-          jwksUri: identityJwtAuth.jwksUrl
+      const decodedToken = crypto.jwt().decode(jwtValue, { complete: true });
+      if (!decodedToken) {
+        throw new UnauthorizedError({
+          message: "Invalid JWT"
         });
       }
 
-      const { kid } = decodedToken.header as { kid: string };
-      const jwtSigningKey = await client.getSigningKey(kid);
+      let tokenData: Record<string, string | boolean | number> = {};
 
-      try {
-        tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
-      } catch (error) {
-        if (error instanceof jwt.JsonWebTokenError) {
-          throw new UnauthorizedError({
-            message: `Access denied: ${error.message}`
+      if (identityJwtAuth.configurationType === JwtConfigurationType.JWKS) {
+        let client: JwksClient;
+        if (identityJwtAuth.jwksUrl.includes("https:")) {
+          const decryptedJwksCaCert = orgDataKeyDecryptor({
+            cipherTextBlob: identityJwtAuth.encryptedJwksCaCert
+          }).toString();
+
+          const requestAgent = new https.Agent({ ca: decryptedJwksCaCert, rejectUnauthorized: !!decryptedJwksCaCert });
+          client = new JwksClient({
+            jwksUri: identityJwtAuth.jwksUrl,
+            requestAgent
+          });
+        } else {
+          client = new JwksClient({
+            jwksUri: identityJwtAuth.jwksUrl
           });
         }
 
-        throw error;
-      }
-    } else {
-      const decryptedPublicKeys = orgDataKeyDecryptor({ cipherTextBlob: identityJwtAuth.encryptedPublicKeys })
-        .toString()
-        .split(",");
+        const { kid } = decodedToken.header as { kid: string };
+        const jwtSigningKey = await client.getSigningKey(kid);
 
-      const errors: string[] = [];
-      let isMatchAnyKey = false;
-      for (const publicKey of decryptedPublicKeys) {
         try {
-          tokenData = crypto.jwt().verify(jwtValue, publicKey) as Record<string, string>;
-          isMatchAnyKey = true;
+          tokenData = crypto.jwt().verify(jwtValue, jwtSigningKey.getPublicKey()) as Record<string, string>;
         } catch (error) {
           if (error instanceof jwt.JsonWebTokenError) {
-            errors.push(error.message);
+            throw new UnauthorizedError({
+              message: `Access denied: ${error.message}`
+            });
+          }
+
+          throw error;
+        }
+      } else {
+        const decryptedPublicKeys = orgDataKeyDecryptor({ cipherTextBlob: identityJwtAuth.encryptedPublicKeys })
+          .toString()
+          .split(",");
+
+        const errors: string[] = [];
+        let isMatchAnyKey = false;
+        for (const publicKey of decryptedPublicKeys) {
+          try {
+            tokenData = crypto.jwt().verify(jwtValue, publicKey) as Record<string, string>;
+            isMatchAnyKey = true;
+          } catch (error) {
+            if (error instanceof jwt.JsonWebTokenError) {
+              errors.push(error.message);
+            }
           }
         }
-      }
 
-      if (!isMatchAnyKey) {
-        throw new UnauthorizedError({
-          message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`
-        });
-      }
-    }
-
-    if (identityJwtAuth.boundIssuer) {
-      if (tokenData.iss !== identityJwtAuth.boundIssuer) {
-        throw new ForbiddenRequestError({
-          message: "Access denied: issuer mismatch"
-        });
-      }
-    }
-
-    if (identityJwtAuth.boundSubject) {
-      if (!tokenData.sub) {
-        throw new UnauthorizedError({
-          message: "Access denied: token has no subject field"
-        });
-      }
-
-      if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
-        throw new ForbiddenRequestError({
-          message: "Access denied: subject not allowed"
-        });
-      }
-    }
-
-    if (identityJwtAuth.boundAudiences) {
-      if (!tokenData.aud) {
-        throw new UnauthorizedError({
-          message: "Access denied: token has no audience field"
-        });
-      }
-
-      if (
-        !identityJwtAuth.boundAudiences
-          .split(", ")
-          .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
-      ) {
-        throw new UnauthorizedError({
-          message: "Access denied: token audience not allowed"
-        });
-      }
-    }
-
-    if (identityJwtAuth.boundClaims) {
-      Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
-        const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
-        const value = getValueByDot(tokenData, claimKey);
-
-        if (!value) {
+        if (!isMatchAnyKey) {
           throw new UnauthorizedError({
-            message: `Access denied: token has no ${claimKey} field`
+            message: `Access denied: JWT verification failed with all keys. Errors - ${errors.join("; ")}`
+          });
+        }
+      }
+
+      if (identityJwtAuth.boundIssuer) {
+        if (tokenData.iss !== identityJwtAuth.boundIssuer) {
+          throw new ForbiddenRequestError({
+            message: "Access denied: issuer mismatch"
+          });
+        }
+      }
+
+      if (identityJwtAuth.boundSubject) {
+        if (!tokenData.sub) {
+          throw new UnauthorizedError({
+            message: "Access denied: token has no subject field"
           });
         }
 
-        // handle both single and multi-valued claims
-        if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
-          throw new UnauthorizedError({
-            message: `Access denied: claim mismatch for field ${claimKey}`
+        if (!doesFieldValueMatchJwtPolicy(tokenData.sub, identityJwtAuth.boundSubject)) {
+          throw new ForbiddenRequestError({
+            message: "Access denied: subject not allowed"
           });
         }
+      }
+
+      if (identityJwtAuth.boundAudiences) {
+        if (!tokenData.aud) {
+          throw new UnauthorizedError({
+            message: "Access denied: token has no audience field"
+          });
+        }
+
+        if (
+          !identityJwtAuth.boundAudiences
+            .split(", ")
+            .some((policyValue) => doesFieldValueMatchJwtPolicy(tokenData.aud, policyValue))
+        ) {
+          throw new UnauthorizedError({
+            message: "Access denied: token audience not allowed"
+          });
+        }
+      }
+
+      if (identityJwtAuth.boundClaims) {
+        Object.keys(identityJwtAuth.boundClaims).forEach((claimKey) => {
+          const claimValue = (identityJwtAuth.boundClaims as Record<string, string>)[claimKey];
+          const value = getValueByDot(tokenData, claimKey);
+
+          if (!value) {
+            throw new UnauthorizedError({
+              message: `Access denied: token has no ${claimKey} field`
+            });
+          }
+
+          // handle both single and multi-valued claims
+          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchJwtPolicy(value, claimEntry))) {
+            throw new UnauthorizedError({
+              message: `Access denied: claim mismatch for field ${claimKey}`
+            });
+          }
+        });
+      }
+
+      const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          { lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH, lastLoginTime: new Date() },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityJwtAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityJwtAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.JWT_AUTH
+          },
+          tx
+        );
+
+        return newToken;
       });
-    }
 
-    const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        { lastLoginAuthMethod: IdentityAuthMethod.JWT_AUTH, lastLoginTime: new Date() },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityJwtAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityJwtAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.JWT_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
 
-      return newToken;
-    });
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityJwtAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.JWT_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityJwtAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
-
-    return { accessToken, identityJwtAuth, identityAccessToken, identity };
+      return { accessToken, identityJwtAuth, identityAccessToken, identity };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityJwtAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.JWT_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachJwtAuth = async ({

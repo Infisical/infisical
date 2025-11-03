@@ -114,6 +114,7 @@
                       "integrations/app-connections/bitbucket",
                       "integrations/app-connections/camunda",
                       "integrations/app-connections/checkly",
+                      "integrations/app-connections/chef",
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/digital-ocean",
@@ -130,6 +131,7 @@
                       "integrations/app-connections/mssql",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
+                      "integrations/app-connections/northflank",
                       "integrations/app-connections/oci",
                       "integrations/app-connections/okta",
                       "integrations/app-connections/oracledb",
@@ -176,16 +178,14 @@
                 "pages": [
                   "documentation/platform/gateways/overview",
                   "documentation/platform/gateways/gateway-deployment",
-                  "documentation/platform/gateways/relay-deployment",
-                  "documentation/platform/gateways/security",
                   {
-                    "group": "Gateway (Deprecated)",
+                    "group": "Relay Deployment",
                     "pages": [
-                      "documentation/platform/gateways-deprecated/overview",
-                      "documentation/platform/gateways-deprecated/gateway-security",
-                      "documentation/platform/gateways-deprecated/networking"
+                      "documentation/platform/gateways/relay-deployment/overview",
+                      "documentation/platform/gateways/relay-deployment/terraform"
                     ]
-                  }
+                  },
+                  "documentation/platform/gateways/security"
                 ]
               }
             ]
@@ -541,6 +541,7 @@
                       "integrations/secret-syncs/bitbucket",
                       "integrations/secret-syncs/camunda",
                       "integrations/secret-syncs/checkly",
+                      "integrations/secret-syncs/chef",
                       "integrations/secret-syncs/cloudflare-pages",
                       "integrations/secret-syncs/cloudflare-workers",
                       "integrations/secret-syncs/databricks",
@@ -554,6 +555,7 @@
                       "integrations/secret-syncs/humanitec",
                       "integrations/secret-syncs/laravel-forge",
                       "integrations/secret-syncs/netlify",
+                      "integrations/secret-syncs/northflank",
                       "integrations/secret-syncs/oci-vault",
                       "integrations/secret-syncs/railway",
                       "integrations/secret-syncs/render",
@@ -1659,6 +1661,18 @@
                     ]
                   },
                   {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/chef/list",
+                      "api-reference/endpoints/app-connections/chef/available",
+                      "api-reference/endpoints/app-connections/chef/get-by-id",
+                      "api-reference/endpoints/app-connections/chef/get-by-name",
+                      "api-reference/endpoints/app-connections/chef/create",
+                      "api-reference/endpoints/app-connections/chef/update",
+                      "api-reference/endpoints/app-connections/chef/delete"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare",
                     "pages": [
                       "api-reference/endpoints/app-connections/cloudflare/list",
@@ -1848,6 +1862,18 @@
                       "api-reference/endpoints/app-connections/netlify/create",
                       "api-reference/endpoints/app-connections/netlify/update",
                       "api-reference/endpoints/app-connections/netlify/delete"
+                    ]
+                  },
+                  {
+                    "group": "Northflank",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/northflank/list",
+                      "api-reference/endpoints/app-connections/northflank/available",
+                      "api-reference/endpoints/app-connections/northflank/get-by-id",
+                      "api-reference/endpoints/app-connections/northflank/get-by-name",
+                      "api-reference/endpoints/app-connections/northflank/create",
+                      "api-reference/endpoints/app-connections/northflank/update",
+                      "api-reference/endpoints/app-connections/northflank/delete"
                     ]
                   },
                   {
@@ -2138,6 +2164,20 @@
                     ]
                   },
                   {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/chef/list",
+                      "api-reference/endpoints/secret-syncs/chef/get-by-id",
+                      "api-reference/endpoints/secret-syncs/chef/get-by-name",
+                      "api-reference/endpoints/secret-syncs/chef/create",
+                      "api-reference/endpoints/secret-syncs/chef/update",
+                      "api-reference/endpoints/secret-syncs/chef/delete",
+                      "api-reference/endpoints/secret-syncs/chef/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/chef/import-secrets",
+                      "api-reference/endpoints/secret-syncs/chef/remove-secrets"
+                    ]
+                  },
+                  {
                     "group": "Cloudflare Pages",
                     "pages": [
                       "api-reference/endpoints/secret-syncs/cloudflare-pages/list",
@@ -2292,6 +2332,7 @@
                       "api-reference/endpoints/secret-syncs/laravel-forge/update",
                       "api-reference/endpoints/secret-syncs/laravel-forge/delete",
                       "api-reference/endpoints/secret-syncs/laravel-forge/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/laravel-forge/import-secrets",
                       "api-reference/endpoints/secret-syncs/laravel-forge/remove-secrets"
                     ]
                   },
@@ -2306,6 +2347,20 @@
                       "api-reference/endpoints/secret-syncs/netlify/delete",
                       "api-reference/endpoints/secret-syncs/netlify/sync-secrets",
                       "api-reference/endpoints/secret-syncs/netlify/remove-secrets"
+                    ]
+                  },
+                  {
+                    "group": "Northflank",
+                    "pages": [
+                      "api-reference/endpoints/secret-syncs/northflank/list",
+                      "api-reference/endpoints/secret-syncs/northflank/get-by-id",
+                      "api-reference/endpoints/secret-syncs/northflank/get-by-name",
+                      "api-reference/endpoints/secret-syncs/northflank/create",
+                      "api-reference/endpoints/secret-syncs/northflank/update",
+                      "api-reference/endpoints/secret-syncs/northflank/delete",
+                      "api-reference/endpoints/secret-syncs/northflank/sync-secrets",
+                      "api-reference/endpoints/secret-syncs/northflank/import-secrets",
+                      "api-reference/endpoints/secret-syncs/northflank/remove-secrets"
                     ]
                   },
                   {

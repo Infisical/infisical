@@ -180,7 +180,9 @@ const OrgConfigSection = ({
               className="mt-2"
               onClick={() => {
                 if (subscription && !subscription.kmip) {
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    isEnterpriseFeature: true
+                  });
                   return;
                 }
 
@@ -250,7 +252,8 @@ const OrgConfigSection = ({
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="KMIP requires an enterprise plan."
+        text="Your current plan does not include access to KMIP. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </>
   );

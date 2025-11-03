@@ -1,3 +1,4 @@
 export enum PamResource {
-  Postgres = "postgres"
+  Postgres = "postgres",
+  MySQL = "mysql"
 }

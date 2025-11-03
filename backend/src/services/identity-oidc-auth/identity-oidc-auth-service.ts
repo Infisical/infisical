@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import axios from "axios";
 import https from "https";
 import jwt from "jsonwebtoken";
@@ -22,6 +23,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
@@ -67,6 +69,7 @@ export const identityOidcAuthServiceFactory = ({
   orgDAL
 }: TIdentityOidcAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: oidcJwt }: TLoginOidcAuthDTO) => {
+    const appCfg = getConfig();
     const identityOidcAuth = await identityOidcAuthDAL.findOne({ identityId });
     if (!identityOidcAuth) {
       throw new NotFoundError({ message: "OIDC auth method not found for identity, did you configure OIDC auth?" });
@@ -75,151 +78,180 @@ export const identityOidcAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityOidcAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identity.orgId
-    });
-
-    let caCert = "";
-    if (identityOidcAuth.encryptedCaCertificate) {
-      caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
-    }
-
-    const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
-    const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
-      `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-      {
-        httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-      }
-    );
-    const jwksUri = discoveryDoc.jwks_uri;
-
-    const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
-    if (!decodedToken) {
-      throw new UnauthorizedError({
-        message: "Invalid JWT"
-      });
-    }
-
-    const client = new JwksClient({
-      jwksUri,
-      requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-    });
-
-    const { kid } = decodedToken.header as { kid: string };
-    const oidcSigningKey = await client.getSigningKey(kid);
-
-    let tokenData: Record<string, string>;
+    const org = await orgDAL.findById(identity.orgId);
     try {
-      tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
-        issuer: identityOidcAuth.boundIssuer
-      }) as Record<string, string>;
-    } catch (error) {
-      if (error instanceof jwt.JsonWebTokenError) {
+      const { decryptor } = await kmsService.createCipherPairWithDataKey({
+        type: KmsDataKey.Organization,
+        orgId: identity.orgId
+      });
+
+      let caCert = "";
+      if (identityOidcAuth.encryptedCaCertificate) {
+        caCert = decryptor({ cipherTextBlob: identityOidcAuth.encryptedCaCertificate }).toString();
+      }
+
+      const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
+      const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
+        `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
+        {
+          httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+        }
+      );
+      const jwksUri = discoveryDoc.jwks_uri;
+
+      const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
+      if (!decodedToken) {
         throw new UnauthorizedError({
-          message: `Access denied: ${error.message}`
+          message: "Invalid JWT"
+        });
+      }
+
+      const client = new JwksClient({
+        jwksUri,
+        requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+      });
+
+      const { kid } = decodedToken.header as { kid: string };
+      const oidcSigningKey = await client.getSigningKey(kid);
+
+      let tokenData: Record<string, string>;
+      try {
+        tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+          issuer: identityOidcAuth.boundIssuer
+        }) as Record<string, string>;
+      } catch (error) {
+        if (error instanceof jwt.JsonWebTokenError) {
+          throw new UnauthorizedError({
+            message: `Access denied: ${error.message}`
+          });
+        }
+        throw error;
+      }
+
+      if (identityOidcAuth.boundSubject) {
+        if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
+          throw new ForbiddenRequestError({
+            message: "Access denied: OIDC subject not allowed."
+          });
+        }
+      }
+
+      if (identityOidcAuth.boundAudiences) {
+        if (
+          !identityOidcAuth.boundAudiences
+            .split(", ")
+            .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
+        ) {
+          throw new UnauthorizedError({
+            message: "Access denied: OIDC audience not allowed."
+          });
+        }
+      }
+
+      if (identityOidcAuth.boundClaims) {
+        Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
+          const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
+          const value = getValueByDot(tokenData, claimKey);
+
+          if (!value) {
+            throw new UnauthorizedError({
+              message: `Access denied: token has no ${claimKey} field`
+            });
+          }
+
+          // handle both single and multi-valued claims
+          if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
+            throw new UnauthorizedError({
+              message: "Access denied: OIDC claim not allowed."
+            });
+          }
+        });
+      }
+
+      const filteredClaims: Record<string, string> = {};
+      if (identityOidcAuth.claimMetadataMapping) {
+        Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
+          const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
+          const value = getValueByDot(tokenData, claimKey);
+          if (!value) {
+            throw new UnauthorizedError({
+              message: `Access denied: token has no ${claimKey} field`
+            });
+          }
+          filteredClaims[permissionKey] = value.toString();
+        });
+      }
+
+      const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          { lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH, lastLoginTime: new Date() },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityOidcAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityOidcAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.OIDC_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+
+      const accessToken = crypto.jwt().sign(
+        {
+          identityId: identityOidcAuth.identityId,
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+          identityAuth: {
+            oidc: {
+              claims: filteredClaims
+            }
+          }
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
+      );
+
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityOidcAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.OIDC_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+
+      return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: tokenData };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityOidcAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.OIDC_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
         });
       }
       throw error;
     }
-
-    if (identityOidcAuth.boundSubject) {
-      if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
-        throw new ForbiddenRequestError({
-          message: "Access denied: OIDC subject not allowed."
-        });
-      }
-    }
-
-    if (identityOidcAuth.boundAudiences) {
-      if (
-        !identityOidcAuth.boundAudiences
-          .split(", ")
-          .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
-      ) {
-        throw new UnauthorizedError({
-          message: "Access denied: OIDC audience not allowed."
-        });
-      }
-    }
-
-    if (identityOidcAuth.boundClaims) {
-      Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
-        const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
-        const value = getValueByDot(tokenData, claimKey);
-
-        if (!value) {
-          throw new UnauthorizedError({
-            message: `Access denied: token has no ${claimKey} field`
-          });
-        }
-
-        // handle both single and multi-valued claims
-        if (!claimValue.split(", ").some((claimEntry) => doesFieldValueMatchOidcPolicy(value, claimEntry))) {
-          throw new UnauthorizedError({
-            message: "Access denied: OIDC claim not allowed."
-          });
-        }
-      });
-    }
-
-    const filteredClaims: Record<string, string> = {};
-    if (identityOidcAuth.claimMetadataMapping) {
-      Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
-        const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
-        const value = getValueByDot(tokenData, claimKey);
-        if (!value) {
-          throw new UnauthorizedError({
-            message: `Access denied: token has no ${claimKey} field`
-          });
-        }
-        filteredClaims[permissionKey] = value.toString();
-      });
-    }
-
-    const identityAccessToken = await identityOidcAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        { lastLoginAuthMethod: IdentityAuthMethod.OIDC_AUTH, lastLoginTime: new Date() },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
-        {
-          identityId: identityOidcAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityOidcAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityOidcAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityOidcAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.OIDC_AUTH
-        },
-        tx
-      );
-      return newToken;
-    });
-
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityOidcAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
-        identityAuth: {
-          oidc: {
-            claims: filteredClaims
-          }
-        }
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
-
-    return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: tokenData };
   };
 
   const attachOidcAuth = async ({

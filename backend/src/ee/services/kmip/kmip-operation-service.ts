@@ -341,7 +341,8 @@ export const kmipOperationServiceFactory = ({
       algorithm: completeKeyDetails.internalKms.encryptionAlgorithm,
       isActive: !key.isDisabled,
       createdAt: key.createdAt,
-      updatedAt: key.updatedAt
+      updatedAt: key.updatedAt,
+      kmipMetadata: key.kmipMetadata as Record<string, unknown>
     };
   };
 

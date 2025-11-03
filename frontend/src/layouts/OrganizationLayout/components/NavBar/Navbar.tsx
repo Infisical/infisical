@@ -7,15 +7,12 @@ import {
   faCaretDown,
   faCheck,
   faChevronRight,
-  faCubes,
   faEnvelope,
   faExclamationTriangle,
-  faGlobe,
   faInfinity,
   faInfo,
   faInfoCircle,
   faPlus,
-  faServer,
   faSignOut,
   faToolbox,
   faUser,
@@ -30,7 +27,6 @@ import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
-  Badge,
   BreadcrumbContainer,
   Button,
   DropdownMenu,
@@ -46,6 +42,7 @@ import {
   TBreadcrumbFormat,
   Tooltip
 } from "@app/components/v2";
+import { Badge, InstanceIcon, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
 import { useOrganization, useSubscription, useUser } from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
@@ -144,12 +141,10 @@ export const Navbar = () => {
     enabled: Boolean(subscription.subOrganization)
   });
 
-  useEffect(() => {
-    if (subscription?.cardDeclined && !sessionStorage.getItem("paymentFailed")) {
-      sessionStorage.setItem("paymentFailed", "true");
-      setShowCardDeclinedModal(true);
-    }
-  }, [subscription]);
+  const isCardDeclined = Boolean(subscription?.cardDeclined);
+  const isCardDeclinedMoreThan30Days = Boolean(
+    isCardDeclined && subscription?.cardDeclinedDays && subscription?.cardDeclinedDays >= 30
+  );
 
   const { data: orgs } = useGetOrganizations();
   const navigate = useNavigate();
@@ -161,6 +156,23 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
+  const isBillingPage = location.pathname === "/organization/billing";
+
+  const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
+
+  useEffect(() => {
+    if (isModalIntrusive) {
+      setShowCardDeclinedModal(true);
+      sessionStorage.setItem("paymentFailed", "true");
+      return;
+    }
+
+    if (isCardDeclined && !sessionStorage.getItem("paymentFailed")) {
+      sessionStorage.setItem("paymentFailed", "true");
+      setShowCardDeclinedModal(true);
+    }
+  }, [subscription, isBillingPage, isModalIntrusive]);
+
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
@@ -271,9 +283,7 @@ export const Navbar = () => {
               to="/admin"
               className="group flex cursor-pointer items-center gap-2 text-sm text-white transition-all duration-100 hover:text-primary"
             >
-              <div>
-                <FontAwesomeIcon icon={faServer} className="text-xs text-bunker-300" />
-              </div>
+              <InstanceIcon className="size-3.5 text-xs text-bunker-300" />
               <div className="whitespace-nowrap">Server Console</div>
             </Link>
             <p className="pr-3 pl-3 text-lg text-mineshaft-400/70">/</p>
@@ -288,24 +298,31 @@ export const Navbar = () => {
               <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
                   <Badge
-                    onClick={async () => {
-                      navigate({
-                        to: "/organization/projects",
-                        search: (search) => ({ ...search, subOrganization: undefined })
-                      });
-                      if (isSubOrganization) {
-                        await router.invalidate({ sync: true }).catch(() => null);
-                      }
-                    }}
+                    asChild
                     variant="org"
+                    isTruncatable
+                    // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
                     className={twMerge(
-                      "max-w-full min-w-0 cursor-pointer text-sm",
+                      "gap-x-1.5 text-sm",
                       (!isOrgScope || isSubOrganization) &&
-                        "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
+                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-org"
                     )}
                   >
-                    <FontAwesomeIcon icon={faGlobe} />
-                    <p className="truncate">{currentOrg?.name}</p>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        navigate({
+                          to: "/organization/projects",
+                          search: (search) => ({ ...search, subOrganization: undefined })
+                        });
+                        if (isSubOrganization) {
+                          await router.invalidate({ sync: true }).catch(() => null);
+                        }
+                      }}
+                    >
+                      <OrgIcon className="size-[12px]" />
+                      <span>{currentOrg?.name}</span>
+                    </button>
                   </Badge>
                   <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
                     {getPlan(subscription)}
@@ -443,19 +460,22 @@ export const Navbar = () => {
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 <DropdownMenu modal={false}>
-                  <Link className="overflow-hidden" to="/organization/projects">
-                    <Badge
-                      variant="namespace"
-                      className={twMerge(
-                        "flex max-w-full min-w-0 cursor-pointer text-sm",
-                        !isOrgScope &&
-                          "bg-transparent text-mineshaft-200 hover:bg-transparent hover:underline"
-                      )}
-                    >
-                      <FontAwesomeIcon icon={faCubes} />
-                      <p className="truncate">{currentOrg.subOrganization.name}</p>
-                    </Badge>
-                  </Link>
+                  <Badge
+                    asChild
+                    isTruncatable
+                    variant="sub-org"
+                    // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
+                    className={twMerge(
+                      "gap-x-1.5 text-sm",
+                      !isOrgScope &&
+                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
+                    )}
+                  >
+                    <Link to="/organization/projects">
+                      <SubOrgIcon className="size-[12px]" />
+                      <span>{currentOrg.subOrganization.name}</span>
+                    </Link>
+                  </Badge>
                   <DropdownMenuTrigger asChild>
                     <div>
                       <IconButton
@@ -549,10 +569,10 @@ export const Navbar = () => {
       )}
       {user.superAdmin && !location.pathname.startsWith("/admin") && (
         <Link
-          className="mr-2 rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+          className="mr-2 flex items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
           to="/admin"
         >
-          <FontAwesomeIcon icon={faServer} className="mr-2" />
+          <InstanceIcon className="mr-2 inline-block size-3.5" />
           Server Console
         </Link>
       )}
@@ -684,7 +704,10 @@ export const Navbar = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Modal isOpen={showCardDeclinedModal} onOpenChange={setShowCardDeclinedModal}>
+      <Modal
+        isOpen={showCardDeclinedModal}
+        onOpenChange={() => !isModalIntrusive && setShowCardDeclinedModal(false)}
+      >
         <ModalContent
           title={
             <div className="flex items-center gap-2">
@@ -692,6 +715,7 @@ export const Navbar = () => {
               Your payment could not be processed.
             </div>
           }
+          showCloseButton={!isModalIntrusive}
         >
           <div>
             <div>
@@ -712,15 +736,16 @@ export const Navbar = () => {
                     >
                       Update Payment Method
                     </Button>
+                  </Link>
+                  {!isModalIntrusive && (
                     <Button
                       colorSchema="secondary"
                       variant="outline"
-                      className="ml-2"
                       onClick={() => setShowCardDeclinedModal(false)}
                     >
                       Dismiss
                     </Button>
-                  </Link>
+                  )}
                 </div>
               </div>
             </div>

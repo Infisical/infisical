@@ -1,10 +1,10 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -25,8 +25,7 @@ export const MembersSection = () => {
 
   const { handlePopUpToggle, popUp, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addMember",
-    "removeMember",
-    "upgradePlan"
+    "removeMember"
   ] as const);
 
   const handleRemoveUser = async () => {
@@ -57,7 +56,10 @@ export const MembersSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Users</p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Users</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
+        </div>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Member}>
           {(isAllowed) => (
             <Button
@@ -80,11 +82,6 @@ export const MembersSection = () => {
         title="Do you want to remove this user from the project?"
         onChange={(isOpen) => handlePopUpToggle("removeMember", isOpen)}
         onDeleteApproved={handleRemoveUser}
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

@@ -1,8 +1,10 @@
 import { ReactNode } from "react";
-import { faArrowRight, faKey } from "@fortawesome/free-solid-svg-icons";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { KeyIcon } from "lucide-react";
 
-import { Badge, FormLabel } from "@app/components/v2";
+import { FormLabel } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 
 type Props = {
   items: { name: string; input: ReactNode }[];
@@ -32,9 +34,10 @@ export const SecretsMappingTable = ({ items }: Props) => {
             <tr key={name}>
               <td className="whitespace-nowrap">
                 <div className="mb-4 flex h-full items-start justify-center">
-                  <Badge className="pointer-events-none flex h-[36px] w-full items-center justify-center gap-1.5 border border-mineshaft-600 bg-mineshaft-600 whitespace-nowrap text-bunker-200">
-                    <FontAwesomeIcon icon={faKey} />
-                    <span>{name}</span>
+                  {/* TODO(scott): probably shouldn't be a badge */}
+                  <Badge variant="neutral" className="h-[36px] w-full justify-center text-xs">
+                    <KeyIcon />
+                    {name}
                   </Badge>
                 </div>
               </td>

@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faCheckCircle,
   faFileShield,
   faFilter,
@@ -36,6 +34,7 @@ import {
   THead,
   Tr
 } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionSub,
   TProjectPermission,
@@ -243,22 +242,9 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
       <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <div className="flex items-start gap-1">
+            <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Policies</p>
-              <a
-                href="https://infisical.com/docs/documentation/platform/pr-workflows"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pr-workflows" />
             </div>
             <p className="text-sm text-bunker-300">
               Implement granular policies for access requests and secrets management
@@ -505,7 +491,7 @@ export const ApprovalPolicyList = ({ projectId }: IProps) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add secret approval policy if you switch to Infisical's Enterprise plan."
+        text="Adding secret approval policies can be unlocked if you upgrade to Infisical Pro plan."
       />
     </>
   );

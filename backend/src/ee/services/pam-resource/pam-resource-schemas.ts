@@ -33,7 +33,9 @@ export const BasePamAccountSchemaWithResource = BasePamAccountSchema.extend({
     resourceType: true
   }).extend({
     rotationCredentialsConfigured: z.boolean()
-  })
+  }),
+  lastRotationMessage: z.string().nullable().optional(),
+  rotationStatus: z.string().nullable().optional()
 });
 
 export const BaseCreatePamAccountSchema = z.object({

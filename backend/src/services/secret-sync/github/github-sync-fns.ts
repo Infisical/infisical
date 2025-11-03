@@ -211,10 +211,18 @@ export const GithubSyncFns = {
     }
 
     const { connection } = secretSync;
-    const token =
-      connection.method === GitHubConnectionMethod.OAuth
-        ? connection.credentials.accessToken
-        : await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service);
+    let token: string;
+
+    switch (connection.method) {
+      case GitHubConnectionMethod.OAuth:
+        token = connection.credentials.accessToken;
+        break;
+      case GitHubConnectionMethod.Pat:
+        token = connection.credentials.personalAccessToken;
+        break;
+      default:
+        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service);
+    }
 
     const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService, gatewayV2Service);
     const publicKey = await getPublicKey(secretSync, gatewayService, gatewayV2Service, token);
@@ -269,10 +277,18 @@ export const GithubSyncFns = {
     const secretMap = Object.fromEntries(Object.entries(ogSecretMap).map(([i, v]) => [i.toUpperCase(), v]));
 
     const { connection } = secretSync;
-    const token =
-      connection.method === GitHubConnectionMethod.OAuth
-        ? connection.credentials.accessToken
-        : await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service);
+    let token: string;
+
+    switch (connection.method) {
+      case GitHubConnectionMethod.OAuth:
+        token = connection.credentials.accessToken;
+        break;
+      case GitHubConnectionMethod.Pat:
+        token = connection.credentials.personalAccessToken;
+        break;
+      default:
+        token = await getGitHubAppAuthToken(connection, gatewayService, gatewayV2Service);
+    }
 
     const encryptedSecrets = await getEncryptedSecrets(secretSync, gatewayService, gatewayV2Service);
 
