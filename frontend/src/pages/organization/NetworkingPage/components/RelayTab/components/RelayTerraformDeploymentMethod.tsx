@@ -29,6 +29,7 @@ import {
   useGetIdentityTokenAuth
 } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
+import { AWS_REGIONS } from "@app/helpers/appConnections";
 
 const baseFormSchema = z.object({
   name: slugSchema({ field: "name" })
@@ -117,7 +118,7 @@ export const RelayTerraformDeploymentMethod = () => {
     setFormErrors([]);
 
     if (canCreateToken && autogenerateToken) {
-      const validation = formSchemaWithIdentity.safeParse({ name, instanceDomain, identity });
+      const validation = formSchemaWithIdentity.safeParse({ name, identity });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
         return;
@@ -443,11 +444,16 @@ resource "aws_eip_association" "eip_assoc" {
         <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
           <Tab.Panel>
             <FormLabel label="AWS Region" />
-            <Input
-              value={awsRegion}
-              onChange={(e) => setAwsRegion(e.target.value)}
-              placeholder="us-east-1"
-              isError={Boolean(errors.awsRegion)}
+            <FilterableSelect
+              value={AWS_REGIONS.find((r) => r.slug === awsRegion)}
+              onChange={(selected) => {
+                if (selected) {
+                  setAwsRegion((selected as SingleValue<{ slug: string; name: string }>)!.slug);
+                }
+              }}
+              options={AWS_REGIONS}
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.slug}
             />
             {errors.awsRegion && <p className="mt-1 text-sm text-red">{errors.awsRegion}</p>}
             <FormLabel label="VPC ID" className="mt-4" />
