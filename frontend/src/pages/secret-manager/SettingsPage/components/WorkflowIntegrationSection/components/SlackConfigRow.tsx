@@ -2,11 +2,11 @@
 import { BsSlack } from "react-icons/bs";
 import { faEllipsis } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -15,6 +15,7 @@ import {
   Td,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
 import { useGetSlackIntegrationChannels } from "@app/hooks/api";
 import {
@@ -61,32 +62,38 @@ export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackCon
         {slackConfig.isAccessRequestNotificationEnabled &&
         !isLoadingConfig &&
         slackConfig.accessRequestChannels.length > 0 ? (
-          <Badge>
+          <p>
             {slackConfig.accessRequestChannels
               .split(", ")
               .map((channel) => slackChannelIdToName[channel])
               .join(", ")}
-          </Badge>
+          </p>
         ) : isLoadingConfig ? (
           <Spinner size="xs" />
         ) : (
-          <Badge variant="danger">Disabled</Badge>
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
         )}
       </Td>
       <Td>
         {slackConfig.isSecretRequestNotificationEnabled &&
         !isLoadingConfig &&
         slackConfig.secretRequestChannels.length > 0 ? (
-          <Badge>
+          <p>
             {slackConfig.secretRequestChannels
               .split(", ")
               .map((channel) => slackChannelIdToName[channel])
               .join(", ")}
-          </Badge>
+          </p>
         ) : isLoadingConfig ? (
           <Spinner size="xs" />
         ) : (
-          <Badge variant="danger">Disabled</Badge>
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
         )}
       </Td>
 

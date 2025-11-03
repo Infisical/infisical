@@ -277,7 +277,11 @@ export const OverviewPage = () => {
   });
 
   const isFilteredByResources = Object.values(filter).some(Boolean);
-  const { isPending: isOverviewLoading, data: overview } = useGetProjectSecretsOverview(
+  const {
+    isPending: isOverviewLoading,
+    data: overview,
+    isFetching: isOverviewFetching
+  } = useGetProjectSecretsOverview(
     {
       projectId,
       environments: visibleEnvs.map((env) => env.slug),
@@ -631,6 +635,8 @@ export const OverviewPage = () => {
   };
 
   const handleFolderClick = (path: string) => {
+    if (isOverviewFetching) return;
+
     // store for breadcrumb nav to restore previously used filters
     setFilterHistory((prev) => {
       const curr = new Map(prev);
@@ -1173,7 +1179,8 @@ export const OverviewPage = () => {
                               return;
                             }
                             handlePopUpOpen("upgradePlan", {
-                              isEnterpriseFeature: true
+                              isEnterpriseFeature: true,
+                              text: "Adding dynamic secrets can be unlocked if you upgrade to Infisical Enterprise plan."
                             });
                           }}
                           isDisabled={userAvailableDynamicSecretEnvs.length === 0}
@@ -1197,7 +1204,9 @@ export const OverviewPage = () => {
                               handlePopUpClose("misc");
                               return;
                             }
-                            handlePopUpOpen("upgradePlan");
+                            handlePopUpOpen("upgradePlan", {
+                              text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+                            });
                           }}
                           isDisabled={userAvailableSecretRotationEnvs.length === 0}
                           variant="outline_bg"
@@ -1682,11 +1691,7 @@ export const OverviewPage = () => {
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={
-            subscription.slug === null
-              ? "You can perform this action under an Enterprise license"
-              : "You can perform this action if you switch to Infisical's Enterprise plan"
-          }
+          text={popUp.upgradePlan.data?.text}
         />
       )}
       <CreateSecretRotationV2Modal

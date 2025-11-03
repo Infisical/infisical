@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 
 import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
@@ -18,6 +19,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -59,6 +61,7 @@ export const identityGcpAuthServiceFactory = ({
   orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
   const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
+    const appCfg = getConfig();
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
     if (!identityGcpAuth) {
       throw new NotFoundError({ message: "GCP auth method not found for identity, did you configure GCP auth?" });
@@ -67,108 +70,140 @@ export const identityGcpAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityGcpAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    let gcpIdentityDetails: TGcpIdentityDetails;
-    switch (identityGcpAuth.type) {
-      case "gce": {
-        gcpIdentityDetails = await validateIdTokenIdentity({
-          identityId,
-          jwt: gcpJwt
-        });
-        break;
+    const org = await orgDAL.findById(identity.orgId);
+    try {
+      let gcpIdentityDetails: TGcpIdentityDetails;
+      switch (identityGcpAuth.type) {
+        case "gce": {
+          gcpIdentityDetails = await validateIdTokenIdentity({
+            identityId,
+            jwt: gcpJwt
+          });
+          break;
+        }
+        case "iam": {
+          gcpIdentityDetails = await validateIamIdentity({
+            identityId,
+            jwt: gcpJwt
+          });
+          break;
+        }
+        default: {
+          throw new BadRequestError({ message: "Invalid GCP Auth type" });
+        }
       }
-      case "iam": {
-        gcpIdentityDetails = await validateIamIdentity({
-          identityId,
-          jwt: gcpJwt
-        });
-        break;
+
+      if (identityGcpAuth.allowedServiceAccounts) {
+        // validate if the service account is in the list of allowed service accounts
+
+        const isServiceAccountAllowed = identityGcpAuth.allowedServiceAccounts
+          .split(",")
+          .map((serviceAccount) => serviceAccount.trim())
+          .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
+
+        if (!isServiceAccountAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: GCP service account not allowed."
+          });
       }
-      default: {
-        throw new BadRequestError({ message: "Invalid GCP Auth type" });
+
+      if (
+        identityGcpAuth.type === "gce" &&
+        identityGcpAuth.allowedProjects &&
+        gcpIdentityDetails.computeEngineDetails
+      ) {
+        // validate if the project that the service account belongs to is in the list of allowed projects
+
+        const isProjectAllowed = identityGcpAuth.allowedProjects
+          .split(",")
+          .map((project) => project.trim())
+          .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
+
+        if (!isProjectAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: GCP project not allowed."
+          });
       }
-    }
 
-    if (identityGcpAuth.allowedServiceAccounts) {
-      // validate if the service account is in the list of allowed service accounts
+      if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
+        const isZoneAllowed = identityGcpAuth.allowedZones
+          .split(",")
+          .map((zone) => zone.trim())
+          .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
 
-      const isServiceAccountAllowed = identityGcpAuth.allowedServiceAccounts
-        .split(",")
-        .map((serviceAccount) => serviceAccount.trim())
-        .some((serviceAccount) => serviceAccount === gcpIdentityDetails.email);
+        if (!isZoneAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: GCP zone not allowed."
+          });
+      }
 
-      if (!isServiceAccountAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: GCP service account not allowed."
-        });
-    }
-
-    if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedProjects && gcpIdentityDetails.computeEngineDetails) {
-      // validate if the project that the service account belongs to is in the list of allowed projects
-
-      const isProjectAllowed = identityGcpAuth.allowedProjects
-        .split(",")
-        .map((project) => project.trim())
-        .some((project) => project === gcpIdentityDetails.computeEngineDetails?.project_id);
-
-      if (!isProjectAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: GCP project not allowed."
-        });
-    }
-
-    if (identityGcpAuth.type === "gce" && identityGcpAuth.allowedZones && gcpIdentityDetails.computeEngineDetails) {
-      const isZoneAllowed = identityGcpAuth.allowedZones
-        .split(",")
-        .map((zone) => zone.trim())
-        .some((zone) => zone === gcpIdentityDetails.computeEngineDetails?.zone);
-
-      if (!isZoneAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: GCP zone not allowed."
-        });
-    }
-
-    const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
-          lastLoginTime: new Date()
-        },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+      const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          {
+            lastLoginAuthMethod: IdentityAuthMethod.GCP_AUTH,
+            lastLoginTime: new Date()
+          },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityGcpAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityGcpAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.GCP_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityGcpAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityGcpAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.GCP_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityGcpAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityGcpAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    return { accessToken, identityGcpAuth, identityAccessToken, identity };
+      return { accessToken, identityGcpAuth, identityAccessToken, identity };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityGcpAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.GCP_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachGcpAuth = async ({

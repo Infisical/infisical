@@ -34,6 +34,7 @@ import { diff, groupBy } from "@app/lib/fn";
 import { setKnexStringValue } from "@app/lib/knex";
 import { logger } from "@app/lib/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
+import { recordSecretReadMetric } from "@app/lib/telemetry/metrics";
 
 import { ActorType } from "../auth/auth-type";
 import { TCommitResourceChangeDTO, TFolderCommitServiceFactory } from "../folder-commit/folder-commit-service";
@@ -282,7 +283,7 @@ export const secretV2BridgeServiceFactory = ({
       folderId
     });
     if (inputSecret.type === SecretType.Shared && doesSecretExist)
-      throw new BadRequestError({ message: "Secret already exist" });
+      throw new BadRequestError({ message: "Secret already exists" });
 
     // if user creating personal check its shared also exist
     if (inputSecret.type === SecretType.Personal && !doesSecretExist) {
@@ -527,7 +528,7 @@ export const secretV2BridgeServiceFactory = ({
         type: SecretType.Shared,
         folderId
       });
-      if (doesNewNameSecretExist) throw new BadRequestError({ message: "Secret with the new name already exist" });
+      if (doesNewNameSecretExist) throw new BadRequestError({ message: "Secret with the new name already exists" });
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionSecretActions.Edit,
         subject(ProjectPermissionSub.Secrets, {
@@ -1052,6 +1053,11 @@ export const secretV2BridgeServiceFactory = ({
     });
     throwIfMissingSecretReadValueOrDescribePermission(permission, ProjectPermissionSecretActions.DescribeSecret);
 
+    recordSecretReadMetric({
+      environment,
+      secretPath: path
+    });
+
     const cachedSecretDalVersion = await keyStore.pgGetIntItem(SecretServiceCacheKeys.getSecretDalVersion(projectId));
     const secretDalVersion = Number(cachedSecretDalVersion || 0);
     const cacheKey = SecretServiceCacheKeys.getSecretsOfServiceLayer(projectId, secretDalVersion, {
@@ -1482,6 +1488,12 @@ export const secretV2BridgeServiceFactory = ({
       secretTags: (secret?.tags || []).map((el) => el.slug)
     });
 
+    recordSecretReadMetric({
+      environment,
+      secretPath: path,
+      name: secretName
+    });
+
     // this will throw if the user doesn't have read value permission no matter what
     // because if its an expansion, it will fully depend on the value.
     const { expandSecretReferences } = expandSecretReferencesFactory({
@@ -1674,7 +1686,7 @@ export const secretV2BridgeServiceFactory = ({
       }
     });
     if (secrets.length)
-      throw new BadRequestError({ message: `Secret already exist: ${secrets.map((el) => el.key).join(",")}` });
+      throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 
     const project = await projectDAL.findById(projectId);
     await scanSecretPolicyViolations(projectId, secretPath, inputSecrets, project.secretDetectionIgnoreValues || []);

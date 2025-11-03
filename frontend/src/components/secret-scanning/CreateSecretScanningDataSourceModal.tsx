@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 
 import { TSecretScanningDataSourceForm } from "@app/components/secret-scanning/forms/schemas";
 import { Modal, ModalContent } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   SecretScanningDataSource,
   TSecretScanningDataSource
@@ -108,23 +107,9 @@ export const CreateSecretScanningDataSourceModal = ({ onOpenChange, isOpen, ...p
           selectedDataSource ? (
             <SecretScanningDataSourceModalHeader isConfigured={false} type={selectedDataSource} />
           ) : (
-            <div className="flex items-center text-mineshaft-300">
+            <div className="flex items-center gap-x-2 text-mineshaft-300">
               Add Data Source
-              <a
-                target="_blank"
-                href="https://infisical.com/docs/documentation/platform/secret-scanning/overview"
-                className="mb-1 ml-1"
-                rel="noopener noreferrer"
-              >
-                <div className="inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1 mb-[0.03rem] text-[12px]" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1 text-[10px]"
-                  />
-                </div>
-              </a>
+              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/secret-scanning/overview" />
             </div>
           )
         }

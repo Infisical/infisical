@@ -10,6 +10,7 @@ import { TAzureKeyVaultSync } from "./azure-key-vault-sync";
 import { TBitbucketSync } from "./bitbucket-sync";
 import { TCamundaSync } from "./camunda-sync";
 import { TChecklySync } from "./checkly-sync";
+import { TChefSync } from "./chef-sync";
 import { TCloudflarePagesSync } from "./cloudflare-pages-sync";
 import { TCloudflareWorkersSync } from "./cloudflare-workers-sync";
 import { TDatabricksSync } from "./databricks-sync";
@@ -23,6 +24,7 @@ import { THerokuSync } from "./heroku-sync";
 import { THumanitecSync } from "./humanitec-sync";
 import { TLaravelForgeSync } from "./laravel-forge-sync";
 import { TNetlifySync } from "./netlify-sync";
+import { TNorthflankSync } from "./northflank-sync";
 import { TOCIVaultSync } from "./oci-vault-sync";
 import { TRailwaySync } from "./railway-sync";
 import { TRenderSync } from "./render-sync";
@@ -70,8 +72,10 @@ export type TSecretSync =
   | TSupabaseSync
   | TDigitalOceanAppPlatformSync
   | TNetlifySync
+  | TNorthflankSync
   | TBitbucketSync
-  | TLaravelForgeSync;
+  | TLaravelForgeSync
+  | TChefSync;
 
 export type TListSecretSyncs = { secretSyncs: TSecretSync[] };
 

@@ -3,7 +3,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
-import { Badge } from "@app/components/v2/Badge";
+import { Badge } from "@app/components/v3";
 import { TSharedSecret } from "@app/hooks/api/secretSharing";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 

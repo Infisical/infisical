@@ -47,7 +47,6 @@ describe("CertificateProfileService", () => {
     findByNameAndProjectId: vi.fn(),
     findByIdWithConfigs: vi.fn(),
     getCertificatesByProfile: vi.fn(),
-    getProfileMetrics: vi.fn(),
     isProfileInUse: vi.fn(),
     transaction: vi.fn(),
     find: vi.fn(),
@@ -110,7 +109,7 @@ describe("CertificateProfileService", () => {
     apiConfig: {
       id: "api-config-123",
       autoRenew: true,
-      autoRenewDays: 30
+      renewBeforeDays: 30
     }
   };
 
@@ -202,7 +201,7 @@ describe("CertificateProfileService", () => {
       certificateTemplateId: "template-123",
       apiConfig: {
         autoRenew: true,
-        autoRenewDays: 30
+        renewBeforeDays: 30
       }
     };
 
@@ -323,7 +322,7 @@ describe("CertificateProfileService", () => {
         certificateTemplateId: "template-123",
         apiConfig: {
           autoRenew: true,
-          autoRenewDays: 30
+          renewBeforeDays: 30
         }
       };
 
@@ -493,9 +492,7 @@ describe("CertificateProfileService", () => {
         limit: 20,
         search: undefined,
         enrollmentType: undefined,
-        caId: undefined,
-        includeMetrics: false,
-        expiringDays: 30
+        caId: undefined
       });
     });
 
@@ -515,51 +512,7 @@ describe("CertificateProfileService", () => {
         limit: 5,
         search: "test",
         enrollmentType: EnrollmentType.API,
-        caId: "ca-123",
-        includeMetrics: false,
-        expiringDays: 30
-      });
-    });
-
-    it("should list profiles with metrics when includeMetrics is true", async () => {
-      const mockProfilesWithMetrics = [
-        {
-          ...sampleProfile,
-          total_certificates: 10,
-          active_certificates: 8,
-          expired_certificates: 1,
-          expiring_certificates: 1,
-          revoked_certificates: 0
-        }
-      ];
-      (mockCertificateProfileDAL.findByProjectId as any).mockResolvedValue(mockProfilesWithMetrics);
-
-      const result = await service.listProfiles({
-        ...mockActor,
-        projectId: "project-123",
-        includeMetrics: true,
-        expiringDays: 15
-      });
-
-      expect(result.profiles).toHaveLength(1);
-      expect(result.profiles[0]).toHaveProperty("metrics");
-      expect(result.profiles[0].metrics).toEqual({
-        profileId: sampleProfile.id,
-        totalCertificates: 10,
-        activeCertificates: 8,
-        expiredCertificates: 1,
-        expiringCertificates: 1,
-        revokedCertificates: 0
-      });
-
-      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith("project-123", {
-        offset: 0,
-        limit: 20,
-        search: undefined,
-        enrollmentType: undefined,
-        caId: undefined,
-        includeMetrics: true,
-        expiringDays: 15
+        caId: "ca-123"
       });
     });
   });
@@ -659,54 +612,6 @@ describe("CertificateProfileService", () => {
     });
   });
 
-  describe("getProfileMetrics", () => {
-    const mockMetrics = {
-      profileId: "profile-123",
-      totalCertificates: 10,
-      activeCertificates: 8,
-      expiredCertificates: 1,
-      expiringCertificates: 2,
-      revokedCertificates: 1
-    };
-
-    beforeEach(() => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-      (mockCertificateProfileDAL.getProfileMetrics as any).mockResolvedValue(mockMetrics);
-    });
-
-    it("should get profile metrics successfully", async () => {
-      const result = await service.getProfileMetrics({
-        ...mockActor,
-        profileId: "profile-123"
-      });
-
-      expect(result).toEqual(mockMetrics);
-      expect(mockCertificateProfileDAL.findById).toHaveBeenCalledWith("profile-123");
-      expect(mockCertificateProfileDAL.getProfileMetrics).toHaveBeenCalledWith("profile-123", 30);
-    });
-
-    it("should get profile metrics with custom expiring days", async () => {
-      await service.getProfileMetrics({
-        ...mockActor,
-        profileId: "profile-123",
-        expiringDays: 60
-      });
-
-      expect(mockCertificateProfileDAL.getProfileMetrics).toHaveBeenCalledWith("profile-123", 60);
-    });
-
-    it("should throw NotFoundError when profile not found", async () => {
-      (mockCertificateProfileDAL.findById as any).mockResolvedValue(null);
-
-      await expect(
-        service.getProfileMetrics({
-          ...mockActor,
-          profileId: "profile-123"
-        })
-      ).rejects.toThrow(NotFoundError);
-    });
-  });
-
   describe("comprehensive certificate profile scenarios", () => {
     describe("profile configuration validation", () => {
       it("should validate EST enrollment configuration", async () => {
@@ -761,7 +666,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           apiConfig: {
             autoRenew: true,
-            autoRenewDays: 30
+            renewBeforeDays: 30
           }
         };
 
@@ -786,7 +691,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           apiConfig: {
             autoRenew: true,
-            autoRenewDays: 7
+            renewBeforeDays: 7
           }
         };
 
@@ -808,7 +713,7 @@ describe("CertificateProfileService", () => {
         expect(mockApiEnrollmentConfigDAL.create).toHaveBeenCalledWith(
           {
             autoRenew: true,
-            autoRenewDays: 7
+            renewBeforeDays: 7
           },
           undefined
         );
@@ -926,53 +831,6 @@ describe("CertificateProfileService", () => {
           status: undefined,
           search: "api.example"
         });
-      });
-    });
-
-    describe("metrics and monitoring", () => {
-      it("should calculate profile metrics correctly", async () => {
-        const detailedMetrics = {
-          profileId: "profile-123",
-          totalCertificates: 50,
-          activeCertificates: 40,
-          expiredCertificates: 5,
-          expiringCertificates: 3,
-          revokedCertificates: 2
-        };
-
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-        (mockCertificateProfileDAL.getProfileMetrics as any).mockResolvedValue(detailedMetrics);
-
-        const result = await service.getProfileMetrics({
-          ...mockActor,
-          profileId: "profile-123",
-          expiringDays: 14
-        });
-
-        expect(result).toEqual(detailedMetrics);
-        expect(mockCertificateProfileDAL.getProfileMetrics).toHaveBeenCalledWith("profile-123", 14);
-      });
-
-      it("should handle zero certificate metrics", async () => {
-        const emptyMetrics = {
-          profileId: "profile-123",
-          totalCertificates: 0,
-          activeCertificates: 0,
-          expiredCertificates: 0,
-          expiringCertificates: 0,
-          revokedCertificates: 0
-        };
-
-        (mockCertificateProfileDAL.findById as any).mockResolvedValue(sampleProfile);
-        (mockCertificateProfileDAL.getProfileMetrics as any).mockResolvedValue(emptyMetrics);
-
-        const result = await service.getProfileMetrics({
-          ...mockActor,
-          profileId: "profile-123"
-        });
-
-        expect(result.totalCertificates).toBe(0);
-        expect(result.activeCertificates).toBe(0);
       });
     });
 

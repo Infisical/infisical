@@ -42,7 +42,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           apiConfig: z
             .object({
               autoRenew: z.boolean().default(false),
-              autoRenewDays: z.number().min(1).max(365).optional()
+              renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional()
         })
@@ -121,9 +121,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
-        caId: z.string().uuid().optional(),
-        includeMetrics: z.coerce.boolean().optional().default(false),
-        expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
+        caId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({
@@ -150,7 +148,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               .object({
                 id: z.string(),
                 autoRenew: z.boolean(),
-                autoRenewDays: z.number().optional()
+                renewBeforeDays: z.number().optional()
               })
               .optional()
           }).array(),
@@ -195,10 +193,6 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       params: z.object({
         id: z.string().uuid()
       }),
-      querystring: z.object({
-        includeMetrics: z.coerce.boolean().optional().default(false),
-        expiringDays: z.coerce.number().min(1).max(365).optional().default(7)
-      }),
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
@@ -230,17 +224,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               .object({
                 id: z.string(),
                 autoRenew: z.boolean(),
-                autoRenewDays: z.number().optional()
-              })
-              .optional(),
-            metrics: z
-              .object({
-                profileId: z.string(),
-                totalCertificates: z.number(),
-                activeCertificates: z.number(),
-                expiredCertificates: z.number(),
-                expiringCertificates: z.number(),
-                revokedCertificates: z.number()
+                renewBeforeDays: z.number().optional()
               })
               .optional()
           })
@@ -257,20 +241,6 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         profileId: req.params.id
       });
 
-      let result = certificateProfile;
-
-      if (req.query.includeMetrics) {
-        const metrics = await server.services.certificateProfile.getProfileMetrics({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          profileId: req.params.id,
-          expiringDays: req.query.expiringDays
-        });
-        result = { ...certificateProfile, metrics };
-      }
-
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: certificateProfile.projectId,
@@ -283,7 +253,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         }
       });
 
-      return { certificateProfile: result };
+      return { certificateProfile };
     }
   });
 
@@ -355,7 +325,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
           apiConfig: z
             .object({
               autoRenew: z.boolean().default(false),
-              autoRenewDays: z.number().min(1).max(365).optional()
+              renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional()
         })

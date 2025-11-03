@@ -68,6 +68,7 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
+import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,
@@ -113,6 +114,11 @@ import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
 import { getNetlifyConnectionListItem, validateNetlifyConnectionCredentials } from "./netlify";
+import {
+  getNorthflankConnectionListItem,
+  NorthflankConnectionMethod,
+  validateNorthflankConnectionCredentials
+} from "./northflank";
 import { getOktaConnectionListItem, OktaConnectionMethod, validateOktaConnectionCredentials } from "./okta";
 import { getPostgresConnectionListItem, PostgresConnectionMethod } from "./postgres";
 import { getRailwayConnectionListItem, validateRailwayConnectionCredentials } from "./railway";
@@ -203,8 +209,10 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getSupabaseConnectionListItem(),
     getDigitalOceanConnectionListItem(),
     getNetlifyConnectionListItem(),
+    getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
-    getRedisConnectionListItem()
+    getRedisConnectionListItem(),
+    getChefConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -332,8 +340,10 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Checkly]: validateChecklyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Supabase]: validateSupabaseConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.DigitalOcean]: validateDigitalOceanConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -376,6 +386,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case BitbucketConnectionMethod.ApiToken:
     case ZabbixConnectionMethod.ApiToken:
     case DigitalOceanConnectionMethod.ApiToken:
+    case NorthflankConnectionMethod.ApiToken:
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return "API Token";
@@ -401,6 +412,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case ChefConnectionMethod.UserKey:
+      return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     default:
@@ -472,9 +485,11 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Supabase]: platformManagedCredentialsNotSupported,
   [AppConnection.DigitalOcean]: platformManagedCredentialsNotSupported,
   [AppConnection.Netlify]: platformManagedCredentialsNotSupported,
+  [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
-  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
+  [AppConnection.Chef]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

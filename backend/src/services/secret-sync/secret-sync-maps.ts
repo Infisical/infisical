@@ -32,8 +32,10 @@ export const SECRET_SYNC_NAME_MAP: Record<SecretSync, string> = {
   [SecretSync.Checkly]: "Checkly",
   [SecretSync.DigitalOceanAppPlatform]: "Digital Ocean App Platform",
   [SecretSync.Netlify]: "Netlify",
+  [SecretSync.Northflank]: "Northflank",
   [SecretSync.Bitbucket]: "Bitbucket",
-  [SecretSync.LaravelForge]: "Laravel Forge"
+  [SecretSync.LaravelForge]: "Laravel Forge",
+  [SecretSync.Chef]: "Chef"
 };
 
 export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
@@ -66,8 +68,10 @@ export const SECRET_SYNC_CONNECTION_MAP: Record<SecretSync, AppConnection> = {
   [SecretSync.Checkly]: AppConnection.Checkly,
   [SecretSync.DigitalOceanAppPlatform]: AppConnection.DigitalOcean,
   [SecretSync.Netlify]: AppConnection.Netlify,
+  [SecretSync.Northflank]: AppConnection.Northflank,
   [SecretSync.Bitbucket]: AppConnection.Bitbucket,
-  [SecretSync.LaravelForge]: AppConnection.LaravelForge
+  [SecretSync.LaravelForge]: AppConnection.LaravelForge,
+  [SecretSync.Chef]: AppConnection.Chef
 };
 
 export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
@@ -100,8 +104,10 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Checkly]: SecretSyncPlanType.Regular,
   [SecretSync.DigitalOceanAppPlatform]: SecretSyncPlanType.Regular,
   [SecretSync.Netlify]: SecretSyncPlanType.Regular,
+  [SecretSync.Northflank]: SecretSyncPlanType.Regular,
   [SecretSync.Bitbucket]: SecretSyncPlanType.Regular,
-  [SecretSync.LaravelForge]: SecretSyncPlanType.Regular
+  [SecretSync.LaravelForge]: SecretSyncPlanType.Regular,
+  [SecretSync.Chef]: SecretSyncPlanType.Regular
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
@@ -143,8 +149,10 @@ export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.Checkly]: ["groupName", "accountName"],
   [SecretSync.DigitalOceanAppPlatform]: ["appName"],
   [SecretSync.Netlify]: ["accountName", "siteName"],
+  [SecretSync.Northflank]: [],
   [SecretSync.Bitbucket]: [],
-  [SecretSync.LaravelForge]: []
+  [SecretSync.LaravelForge]: [],
+  [SecretSync.Chef]: []
 };
 
 const defaultDuplicateCheck: DestinationDuplicateCheckFn = () => true;
@@ -203,6 +211,8 @@ export const DESTINATION_DUPLICATE_CHECK_MAP: Record<SecretSync, DestinationDupl
   [SecretSync.Checkly]: defaultDuplicateCheck,
   [SecretSync.DigitalOceanAppPlatform]: defaultDuplicateCheck,
   [SecretSync.Netlify]: defaultDuplicateCheck,
+  [SecretSync.Northflank]: defaultDuplicateCheck,
   [SecretSync.Bitbucket]: defaultDuplicateCheck,
-  [SecretSync.LaravelForge]: defaultDuplicateCheck
+  [SecretSync.LaravelForge]: defaultDuplicateCheck,
+  [SecretSync.Chef]: defaultDuplicateCheck
 };

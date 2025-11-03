@@ -13,6 +13,7 @@ import { registerAzureKeyVaultConnectionRouter } from "./azure-key-vault-connect
 import { registerBitbucketConnectionRouter } from "./bitbucket-connection-router";
 import { registerCamundaConnectionRouter } from "./camunda-connection-router";
 import { registerChecklyConnectionRouter } from "./checkly-connection-router";
+import { registerChefConnectionRouter } from "./chef-connection-router";
 import { registerCloudflareConnectionRouter } from "./cloudflare-connection-router";
 import { registerDatabricksConnectionRouter } from "./databricks-connection-router";
 import { registerDigitalOceanConnectionRouter } from "./digital-ocean-connection-router";
@@ -29,6 +30,7 @@ import { registerLdapConnectionRouter } from "./ldap-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
+import { registerNorthflankConnectionRouter } from "./northflank-connection-router";
 import { registerOktaConnectionRouter } from "./okta-connection-router";
 import { registerPostgresConnectionRouter } from "./postgres-connection-router";
 import { registerRailwayConnectionRouter } from "./railway-connection-router";
@@ -83,6 +85,8 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Supabase]: registerSupabaseConnectionRouter,
     [AppConnection.DigitalOcean]: registerDigitalOceanConnectionRouter,
     [AppConnection.Netlify]: registerNetlifyConnectionRouter,
+    [AppConnection.Northflank]: registerNorthflankConnectionRouter,
     [AppConnection.Okta]: registerOktaConnectionRouter,
-    [AppConnection.Redis]: registerRedisConnectionRouter
+    [AppConnection.Redis]: registerRedisConnectionRouter,
+    [AppConnection.Chef]: registerChefConnectionRouter
   };

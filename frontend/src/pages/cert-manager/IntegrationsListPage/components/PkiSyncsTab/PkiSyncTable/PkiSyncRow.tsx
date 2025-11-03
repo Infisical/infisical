@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { subject } from "@casl/ability";
 import {
-  faBan,
   faCalendarCheck,
   faCheck,
   faCopy,
@@ -13,12 +12,12 @@ import {
   faToggleOff,
   faToggleOn,
   faTrash,
-  faTriangleExclamation,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { format } from "date-fns";
+import { BanIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -29,7 +28,6 @@ import {
   PkiSyncStatusBadge
 } from "@app/components/pki-syncs";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -39,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -47,7 +46,6 @@ import { useToggle } from "@app/hooks";
 import { PkiSyncStatus, TPkiSync, usePkiSyncOption } from "@app/hooks/api/pkiSyncs";
 
 import { PkiSyncDestinationCol } from "./PkiSyncDestinationCol";
-import { PkiSyncTableCell } from "./PkiSyncTableCell";
 
 type Props = {
   pkiSync: TPkiSync;
@@ -163,26 +161,6 @@ export const PkiSyncRow = ({
           <p className="truncate text-xs leading-4 text-bunker-300">{destinationDetails.name}</p>
         </div>
       </Td>
-      {subscriberId ? (
-        <PkiSyncTableCell
-          primaryText={pkiSync.subscriber?.name || subscriberId}
-          secondaryText="PKI Subscriber"
-        />
-      ) : (
-        <Td>
-          <Tooltip content="The PKI subscriber for this sync has been deleted. Configure a new source or remove this sync.">
-            <div className="w-min">
-              <Badge
-                className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-                variant="primary"
-              >
-                <FontAwesomeIcon icon={faTriangleExclamation} />
-                <span>Source Deleted</span>
-              </Badge>
-            </div>
-          </Tooltip>
-        </Td>
-      )}
       <PkiSyncDestinationCol pkiSync={pkiSync} />
       <Td>
         <div className="flex items-center gap-1">
@@ -234,12 +212,10 @@ export const PkiSyncRow = ({
               className="text-xs"
               content="Auto-Sync is disabled. Certificate changes in the PKI subscriber will not be automatically synced to the destination."
             >
-              <div>
-                <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                  <FontAwesomeIcon icon={faBan} />
-                  {!syncStatus && "Auto-Sync Disabled"}
-                </Badge>
-              </div>
+              <Badge variant="neutral">
+                <BanIcon />
+                {!syncStatus && "Auto-Sync Disabled"}
+              </Badge>
             </Tooltip>
           )}
           {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge mini pkiSync={pkiSync} />}

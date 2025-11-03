@@ -1,13 +1,13 @@
 import { useCallback } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { InfoIcon } from "lucide-react";
 import { z } from "zod";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
-import { Badge, Button, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { Button, FormControl, Select, SelectItem, Tooltip } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useServerConfig, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
@@ -54,7 +54,8 @@ export const EncryptionPageForm = () => {
 
     if (!subscription.hsm) {
       handlePopUpOpen("upgradePlan", {
-        description: "Hardware Security Module's (HSM's), are only available on Enterprise plans."
+        isEnterpriseFeature: true,
+        text: "Your current plan does not include access to Hardware Security Module (HSM). To unlock this feature, please upgrade to Infisical Enterprise plan."
       });
       return;
     }
@@ -132,12 +133,10 @@ export const EncryptionPageForm = () => {
 
           {config.fipsEnabled && (
             <Tooltip content="FIPS mode of operation is enabled for your instance. All cryptographic operations within the FIPS boundaries are validated to be FIPS compliant.">
-              <div>
-                <Badge className="flex items-center gap-2" variant="primary">
-                  FIPS Mode: Enabled
-                  <FontAwesomeIcon icon={faInfoCircle} />
-                </Badge>
-              </div>
+              <Badge variant="info">
+                FIPS Mode: Enabled
+                <InfoIcon />
+              </Badge>
             </Tooltip>
           )}
         </div>
@@ -145,7 +144,8 @@ export const EncryptionPageForm = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
+        text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
     </>
   );

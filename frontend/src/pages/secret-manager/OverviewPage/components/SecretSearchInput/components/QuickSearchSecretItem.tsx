@@ -1,20 +1,18 @@
 import {
   faCheck,
   faChevronRight,
-  faCode,
   faCopy,
   faEye,
   faFolder,
-  faKey,
-  faTags
+  faKey
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { CurlyBracesIcon, TagsIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,6 +23,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { reverseTruncate } from "@app/helpers/reverseTruncate";
 import { useTimedReset } from "@app/hooks";
@@ -135,15 +134,15 @@ export const QuickSearchSecretItem = ({
       <Td>
         <div className="flex w-full items-center justify-end gap-4">
           {tagMatch && (
-            <Badge variant="primary" className="flex items-center gap-1 whitespace-nowrap">
-              <FontAwesomeIcon size="xs" icon={faTags} />
+            <Badge variant="neutral">
+              <TagsIcon />
               {tagMatch.slug}
             </Badge>
           )}
           {metadataMatch && !tagMatch && (
-            <Badge variant="primary" className="flex items-center gap-1 whitespace-nowrap">
-              <FontAwesomeIcon size="xs" icon={faCode} />
-              <p className="truncate">Metadata Match</p>
+            <Badge variant="neutral">
+              <CurlyBracesIcon />
+              Metadata
             </Badge>
           )}
           {isSingleEnv ? (

@@ -111,7 +111,9 @@ export const OrgGithubSyncSection = () => {
                   onClick={() =>
                     subscription.githubOrgSync
                       ? handlePopUpOpen("githubOrgSyncConfig")
-                      : handlePopUpOpen("upgradePlan")
+                      : handlePopUpOpen("upgradePlan", {
+                          isEnterpriseFeature: true
+                        })
                   }
                   colorSchema="secondary"
                   isDisabled={!isAllowed}
@@ -202,7 +204,8 @@ export const OrgGithubSyncSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use GitHub Organization Plan if you switch to Infisical's Enterprise plan."
+        text="Your current plan does not include access to GitHub Organization Sync. To unlock this feature, please upgrade to Infisical Enterprise plan."
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>
   );

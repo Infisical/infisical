@@ -16,6 +16,7 @@ import { getUserPrivateKey } from "@app/lib/crypto/srp";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getUserAgentType } from "@app/server/plugins/audit-log";
 import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
@@ -385,63 +386,94 @@ export const authLoginServiceFactory = ({
     providerAuthToken?: string;
     captchaToken?: string;
   }) => {
-    const usersByUsername = await userDAL.findUserEncKeyByUsername({
-      username: email
-    });
-    const userEnc =
-      usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
+    const appCfg = getConfig();
 
-    if (!userEnc) throw new BadRequestError({ message: "User not found" });
+    try {
+      const usersByUsername = await userDAL.findUserEncKeyByUsername({
+        username: email
+      });
+      const userEnc =
+        usersByUsername?.length > 1 ? usersByUsername.find((el) => el.username === email) : usersByUsername?.[0];
 
-    if (userEnc.encryptionVersion !== UserEncryption.V2) {
-      throw new BadRequestError({ message: "Legacy encryption scheme not supported", name: "LegacyEncryptionScheme" });
-    }
+      if (!userEnc) throw new BadRequestError({ message: "User not found" });
 
-    if (!userEnc.hashedPassword) {
-      if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+      if (userEnc.encryptionVersion !== UserEncryption.V2) {
         throw new BadRequestError({
           message: "Legacy encryption scheme not supported",
           name: "LegacyEncryptionScheme"
         });
       }
 
-      throw new BadRequestError({ message: "No password found" });
-    }
-
-    const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
-    await verifyCaptcha(userEnc, captchaToken);
-
-    if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
-      await userDAL.update(
-        { id: userEnc.userId },
-        {
-          $incr: {
-            consecutiveFailedPasswordAttempts: 1
-          }
+      if (!userEnc.hashedPassword) {
+        if (userEnc.authMethods?.includes(AuthMethod.EMAIL)) {
+          throw new BadRequestError({
+            message: "Legacy encryption scheme not supported",
+            name: "LegacyEncryptionScheme"
+          });
         }
-      );
 
-      throw new BadRequestError({ message: "Invalid username or email" });
+        throw new BadRequestError({ message: "No password found" });
+      }
+
+      const { authMethod, organizationId } = getAuthMethodAndOrgId(email, providerAuthToken);
+      await verifyCaptcha(userEnc, captchaToken);
+
+      if (!(await crypto.hashing().compareHash(password, userEnc.hashedPassword))) {
+        await userDAL.update(
+          { id: userEnc.userId },
+          {
+            $incr: {
+              consecutiveFailedPasswordAttempts: 1
+            }
+          }
+        );
+
+        throw new BadRequestError({ message: "Invalid username or email" });
+      }
+
+      const token = await generateUserTokens({
+        user: {
+          ...userEnc,
+          id: userEnc.userId
+        },
+        ip,
+        userAgent,
+        authMethod,
+        organizationId
+      });
+
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.organization.id": organizationId,
+          "infisical.user.email": email,
+          "infisical.user.id": userEnc.userId,
+          "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
+          "infisical.auth.result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": ip,
+          "user_agent.original": userAgent
+        });
+      }
+
+      return {
+        tokens: {
+          accessToken: token.access,
+          refreshToken: token.refresh
+        },
+        user: userEnc
+      } as const;
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.user.email": email,
+          "infisical.auth.method": AuthAttemptAuthMethod.EMAIL,
+          "infisical.auth.result": AuthAttemptAuthResult.FAILURE,
+          "client.address": ip,
+          "user_agent.original": userAgent
+        });
+      }
+
+      throw error;
     }
-
-    const token = await generateUserTokens({
-      user: {
-        ...userEnc,
-        id: userEnc.userId
-      },
-      ip,
-      userAgent,
-      authMethod,
-      organizationId
-    });
-
-    return {
-      tokens: {
-        accessToken: token.access,
-        refreshToken: token.refresh
-      },
-      user: userEnc
-    } as const;
   };
 
   const selectOrganization = async ({
@@ -965,7 +997,8 @@ export const authLoginServiceFactory = ({
         expiresIn: appCfg.JWT_PROVIDER_AUTH_LIFETIME
       }
     );
-    return { isUserCompleted, providerAuthToken };
+
+    return { isUserCompleted, providerAuthToken, user, orgId, orgName };
   };
 
   /**

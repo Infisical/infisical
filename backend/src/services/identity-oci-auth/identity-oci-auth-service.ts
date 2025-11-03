@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import { AxiosError } from "axios";
 import RE2 from "re2";
 
@@ -23,6 +24,7 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -63,6 +65,7 @@ export const identityOciAuthServiceFactory = ({
   orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
   const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
+    const appCfg = getConfig();
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
     if (!identityOciAuth) {
       throw new NotFoundError({ message: "OCI auth method not found for identity, did you configure OCI auth?" });
@@ -71,80 +74,109 @@ export const identityOciAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityOciAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
-    if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
-      throw new BadRequestError({
-        message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
-      });
-    }
-
-    const { data } = await request
-      .get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
-        headers
-      })
-      .catch((err: AxiosError) => {
-        logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
-        throw err;
-      });
-
-    if (data.compartmentId !== identityOciAuth.tenancyOcid) {
-      throw new UnauthorizedError({
-        message: "Access denied: OCI account isn't part of tenancy."
-      });
-    }
-
-    if (identityOciAuth.allowedUsernames) {
-      const isAccountAllowed = identityOciAuth.allowedUsernames.split(",").some((name) => name.trim() === data.name);
-
-      if (!isAccountAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: OCI account username not allowed."
+    const org = await orgDAL.findById(identity.orgId);
+    try {
+      // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
+      if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
+        throw new BadRequestError({
+          message: "Invalid OCI host format. Expected format: identity.<region>.oraclecloud.com"
         });
-    }
+      }
 
-    // Generate the token
-    const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        { lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH, lastLoginTime: new Date() },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+      const { data } = await request
+        .get<TOciGetUserResponse>(`https://${headers.host}/20160918/users/${userOcid}`, {
+          headers
+        })
+        .catch((err: AxiosError) => {
+          logger.error(err.response, "OciIdentityLogin: Failed to authenticate with Oracle Cloud");
+          throw err;
+        });
+
+      if (data.compartmentId !== identityOciAuth.tenancyOcid) {
+        throw new UnauthorizedError({
+          message: "Access denied: OCI account isn't part of tenancy."
+        });
+      }
+
+      if (identityOciAuth.allowedUsernames) {
+        const isAccountAllowed = identityOciAuth.allowedUsernames.split(",").some((name) => name.trim() === data.name);
+
+        if (!isAccountAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: OCI account username not allowed."
+          });
+      }
+
+      // Generate the token
+      const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          { lastLoginAuthMethod: IdentityAuthMethod.OCI_AUTH, lastLoginTime: new Date() },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityOciAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityOciAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.OCI_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityOciAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityOciAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.OCI_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityOciAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityOciAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.OCI_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    return {
-      identityOciAuth,
-      accessToken,
-      identityAccessToken,
-      identity
-    };
+      return {
+        identityOciAuth,
+        accessToken,
+        identityAccessToken,
+        identity
+      };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityOciAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.OCI_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachOciAuth = async ({

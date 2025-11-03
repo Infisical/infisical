@@ -13,7 +13,7 @@ export const Route = createFileRoute(
         {
           label: "Certificate Collections",
           link: linkOptions({
-            to: "/projects/cert-management/$projectId/certificates",
+            to: "/projects/cert-management/$projectId/policies",
             params: {
               projectId: params.projectId
             }

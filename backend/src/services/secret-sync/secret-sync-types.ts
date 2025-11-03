@@ -21,6 +21,7 @@ import {
   TCamundaSyncListItem,
   TCamundaSyncWithCredentials
 } from "@app/services/secret-sync/camunda";
+import { TChefSync, TChefSyncInput, TChefSyncListItem, TChefSyncWithCredentials } from "@app/services/secret-sync/chef";
 import {
   TDatabricksSync,
   TDatabricksSyncInput,
@@ -125,6 +126,12 @@ import {
 } from "./laravel-forge";
 import { TNetlifySync, TNetlifySyncInput, TNetlifySyncListItem, TNetlifySyncWithCredentials } from "./netlify";
 import {
+  TNorthflankSync,
+  TNorthflankSyncInput,
+  TNorthflankSyncListItem,
+  TNorthflankSyncWithCredentials
+} from "./northflank";
+import {
   TRailwaySync,
   TRailwaySyncInput,
   TRailwaySyncListItem,
@@ -163,6 +170,7 @@ export type TSecretSync =
   | TGitHubSync
   | TGcpSync
   | TAzureKeyVaultSync
+  | TChefSync
   | TAzureAppConfigurationSync
   | TAzureDevOpsSync
   | TDatabricksSync
@@ -187,6 +195,7 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TNetlifySync
+  | TNorthflankSync
   | TBitbucketSync;
 
 export type TSecretSyncWithCredentials =
@@ -195,6 +204,7 @@ export type TSecretSyncWithCredentials =
   | TGitHubSyncWithCredentials
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
+  | TChefSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
   | TAzureDevOpsSyncWithCredentials
   | TDatabricksSyncWithCredentials
@@ -219,6 +229,7 @@ export type TSecretSyncWithCredentials =
   | TSupabaseSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
+  | TNorthflankSyncWithCredentials
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials;
 
@@ -228,6 +239,7 @@ export type TSecretSyncInput =
   | TGitHubSyncInput
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
+  | TChefSyncInput
   | TAzureAppConfigurationSyncInput
   | TAzureDevOpsSyncInput
   | TDatabricksSyncInput
@@ -252,6 +264,7 @@ export type TSecretSyncInput =
   | TSupabaseSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
+  | TNorthflankSyncInput
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput;
 
@@ -261,6 +274,7 @@ export type TSecretSyncListItem =
   | TGitHubSyncListItem
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
+  | TChefSyncListItem
   | TAzureAppConfigurationSyncListItem
   | TAzureDevOpsSyncListItem
   | TDatabricksSyncListItem
@@ -286,6 +300,7 @@ export type TSecretSyncListItem =
   | TSupabaseSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
+  | TNorthflankSyncListItem
   | TBitbucketSyncListItem;
 
 export type TSyncOptionsConfig = {

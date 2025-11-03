@@ -1,2 +1,9 @@
-export { useDeleteCert, useImportCertificate, useRevokeCert } from "./mutations";
+export { CertStatus } from "./enums";
+export {
+  useDeleteCert,
+  useImportCertificate,
+  useRenewCertificate,
+  useRevokeCert,
+  useUpdateRenewalConfig
+} from "./mutations";
 export { useGetCert, useGetCertBody } from "./queries";

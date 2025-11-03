@@ -27,7 +27,13 @@ export const CertificatesSchema = z.object({
   extendedKeyUsages: z.string().array().nullable().optional(),
   projectId: z.string(),
   pkiSubscriberId: z.string().uuid().nullable().optional(),
-  profileId: z.string().uuid().nullable().optional()
+  profileId: z.string().uuid().nullable().optional(),
+  renewBeforeDays: z.number().nullable().optional(),
+  renewedFromCertificateId: z.string().uuid().nullable().optional(),
+  renewedByCertificateId: z.string().uuid().nullable().optional(),
+  renewalError: z.string().nullable().optional(),
+  keyAlgorithm: z.string().nullable().optional(),
+  signatureAlgorithm: z.string().nullable().optional()
 });
 
 export type TCertificates = z.infer<typeof CertificatesSchema>;

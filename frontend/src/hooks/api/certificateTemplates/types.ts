@@ -42,8 +42,8 @@ export type TCreateCertificateTemplateDTO = {
   subjectAlternativeName: string;
   ttl: string;
   projectId: string;
-  keyUsages: CertKeyUsage[];
-  extendedKeyUsages: CertExtendedKeyUsage[];
+  keyUsages: string[];
+  extendedKeyUsages: string[];
 };
 
 export type TUpdateCertificateTemplateDTO = {
@@ -55,8 +55,8 @@ export type TUpdateCertificateTemplateDTO = {
   subjectAlternativeName?: string;
   ttl?: string;
   projectId: string;
-  keyUsages?: CertKeyUsage[];
-  extendedKeyUsages?: CertExtendedKeyUsage[];
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
 };
 
 export type TDeleteCertificateTemplateDTO = {
@@ -71,8 +71,8 @@ export type TCreateCertificateTemplateV2DTO = {
   subjectAlternativeName: string;
   ttl: string;
   projectId: string;
-  keyUsages: CertKeyUsage[];
-  extendedKeyUsages: CertExtendedKeyUsage[];
+  keyUsages: string[];
+  extendedKeyUsages: string[];
 };
 
 export type TUpdateCertificateTemplateV2DTO = {
@@ -83,8 +83,8 @@ export type TUpdateCertificateTemplateV2DTO = {
   subjectAlternativeName?: string;
   ttl?: string;
   projectId: string;
-  keyUsages?: CertKeyUsage[];
-  extendedKeyUsages?: CertExtendedKeyUsage[];
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
 };
 
 export type TDeleteCertificateTemplateV2DTO = {

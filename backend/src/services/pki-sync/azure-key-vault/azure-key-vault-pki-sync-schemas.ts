@@ -14,6 +14,7 @@ export const AzureKeyVaultPkiSyncConfigSchema = z.object({
 const AzureKeyVaultPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
+  enableVersioning: z.boolean().default(true),
   certificateNameSchema: z
     .string()
     .optional()
@@ -50,9 +51,10 @@ export const CreateAzureKeyVaultPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().default(true),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema,
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional().default({}),
-  subscriberId: z.string().optional(),
+  subscriberId: z.string().nullish(),
   connectionId: z.string(),
-  projectId: z.string().trim().min(1)
+  projectId: z.string().trim().min(1),
+  certificateIds: z.array(z.string().uuid()).optional()
 });
 
 export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
@@ -61,7 +63,7 @@ export const UpdateAzureKeyVaultPkiSyncSchema = z.object({
   isAutoSyncEnabled: z.boolean().optional(),
   destinationConfig: AzureKeyVaultPkiSyncConfigSchema.optional(),
   syncOptions: AzureKeyVaultPkiSyncOptionsSchema.optional(),
-  subscriberId: z.string().optional(),
+  subscriberId: z.string().nullish(),
   connectionId: z.string().optional()
 });
 

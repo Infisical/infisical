@@ -172,11 +172,13 @@ import { internalCertificateAuthorityServiceFactory } from "@app/services/certif
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
+import { certificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
 import { certificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
 import { certificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
+import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/certificate-v3-queue";
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
@@ -607,6 +609,10 @@ export const registerRoutes = async (
   const membershipGroupService = membershipGroupServiceFactory({
     membershipGroupDAL,
     membershipRoleDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    secretApprovalPolicyDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
     orgDAL
@@ -1059,6 +1065,7 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
+  const certificateSyncDAL = certificateSyncDALFactory(db);
 
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
@@ -1704,7 +1711,8 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
@@ -1957,6 +1965,8 @@ export const registerRoutes = async (
     secretImportDAL,
     permissionService,
     appConnectionService,
+    projectDAL,
+    orgDAL,
     folderDAL,
     secretSyncQueue,
     projectBotService,
@@ -2019,7 +2029,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
-    certificateAuthorityCertDAL
+    certificateAuthorityCertDAL,
+    certificateSyncDAL
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2130,17 +2141,29 @@ export const registerRoutes = async (
     permissionService,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
+    certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue
   });
 
   const certificateV3Service = certificateV3ServiceFactory({
     certificateDAL,
+    certificateSecretDAL,
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateTemplateV2Service,
     internalCaService: internalCertificateAuthorityService,
-    permissionService
+    permissionService,
+    certificateSyncDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
+  });
+
+  const certificateV3Queue = certificateV3QueueServiceFactory({
+    queueService,
+    certificateDAL,
+    certificateV3Service,
+    auditLogService
   });
 
   const certificateEstV3Service = certificateEstV3ServiceFactory({
@@ -2175,6 +2198,8 @@ export const registerRoutes = async (
 
   const pkiSyncService = pkiSyncServiceFactory({
     pkiSyncDAL,
+    certificateDAL,
+    certificateSyncDAL,
     pkiSubscriberDAL,
     appConnectionService,
     permissionService,
@@ -2330,6 +2355,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
+  await certificateV3Queue.init();
   await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();

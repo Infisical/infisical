@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
 import {
-  faBan,
   faCheck,
   faCopy,
   faDownload,
@@ -15,6 +14,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { BanIcon, RefreshCwIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -26,7 +26,6 @@ import {
   PkiSyncRemoveStatusBadge
 } from "@app/components/pki-syncs";
 import {
-  Badge,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -35,6 +34,7 @@ import {
   IconButton,
   Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -136,24 +136,19 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
         {syncOption?.canImportCertificates && <PkiSyncImportStatusBadge pkiSync={pkiSync} />}
         <PkiSyncRemoveStatusBadge pkiSync={pkiSync} />
         {pkiSync.isAutoSyncEnabled ? (
-          <Badge
-            variant="success"
-            className="flex h-5 w-min items-center gap-1.5 whitespace-nowrap"
-          >
-            <FontAwesomeIcon icon={faRotate} />
-            <span>Auto-Sync Enabled</span>
+          <Badge variant="info">
+            <RefreshCwIcon />
+            Auto-Sync Enabled
           </Badge>
         ) : (
           <Tooltip
             className="text-xs"
             content="Auto-Sync is disabled. Certificate changes in the PKI subscriber will not be automatically synced to the destination."
           >
-            <div>
-              <Badge className="flex h-5 w-min items-center gap-1.5 bg-mineshaft-400/50 whitespace-nowrap text-bunker-300">
-                <FontAwesomeIcon icon={faBan} />
-                <span>Auto-Sync Disabled</span>
-              </Badge>
-            </div>
+            <Badge variant="neutral">
+              <BanIcon />
+              Auto-Sync Disabled
+            </Badge>
           </Tooltip>
         )}
         <div>

@@ -112,7 +112,8 @@ export const kmskeyDALFactory = (db: TDbClient) => {
         ...KmsKeysSchema.parse(entry),
         isActive: !entry.isDisabled,
         algorithm: entry.internalKmsEncryptionAlgorithm,
-        version: entry.internalKmsVersion
+        version: entry.internalKmsVersion,
+        kmipMetadata: entry.kmipMetadata as Record<string, unknown>
       }));
     } catch (error) {
       throw new DatabaseError({ error, name: "Find project cmeks" });

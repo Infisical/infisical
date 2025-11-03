@@ -14,13 +14,13 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { ServerIcon, WrenchIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   Button,
   DeleteActionModal,
   DropdownMenu,
@@ -41,13 +41,14 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge, DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
   useOrganization,
   useSubscription
 } from "@app/context";
-import { isCustomOrgRole, isCustomProjectRole } from "@app/helpers/roles";
+import { isCustomOrgRole } from "@app/helpers/roles";
 import {
   getUserTablePreference,
   PreferenceKey,
@@ -103,8 +104,7 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "You can set the default org role to a custom role if you upgrade your Infisical plan."
+        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
       });
       return;
     }
@@ -200,9 +200,12 @@ export const OrgRoleTable = () => {
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">
-          {isSubOrganization ? "Sub-" : ""}Organization Roles
-        </p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">
+            {isSubOrganization ? "Sub-" : ""}Organization Roles
+          </p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/organization#roles-and-access-control" />
+        </div>
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
@@ -295,17 +298,13 @@ export const OrgRoleTable = () => {
                   }
                 >
                   <Td className="max-w-md">
-                    <div className="flex">
+                    <div className="flex gap-x-1.5">
                       <p className="overflow-hidden text-ellipsis whitespace-nowrap">{name}</p>
                       {isDefaultOrgRole && (
                         <Tooltip
                           content={`Members joining your organization will be assigned the ${name} role unless otherwise specified.`}
                         >
-                          <div>
-                            <Badge variant="success" className="ml-1">
-                              Default
-                            </Badge>
-                          </div>
+                          <Badge variant="info">Default</Badge>
                         </Tooltip>
                       )}
                     </div>
@@ -314,8 +313,18 @@ export const OrgRoleTable = () => {
                     {slug}
                   </Td>
                   <Td>
-                    <Badge className="w-min bg-mineshaft-400/50 whitespace-nowrap text-bunker-200">
-                      {isCustomProjectRole(slug) ? "Custom" : "Default"}
+                    <Badge variant="ghost">
+                      {isCustomOrgRole(slug) ? (
+                        <>
+                          <WrenchIcon />
+                          Custom
+                        </>
+                      ) : (
+                        <>
+                          <ServerIcon />
+                          Platform
+                        </>
+                      )}
                     </Badge>
                   </Td>
                   <Td>
@@ -461,7 +470,7 @@ export const OrgRoleTable = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
+        text={popUp.upgradePlan?.data?.text}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

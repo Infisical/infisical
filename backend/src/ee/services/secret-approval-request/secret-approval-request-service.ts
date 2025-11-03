@@ -1517,7 +1517,7 @@ export const secretApprovalRequestServiceFactory = ({
         }))
       );
       if (secrets.length)
-        throw new BadRequestError({ message: `Secret already exist: ${secrets.map((el) => el.key).join(",")}` });
+        throw new BadRequestError({ message: `Secret already exists: ${secrets.map((el) => el.key).join(",")}` });
 
       commits.push(
         ...createdSecrets.map((createdSecret) => ({

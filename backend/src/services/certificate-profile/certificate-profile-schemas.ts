@@ -25,7 +25,7 @@ export const createCertificateProfileSchema = z
     apiConfig: z
       .object({
         autoRenew: z.boolean().default(false),
-        autoRenewDays: z.number().min(1).max(365).optional()
+        renewBeforeDays: z.number().min(1).max(30).optional()
       })
       .optional()
   })
@@ -75,7 +75,7 @@ export const updateCertificateProfileSchema = z
     apiConfig: z
       .object({
         autoRenew: z.boolean().default(false),
-        autoRenewDays: z.number().min(1).max(365).optional()
+        renewBeforeDays: z.number().min(1).max(30).optional()
       })
       .optional()
   })
@@ -126,9 +126,4 @@ export const listCertificatesByProfileSchema = z.object({
   limit: z.coerce.number().min(1).max(100).default(20),
   status: z.enum(["active", "expired", "revoked"]).optional(),
   search: z.string().optional()
-});
-
-export const getCertificateProfileMetricsSchema = z.object({
-  profileId: z.string().uuid(),
-  expiringDays: z.coerce.number().min(1).max(365).default(30)
 });
