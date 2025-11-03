@@ -220,9 +220,20 @@ def step_impl(context: Context):
     "I register a new ACME account with email {email} and EAB key id {kid} with secret {secret} as {account_var}"
 )
 def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
-    # TODO: add EAB info here
-    registration = messages.NewRegistration.from_data(email=email)
-    context.vars[account_var] = context.acme_client.new_account(registration)
+    acme_client = context.acme_client
+    account_public_key = acme_client.net.key.public_key()
+    eab = messages.ExternalAccountBinding.from_data(
+        account_public_key=account_public_key,
+        kid=kid,
+        hmac_key=secret,
+        directory=acme_client.directory,
+        hmac_alg="HS256",
+    )
+    registration = messages.NewRegistration.from_data(
+        email=email,
+        external_account_binding=eab,
+    )
+    context.vars[account_var] = acme_client.new_account(registration)
 
 
 @then(
