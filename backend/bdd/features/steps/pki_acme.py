@@ -314,7 +314,7 @@ def step_impl(context: Context, var_path: str, jq_query: str):
     )
 
 
-@then("the value {var_path} with jq {jq_query} should be present")
+@then('the value {var_path} with jq "{jq_query}" should be present')
 def step_impl(context: Context, var_path: str, jq_query: str):
     value, result = apply_value_with_jq(
         context=context,
@@ -326,7 +326,7 @@ def step_impl(context: Context, var_path: str, jq_query: str):
     )
 
 
-@then("the value {var_path} with jq {jq_query} should be equal to {expected}")
+@then('the value {var_path} with jq "{jq_query}" should be equal to {expected}')
 def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
     value, result = apply_value_with_jq(
         context=context,
@@ -339,7 +339,7 @@ def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
     )
 
 
-@then("the value {var_path} with jq {jq_query} should match pattern {regex}")
+@then('the value {var_path} with jq "{jq_query}" should match pattern {regex}')
 def step_impl(context: Context, var_path: str, jq_query: str, regex: str):
     value, result = apply_value_with_jq(
         context=context,
