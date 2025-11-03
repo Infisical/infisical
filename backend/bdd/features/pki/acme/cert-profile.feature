@@ -2,6 +2,7 @@ Feature: ACME Cert Profile
 
   Scenario: Create a cert profile
     Given I make a random slug as profile_slug
+    Given I use AUTH_TOKEN for authentication
     When I send a POST request to "/api/v1/pki/certificate-profiles" with JSON payload
       """
       {
@@ -14,7 +15,7 @@ Feature: ACME Cert Profile
         "acmeConfig": {}
       }
       """
-    Then the value response.status should be equal to 201
+    Then the value response.status_code should be equal to 201
     Then the value response with jq .eab_kid should be present
     Then the value response with jq .eab_secret should be present
     Then the value response with jq .slug should be equal to {profile_slug}
