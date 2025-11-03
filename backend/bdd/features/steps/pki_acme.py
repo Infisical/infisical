@@ -217,7 +217,7 @@ def step_impl(context: Context):
 
 
 @then(
-    "I register a new ACME account with email {email} and EAB key id {kid} with secret {secret} as {account_var}"
+    'I register a new ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
 )
 def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
     acme_client = context.acme_client
