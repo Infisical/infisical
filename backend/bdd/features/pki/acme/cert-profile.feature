@@ -16,11 +16,11 @@ Feature: ACME Cert Profile
       }
       """
     Then the value response.status_code should be equal to 200
-    Then the value response with jq .certificateProfile.id should be present
-    Then the value response with jq .certificateProfile.slug should be equal to "{profile_slug}"
-    Then the value response with jq .certificateProfile.caId should be equal to "{CERT_CA_ID}"
-    Then the value response with jq .certificateProfile.certificateTemplateId should be equal to "{CERT_TEMPLATE_ID}"
-    Then the value response with jq .certificateProfile.enrollmentType should be equal to "acme"
+    Then the value response with jq ".certificateProfile.id" should be present
+    Then the value response with jq ".certificateProfile.slug" should be equal to "{profile_slug}"
+    Then the value response with jq ".certificateProfile.caId" should be equal to "{CERT_CA_ID}"
+    Then the value response with jq ".certificateProfile.certificateTemplateId" should be equal to "{CERT_TEMPLATE_ID}"
+    Then the value response with jq ".certificateProfile.enrollmentType" should be equal to "acme"
 
   Scenario: Reveal EAB secret
     Given I make a random slug as profile_slug
@@ -41,5 +41,5 @@ Feature: ACME Cert Profile
     And I memorize response with jq ".certificateProfile.id" as profile_id
     When I send a GET request to "/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal"
     Then the value response.status_code should be equal to 200
-    Then the value response with jq .eabKid should be equal to "{profile_id}"
-    Then the value response with jq .eabSecret should be present
+    Then the value response with jq ".eabKid" should be equal to "{profile_id}"
+    Then the value response with jq ".eabSecret" should be present

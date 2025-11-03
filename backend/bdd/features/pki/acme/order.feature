@@ -45,7 +45,7 @@ Feature: Order
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.body with jq .identifiers | sort_by(.value) should be equal to json
+    Then the value order.body with jq ".identifiers | sort_by(.value)" should be equal to json
       """
       [
         {"type": "dns", "value": "example.com"},
@@ -71,7 +71,7 @@ Feature: Order
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     Then I send an ACME post-as-get to order.uri as fetched_order
-    Then the value fetched_order with jq .status should be equal to "pending"
-    Then the value fetched_order with jq .identifiers should be equal to [{"type": "dns", "value": "localhost"}]
-    Then the value fetched_order with jq .finalize should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
-    Then the value fetched_order with jq all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/")) should be equal to true
+    Then the value fetched_order with jq ".status" should be equal to "pending"
+    Then the value fetched_order with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
+    Then the value fetched_order with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
+    Then the value fetched_order with jq "all(.authorizations[]; startswith('{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/'))" should be equal to true
