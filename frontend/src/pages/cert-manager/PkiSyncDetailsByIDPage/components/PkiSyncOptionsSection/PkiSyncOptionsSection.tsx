@@ -3,12 +3,26 @@ import { faEdit } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { GenericFieldLabel } from "@app/components/secret-syncs";
 import { IconButton } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
+
+const GenericFieldLabel = ({
+  label,
+  children,
+  labelClassName
+}: {
+  label: string;
+  children: React.ReactNode;
+  labelClassName?: string;
+}) => (
+  <div className="mb-4">
+    <p className={`text-sm font-medium text-mineshaft-300 ${labelClassName || ""}`}>{label}</p>
+    <div className="text-sm text-mineshaft-300">{children}</div>
+  </div>
+);
 
 type Props = {
   pkiSync: TPkiSync;
@@ -28,7 +42,7 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
     <div>
       <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
         <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
-          <h3 className="font-medium text-mineshaft-100">Sync Options</h3>
+          <h3 className="text-lg font-medium text-mineshaft-100">Sync Options</h3>
           <ProjectPermissionCan I={ProjectPermissionPkiSyncActions.Edit} a={permissionSubject}>
             {(isAllowed) => (
               <IconButton
@@ -43,21 +57,19 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
             )}
           </ProjectPermissionCan>
         </div>
-        <div>
-          <div className="space-y-3">
-            {/* Hidden for now - Import certificates functionality disabled
+        <div className="pt-1">
+          {/* Hidden for now - Import certificates functionality disabled
             <GenericFieldLabel label="Certificate Import">
               <Badge variant={canImportCertificates ? "success" : "danger"}>
                 {canImportCertificates ? "Enabled" : "Disabled"}
               </Badge>
             </GenericFieldLabel>
             */}
-            <GenericFieldLabel label="Certificate Removal">
-              <Badge variant={canRemoveCertificates ? "success" : "danger"}>
-                {canRemoveCertificates ? "Enabled" : "Disabled"}
-              </Badge>
-            </GenericFieldLabel>
-          </div>
+          <GenericFieldLabel label="Inactive Certificate Removal" labelClassName="mb-1">
+            <Badge variant={canRemoveCertificates ? "success" : "danger"}>
+              {canRemoveCertificates ? "Enabled" : "Disabled"}
+            </Badge>
+          </GenericFieldLabel>
         </div>
       </div>
     </div>

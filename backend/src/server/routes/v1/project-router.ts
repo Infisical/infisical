@@ -1195,8 +1195,13 @@ export const registerProjectRouter = async (server: FastifyZodProvider) => {
       querystring: z.object({
         friendlyName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.friendlyName),
         commonName: z.string().optional().describe(PROJECTS.LIST_CERTIFICATES.commonName),
-        offset: z.coerce.number().min(0).max(100).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
-        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit)
+        offset: z.coerce.number().min(0).default(0).describe(PROJECTS.LIST_CERTIFICATES.offset),
+        limit: z.coerce.number().min(1).max(100).default(25).describe(PROJECTS.LIST_CERTIFICATES.limit),
+        forPkiSync: z.coerce
+          .boolean()
+          .default(false)
+          .optional()
+          .describe("Retrieve only certificates available for PKI sync")
       }),
       response: {
         200: z.object({

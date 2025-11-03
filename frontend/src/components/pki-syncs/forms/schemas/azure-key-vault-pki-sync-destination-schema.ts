@@ -4,7 +4,46 @@ import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 
-export const AzureKeyVaultPkiSyncDestinationSchema = BasePkiSyncSchema().merge(
+const AzureKeyVaultSyncOptionsSchema = z.object({
+  canImportCertificates: z.boolean().default(false),
+  canRemoveCertificates: z.boolean().default(true),
+  enableVersioning: z.boolean().default(true),
+  certificateNameSchema: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true;
+
+        const allowedOptionalPlaceholders = ["{{environment}}"];
+
+        const allowedPlaceholdersRegexPart = ["{{certificateId}}", ...allowedOptionalPlaceholders]
+          .map((p) => p.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&"))
+          .join("|");
+
+        const allowedContentRegex = new RegExp(
+          `^([a-zA-Z0-9_\\-/]|${allowedPlaceholdersRegexPart})*$`
+        );
+        const contentIsValid = allowedContentRegex.test(val);
+
+        if (val.trim()) {
+          const certificateIdRegex = /\{\{certificateId\}\}/;
+          const certificateIdIsPresent = certificateIdRegex.test(val);
+          return contentIsValid && certificateIdIsPresent;
+        }
+
+        return contentIsValid;
+      },
+      {
+        message:
+          "Certificate name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), dashes (-), underscores (_), and slashes (/) are allowed besides the placeholders."
+      }
+    )
+});
+
+export const AzureKeyVaultPkiSyncDestinationSchema = BasePkiSyncSchema(
+  AzureKeyVaultSyncOptionsSchema
+).merge(
   z.object({
     destination: z.literal(PkiSync.AzureKeyVault),
     destinationConfig: z.object({

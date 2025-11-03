@@ -418,7 +418,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             name="enrollmentType"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Enrollment Type"
+                label="Enrollment Method"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}

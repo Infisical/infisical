@@ -198,3 +198,47 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
     }
   });
 };
+
+export const useAddCertificatesToPkiSync = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pkiSyncId,
+      certificateIds
+    }: {
+      pkiSyncId: string;
+      certificateIds: string[];
+    }) => {
+      const { data } = await apiRequest.post(`/api/v1/pki/syncs/${pkiSyncId}/certificates`, {
+        certificateIds
+      });
+
+      return data;
+    },
+    onSuccess: (_, { pkiSyncId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(pkiSyncId) });
+    }
+  });
+};
+
+export const useRemoveCertificatesFromPkiSync = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      pkiSyncId,
+      certificateIds
+    }: {
+      pkiSyncId: string;
+      certificateIds: string[];
+    }) => {
+      const { data } = await apiRequest.delete(`/api/v1/pki/syncs/${pkiSyncId}/certificates`, {
+        data: { certificateIds }
+      });
+
+      return data;
+    },
+    onSuccess: (_, { pkiSyncId }) => {
+      queryClient.invalidateQueries({ queryKey: pkiSyncKeys.certificates(pkiSyncId) });
+    }
+  });
+};

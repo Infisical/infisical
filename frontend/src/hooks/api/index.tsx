@@ -28,6 +28,7 @@ export * from "./organization";
 export * from "./pkiAlerts";
 export * from "./pkiCollections";
 export * from "./pkiSubscriber";
+export * from "./pkiSyncs";
 export * from "./projects";
 export * from "./projectUserAdditionalPrivilege";
 export * from "./rateLimit";

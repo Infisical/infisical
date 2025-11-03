@@ -27,12 +27,16 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
   const formMethods = useForm<TUpdatePkiSyncForm>({
     resolver: zodResolver(UpdatePkiSyncFormSchema),
     defaultValues: {
-      ...pkiSync,
+      name: pkiSync.name,
+      destination: pkiSync.destination,
       description: pkiSync.description ?? "",
       connection: {
         id: pkiSync.connectionId,
         name: pkiSync.appConnectionName
-      }
+      },
+      syncOptions: pkiSync.syncOptions,
+      destinationConfig: pkiSync.destinationConfig,
+      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
