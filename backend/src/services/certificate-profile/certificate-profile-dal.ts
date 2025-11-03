@@ -130,7 +130,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
-          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId")
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId"),
+          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -158,7 +159,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         : undefined;
 
       const acmeConfig = result.acmeConfigId
-        ? ({ id: result.acmeConfigId } as TCertificateProfileWithConfigs["acmeConfig"])
+        ? ({
+            id: result.acmeConfigId,
+            encryptedEabSecret: result.acmeConfigEncryptedEabSecret
+          } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
       const certificateAuthority =

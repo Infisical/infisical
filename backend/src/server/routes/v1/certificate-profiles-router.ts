@@ -506,20 +506,21 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
+          eabKid: z.string(),
           eabSecret: z.string()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const eabSecret = await server.services.certificateProfile.revealAcmeEabSecret({
+      const { eabKid, eabSecret } = await server.services.certificateProfile.revealAcmeEabSecret({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         profileId: req.params.id
       });
-      return { eabSecret };
+      return { eabKid, eabSecret };
     }
   });
 };
