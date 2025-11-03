@@ -224,8 +224,8 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     account_public_key = acme_client.net.key.public_key()
     eab = messages.ExternalAccountBinding.from_data(
         account_public_key=account_public_key,
-        kid=kid,
-        hmac_key=secret,
+        kid=replace_vars(kid, context.vars),
+        hmac_key=replace_vars(secret, context.vars),
         directory=acme_client.directory,
         hmac_alg="HS256",
     )
