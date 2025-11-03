@@ -15,10 +15,10 @@ Feature: ACME Cert Profile
         "acmeConfig": {}
       }
       """
-    Then the value response.status_code should be equal to 201
-    Then the value response with jq .eab_kid should be present
-    Then the value response with jq .eab_secret should be present
-    Then the value response with jq .slug should be equal to {profile_slug}
-    Then the value response with jq .caId should be equal to {CA_ID}
-    Then the value response with jq .certificateTemplateId should be equal to {CERT_TEMPLATE_ID}
-    Then the value response with jq .enrollmentTYpe should be equal to acme
+    Then the value response.status_code should be equal to 200
+    Then the value response with jq .certificateProfile.slug should be equal to "{profile_slug}"
+    Then the value response with jq .certificateProfile.caId should be equal to "{CERT_CA_ID}"
+    Then the value response with jq .certificateProfile.certificateTemplateId should be equal to "{CERT_TEMPLATE_ID}"
+    Then the value response with jq .certificateProfile.enrollmentType should be equal to "acme"
+    Then the value response with jq .certificateProfile.eab_kid should be present
+    Then the value response with jq .certificateProfile.eab_secret should be present

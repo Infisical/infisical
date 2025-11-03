@@ -3,6 +3,7 @@ import logging
 import re
 import threading
 
+import httpx
 import jq
 import requests
 import glom
@@ -107,6 +108,8 @@ def eval_var(context: Context, var_path: str, as_json: bool = True):
         if isinstance(value, JSONObjectWithFields):
             value = value.to_json()
         elif isinstance(value, requests.Response):
+            value = value.json()
+        elif isinstance(value, httpx.Response):
             value = value.json()
     return value
 
@@ -327,7 +330,7 @@ def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
         var_path=var_path,
         jq_query=jq_query,
     )
-    expected_value = json.loads(expected)
+    expected_value = replace_vars(json.loads(expected), context.vars)
     assert result == expected_value, (
         f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {json.dumps(expected_value)!r}"
     )
