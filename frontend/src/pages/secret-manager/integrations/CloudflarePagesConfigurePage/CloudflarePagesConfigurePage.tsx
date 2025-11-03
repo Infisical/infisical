@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import axios from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -102,19 +100,7 @@ export const CloudflarePagesConfigurePage = () => {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
-    } catch (err) {
-      console.error(err);
-
-      let errorMessage: string = "Something went wrong!";
-      if (axios.isAxiosError(err)) {
-        const { message } = err?.response?.data as { message: string };
-        errorMessage = message;
-      }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
+    } catch {
       setIsLoading(false);
     }
   };

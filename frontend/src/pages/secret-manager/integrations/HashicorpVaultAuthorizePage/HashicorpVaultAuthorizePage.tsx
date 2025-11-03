@@ -4,10 +4,8 @@ import { faArrowUpRightFromSquare, faBookOpen } from "@fortawesome/free-solid-sv
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import axios from "axios";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardBody, CardTitle, FormControl, Input } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
@@ -41,37 +39,23 @@ export const HashicorpVaultAuthorizePage = () => {
   });
 
   const handleFormSubmit = async (formData: TForm) => {
-    try {
-      const integrationAuth = await mutateAsync({
-        workspaceId: currentProject.id,
-        integration: "hashicorp-vault",
-        accessId: formData.vaultRoleID,
-        accessToken: formData.vaultSecretID,
-        url: formData.vaultURL,
-        namespace: formData.vaultNamespace
-      });
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations/hashicorp-vault/create",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          integrationAuthId: integrationAuth.id
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      let errorMessage: string = "Something went wrong!";
-      if (axios.isAxiosError(err)) {
-        const { message } = err?.response?.data as { message: string };
-        errorMessage = message;
+    const integrationAuth = await mutateAsync({
+      workspaceId: currentProject.id,
+      integration: "hashicorp-vault",
+      accessId: formData.vaultRoleID,
+      accessToken: formData.vaultSecretID,
+      url: formData.vaultURL,
+      namespace: formData.vaultNamespace
+    });
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations/hashicorp-vault/create",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        integrationAuthId: integrationAuth.id
       }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
-    }
+    });
   };
 
   return (

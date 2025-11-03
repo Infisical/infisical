@@ -39,40 +39,33 @@ export const AuditLogsRetentionSection = () => {
   if (!currentProject) return null;
 
   const handleAuditLogsRetentionSubmit = async ({ auditLogsRetentionDays }: TForm) => {
-    try {
-      if (!subscription?.auditLogs) {
-        handlePopUpOpen("upgradePlan", {
-          description:
-            "You can only configure audit logs retention if you switch to Infisical's Pro plan."
-        });
-
-        return;
-      }
-
-      if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
-        handlePopUpOpen("upgradePlan", {
-          description:
-            "To update your audit logs retention period to a higher value, switch to Infisical's Pro plan."
-        });
-
-        return;
-      }
-
-      await updateAuditLogsRetention({
-        auditLogsRetentionDays,
-        projectSlug: currentProject.slug
+    if (!subscription?.auditLogs) {
+      handlePopUpOpen("upgradePlan", {
+        description:
+          "You can only configure audit logs retention if you switch to Infisical's Pro plan."
       });
 
-      createNotification({
-        text: "Successfully updated audit logs retention period",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed updating audit logs retention period",
-        type: "error"
-      });
+      return;
     }
+
+    if (subscription && auditLogsRetentionDays > subscription?.auditLogsRetentionDays) {
+      handlePopUpOpen("upgradePlan", {
+        description:
+          "To update your audit logs retention period to a higher value, switch to Infisical's Pro plan."
+      });
+
+      return;
+    }
+
+    await updateAuditLogsRetention({
+      auditLogsRetentionDays,
+      projectSlug: currentProject.slug
+    });
+
+    createNotification({
+      text: "Successfully updated audit logs retention period",
+      type: "success"
+    });
   };
 
   // render only for dedicated/self-hosted instances of Infisical
