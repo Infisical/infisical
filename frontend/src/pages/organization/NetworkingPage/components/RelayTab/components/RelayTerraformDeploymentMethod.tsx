@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
 import { faCopy, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Tab } from "@headlessui/react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -15,13 +16,13 @@ import {
   ModalClose,
   Tooltip
 } from "@app/components/v2";
-import { Tab } from "@headlessui/react";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
   useAddIdentityTokenAuth,
   useCreateTokenIdentityTokenAuth,
@@ -29,7 +30,6 @@ import {
   useGetIdentityTokenAuth
 } from "@app/hooks/api";
 import { slugSchema } from "@app/lib/schemas";
-import { AWS_REGIONS } from "@app/helpers/appConnections";
 
 const baseFormSchema = z.object({
   name: slugSchema({ field: "name" })
