@@ -3,6 +3,7 @@ import * as AWS from "aws-sdk";
 import RE2 from "re2";
 import { z } from "zod";
 
+import { TCertificateSyncs } from "@app/db/schemas";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -397,11 +398,10 @@ export const awsCertificateManagerPkiSyncFactory = ({
     });
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
-    type SyncRecord = (typeof existingSyncRecords)[0];
-    const syncRecordsByCertId = new Map<string, SyncRecord>();
-    const syncRecordsByExternalId = new Map<string, SyncRecord>();
+    const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
+    const syncRecordsByExternalId = new Map<string, TCertificateSyncs>();
 
-    existingSyncRecords.forEach((record: SyncRecord) => {
+    existingSyncRecords.forEach((record: TCertificateSyncs) => {
       if (record.certificateId) {
         syncRecordsByCertId.set(record.certificateId, record);
       }

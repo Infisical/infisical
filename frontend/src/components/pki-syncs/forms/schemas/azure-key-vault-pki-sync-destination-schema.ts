@@ -7,7 +7,7 @@ import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 const AzureKeyVaultSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
-  preserveVersion: z.boolean().default(true),
+  enableVersioning: z.boolean().default(true),
   certificateNameSchema: z
     .string()
     .optional()

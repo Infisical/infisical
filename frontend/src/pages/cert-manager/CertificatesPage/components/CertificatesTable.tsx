@@ -458,31 +458,33 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                             </ProjectPermissionCan>
                           );
                         })()}
-                        {/* PKI Sync management - only for active certificates */}
-                        {certificate.status === CertStatus.ACTIVE && (
-                          <ProjectPermissionCan
-                            I={ProjectPermissionCertificateActions.Edit}
-                            a={ProjectPermissionSub.Certificates}
-                          >
-                            {(isAllowed) => (
-                              <DropdownMenuItem
-                                className={twMerge(
-                                  !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
-                                )}
-                                onClick={async () =>
-                                  handlePopUpOpen("managePkiSyncs", {
-                                    certificateId: certificate.id,
-                                    commonName: certificate.commonName
-                                  })
-                                }
-                                disabled={!isAllowed}
-                                icon={<FontAwesomeIcon icon={faLink} />}
-                              >
-                                Manage PKI Syncs
-                              </DropdownMenuItem>
-                            )}
-                          </ProjectPermissionCan>
-                        )}
+                        {/* PKI Sync management - only for active certificates that are not renewed */}
+                        {certificate.status === CertStatus.ACTIVE &&
+                          !certificate.renewedByCertificateId && (
+                            <ProjectPermissionCan
+                              I={ProjectPermissionCertificateActions.Edit}
+                              a={ProjectPermissionSub.Certificates}
+                            >
+                              {(isAllowed) => (
+                                <DropdownMenuItem
+                                  className={twMerge(
+                                    !isAllowed &&
+                                      "pointer-events-none cursor-not-allowed opacity-50"
+                                  )}
+                                  onClick={async () =>
+                                    handlePopUpOpen("managePkiSyncs", {
+                                      certificateId: certificate.id,
+                                      commonName: certificate.commonName
+                                    })
+                                  }
+                                  disabled={!isAllowed}
+                                  icon={<FontAwesomeIcon icon={faLink} />}
+                                >
+                                  Manage PKI Syncs
+                                </DropdownMenuItem>
+                              )}
+                            </ProjectPermissionCan>
+                          )}
                         {/* Only show revoke button if CA supports revocation */}
                         {(() => {
                           const caType = caCapabilityMap[certificate.caId];

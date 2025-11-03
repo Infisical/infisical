@@ -141,7 +141,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
       {currentDestination === PkiSync.AzureKeyVault && (
         <Controller
           control={control}
-          name="syncOptions.preserveVersion"
+          name="syncOptions.enableVersioning"
           render={({ field: { value, onChange }, fieldState: { error } }) => (
             <FormControl isError={Boolean(error)} errorText={error?.message}>
               <Switch
@@ -160,7 +160,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         <p>
                           When enabled, Infisical will create a new version of the existing
                           certificate in Azure Key Vault during certificate renewal syncs,
-                          preserving the certificate name.
+                          preserving the original certificate name.
                         </p>
                         <p className="mt-4">
                           This allows consuming services to continue using the same certificate name

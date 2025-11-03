@@ -69,7 +69,7 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
-            tooltipText="App Connections can be created from the Organization Settings page."
+            tooltipText="App Connections can be created from the Project Settings page."
             isError={Boolean(error)}
             errorText={error?.message}
             label={`${connectionName} Connection`}

@@ -95,10 +95,17 @@ export const pkiSyncServiceFactory = ({
       });
     }
 
-    const invalidCertificates = certificates.filter((cert) => cert.projectId !== expectedProjectId);
-    if (invalidCertificates.length > 0) {
+    const invalidProjectCertificates = certificates.filter((cert) => cert.projectId !== expectedProjectId);
+    if (invalidProjectCertificates.length > 0) {
       throw new BadRequestError({
-        message: `Certificates do not belong to the same project: ${invalidCertificates.map((cert) => cert.id).join(", ")}`
+        message: `Certificates do not belong to the same project: ${invalidProjectCertificates.map((cert) => cert.id).join(", ")}`
+      });
+    }
+
+    const invalidRenewedCertificates = certificates.filter((cert) => cert.renewedByCertificateId);
+    if (invalidRenewedCertificates.length > 0) {
+      throw new BadRequestError({
+        message: `Cannot add renewed certificates to PKI sync: ${invalidRenewedCertificates.map((cert) => cert.id).join(", ")}`
       });
     }
   };

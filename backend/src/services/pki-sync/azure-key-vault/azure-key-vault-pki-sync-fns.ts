@@ -2,6 +2,7 @@
 import { AxiosError } from "axios";
 import * as crypto from "crypto";
 
+import { TCertificateSyncs } from "@app/db/schemas";
 import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -346,11 +347,10 @@ export const azureKeyVaultPkiSyncFactory = ({
     );
 
     const existingSyncRecords = await certificateSyncDAL.findByPkiSyncId(pkiSync.id);
-    type SyncRecord = (typeof existingSyncRecords)[0];
-    const syncRecordsByCertId = new Map<string, SyncRecord>();
-    const syncRecordsByExternalId = new Map<string, SyncRecord>();
+    const syncRecordsByCertId = new Map<string, TCertificateSyncs>();
+    const syncRecordsByExternalId = new Map<string, TCertificateSyncs>();
 
-    existingSyncRecords.forEach((record: SyncRecord) => {
+    existingSyncRecords.forEach((record: TCertificateSyncs) => {
       if (record.certificateId) {
         syncRecordsByCertId.set(record.certificateId, record);
       }
@@ -368,10 +368,10 @@ export const azureKeyVaultPkiSyncFactory = ({
     }[] = [];
 
     const syncOptions = pkiSync.syncOptions as
-      | { certificateNameSchema?: string; canRemoveCertificates?: boolean; preserveVersion?: boolean }
+      | { certificateNameSchema?: string; canRemoveCertificates?: boolean; enableVersioning?: boolean }
       | undefined;
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
-    const preserveVersion = syncOptions?.preserveVersion ?? true;
+    const enableVersioning = syncOptions?.enableVersioning ?? true;
 
     const activeExternalIdentifiers = new Set<string>();
 
@@ -382,7 +382,7 @@ export const azureKeyVaultPkiSyncFactory = ({
         continue;
       }
 
-      if (preserveVersion && typeof certificateId === "string") {
+      if (enableVersioning && typeof certificateId === "string") {
         const certificate = await certificateDAL.findById(certificateId);
         if (certificate?.renewedByCertificateId) {
           // eslint-disable-next-line no-continue
@@ -399,7 +399,7 @@ export const azureKeyVaultPkiSyncFactory = ({
         if (existingSyncRecord?.externalIdentifier) {
           const existingAzureCert = vaultCertificates[existingSyncRecord.externalIdentifier];
 
-          if (existingAzureCert && preserveVersion) {
+          if (existingAzureCert && enableVersioning) {
             targetCertName = existingSyncRecord.externalIdentifier;
             activeExternalIdentifiers.add(targetCertName);
 
@@ -409,7 +409,7 @@ export const azureKeyVaultPkiSyncFactory = ({
             }
           } else if (!existingAzureCert) {
             shouldCreateNew = true;
-          } else if (!preserveVersion) {
+          } else if (!enableVersioning) {
             shouldCreateNew = true;
           }
         } else {
@@ -544,7 +544,7 @@ export const azureKeyVaultPkiSyncFactory = ({
               ]);
             }
 
-            if (preserveVersion) {
+            if (enableVersioning) {
               const currentCertificate = await certificateDAL.findById(certificateId);
               if (currentCertificate?.renewedFromCertificateId) {
                 await certificateSyncDAL.removeCertificates(pkiSync.id, [currentCertificate.renewedFromCertificateId]);
