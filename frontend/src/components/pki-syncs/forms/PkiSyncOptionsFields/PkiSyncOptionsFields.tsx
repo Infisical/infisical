@@ -71,7 +71,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
               isChecked={value}
             >
               <p>
-                Enable Removal of Active/Revoked Certificates{" "}
+                Enable Removal of Expired/Revoked Certificates{" "}
                 <Tooltip
                   className="max-w-md"
                   content={
@@ -152,7 +152,7 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                 isChecked={value}
               >
                 <p>
-                  Preserve Version on Renewal{" "}
+                  Enable Versioning on Renewal{" "}
                   <Tooltip
                     className="max-w-md"
                     content={
