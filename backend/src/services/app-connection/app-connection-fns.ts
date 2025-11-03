@@ -296,7 +296,7 @@ export const decryptAppConnectionCredentials = async ({
     cipherTextBlob: encryptedCredentials
   });
 
-  return JSON.parse(decryptedPlainTextBlob.toString());
+  return JSON.parse(decryptedPlainTextBlob.toString()) as TAppConnection["credentials"];
 };
 
 export const validateAppConnectionCredentials = async (
