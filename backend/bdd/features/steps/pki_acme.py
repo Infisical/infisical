@@ -1,11 +1,12 @@
 import json
+import logging
 import re
 import threading
 
-import faker
 import jq
 import requests
 import glom
+from faker import Faker
 from acme import client
 from acme import messages
 from acme import standalone
@@ -23,6 +24,8 @@ from cryptography.hazmat.primitives import hashes
 
 ACC_KEY_BITS = 2048
 ACC_KEY_PUBLIC_EXPONENT = 65537
+logger = logging.getLogger(__name__)
+faker = Faker()
 
 
 class AcmeProfile:
@@ -108,6 +111,16 @@ def eval_var(context: Context, var_path: str, as_json: bool = True):
     return value
 
 
+def prepare_headers(context: Context) -> dict | None:
+    headers = {}
+    auth_token = getattr(context, "auth_token", None)
+    if auth_token is not None:
+        headers["authorization"] = "Bearer {}".format(auth_token)
+    if not headers:
+        return None
+    return headers
+
+
 @given("I make a random {faker_type} as {var_name}")
 def step_impl(context: Context, faker_type: str, var_name: str):
     context.vars[var_name] = getattr(faker, faker_type)()
@@ -122,16 +135,28 @@ def step_impl(context: Context, profile_var: str):
     context.vars[profile_var] = AcmeProfile(profile_id)
 
 
+@given("I use {token_var} for authentication")
+def step_impl(context: Context, token_var: str):
+    context.auth_token = eval_var(context, token_var)
+
+
 @when('I send a {method} request to "{url}"')
 def step_impl(context: Context, method: str, url: str):
-    context.response = context.http_client.request(method, url.format(**context.vars))
+    context.response = context.http_client.request(
+        method, url.format(**context.vars), headers=prepare_headers(context)
+    )
 
 
 @when('I send a {method} request to "{url}" with JSON payload')
 def step_impl(context: Context, method: str, url: str):
-    context.response = context.http_client.request(
-        method, url.format(**context.vars), json_payload=context.text
+    response = context.http_client.request(
+        method,
+        url.format(**context.vars),
+        headers=prepare_headers(context),
+        json=json.loads(context.text),
     )
+    context.response = response
+    context.vars["response"] = response
 
 
 @when("I have an ACME client connecting to {url}")
