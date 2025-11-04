@@ -158,9 +158,11 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      // Validate the URL
       if (new URL(protectedHeader.url).href !== url.href) {
         throw new AcmeUnauthorizedError({ detail: "URL mismatch in the protected header" });
       }
+      // Consume the nonce
       if (!protectedHeader.nonce) {
         throw new AcmeMalformedError({ detail: "Nonce is required in the protected header" });
       }
@@ -169,7 +171,7 @@ export const pkiAcmeServiceFactory = ({
         throw new AcmeBadNonceError({ detail: "Invalid nonce" });
       }
 
-      // TODO: consume the nonce here
+      // Parse the payload
       const decoder = new TextDecoder();
       const textPayload = decoder.decode(rawPayload);
       const payload = schema ? schema.parse(JSON.parse(textPayload)) : textPayload;
