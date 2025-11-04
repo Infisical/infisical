@@ -29,7 +29,7 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
     >
       <ModalContent
         title="Reveal EAB Secret"
-        subTitle="To issue certificates, your ACME client needs to use the following information."
+        subTitle="To issue certificates automatically, your ACME client needs the following details."
       >
         <FormLabel
           label="ACME Directory URL"
@@ -53,7 +53,7 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
 
         <FormLabel
           label="EAB KID"
-          tooltipText="The EAB Key Identifier (KID) for your ACME client to use for authentication when registering a new account."
+          tooltipText="The EAB Key Identifier (KID) for your ACME client to authenticate when registering a new account."
         />
         <div className="flex gap-2">
           <Input value={eabKid} disabled />
@@ -74,7 +74,7 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
         <FormLabel
           label="EAB Secret"
           className="mt-4"
-          tooltipText="The EAB Secret for your ACME client to use for authentication when registering a new account."
+          tooltipText="The EAB Secret for your ACME client to authenticate when registering a new account."
         />
         <div className="flex gap-2">
           <Input value={eabSecret} isDisabled />
