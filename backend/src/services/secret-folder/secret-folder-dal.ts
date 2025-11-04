@@ -423,7 +423,10 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           ),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
-        .orderByRaw(`${TableName.SecretFolder}.?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
+        .orderByRaw(
+          `${TableName.SecretFolder}.?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`,
+          [orderBy]
+        );
 
       if (limit) {
         const rankOffset = offset + 1; // ranks start from 1
@@ -433,7 +436,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
           .andWhere("w.rank", "<", rankOffset + limit)
-          .orderByRaw(`"w".?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
+          .orderByRaw(`"w".?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+            orderBy
+          ]);
       }
 
       const folders = await query;
@@ -482,7 +487,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
         .from("parents")
         .orderBy("depth")
-        .orderByRaw(`"parents".?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
+        .orderByRaw(`"parents".?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+          orderBy
+        ]);
 
       return folders;
     } catch (error) {
