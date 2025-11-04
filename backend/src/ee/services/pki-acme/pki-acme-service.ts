@@ -617,6 +617,8 @@ export const pkiAcmeServiceFactory = ({
             {
               status: AcmeOrderStatus.Valid,
               csr,
+              // TODO: we actually don't need to store the certificate and certificate chain here
+              //       It appears that the certificate and certificate chain are stored in the certificate_body table already
               certificateChain,
               certificate,
               certificateId
