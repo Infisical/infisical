@@ -19,5 +19,5 @@ Feature: Challenge
     Then I serve challenge response for challenge at localhost
     Then I tell ACME server that challenge is ready to be verified
     Then I poll and finalize the ACME order order as finalized_order
-    Then the value finalized_order.body.status should be equal to valid
+    Then the value finalized_order.body with jq ".status" should be equal to "valid"
     # TODO: check the fullchain pem content of the order
