@@ -37,6 +37,4 @@ export interface TApiConfigData {
   renewBeforeDays?: number;
 }
 
-export interface TAcmeConfigData {
-  eabSecret: string;
-}
+export interface TAcmeConfigData {}
