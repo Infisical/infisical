@@ -4,6 +4,7 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
+import * as x509 from "@peculiar/x509";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
@@ -12,6 +13,7 @@ import {
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -75,6 +77,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -98,6 +101,7 @@ type TPkiAcmeServiceFactoryDep = {
 export const pkiAcmeServiceFactory = ({
   projectDAL,
   certificateProfileDAL,
+  certificateBodyDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -674,6 +678,7 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     orderId: string;
   }): Promise<TAcmeResponse<string>> => {
+    const profile = await validateAcmeProfile(profileId);
     const order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -681,12 +686,35 @@ export const pkiAcmeServiceFactory = ({
     if (order.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not valid" });
     }
+    if (!order.certificateId) {
+      throw new NotFoundError({ message: "The underlying certificate no longer exists" });
+    }
+
+    const certBody = await certificateBodyDAL.findOne({ certId: order.certificateId });
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: profile.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const decryptedCertChain = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificateChain!
+    });
+    const certificateChain = decryptedCertChain.toString();
+
     return {
       status: 200,
       body:
-        order.certificate!.trim().replace("\n", "\r\n") +
+        certObj.toString("pem").trim().replace("\n", "\r\n") +
         "\r\n" +
-        order.certificateChain!.trim().replace("\n", "\r\n") +
+        certificateChain.trim().replace("\n", "\r\n") +
         // The final line is needed, otherwise some clients will not parse the certificate chain correctly
         // ref: https://github.com/certbot/certbot/blob/4d5d5f7ae8164884c841969e46caed8db1ad34af/certbot/src/certbot/crypto_util.py#L506-L514
         "\r\n",
