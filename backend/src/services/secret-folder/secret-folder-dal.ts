@@ -419,20 +419,11 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY CASE WHEN ${TableName.SecretFolder}."name" LIKE '\\_%' THEN ${orderDirection === OrderByDirection.ASC ? "0" : "1"} ELSE ${orderDirection === OrderByDirection.ASC ? "1" : "0"} END,
-            LOWER(${TableName.SecretFolder}."name") ${orderDirection},
-            ${TableName.SecretFolder}."name" ${orderDirection}
-        ) as rank`
+            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" COLLATE "en-x-icu" ${orderDirection}) as rank`
           ),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
-        .orderByRaw(`CASE WHEN ${TableName.SecretFolder}.?? LIKE '\\_%' THEN ? ELSE ? END`, [
-          orderBy,
-          orderDirection === OrderByDirection.ASC ? 0 : 1,
-          orderDirection === OrderByDirection.ASC ? 1 : 0
-        ])
-        .orderByRaw(`LOWER(${TableName.SecretFolder}.??) ${orderDirection}`, [orderBy])
-        .orderByRaw(`${TableName.SecretFolder}.?? ${orderDirection}`, [orderBy]);
+        .orderByRaw(`${TableName.SecretFolder}.?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
 
       if (limit) {
         const rankOffset = offset + 1; // ranks start from 1
@@ -442,13 +433,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
           .andWhere("w.rank", "<", rankOffset + limit)
-          .orderByRaw(`CASE WHEN "w".?? LIKE '\\_%' THEN ? ELSE ? END`, [
-            orderBy,
-            orderDirection === OrderByDirection.ASC ? 0 : 1,
-            orderDirection === OrderByDirection.ASC ? 1 : 0
-          ])
-          .orderByRaw(`LOWER("w".??) ${orderDirection}`, [orderBy])
-          .orderByRaw(`"w".?? ${orderDirection}`, [orderBy]);
+          .orderByRaw(`"w".?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
       }
 
       const folders = await query;
@@ -497,13 +482,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
         .from("parents")
         .orderBy("depth")
-        .orderByRaw(`CASE WHEN "parents".?? LIKE '\\_%' THEN ? ELSE ? END`, [
-          orderBy,
-          orderDirection === OrderByDirection.ASC ? 0 : 1,
-          orderDirection === OrderByDirection.ASC ? 1 : 0
-        ])
-        .orderByRaw(`LOWER("parents".??) ${orderDirection}`, [orderBy])
-        .orderByRaw(`"parents".?? ${orderDirection}`, [orderBy]);
+        .orderByRaw(`"parents".?? COLLATE "en-x-icu" ${orderDirection}`, [orderBy]);
 
       return folders;
     } catch (error) {
