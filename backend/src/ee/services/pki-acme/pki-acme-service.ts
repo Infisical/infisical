@@ -339,10 +339,15 @@ export const pkiAcmeServiceFactory = ({
         externalAccountBinding,
         eabSecret
       );
-      const eabAlg = eabProtectedHeader!.alg!;
-      if (!["HS256", "HS384", "HS512"].includes(eabAlg)) {
+      const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
+      if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
         throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
       }
+      // Make sure the KID in the EAB payload matches the profile ID
+      if (eabKid !== profile.id) {
+        throw new UnauthorizedError({ message: "External account binding KID mismatch" });
+      }
+
       // Make sure the URL matches the expected URL
       const url = eabProtectedHeader!.url!;
       if (url !== buildUrl(profile.id, "/new-account")) {
@@ -358,10 +363,6 @@ export const pkiAcmeServiceFactory = ({
         throw new AcmeBadPublicKeyError({
           message: "External account binding public key thumbprint or algorithm mismatch"
         });
-      }
-      // Make sure the KID in the EAB payload matches the profile ID
-      if ((eabPayload as unknown as { kid: string }).kid !== profile.id) {
-        throw new UnauthorizedError({ message: "External account binding KID mismatch" });
       }
     } catch (error) {
       if (error instanceof errors.JWSInvalid) {
