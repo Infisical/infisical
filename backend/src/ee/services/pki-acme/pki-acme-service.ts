@@ -158,7 +158,7 @@ export const pkiAcmeServiceFactory = ({
       if (error instanceof ZodError) {
         throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
       }
-      if (error instanceof errors.JWSInvalid) {
+      if (error instanceof errors.JWSSignatureVerificationFailed) {
         throw new AcmeBadPublicKeyError({ detail: "Invalid JWS payload" });
       }
       logger.error(error, "Unexpected error while verifying JWS payload");
@@ -361,7 +361,7 @@ export const pkiAcmeServiceFactory = ({
         );
         return { eabPayload, eabProtectedHeader };
       } catch (error) {
-        if (error instanceof errors.JWSInvalid) {
+        if (error instanceof errors.JWSSignatureVerificationFailed) {
           throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
         }
         logger.error(error, "Unexpected error while verifying EAB JWS payload");
