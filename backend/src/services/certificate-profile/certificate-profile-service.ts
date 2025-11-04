@@ -832,7 +832,7 @@ export const certificateProfileServiceFactory = ({
       kmsId: certificateManagerKmsId
     });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret });
-    return { eabKid: profile.id, eabSecret: eabSecret.toString() };
+    return { eabKid: profile.id, eabSecret: eabSecret.toString("base64url") };
   };
 
   return {
