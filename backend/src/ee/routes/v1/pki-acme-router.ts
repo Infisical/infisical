@@ -380,6 +380,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       if (payload !== "") {
         throw new AcmeMalformedError({ detail: "Payload should be empty" });
       }
+      res.type("application/pem-certificate-chain");
       return sendAcmeResponse(
         res,
         profileId,

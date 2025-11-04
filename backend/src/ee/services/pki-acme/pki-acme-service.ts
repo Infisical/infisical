@@ -683,7 +683,13 @@ export const pkiAcmeServiceFactory = ({
     }
     return {
       status: 200,
-      body: order.certificate! + "\n" + order.certificateChain!,
+      body:
+        order.certificate!.trim().replace("\n", "\r\n") +
+        "\r\n" +
+        order.certificateChain!.trim().replace("\n", "\r\n") +
+        // The final line is needed, otherwise some clients will not parse the certificate chain correctly
+        // ref: https://github.com/certbot/certbot/blob/4d5d5f7ae8164884c841969e46caed8db1ad34af/certbot/src/certbot/crypto_util.py#L506-L514
+        "\r\n",
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}/certificate`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`

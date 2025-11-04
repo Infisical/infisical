@@ -475,8 +475,9 @@ def step_impl(context: Context, var_path: str):
     acme_client.answer_challenge(challenge, response)
 
 
-@then("I poll and finalize the ACME order {var_path}")
-def step_impl(context: Context, var_path: str):
+@then("I poll and finalize the ACME order {var_path} as {finalized_var}")
+def step_impl(context: Context, var_path: str, finalized_var: str):
     order = eval_var(context, var_path, as_json=False)
     acme_client = context.acme_client
-    acme_client.poll_and_finalize(order)
+    finalized_order = acme_client.poll_and_finalize(order)
+    context.vars[finalized_var] = finalized_order

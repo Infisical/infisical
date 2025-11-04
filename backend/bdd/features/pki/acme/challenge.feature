@@ -19,4 +19,5 @@ Feature: Challenge
     Then I select challenge with type http-01 for domain localhost from order at order as challenge
     Then I serve challenge response for challenge at localhost
     Then I tell ACME server that challenge is ready to be verified
-    Then I poll and finalize the ACME order order
+    Then I poll and finalize the ACME order order as finalized_order
+    # TODO: check the content of the order
