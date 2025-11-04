@@ -438,12 +438,16 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         disableBootstrapCaValidation: false,
                         passphrase: ""
                       });
-                    } else {
+                    } else if (value === "api") {
                       setValue("estConfig", undefined);
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
                       });
+                    } else if (value === "acme") {
+                      setValue("apiConfig", undefined);
+                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", {});
                     }
                     onChange(value);
                   }}
