@@ -2196,13 +2196,15 @@ export const registerRoutes = async (
     acmeChallengeDAL
   });
   const pkiAcmeService = pkiAcmeServiceFactory({
-    certificateV3Service,
+    projectDAL,
     certificateProfileDAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
     acmeOrderAuthDAL,
     acmeChallengeDAL,
+    kmsService,
+    certificateV3Service,
     acmeChallengeService
   });
 
