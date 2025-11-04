@@ -594,7 +594,8 @@ export const pkiAcmeServiceFactory = ({
               status: AcmeOrderStatus.Valid,
               csr,
               certificateChain,
-              certificate
+              certificate,
+              certificateId
             },
             tx
           );
