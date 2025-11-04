@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,6 +18,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
+import { envConfig } from "@app/config/env";
 import { useProject } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
@@ -109,7 +110,7 @@ const editSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est"]),
+    enrollmentType: z.enum(["api", "est", "acme"]),
     certificateAuthorityId: z.string().optional(),
     certificateTemplateId: z.string().optional(),
     estConfig: z
@@ -124,7 +125,8 @@ const editSchema = z
         autoRenew: z.boolean().optional(),
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -132,6 +134,9 @@ const editSchema = z
         return false;
       }
       if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
       return true;
@@ -448,7 +453,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
-                  <SelectItem value="acme">ACME</SelectItem>
+                  {envConfig.isAcmeFeatureEnabled && <SelectItem value="acme">ACME</SelectItem>}
                 </Select>
               </FormControl>
             )}
