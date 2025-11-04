@@ -362,10 +362,10 @@ export const pkiAcmeServiceFactory = ({
         return { eabPayload, eabProtectedHeader };
       } catch (error) {
         if (error instanceof errors.JWSSignatureVerificationFailed) {
-          throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
+          throw new AcmeMalformedError({ detail: "Invalid external account binding JWS signature" });
         }
-        logger.error(error, "Unexpected error while verifying EAB JWS payload");
-        throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS payload" });
+        logger.error(error, "Unexpected error while verifying EAB JWS signature");
+        throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS signature" });
       }
     })();
 
