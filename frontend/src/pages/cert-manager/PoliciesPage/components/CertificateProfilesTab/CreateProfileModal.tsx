@@ -288,6 +288,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         };
       } else if (data.enrollmentType === "api" && data.apiConfig) {
         createData.apiConfig = data.apiConfig;
+      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+        createData.acmeConfig = data.acmeConfig;
       }
 
       await createProfile.mutateAsync(createData);
