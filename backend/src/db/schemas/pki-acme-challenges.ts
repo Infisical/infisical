@@ -12,6 +12,7 @@ export const PkiAcmeChallengesSchema = z.object({
   authId: z.string().uuid(),
   type: z.string(),
   status: z.string(),
+  error: z.string().nullable().optional(),
   validatedAt: z.date().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()
