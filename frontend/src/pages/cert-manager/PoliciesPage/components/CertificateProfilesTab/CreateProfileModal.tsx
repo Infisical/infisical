@@ -583,7 +583,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
               <Controller
                 control={control}
                 name="acmeConfig"
-                render={({ field, fieldState: { error } }) => (
+                render={({ fieldState: { error } }) => (
                   <FormControl isError={Boolean(error)} errorText={error?.message}>
                     <div className="flex items-center gap-2">{/* FIXME: ACME configuration */}</div>
                   </FormControl>

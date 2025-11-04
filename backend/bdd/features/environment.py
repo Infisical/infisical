@@ -3,9 +3,6 @@ import os
 import httpx
 from behave.runner import Context
 from dotenv import load_dotenv
-import logging
-
-logging.getLogger("httpx").setLevel(logging.DEBUG)
 
 load_dotenv()
 
