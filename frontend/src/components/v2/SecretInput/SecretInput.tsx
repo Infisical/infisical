@@ -1,18 +1,22 @@
 /* eslint-disable react/no-danger */
-import { forwardRef, TextareaHTMLAttributes } from "react";
+import { forwardRef, TextareaHTMLAttributes, useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { useToggle } from "@app/hooks";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
 
-const REGEX = /(\${([a-zA-Z0-9-_.]+)})/g;
+const REGEX = /(\${([a-zA-Z0-9-_. ]+)})/g;
 
 const syntaxHighlight = (
   content?: string | null,
   isVisible?: boolean,
   isImport?: boolean,
   isLoadingValue?: boolean,
-  isErrorLoadingValue?: boolean
+  isErrorLoadingValue?: boolean,
+  onHoverPart?: (part: string) => void,
+  hoveredPart?: string,
+  isCmdOrCtrlPressed?: boolean,
+  onClickSegment?: (segment: string, allSegments: string[]) => void
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
@@ -27,10 +31,51 @@ const syntaxHighlight = (
     const isInterpolationSyntax = el.startsWith("${") && el.endsWith("}");
     if (isInterpolationSyntax) {
       skipNext = true;
+      const part = el;
+      const innerContent = el.slice(2, -1); // Remove ${ and }
+      const parts = innerContent.split(".");
+
       return (
-        <span className="ph-no-capture text-yellow" key={`secret-value-${i + 1}`}>
+        <span className="ph-no-capture relative z-10 text-yellow" key={`secret-value-${i + 1}`}>
           &#36;&#123;
-          <span className="ph-no-capture text-yellow-200/80">{el.slice(2, -1)}</span>
+          {parts.map((segment, segmentIndex) => {
+            const segmentKey = `${part}-segment-${segmentIndex}`;
+            const isHovered = hoveredPart === segmentKey;
+            const shouldShowHoverStyle = isHovered && isCmdOrCtrlPressed;
+
+            return (
+              <span key={segmentKey}>
+                <span
+                  role="button"
+                  tabIndex={isCmdOrCtrlPressed ? 0 : -1}
+                  className={`ph-no-capture text-yellow-200/80 ${
+                    isCmdOrCtrlPressed ? "pointer-events-auto" : "pointer-events-none"
+                  } ${shouldShowHoverStyle ? "cursor-pointer underline decoration-yellow-400" : ""}`}
+                  onMouseEnter={() => onHoverPart?.(segmentKey)}
+                  onMouseLeave={() => onHoverPart?.("")}
+                  onClick={(e) => {
+                    if (isCmdOrCtrlPressed) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onClickSegment?.(segment, parts);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (isCmdOrCtrlPressed && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onClickSegment?.(segment, parts);
+                    }
+                  }}
+                >
+                  {segment}
+                </span>
+                {segmentIndex < parts.length - 1 && (
+                  <span className="ph-no-capture pointer-events-none text-yellow-200/80">.</span>
+                )}
+              </span>
+            );
+          })}
           &#125;
         </span>
       );
@@ -60,6 +105,7 @@ type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   canEditButNotView?: boolean;
   isLoadingValue?: boolean;
   isErrorLoadingValue?: boolean;
+  onClickSegment?: (segment: string, allSegments: string[]) => void;
 };
 
 const commonClassName = "font-mono text-sm caret-white border-none outline-hidden w-full break-all";
@@ -79,11 +125,36 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       canEditButNotView,
       isLoadingValue,
       isErrorLoadingValue,
+      onClickSegment,
       ...props
     },
     ref
   ) => {
     const [isSecretFocused, setIsSecretFocused] = useToggle();
+    const [hoveredPart, setHoveredPart] = useState<string | undefined>();
+    const [isCmdOrCtrlPressed, setIsCmdOrCtrlPressed] = useState(false);
+
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.metaKey || e.ctrlKey) {
+          setIsCmdOrCtrlPressed(true);
+        }
+      };
+
+      const handleKeyUp = (e: KeyboardEvent) => {
+        if (!e.metaKey && !e.ctrlKey) {
+          setIsCmdOrCtrlPressed(false);
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("keyup", handleKeyUp);
+
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("keyup", handleKeyUp);
+      };
+    }, []);
 
     return (
       <div
@@ -91,7 +162,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         style={{ maxHeight: `${21 * 7}px` }}
       >
         <div className="relative overflow-hidden">
-          <pre aria-hidden className="m-0">
+          <pre aria-hidden className="pointer-events-none relative z-10 m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
               <span style={{ whiteSpace: "break-spaces" }}>
                 {syntaxHighlight(
@@ -99,7 +170,13 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
                   isImport,
                   isLoadingValue,
-                  isErrorLoadingValue
+                  isErrorLoadingValue,
+                  (part) => {
+                    setHoveredPart(part);
+                  },
+                  hoveredPart,
+                  isCmdOrCtrlPressed,
+                  onClickSegment
                 )}
               </span>
             </code>
@@ -127,6 +204,9 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
             onBlur={(evt) => {
               onBlur?.(evt);
               setIsSecretFocused.off();
+            }}
+            onMouseLeave={() => {
+              setHoveredPart(undefined);
             }}
             value={value || ""}
             {...props}

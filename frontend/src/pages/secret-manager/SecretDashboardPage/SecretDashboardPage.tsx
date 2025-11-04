@@ -534,7 +534,7 @@ const Page = () => {
   }, [secretPath]);
 
   useEffect(() => {
-    if (!routerQueryParams.search && !routerQueryParams.tags) return;
+    if (!routerQueryParams.search && !routerQueryParams.tags && !routerQueryParams.filterBy) return;
 
     const queryTags = routerQueryParams.tags
       ? (routerQueryParams.tags as string).split(",").filter((tag) => Boolean(tag.trim()))
@@ -544,21 +544,34 @@ const Page = () => {
       updatedTags[tag] = true;
     });
 
+    const filterBy = routerQueryParams.filterBy
+      ? (routerQueryParams.filterBy as string).split(",").filter(Boolean)
+      : [];
+
+    const includeFilter: Record<RowType, boolean> = {
+      [RowType.Folder]: filterBy.includes("folder"),
+      [RowType.Import]: filterBy.includes("import"),
+      [RowType.DynamicSecret]: filterBy.includes("dynamic"),
+      [RowType.Secret]: filterBy.includes("secret"),
+      [RowType.SecretRotation]: filterBy.includes("rotation")
+    };
+
     setFilter((prev) => ({
       ...prev,
       ...defaultFilterState,
       searchFilter: (routerQueryParams.search as string) ?? "",
-      tags: updatedTags
+      tags: updatedTags,
+      include: includeFilter
     }));
     setDebouncedSearchFilter(routerQueryParams.search as string);
     // this is a temp workaround until we fully transition state to query params,
     navigate({
       search: (state) => {
-        const { search, tags: qTags, ...query } = state;
+        const { search, tags: qTags, filterBy: qFilterBy, ...query } = state;
         return query;
       }
     });
-  }, [routerQueryParams.search, routerQueryParams.tags]);
+  }, [routerQueryParams.search, routerQueryParams.tags, routerQueryParams.filterBy]);
 
   const selectedSecrets = useSelectedSecrets();
   const selectedSecretActions = useSelectedSecretActions();

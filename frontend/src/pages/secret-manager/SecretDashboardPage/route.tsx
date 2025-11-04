@@ -11,6 +11,7 @@ const SecretDashboardPageQueryParamsSchema = z.object({
   secretPath: z.string().catch("/"),
   search: z.string().catch(""),
   tags: z.string().catch(""),
+  filterBy: z.string().catch(""),
   connectionId: z.string().optional(),
   connectionName: z.string().optional()
 });
@@ -20,7 +21,7 @@ export const Route = createFileRoute(
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
   search: {
-    middlewares: [stripSearchParams({ secretPath: "/", search: "", tags: "" })]
+    middlewares: [stripSearchParams({ secretPath: "/", search: "", tags: "", filterBy: "" })]
   },
   beforeLoad: ({ context, params, search }) => {
     const secretPathSegments = search.secretPath.split("/").filter(Boolean);

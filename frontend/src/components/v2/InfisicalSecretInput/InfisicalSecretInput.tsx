@@ -3,6 +3,7 @@ import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 
+import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
@@ -307,6 +308,41 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
     }, []);
 
+    const handleClickSegment = useCallback(
+      (segment: string, allSegments: string[]) => {
+        // Single segment: search in current environment and path
+        if (allSegments.length === 1) {
+          const currentEnv = propEnvironment || "";
+          const currentPath = propSecretPath || "/";
+          const encodedPath = encodeURIComponent(currentPath);
+          const url = ROUTE_PATHS.SecretManager.SecretDashboardPage.path
+            .replace("$projectId", projectId)
+            .replace("$envSlug", currentEnv);
+          window.open(
+            `${url}?secretPath=${encodedPath}&search=${encodeURIComponent(segment)}&filterBy=secret`,
+            "_blank",
+            "noopener,noreferrer"
+          );
+          return;
+        }
+
+        // Multiple segments: first is env, last is secret, middle are folders
+        const environmentSlug = allSegments[0];
+        const secretName = allSegments[allSegments.length - 1];
+        const folderPath = allSegments.length > 2 ? `/${allSegments.slice(1, -1).join("/")}` : "/";
+        const encodedPath = encodeURIComponent(folderPath);
+        const url = ROUTE_PATHS.SecretManager.SecretDashboardPage.path
+          .replace("$projectId", projectId)
+          .replace("$envSlug", environmentSlug);
+        window.open(
+          `${url}?secretPath=${encodedPath}&search=${encodeURIComponent(secretName)}&filterBy=secret`,
+          "_blank",
+          "noopener,noreferrer"
+        );
+      },
+      [projectId, propEnvironment, propSecretPath]
+    );
+
     return (
       <Popover.Root open={isPopupOpen} onOpenChange={handlePopUpOpen}>
         <Popover.Trigger asChild>
@@ -329,6 +365,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}
+            onClickSegment={handleClickSegment}
           />
         </Popover.Trigger>
         <Popover.Content
