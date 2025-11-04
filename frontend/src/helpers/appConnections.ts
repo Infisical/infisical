@@ -131,7 +131,7 @@ export const APP_CONNECTION_MAP: Record<
     image: "Laravel Forge.png",
     size: 65
   },
-  [AppConnection.Chef]: { name: "Chef", image: "Chef.png" }
+  [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {

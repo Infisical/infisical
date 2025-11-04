@@ -1,6 +1,6 @@
 import z from "zod";
 
-import { TChefConnection } from "@app/services/app-connection/chef";
+import { TChefConnection } from "@app/ee/services/app-connections/chef";
 
 import { ChefSyncListItemSchema, ChefSyncSchema, CreateChefSyncSchema } from "./chef-sync-schemas";
 
