@@ -137,7 +137,7 @@ def step_impl(context: Context, profile_var: str):
     # TODO: Fixed value for now, just to make test much easier,
     #       we should call infisical API to create such profile instead
     #       in the future
-    profile_id = "9fda66ee-03f0-4b7c-95ad-542feff77177"
+    profile_id = os.getenv("PROFILE_ID")
     kid = profile_id
     secret = os.getenv("EAB_SECRET")
     context.vars[profile_var] = AcmeProfile(
