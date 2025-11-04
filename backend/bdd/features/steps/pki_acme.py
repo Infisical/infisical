@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import threading
 
@@ -30,8 +31,10 @@ faker = Faker()
 
 
 class AcmeProfile:
-    def __init__(self, id: str):
+    def __init__(self, id: str, eab_kid: str, eab_secret: str):
         self.id = id
+        self.eab_kid = eab_kid
+        self.eab_secret = eab_secret
 
 
 def replace_vars(payload: dict | list | int | float | str, vars: dict):
@@ -134,8 +137,14 @@ def step_impl(context: Context, profile_var: str):
     # TODO: Fixed value for now, just to make test much easier,
     #       we should call infisical API to create such profile instead
     #       in the future
-    profile_id = "322be4ee-fe20-41c0-ba7c-bdbdfeee2ba8"
-    context.vars[profile_var] = AcmeProfile(profile_id)
+    profile_id = "9fda66ee-03f0-4b7c-95ad-542feff77177"
+    kid = profile_id
+    secret = os.getenv("EAB_SECRET")
+    context.vars[profile_var] = AcmeProfile(
+        profile_id,
+        eab_kid=kid,
+        eab_secret=secret,
+    )
 
 
 @given("I use {token_var} for authentication")
