@@ -74,24 +74,15 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
     >
   ) => {
-    try {
-      const connection = await createAppConnection.mutateAsync({
-        ...formData,
-        projectId
-      });
-      createNotification({
-        text: `Successfully added ${appName} Connection`,
-        type: "success"
-      });
-      onComplete(connection);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to add ${appName} Connection`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const connection = await createAppConnection.mutateAsync({
+      ...formData,
+      projectId
+    });
+    createNotification({
+      text: `Successfully added ${appName} Connection`,
+      type: "success"
+    });
+    onComplete(connection);
   };
 
   switch (app) {
@@ -194,24 +185,15 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
     >
   ) => {
-    try {
-      const connection = await updateAppConnection.mutateAsync({
-        connectionId: appConnection.id,
-        ...formData
-      });
-      createNotification({
-        text: `Successfully updated ${appName} Connection`,
-        type: "success"
-      });
-      onComplete(connection);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${appName} Connection`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const connection = await updateAppConnection.mutateAsync({
+      connectionId: appConnection.id,
+      ...formData
+    });
+    createNotification({
+      text: `Successfully updated ${appName} Connection`,
+      type: "success"
+    });
+    onComplete(connection);
   };
 
   switch (appConnection.app) {

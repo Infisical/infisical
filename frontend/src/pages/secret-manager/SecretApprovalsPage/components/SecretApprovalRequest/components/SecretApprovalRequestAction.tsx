@@ -59,43 +59,27 @@ export const SecretApprovalRequestAction = ({
   };
 
   const handleSecretApprovalRequestMerge = async () => {
-    try {
-      await performSecretApprovalMerge({
-        id: approvalRequestId,
-        projectId,
-        bypassReason: byPassApproval ? bypassReason : undefined
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully merged the request"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to update the request status"
-      });
-    }
+    await performSecretApprovalMerge({
+      id: approvalRequestId,
+      projectId,
+      bypassReason: byPassApproval ? bypassReason : undefined
+    });
+    createNotification({
+      type: "success",
+      text: "Successfully merged the request"
+    });
   };
 
   const handleSecretApprovalStatusChange = async (reqState: "open" | "close") => {
-    try {
-      await updateSecretStatusChange({
-        id: approvalRequestId,
-        status: reqState,
-        projectId
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully updated the request"
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to update the request status"
-      });
-    }
+    await updateSecretStatusChange({
+      id: approvalRequestId,
+      status: reqState,
+      projectId
+    });
+    createNotification({
+      type: "success",
+      text: "Successfully updated the request"
+    });
   };
 
   const isSoftEnforcement = enforcementLevel === EnforcementLevel.Soft;

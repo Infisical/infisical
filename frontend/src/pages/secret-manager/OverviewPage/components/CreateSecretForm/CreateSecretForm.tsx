@@ -193,19 +193,12 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
   const slugSchema = z.string().trim().toLowerCase().min(1);
   const createNewTag = async (slug: string) => {
     // TODO: Replace with slugSchema generic
-    try {
-      const parsedSlug = slugSchema.parse(slug);
-      await createWsTag.mutateAsync({
-        projectId,
-        tagSlug: parsedSlug,
-        tagColor: ""
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create new tag"
-      });
-    }
+    const parsedSlug = slugSchema.parse(slug);
+    await createWsTag.mutateAsync({
+      projectId,
+      tagSlug: parsedSlug,
+      tagColor: ""
+    });
   };
 
   return (

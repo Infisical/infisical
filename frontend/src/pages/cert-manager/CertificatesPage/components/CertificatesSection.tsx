@@ -42,24 +42,16 @@ export const CertificatesSection = () => {
   ] as const);
 
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await deleteCert({ serialNumber, projectSlug: currentProject.slug });
+    await deleteCert({ serialNumber, projectSlug: currentProject.slug });
 
-      createNotification({
-        text: "Successfully deleted certificate",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted certificate",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCertificate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete certificate",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCertificate");
   };
 
   return (

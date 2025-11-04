@@ -150,49 +150,42 @@ export const IdentityAwsAuthForm = ({
     accessTokenNumUsesLimit,
     accessTokenTrustedIps
   }: FormData) => {
-    try {
-      if (!identityId) return;
+    if (!identityId) return;
 
-      if (data) {
-        await updateMutateAsync({
-          organizationId: orgId,
-          stsEndpoint,
-          allowedPrincipalArns,
-          allowedAccountIds,
-          identityId,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      } else {
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId,
-          stsEndpoint: stsEndpoint || "",
-          allowedPrincipalArns: allowedPrincipalArns || "",
-          allowedAccountIds: allowedAccountIds || "",
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
-        type: "success"
+    if (data) {
+      await updateMutateAsync({
+        organizationId: orgId,
+        stsEndpoint,
+        allowedPrincipalArns,
+        allowedAccountIds,
+        identityId,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
-
-      reset();
-    } catch {
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
-        type: "error"
+    } else {
+      await addMutateAsync({
+        organizationId: orgId,
+        identityId,
+        stsEndpoint: stsEndpoint || "",
+        allowedPrincipalArns: allowedPrincipalArns || "",
+        allowedAccountIds: allowedAccountIds || "",
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

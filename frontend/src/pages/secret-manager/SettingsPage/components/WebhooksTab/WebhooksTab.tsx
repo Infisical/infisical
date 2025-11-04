@@ -59,83 +59,51 @@ export const WebhooksTab = withProjectPermission(
     const { mutateAsync: deleteWebhook } = useDeleteWebhook();
 
     const handleWebhookCreate = async (data: TFormSchema) => {
-      try {
-        await createWebhook({
-          ...data,
-          projectId
-        });
-        handlePopUpClose("addWebhook");
-        createNotification({
-          type: "success",
-          text: "Successfully created webhook"
-        });
-      } catch (err) {
-        console.log(err);
-        createNotification({
-          type: "error",
-          text: "Failed to create webhook"
-        });
-      }
+      await createWebhook({
+        ...data,
+        projectId
+      });
+      handlePopUpClose("addWebhook");
+      createNotification({
+        type: "success",
+        text: "Successfully created webhook"
+      });
     };
 
     const handleWebhookDisable = async (webhookId: string, isDisabled: boolean) => {
-      try {
-        await updateWebhook({
-          webhookId,
-          projectId,
-          isDisabled
-        });
-        createNotification({
-          type: "success",
-          text: "Successfully updated webhook"
-        });
-      } catch (err) {
-        console.log(err);
-        createNotification({
-          type: "error",
-          text: "Failed to update webhook"
-        });
-      }
+      await updateWebhook({
+        webhookId,
+        projectId,
+        isDisabled
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully updated webhook"
+      });
     };
 
     const handleWebhookDelete = async () => {
-      try {
-        const webhookId = popUp?.deleteWebhook?.data as string;
-        await deleteWebhook({
-          webhookId,
-          projectId
-        });
-        handlePopUpClose("deleteWebhook");
-        createNotification({
-          type: "success",
-          text: "Successfully deleted webhook"
-        });
-      } catch (err) {
-        console.log(err);
-        createNotification({
-          type: "error",
-          text: "Failed to delete webhook"
-        });
-      }
+      const webhookId = popUp?.deleteWebhook?.data as string;
+      await deleteWebhook({
+        webhookId,
+        projectId
+      });
+      handlePopUpClose("deleteWebhook");
+      createNotification({
+        type: "success",
+        text: "Successfully deleted webhook"
+      });
     };
 
     const handleWebhookTest = async (webhookId: string) => {
-      try {
-        await testWebhook({
-          webhookId,
-          projectId
-        });
-        createNotification({
-          type: "success",
-          text: "Successfully triggered webhook"
-        });
-      } catch (err) {
-        console.log(err);
-        createNotification({
-          type: "error",
-          text: "Failed to trigger webhook"
-        });
-      }
+      await testWebhook({
+        webhookId,
+        projectId
+      });
+      createNotification({
+        type: "success",
+        text: "Successfully triggered webhook"
+      });
     };
 
     return (

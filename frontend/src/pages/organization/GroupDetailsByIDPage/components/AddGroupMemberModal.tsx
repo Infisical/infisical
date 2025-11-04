@@ -63,31 +63,24 @@ export const AddGroupMembersModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { mutateAsync: addUserToGroupMutateAsync } = useAddUserToGroup();
 
   const handleAddMember = async (username: string) => {
-    try {
-      if (!popUpData?.slug) {
-        createNotification({
-          text: "Some data is missing, please refresh the page and try again",
-          type: "error"
-        });
-        return;
-      }
-
-      await addUserToGroupMutateAsync({
-        groupId: popUpData.groupId,
-        username,
-        slug: popUpData.slug
-      });
-
+    if (!popUpData?.slug) {
       createNotification({
-        text: "Successfully assigned user to the group",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to assign user to the group",
+        text: "Some data is missing, please refresh the page and try again",
         type: "error"
       });
+      return;
     }
+
+    await addUserToGroupMutateAsync({
+      groupId: popUpData.groupId,
+      username,
+      slug: popUpData.slug
+    });
+
+    createNotification({
+      text: "Successfully assigned user to the group",
+      type: "success"
+    });
   };
 
   return (

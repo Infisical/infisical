@@ -73,21 +73,13 @@ export const SecretScanningDataSourceForm = ({
           connectionId: connection?.id,
           projectId: currentProject.id
         });
-    try {
-      const source = await mutation;
+    const source = await mutation;
 
-      createNotification({
-        text: `Successfully ${source ? "updated" : "created"} ${sourceType} Data Source`,
-        type: "success"
-      });
-      onComplete(source);
-    } catch (err: any) {
-      createNotification({
-        title: `Failed to ${dataSource ? "update" : "create"} ${sourceType} Data Source`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${source ? "updated" : "created"} ${sourceType} Data Source`,
+      type: "success"
+    });
+    onComplete(source);
   };
 
   const handlePrev = () => {

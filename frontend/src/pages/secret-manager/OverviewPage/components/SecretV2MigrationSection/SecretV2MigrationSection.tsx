@@ -65,20 +65,13 @@ export const SecretV2MigrationSection = () => {
   const didProjectUpgradeFailed = workspaceDetails?.upgradeStatus === ProjectUpgradeStatus.Failed;
 
   const handleMigrationSecretV2 = async () => {
-    try {
-      handlePopUpToggle("migrationInfo");
-      await migrateProjectToV3.mutateAsync({ projectId: currentProject?.id || "" });
-      refetch();
-      createNotification({
-        text: "Project upgrade started",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to upgrade project",
-        type: "error"
-      });
-    }
+    handlePopUpToggle("migrationInfo");
+    await migrateProjectToV3.mutateAsync({ projectId: currentProject?.id || "" });
+    refetch();
+    createNotification({
+      text: "Project upgrade started",
+      type: "success"
+    });
   };
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);

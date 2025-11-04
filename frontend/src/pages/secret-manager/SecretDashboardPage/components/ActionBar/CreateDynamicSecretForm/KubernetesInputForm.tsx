@@ -283,33 +283,26 @@ export const KubernetesInputForm = ({
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
 
-    try {
-      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.Kubernetes,
-          inputs: {
-            ...provider,
-            url: provider.url || undefined
-          }
-        },
-        maxTTL: rest.maxTTL,
-        name: rest.name,
-        path: secretPath,
-        defaultTTL: rest.defaultTTL,
-        projectSlug,
-        environmentSlug: rest.environment.slug,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
+    await createDynamicSecret.mutateAsync({
+      provider: {
+        type: DynamicSecretProviders.Kubernetes,
+        inputs: {
+          ...provider,
+          url: provider.url || undefined
+        }
+      },
+      maxTTL: rest.maxTTL,
+      name: rest.name,
+      path: secretPath,
+      defaultTTL: rest.defaultTTL,
+      projectSlug,
+      environmentSlug: rest.environment.slug,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
 
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    onCompleted();
   };
 
   return (

@@ -22,19 +22,11 @@ export const APIKeyTable = () => {
   const { mutateAsync } = useDeleteAPIKey();
 
   const handleDeleteAPIKeyDataClick = async (apiKeyDataId: string) => {
-    try {
-      await mutateAsync(apiKeyDataId);
-      createNotification({
-        text: "Successfully deleted API key",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete API key",
-        type: "error"
-      });
-    }
+    await mutateAsync(apiKeyDataId);
+    createNotification({
+      text: "Successfully deleted API key",
+      type: "success"
+    });
   };
 
   return (

@@ -77,70 +77,55 @@ export const CreateSecretForm = ({
   const slugSchema = z.string().trim().toLowerCase().min(1);
   const createNewTag = async (slug: string) => {
     // TODO: Replace with slugSchema generic
-    try {
-      const parsedSlug = slugSchema.parse(slug);
-      await createWsTag.mutateAsync({
-        projectId,
-        tagSlug: parsedSlug,
-        tagColor: ""
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create new tag"
-      });
-    }
+    const parsedSlug = slugSchema.parse(slug);
+    await createWsTag.mutateAsync({
+      projectId,
+      tagSlug: parsedSlug,
+      tagColor: ""
+    });
   };
 
   const handleFormSubmit = async ({ key, value, tags }: TFormSchema) => {
-    try {
-      if (isBatchMode) {
-        const pendingSecretCreate: PendingSecretCreate = {
-          id: key,
-          type: PendingAction.Create,
-          secretKey: key,
-          secretValue: value || "",
-          secretComment: "",
-          tags: tags?.map((el) => ({ id: el.value, slug: el.label })),
-          timestamp: Date.now(),
-          resourceType: "secret"
-        };
-        addPendingChange(pendingSecretCreate, {
-          projectId,
-
-          environment,
-          secretPath
-        });
-        closePopUp(PopUpNames.CreateSecretForm);
-        reset();
-        return;
-      }
-      await createSecretV3({
-        environment,
-        projectId,
-        secretPath,
+    if (isBatchMode) {
+      const pendingSecretCreate: PendingSecretCreate = {
+        id: key,
+        type: PendingAction.Create,
         secretKey: key,
         secretValue: value || "",
         secretComment: "",
-        type: SecretType.Shared,
-        tagIds: tags?.map((el) => el.value)
+        tags: tags?.map((el) => ({ id: el.value, slug: el.label })),
+        timestamp: Date.now(),
+        resourceType: "secret"
+      };
+      addPendingChange(pendingSecretCreate, {
+        projectId,
+
+        environment,
+        secretPath
       });
       closePopUp(PopUpNames.CreateSecretForm);
       reset();
-
-      createNotification({
-        type: isProtectedBranch ? "info" : "success",
-        text: isProtectedBranch
-          ? "Requested changes have been sent for review"
-          : "Successfully created secret"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to create secret"
-      });
+      return;
     }
+    await createSecretV3({
+      environment,
+      projectId,
+      secretPath,
+      secretKey: key,
+      secretValue: value || "",
+      secretComment: "",
+      type: SecretType.Shared,
+      tagIds: tags?.map((el) => el.value)
+    });
+    closePopUp(PopUpNames.CreateSecretForm);
+    reset();
+
+    createNotification({
+      type: isProtectedBranch ? "info" : "success",
+      text: isProtectedBranch
+        ? "Requested changes have been sent for review"
+        : "Successfully created secret"
+    });
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {

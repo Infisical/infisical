@@ -56,27 +56,19 @@ export const OrgNameChangeSection = (): JSX.Element => {
   }, [roles]);
 
   const onFormSubmit = async ({ name, slug, defaultMembershipRole }: FormData) => {
-    try {
-      if (!currentOrg?.id || !roles?.length) return;
+    if (!currentOrg?.id || !roles?.length) return;
 
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        name,
-        slug,
-        defaultMembershipRoleSlug: defaultMembershipRole
-      });
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      name,
+      slug,
+      defaultMembershipRoleSlug: defaultMembershipRole
+    });
 
-      createNotification({
-        text: "Successfully updated organization details",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to update organization details",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated organization details",
+      type: "success"
+    });
   };
 
   if (!isFormInitialized) {

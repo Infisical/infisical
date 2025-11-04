@@ -13,26 +13,18 @@ export const AutoCapitalizationSection = () => {
   const { mutateAsync } = useUpdateProject();
 
   const handleToggleCapitalizationToggle = async (state: boolean) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await mutateAsync({
-        projectId: currentProject.id,
-        autoCapitalization: state
-      });
+    await mutateAsync({
+      projectId: currentProject.id,
+      autoCapitalization: state
+    });
 
-      const text = `Successfully ${state ? "enabled" : "disabled"} auto capitalization`;
-      createNotification({
-        text,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update auto capitalization",
-        type: "error"
-      });
-    }
+    const text = `Successfully ${state ? "enabled" : "disabled"} auto capitalization`;
+    createNotification({
+      text,
+      type: "success"
+    });
   };
 
   return (

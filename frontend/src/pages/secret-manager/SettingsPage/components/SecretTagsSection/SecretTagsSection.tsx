@@ -29,25 +29,17 @@ export const SecretTagsSection = (): JSX.Element => {
   const deleteWsTag = useDeleteWsTag();
 
   const onDeleteApproved = async () => {
-    try {
-      await deleteWsTag.mutateAsync({
-        projectId: currentProject?.id || "",
-        tagID: (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id
-      });
+    await deleteWsTag.mutateAsync({
+      projectId: currentProject?.id || "",
+      tagID: (popUp?.deleteTagConfirmation?.data as DeleteModalData)?.id
+    });
 
-      createNotification({
-        text: "Successfully deleted tag",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted tag",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteTagConfirmation");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete the tag",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteTagConfirmation");
   };
 
   return (

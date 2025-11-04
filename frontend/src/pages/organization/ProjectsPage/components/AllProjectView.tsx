@@ -13,7 +13,6 @@ import { useNavigate } from "@tanstack/react-router";
 import { CheckIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { RequestProjectAccessModal } from "@app/components/projects/RequestProjectAccessModal";
 import {
@@ -103,22 +102,15 @@ export const AllProjectView = ({
     projectId: string,
     environments: ProjectEnv[]
   ) => {
-    try {
-      await orgAdminAccessProject.mutateAsync({
+    await orgAdminAccessProject.mutateAsync({
+      projectId
+    });
+    await navigate({
+      to: getProjectHomePage(type, environments),
+      params: {
         projectId
-      });
-      await navigate({
-        to: getProjectHomePage(type, environments),
-        params: {
-          projectId
-        }
-      });
-    } catch {
-      createNotification({
-        text: "Failed to access project",
-        type: "error"
-      });
-    }
+      }
+    });
   };
 
   useResetPageHelper({

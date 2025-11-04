@@ -17,28 +17,17 @@ export const DeleteKmipClientModal = ({ isOpen, onOpenChange, kmipClient }: Prop
   const { id, projectId, name } = kmipClient;
 
   const handleDeleteKmipClient = async () => {
-    try {
-      await deleteKmipClients.mutateAsync({
-        id,
-        projectId
-      });
+    await deleteKmipClients.mutateAsync({
+      id,
+      projectId
+    });
 
-      createNotification({
-        text: "KMIP client successfully deleted",
-        type: "success"
-      });
+    createNotification({
+      text: "KMIP client successfully deleted",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete KMIP client";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

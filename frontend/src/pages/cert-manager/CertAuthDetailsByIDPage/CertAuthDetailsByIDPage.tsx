@@ -57,33 +57,26 @@ const Page = () => {
   ] as const);
 
   const onRemoveCaSubmit = async () => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await deleteCa({
-        caName,
-        projectId: currentProject.id,
-        type: CaType.INTERNAL
-      });
+    await deleteCa({
+      caName,
+      projectId: currentProject.id,
+      type: CaType.INTERNAL
+    });
 
-      createNotification({
-        text: "Successfully deleted CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted CA",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCa");
-      navigate({
-        to: "/projects/cert-management/$projectId/certificate-authorities",
-        params: {
-          projectId
-        }
-      });
-    } catch {
-      createNotification({
-        text: "Failed to delete CA",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCa");
+    navigate({
+      to: "/projects/cert-management/$projectId/certificate-authorities",
+      params: {
+        projectId
+      }
+    });
   };
 
   return (

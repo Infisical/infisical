@@ -45,31 +45,24 @@ export const PkiCollectionPage = () => {
   ] as const);
 
   const onDeletePkiCollectionSubmit = async (collectionIdToDelete: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deletePkiCollection({
-        projectId,
-        collectionId: collectionIdToDelete
-      });
+    await deletePkiCollection({
+      projectId,
+      collectionId: collectionIdToDelete
+    });
 
-      createNotification({
-        text: "Successfully deleted PKI collection",
-        type: "success"
-      });
-      handlePopUpClose("deletePkiCollection");
-      navigate({
-        to: "/projects/cert-management/$projectId/policies",
-        params: {
-          projectId: params.projectId
-        }
-      });
-    } catch {
-      createNotification({
-        text: "Failed to delete PKI collection",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted PKI collection",
+      type: "success"
+    });
+    handlePopUpClose("deletePkiCollection");
+    navigate({
+      to: "/projects/cert-management/$projectId/policies",
+      params: {
+        projectId: params.projectId
+      }
+    });
   };
 
   return (

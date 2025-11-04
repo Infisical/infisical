@@ -293,174 +293,166 @@ export const SecretListView = ({
         isSameTags &&
         isSameRecipients;
 
-      try {
-        // personal secret change
-        let personalAction = false;
-        if (overrideAction === "deleted") {
-          await handleSecretOperation("delete", SecretType.Personal, oldKey, {
-            secretId: orgSecret.idOverride
-          });
-          personalAction = true;
-        } else if (overrideAction && idOverride) {
-          await handleSecretOperation("update", SecretType.Personal, oldKey, {
-            value: valueOverride,
-            newKey: hasKeyChanged ? key : undefined,
-            secretId: orgSecret.idOverride,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding
-          });
-          personalAction = true;
-        } else if (overrideAction) {
-          await handleSecretOperation("create", SecretType.Personal, oldKey, {
-            value: valueOverride
-          });
-          personalAction = true;
-        }
+      // personal secret change
+      let personalAction = false;
+      if (overrideAction === "deleted") {
+        await handleSecretOperation("delete", SecretType.Personal, oldKey, {
+          secretId: orgSecret.idOverride
+        });
+        personalAction = true;
+      } else if (overrideAction && idOverride) {
+        await handleSecretOperation("update", SecretType.Personal, oldKey, {
+          value: valueOverride,
+          newKey: hasKeyChanged ? key : undefined,
+          secretId: orgSecret.idOverride,
+          skipMultilineEncoding: modSecret.skipMultilineEncoding
+        });
+        personalAction = true;
+      } else if (overrideAction) {
+        await handleSecretOperation("create", SecretType.Personal, oldKey, {
+          value: valueOverride
+        });
+        personalAction = true;
+      }
 
-        // shared secret change
-        if (!isSharedSecUnchanged && !personalAction) {
-          if (isBatchMode) {
-            const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
+      // shared secret change
+      if (!isSharedSecUnchanged && !personalAction) {
+        if (isBatchMode) {
+          const isEditingPendingCreation = isPending && pendingAction === PendingAction.Create;
 
-            if (isEditingPendingCreation) {
-              const updatedCreate: PendingSecretCreate = {
-                id: orgSecret.id,
-                type: PendingAction.Create,
-                secretKey: key,
-                secretValue: value || "",
-                secretComment: comment || "",
-                skipMultilineEncoding: modSecret.skipMultilineEncoding || false,
-                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
-                secretMetadata: secretMetadata || [],
-                timestamp: Date.now(),
-                resourceType: "secret",
-                originalKey: oldKey
-              };
+          if (isEditingPendingCreation) {
+            const updatedCreate: PendingSecretCreate = {
+              id: orgSecret.id,
+              type: PendingAction.Create,
+              secretKey: key,
+              secretValue: value || "",
+              secretComment: comment || "",
+              skipMultilineEncoding: modSecret.skipMultilineEncoding || false,
+              tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
+              secretMetadata: secretMetadata || [],
+              timestamp: Date.now(),
+              resourceType: "secret",
+              originalKey: oldKey
+            };
 
-              addPendingChange(updatedCreate, {
-                projectId,
-                environment,
-                secretPath
-              });
-            } else {
-              const trueOriginalSecret = getTrueOriginalSecret(
-                orgSecret,
-                pendingChangesRef.current.secrets
-              );
+            addPendingChange(updatedCreate, {
+              projectId,
+              environment,
+              secretPath
+            });
+          } else {
+            const trueOriginalSecret = getTrueOriginalSecret(
+              orgSecret,
+              pendingChangesRef.current.secrets
+            );
 
-              const updateChange: PendingSecretUpdate = {
-                id: orgSecret.id,
-                type: PendingAction.Update,
-                secretKey: trueOriginalSecret.key,
-                newSecretName: key,
-                originalValue: trueOriginalSecret.value,
-                secretValue: value,
-                originalComment: trueOriginalSecret.comment,
-                secretComment: comment,
-                originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
-                skipMultilineEncoding: modSecret.skipMultilineEncoding,
-                originalTags:
-                  trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
-                tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
-                originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
-                secretMetadata: secretMetadata || [],
-                timestamp: Date.now(),
-                resourceType: "secret",
-                existingSecret: orgSecret
-              };
+            const updateChange: PendingSecretUpdate = {
+              id: orgSecret.id,
+              type: PendingAction.Update,
+              secretKey: trueOriginalSecret.key,
+              newSecretName: key,
+              originalValue: trueOriginalSecret.value,
+              secretValue: value,
+              originalComment: trueOriginalSecret.comment,
+              secretComment: comment,
+              originalSkipMultilineEncoding: trueOriginalSecret.skipMultilineEncoding,
+              skipMultilineEncoding: modSecret.skipMultilineEncoding,
+              originalTags:
+                trueOriginalSecret.tags?.map((tag) => ({ id: tag.id, slug: tag.slug })) || [],
+              tags: tags?.map((tag) => ({ id: tag.id, slug: tag.name || tag.slug || "" })) || [],
+              originalSecretMetadata: trueOriginalSecret.secretMetadata || [],
+              secretMetadata: secretMetadata || [],
+              timestamp: Date.now(),
+              resourceType: "secret",
+              existingSecret: orgSecret
+            };
 
-              addPendingChange(updateChange, {
-                projectId,
-                environment,
-                secretPath
-              });
-            }
-
-            if (!isReminderEvent) {
-              handlePopUpClose("secretDetail");
-            }
-            if (cb) cb();
-            return;
+            addPendingChange(updateChange, {
+              projectId,
+              environment,
+              secretPath
+            });
           }
 
-          await handleSecretOperation("update", SecretType.Shared, oldKey, {
-            value,
-            tags: tagIds,
-            comment,
-            reminderRepeatDays,
-            reminderNote,
-            reminderRecipients,
-            secretId: orgSecret.id,
-            newKey: hasKeyChanged ? key : undefined,
-            skipMultilineEncoding: modSecret.skipMultilineEncoding,
-            secretMetadata,
-            isRotatedSecret: orgSecret.isRotatedSecret,
-            secretValueHidden
-          });
+          if (!isReminderEvent) {
+            handlePopUpClose("secretDetail");
+          }
           if (cb) cb();
-        }
-        queryClient.invalidateQueries({
-          queryKey: dashboardKeys.getDashboardSecrets({
-            projectId,
-            secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.list({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretSnapshotKeys.count({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-        });
-        queryClient.invalidateQueries({
-          queryKey: commitKeys.history({
-            projectId,
-            environment,
-            directory: secretPath
-          })
-        });
-        queryClient.invalidateQueries({
-          queryKey: secretApprovalRequestKeys.count({ projectId })
-        });
-        if (!isReminderEvent) {
-          handlePopUpClose("secretDetail");
+          return;
         }
 
-        let successMessage;
-        if (isReminderEvent) {
-          successMessage = reminderRepeatDays
-            ? "Successfully saved secret reminder"
-            : "Successfully deleted secret reminder";
-        } else {
-          successMessage = "Successfully saved secrets";
-        }
-
-        createNotification({
-          type: isProtectedBranch && !personalAction ? "info" : "success",
-          text:
-            isProtectedBranch && !personalAction
-              ? "Requested changes have been sent for review"
-              : successMessage
+        await handleSecretOperation("update", SecretType.Shared, oldKey, {
+          value,
+          tags: tagIds,
+          comment,
+          reminderRepeatDays,
+          reminderNote,
+          reminderRecipients,
+          secretId: orgSecret.id,
+          newKey: hasKeyChanged ? key : undefined,
+          skipMultilineEncoding: modSecret.skipMultilineEncoding,
+          secretMetadata,
+          isRotatedSecret: orgSecret.isRotatedSecret,
+          secretValueHidden
         });
-      } catch (error) {
-        console.log(error);
-        createNotification({
-          type: "error",
-          text: "Failed to save secret"
-        });
+        if (cb) cb();
       }
+      queryClient.invalidateQueries({
+        queryKey: dashboardKeys.getDashboardSecrets({
+          projectId,
+          secretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.list({
+          projectId,
+          environment,
+          directory: secretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretSnapshotKeys.count({
+          projectId,
+          environment,
+          directory: secretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
+      });
+      queryClient.invalidateQueries({
+        queryKey: commitKeys.history({
+          projectId,
+          environment,
+          directory: secretPath
+        })
+      });
+      queryClient.invalidateQueries({
+        queryKey: secretApprovalRequestKeys.count({ projectId })
+      });
+      if (!isReminderEvent) {
+        handlePopUpClose("secretDetail");
+      }
+
+      let successMessage;
+      if (isReminderEvent) {
+        successMessage = reminderRepeatDays
+          ? "Successfully saved secret reminder"
+          : "Successfully deleted secret reminder";
+      } else {
+        successMessage = "Successfully saved secrets";
+      }
+
+      createNotification({
+        type: isProtectedBranch && !personalAction ? "info" : "success",
+        text:
+          isProtectedBranch && !personalAction
+            ? "Requested changes have been sent for review"
+            : successMessage
+      });
     },
     [environment, secretPath, isProtectedBranch, isBatchMode, projectId, addPendingChange]
   );
@@ -488,75 +480,67 @@ export const SecretListView = ({
       value,
       secretValueHidden
     } = popUp.deleteSecret?.data as SecretV3RawSanitized;
-    try {
-      if (isBatchMode) {
-        const deleteChange: PendingSecretDelete = {
-          id: `${secretId}`,
-          type: PendingAction.Delete,
-          secretKey: key,
-          secretValue: value || "",
-          timestamp: Date.now(),
-          resourceType: "secret",
-          secretValueHidden
-        };
+    if (isBatchMode) {
+      const deleteChange: PendingSecretDelete = {
+        id: `${secretId}`,
+        type: PendingAction.Delete,
+        secretKey: key,
+        secretValue: value || "",
+        timestamp: Date.now(),
+        resourceType: "secret",
+        secretValueHidden
+      };
 
-        addPendingChange(deleteChange, {
-          projectId,
-          environment,
-          secretPath
-        });
+      addPendingChange(deleteChange, {
+        projectId,
+        environment,
+        secretPath
+      });
 
-        handlePopUpClose("deleteSecret");
-        handlePopUpClose("secretDetail");
-        return;
-      }
-
-      await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
-      // wrap this in another function and then reuse
-      queryClient.invalidateQueries({
-        queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.list({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretSnapshotKeys.count({
-          projectId,
-          environment,
-          directory: secretPath
-        })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
-      });
-      queryClient.invalidateQueries({
-        queryKey: secretApprovalRequestKeys.count({ projectId })
-      });
       handlePopUpClose("deleteSecret");
       handlePopUpClose("secretDetail");
-      createNotification({
-        type: isProtectedBranch ? "info" : "success",
-        text: isProtectedBranch
-          ? "Requested changes have been sent for review"
-          : "Successfully deleted secret"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete secret"
-      });
+      return;
     }
+
+    await handleSecretOperation("delete", SecretType.Shared, key, { secretId });
+    // wrap this in another function and then reuse
+    queryClient.invalidateQueries({
+      queryKey: dashboardKeys.getDashboardSecrets({ projectId, secretPath })
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretKeys.getProjectSecret({ projectId, environment, secretPath })
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretSnapshotKeys.list({
+        projectId,
+        environment,
+        directory: secretPath
+      })
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretSnapshotKeys.count({
+        projectId,
+        environment,
+        directory: secretPath
+      })
+    });
+    queryClient.invalidateQueries({
+      queryKey: commitKeys.count({ projectId, environment, directory: secretPath })
+    });
+    queryClient.invalidateQueries({
+      queryKey: commitKeys.history({ projectId, environment, directory: secretPath })
+    });
+    queryClient.invalidateQueries({
+      queryKey: secretApprovalRequestKeys.count({ projectId })
+    });
+    handlePopUpClose("deleteSecret");
+    handlePopUpClose("secretDetail");
+    createNotification({
+      type: isProtectedBranch ? "info" : "success",
+      text: isProtectedBranch
+        ? "Requested changes have been sent for review"
+        : "Successfully deleted secret"
+    });
   }, [
     (popUp.deleteSecret?.data as SecretV3RawSanitized)?.key,
     environment,

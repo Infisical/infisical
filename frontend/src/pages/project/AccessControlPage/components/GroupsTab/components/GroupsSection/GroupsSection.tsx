@@ -42,28 +42,17 @@ export const GroupsSection = () => {
   };
 
   const onRemoveGroupSubmit = async (groupId: string) => {
-    try {
-      await deleteMutateAsync({
-        groupId,
-        projectId: currentProject?.id || ""
-      });
+    await deleteMutateAsync({
+      groupId,
+      projectId: currentProject?.id || ""
+    });
 
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed identity from project",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteGroup");
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to remove group from project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteGroup");
   };
 
   return (

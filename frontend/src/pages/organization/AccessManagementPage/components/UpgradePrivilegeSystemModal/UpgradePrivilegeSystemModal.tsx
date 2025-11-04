@@ -44,21 +44,14 @@ export const UpgradePrivilegeSystemModal = ({ isOpen, onOpenChange }: Props) => 
     acknowledgesPermanentChange;
 
   const handlePrivilegeSystemUpgrade = async () => {
-    try {
-      await upgradePrivilegeSystem();
+    await upgradePrivilegeSystem();
 
-      createNotification({
-        text: "Privilege system upgrade completed",
-        type: "success"
-      });
+    createNotification({
+      text: "Privilege system upgrade completed",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch {
-      createNotification({
-        text: "Failed to upgrade privilege system",
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   const handleClose = () => {

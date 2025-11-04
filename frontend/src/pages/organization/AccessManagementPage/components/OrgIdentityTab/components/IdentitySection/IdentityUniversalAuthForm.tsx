@@ -223,64 +223,55 @@ export const IdentityUniversalAuthForm = ({
     lockoutCounterResetValue,
     lockoutCounterResetUnit
   }: FormData) => {
-    try {
-      if (!identityId) return;
+    if (!identityId) return;
 
-      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
-      const lockoutCounterResetSeconds =
-        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
+    const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+    const lockoutCounterResetSeconds =
+      ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
-      if (data) {
-        // update universal auth configuration
-        await updateMutateAsync({
-          organizationId: orgId,
-          identityId,
-          clientSecretTrustedIps,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod),
-          lockoutEnabled,
-          lockoutThreshold: Number(lockoutThreshold),
-          lockoutDurationSeconds,
-          lockoutCounterResetSeconds
-        });
-      } else {
-        // create new universal auth configuration
-
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId,
-          clientSecretTrustedIps,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod),
-          lockoutEnabled,
-          lockoutThreshold: Number(lockoutThreshold),
-          lockoutDurationSeconds: Number(lockoutDurationSeconds),
-          lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} auth method`,
-        type: "success"
+    if (data) {
+      // update universal auth configuration
+      await updateMutateAsync({
+        organizationId: orgId,
+        identityId,
+        clientSecretTrustedIps,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps,
+        accessTokenPeriod: Number(accessTokenPeriod),
+        lockoutEnabled,
+        lockoutThreshold: Number(lockoutThreshold),
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
+    } else {
+      // create new universal auth configuration
 
-      reset();
-    } catch {
-      const text = `Failed to ${isUpdate ? "update" : "configure"} identity`;
-
-      createNotification({
-        text,
-        type: "error"
+      await addMutateAsync({
+        organizationId: orgId,
+        identityId,
+        clientSecretTrustedIps,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps,
+        accessTokenPeriod: Number(accessTokenPeriod),
+        lockoutEnabled,
+        lockoutThreshold: Number(lockoutThreshold),
+        lockoutDurationSeconds: Number(lockoutDurationSeconds),
+        lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "created"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

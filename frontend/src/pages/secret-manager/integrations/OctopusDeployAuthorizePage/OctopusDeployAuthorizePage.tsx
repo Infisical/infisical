@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { removeTrailingSlash } from "@app/helpers/string";
@@ -29,30 +28,22 @@ export const OctopusDeployAuthorizePage = () => {
   });
 
   const onSubmit = async ({ instanceUrl, apiKey }: TForm) => {
-    try {
-      const integrationAuth = await mutateAsync({
-        workspaceId: currentProject.id,
-        integration: "octopus-deploy",
-        url: removeTrailingSlash(instanceUrl),
-        accessToken: apiKey
-      });
+    const integrationAuth = await mutateAsync({
+      workspaceId: currentProject.id,
+      integration: "octopus-deploy",
+      url: removeTrailingSlash(instanceUrl),
+      accessToken: apiKey
+    });
 
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations/octopus-deploy/create",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          integrationAuthId: integrationAuth.id
-        }
-      });
-    } catch (err: any) {
-      createNotification({
-        type: "error",
-        text: err.message ?? "Error authorizing integration"
-      });
-      console.error(err);
-    }
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations/octopus-deploy/create",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        integrationAuthId: integrationAuth.id
+      }
+    });
   };
 
   return (

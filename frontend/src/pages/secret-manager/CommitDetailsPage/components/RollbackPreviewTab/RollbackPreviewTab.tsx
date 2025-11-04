@@ -140,22 +140,15 @@ export const RollbackPreviewTab = (): JSX.Element => {
   );
 
   const handleRollback = async (): Promise<void> => {
-    try {
-      await rollback(message);
+    await rollback(message);
 
-      createNotification({
-        type: "success",
-        text: "Rollback completed successfully"
-      });
+    createNotification({
+      type: "success",
+      text: "Rollback completed successfully"
+    });
 
-      handlePopUpClose("rollbackConfirm");
-      goBackToHistory();
-    } catch (error) {
-      createNotification({
-        type: "error",
-        text: error instanceof Error ? error.message : "Failed to rollback changes"
-      });
-    }
+    handlePopUpClose("rollbackConfirm");
+    goBackToHistory();
   };
 
   const folderChanges: FolderChanges[] = rollbackChangesNested || [];

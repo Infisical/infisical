@@ -22,23 +22,16 @@ export const SecretScanningResourceSection = ({ dataSource }: Props) => {
   const triggerDataSourceScan = useTriggerSecretScanningDataSource();
 
   const handleTriggerScan = async () => {
-    try {
-      await triggerDataSourceScan.mutateAsync({
-        dataSourceId: dataSource.id,
-        type: dataSource.type,
-        projectId: dataSource.projectId
-      });
+    await triggerDataSourceScan.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      projectId: dataSource.projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered scan for ${dataSource.name}`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to trigger scan for ${dataSource.name}`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully triggered scan for ${dataSource.name}`,
+      type: "success"
+    });
   };
 
   const resourceDetails = RESOURCE_DESCRIPTION_HELPER[dataSource.type];

@@ -51,18 +51,14 @@ export const OrgEncryptionTab = withPermission(
         kmsId: string;
       };
 
-      try {
-        await removeExternalKms(kmsId);
+      await removeExternalKms(kmsId);
 
-        createNotification({
-          text: "Successfully deleted external KMS",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted external KMS",
+        type: "success"
+      });
 
-        handlePopUpToggle("removeExternalKms", false);
-      } catch (err) {
-        console.error(err);
-      }
+      handlePopUpToggle("removeExternalKms", false);
     };
 
     return (

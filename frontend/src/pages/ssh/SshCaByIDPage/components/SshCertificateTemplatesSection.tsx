@@ -33,24 +33,16 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
   const { mutateAsync: updateSshCertTemplate } = useUpdateSshCertTemplate();
 
   const onRemoveSshCertificateTemplateSubmit = async (id: string) => {
-    try {
-      await deleteSshCertTemplate({
-        id
-      });
+    await deleteSshCertTemplate({
+      id
+    });
 
-      await createNotification({
-        text: "Successfully deleted SSH certificate template",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted SSH certificate template",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshCertificateTemplate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH certificate template",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshCertificateTemplate");
   };
 
   const onUpdateSshCaStatus = async ({
@@ -60,26 +52,16 @@ export const SshCertificateTemplatesSection = ({ caId }: Props) => {
     templateId: string;
     status: SshCertTemplateStatus;
   }) => {
-    try {
-      await updateSshCertTemplate({ id: templateId, status });
+    await updateSshCertTemplate({ id: templateId, status });
 
-      await createNotification({
-        text: `Successfully ${
-          status === SshCertTemplateStatus.ACTIVE ? "enabled" : "disabled"
-        } SSH certificate template`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully ${
+        status === SshCertTemplateStatus.ACTIVE ? "enabled" : "disabled"
+      } SSH certificate template`,
+      type: "success"
+    });
 
-      handlePopUpClose("sshCertificateTemplateStatus");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${
-          status === SshCertTemplateStatus.ACTIVE ? "enabled" : "disabled"
-        } SSH certificate template`,
-        type: "error"
-      });
-    }
+    handlePopUpClose("sshCertificateTemplateStatus");
   };
 
   return (

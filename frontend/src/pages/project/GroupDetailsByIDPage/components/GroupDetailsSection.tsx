@@ -35,38 +35,27 @@ export const GroupDetailsSection = ({ groupMembership }: Props) => {
   const navigate = useNavigate();
 
   const onRemoveGroupSubmit = async () => {
-    try {
-      await deleteMutateAsync({
-        groupId: groupMembership.group.id,
+    await deleteMutateAsync({
+      groupId: groupMembership.group.id,
+      projectId: currentProject.id
+    });
+
+    createNotification({
+      text: "Successfully removed group from project",
+      type: "success"
+    });
+
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/access-management`,
+      params: {
         projectId: currentProject.id
-      });
+      },
+      search: {
+        selectedTab: "groups"
+      }
+    });
 
-      createNotification({
-        text: "Successfully removed group from project",
-        type: "success"
-      });
-
-      navigate({
-        to: `${getProjectBaseURL(currentProject.type)}/access-management`,
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: "groups"
-        }
-      });
-
-      handlePopUpClose("deleteGroup");
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to remove group from project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteGroup");
   };
 
   return (

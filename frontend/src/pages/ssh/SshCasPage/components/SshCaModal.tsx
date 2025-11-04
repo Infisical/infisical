@@ -106,47 +106,39 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     publicKey,
     privateKey
   }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      if (ca) {
-        await updateMutateAsync({
-          caId: ca.id,
-          friendlyName
-        });
-      } else {
-        const { id: newCaId } = await createMutateAsync({
-          projectId,
-          friendlyName,
-          keySource,
-          keyAlgorithm,
-          publicKey,
-          privateKey
-        });
-
-        navigate({
-          to: "/projects/ssh/$projectId/ca/$caId",
-          params: {
-            projectId,
-            caId: newCaId
-          }
-        });
-      }
-
-      reset();
-      handlePopUpToggle("sshCa", false);
-
-      createNotification({
-        text: `Successfully ${ca ? "updated" : "created"} SSH CA`,
-        type: "success"
+    if (ca) {
+      await updateMutateAsync({
+        caId: ca.id,
+        friendlyName
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${ca ? "update" : "create"} SSH CA`,
-        type: "error"
+    } else {
+      const { id: newCaId } = await createMutateAsync({
+        projectId,
+        friendlyName,
+        keySource,
+        keyAlgorithm,
+        publicKey,
+        privateKey
+      });
+
+      navigate({
+        to: "/projects/ssh/$projectId/ca/$caId",
+        params: {
+          projectId,
+          caId: newCaId
+        }
       });
     }
+
+    reset();
+    handlePopUpToggle("sshCa", false);
+
+    createNotification({
+      text: `Successfully ${ca ? "updated" : "created"} SSH CA`,
+      type: "success"
+    });
   };
 
   return (

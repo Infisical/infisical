@@ -220,61 +220,54 @@ export const IdentityJwtAuthForm = ({
     boundClaims,
     boundSubject
   }: FormData) => {
-    try {
-      if (!identityId) {
-        return;
-      }
+    if (!identityId) {
+      return;
+    }
 
-      if (data) {
-        await updateMutateAsync({
-          identityId,
-          organizationId: orgId,
-          configurationType,
-          jwksUrl,
-          jwksCaCert,
-          publicKeys: publicKeys?.map((field) => field.value).filter(Boolean),
-          boundIssuer,
-          boundAudiences,
-          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          boundSubject,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      } else {
-        await addMutateAsync({
-          identityId,
-          configurationType,
-          jwksUrl,
-          jwksCaCert,
-          publicKeys: publicKeys?.map((field) => field.value).filter(Boolean),
-          boundIssuer,
-          boundAudiences,
-          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          boundSubject,
-          organizationId: orgId,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
-        type: "success"
+    if (data) {
+      await updateMutateAsync({
+        identityId,
+        organizationId: orgId,
+        configurationType,
+        jwksUrl,
+        jwksCaCert,
+        publicKeys: publicKeys?.map((field) => field.value).filter(Boolean),
+        boundIssuer,
+        boundAudiences,
+        boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+        boundSubject,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
-
-      reset();
-    } catch {
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
-        type: "error"
+    } else {
+      await addMutateAsync({
+        identityId,
+        configurationType,
+        jwksUrl,
+        jwksCaCert,
+        publicKeys: publicKeys?.map((field) => field.value).filter(Boolean),
+        boundIssuer,
+        boundAudiences,
+        boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+        boundSubject,
+        organizationId: orgId,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

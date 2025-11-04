@@ -69,25 +69,17 @@ const VerifyForm = ({ cmek }: FormProps) => {
   });
 
   const handleVerifyData = async (formData: FormData) => {
-    try {
-      const result = await cmekVerify.mutateAsync({ ...formData, keyId: cmek.id });
+    const result = await cmekVerify.mutateAsync({ ...formData, keyId: cmek.id });
 
-      if (result.signatureValid) {
-        createNotification({
-          text: "Successfully verified signature",
-          type: "success"
-        });
-      } else {
-        createNotification({
-          title: "Signature Verification Failed",
-          text: "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with.",
-          type: "error"
-        });
-      }
-    } catch (err) {
-      console.error(err);
+    if (result.signatureValid) {
       createNotification({
-        text: "Failed to sign data",
+        text: "Successfully verified signature",
+        type: "success"
+      });
+    } else {
+      createNotification({
+        title: "Signature Verification Failed",
+        text: "The signature is invalid. The signature was not created using the same signing algorithm and key as the one used to sign the data. The data and signature may have been tampered with.",
         type: "error"
       });
     }

@@ -314,71 +314,64 @@ export const IdentityKubernetesAuthForm = ({
     tokenReviewMode,
     accessTokenTrustedIps
   }: FormData) => {
-    try {
-      if (!identityId) return;
+    if (!identityId) return;
 
-      if (data) {
-        await updateMutateAsync({
-          organizationId: orgId,
-          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-            ? {
-                kubernetesHost: kubernetesHost || ""
-              }
-            : {
-                kubernetesHost: null
-              }),
-          tokenReviewerJwt: tokenReviewerJwt || null,
-          allowedNames,
-          allowedNamespaces,
-          allowedAudience,
-          caCert,
-          identityId,
-          gatewayId: gatewayId || null,
-          tokenReviewMode,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      } else {
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId,
-          ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
-            ? {
-                kubernetesHost: kubernetesHost || ""
-              }
-            : {
-                kubernetesHost: null
-              }),
-          tokenReviewerJwt: tokenReviewerJwt || undefined,
-          allowedNames: allowedNames || "",
-          allowedNamespaces: allowedNamespaces || "",
-          allowedAudience: allowedAudience || "",
-          gatewayId: gatewayId || null,
-          caCert: caCert || "",
-          tokenReviewMode,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
-        type: "success"
+    if (data) {
+      await updateMutateAsync({
+        organizationId: orgId,
+        ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+          ? {
+              kubernetesHost: kubernetesHost || ""
+            }
+          : {
+              kubernetesHost: null
+            }),
+        tokenReviewerJwt: tokenReviewerJwt || null,
+        allowedNames,
+        allowedNamespaces,
+        allowedAudience,
+        caCert,
+        identityId,
+        gatewayId: gatewayId || null,
+        tokenReviewMode,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
-
-      reset();
-    } catch {
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
-        type: "error"
+    } else {
+      await addMutateAsync({
+        organizationId: orgId,
+        identityId,
+        ...(tokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api
+          ? {
+              kubernetesHost: kubernetesHost || ""
+            }
+          : {
+              kubernetesHost: null
+            }),
+        tokenReviewerJwt: tokenReviewerJwt || undefined,
+        allowedNames: allowedNames || "",
+        allowedNamespaces: allowedNamespaces || "",
+        allowedAudience: allowedAudience || "",
+        gatewayId: gatewayId || null,
+        caCert: caCert || "",
+        tokenReviewMode,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   const tokenReviewMode = watch("tokenReviewMode");

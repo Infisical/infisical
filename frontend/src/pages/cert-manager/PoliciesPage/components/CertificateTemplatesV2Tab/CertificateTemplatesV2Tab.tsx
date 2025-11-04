@@ -48,23 +48,15 @@ export const CertificateTemplatesV2Tab = () => {
   const handleDeleteConfirm = async () => {
     if (!selectedTemplate) return;
 
-    try {
-      await deleteTemplateV2.mutateAsync({
-        templateId: selectedTemplate.id
-      });
-      setIsDeleteModalOpen(false);
-      setSelectedTemplate(null);
-      createNotification({
-        text: `Certificate template "${selectedTemplate.name}" deleted successfully`,
-        type: "success"
-      });
-    } catch (error) {
-      console.error("Failed to delete template:", error);
-      createNotification({
-        text: "Failed to delete certificate template",
-        type: "error"
-      });
-    }
+    await deleteTemplateV2.mutateAsync({
+      templateId: selectedTemplate.id
+    });
+    setIsDeleteModalOpen(false);
+    setSelectedTemplate(null);
+    createNotification({
+      text: `Certificate template "${selectedTemplate.name}" deleted successfully`,
+      type: "success"
+    });
   };
 
   return (

@@ -107,18 +107,13 @@ export const RolePermissionsSection = ({ roleId }: Props) => {
   const { mutateAsync: updateRole } = useUpdateOrgRole();
 
   const onSubmit = async (el: TFormSchema) => {
-    try {
-      await updateRole({
-        orgId,
-        id: roleId,
-        ...el,
-        permissions: formRolePermission2API(el.permissions)
-      });
-      createNotification({ type: "success", text: "Successfully updated role" });
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to update role" });
-    }
+    await updateRole({
+      orgId,
+      id: roleId,
+      ...el,
+      permissions: formRolePermission2API(el.permissions)
+    });
+    createNotification({ type: "success", text: "Successfully updated role" });
   };
 
   const isCustomRole = !["admin", "member", "no-access"].includes(role?.slug ?? "");

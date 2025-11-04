@@ -145,27 +145,16 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
   };
 
   const handleChangeRole = async ({ identityId, role }: { identityId: string; role: string }) => {
-    try {
-      await updateMutateAsync({
-        identityId,
-        role,
-        organizationId
-      });
+    await updateMutateAsync({
+      identityId,
+      role,
+      organizationId
+    });
 
-      createNotification({
-        text: "Successfully updated identity role",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to update identity role";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated identity role",
+      type: "success"
+    });
   };
 
   const handleRoleToggle = useCallback(

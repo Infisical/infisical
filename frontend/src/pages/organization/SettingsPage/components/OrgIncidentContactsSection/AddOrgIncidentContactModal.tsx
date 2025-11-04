@@ -35,31 +35,23 @@ export const AddOrgIncidentContactModal = ({
   const { mutateAsync, isPending } = useAddIncidentContact();
 
   const onFormSubmit = async ({ email }: TAddContactForm) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      await mutateAsync({
-        orgId: currentOrg.id,
-        email
-      });
+    await mutateAsync({
+      orgId: currentOrg.id,
+      email
+    });
 
-      createNotification({
-        text: "Successfully added incident contact",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully added incident contact",
+      type: "success"
+    });
 
-      if (serverDetails?.emailConfigured) {
-        handlePopUpClose("addContact");
-      }
-
-      reset();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to add incident contact",
-        type: "error"
-      });
+    if (serverDetails?.emailConfigured) {
+      handlePopUpClose("addContact");
     }
+
+    reset();
   };
 
   return (

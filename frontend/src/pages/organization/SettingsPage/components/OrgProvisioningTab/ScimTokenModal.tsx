@@ -92,52 +92,36 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
   }, [isScimTokenCopied, isScimUrlCopied]);
 
   const onFormSubmit = async ({ description, ttlDays }: FormData) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      const { scimToken } = await createScimTokenMutateAsync({
-        organizationId: currentOrg.id,
-        description,
-        ttlDays: Number(ttlDays)
-      });
+    const { scimToken } = await createScimTokenMutateAsync({
+      organizationId: currentOrg.id,
+      description,
+      ttlDays: Number(ttlDays)
+    });
 
-      setToken(scimToken);
+    setToken(scimToken);
 
-      createNotification({
-        text: "Successfully created SCIM token",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create SCIM token",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully created SCIM token",
+      type: "success"
+    });
   };
 
   const onDeleteScimTokenSubmit = async (scimTokenId: string) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      await deleteScimTokenMutateAsync({
-        organizationId: currentOrg.id,
-        scimTokenId
-      });
+    await deleteScimTokenMutateAsync({
+      organizationId: currentOrg.id,
+      scimTokenId
+    });
 
-      handlePopUpToggle("deleteScimToken", false);
+    handlePopUpToggle("deleteScimToken", false);
 
-      createNotification({
-        text: "Successfully deleted SCIM token",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SCIM token",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted SCIM token",
+      type: "success"
+    });
   };
 
   const hasToken = Boolean(token);

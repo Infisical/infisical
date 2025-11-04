@@ -13,12 +13,8 @@ export const BackfillSecretReferenceSecretion = () => {
 
   const handleBackfill = async () => {
     if (backfillSecretReferences.isPending) return;
-    try {
-      await backfillSecretReferences.mutateAsync({ projectId: currentProject.id || "" });
-      createNotification({ text: "Successfully re-indexed secret references", type: "success" });
-    } catch {
-      createNotification({ text: "Failed to re-index secret references", type: "error" });
-    }
+    await backfillSecretReferences.mutateAsync({ projectId: currentProject.id || "" });
+    createNotification({ text: "Successfully re-indexed secret references", type: "success" });
   };
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);

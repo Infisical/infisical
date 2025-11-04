@@ -20,55 +20,39 @@ export const OrgGenericAuthSection = () => {
   const { mutateAsync } = useUpdateOrg();
 
   const handleEnforceMfaToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.enforceMfa) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        enforceMfa: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enforced" : "un-enforced"} MFA`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+    if (!currentOrg?.id) return;
+    if (!subscription?.enforceMfa) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      enforceMfa: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enforced" : "un-enforced"} MFA`,
+      type: "success"
+    });
   };
 
   const handleUpdateSelectedMfa = async (selectedMfaMethod: MfaMethod) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.enforceMfa) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        selectedMfaMethod
-      });
-
-      createNotification({
-        text: "Successfully updated selected MFA method",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+    if (!currentOrg?.id) return;
+    if (!subscription?.enforceMfa) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      selectedMfaMethod
+    });
+
+    createNotification({
+      text: "Successfully updated selected MFA method",
+      type: "success"
+    });
   };
 
   return (

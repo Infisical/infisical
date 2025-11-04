@@ -35,64 +35,41 @@ export const OrgGithubSyncSection = () => {
   const data = !isPending && !githubOrgSyncConfig?.isError ? githubOrgSyncConfig?.data : undefined;
 
   const handleBulkSync = async () => {
-    try {
-      const result = await syncAllTeamsMutation.mutateAsync();
-      let message = "Successfully synced teams";
+    const result = await syncAllTeamsMutation.mutateAsync();
+    let message = "Successfully synced teams";
 
-      const details = [];
-      if (result.createdTeams.length > 0) {
-        details.push(
-          `${result.createdTeams.length} new team${result.createdTeams.length === 1 ? "" : "s"} created`
-        );
-      }
-      if (result.updatedTeams.length > 0) {
-        details.push(
-          `${result.updatedTeams.length} team${result.updatedTeams.length === 1 ? "" : "s"} updated`
-        );
-      }
-      if (result.removedMemberships > 0) {
-        details.push(
-          `${result.removedMemberships} membership${result.removedMemberships === 1 ? "" : "s"} removed`
-        );
-      }
+    const details = [];
+    if (result.createdTeams.length > 0) {
+      details.push(
+        `${result.createdTeams.length} new team${result.createdTeams.length === 1 ? "" : "s"} created`
+      );
+    }
+    if (result.updatedTeams.length > 0) {
+      details.push(
+        `${result.updatedTeams.length} team${result.updatedTeams.length === 1 ? "" : "s"} updated`
+      );
+    }
+    if (result.removedMemberships > 0) {
+      details.push(
+        `${result.removedMemberships} membership${result.removedMemberships === 1 ? "" : "s"} removed`
+      );
+    }
 
-      if (details.length > 0) {
-        message += `. ${details.join(", ")}`;
-      }
+    if (details.length > 0) {
+      message += `. ${details.join(", ")}`;
+    }
 
+    createNotification({
+      text: message,
+      type: "success"
+    });
+
+    if (result.errors && result.errors.length > 0) {
       createNotification({
-        text: message,
-        type: "success"
+        text: `Sync completed with ${result.errors.length} warnings. Check the console for details.`,
+        type: "warning"
       });
-
-      if (result.errors && result.errors.length > 0) {
-        createNotification({
-          text: `Sync completed with ${result.errors.length} warnings. Check the console for details.`,
-          type: "warning"
-        });
-        console.warn("Sync errors:", result.errors);
-      }
-    } catch (error) {
-      const errorMessage =
-        (error as any)?.response?.data?.message || (error as Error)?.message || "Unknown error";
-
-      if (
-        errorMessage.includes("token") &&
-        (errorMessage.includes("required") ||
-          errorMessage.includes("invalid") ||
-          errorMessage.includes("expired") ||
-          errorMessage.includes("set a token first"))
-      ) {
-        createNotification({
-          text: "Please set a GitHub access token in the configuration modal to continue with the sync",
-          type: "error"
-        });
-      } else {
-        createNotification({
-          text: `Failed to sync GitHub teams: ${errorMessage}`,
-          type: "error"
-        });
-      }
+      console.warn("Sync errors:", result.errors);
     }
   };
 

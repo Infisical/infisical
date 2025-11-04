@@ -20,23 +20,15 @@ export const ShareSecretTab = () => {
   const deleteSecretShare = useDeleteSharedSecret();
 
   const onDeleteApproved = async () => {
-    try {
-      deleteSecretShare.mutateAsync({
-        sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
-      });
-      createNotification({
-        text: "Successfully deleted shared secret",
-        type: "success"
-      });
+    deleteSecretShare.mutateAsync({
+      sharedSecretId: (popUp?.deleteSharedSecretConfirmation?.data as DeleteModalData)?.id
+    });
+    createNotification({
+      text: "Successfully deleted shared secret",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSharedSecretConfirmation");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete shared secret",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSharedSecretConfirmation");
   };
 
   return (
