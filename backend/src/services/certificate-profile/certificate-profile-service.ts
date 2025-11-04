@@ -31,6 +31,7 @@ import {
   TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
+import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
 
 const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
@@ -484,6 +485,12 @@ export const certificateProfileServiceFactory = ({
         profile.estConfig.caChain = "";
       }
     }
+    if (profile.enrollmentType === EnrollmentType.ACME && profile.acmeConfig) {
+      profile.acmeConfig.directoryUrl = buildUrl(profile.id, "/directory");
+      if (profile.acmeConfig.encryptedEabSecret) {
+        profile.acmeConfig.encryptedEabSecret = undefined;
+      }
+    }
 
     return {
       ...profile,
@@ -619,7 +626,11 @@ export const certificateProfileServiceFactory = ({
         const result: TCertificateProfileWithConfigs = {
           ...converted,
           estConfig: decryptedEstConfig,
-          apiConfig: profileWithConfigs.apiConfig
+          apiConfig: profileWithConfigs.apiConfig,
+          acmeConfig:
+            profile.enrollmentType === EnrollmentType.ACME
+              ? { id: profile.id, directoryUrl: buildUrl(profile.id, "/directory") }
+              : undefined
         };
 
         return result;
@@ -831,7 +842,7 @@ export const certificateProfileServiceFactory = ({
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
-    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret });
+    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret! });
     return { eabKid: profile.id, eabSecret: eabSecret.toString("base64url") };
   };
 
