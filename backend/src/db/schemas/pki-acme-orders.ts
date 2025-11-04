@@ -20,7 +20,7 @@ export const PkiAcmeOrdersSchema = z.object({
   certificate: z.string().nullable().optional(),
   certificateChain: z.string().nullable().optional(),
   error: z.string().nullable().optional(),
-  certificateid: z.string().uuid().nullable().optional()
+  certificateId: z.string().uuid().nullable().optional()
 });
 
 export type TPkiAcmeOrders = z.infer<typeof PkiAcmeOrdersSchema>;
