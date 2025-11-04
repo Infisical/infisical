@@ -683,7 +683,7 @@ export const pkiAcmeServiceFactory = ({
     }
     return {
       status: 200,
-      body: order.certificateChain! + "\n" + order.certificate!,
+      body: order.certificate! + "\n" + order.certificateChain!,
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}/certificate`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
