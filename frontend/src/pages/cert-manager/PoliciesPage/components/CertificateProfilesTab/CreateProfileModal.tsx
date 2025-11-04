@@ -453,7 +453,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
-                  {envConfig.isAcmeFeatureEnabled && <SelectItem value="acme">ACME</SelectItem>}
+                  {envConfig.ACME_FEATURE_ENABLED && <SelectItem value="acme">ACME</SelectItem>}
                 </Select>
               </FormControl>
             )}
