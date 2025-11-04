@@ -58,9 +58,9 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
   };
   acmeConfig?: {
     id: string;
-    encryptedEabSecret: Buffer;
+    directoryUrl: string;
+    encryptedEabSecret?: Buffer;
   };
-  metrics?: TCertificateProfileMetrics;
 };
 
 export interface TCertificateProfileCertificate {
