@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
 import { useNavigate } from "@tanstack/react-router";
 
+import { createNotification } from "@app/components/notifications";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
 import { useDebounce, useToggle } from "@app/hooks";
@@ -312,6 +313,22 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const handleClickSegment = useCallback(
       (segment: string, allSegments: string[]) => {
+        if (!projectId) {
+          createNotification({
+            text: "Project ID is not set",
+            type: "error"
+          });
+          return;
+        }
+
+        if (allSegments.length === 0) {
+          createNotification({
+            text: "Invalid secret reference",
+            type: "error"
+          });
+          return;
+        }
+
         if (allSegments.length === 1) {
           navigate({
             search: (prev) => ({
@@ -330,6 +347,14 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         if (allSegments.length > 2) {
           const pathSegments = allSegments.slice(1, -1);
           for (let i = 0; i < pathSegments.length; i += 1) {
+            if (!pathSegments[i]) {
+              createNotification({
+                text: "Invalid secret reference",
+                type: "error"
+              });
+              return;
+            }
+
             const pathSegment = pathSegments[i];
             folderPath += `${pathSegment}`;
             if (pathSegment === segment) {
