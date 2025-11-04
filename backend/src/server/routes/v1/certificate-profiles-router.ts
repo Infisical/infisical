@@ -168,6 +168,12 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 autoRenew: z.boolean(),
                 renewBeforeDays: z.number().optional()
               })
+              .optional(),
+            acmeConfig: z
+              .object({
+                id: z.string(),
+                directoryUrl: z.string()
+              })
               .optional()
           }).array(),
           totalCount: z.number()

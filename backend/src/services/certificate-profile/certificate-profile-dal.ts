@@ -274,6 +274,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiAcmeEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.acmeConfigId`,
+          `${TableName.PkiAcmeEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estId"),
@@ -285,7 +290,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
-          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
         );
 
       const results = (await query
@@ -312,6 +318,12 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             }
           : undefined;
 
+        const acmeConfig = result.acmeId
+          ? {
+              id: result.acmeId as string
+            }
+          : undefined;
+
         const baseProfile = {
           id: result.id,
           projectId: result.projectId,
@@ -325,7 +337,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
           estConfig,
-          apiConfig
+          apiConfig,
+          acmeConfig
         };
 
         return baseProfile as TCertificateProfileWithConfigs;

@@ -36,6 +36,10 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
     autoRenew: boolean;
     renewBeforeDays?: number;
   };
+  acmeConfig?: {
+    id: string;
+    directoryUrl: string;
+  };
 };
 
 export type TCreateCertificateProfileDTO = {
@@ -93,6 +97,10 @@ export type TGetCertificateProfileByIdDTO = {
 export type TGetCertificateProfileBySlugDTO = {
   projectId: string;
   slug: string;
+};
+
+export type TRevealAcmeEabSecretDTO = {
+  profileId: string;
 };
 
 export type TProfileCertificate = {

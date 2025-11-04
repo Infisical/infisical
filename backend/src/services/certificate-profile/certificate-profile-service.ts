@@ -627,10 +627,9 @@ export const certificateProfileServiceFactory = ({
           ...converted,
           estConfig: decryptedEstConfig,
           apiConfig: profileWithConfigs.apiConfig,
-          acmeConfig:
-            profile.enrollmentType === EnrollmentType.ACME
-              ? { id: profile.id, directoryUrl: buildUrl(profile.id, "/directory") }
-              : undefined
+          acmeConfig: profileWithConfigs.acmeConfig
+            ? { ...profileWithConfigs.acmeConfig, directoryUrl: buildUrl(profile.id, "/directory") }
+            : undefined
         };
 
         return result;
