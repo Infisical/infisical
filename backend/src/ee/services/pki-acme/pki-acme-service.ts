@@ -682,7 +682,7 @@ export const pkiAcmeServiceFactory = ({
       throw new AcmeOrderNotReadyError({ message: "ACME order is not valid" });
     }
     if (!order.certificateId) {
-      throw new NotFoundError({ message: "The underlying certificate no longer exists" });
+      throw new NotFoundError({ message: "The certificate for this ACME order no longer exists" });
     }
 
     const certBody = await certificateBodyDAL.findOne({ certId: order.certificateId });
