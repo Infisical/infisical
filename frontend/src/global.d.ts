@@ -7,6 +7,7 @@ declare global {
       POSTHOG_API_KEY?: string;
       INTERCOM_ID?: string;
       TELEMETRY_CAPTURING_ENABLED: string;
+      ACME_FEATURE_ENABLED?: boolean;
     };
   }
 }

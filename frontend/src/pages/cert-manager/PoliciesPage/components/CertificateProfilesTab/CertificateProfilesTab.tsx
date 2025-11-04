@@ -113,14 +113,16 @@ export const CertificateProfilesTab = () => {
             mode="edit"
           />
 
-          <RevealAcmeEabSecretModal
-            isOpen={isRevealProfileAcmeEabSecretModalOpen}
-            onClose={() => {
-              setIsRevealProfileAcmeEabSecretModalOpen(false);
-              setSelectedProfile(null);
-            }}
-            profile={selectedProfile}
-          />
+          {selectedProfile.enrollmentType === "acme" && (
+            <RevealAcmeEabSecretModal
+              isOpen={isRevealProfileAcmeEabSecretModalOpen}
+              onClose={() => {
+                setIsRevealProfileAcmeEabSecretModalOpen(false);
+                setSelectedProfile(null);
+              }}
+              profile={selectedProfile}
+            />
+          )}
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}
