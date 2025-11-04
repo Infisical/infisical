@@ -77,7 +77,9 @@ export const KeyStorePrefixes = {
   UserProjectPermissionPattern: (userId: string) => `project-permission:*:*:USER:${userId}:*` as const,
   IdentityProjectPermissionPattern: (identityId: string) => `project-permission:*:*:IDENTITY:${identityId}:*` as const,
   GroupMemberProjectPermissionPattern: (projectId: string, groupId: string) =>
-    `group-member-project-permission:${projectId}:${groupId}:*` as const
+    `group-member-project-permission:${projectId}:${groupId}:*` as const,
+
+  PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const
 };
 
 export const KeyStoreTtls = {

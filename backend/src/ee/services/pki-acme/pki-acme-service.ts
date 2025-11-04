@@ -5,6 +5,7 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   EnrollmentType,
@@ -29,6 +30,7 @@ import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import {
   AcmeAccountDoesNotExistError,
   AcmeBadCSRError,
+  AcmeBadNonceError,
   AcmeBadPublicKeyError,
   AcmeError,
   AcmeExternalAccountRequiredError,
@@ -87,6 +89,7 @@ type TPkiAcmeServiceFactoryDep = {
     TPkiAcmeChallengeDALFactory,
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
+  keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
@@ -100,6 +103,7 @@ export const pkiAcmeServiceFactory = ({
   acmeAuthDAL,
   acmeOrderAuthDAL,
   acmeChallengeDAL,
+  keyStore,
   kmsService,
   certificateV3Service,
   acmeChallengeService
@@ -157,6 +161,14 @@ export const pkiAcmeServiceFactory = ({
       if (new URL(protectedHeader.url).href !== url.href) {
         throw new AcmeUnauthorizedError({ detail: "URL mismatch in the protected header" });
       }
+      if (!protectedHeader.nonce) {
+        throw new AcmeMalformedError({ detail: "Nonce is required in the protected header" });
+      }
+      const deleted = await keyStore.deleteItem(KeyStorePrefixes.PkiAcmeNonce(protectedHeader.nonce));
+      if (deleted !== 1) {
+        throw new AcmeBadNonceError({ detail: "Invalid nonce" });
+      }
+
       // TODO: consume the nonce here
       const decoder = new TextDecoder();
       const textPayload = decoder.decode(rawPayload);
@@ -285,10 +297,17 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const getAcmeNewNonce = async (profileId: string): Promise<string> => {
-    const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME new nonce generation
-    // Generate a new nonce, store it, and return it
-    return "FIXME-generate-nonce";
+    await validateAcmeProfile(profileId);
+    const nonce = crypto.randomBytes(32).toString("base64url");
+    const nonceKey = KeyStorePrefixes.PkiAcmeNonce(nonce);
+    await keyStore.setItemWithExpiry(
+      nonceKey,
+      // Expire in 5 minutes.
+      // TODO: read config from the profile to get the expiration time instead
+      60 * 5,
+      nonce
+    );
+    return nonce;
   };
 
   /** --------------------------------------------------------------
