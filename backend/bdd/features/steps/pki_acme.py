@@ -160,7 +160,10 @@ def step_impl(context: Context, method: str, url: str):
     )
     context.vars["response"] = response
     logger.debug("Response status: %r", response.status_code)
-    logger.debug("Response JSON payload: %r", response.json())
+    try:
+        logger.debug("Response JSON payload: %r", response.json())
+    except json.decoder.JSONDecodeError:
+        pass
 
 
 @when('I send a {method} request to "{url}" with JSON payload')
@@ -203,14 +206,14 @@ def step_impl(context: Context, url: str):
 
 @then('the response status code should be "{expected_status_code:d}"')
 def step_impl(context: Context, expected_status_code: int):
-    assert context.response.status_code == expected_status_code, (
-        f"{context.response.status_code} != {expected_status_code}"
+    assert context.vars["response"].status_code == expected_status_code, (
+        f"{context.vars['response'].status_code} != {expected_status_code}"
     )
 
 
 @then('the response header "{header}" should contains non-empty value')
 def step_impl(context: Context, header: str):
-    header_value = context.response.headers.get(header)
+    header_value = context.vars["response"].headers.get(header)
     assert header_value is not None, f"Header {header} not found in response"
     assert header_value, (
         f"Header {header} found in response, but value {header_value:!r} is empty"
@@ -219,7 +222,7 @@ def step_impl(context: Context, header: str):
 
 @then("the response body should match JSON value")
 def step_impl(context: Context):
-    payload = context.response.json()
+    payload = context.vars["response"].json()
     expected = json.loads(context.text)
     replaced = replace_vars(expected, context.vars)
     assert payload == replaced, f"{payload} != {replaced}"
