@@ -26,7 +26,6 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
   const [isEabSecretCopied, setIsEabSecretCopied] = useToggle(false);
   const revealAcmeEabSecret = useRevealAcmeEabSecret({ profileId: profile.id });
   const { data, isLoading, isError, error } = revealAcmeEabSecret;
-
   const { directoryUrl } = profile.acmeConfig!;
   const { eabKid, eabSecret } = data ?? { eabKid: "", eabSecret: "" };
 
