@@ -1,14 +1,15 @@
-import { useCallback } from "react";
 import {
   faCheck,
   faCircleInfo,
   faCopy,
   faEdit,
   faEllipsis,
+  faEye,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -36,10 +37,16 @@ import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPa
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
+  onRevealProfileAcmeEabSecret: (profile: TCertificateProfile) => void;
   onDeleteProfile: (profile: TCertificateProfile) => void;
 }
 
-export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) => {
+export const ProfileRow = ({
+  profile,
+  onEditProfile,
+  onRevealProfileAcmeEabSecret,
+  onDeleteProfile
+}: Props) => {
   const { permission } = useProjectPermission();
 
   const { data: caData } = useGetCaById(profile.caId);
@@ -67,6 +74,11 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   const canEditProfile = permission.can(
     ProjectPermissionActions.Edit,
     ProjectPermissionSub.CertificateAuthorities
+  );
+
+  const canRevealProfileAcmeEabSecret = permission.can(
+    ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+    ProjectPermissionSub.CertificateProfiles
   );
 
   const canIssueCertificate = permission.can(
@@ -142,6 +154,17 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                 icon={<FontAwesomeIcon icon={faEdit} />}
               >
                 Edit Profile
+              </DropdownMenuItem>
+            )}
+            {canRevealProfileAcmeEabSecret && profile.enrollmentType === "acme" && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRevealProfileAcmeEabSecret(profile);
+                }}
+                icon={<FontAwesomeIcon icon={faEye} />}
+              >
+                Reveal ACME EAB Secret
               </DropdownMenuItem>
             )}
             {canIssueCertificate && profile.enrollmentType === "api" && (
