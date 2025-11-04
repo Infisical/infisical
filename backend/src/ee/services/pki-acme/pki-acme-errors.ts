@@ -1,6 +1,6 @@
 /**
- * ACME Error Classes based on RFC 8555 Section 6.2
- * https://datatracker.ietf.org/doc/html/rfc8555#section-6.2
+ * ACME Error Classes based on RFC 8555 Section 6.7
+ * https://datatracker.ietf.org/doc/html/rfc8555#section-6.7
  */
 
 // RFC 8555 Section 6.7 - Error Types

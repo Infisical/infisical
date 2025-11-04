@@ -71,7 +71,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         done(null, undefined);
       }
       const json: unknown = JSON.parse(strBody as string);
-      // TODO: deal with JWS payload here
       done(null, json);
     } catch (err) {
       const error = err as Error;
@@ -97,10 +96,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: GetAcmeDirectoryResponseSchema
       }
     },
-    handler: async (req) => {
-      const directory = await server.services.pkiAcme.getAcmeDirectory(req.params.profileId);
-      return directory;
-    }
+    handler: async (req) => server.services.pkiAcme.getAcmeDirectory(req.params.profileId)
   });
 
   // HEAD /api/v1/pki/acme/profiles/<profile_id>/new-nonce
@@ -109,7 +105,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     method: "HEAD",
     url: "/profiles/:profileId/new-nonce",
     config: {
-      // TODO: probably a different rate limit for nonce creation
+      // TODO: probably a different rate limit for nonce creation?
       rateLimit: readLimit
     },
     schema: {
@@ -335,8 +331,6 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         200: ListAcmeOrdersResponseSchema
       }
     },
-    // TODO: replace with verify ACME signature here instead
-    // onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req, res) => {
       const { profileId, accountId } = await validateExistingAccount({
         req,
