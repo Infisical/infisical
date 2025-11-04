@@ -9,7 +9,6 @@ Feature: Order
     Then I add names to certificate signing request csr
       """
       {
-        "ORGANIZATION_NAME": "Infisical Inc",
         "COMMON_NAME": "localhost"
       }
       """
@@ -31,7 +30,6 @@ Feature: Order
     Then I add names to certificate signing request csr
       """
       {
-        "ORGANIZATION_NAME": "Infisical Inc",
         "COMMON_NAME": "localhost"
       }
       """
@@ -63,7 +61,6 @@ Feature: Order
     Then I add names to certificate signing request csr
       """
       {
-        "ORGANIZATION_NAME": "Infisical Inc",
         "COMMON_NAME": "localhost"
       }
       """
