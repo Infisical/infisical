@@ -599,32 +599,27 @@ export const pkiAcmeServiceFactory = ({
         // TODO: this should be the same transaction?
         let errorToReturn: Error | undefined;
         try {
-          const { certificate, certificateChain, certificateId } =
-            await certificateV3Service.signCertificateFromProfile({
-              actor: ActorType.ACME_ACCOUNT,
-              actorId: accountId,
-              actorAuthMethod: null,
-              actorOrgId,
-              profileId,
-              csr,
-              notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
-              notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
-              validity: {
-                // TODO: read config from the profile to get the expiration time instead
-                ttl: (24 * 60 * 60 * 1000).toString()
-              },
-              enrollmentType: EnrollmentType.ACME
-            });
+          const { certificateId } = await certificateV3Service.signCertificateFromProfile({
+            actor: ActorType.ACME_ACCOUNT,
+            actorId: accountId,
+            actorAuthMethod: null,
+            actorOrgId,
+            profileId,
+            csr,
+            notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
+            notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
+            validity: {
+              // TODO: read config from the profile to get the expiration time instead
+              ttl: (24 * 60 * 60 * 1000).toString()
+            },
+            enrollmentType: EnrollmentType.ACME
+          });
           // TODO: associate the certificate with the order
           await acmeOrderDAL.updateById(
             orderId,
             {
               status: AcmeOrderStatus.Valid,
               csr,
-              // TODO: we actually don't need to store the certificate and certificate chain here
-              //       It appears that the certificate and certificate chain are stored in the certificate_body table already
-              certificateChain,
-              certificate,
               certificateId
             },
             tx
