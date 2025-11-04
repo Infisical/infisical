@@ -19,7 +19,7 @@ Feature: Order
     Then the value order.body with jq ".status" should be equal to "pending"
     Then the value order.body with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
     Then the value order.body with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
-    Then the value order.body with jq "all(.authorizations[]; startswith('{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/'))" should be equal to true
+    Then the value order.body with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
 
   Scenario: Create a new order with SANs
     Given I have an ACME cert profile as "acme_profile"
@@ -71,4 +71,4 @@ Feature: Order
     Then the value fetched_order with jq ".status" should be equal to "pending"
     Then the value fetched_order with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
     Then the value fetched_order with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
-    Then the value fetched_order with jq "all(.authorizations[]; startswith('{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/'))" should be equal to true
+    Then the value fetched_order with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
