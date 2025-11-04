@@ -23,6 +23,8 @@ export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRevealProfileAcmeEabSecretModalOpen, setIsRevealProfileAcmeEabSecretModalOpen] =
+    useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
@@ -41,6 +43,11 @@ export const CertificateProfilesTab = () => {
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
+  };
+
+  const handleRevealProfileAcmeEabSecret = (profile: TCertificateProfileWithDetails) => {
+    setSelectedProfile(profile);
+    setIsRevealProfileAcmeEabSecretModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -85,7 +92,11 @@ export const CertificateProfilesTab = () => {
         )}
       </div>
 
-      <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
+      <ProfileList
+        onEditProfile={handleEditProfile}
+        onRevealProfileAcmeEabSecret={handleRevealProfileAcmeEabSecret}
+        onDeleteProfile={handleDeleteProfile}
+      />
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
 

@@ -129,7 +129,8 @@ export enum ProjectPermissionCertificateProfileActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  IssueCert = "issue-cert"
+  IssueCert = "issue-cert",
+  RevealAcmeEabSecret = "reveal-acme-eab-secret"
 }
 
 export enum ProjectPermissionSecretRotationActions {
