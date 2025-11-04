@@ -110,7 +110,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       // Notice: current this feature is still in development and is not yet ready for production.
-      if (getConfig().ACME_FEATURE_ENABLED === true) {
+      if (getConfig().isAcmeFeatureEnabled === true) {
         await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
       }
     },

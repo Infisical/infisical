@@ -399,6 +399,7 @@ const envSchema = z
       (data.NODE_ENV === "development" && data.ROTATION_DEVELOPMENT_MODE) || data.NODE_ENV === "test",
     isDailyResourceCleanUpDevelopmentMode:
       data.NODE_ENV === "development" && data.DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE,
+    isAcmeFeatureEnabled: data.NODE_ENV === "development" && data.ACME_FEATURE_ENABLED === true,
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
