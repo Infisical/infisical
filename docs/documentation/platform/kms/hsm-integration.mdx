@@ -37,7 +37,7 @@ Enabling HSM encryption has a set of key benefits:
 
 ## Requirements
 - An HSM device _(PKCS#11 compatible library)_ from a compatible provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
-  Infisical is validated to work with PKCS#11 2.40 and later. If your HSM device doesn't follow the >=2.40 PKCS#11 standard you may see degraded performance.
+  Infisical is validated to work with PKCS#11 2.30 and newer. If your HSM device doesn't follow the >=2.30 PKCS#11 standard you may see degraded performance.
 
 
 ## Environment Variable Configuration
@@ -69,7 +69,7 @@ Below you'll find a list of the attributes each key will be created with.
 <Accordion title="Bring your own key minimum requirements (optional)">
   If you bring your own AES key and don't let Infisical create it for you it must have at least the following attributes:
 
-  * `CKA_CLASS`: `CKO_PRIVATE_KEY` — Defines the key class _(secret key)_.
+  * `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
   * `CKA_KEY_TYPE`: `CKO_AES` — Defines the key type _(AES key)_.
   * `CKA_VALUE_LEN`: `32` — 256-bit key size.
   * `CKA_ENCRYPT`: `true` — Encryption capabilities enabled.
@@ -81,7 +81,7 @@ Below you'll find a list of the attributes each key will be created with.
   </Warning>
 </Accordion>
 
-* `CKA_CLASS`: `CKO_PRIVATE_KEY` — Defines the key class _(secret key)_.
+* `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
 * `CKA_KEY_TYPE`: `CKO_AES` — Defines the key type _(AES key)_.
 * `CKA_VALUE_LEN`: `32` — 256-bit key size.
 * `CKA_LABEL`: Your specified label in the `HSM_KEY_LABEL` environment variable.
@@ -95,9 +95,9 @@ Below you'll find a list of the attributes each key will be created with.
 ### HMAC Key
 
 <Accordion title="Bring your own key minimum requirements (optional)">
-  If you bring your own AES key and don't let Infisical create it for you it must have at least the following attributes:
+  If you bring your own HMAC key and don't let Infisical create it for you it must have at least the following attributes:
 
-  * `CKA_CLASS`: `CKO_PRIVATE_KEY` — Defines the key class _(secret key)_.
+  * `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
   * `CKA_KEY_TYPE`: `CKO_GENERIC_SECRET` — Defines the key class _(generic secret key)_.
   * `CKA_VALUE_LEN`: `32` — 256-bit key size
   * `CKA_SIGN`: `true` — Signing capabilities enabled
@@ -109,7 +109,7 @@ Below you'll find a list of the attributes each key will be created with.
   </Warning>
 </Accordion>
 
-* `CKA_CLASS`: `CKO_PRIVATE_KEY` — Defines the key class _(secret key)_.
+* `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
 * `CKA_KEY_TYPE`: `CKO_GENERIC_SECRET` — Defines the key class _(generic secret key)_.
 * `CKA_VALUE_LEN`: `32` — 256-bit key size.
 * `CKA_LABEL`: Your specified label in the `HSM_KEY_LABEL` environment variable, suffixed with `_HMAC`. If you specify `infisical-key-v1`, then the HMAC key label will become `infisical-key-v1_HMAC`.
