@@ -319,7 +319,7 @@ export const pkiAcmeServiceFactory = ({
     const kmsDecryptor = await kmsService.decryptWithKmsKey({
       kmsId: certificateManagerKmsId
     });
-    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret });
+    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
     try {
       const { payload: eabPayload, protectedHeader: eabProtectedHeader } = await flattenedVerify(
         externalAccountBinding,
@@ -393,7 +393,6 @@ export const pkiAcmeServiceFactory = ({
       emails: contact ?? []
     });
     // TODO: create audit log here
-    // TODO: check EAB authentication here
     return {
       status: 201,
       body: {

@@ -80,6 +80,10 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("accountId").notNullable();
       t.foreign("accountId").references("id").inTable(TableName.PkiAcmeAccount).onDelete("CASCADE");
 
+      // Foreign key to certificate
+      t.uuid("certificateId").nullable();
+      t.foreign("certificateId").references("id").inTable(TableName.Certificate).onDelete("CASCADE");
+
       t.timestamp("notBefore").nullable();
       t.timestamp("notAfter").nullable();
 
