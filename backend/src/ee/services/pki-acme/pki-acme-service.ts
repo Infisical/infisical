@@ -478,6 +478,8 @@ export const pkiAcmeServiceFactory = ({
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
+    // TODO: check the identifiers and see if are they even allowed for this profile.
+    //       if not, we may be able to reject it early with an unsupportedIdentifier error.
 
     const order = await acmeOrderDAL.transaction(async (tx) => {
       const account = (await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId))!;
@@ -592,7 +594,7 @@ export const pkiAcmeServiceFactory = ({
     if (order.status === AcmeOrderStatus.Ready) {
       const { order: updatedOrder, error } = await acmeOrderDAL.transaction(async (tx) => {
         const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
-        // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead
+        // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
         const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
         if (order.status !== AcmeOrderStatus.Ready) {
           throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
