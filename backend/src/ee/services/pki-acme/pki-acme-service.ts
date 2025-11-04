@@ -353,45 +353,43 @@ export const pkiAcmeServiceFactory = ({
       kmsId: certificateManagerKmsId
     });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
+    let eabPayload: Uint8Array<ArrayBufferLike> | undefined;
+    let eabProtectedHeader: JWSHeaderParameters | undefined;
     try {
-      const { payload: eabPayload, protectedHeader: eabProtectedHeader } = await flattenedVerify(
-        externalAccountBinding,
-        eabSecret
-      );
-      const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
-      if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
-        throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
-      }
-      // Make sure the KID in the EAB payload matches the profile ID
-      if (eabKid !== profile.id) {
-        throw new UnauthorizedError({ message: "External account binding KID mismatch" });
-      }
-
-      // Make sure the URL matches the expected URL
-      const url = eabProtectedHeader!.url!;
-      if (url !== buildUrl(profile.id, "/new-account")) {
-        throw new UnauthorizedError({ message: "External account binding URL mismatch" });
-      }
-
-      // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
-      const decoder = new TextDecoder();
-      const decodedEabPayload = decoder.decode(eabPayload);
-      const eabJWK = JSON.parse(decodedEabPayload);
-      const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
-      if (eabPayloadJwkThumbprint !== publicKeyThumbprint) {
-        throw new AcmeBadPublicKeyError({
-          message: "External account binding public key thumbprint or algorithm mismatch"
-        });
-      }
+      const result = await flattenedVerify(externalAccountBinding, eabSecret);
+      eabPayload = result.payload;
+      eabProtectedHeader = result.protectedHeader;
     } catch (error) {
       if (error instanceof errors.JWSInvalid) {
         throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
       }
-      if (error instanceof AcmeError) {
-        throw error;
-      }
       logger.error(error, "Unexpected error while verifying EAB JWS payload");
       throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS payload" });
+    }
+    const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
+    if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
+      throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
+    }
+    // Make sure the KID in the EAB payload matches the profile ID
+    if (eabKid !== profile.id) {
+      throw new UnauthorizedError({ message: "External account binding KID mismatch" });
+    }
+
+    // Make sure the URL matches the expected URL
+    const url = eabProtectedHeader!.url!;
+    if (url !== buildUrl(profile.id, "/new-account")) {
+      throw new UnauthorizedError({ message: "External account binding URL mismatch" });
+    }
+
+    // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
+    const decoder = new TextDecoder();
+    const decodedEabPayload = decoder.decode(eabPayload);
+    const eabJWK = JSON.parse(decodedEabPayload);
+    const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
+    if (eabPayloadJwkThumbprint !== publicKeyThumbprint) {
+      throw new AcmeBadPublicKeyError({
+        message: "External account binding public key thumbprint or algorithm mismatch"
+      });
     }
 
     const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
