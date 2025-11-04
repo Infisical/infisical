@@ -33,10 +33,10 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
       >
         <FormLabel
           label="ACME Directory URL"
-          tooltipText="The ACME directory URL for your ACME client to to issue certificates."
+          tooltipText="The ACME directory URL for your ACME client to issue certificates."
         />
-        <Input value={acmeDirectoryUrl} disabled />
         <div className="flex gap-2">
+          <Input value={acmeDirectoryUrl} disabled />
           <IconButton
             ariaLabel="copy"
             variant="outline_bg"
@@ -53,6 +53,7 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
 
         <FormLabel
           label="EAB KID"
+          className="mt-4"
           tooltipText="The EAB Key Identifier (KID) for your ACME client to authenticate when registering a new account."
         />
         <div className="flex gap-2">
