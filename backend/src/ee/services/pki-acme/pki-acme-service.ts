@@ -84,7 +84,12 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   acmeOrderDAL: Pick<
     TPkiAcmeOrderDALFactory,
-    "create" | "transaction" | "updateById" | "findByAccountAndOrderIdWithAuthorizations" | "findByIdForFinalization"
+    | "create"
+    | "transaction"
+    | "updateById"
+    | "findByAccountAndOrderIdWithAuthorizations"
+    | "findByIdForFinalization"
+    | "listByAccountId"
   >;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
   acmeOrderAuthDAL: Pick<TPkiAcmeOrderAuthDALFactory, "insertMany">;
@@ -727,15 +732,11 @@ export const pkiAcmeServiceFactory = ({
     profileId: string;
     accountId: string;
   }): Promise<TAcmeResponse<TListAcmeOrdersResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
-    // FIXME: Implement ACME list orders
+    const orders = await acmeOrderDAL.listByAccountId(accountId);
     return {
       status: 200,
-      body: {
-        orders: []
-      },
+      body: { orders: orders.map((order) => buildUrl(profileId, `/orders/${order.id}`)) },
       headers: {
-        Location: buildUrl(profileId, `/accounts/${accountId}/orders`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
       }
     };

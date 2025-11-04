@@ -60,9 +60,19 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
     }
   };
 
+  const listByAccountId = async (accountId: string, tx?: Knex) => {
+    try {
+      const orders = await (tx || db)(TableName.PkiAcmeOrder).where({ accountId }).orderBy("createdAt", "desc");
+      return orders;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "List PKI ACME orders by account id" });
+    }
+  };
+
   return {
     ...pkiAcmeOrderOrm,
     findByIdForFinalization,
-    findByAccountAndOrderIdWithAuthorizations
+    findByAccountAndOrderIdWithAuthorizations,
+    listByAccountId
   };
 };
