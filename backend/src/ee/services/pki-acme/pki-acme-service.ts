@@ -353,19 +353,22 @@ export const pkiAcmeServiceFactory = ({
       kmsId: certificateManagerKmsId
     });
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
-    let eabPayload: Uint8Array<ArrayBufferLike> | undefined;
-    let eabProtectedHeader: JWSHeaderParameters | undefined;
-    try {
-      const result = await flattenedVerify(externalAccountBinding, eabSecret);
-      eabPayload = result.payload;
-      eabProtectedHeader = result.protectedHeader;
-    } catch (error) {
-      if (error instanceof errors.JWSInvalid) {
-        throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
+    const { eabPayload, eabProtectedHeader } = await (async () => {
+      try {
+        const { payload: eabPayload, protectedHeader: eabProtectedHeader } = await flattenedVerify(
+          externalAccountBinding,
+          eabSecret
+        );
+        return { eabPayload, eabProtectedHeader };
+      } catch (error) {
+        if (error instanceof errors.JWSInvalid) {
+          throw new AcmeMalformedError({ detail: "Invalid external account binding JWS payload" });
+        }
+        logger.error(error, "Unexpected error while verifying EAB JWS payload");
+        throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS payload" });
       }
-      logger.error(error, "Unexpected error while verifying EAB JWS payload");
-      throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS payload" });
-    }
+    })();
+
     const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
     if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
       throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
