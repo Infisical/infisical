@@ -390,17 +390,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   {...field}
                   onValueChange={(value) => {
                     if (watchedEnrollmentType === "est") {
+                      setValue("apiConfig", undefined);
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
                         passphrase: ""
                       });
-                      setValue("apiConfig", undefined);
-                    } else {
+                      setValue("acmeConfig", undefined);
+                    } else if (watchedEnrollmentType === "api") {
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
                       });
                       setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
+                    } else if (watchedEnrollmentType === "acme") {
+                      setValue("estConfig", undefined);
+                      setValue("apiConfig", undefined);
+                      setValue("acmeConfig", {});
                     }
                     onChange(value);
                   }}
@@ -438,12 +444,14 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         disableBootstrapCaValidation: false,
                         passphrase: ""
                       });
+                      setValue("acmeConfig", undefined);
                     } else if (value === "api") {
-                      setValue("estConfig", undefined);
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
                       });
+                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
                     } else if (value === "acme") {
                       setValue("apiConfig", undefined);
                       setValue("estConfig", undefined);
