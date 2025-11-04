@@ -20,4 +20,4 @@ Feature: Challenge
     Then I serve challenge response for challenge at localhost
     Then I tell ACME server that challenge is ready to be verified
     Then I poll and finalize the ACME order order as finalized_order
-    # TODO: check the content of the order
+    # TODO: check the fullchain pem content of the order
