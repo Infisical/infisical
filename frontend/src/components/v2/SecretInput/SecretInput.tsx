@@ -53,10 +53,16 @@ const syntaxHighlight = (
                   } ${shouldShowHoverStyle ? "cursor-pointer underline decoration-yellow-400" : ""}`}
                   onMouseEnter={() => onHoverPart?.(segmentKey)}
                   onMouseLeave={() => onHoverPart?.("")}
-                  onClick={(e) => {
+                  onMouseDown={(e) => {
                     if (isCmdOrCtrlPressed) {
                       e.preventDefault();
                       e.stopPropagation();
+                    }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isCmdOrCtrlPressed) {
+                      e.preventDefault();
                       onClickSegment?.(segment, parts);
                     }
                   }}

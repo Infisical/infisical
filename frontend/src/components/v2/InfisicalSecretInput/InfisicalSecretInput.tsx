@@ -2,6 +2,7 @@ import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useSt
 import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
+import { useNavigate } from "@tanstack/react-router";
 
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useProject } from "@app/context";
@@ -81,6 +82,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
+    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -310,37 +312,49 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
 
     const handleClickSegment = useCallback(
       (segment: string, allSegments: string[]) => {
-        // Single segment: search in current environment and path
         if (allSegments.length === 1) {
-          const currentEnv = propEnvironment || "";
-          const currentPath = propSecretPath || "/";
-          const encodedPath = encodeURIComponent(currentPath);
-          const url = ROUTE_PATHS.SecretManager.SecretDashboardPage.path
-            .replace("$projectId", projectId)
-            .replace("$envSlug", currentEnv);
-          window.open(
-            `${url}?secretPath=${encodedPath}&search=${encodeURIComponent(segment)}&filterBy=secret`,
-            "_blank",
-            "noopener,noreferrer"
-          );
+          navigate({
+            search: (prev) => ({
+              ...prev,
+              search: segment,
+              filterBy: "secret"
+            })
+          });
           return;
         }
 
-        // Multiple segments: first is env, last is secret, middle are folders
         const environmentSlug = allSegments[0];
         const secretName = allSegments[allSegments.length - 1];
-        const folderPath = allSegments.length > 2 ? `/${allSegments.slice(1, -1).join("/")}` : "/";
-        const encodedPath = encodeURIComponent(folderPath);
-        const url = ROUTE_PATHS.SecretManager.SecretDashboardPage.path
-          .replace("$projectId", projectId)
-          .replace("$envSlug", environmentSlug);
-        window.open(
-          `${url}?secretPath=${encodedPath}&search=${encodeURIComponent(secretName)}&filterBy=secret`,
-          "_blank",
-          "noopener,noreferrer"
-        );
+        let folderPath = "/";
+
+        if (allSegments.length > 2) {
+          const pathSegments = allSegments.slice(1, -1);
+          for (let i = 0; i < pathSegments.length; i += 1) {
+            const pathSegment = pathSegments[i];
+            folderPath += `${pathSegment}`;
+            if (pathSegment === segment) {
+              folderPath += "/";
+              break;
+            }
+            folderPath += "/";
+          }
+        }
+
+        navigate({
+          to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+          params: {
+            projectId,
+            envSlug: environmentSlug
+          },
+          search: (prev) => ({
+            ...prev,
+            secretPath: segment === environmentSlug ? "/" : folderPath,
+            search: segment === secretName ? secretName : prev.search,
+            filterBy: segment === secretName ? "secret" : prev.filterBy
+          })
+        });
       },
-      [projectId, propEnvironment, propSecretPath]
+      [navigate, projectId]
     );
 
     return (

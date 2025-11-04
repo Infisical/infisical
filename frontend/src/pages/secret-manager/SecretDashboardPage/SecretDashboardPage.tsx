@@ -475,34 +475,73 @@ const Page = () => {
     );
 
   const handleTagToggle = useCallback(
-    (tagSlug: string) =>
+    (tagSlug: string) => {
       setFilter((state) => {
         const isTagPresent = Boolean(state.tags?.[tagSlug]);
         const newTagFilter = { ...state.tags };
         if (isTagPresent) delete newTagFilter[tagSlug];
         else newTagFilter[tagSlug] = true;
+
+        // Update URL to match filter state
+        const tagsList = Object.keys(newTagFilter).filter((tag) => newTagFilter[tag]);
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            tags: tagsList.length > 0 ? tagsList.join(",") : ""
+          })
+        });
+
         return { ...state, tags: newTagFilter };
-      }),
-    []
+      });
+    },
+    [navigate]
   );
 
   const handleToggleRowType = useCallback(
-    (rowType: RowType) =>
+    (rowType: RowType) => {
       setFilter((state) => {
+        const newInclude = {
+          ...state.include,
+          [rowType]: !state.include[rowType]
+        };
+
+        // Update URL to match filter state
+        const filterByList: string[] = [];
+        if (newInclude[RowType.Folder]) filterByList.push("folder");
+        if (newInclude[RowType.Import]) filterByList.push("import");
+        if (newInclude[RowType.DynamicSecret]) filterByList.push("dynamic");
+        if (newInclude[RowType.Secret]) filterByList.push("secret");
+        if (newInclude[RowType.SecretRotation]) filterByList.push("rotation");
+
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            filterBy: filterByList.length > 0 ? filterByList.join(",") : ""
+          })
+        });
+
         return {
           ...state,
-          include: {
-            ...state.include,
-            [rowType]: !state.include[rowType]
-          }
+          include: newInclude
         };
-      }),
-    []
+      });
+    },
+    [navigate]
   );
 
   const handleSearchChange = useCallback(
-    (searchFilter: string) => setFilter((state) => ({ ...state, searchFilter })),
-    []
+    (searchFilter: string) => {
+      setFilter((state) => ({ ...state, searchFilter }));
+
+      // Update URL to match filter state
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          search: searchFilter || ""
+        })
+      });
+    },
+    [navigate]
   );
 
   const handleToggleVisibility = useCallback(() => setIsVisible((state) => !state), []);
@@ -564,13 +603,6 @@ const Page = () => {
       include: includeFilter
     }));
     setDebouncedSearchFilter(routerQueryParams.search as string);
-    // this is a temp workaround until we fully transition state to query params,
-    navigate({
-      search: (state) => {
-        const { search, tags: qTags, filterBy: qFilterBy, ...query } = state;
-        return query;
-      }
-    });
   }, [routerQueryParams.search, routerQueryParams.tags, routerQueryParams.filterBy]);
 
   const selectedSecrets = useSelectedSecrets();
