@@ -321,7 +321,7 @@ def apply_value_with_jq(context: Context, var_path: str, jq_query: str):
     ).first()
 
 
-@then("the value {var_path} with jq {jq_query} should be equal to json")
+@then('the value {var_path} with jq "{jq_query}" should be equal to json')
 def step_impl(context: Context, var_path: str, jq_query: str):
     value, result = apply_value_with_jq(
         context=context,
