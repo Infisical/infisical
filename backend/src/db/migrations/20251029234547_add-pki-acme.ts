@@ -90,11 +90,7 @@ export async function up(knex: Knex): Promise<void> {
       t.timestamp("expiresAt").notNullable();
 
       t.text("csr").nullable();
-      t.text("certificate").nullable();
-      t.text("certificateChain").nullable();
-
       t.text("error").nullable();
-
       // Order status
       t.string("status").notNullable(); // pending, ready, processing, valid, invalid
 
