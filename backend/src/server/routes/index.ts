@@ -2203,6 +2203,7 @@ export const registerRoutes = async (
     acmeAuthDAL,
     acmeOrderAuthDAL,
     acmeChallengeDAL,
+    keyStore,
     kmsService,
     certificateV3Service,
     acmeChallengeService
