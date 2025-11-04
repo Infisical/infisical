@@ -106,6 +106,10 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
+    // Note: The ACME feature is still in development and is not yet ready for production.
+    //       This is the feature flag to enable/disable the ACME feature.
+    //       It's not intended to be used by users outside of the development team yet.
+    ACME_FEATURE_ENABLED: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
       z
