@@ -104,40 +104,29 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const onFormSubmit = async ({ identity, role }: FormData) => {
-    try {
-      await addIdentityToWorkspaceMutateAsync({
-        projectId,
-        identityId: identity.id,
-        role: role.slug || undefined
-      });
+    await addIdentityToWorkspaceMutateAsync({
+      projectId,
+      identityId: identity.id,
+      role: role.slug || undefined
+    });
 
-      createNotification({
-        text: "Successfully added identity to project",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully added identity to project",
+      type: "success"
+    });
 
-      const nextAvailableMembership = filteredIdentityMembershipOrgs.filter(
-        (membership) => membership.identity.id !== identity.id
-      )[0];
+    const nextAvailableMembership = filteredIdentityMembershipOrgs.filter(
+      (membership) => membership.identity.id !== identity.id
+    )[0];
 
-      // prevents combobox from displaying previously added identity
-      reset({
-        identity: {
-          name: nextAvailableMembership?.identity.name,
-          id: nextAvailableMembership?.identity.id
-        }
-      });
-      handlePopUpToggle("identity", false);
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to add identity to project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    // prevents combobox from displaying previously added identity
+    reset({
+      identity: {
+        name: nextAvailableMembership?.identity.name,
+        id: nextAvailableMembership?.identity.id
+      }
+    });
+    handlePopUpToggle("identity", false);
   };
 
   if (isMembershipsLoading || isRolesLoading)

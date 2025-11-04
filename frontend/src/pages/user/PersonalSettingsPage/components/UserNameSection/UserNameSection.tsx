@@ -27,22 +27,14 @@ export const UserNameSection = (): JSX.Element => {
   }, [user]);
 
   const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      if (!user?.id) return;
-      if (name === "") return;
+    if (!user?.id) return;
+    if (name === "") return;
 
-      await mutateAsync({ newName: name });
-      createNotification({
-        text: "Successfully renamed user",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to rename user",
-        type: "error"
-      });
-    }
+    await mutateAsync({ newName: name });
+    createNotification({
+      text: "Successfully renamed user",
+      type: "success"
+    });
   };
 
   return (

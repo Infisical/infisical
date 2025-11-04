@@ -76,27 +76,19 @@ export const AddAPIKeyModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   const onFormSubmit = async ({ name, expiresIn }: FormData) => {
-    try {
-      const { apiKey } = await mutateAsync({
-        name,
-        expiresIn: expirationMapping[expiresIn]
-      });
+    const { apiKey } = await mutateAsync({
+      name,
+      expiresIn: expirationMapping[expiresIn]
+    });
 
-      setNewAPIKey(apiKey);
+    setNewAPIKey(apiKey);
 
-      createNotification({
-        text: "Successfully created API key",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully created API key",
+      type: "success"
+    });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create API key",
-        type: "error"
-      });
-    }
+    reset();
   };
 
   const hasAPIKey = Boolean(newAPIKey);

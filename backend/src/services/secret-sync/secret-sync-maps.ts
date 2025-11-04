@@ -107,7 +107,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
   [SecretSync.Northflank]: SecretSyncPlanType.Regular,
   [SecretSync.Bitbucket]: SecretSyncPlanType.Regular,
   [SecretSync.LaravelForge]: SecretSyncPlanType.Regular,
-  [SecretSync.Chef]: SecretSyncPlanType.Regular
+  [SecretSync.Chef]: SecretSyncPlanType.Enterprise
 };
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {

@@ -27,6 +27,7 @@ import { HighlightText } from "@app/components/v2/HighlightText";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { PAM_RESOURCE_TYPE_MAP, TPamSession } from "@app/hooks/api/pam";
 
+import { formatLogContent } from "../../PamSessionsByIDPage/components/PamSessionLogsSection.utils";
 import { PamSessionStatusBadge } from "./PamSessionStatusBadge";
 
 type Props = {
@@ -159,21 +160,28 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
       {filteredCommandLogs.length > 0 && (
         <Tr>
           <Td colSpan={5} className="py-3 text-xs">
-            {logsToShow.map((log) => (
-              <div key={`${id}-log-${log.timestamp}`} className="mb-4 flex flex-col last:mb-0">
-                <div className="flex items-center gap-1.5 text-bunker-400">
-                  <FontAwesomeIcon icon={faTerminal} className="size-3" />
-                  <span>{new Date(log.timestamp).toLocaleString()}</span>
-                </div>
+            {logsToShow.map((log) => {
+              const formattedInput = formatLogContent(log.input);
 
-                <div className="font-mono">
-                  <HighlightText text={log.input.trim()} highlight={search} />
+              return (
+                <div
+                  key={`${id}-log-${log.timestamp}`}
+                  className="mb-4 flex flex-col gap-1 last:mb-0"
+                >
+                  <div className="flex items-center gap-1.5 text-bunker-400">
+                    <FontAwesomeIcon icon={faTerminal} className="size-3" />
+                    <span>{new Date(log.timestamp).toLocaleString()}</span>
+                  </div>
+
+                  <div className="font-mono break-all whitespace-pre-wrap">
+                    <HighlightText text={formattedInput} highlight={search} />
+                  </div>
+                  <div className="font-mono text-bunker-300">
+                    <HighlightText text={log.output.trim()} highlight={search} />
+                  </div>
                 </div>
-                <div className="font-mono text-bunker-300">
-                  <HighlightText text={log.output.trim()} highlight={search} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {filteredCommandLogs.length > LOGS_TO_SHOW && (
               <div className="mt-2">
                 <Button

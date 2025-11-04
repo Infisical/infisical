@@ -1,4 +1,10 @@
 import {
+  TChefConnection,
+  TChefConnectionConfig,
+  TChefConnectionInput,
+  TValidateChefConnectionCredentialsSchema
+} from "@app/ee/services/app-connections/chef";
+import {
   TOCIConnection,
   TOCIConnectionConfig,
   TOCIConnectionInput,
@@ -82,12 +88,6 @@ import {
   TChecklyConnectionInput,
   TValidateChecklyConnectionCredentialsSchema
 } from "./checkly";
-import {
-  TChefConnection,
-  TChefConnectionConfig,
-  TChefConnectionInput,
-  TValidateChefConnectionCredentialsSchema
-} from "./chef";
 import {
   TCloudflareConnection,
   TCloudflareConnectionConfig,

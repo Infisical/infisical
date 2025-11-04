@@ -128,67 +128,59 @@ export const PkiTemplateForm = ({ certTemplate, handlePopUpToggle }: Props) => {
       return;
     }
 
-    try {
-      if (certTemplate) {
-        await updateCertTemplate({
-          templateName: certTemplate.name,
-          projectId: currentProject.id,
-          caName: ca.name,
-          name,
-          commonName,
-          subjectAlternativeName,
-          ttl,
-          keyUsages: Object.entries(keyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) =>
-              key === CertKeyUsage.CRL_SIGN
-                ? "cRLSign"
-                : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-            ),
-          extendedKeyUsages: Object.entries(extendedKeyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
-        });
+    if (certTemplate) {
+      await updateCertTemplate({
+        templateName: certTemplate.name,
+        projectId: currentProject.id,
+        caName: ca.name,
+        name,
+        commonName,
+        subjectAlternativeName,
+        ttl,
+        keyUsages: Object.entries(keyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) =>
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+          ),
+        extendedKeyUsages: Object.entries(extendedKeyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
+      });
 
-        createNotification({
-          text: "Successfully updated certificate template",
-          type: "success"
-        });
-      } else {
-        await createCertTemplate({
-          projectId: currentProject.id,
-          caName: ca.name,
-          name,
-          commonName,
-          subjectAlternativeName,
-          ttl,
-          keyUsages: Object.entries(keyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) =>
-              key === CertKeyUsage.CRL_SIGN
-                ? "cRLSign"
-                : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
-            ),
-          extendedKeyUsages: Object.entries(extendedKeyUsages)
-            .filter(([, value]) => value)
-            .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
-        });
-
-        createNotification({
-          text: "Successfully created certificate template",
-          type: "success"
-        });
-      }
-
-      reset();
-      handlePopUpToggle(false);
-    } catch (err) {
-      console.error(err);
       createNotification({
-        text: "Failed to save changes",
-        type: "error"
+        text: "Successfully updated certificate template",
+        type: "success"
+      });
+    } else {
+      await createCertTemplate({
+        projectId: currentProject.id,
+        caName: ca.name,
+        name,
+        commonName,
+        subjectAlternativeName,
+        ttl,
+        keyUsages: Object.entries(keyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) =>
+            key === CertKeyUsage.CRL_SIGN
+              ? "cRLSign"
+              : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+          ),
+        extendedKeyUsages: Object.entries(extendedKeyUsages)
+          .filter(([, value]) => value)
+          .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
+      });
+
+      createNotification({
+        text: "Successfully created certificate template",
+        type: "success"
       });
     }
+
+    reset();
+    handlePopUpToggle(false);
   };
 
   return (

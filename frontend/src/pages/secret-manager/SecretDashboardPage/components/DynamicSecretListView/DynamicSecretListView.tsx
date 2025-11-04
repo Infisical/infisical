@@ -54,29 +54,21 @@ export const DynamicSecretListView = ({
   const deleteDynamicSecret = useDeleteDynamicSecret();
 
   const handleDynamicSecretDelete = async () => {
-    try {
-      const { name, isForced } = popUp.deleteDynamicSecret.data as TDynamicSecret & {
-        isForced?: boolean;
-      };
-      await deleteDynamicSecret.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        name,
-        isForced
-      });
-      handlePopUpClose("deleteDynamicSecret");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted dynamic secret"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete dynamic secret"
-      });
-    }
+    const { name, isForced } = popUp.deleteDynamicSecret.data as TDynamicSecret & {
+      isForced?: boolean;
+    };
+    await deleteDynamicSecret.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      name,
+      isForced
+    });
+    handlePopUpClose("deleteDynamicSecret");
+    createNotification({
+      type: "success",
+      text: "Successfully deleted dynamic secret"
+    });
   };
 
   return (

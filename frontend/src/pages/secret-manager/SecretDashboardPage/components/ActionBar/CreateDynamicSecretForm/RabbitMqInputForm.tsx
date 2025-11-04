@@ -6,7 +6,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FilterableSelect,
@@ -121,25 +120,18 @@ export const RabbitMqInputForm = ({
     if (createDynamicSecret.isPending) return;
 
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.RabbitMq, inputs: provider },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: { type: DynamicSecretProviders.RabbitMq, inputs: provider },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
+    onCompleted();
   };
 
   const selectedTags = watch("provider.tags");

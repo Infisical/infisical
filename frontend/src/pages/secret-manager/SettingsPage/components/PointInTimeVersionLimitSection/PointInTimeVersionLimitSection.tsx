@@ -34,22 +34,15 @@ export const PointInTimeVersionLimitSection = () => {
   if (!currentProject) return null;
 
   const handleVersionLimitSubmit = async ({ pitVersionLimit }: TForm) => {
-    try {
-      await updateProject({
-        pitVersionLimit,
-        projectId
-      });
+    await updateProject({
+      pitVersionLimit,
+      projectId
+    });
 
-      createNotification({
-        text: "Successfully updated version limit",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed updating project's version limit",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated version limit",
+      type: "success"
+    });
   };
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);

@@ -23,23 +23,16 @@ export const ExternalCaSection = () => {
   ] as const);
 
   const onRemoveCaSubmit = async (caName: string, type: CaType) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await deleteCa({ caName, type, projectId: currentProject.id });
+    await deleteCa({ caName, type, projectId: currentProject.id });
 
-      createNotification({
-        text: "Successfully deleted CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted CA",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCa");
-    } catch {
-      createNotification({
-        text: "Failed to delete CA",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCa");
   };
 
   const onUpdateCaStatus = async ({
@@ -51,24 +44,16 @@ export const ExternalCaSection = () => {
     type: CaType;
     status: CaStatus;
   }) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await updateCa({ caName: name, type, status, projectId: currentProject.id });
+    await updateCa({ caName: name, type, status, projectId: currentProject.id });
 
-      createNotification({
-        text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
+      type: "success"
+    });
 
-      handlePopUpClose("caStatus");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${status === CaStatus.ACTIVE ? "enable" : "disable"} CA`,
-        type: "error"
-      });
-    }
+    handlePopUpClose("caStatus");
   };
 
   return (

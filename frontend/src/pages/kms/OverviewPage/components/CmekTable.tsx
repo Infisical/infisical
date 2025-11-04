@@ -152,28 +152,16 @@ export const CmekTable = () => {
   const updateCmek = useUpdateCmek();
 
   const handleDisableCmek = async ({ id: keyId, isDisabled }: TCmek) => {
-    try {
-      await updateCmek.mutateAsync({
-        keyId,
-        projectId,
-        isDisabled: !isDisabled
-      });
+    await updateCmek.mutateAsync({
+      keyId,
+      projectId,
+      isDisabled: !isDisabled
+    });
 
-      createNotification({
-        text: `Key successfully ${isDisabled ? "enabled" : "disabled"}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ?? `Failed to ${isDisabled ? "enable" : "disable"} key`;
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Key successfully ${isDisabled ? "enabled" : "disabled"}`,
+      type: "success"
+    });
   };
 
   const cannotEditKey = permission.cannot(

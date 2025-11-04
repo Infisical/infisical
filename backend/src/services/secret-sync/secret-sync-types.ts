@@ -2,6 +2,12 @@ import { Job } from "bullmq";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  TChefSync,
+  TChefSyncInput,
+  TChefSyncListItem,
+  TChefSyncWithCredentials
+} from "@app/ee/services/secret-sync/chef";
+import {
   TOCIVaultSync,
   TOCIVaultSyncInput,
   TOCIVaultSyncListItem,
@@ -21,7 +27,6 @@ import {
   TCamundaSyncListItem,
   TCamundaSyncWithCredentials
 } from "@app/services/secret-sync/camunda";
-import { TChefSync, TChefSyncInput, TChefSyncListItem, TChefSyncWithCredentials } from "@app/services/secret-sync/chef";
 import {
   TDatabricksSync,
   TDatabricksSyncInput,

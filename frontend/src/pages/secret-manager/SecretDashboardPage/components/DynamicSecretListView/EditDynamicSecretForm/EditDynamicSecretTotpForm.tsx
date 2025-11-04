@@ -87,28 +87,21 @@ export const EditDynamicSecretTotpForm = ({
   const handleUpdateDynamicSecret = async ({ inputs, newName }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to update dynamic secret"
-      });
-    }
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        inputs,
+        newName: newName === dynamicSecret.name ? undefined : newName
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

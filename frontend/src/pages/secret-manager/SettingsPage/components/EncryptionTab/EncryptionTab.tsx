@@ -124,17 +124,13 @@ const LoadBackupModal = ({
       return;
     }
 
-    try {
-      await loadKmsBackup(backupContent);
-      createNotification({
-        text: "Successfully loaded KMS backup",
-        type: "success"
-      });
+    await loadKmsBackup(backupContent);
+    createNotification({
+      text: "Successfully loaded KMS backup",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-    }
+    onOpenChange(false);
   };
 
   const parseFile = (file?: File) => {
@@ -245,20 +241,16 @@ export const EncryptionTab = () => {
   });
 
   const onUpdateProjectKms = async (data: TForm) => {
-    try {
-      await updateProjectKms(
-        data.kmsKeyId === INTERNAL_KMS_KEY_ID
-          ? { type: KmsType.Internal }
-          : { type: KmsType.External, kmsId: data.kmsKeyId }
-      );
+    await updateProjectKms(
+      data.kmsKeyId === INTERNAL_KMS_KEY_ID
+        ? { type: KmsType.Internal }
+        : { type: KmsType.External, kmsId: data.kmsKeyId }
+    );
 
-      createNotification({
-        text: "Successfully updated project KMS",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-    }
+    createNotification({
+      text: "Successfully updated project KMS",
+      type: "success"
+    });
   };
 
   return (

@@ -131,52 +131,44 @@ export const ShareSecretForm = ({
     emails,
     shouldLimitView
   }: FormData) => {
-    try {
-      const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
+    const expiresAt = new Date(new Date().getTime() + Number(expiresIn));
 
-      const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
+    const processedEmails = emails ? emails.split(",").map((e) => e.trim()) : undefined;
 
-      const { id } = await createSharedSecret.mutateAsync({
-        name,
-        password,
-        secretValue: secret,
-        expiresAt,
-        expiresAfterViews: shouldLimitView ? Number(viewLimit) : undefined,
-        accessType,
-        emails: processedEmails
+    const { id } = await createSharedSecret.mutateAsync({
+      name,
+      password,
+      secretValue: secret,
+      expiresAt,
+      expiresAfterViews: shouldLimitView ? Number(viewLimit) : undefined,
+      accessType,
+      emails: processedEmails
+    });
+
+    if (processedEmails && processedEmails.length > 0) {
+      setSecretLink("");
+      createNotification({
+        text: `Shared secret link emailed to ${processedEmails.length} user(s).`,
+        type: "success"
       });
-
-      if (processedEmails && processedEmails.length > 0) {
-        setSecretLink("");
-        createNotification({
-          text: `Shared secret link emailed to ${processedEmails.length} user(s).`,
-          type: "success"
-        });
-      } else {
-        const link = new URL(`${window.location.origin}/shared/secret/${id}`);
-        if (subOrganization) {
-          link.searchParams.set("subOrganization", subOrganization);
-        }
-
-        setSecretLink(link.toString());
-
-        navigator.clipboard.writeText(link.toString());
-        setCopyTextSecret("secret");
-
-        createNotification({
-          text: "Shared secret link copied to clipboard.",
-          type: "success"
-        });
+    } else {
+      const link = new URL(`${window.location.origin}/shared/secret/${id}`);
+      if (subOrganization) {
+        link.searchParams.set("subOrganization", subOrganization);
       }
 
-      reset();
-    } catch (error) {
-      console.error(error);
+      setSecretLink(link.toString());
+
+      navigator.clipboard.writeText(link.toString());
+      setCopyTextSecret("secret");
+
       createNotification({
-        text: "Failed to create a shared secret.",
-        type: "error"
+        text: "Shared secret link copied to clipboard.",
+        type: "success"
       });
     }
+
+    reset();
   };
 
   if (secretLink === null)

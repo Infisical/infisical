@@ -64,39 +64,32 @@ export const IPAllowlistModal = ({ popUp, handlePopUpClose, handlePopUpToggle }:
   }, [popUp?.trustedIp?.data]);
 
   const onIPAllowlistModalSubmit = async ({ ipAddress, comment }: FormData) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      if (popUp?.trustedIp?.data) {
-        await updateTrustedIp.mutateAsync({
-          projectId: currentProject.id,
-          trustedIpId: (popUp?.trustedIp?.data as { trustedIpId: string })?.trustedIpId,
-          ipAddress,
-          comment,
-          isActive: true
-        });
-      } else {
-        await addTrustedIp.mutateAsync({
-          projectId: currentProject.id,
-          ipAddress,
-          comment,
-          isActive: true
-        });
-      }
-
-      createNotification({
-        text: `Successfully ${popUp?.trustedIp?.data ? "updated" : "added"} trusted IP`,
-        type: "success"
+    if (popUp?.trustedIp?.data) {
+      await updateTrustedIp.mutateAsync({
+        projectId: currentProject.id,
+        trustedIpId: (popUp?.trustedIp?.data as { trustedIpId: string })?.trustedIpId,
+        ipAddress,
+        comment,
+        isActive: true
       });
-
-      reset();
-      handlePopUpClose("trustedIp");
-    } catch {
-      createNotification({
-        text: `Failed to ${popUp?.trustedIp?.data ? "update" : "add"} trusted IP`,
-        type: "error"
+    } else {
+      await addTrustedIp.mutateAsync({
+        projectId: currentProject.id,
+        ipAddress,
+        comment,
+        isActive: true
       });
     }
+
+    createNotification({
+      text: `Successfully ${popUp?.trustedIp?.data ? "updated" : "added"} trusted IP`,
+      type: "success"
+    });
+
+    reset();
+    handlePopUpClose("trustedIp");
   };
 
   return (

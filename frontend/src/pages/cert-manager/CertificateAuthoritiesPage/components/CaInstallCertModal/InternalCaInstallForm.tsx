@@ -101,37 +101,30 @@ export const InternalCaInstallForm = ({ caId, handlePopUpToggle }: Props) => {
   }, [parentCa]);
 
   const onFormSubmit = async ({ notAfter, maxPathLength }: FormData) => {
-    try {
-      if (!csr || !caId || !currentProject?.slug) return;
+    if (!csr || !caId || !currentProject?.slug) return;
 
-      const { certificate, certificateChain } = await signIntermediate({
-        caId: parentCaId,
-        csr,
-        maxPathLength: Number(maxPathLength),
-        notAfter,
-        notBefore: new Date().toISOString()
-      });
+    const { certificate, certificateChain } = await signIntermediate({
+      caId: parentCaId,
+      csr,
+      maxPathLength: Number(maxPathLength),
+      notAfter,
+      notBefore: new Date().toISOString()
+    });
 
-      await importCaCertificate({
-        caId,
-        projectSlug: currentProject?.slug,
-        certificate,
-        certificateChain
-      });
+    await importCaCertificate({
+      caId,
+      projectSlug: currentProject?.slug,
+      certificate,
+      certificateChain
+    });
 
-      reset();
+    reset();
 
-      createNotification({
-        text: "Successfully installed certificate for CA",
-        type: "success"
-      });
-      handlePopUpToggle("installCaCert", false);
-    } catch {
-      createNotification({
-        text: "Failed to install certificate for CA",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully installed certificate for CA",
+      type: "success"
+    });
+    handlePopUpToggle("installCaCert", false);
   };
 
   function generatePathLengthOpts(parentCaMaxPathLength: number): number[] {

@@ -22,27 +22,19 @@ export const PkiAlertsSection = () => {
   ] as const);
 
   const onRemoveAlertSubmit = async (alertId: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deletePkiAlert({
-        alertId,
-        projectId
-      });
+    await deletePkiAlert({
+      alertId,
+      projectId
+    });
 
-      createNotification({
-        text: "Successfully deleted alert",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted alert",
+      type: "success"
+    });
 
-      handlePopUpClose("deletePkiAlert");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete alert",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deletePkiAlert");
   };
 
   return (

@@ -22,27 +22,19 @@ export const PkiCollectionSection = () => {
   ] as const);
 
   const onRemovePkiCollectionSubmit = async (collectionId: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deletePkiCollection({
-        collectionId,
-        projectId
-      });
+    await deletePkiCollection({
+      collectionId,
+      projectId
+    });
 
-      createNotification({
-        text: "Successfully deleted PKI collection",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted PKI collection",
+      type: "success"
+    });
 
-      handlePopUpClose("deletePkiCollection");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete PKI collection",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deletePkiCollection");
   };
 
   return (

@@ -76,63 +76,54 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [role]);
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      if (role) {
-        // update
-        await updateProjectRole({
-          id: role.id,
-          projectId,
-          name,
-          description,
-          slug
-        });
+    if (role) {
+      // update
+      await updateProjectRole({
+        id: role.id,
+        projectId,
+        name,
+        description,
+        slug
+      });
 
-        handlePopUpToggle("role", false);
-        if (slug) {
-          navigate({
-            to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
-            params: {
-              roleSlug: slug,
-              projectId
-            }
-          });
-        }
-      } else {
-        // create
-        const newRole = await createProjectRole({
-          projectId,
-          name,
-          description,
-          slug,
-          permissions: []
-        });
-
+      handlePopUpToggle("role", false);
+      if (slug) {
         navigate({
           to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
           params: {
-            roleSlug: newRole.slug,
+            roleSlug: slug,
             projectId
           }
         });
-        handlePopUpToggle("role", false);
       }
-
-      createNotification({
-        text: `Successfully ${popUp?.role?.data ? "updated" : "created"} role`,
-        type: "success"
+    } else {
+      // create
+      const newRole = await createProjectRole({
+        projectId,
+        name,
+        description,
+        slug,
+        permissions: []
       });
 
-      reset();
-    } catch {
-      const text = `Failed to ${popUp?.role?.data ? "update" : "create"} role`;
-
-      createNotification({
-        text,
-        type: "error"
+      navigate({
+        to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
+        params: {
+          roleSlug: newRole.slug,
+          projectId
+        }
       });
+      handlePopUpToggle("role", false);
     }
+
+    createNotification({
+      text: `Successfully ${popUp?.role?.data ? "updated" : "created"} role`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

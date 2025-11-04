@@ -55,49 +55,45 @@ export const DatabricksConfigurePage = () => {
   const [secretPath, setSecretPath] = useState("/");
 
   const handleButtonClick = async () => {
-    try {
-      if (!integrationAuth?.id) return;
+    if (!integrationAuth?.id) return;
 
-      if (!targetScope) {
-        createNotification({
-          type: "error",
-          text: "Please select a scope"
-        });
-        return;
-      }
-
-      const selectedScope = integrationAuthScopes?.find(
-        (integrationAuthScope) => integrationAuthScope.name === targetScope
-      );
-
-      if (!selectedScope) {
-        createNotification({
-          type: "error",
-          text: "Invalid scope selected"
-        });
-        return;
-      }
-
-      await mutateAsync({
-        integrationAuthId: integrationAuth?.id,
-        isActive: true,
-        app: selectedScope.name, // scope name
-        sourceEnvironment: selectedSourceEnvironment,
-        secretPath
+    if (!targetScope) {
+      createNotification({
+        type: "error",
+        text: "Please select a scope"
       });
-
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: IntegrationsListPageTabs.NativeIntegrations
-        }
-      });
-    } catch (err) {
-      console.error(err);
+      return;
     }
+
+    const selectedScope = integrationAuthScopes?.find(
+      (integrationAuthScope) => integrationAuthScope.name === targetScope
+    );
+
+    if (!selectedScope) {
+      createNotification({
+        type: "error",
+        text: "Invalid scope selected"
+      });
+      return;
+    }
+
+    await mutateAsync({
+      integrationAuthId: integrationAuth?.id,
+      isActive: true,
+      app: selectedScope.name, // scope name
+      sourceEnvironment: selectedSourceEnvironment,
+      secretPath
+    });
+
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.NativeIntegrations
+      }
+    });
   };
 
   return integrationAuth && selectedSourceEnvironment && integrationAuthScopes ? (

@@ -113,52 +113,44 @@ export const PkiAlertModal = ({ popUp, handlePopUpToggle }: Props) => {
     alertUnit,
     emails
   }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      const emailArray = emails
-        .split(",")
-        .map((email) => email.trim())
-        .filter((email) => email.length > 0);
+    const emailArray = emails
+      .split(",")
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0);
 
-      const alertBeforeDays = convertToDays(alertUnit, Number(alertBefore));
+    const alertBeforeDays = convertToDays(alertUnit, Number(alertBefore));
 
-      if (alert) {
-        // update
-        await updatePkiAlert({
-          alertId: alert.id,
-          pkiCollectionId,
-          name,
-          projectId,
-          alertBeforeDays,
-          emails: emailArray
-        });
-      } else {
-        // create
-        await createPkiAlert({
-          name,
-          projectId,
-          pkiCollectionId,
-          alertBeforeDays,
-          emails: emailArray
-        });
-      }
-
-      handlePopUpToggle("pkiAlert", false);
-
-      reset();
-
-      createNotification({
-        text: `Successfully ${alert ? "updated" : "created"} alert`,
-        type: "success"
+    if (alert) {
+      // update
+      await updatePkiAlert({
+        alertId: alert.id,
+        pkiCollectionId,
+        name,
+        projectId,
+        alertBeforeDays,
+        emails: emailArray
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${alert ? "updated" : "created"} alert`,
-        type: "error"
+    } else {
+      // create
+      await createPkiAlert({
+        name,
+        projectId,
+        pkiCollectionId,
+        alertBeforeDays,
+        emails: emailArray
       });
     }
+
+    handlePopUpToggle("pkiAlert", false);
+
+    reset();
+
+    createNotification({
+      text: `Successfully ${alert ? "updated" : "created"} alert`,
+      type: "success"
+    });
   };
 
   return (

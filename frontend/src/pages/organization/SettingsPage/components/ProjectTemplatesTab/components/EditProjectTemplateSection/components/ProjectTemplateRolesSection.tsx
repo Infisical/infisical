@@ -42,26 +42,18 @@ export const ProjectTemplateRolesSection = ({ projectTemplate, isInfisicalTempla
   const updateProjectTemplate = useUpdateProjectTemplate();
 
   const handleRemoveRole = async (slug: string) => {
-    try {
-      await updateProjectTemplate.mutateAsync({
-        templateId: projectTemplate.id,
-        roles: projectTemplate.roles.filter(
-          (role) => role.slug !== slug && isCustomProjectRole(role.slug) // filter out default roles as well
-        )
-      });
+    await updateProjectTemplate.mutateAsync({
+      templateId: projectTemplate.id,
+      roles: projectTemplate.roles.filter(
+        (role) => role.slug !== slug && isCustomProjectRole(role.slug) // filter out default roles as well
+      )
+    });
 
-      createNotification({
-        text: "Successfully removed role from template",
-        type: "success"
-      });
-      handlePopUpClose("removeRole");
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        text: "Error removing role from template",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully removed role from template",
+      type: "success"
+    });
+    handlePopUpClose("removeRole");
   };
 
   const editRole = popUp?.editRole?.data as TProjectRole;

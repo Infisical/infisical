@@ -184,44 +184,30 @@ export const SecretScanningDataSourcesTable = ({ dataSources }: Props) => {
 
     const isAutoScanEnabled = !dataSource.isAutoScanEnabled;
 
-    try {
-      await updateDataSource.mutateAsync({
-        dataSourceId: dataSource.id,
-        type: dataSource.type,
-        isAutoScanEnabled,
-        projectId: dataSource.projectId
-      });
+    await updateDataSource.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      isAutoScanEnabled,
+      projectId: dataSource.projectId
+    });
 
-      createNotification({
-        text: `Successfully ${isAutoScanEnabled ? "enabled" : "disabled"} auto-scan for ${destinationName} Data Source`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to ${isAutoScanEnabled ? "enable" : "disable"} auto-scan for ${destinationName} Data Source`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${isAutoScanEnabled ? "enabled" : "disabled"} auto-scan for ${destinationName} Data Source`,
+      type: "success"
+    });
   };
 
   const handleTriggerScan = async (dataSource: TSecretScanningDataSource) => {
-    try {
-      await triggerDataSourceScan.mutateAsync({
-        dataSourceId: dataSource.id,
-        type: dataSource.type,
-        projectId: dataSource.projectId
-      });
+    await triggerDataSourceScan.mutateAsync({
+      dataSourceId: dataSource.id,
+      type: dataSource.type,
+      projectId: dataSource.projectId
+    });
 
-      createNotification({
-        text: "Successfully triggered scan",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to trigger scan",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully triggered scan",
+      type: "success"
+    });
   };
 
   return (

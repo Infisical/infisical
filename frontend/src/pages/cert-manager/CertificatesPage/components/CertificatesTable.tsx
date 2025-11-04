@@ -118,32 +118,24 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   }, [caData]);
 
   const handleDisableAutoRenewal = async (certificateId: string, commonName: string) => {
-    try {
-      if (!currentProject?.slug) {
-        createNotification({
-          text: "Unable to disable auto-renewal: Project not found. Please refresh the page and try again.",
-          type: "error"
-        });
-        return;
-      }
-
-      await updateRenewalConfig({
-        certificateId,
-        projectSlug: currentProject.slug,
-        enableAutoRenewal: false
-      });
-
+    if (!currentProject?.slug) {
       createNotification({
-        text: `Auto-renewal disabled for ${commonName}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to disable auto-renewal. Please try again or contact support if the issue persists.",
+        text: "Unable to disable auto-renewal: Project not found. Please refresh the page and try again.",
         type: "error"
       });
+      return;
     }
+
+    await updateRenewalConfig({
+      certificateId,
+      projectSlug: currentProject.slug,
+      enableAutoRenewal: false
+    });
+
+    createNotification({
+      text: `Auto-renewal disabled for ${commonName}`,
+      type: "success"
+    });
   };
 
   return (

@@ -237,48 +237,40 @@ const Form = ({
   }: TFormSchema) => {
     if (!projectId) return;
 
-    try {
-      const bypassers = [...userBypassers, ...groupBypassers];
+    const bypassers = [...userBypassers, ...groupBypassers];
 
-      if (data.policyType === PolicyType.ChangePolicy) {
-        await createSecretApprovalPolicy({
-          ...data,
-          approvers: [...userApprovers, ...groupApprovers],
-          bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environments: environments.map((env) => env.slug),
-          projectId: currentProject?.id || ""
-        });
-      } else {
-        await createAccessApprovalPolicy({
-          ...data,
-          approvers: sequenceApprovers?.flatMap((approvers, index) =>
-            approvers.user
-              .map(
-                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-              )
-              .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
-          ),
-          approvalsRequired: sequenceApprovers?.map((el, index) => ({
-            stepNumber: index + 1,
-            numberOfApprovals: el.approvals
-          })),
-          bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environments: environments.map((env) => env.slug),
-          projectSlug
-        });
-      }
-      createNotification({
-        type: "success",
-        text: "Successfully created policy"
+    if (data.policyType === PolicyType.ChangePolicy) {
+      await createSecretApprovalPolicy({
+        ...data,
+        approvers: [...userApprovers, ...groupApprovers],
+        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        environments: environments.map((env) => env.slug),
+        projectId: currentProject?.id || ""
       });
-      onToggle(false);
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to create policy"
+    } else {
+      await createAccessApprovalPolicy({
+        ...data,
+        approvers: sequenceApprovers?.flatMap((approvers, index) =>
+          approvers.user
+            .map(
+              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+            )
+            .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+        ),
+        approvalsRequired: sequenceApprovers?.map((el, index) => ({
+          stepNumber: index + 1,
+          numberOfApprovals: el.approvals
+        })),
+        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        environments: environments.map((env) => env.slug),
+        projectSlug
       });
     }
+    createNotification({
+      type: "success",
+      text: "Successfully created policy"
+    });
+    onToggle(false);
   };
 
   const handleUpdatePolicy = async ({
@@ -293,50 +285,42 @@ const Form = ({
     if (!projectId || !projectSlug) return;
     if (!editValues?.id) return;
 
-    try {
-      const bypassers = [...userBypassers, ...groupBypassers];
+    const bypassers = [...userBypassers, ...groupBypassers];
 
-      if (data.policyType === PolicyType.ChangePolicy) {
-        await updateSecretApprovalPolicy({
-          id: editValues?.id,
-          ...data,
-          approvers: [...userApprovers, ...groupApprovers],
-          bypassers: bypassers.length > 0 ? bypassers : undefined,
-          projectId: currentProject?.id || "",
-          environments: environments.map((env) => env.slug)
-        });
-      } else {
-        await updateAccessApprovalPolicy({
-          id: editValues?.id,
-          ...data,
-          approvers: sequenceApprovers?.flatMap((approvers, index) =>
-            approvers.user
-              .map(
-                (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
-              )
-              .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
-          ),
-          approvalsRequired: sequenceApprovers?.map((el, index) => ({
-            stepNumber: index + 1,
-            numberOfApprovals: el.approvals
-          })),
-          bypassers: bypassers.length > 0 ? bypassers : undefined,
-          environments: environments.map((env) => env.slug),
-          projectSlug
-        });
-      }
-      createNotification({
-        type: "success",
-        text: "Successfully updated policy"
+    if (data.policyType === PolicyType.ChangePolicy) {
+      await updateSecretApprovalPolicy({
+        id: editValues?.id,
+        ...data,
+        approvers: [...userApprovers, ...groupApprovers],
+        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        projectId: currentProject?.id || "",
+        environments: environments.map((env) => env.slug)
       });
-      onToggle(false);
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "failed  to update policy"
+    } else {
+      await updateAccessApprovalPolicy({
+        id: editValues?.id,
+        ...data,
+        approvers: sequenceApprovers?.flatMap((approvers, index) =>
+          approvers.user
+            .map(
+              (el) => ({ ...el, sequence: index + 1 }) as Omit<Approver, "isOrgMembershipActive">
+            )
+            .concat(approvers.group.map((el) => ({ ...el, sequence: index + 1 })))
+        ),
+        approvalsRequired: sequenceApprovers?.map((el, index) => ({
+          stepNumber: index + 1,
+          numberOfApprovals: el.approvals
+        })),
+        bypassers: bypassers.length > 0 ? bypassers : undefined,
+        environments: environments.map((env) => env.slug),
+        projectSlug
       });
     }
+    createNotification({
+      type: "success",
+      text: "Successfully updated policy"
+    });
+    onToggle(false);
   };
 
   const handleFormSubmit = async (data: TFormSchema) => {

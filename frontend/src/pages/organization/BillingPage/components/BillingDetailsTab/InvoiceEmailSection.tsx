@@ -35,26 +35,18 @@ export const InvoiceEmailSection = () => {
   }, [data]);
 
   const onFormSubmit = async ({ email }: { email: string }) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (email === "") return;
+    if (!currentOrg?.id) return;
+    if (email === "") return;
 
-      await mutateAsync({
-        email,
-        organizationId: currentOrg.id
-      });
+    await mutateAsync({
+      email,
+      organizationId: currentOrg.id
+    });
 
-      createNotification({
-        text: "Successfully updated invoice email recipient",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update invoice email recipient",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated invoice email recipient",
+      type: "success"
+    });
   };
 
   return (

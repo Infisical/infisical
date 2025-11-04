@@ -97,21 +97,13 @@ export const ChangePasswordSection = () => {
   };
 
   const onSetupPassword = async () => {
-    try {
-      await sendSetupPasswordEmail.mutateAsync();
+    await sendSetupPasswordEmail.mutateAsync();
 
-      createNotification({
-        title: "Password setup verification email sent",
-        text: "Check your email to confirm password setup",
-        type: "info"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to send password setup email",
-        type: "error"
-      });
-    }
+    createNotification({
+      title: "Password setup verification email sent",
+      text: "Check your email to confirm password setup",
+      type: "info"
+    });
   };
 
   return (

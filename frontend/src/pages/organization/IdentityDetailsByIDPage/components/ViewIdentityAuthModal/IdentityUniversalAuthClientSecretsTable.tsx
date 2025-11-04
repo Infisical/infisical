@@ -43,25 +43,17 @@ export const IdentityUniversalAuthClientSecretsTable = ({ clientSecrets, identit
   const { mutateAsync: revokeClientSecret } = useRevokeIdentityUniversalAuthClientSecret();
 
   const onDeleteClientSecretSubmit = async (clientSecretId: string) => {
-    try {
-      await revokeClientSecret({
-        identityId,
-        clientSecretId
-      });
+    await revokeClientSecret({
+      identityId,
+      clientSecretId
+    });
 
-      handlePopUpToggle("revokeClientSecret", false);
+    handlePopUpToggle("revokeClientSecret", false);
 
-      createNotification({
-        text: "Successfully deleted client secret",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete client secret",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted client secret",
+      type: "success"
+    });
   };
 
   return (

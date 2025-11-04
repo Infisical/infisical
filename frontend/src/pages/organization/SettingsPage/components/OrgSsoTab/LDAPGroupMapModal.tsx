@@ -79,28 +79,20 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
   });
 
   const onFormSubmit = async ({ groupSlug, ldapGroupCN }: TFormData) => {
-    try {
-      if (!ldapConfig) return;
+    if (!ldapConfig) return;
 
-      await createLDAPGroupMapping({
-        ldapConfigId: ldapConfig.id,
-        groupSlug,
-        ldapGroupCN
-      });
+    await createLDAPGroupMapping({
+      ldapConfigId: ldapConfig.id,
+      groupSlug,
+      ldapGroupCN
+    });
 
-      reset();
+    reset();
 
-      createNotification({
-        text: `Successfully added LDAP group mapping for ${ldapGroupCN}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to add LDAP group mapping for ${ldapGroupCN}`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully added LDAP group mapping for ${ldapGroupCN}`,
+      type: "success"
+    });
   };
 
   const onDeleteGroupMapSubmit = async ({
@@ -112,25 +104,17 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
     ldapGroupMapId: string;
     ldapGroupCN: string;
   }) => {
-    try {
-      await deleteLDAPGroupMapping({
-        ldapConfigId,
-        ldapGroupMapId
-      });
+    await deleteLDAPGroupMapping({
+      ldapConfigId,
+      ldapGroupMapId
+    });
 
-      handlePopUpToggle("deleteLdapGroupMap", false);
+    handlePopUpToggle("deleteLdapGroupMap", false);
 
-      createNotification({
-        text: `Successfully deleted LDAP group mapping ${ldapGroupCN}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to delete LDAP group mapping ${ldapGroupCN}`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully deleted LDAP group mapping ${ldapGroupCN}`,
+      type: "success"
+    });
   };
 
   useEffect(() => {

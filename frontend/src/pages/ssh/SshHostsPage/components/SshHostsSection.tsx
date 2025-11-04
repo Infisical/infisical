@@ -20,22 +20,14 @@ export const SshHostsSection = () => {
   ] as const);
 
   const onRemoveSshHostSubmit = async (sshHostId: string) => {
-    try {
-      const host = await deleteSshHost({ sshHostId });
+    const host = await deleteSshHost({ sshHostId });
 
-      createNotification({
-        text: `Successfully deleted SSH host: ${host.hostname}`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted SSH host: ${host.hostname}`,
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshHost");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH host",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshHost");
   };
 
   return (

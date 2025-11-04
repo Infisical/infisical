@@ -98,26 +98,18 @@ export const TaxIDModal = ({ popUp, handlePopUpClose, handlePopUpToggle }: Props
   });
 
   const onTaxIDModalSubmit = async ({ type, value }: AddTaxIDFormData) => {
-    try {
-      if (!currentOrg?.id) return;
-      await addOrgTaxId.mutateAsync({
-        organizationId: currentOrg.id,
-        type,
-        value
-      });
+    if (!currentOrg?.id) return;
+    await addOrgTaxId.mutateAsync({
+      organizationId: currentOrg.id,
+      type,
+      value
+    });
 
-      createNotification({
-        text: "Successfully added Tax ID",
-        type: "success"
-      });
-      handlePopUpClose("addTaxID");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to add Tax ID",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully added Tax ID",
+      type: "success"
+    });
+    handlePopUpClose("addTaxID");
   };
 
   return (

@@ -76,30 +76,23 @@ export const EditDynamicSecretAzureEntraIdForm = ({
   const handleUpdateDynamicSecret = async ({ maxTTL, defaultTTL, newName, inputs }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
-          newName: newName === dynamicSecret.name ? undefined : newName,
-          inputs
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update dynamic secret"
-      });
-    }
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        maxTTL: maxTTL || undefined,
+        defaultTTL,
+        newName: newName === dynamicSecret.name ? undefined : newName,
+        inputs
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

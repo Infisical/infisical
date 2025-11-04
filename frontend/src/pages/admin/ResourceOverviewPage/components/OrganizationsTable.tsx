@@ -179,12 +179,6 @@ const ViewMembersModalContent = ({
         text: "Successfully resent org invitation",
         type: "success"
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to resend org invitation",
-        type: "error"
-      });
     } finally {
       setResendInviteId(null);
     }
@@ -479,26 +473,19 @@ const OrganizationsPanelTable = ({
   const { mutateAsync: accessOrganization } = useServerAdminAccessOrg();
 
   const handleAccessOrg = async (orgId: string) => {
-    try {
-      await accessOrganization(orgId);
+    await accessOrganization(orgId);
 
-      navigate({
-        to: "/login/select-organization",
-        search: {
-          org_id: orgId
-        }
-      });
+    navigate({
+      to: "/login/select-organization",
+      search: {
+        org_id: orgId
+      }
+    });
 
-      createNotification({
-        text: "Successfully joined organization",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to join organization",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully joined organization",
+      type: "success"
+    });
   };
 
   return (

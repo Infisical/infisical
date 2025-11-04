@@ -103,56 +103,44 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
   const selectedMethod = watch("method");
 
   const onFormSubmit = async (data: FormData) => {
-    try {
-      if (isEdit && template) {
-        await updateTemplate({
-          templateId: template.id,
-          organizationId: orgId,
-          name: data.name,
-          templateFields: {
-            url: data.url,
-            bindDN: data.bindDN,
-            bindPass: data.bindPass,
-            searchBase: data.searchBase,
-            ldapCaCertificate: data.ldapCaCertificate
-          }
-        });
-        createNotification({
-          text: "Successfully updated auth template",
-          type: "success"
-        });
-      } else {
-        await createTemplate({
-          organizationId: orgId,
-          name: data.name,
-          authMethod: data.method,
-          templateFields: {
-            url: data.url,
-            bindDN: data.bindDN,
-            bindPass: data.bindPass,
-            searchBase: data.searchBase,
-            ldapCaCertificate: data.ldapCaCertificate
-          }
-        });
-        createNotification({
-          text: "Successfully created auth template",
-          type: "success"
-        });
-      }
-
-      handlePopUpToggle(isEdit ? "editTemplate" : "createTemplate", false);
-      reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ?? `Failed to ${isEdit ? "update" : "create"} auth template`;
-
+    if (isEdit && template) {
+      await updateTemplate({
+        templateId: template.id,
+        organizationId: orgId,
+        name: data.name,
+        templateFields: {
+          url: data.url,
+          bindDN: data.bindDN,
+          bindPass: data.bindPass,
+          searchBase: data.searchBase,
+          ldapCaCertificate: data.ldapCaCertificate
+        }
+      });
       createNotification({
-        text,
-        type: "error"
+        text: "Successfully updated auth template",
+        type: "success"
+      });
+    } else {
+      await createTemplate({
+        organizationId: orgId,
+        name: data.name,
+        authMethod: data.method,
+        templateFields: {
+          url: data.url,
+          bindDN: data.bindDN,
+          bindPass: data.bindPass,
+          searchBase: data.searchBase,
+          ldapCaCertificate: data.ldapCaCertificate
+        }
+      });
+      createNotification({
+        text: "Successfully created auth template",
+        type: "success"
       });
     }
+
+    handlePopUpToggle(isEdit ? "editTemplate" : "createTemplate", false);
+    reset();
   };
 
   const handleClose = () => {

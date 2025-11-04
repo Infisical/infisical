@@ -31,23 +31,15 @@ export const LockoutFields = ({
 
   const [lockedOutState, setLockedOutState] = useState(lockedOut);
 
-  async function clearLockouts() {
-    try {
-      const deleted = await mutateAsync({ identityId });
-      createNotification({
-        text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
-        type: "success"
-      });
-      setLockedOutState(false);
-      onResetAllLockouts();
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to clear lockouts. Please try again.",
-        type: "error"
-      });
-    }
-  }
+  const clearLockouts = async () => {
+    const deleted = await mutateAsync({ identityId });
+    createNotification({
+      text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
+      type: "success"
+    });
+    setLockedOutState(false);
+    onResetAllLockouts();
+  };
 
   return (
     <>

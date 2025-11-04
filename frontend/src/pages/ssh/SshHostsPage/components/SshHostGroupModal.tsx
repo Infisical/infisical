@@ -121,67 +121,59 @@ export const SshHostGroupModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [sshHostGroup]);
 
   const onFormSubmit = async ({ name, loginMappings }: FormData) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      // check if there is already a different host group with the same name
-      const existingNames =
-        sshHostGroups?.filter((h) => h.id !== sshHostGroup?.id).map((h) => h.name) || [];
+    // check if there is already a different host group with the same name
+    const existingNames =
+      sshHostGroups?.filter((h) => h.id !== sshHostGroup?.id).map((h) => h.name) || [];
 
-      if (existingNames.includes(name.trim())) {
-        createNotification({
-          text: "A host group with this name already exists.",
-          type: "error"
-        });
-        return;
-      }
-
-      const transformedLoginMappings = loginMappings.map(({ loginUser, allowedPrincipals }) => {
-        const usernames = allowedPrincipals
-          .filter((p) => p.type === "user" && p.value)
-          .map((p) => p.value);
-
-        const groupNames = allowedPrincipals
-          .filter((p) => p.type === "group" && p.value)
-          .map((p) => p.value);
-
-        return {
-          loginUser,
-          allowedPrincipals: {
-            usernames,
-            groups: groupNames
-          }
-        };
-      });
-
-      if (sshHostGroup) {
-        await updateMutateAsync({
-          sshHostGroupId: sshHostGroup.id,
-          name,
-          loginMappings: transformedLoginMappings
-        });
-      } else {
-        await createMutateAsync({
-          projectId,
-          name,
-          loginMappings: transformedLoginMappings
-        });
-      }
-
-      reset();
-      handlePopUpToggle("sshHostGroup", false);
-
+    if (existingNames.includes(name.trim())) {
       createNotification({
-        text: `Successfully ${sshHostGroup ? "updated" : "created"} SSH host group`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${sshHostGroup ? "update" : "create"} SSH host group`,
+        text: "A host group with this name already exists.",
         type: "error"
       });
+      return;
     }
+
+    const transformedLoginMappings = loginMappings.map(({ loginUser, allowedPrincipals }) => {
+      const usernames = allowedPrincipals
+        .filter((p) => p.type === "user" && p.value)
+        .map((p) => p.value);
+
+      const groupNames = allowedPrincipals
+        .filter((p) => p.type === "group" && p.value)
+        .map((p) => p.value);
+
+      return {
+        loginUser,
+        allowedPrincipals: {
+          usernames,
+          groups: groupNames
+        }
+      };
+    });
+
+    if (sshHostGroup) {
+      await updateMutateAsync({
+        sshHostGroupId: sshHostGroup.id,
+        name,
+        loginMappings: transformedLoginMappings
+      });
+    } else {
+      await createMutateAsync({
+        projectId,
+        name,
+        loginMappings: transformedLoginMappings
+      });
+    }
+
+    reset();
+    handlePopUpToggle("sshHostGroup", false);
+
+    createNotification({
+      text: `Successfully ${sshHostGroup ? "updated" : "created"} SSH host group`,
+      type: "success"
+    });
   };
 
   const toggleMapping = (index: number) => {

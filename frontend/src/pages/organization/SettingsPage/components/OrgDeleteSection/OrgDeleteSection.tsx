@@ -19,27 +19,19 @@ export const OrgDeleteSection = () => {
   const { mutateAsync, isPending } = useDeleteOrgById();
 
   const handleDeleteOrgSubmit = async () => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      await mutateAsync({
-        organizationId: currentOrg?.id
-      });
+    await mutateAsync({
+      organizationId: currentOrg?.id
+    });
 
-      createNotification({
-        text: "Successfully deleted organization",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted organization",
+      type: "success"
+    });
 
-      clearSession();
-      navigate({ to: "/login" });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete organization",
-        type: "error"
-      });
-    }
+    clearSession();
+    navigate({ to: "/login" });
   };
 
   return (

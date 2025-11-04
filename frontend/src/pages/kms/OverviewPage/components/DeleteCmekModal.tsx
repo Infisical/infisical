@@ -16,28 +16,17 @@ export const DeleteCmekModal = ({ isOpen, onOpenChange, cmek }: Props) => {
   const { id: keyId, projectId, name } = cmek;
 
   const handleDeleteCmek = async () => {
-    try {
-      await deleteCmek.mutateAsync({
-        keyId,
-        projectId
-      });
+    await deleteCmek.mutateAsync({
+      keyId,
+      projectId
+    });
 
-      createNotification({
-        text: "Key successfully deleted",
-        type: "success"
-      });
+    createNotification({
+      text: "Key successfully deleted",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete key";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

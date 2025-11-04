@@ -47,24 +47,16 @@ export const ProjectSshConfigCasSection = () => {
   }, [sshConfig]);
 
   const onFormSubmit = async ({ defaultUserSshCaId, defaultHostSshCaId }: FormData) => {
-    try {
-      await updateProjectSshConfig({
-        projectId: currentProject.id,
-        defaultUserSshCaId: defaultUserSshCaId || undefined,
-        defaultHostSshCaId: defaultHostSshCaId || undefined
-      });
+    await updateProjectSshConfig({
+      projectId: currentProject.id,
+      defaultUserSshCaId: defaultUserSshCaId || undefined,
+      defaultHostSshCaId: defaultHostSshCaId || undefined
+    });
 
-      createNotification({
-        text: "Successfully updated SSH project settings",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update SSH project settings",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated SSH project settings",
+      type: "success"
+    });
   };
 
   return (

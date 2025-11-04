@@ -57,18 +57,13 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
 
   const handlePrivilegeDelete = async () => {
     const { id } = popUp?.deletePrivilege?.data as { id: string };
-    try {
-      await deletePrivilege({
-        privilegeId: id,
-        projectId,
-        identityId
-      });
-      createNotification({ type: "success", text: "Successfully removed the privilege" });
-      handlePopUpClose("deletePrivilege");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to delete privilege" });
-    }
+    await deletePrivilege({
+      privilegeId: id,
+      projectId,
+      identityId
+    });
+    createNotification({ type: "success", text: "Successfully removed the privilege" });
+    handlePopUpClose("deletePrivilege");
   };
 
   return (

@@ -33,62 +33,46 @@ export const OrgSSOSection = (): JSX.Element => {
   const { mutateAsync: createMutateAsync } = useCreateSSOConfig();
 
   const handleSamlSSOToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.samlSSO) {
-        handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not include access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
-        });
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        isActive: value
+    if (!subscription?.samlSSO) {
+      handlePopUpOpen("upgradePlan", {
+        text: "Your current plan does not include access to SAML SSO. To unlock this feature, please upgrade to Infisical Pro plan."
       });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} SAML SSO`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} SAML SSO`,
-        type: "error"
-      });
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      isActive: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} SAML SSO`,
+      type: "success"
+    });
   };
 
   const handleSamlGroupManagement = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.samlSSO || !subscription?.groups) {
-        handlePopUpOpen("upgradePlan", {
-          isEnterpriseFeature: true,
-          text: "Your current plan does not include access to SAML group mapping. To unlock this feature, please upgrade to Infisical Enterprise plan."
-        });
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        enableGroupSync: value
+    if (!subscription?.samlSSO || !subscription?.groups) {
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true,
+        text: "Your current plan does not include access to SAML group mapping. To unlock this feature, please upgrade to Infisical Enterprise plan."
       });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} SAML group membership mapping`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${value ? "enable" : "disable"} SAML group membership mapping`,
-        type: "error"
-      });
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      enableGroupSync: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} SAML group membership mapping`,
+      type: "success"
+    });
   };
 
   const addSSOBtnClick = async () => {

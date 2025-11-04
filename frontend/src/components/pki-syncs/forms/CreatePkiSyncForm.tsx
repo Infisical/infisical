@@ -86,14 +86,8 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
         type: "success"
       });
       onComplete(pkiSync);
-    } catch (err: Error | unknown) {
-      console.error("PKI sync creation failed:", err);
+    } catch {
       setShowConfirmation(false);
-      createNotification({
-        title: `Failed to create ${destinationName} Certificate Sync`,
-        text: err instanceof Error ? err.message : "An unknown error occurred",
-        type: "error"
-      });
     }
   };
 
