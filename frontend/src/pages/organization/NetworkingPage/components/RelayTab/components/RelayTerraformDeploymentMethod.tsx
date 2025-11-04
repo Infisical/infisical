@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
-import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faCopy, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { Tab } from "@headlessui/react";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -21,6 +22,7 @@ import {
   useOrganization,
   useOrgPermission
 } from "@app/context";
+import { AWS_REGIONS } from "@app/helpers/appConnections";
 import {
   useAddIdentityTokenAuth,
   useCreateTokenIdentityTokenAuth,
@@ -30,8 +32,7 @@ import {
 import { slugSchema } from "@app/lib/schemas";
 
 const baseFormSchema = z.object({
-  name: slugSchema({ field: "name" }),
-  host: z.string().min(1, "Host is required")
+  name: slugSchema({ field: "name" })
 });
 
 const formSchemaWithIdentity = baseFormSchema.extend({
@@ -51,15 +52,23 @@ const formSchemaWithToken = baseFormSchema.extend({
   identityToken: z.string().min(1, "Token is required")
 });
 
-export const RelayCliDeploymentMethod = () => {
+const ec2FormSchema = z.object({
+  awsRegion: z.string().min(1, "AWS Region is required"),
+  vpcId: z.string().min(1, "VPC ID is required"),
+  ami: z.string().min(1, "AMI ID is required"),
+  subnetId: z.string().min(1, "Subnet ID is required")
+});
+
+export const RelayTerraformDeploymentMethod = () => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+
   const [autogenerateToken, setAutogenerateToken] = useState(true);
   const [step, setStep] = useState<"form" | "command">("form");
   const [name, setName] = useState("");
-  const [host, setHost] = useState("");
 
   const [identity, setIdentity] = useState<null | {
     id: string;
@@ -67,6 +76,11 @@ export const RelayCliDeploymentMethod = () => {
   }>(null);
   const [identityToken, setIdentityToken] = useState("");
   const [formErrors, setFormErrors] = useState<z.ZodIssue[]>([]);
+
+  const [awsRegion, setAwsRegion] = useState("us-east-1");
+  const [vpcId, setVpcId] = useState("");
+  const [ami, setAmi] = useState("ami-01b2110eef525172b");
+  const [subnetId, setSubnetId] = useState("");
 
   const errors = useMemo(() => {
     const errorMap: Record<string, string | undefined> = {};
@@ -104,10 +118,18 @@ export const RelayCliDeploymentMethod = () => {
     setFormErrors([]);
 
     if (canCreateToken && autogenerateToken) {
-      const validation = formSchemaWithIdentity.safeParse({ name, host, identity });
+      const validation = formSchemaWithIdentity.safeParse({ name, identity });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
         return;
+      }
+
+      if (selectedTabIndex === 0) {
+        const ec2Validation = ec2FormSchema.safeParse({ awsRegion, vpcId, ami, subnetId });
+        if (!ec2Validation.success) {
+          setFormErrors(ec2Validation.error.issues);
+          return;
+        }
       }
 
       const validatedIdentity = validation.data.identity;
@@ -139,18 +161,30 @@ export const RelayCliDeploymentMethod = () => {
           type: "info"
         });
         setStep("command");
-      } catch {
+      } catch (err) {
+        console.error(err);
+        createNotification({
+          text: "Failed to generate token for the selected identity",
+          type: "error"
+        });
         setIdentityToken("");
       }
     } else {
       const validation = formSchemaWithToken.safeParse({
         name,
-        host,
         identityToken
       });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
         return;
+      }
+
+      if (selectedTabIndex === 0) {
+        const ec2Validation = ec2FormSchema.safeParse({ awsRegion, vpcId, ami, subnetId });
+        if (!ec2Validation.success) {
+          setFormErrors(ec2Validation.error.issues);
+          return;
+        }
       }
       setStep("command");
     }
@@ -165,24 +199,127 @@ export const RelayCliDeploymentMethod = () => {
     setIdentity(selectedIdentity);
   };
 
-  const command = useMemo(() => {
-    return `infisical relay start --name=${name} --domain=${siteURL} --host=${host} --token=${identityToken}`;
-  }, [name, siteURL, host, identityToken]);
+  const terraformCommand = useMemo(() => {
+    return `terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = "${awsRegion}"
+}
+
+# Security Group for the Infisical Relay instance
+resource "aws_security_group" "infisical_relay_sg" {
+  name        = "${name}-relay-sg"
+  description = "Allows inbound traffic for Infisical Relay and SSH"
+  vpc_id      = "${vpcId}"
+
+  # Inbound: Allows the Infisical platform to securely communicate with the Relay server.
+  ingress {
+    from_port   = 8443
+    to_port     = 8443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Inbound: Allows Infisical Gateway to securely communicate via the Relay.
+  ingress {
+    from_port   = 2222
+    to_port     = 2222
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Inbound: Allows secure shell (SSH) access for administration.
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Restrict this to your IP in production
+  }
+
+  # Outbound: Allows the Relay server to make necessary outbound connections to the Infisical platform.
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${name}-relay-sg"
+  }
+}
+
+# Elastic IP for a static public IP address
+resource "aws_eip" "infisical_relay_eip" {
+  tags = {
+    Name = "${name}-relay-eip"
+  }
+}
+
+# EC2 instance to run Infisical Relay
+module "infisical_relay_instance" {
+  source  = "terraform-aws-modules/ec2-instance/aws"
+  version = "~> 5.6"
+
+  name          = "${name}-relay-instance"
+  ami           = "${ami}"
+  instance_type = "t3.micro"
+  subnet_id     = "${subnetId}"
+
+  vpc_security_group_ids      = [aws_security_group.infisical_relay_sg.id]
+  associate_public_ip_address = false # We are using an Elastic IP instead
+
+  user_data = <<-EOT
+    #!/bin/bash
+    set -e
+    # Install Infisical CLI
+    curl -1sLf 'https://artifacts-cli.infisical.com/setup.deb.sh' | bash
+    apt-get update && apt-get install -y infisical
+
+    # Install the relay as a systemd service.
+    # This example uses a Machine Identity token for authentication via the INFISICAL_TOKEN environment variable.
+    #
+    # Note: For production environments, you might consider fetching the token from AWS Parameter Store or AWS Secrets Manager.
+    export INFISICAL_TOKEN="${identityToken}"
+    sudo -E infisical relay systemd install \\
+      --name "${name}" \\
+      --domain "${siteURL}" \\
+      --host "\${aws_eip.infisical_relay_eip.public_ip}"
+
+    # Start and enable the service to run on boot
+    sudo systemctl start infisical-relay
+    sudo systemctl enable infisical-relay
+  EOT
+}
+
+# Associate the Elastic IP with the EC2 instance
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = module.infisical_relay_instance.id
+  allocation_id = aws_eip.infisical_relay_eip.id
+}
+`;
+  }, [name, siteURL, identityToken, awsRegion, vpcId, ami, subnetId]);
 
   if (step === "command") {
     return (
       <>
-        <FormLabel label="CLI Command" />
-        <div className="flex gap-2">
-          <Input value={command} isDisabled />
+        <div className="mb-2 flex items-center justify-between">
+          <span>Terraform Configuration</span>
           <IconButton
             ariaLabel="copy"
             variant="outline_bg"
             colorSchema="secondary"
             onClick={() => {
-              navigator.clipboard.writeText(command);
+              navigator.clipboard.writeText(terraformCommand);
               createNotification({
-                text: "Command copied to clipboard",
+                text: "Terraform configuration copied to clipboard",
                 type: "info"
               });
             }}
@@ -191,15 +328,11 @@ export const RelayCliDeploymentMethod = () => {
             <FontAwesomeIcon icon={faCopy} />
           </IconButton>
         </div>
-        <a
-          href="https://infisical.com/docs/cli/overview"
-          target="_blank"
-          className="mt-2 flex h-4 w-fit items-center gap-2 border-b border-mineshaft-400 text-sm text-mineshaft-400 transition-colors duration-100 hover:border-yellow-400 hover:text-yellow-400"
-          rel="noreferrer"
-        >
-          <span>Install the Infisical CLI</span>
-          <FontAwesomeIcon icon={faUpRightFromSquare} className="size-3" />
-        </a>
+        <div className="h-80 overflow-y-auto rounded-md border border-mineshaft-600 bg-mineshaft-900 p-4 font-mono text-sm text-bunker-300">
+          <pre>
+            <code>{terraformCommand}</code>
+          </pre>
+        </div>
         <div className="mt-6 flex items-center">
           <ModalClose asChild>
             <Button className="mr-4" size="sm" colorSchema="secondary">
@@ -221,19 +354,6 @@ export const RelayCliDeploymentMethod = () => {
         isError={Boolean(errors.name)}
       />
       {errors.name && <p className="mt-1 text-sm text-red">{errors.name}</p>}
-
-      <FormLabel
-        label="Host"
-        tooltipText="The public IP address of the system you're deploying the relay to."
-        className="mt-4"
-      />
-      <Input
-        value={host}
-        onChange={(e) => setHost(e.target.value)}
-        placeholder="0.0.0.0"
-        isError={Boolean(errors.host)}
-      />
-      {errors.host && <p className="mt-1 text-sm text-red">{errors.host}</p>}
 
       {canCreateToken && autogenerateToken ? (
         <>
@@ -308,6 +428,65 @@ export const RelayCliDeploymentMethod = () => {
           </Checkbox>
         </div>
       )}
+
+      <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
+        <Tab.List className="-pb-1 mt-4 mb-6 w-full border-b-2 border-mineshaft-600">
+          <Tab
+            className={({ selected }) =>
+              `-mb-[0.14rem] px-4 py-2 text-sm font-medium whitespace-nowrap outline-hidden disabled:opacity-60 ${
+                selected ? "border-b-2 border-mineshaft-300 text-mineshaft-200" : "text-bunker-300"
+              }`
+            }
+          >
+            EC2
+          </Tab>
+        </Tab.List>
+        <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
+          <Tab.Panel>
+            <FormLabel label="AWS Region" />
+            <FilterableSelect
+              value={AWS_REGIONS.find((r) => r.slug === awsRegion)}
+              onChange={(selected) => {
+                if (selected) {
+                  setAwsRegion((selected as SingleValue<{ slug: string; name: string }>)!.slug);
+                }
+              }}
+              options={AWS_REGIONS}
+              getOptionLabel={(option) => option.name}
+              getOptionValue={(option) => option.slug}
+            />
+            {errors.awsRegion && <p className="mt-1 text-sm text-red">{errors.awsRegion}</p>}
+            <FormLabel label="VPC ID" className="mt-4" />
+            <Input
+              value={vpcId}
+              onChange={(e) => setVpcId(e.target.value)}
+              placeholder="vpc-..."
+              isError={Boolean(errors.vpcId)}
+            />
+            {errors.vpcId && <p className="mt-1 text-sm text-red">{errors.vpcId}</p>}
+            <FormLabel
+              label="AMI ID"
+              tooltipText="The ID of the Amazon Machine Image (AMI) for the EC2 linux instance."
+              className="mt-4"
+            />
+            <Input
+              value={ami}
+              onChange={(e) => setAmi(e.target.value)}
+              placeholder="ami-..."
+              isError={Boolean(errors.ami)}
+            />
+            {errors.ami && <p className="mt-1 text-sm text-red">{errors.ami}</p>}
+            <FormLabel label="Subnet ID" className="mt-4" />
+            <Input
+              value={subnetId}
+              onChange={(e) => setSubnetId(e.target.value)}
+              placeholder="subnet-..."
+              isError={Boolean(errors.subnetId)}
+            />
+            {errors.subnetId && <p className="mt-1 text-sm text-red">{errors.subnetId}</p>}
+          </Tab.Panel>
+        </Tab.Panels>
+      </Tab.Group>
 
       <div className="mt-6 flex items-center">
         <Button
