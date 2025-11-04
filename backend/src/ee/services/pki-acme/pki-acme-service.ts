@@ -1,6 +1,5 @@
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -39,6 +38,7 @@ import {
   AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
+import { buildUrl, extractAccountIdFromKid } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
@@ -113,20 +113,6 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
     return profile;
-  };
-
-  const buildUrl = (profileId: string, path: string): string => {
-    const appCfg = getConfig();
-    const baseUrl = appCfg.SITE_URL ?? "";
-    return `${baseUrl}/api/v1/pki/acme/profiles/${profileId}${path}`;
-  };
-
-  const extractAccountIdFromKid = (kid: string, profileId: string): string => {
-    const kidPrefix = buildUrl(profileId, "/accounts/");
-    if (!kid.startsWith(kidPrefix)) {
-      throw new AcmeMalformedError({ detail: "KID must start with the profile account URL" });
-    }
-    return z.string().uuid().parse(kid.slice(kidPrefix.length));
   };
 
   const validateJwsPayload = async <
