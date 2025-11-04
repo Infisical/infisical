@@ -352,11 +352,8 @@ export const pkiAcmeServiceFactory = ({
       // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
       const decoder = new TextDecoder();
       const decodedEabPayload = decoder.decode(eabPayload);
-      const eabPayloadJson = JSON.parse(decodedEabPayload);
-      const eabPayloadJwkThumbprint = await calculateJwkThumbprint(
-        eabPayloadJson.jwk as JsonWebKey,
-        alg as "sha256" | "sha384" | "sha512"
-      );
+      const eabJWK = JSON.parse(decodedEabPayload);
+      const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
       if (eabPayloadJwkThumbprint !== publicKeyThumbprint || eabAlg !== alg) {
         throw new AcmeBadPublicKeyError({
           message: "External account binding public key thumbprint or algorithm mismatch"
