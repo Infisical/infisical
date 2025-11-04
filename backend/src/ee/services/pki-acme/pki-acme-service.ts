@@ -267,7 +267,12 @@ export const pkiAcmeServiceFactory = ({
       expiresAt: Date;
       notBefore?: Date | null;
       notAfter?: Date | null;
-      authorizations: TPkiAcmeAuths[];
+      authorizations: {
+        id: string;
+        identifierType: string;
+        identifierValue: string;
+        expiresAt: Date;
+      }[];
     };
     profileId: string;
   }): TAcmeOrderResource => {
@@ -276,13 +281,11 @@ export const pkiAcmeServiceFactory = ({
       expires: order.expiresAt.toISOString(),
       notBefore: order.notBefore?.toISOString(),
       notAfter: order.notAfter?.toISOString(),
-      identifiers: order.authorizations.map((auth: TPkiAcmeAuths) => ({
+      identifiers: order.authorizations.map((auth) => ({
         type: auth.identifierType,
         value: auth.identifierValue
       })),
-      authorizations: order.authorizations.map((auth: TPkiAcmeAuths) =>
-        buildUrl(profileId, `/authorizations/${auth.id}`)
-      ),
+      authorizations: order.authorizations.map((auth) => buildUrl(profileId, `/authorizations/${auth.id}`)),
       finalize: buildUrl(profileId, `/orders/${order.id}/finalize`),
       certificate:
         order.status === AcmeOrderStatus.Valid ? buildUrl(profileId, `/orders/${order.id}/certificate`) : undefined
@@ -630,7 +633,7 @@ export const pkiAcmeServiceFactory = ({
             },
             tx
           );
-          // TODO: log the error
+          logger.error(error, "Failed to sign certificate");
           // TODO: audit log the error
           if (error instanceof BadRequestError) {
             errorToReturn = new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
