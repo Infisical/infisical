@@ -996,7 +996,9 @@ export const relayServiceFactory = ({
         );
 
         if (existingRelay && (existingRelay.host !== host || existingRelay.name !== name)) {
-          return relayDAL.updateById(existingRelay.id, { host, name }, tx);
+          throw new BadRequestError({
+            message: `Machine identity already has an existing relay with the name "${existingRelay.name} and host "${existingRelay.host}". Delete the existing relay or use a different machine identity.`
+          });
         }
 
         if (!existingRelay) {
