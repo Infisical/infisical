@@ -69,7 +69,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
       try {
         // TODO: read config from the profile to get the timeout instead
-        const timeoutMs = 10000; // 10 seconds
+        const timeoutMs = 10 * 1000; // 10 seconds
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
         //         a long running operation for long time. But assuming we are not performing a tons of
         //         challenge validation at the same time, it should be fine.
