@@ -86,7 +86,7 @@ export const pkiAcmeChallengeServiceFactory = ({
           const { cause } = exp;
           let errors: Error[] = [];
           if (cause instanceof AggregateError) {
-            errors = cause.errors;
+            errors = cause.errors as Error[];
           } else if (cause instanceof Error) {
             errors = [cause];
           }
@@ -97,6 +97,8 @@ export const pkiAcmeChallengeServiceFactory = ({
               return new AcmeConnectionError({ message: "Connection refused" });
             } else if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
               return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+            } else {
+              return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
             }
           }
         } else if (exp instanceof Error) {
