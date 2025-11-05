@@ -419,7 +419,7 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"} as rank`
+            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}) as rank`
           ),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
