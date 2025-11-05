@@ -96,11 +96,11 @@ export const pkiAcmeChallengeServiceFactory = ({
             const fetchError = err as FetchError;
             if (fetchError.code === "ECONNREFUSED" || fetchError.message.includes("ECONNREFUSED")) {
               return new AcmeConnectionError({ message: "Connection refused" });
-            } else if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
-              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
-            } else {
-              return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
             }
+            if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
+              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+            }
+            return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
           }
         } else if (exp instanceof Error) {
           logger.error(exp, "Error validating ACME challenge response");
