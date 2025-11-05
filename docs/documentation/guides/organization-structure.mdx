@@ -24,8 +24,10 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 ### 2. Projects
 
 - **Definition and Role**: [Projects](/documentation/platform/project) are the highest-level construct within an [organization](/documentation/platform/organization) in Infisical. They serve as the primary container for all functionalities.
-- **Correspondence to Code Repositories**: Projects typically align with specific code repositories.
+- **Common Project Mappings**: Projects typically align with applications, services, or code repositories — each being a valid and common approach depending on your organizational structure.
 - **Functional Capabilities**: Each project encompasses features for managing secrets, certificates, and encryption keys, serving as the central hub for these resources.
+
+<Note>Projects are isolated from one another. Secrets, certificates, and other resources cannot be shared or referenced across different projects. Each project maintains its own separate set of resources.</Note>
 
 ### 3. Environments
 
@@ -40,8 +42,9 @@ Infisical is designed to provide comprehensive, centralized, and efficient manag
 
 ### 5. Imports
 
-- **Purpose and Benefits**: To promote reusability and avoid redundancy, Infisical supports the use of imports. This allows secrets, folders, or entire environments to be referenced across multiple projects as needed.
-- **Best Practice**: Utilizing [secret imports](/documentation/platform/secret-reference#secret-imports) or [references](/documentation/platform/secret-reference#secret-referencing) ensures consistency and minimizes manual overhead.
+- **Purpose and Benefits**: To promote reusability and avoid redundancy within a project, Infisical supports the use of imports and references. This allows secrets, folders, or entire environments to be referenced within the same project as needed.
+- **Project Isolation**: Imports and references only work within a single project. Secrets cannot be imported or referenced across different projects, as projects are isolated from one another.
+- **Best Practice**: Utilizing [secret imports](/documentation/platform/secret-reference#secret-imports) or [references](/documentation/platform/secret-reference#secret-referencing) ensures consistency and minimizes manual overhead when managing secrets within a project.
 
 ### 6. Approval Workflows
 
