@@ -5,16 +5,40 @@ import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/erro
 import { logger } from "@app/lib/logger";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import * as x509 from "@peculiar/x509";
+import acme from "acme-client";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator/validate-url";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
+import { decryptAppConnection } from "@app/services/app-connection/app-connection-fns";
+import { TAwsConnection } from "@app/services/app-connection/aws";
+import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { AcmeDnsProvider } from "@app/services/certificate-authority/acme/acme-certificate-authority-enums";
+import { castDbEntryToAcmeCertificateAuthority } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
+import { AcmeCertificateAuthorityCredentialsSchema } from "@app/services/certificate-authority/acme/acme-certificate-authority-schemas";
+import {
+  cloudflareDeleteTxtRecord,
+  cloudflareInsertTxtRecord
+} from "@app/services/certificate-authority/acme/dns-providers/cloudflare";
+import {
+  route53DeleteTxtRecord,
+  route53InsertTxtRecord
+} from "@app/services/certificate-authority/acme/dns-providers/route54";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaStatus, CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { keyAlgorithmToAlgCfg } from "@app/services/certificate-authority/certificate-authority-fns";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import { CertKeyAlgorithm, CertStatus } from "@app/services/certificate/certificate-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
@@ -78,7 +102,12 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create" | "findOne">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -99,7 +128,10 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
+  >;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
@@ -107,7 +139,12 @@ type TPkiAcmeServiceFactoryDep = {
 export const pkiAcmeServiceFactory = ({
   projectDAL,
   certificateProfileDAL,
+  certificateDAL,
+  certificateSecretDAL,
   certificateBodyDAL,
+  certificateAuthorityDAL,
+  externalCertificateAuthorityDAL,
+  appConnectionDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -118,6 +155,224 @@ export const pkiAcmeServiceFactory = ({
   certificateV3Service,
   acmeChallengeService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
+  const orderCertificateForAcmeProfile = async (profileId: string, commonName: string): Promise<string> => {
+    // XXX: this is copy pasted from acme-certificate-authority-fns.ts
+    // TODO: DRY the code with orderSubscriberCertificate
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: `Could not find ACME profile with ID "${profileId}"` });
+    }
+    if (profile.enrollmentType !== EnrollmentType.ACME) {
+      throw new BadRequestError({ message: "Profile is not an ACME profile" });
+    }
+
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
+      throw new BadRequestError({ message: "CA is not an ACME CA" });
+    }
+
+    const acmeCa = castDbEntryToAcmeCertificateAuthority(ca);
+    if (acmeCa.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "CA is disabled" });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    let accountKey: Buffer | undefined;
+    if (acmeCa.credentials) {
+      const decryptedCredentials = await kmsDecryptor({
+        cipherTextBlob: acmeCa.credentials as Buffer
+      });
+
+      const parsedCredentials = await AcmeCertificateAuthorityCredentialsSchema.parseAsync(
+        JSON.parse(decryptedCredentials.toString("utf8"))
+      );
+
+      accountKey = Buffer.from(parsedCredentials.accountKey, "base64");
+    }
+    if (!accountKey) {
+      accountKey = await acme.crypto.createPrivateRsaKey();
+      const newCredentials = {
+        accountKey: accountKey.toString("base64")
+      };
+      const { cipherTextBlob: encryptedNewCredentials } = await kmsEncryptor({
+        plainText: Buffer.from(JSON.stringify(newCredentials))
+      });
+      await externalCertificateAuthorityDAL.update(
+        {
+          caId: acmeCa.id
+        },
+        {
+          credentials: encryptedNewCredentials
+        }
+      );
+    }
+
+    await blockLocalAndPrivateIpAddresses(acmeCa.configuration.directoryUrl);
+
+    const acmeClientOptions: acme.ClientOptions = {
+      directoryUrl: acmeCa.configuration.directoryUrl,
+      accountKey
+    };
+
+    if (acmeCa.configuration.eabKid && acmeCa.configuration.eabHmacKey) {
+      acmeClientOptions.externalAccountBinding = {
+        kid: acmeCa.configuration.eabKid,
+        hmacKey: acmeCa.configuration.eabHmacKey
+      };
+    }
+
+    const acmeClient = new acme.Client(acmeClientOptions);
+
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+    const [, certificateCsr] = await acme.crypto.createCsr(
+      {
+        commonName
+      },
+      skLeaf
+    );
+
+    const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
+    const connection = await decryptAppConnection(appConnection, kmsService);
+
+    const pem = await acmeClient.auto({
+      csr: certificateCsr,
+      email: acmeCa.configuration.accountEmail,
+      challengePriority: ["dns-01"],
+      termsOfServiceAgreed: true,
+
+      challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+        if (challenge.type !== "dns-01") {
+          throw new Error("Unsupported challenge type");
+        }
+
+        const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+        const recordValue = `"${keyAuthorization}"`; // must be double quoted
+
+        switch (acmeCa.configuration.dnsProviderConfig.provider) {
+          case AcmeDnsProvider.Route53: {
+            await route53InsertTxtRecord(
+              connection as TAwsConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          case AcmeDnsProvider.Cloudflare: {
+            await cloudflareInsertTxtRecord(
+              connection as TCloudflareConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          default: {
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
+          }
+        }
+      },
+      challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
+        const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+        const recordValue = `"${keyAuthorization}"`; // must be double quoted
+
+        switch (acmeCa.configuration.dnsProviderConfig.provider) {
+          case AcmeDnsProvider.Route53: {
+            await route53DeleteTxtRecord(
+              connection as TAwsConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          case AcmeDnsProvider.Cloudflare: {
+            await cloudflareDeleteTxtRecord(
+              connection as TCloudflareConnection,
+              acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+              recordName,
+              recordValue
+            );
+            break;
+          }
+          default: {
+            throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
+          }
+        }
+      }
+    });
+
+    const [leafCert, parentCert] = acme.crypto.splitPemChain(pem);
+    const certObj = new x509.X509Certificate(leafCert);
+
+    const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+      plainText: Buffer.from(new Uint8Array(certObj.rawData))
+    });
+
+    const certificateChainPem = parentCert.trim();
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(certificateChainPem)
+    });
+
+    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+      plainText: Buffer.from(skLeaf)
+    });
+
+    return await certificateDAL.transaction(async (tx) => {
+      const cert = await certificateDAL.create(
+        {
+          caId: ca.id,
+          profileId: profile.id,
+          status: CertStatus.ACTIVE,
+          friendlyName: commonName,
+          commonName,
+          serialNumber: certObj.serialNumber,
+          notBefore: certObj.notBefore,
+          notAfter: certObj.notAfter,
+          projectId: ca.projectId
+        },
+        tx
+      );
+
+      await certificateBodyDAL.create(
+        {
+          certId: cert.id,
+          encryptedCertificate,
+          encryptedCertificateChain
+        },
+        tx
+      );
+
+      await certificateSecretDAL.create(
+        {
+          certId: cert.id,
+          encryptedPrivateKey
+        },
+        tx
+      );
+      return cert.id;
+    });
+  };
+
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
     if (!profile) {
@@ -587,6 +842,7 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
+    const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
     let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -605,21 +861,43 @@ export const pkiAcmeServiceFactory = ({
         const { csr } = payload;
         let errorToReturn: Error | undefined;
         try {
-          const { certificateId } = await certificateV3Service.signCertificateFromProfile({
-            actor: ActorType.ACME_ACCOUNT,
-            actorId: accountId,
-            actorAuthMethod: null,
-            actorOrgId,
-            profileId,
-            csr,
-            notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
-            notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
-            validity: {
-              // TODO: read config from the profile to get the expiration time instead
-              ttl: (24 * 60 * 60 * 1000).toString()
-            },
-            enrollmentType: EnrollmentType.ACME
-          });
+          const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+          if (!ca) {
+            throw new NotFoundError({ message: "Certificate Authority not found" });
+          }
+          const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
+          const { certificateId } = await (async () => {
+            if (caType === CaType.INTERNAL) {
+              const result = await certificateV3Service.signCertificateFromProfile({
+                actor: ActorType.ACME_ACCOUNT,
+                actorId: accountId,
+                actorAuthMethod: null,
+                actorOrgId,
+                profileId,
+                csr,
+                notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
+                notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
+                validity: {
+                  // TODO: read config from the profile to get the expiration time instead
+                  ttl: (24 * 60 * 60 * 1000).toString()
+                },
+                enrollmentType: EnrollmentType.ACME
+              });
+              return { certificateId: result.certificateId };
+            }
+            // TODO: support multiple identifiers
+            const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
+              accountId,
+              orderId,
+              tx
+            ))!;
+            const result = await orderCertificateForAcmeProfile(
+              profileId,
+              orderWithAuthorizations.authorizations[0].identifierValue
+            );
+            return { certificateId: result };
+          })();
+
           // TODO: associate the certificate with the order
           await acmeOrderDAL.updateById(
             orderId,
