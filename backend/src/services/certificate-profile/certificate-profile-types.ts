@@ -29,7 +29,7 @@ export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enr
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: {};
+  acmeConfig?: unknown;
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {
