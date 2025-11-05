@@ -48,8 +48,8 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
             label: "authorizations" as const,
             mapper: ({ authId, identifierType, identifierValue, authExpiresAt }) => ({
               id: authId,
-              identifierType: identifierType,
-              identifierValue: identifierValue,
+              identifierType,
+              identifierValue,
               expiresAt: authExpiresAt
             })
           }

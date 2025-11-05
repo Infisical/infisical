@@ -33,8 +33,9 @@ export interface MyRequestInterface {
 
 export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
   const validateExistingAccount = async <
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     R extends FastifyRequest<any>,
-    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    TSchema extends z.ZodSchema<unknown> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
     req,
@@ -70,7 +71,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       if (!strBody) {
         done(null, undefined);
       }
-      const json: unknown = JSON.parse(strBody as string);
+      const json = JSON.parse(strBody as string);
       done(null, json);
     } catch (err) {
       const error = err as Error;

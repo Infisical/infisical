@@ -2,7 +2,12 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
-import { AcmeConnectionError, AcmeDnsFailureError, AcmeIncorrectResponseError } from "./pki-acme-errors";
+import {
+  AcmeConnectionError,
+  AcmeDnsFailureError,
+  AcmeIncorrectResponseError,
+  AcmeServerInternalError
+} from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
@@ -23,7 +28,7 @@ export const pkiAcmeChallengeServiceFactory = ({
   const appCfg = getConfig();
 
   const validateChallengeResponse = async (challengeId: string): Promise<void> => {
-    const error = await acmeChallengeDAL.transaction(async (tx) => {
+    const error: Error | undefined = await acmeChallengeDAL.transaction(async (tx) => {
       logger.info({ challengeId }, "Validating ACME challenge response");
       const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
       if (!challenge) {
@@ -98,6 +103,7 @@ export const pkiAcmeChallengeServiceFactory = ({
           logger.error(exp, "Error validating ACME challenge response");
         } else {
           logger.error(exp, "Unknown error validating ACME challenge response");
+          return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
         }
         return exp;
       }
