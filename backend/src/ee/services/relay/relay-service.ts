@@ -997,7 +997,7 @@ export const relayServiceFactory = ({
 
         if (existingRelay && (existingRelay.host !== host || existingRelay.name !== name)) {
           throw new BadRequestError({
-            message: `Machine identity already has an existing relay with the name "${existingRelay.name} and host "${existingRelay.host}". Delete the existing relay or use a different machine identity.`
+            message: `Machine identity already has an existing relay with the name "${existingRelay.name}" and host "${existingRelay.host}". Delete the existing relay or use a different machine identity.`
           });
         }
 
