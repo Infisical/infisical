@@ -6,6 +6,10 @@ import { AcmeConnectionError, AcmeDnsFailureError, AcmeIncorrectResponseError } 
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
 
+type FetchError = Error & {
+  code?: string;
+};
+
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeChallengeDAL: Pick<
     TPkiAcmeChallengeDALFactory,
@@ -69,27 +73,33 @@ export const pkiAcmeChallengeServiceFactory = ({
           throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
         }
         await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
-      } catch (error) {
+      } catch (exp) {
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
         await acmeChallengeDAL.markAsInvalidCascadeById(challengeId, tx);
         // Properly type and inspect the error
-        if (error instanceof TypeError && error.message.includes("fetch failed")) {
-          const cause = error.cause;
-          const errors = cause instanceof AggregateError ? cause.errors : cause instanceof Error ? [cause] : [];
+        if (exp instanceof TypeError && exp.message.includes("fetch failed")) {
+          const { cause } = exp;
+          let errors: Error[] = [];
+          if (cause instanceof AggregateError) {
+            errors = cause.errors;
+          } else if (cause instanceof Error) {
+            errors = [cause];
+          }
           for (const err of errors) {
             // TODO: handle multiple errors, return a compound error instead of just the first error
-            if (err?.code === "ECONNREFUSED" || err?.message?.includes("ECONNREFUSED")) {
+            const fetchError = err as FetchError;
+            if (fetchError.code === "ECONNREFUSED" || fetchError.message.includes("ECONNREFUSED")) {
               return new AcmeConnectionError({ message: "Connection refused" });
-            } else if (err?.code === "ENOTFOUND" || err?.message?.includes("ENOTFOUND")) {
+            } else if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
               return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
             }
           }
-        } else if (error instanceof Error) {
-          logger.error(error, "Error validating ACME challenge response");
+        } else if (exp instanceof Error) {
+          logger.error(exp, "Error validating ACME challenge response");
         } else {
-          logger.error(error, "Unknown error validating ACME challenge response");
+          logger.error(exp, "Unknown error validating ACME challenge response");
         }
-        return error;
+        return exp;
       }
     });
     if (error) {
