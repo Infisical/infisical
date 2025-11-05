@@ -2169,6 +2169,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateTemplateV2Service,
+    acmeAccountDAL,
     internalCaService: internalCertificateAuthorityService,
     permissionService,
     certificateSyncDAL,

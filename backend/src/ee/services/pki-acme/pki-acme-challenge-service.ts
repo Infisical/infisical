@@ -1,5 +1,6 @@
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
 import {
@@ -53,6 +54,10 @@ export const pkiAcmeChallengeServiceFactory = ({
         throw new BadRequestError({ message: "Only HTTP-01 challenges are supported for now" });
       }
       let host = challenge.auth.identifierValue;
+      // check if host is a private ip address
+      if (isPrivateIp(host)) {
+        throw new BadRequestError({ message: "Private IP addresses are not allowed" });
+      }
       if (appCfg.isAcmeDevelopmentMode && appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host]) {
         host = appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host];
         logger.warn(
