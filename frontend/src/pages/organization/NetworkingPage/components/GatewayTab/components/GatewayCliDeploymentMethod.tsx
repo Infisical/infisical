@@ -184,7 +184,7 @@ export const GatewayCliDeploymentMethod = () => {
 
   const command = useMemo(() => {
     const relayPart = relay?.id !== "_auto" ? ` --relay=${relay?.name || ""}` : "";
-    return `infisical gateway start --name=${name}${relayPart} --domain=${siteURL} --token=${identityToken}`;
+    return `sudo infisical gateway start --name=${name}${relayPart} --domain=${siteURL} --token=${identityToken}`;
   }, [name, relay, identityToken, siteURL]);
 
   if (step === "command") {

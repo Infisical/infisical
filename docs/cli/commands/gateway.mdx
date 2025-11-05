@@ -6,7 +6,7 @@ description: "Run the Infisical gateway or manage its systemd service"
 <Tabs>
   <Tab title="Start gateway">
     ```bash
-    infisical gateway start --name=<name> --auth-method=<auth-method>
+    sudo infisical gateway start --name=<name> --auth-method=<auth-method>
     ```
   </Tab>
   <Tab title="Start gateway as background daemon (Linux only)">
@@ -36,7 +36,7 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
   Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
 
 ```bash
-infisical gateway start --name=<name> --auth-method=<auth-method>
+sudo infisical gateway start --name=<name> --auth-method=<auth-method>
 ```
 
 <Info>
@@ -74,7 +74,7 @@ The gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --name=<name>
+      sudo infisical gateway start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --name=<name>
     ```
 
   </Accordion>
@@ -98,7 +98,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      infisical gateway start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --name=<name>
+      sudo infisical gateway start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -119,7 +119,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      infisical gateway start --auth-method=azure --machine-identity-id=<machine-identity-id> --name=<name>
+      sudo infisical gateway start --auth-method=azure --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -140,7 +140,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      infisical gateway start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --name=<name>
+      sudo infisical gateway start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -162,7 +162,7 @@ The gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --name=<name>
+      sudo infisical gateway start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --name=<name>
     ```
 
   </Accordion>
@@ -181,7 +181,7 @@ The gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
       ```bash
-        infisical gateway start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --name=<name>
+        sudo infisical gateway start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --name=<name>
       ```
 
   </Accordion>
@@ -203,7 +203,7 @@ The gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --name=<name>
+      sudo infisical gateway start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --name=<name>
     ```
 
   </Accordion>
@@ -227,7 +227,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
 
     ```bash
-      infisical gateway start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --name=<name>
+      sudo infisical gateway start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -243,7 +243,7 @@ The gateway supports multiple authentication methods. Below are the available au
     </ParamField>
 
     ```bash
-      infisical gateway start --token=<token> --name=<name>
+      sudo infisical gateway start --token=<token> --name=<name>
     ```
 
   </Accordion>
@@ -259,7 +259,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    infisical gateway start --relay=my-relay --name=my-gateway --token=<token>
+    sudo infisical gateway start --relay=my-relay --name=my-gateway --token=<token>
     ```
 
     **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server using `infisical relay start` before connecting gateways to it. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical.
@@ -271,7 +271,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    infisical gateway start --name=my-gateway --token=<token>
+    sudo infisical gateway start --name=my-gateway --token=<token>
     ```
 
   </Accordion>
@@ -281,7 +281,7 @@ The gateway supports multiple authentication methods. Below are the available au
 
     ```bash
     # Example
-    infisical gateway start --domain=https://app.your-domain.com --name=<name>
+    sudo infisical gateway start --domain=https://app.your-domain.com --name=<name>
     ```
 
   </Accordion>
