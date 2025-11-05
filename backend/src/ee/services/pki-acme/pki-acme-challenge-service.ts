@@ -68,11 +68,12 @@ export const pkiAcmeChallengeServiceFactory = ({
       const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${host}`);
       logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
       try {
+        // TODO: read config from the profile to get the timeout instead
+        const timeoutMs = 10000; // 10 seconds
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
         //         a long running operation for long time. But assuming we are not performing a tons of
         //         challenge validation at the same time, it should be fine.
-        // TODO: bound it with timeout of the fetch request
-        const challengeResponse = await fetch(challengeUrl);
+        const challengeResponse = await fetch(challengeUrl, { signal: AbortSignal.timeout(timeoutMs) });
         if (challengeResponse.status !== 200) {
           throw new BadRequestError({ message: "ACME challenge response is not 200" });
         }
@@ -107,6 +108,13 @@ export const pkiAcmeChallengeServiceFactory = ({
             }
             return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
           }
+        } else if (exp instanceof DOMException) {
+          if (exp.name === "TimeoutError") {
+            logger.error(exp, "Connection timed out while validating ACME challenge response");
+            return new AcmeConnectionError({ message: "Connection timed out" });
+          }
+          logger.error(exp, "Unknown error validating ACME challenge response");
+          return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
         } else if (exp instanceof Error) {
           logger.error(exp, "Error validating ACME challenge response");
         } else {
