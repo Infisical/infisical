@@ -7,6 +7,7 @@ import { TCertificateProfileDALFactory } from "@app/services/certificate-profile
 import * as x509 from "@peculiar/x509";
 
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { ActorType } from "@app/services/auth/auth-type";
 import {
   EnrollmentType,
@@ -497,7 +498,9 @@ export const pkiAcmeServiceFactory = ({
           if (identifier.type !== AcmeIdentifierType.DNS) {
             throw new AcmeUnsupportedIdentifierError({ detail: "Only DNS identifiers are supported" });
           }
-          // TODO: reuse existing authorizations for this identifier if they exist
+          if (isPrivateIp(identifier.value)) {
+            throw new AcmeUnsupportedIdentifierError({ detail: "Private IP addresses are not allowed" });
+          }
           const auth = await acmeAuthDAL.create(
             {
               accountId: account.id,
@@ -600,8 +603,6 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
         const { csr } = payload;
-        // TODO: validate the CSR and return badCSR error if it's invalid
-        // TODO: this should be the same transaction?
         let errorToReturn: Error | undefined;
         try {
           const { certificateId } = await certificateV3Service.signCertificateFromProfile({
