@@ -597,7 +597,6 @@ const Page = () => {
 
     setFilter((prev) => ({
       ...prev,
-      ...defaultFilterState,
       searchFilter: (routerQueryParams.search as string) ?? "",
       tags: updatedTags,
       include: includeFilter
