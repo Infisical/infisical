@@ -129,7 +129,7 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const validateJwsPayload = async <
-    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    TSchema extends z.ZodSchema<unknown> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
     url,
@@ -149,7 +149,8 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeMalformedError({ detail: "Protected header is required" });
         }
         const jwk = await getJWK(protectedHeader);
-        return await importJWK(jwk, protectedHeader.alg);
+        const key = await importJWK(jwk, protectedHeader.alg);
+        return key;
       });
     } catch (error) {
       if (error instanceof AcmeError) {
@@ -186,7 +187,7 @@ export const pkiAcmeServiceFactory = ({
       const payload = schema ? schema.parse(JSON.parse(textPayload)) : textPayload;
       return {
         protectedHeader,
-        payload
+        payload: payload as T
       };
     } catch (error) {
       if (error instanceof AcmeError) {
@@ -200,14 +201,14 @@ export const pkiAcmeServiceFactory = ({
     }
   };
 
-  const validateNewAccountJwsPayload = async ({
+  const validateNewAccountJwsPayload = ({
     url,
     rawJwsPayload
   }: {
     url: URL;
     rawJwsPayload: TRawJwsPayload;
   }): Promise<TJwsPayload<TCreateAcmeAccountPayload>> => {
-    return await validateJwsPayload({
+    return validateJwsPayload({
       url,
       rawJwsPayload,
       getJWK: async (protectedHeader) => {
@@ -355,11 +356,8 @@ export const pkiAcmeServiceFactory = ({
     const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig!.encryptedEabSecret! });
     const { eabPayload, eabProtectedHeader } = await (async () => {
       try {
-        const { payload: eabPayload, protectedHeader: eabProtectedHeader } = await flattenedVerify(
-          externalAccountBinding,
-          eabSecret
-        );
-        return { eabPayload, eabProtectedHeader };
+        const result = await flattenedVerify(externalAccountBinding, eabSecret);
+        return { eabPayload: result.payload, eabProtectedHeader: result.protectedHeader };
       } catch (error) {
         if (error instanceof errors.JWSSignatureVerificationFailed) {
           throw new AcmeMalformedError({ detail: "Invalid external account binding JWS signature" });
