@@ -44,7 +44,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     req: R;
     schema?: TSchema;
   }): Promise<TAuthenciatedJwsPayload<T>> => {
-    return await server.services.pkiAcme.validateExistingAccountJwsPayload({
+    return server.services.pkiAcme.validateExistingAccountJwsPayload({
       url: new URL(req.url, `${req.protocol}://${req.hostname}`),
       profileId: (req.params as { profileId: string }).profileId,
       rawJwsPayload: req.body as TRawJwsPayload,
@@ -71,7 +71,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       if (!strBody) {
         done(null, undefined);
       }
-      const json = JSON.parse(strBody as string);
+      const json = JSON.parse(strBody);
       done(null, json);
     } catch (err) {
       const error = err as Error;
