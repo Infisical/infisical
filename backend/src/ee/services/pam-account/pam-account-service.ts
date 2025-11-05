@@ -498,9 +498,17 @@ export const pamAccountServiceFactory = ({
             projectId: account.projectId
           });
 
+          const accountPath = await getFullPamFolderPath({
+            pamFolderDAL,
+            folderId: account.folderId,
+            projectId: resource.projectId
+          });
+
           metadata = {
             username: credentials.username,
-            database: connectionCredentials.database
+            database: connectionCredentials.database,
+            accountName: account.name,
+            accountPath
           };
         }
         break;
