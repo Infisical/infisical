@@ -90,6 +90,7 @@ export const pkiAcmeChallengeServiceFactory = ({
           } else if (cause instanceof Error) {
             errors = [cause];
           }
+          // eslint-disable-next-line no-unreachable-loop
           for (const err of errors) {
             // TODO: handle multiple errors, return a compound error instead of just the first error
             const fetchError = err as FetchError;
