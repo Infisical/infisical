@@ -35,8 +35,9 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
           );
         // Update status for pending orders that have all auths valid
         await (tx || db)(TableName.PkiAcmeOrder)
-          .whereIn("id", (qb) => {
-            qb.select("o2.id")
+          .whereIn("id", async (qb) => {
+            void (await qb
+              .select("o2.id")
               .from({ o2: TableName.PkiAcmeOrder })
               .join({ oa2: TableName.PkiAcmeOrderAuth }, "o2.id", "oa2.orderId")
               .join({ a2: TableName.PkiAcmeAuth }, "oa2.authId", "a2.id")
@@ -47,7 +48,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
               ])
               // Only update orders that are pending
               .where("o2.status", AcmeOrderStatus.Pending)
-              .whereIn("o2.id", involvedOrderIds);
+              .whereIn("o2.id", involvedOrderIds));
           })
           .update({ status: AcmeOrderStatus.Ready });
       }
@@ -74,8 +75,9 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
       if (updatedAuths.length > 0) {
         // Update status for pending orders that have all auths valid
         await (tx || db)(TableName.PkiAcmeOrder)
-          .whereIn("id", (qb) => {
-            qb.select("o.id")
+          .whereIn("id", async (qb) => {
+            void (await qb
+              .select("o.id")
               .from({ o: TableName.PkiAcmeOrder })
               .join(TableName.PkiAcmeOrderAuth, "o.id", `${TableName.PkiAcmeOrderAuth}.orderId`)
               .join(TableName.PkiAcmeAuth, `${TableName.PkiAcmeOrderAuth}.authId`, `${TableName.PkiAcmeAuth}.id`)
@@ -84,7 +86,7 @@ export const pkiAcmeChallengeDALFactory = (db: TDbClient) => {
               .whereIn(
                 `${TableName.PkiAcmeAuth}.id`,
                 updatedAuths.map((auth) => auth.id)
-              );
+              ));
           })
           .update({ status: AcmeOrderStatus.Invalid });
       }

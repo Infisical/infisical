@@ -36,7 +36,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     R extends FastifyRequest<any>,
     TSchema extends z.ZodSchema<unknown> | undefined = undefined,
-    T = TSchema extends z.ZodSchema<infer R> ? R : string
+    T = TSchema extends z.ZodSchema<infer U> ? U : string
   >({
     req,
     schema
@@ -71,7 +71,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       if (!strBody) {
         done(null, undefined);
       }
-      const json = JSON.parse(strBody);
+      const json: unknown = JSON.parse(strBody);
       done(null, json);
     } catch (err) {
       const error = err as Error;
