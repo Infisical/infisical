@@ -6,9 +6,11 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { SecretInput } from "../SecretInput";
 
@@ -84,6 +86,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
     const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
+    const { permission } = useProjectPermission();
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -330,6 +333,30 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
         }
 
         if (allSegments.length === 1) {
+          const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: propEnvironment ?? "",
+              secretPath: propSecretPath ?? "/",
+              secretName: segment,
+              secretTags: []
+            }
+          );
+
+          console.log("canReadSecretValue", canReadSecretValue);
+          console.log("propEnvironment", propEnvironment);
+          console.log("propSecretPath", propSecretPath);
+          console.log("segment", segment);
+
+          if (!canReadSecretValue) {
+            createNotification({
+              text: "You do not have permission to access this secret",
+              type: "error"
+            });
+            return;
+          }
+
           navigate({
             search: (prev) => ({
               ...prev,
@@ -363,6 +390,32 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }
             folderPath += "/";
           }
+        }
+
+        const secretPath = segment === environmentSlug ? "/" : folderPath;
+
+        const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+          permission,
+          ProjectPermissionSecretActions.ReadValue,
+          {
+            environment: environmentSlug,
+            secretPath,
+            secretName: secretName ?? "",
+            secretTags: []
+          }
+        );
+
+        console.log("canReadSecretValue", canReadSecretValue);
+        console.log("environmentSlug", environmentSlug);
+        console.log("secretPath", secretPath);
+        console.log("secretName", secretName);
+
+        if (!canReadSecretValue) {
+          createNotification({
+            text: "You do not have permission to access this secret",
+            type: "error"
+          });
+          return;
         }
 
         navigate({
