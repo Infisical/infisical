@@ -14,17 +14,19 @@ export const RelayOption = ({
   return (
     <components.Option isSelected={isSelected} {...props}>
       <div className="flex flex-row items-center justify-between">
-        {isCreateOption ? (
+        {isCreateOption && (
           <div className="flex items-center gap-x-1 text-mineshaft-400">
             <FontAwesomeIcon icon={faPlus} size="sm" />
             <span className="mr-auto">Deploy New Relay</span>
           </div>
-        ) : isAutoOption ? (
+        )}
+        {isAutoOption && (
           <div className="flex items-center gap-x-1 text-mineshaft-400">
             <FontAwesomeIcon icon={faWandMagicSparkles} size="sm" />
             <span className="mr-auto">Auto Select Relay</span>
           </div>
-        ) : (
+        )}
+        {!isCreateOption && !isAutoOption && (
           <>
             <p className="truncate">{children}</p>
             {isSelected && (
