@@ -58,7 +58,7 @@ export type TCreateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: {};
+  acmeConfig?: unknown;
 };
 
 export type TUpdateCertificateProfileDTO = {
@@ -74,7 +74,7 @@ export type TUpdateCertificateProfileDTO = {
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: {};
+  acmeConfig?: unknown;
 };
 
 export type TDeleteCertificateProfileDTO = {
