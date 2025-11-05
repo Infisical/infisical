@@ -512,6 +512,7 @@ export const certificateV3ServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       certificateProfileDAL,
+      acmeAccountDAL,
       permissionService,
       enrollmentType
     );
@@ -614,6 +615,7 @@ export const certificateV3ServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       certificateProfileDAL,
+      acmeAccountDAL,
       permissionService,
       EnrollmentType.API
     );
