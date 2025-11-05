@@ -222,6 +222,7 @@ export const pkiAcmeServiceFactory = ({
   };
 
   const validateExistingAccountJwsPayload = async <
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     TSchema extends z.ZodSchema<any> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
@@ -385,7 +386,7 @@ export const pkiAcmeServiceFactory = ({
     // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
     const decoder = new TextDecoder();
     const decodedEabPayload = decoder.decode(eabPayload);
-    const eabJWK = JSON.parse(decodedEabPayload);
+    const eabJWK = JSON.parse(decodedEabPayload) as JsonWebKey;
     const eabPayloadJwkThumbprint = await calculateJwkThumbprint(eabJWK, "sha256");
     if (eabPayloadJwkThumbprint !== publicKeyThumbprint) {
       throw new AcmeBadPublicKeyError({
