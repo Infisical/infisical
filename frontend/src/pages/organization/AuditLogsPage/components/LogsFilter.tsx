@@ -1,7 +1,8 @@
 /* eslint-disable no-nested-ternary */
 import { useMemo } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { faCaretDown, faCheckCircle, faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
+import { MultiValue, SingleValue } from "react-select";
+import { faFilterCircleXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
@@ -11,13 +12,10 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   FilterableSelect,
   FormControl,
-  Input,
-  Select,
-  SelectItem
+  Input
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useOrganization } from "@app/context";
@@ -132,7 +130,7 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="mt-4 overflow-visible py-4">
         <form onSubmit={handleSubmit(setFilter)}>
-          <div className="flex min-w-64 flex-col font-inter">
+          <div className="flex max-w-96 min-w-96 flex-col font-inter">
             <div className="mb-3 flex items-center border-b border-b-mineshaft-500 px-3 pb-2">
               <div className="flex w-full items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -173,76 +171,24 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                   name="eventType"
                   render={({ field }) => (
                     <FormControl>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <div className="inline-flex thin-scrollbar w-full cursor-pointer items-center justify-between rounded-md border border-mineshaft-500 bg-mineshaft-700 px-3 py-2 font-inter text-sm font-normal whitespace-nowrap text-bunker-200 outline-hidden data-placeholder:text-mineshaft-200">
-                            {selectedEventTypes?.length === 1
-                              ? filteredEventTypes.find(
-                                  (eventType) => eventType.value === selectedEventTypes[0]
-                                )?.label
-                              : selectedEventTypes?.length === 0
-                                ? "All events"
-                                : `${selectedEventTypes?.length} events selected`}
-                            <FontAwesomeIcon icon={faCaretDown} className="ml-2 text-xs" />
-                          </div>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          sideOffset={2}
-                          className="z-100 max-h-80 thin-scrollbar overflow-hidden"
-                        >
-                          <div className="max-h-80 overflow-y-auto">
-                            {filteredEventTypes.length > 0 ? (
-                              filteredEventTypes.map((eventType) => {
-                                const isSelected = selectedEventTypes?.includes(
-                                  eventType.value as EventType
-                                );
-
-                                return (
-                                  <DropdownMenuItem
-                                    onSelect={(event) =>
-                                      filteredEventTypes.length > 1 && event.preventDefault()
-                                    }
-                                    onClick={() => {
-                                      if (
-                                        selectedEventTypes?.includes(eventType.value as EventType)
-                                      ) {
-                                        field.onChange(
-                                          selectedEventTypes?.filter(
-                                            (e: string) => e !== eventType.value
-                                          )
-                                        );
-                                      } else {
-                                        field.onChange([
-                                          ...(selectedEventTypes || []),
-                                          eventType.value
-                                        ]);
-                                      }
-                                    }}
-                                    key={`event-type-${eventType.value}`}
-                                    icon={
-                                      isSelected ? (
-                                        <FontAwesomeIcon
-                                          icon={faCheckCircle}
-                                          className="pr-0.5 text-primary"
-                                        />
-                                      ) : (
-                                        <div className="pl-[1.01rem]" />
-                                      )
-                                    }
-                                    iconPos="left"
-                                    className="w-[28.4rem] text-sm"
-                                  >
-                                    {eventType.label}
-                                  </DropdownMenuItem>
-                                );
-                              })
-                            ) : (
-                              <div />
-                            )}
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <FilterableSelect
+                        value={filteredEventTypes.filter((eventType) =>
+                          field.value.includes(eventType.value as EventType)
+                        )}
+                        isMulti
+                        isClearable
+                        onChange={(options) =>
+                          field.onChange(
+                            (options as MultiValue<(typeof filteredEventTypes)[number]>).map(
+                              (option) => option.value
+                            )
+                          )
+                        }
+                        placeholder="All events"
+                        options={filteredEventTypes}
+                        getOptionValue={(option) => option.value}
+                        getOptionLabel={(option) => option.label}
+                      />
                     </FormControl>
                   )}
                 />
@@ -256,31 +202,27 @@ export const LogsFilter = ({ presets, setFilter, filter, project }: Props) => {
                 <Controller
                   control={control}
                   name="userAgentType"
-                  render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+                  render={({ field: { onChange, value }, fieldState: { error } }) => (
                     <FormControl
                       errorText={error?.message}
                       isError={Boolean(error)}
                       className="w-full"
                     >
-                      <Select
-                        {...field}
-                        value={value === undefined ? "all" : value}
-                        onValueChange={(e) => {
-                          if (e === "all") onChange(undefined);
-                          else setValue("userAgentType", e as UserAgentType, { shouldDirty: true });
-                        }}
-                        className={twMerge("w-full border border-mineshaft-500 bg-mineshaft-700")}
-                        position="popper"
-                      >
-                        <SelectItem value="all" key="all">
-                          All sources
-                        </SelectItem>
-                        {userAgentTypes.map(({ label, value: userAgent }) => (
-                          <SelectItem value={userAgent} key={label}>
-                            {label}
-                          </SelectItem>
-                        ))}
-                      </Select>
+                      <FilterableSelect
+                        value={
+                          userAgentTypes.find(
+                            (userAgentType) => value === (userAgentType.value as UserAgentType)
+                          ) ?? null
+                        }
+                        isClearable
+                        onChange={(option) =>
+                          onChange((option as SingleValue<(typeof userAgentTypes)[number]>)?.value)
+                        }
+                        placeholder="All sources"
+                        options={userAgentTypes}
+                        getOptionValue={(option) => option.value}
+                        getOptionLabel={(option) => option.label}
+                      />
                     </FormControl>
                   )}
                 />
