@@ -484,24 +484,28 @@ export const pamAccountServiceFactory = ({
 
     switch (resourceType) {
       case PamResource.Postgres:
-      case PamResource.MySQL: {
-        const connectionCredentials = await decryptResourceConnectionDetails({
-          encryptedConnectionDetails: resource.encryptedConnectionDetails,
-          kmsService,
-          projectId: account.projectId
-        });
+      case PamResource.MySQL:
+        {
+          const connectionCredentials = await decryptResourceConnectionDetails({
+            encryptedConnectionDetails: resource.encryptedConnectionDetails,
+            kmsService,
+            projectId: account.projectId
+          });
 
-        const credentials = await decryptAccountCredentials({
-          encryptedCredentials: account.encryptedCredentials,
-          kmsService,
-          projectId: account.projectId
-        });
+          const credentials = await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId: account.projectId
+          });
 
-        metadata = {
-          username: credentials.username,
-          database: connectionCredentials.database
-        };
-      }
+          metadata = {
+            username: credentials.username,
+            database: connectionCredentials.database
+          };
+        }
+        break;
+      default:
+        break;
     }
 
     return {
