@@ -344,11 +344,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }
           );
 
-          console.log("canReadSecretValue", canReadSecretValue);
-          console.log("propEnvironment", propEnvironment);
-          console.log("propSecretPath", propSecretPath);
-          console.log("segment", segment);
-
           if (!canReadSecretValue) {
             createNotification({
               text: "You do not have permission to access this secret",
@@ -405,11 +400,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           }
         );
 
-        console.log("canReadSecretValue", canReadSecretValue);
-        console.log("environmentSlug", environmentSlug);
-        console.log("secretPath", secretPath);
-        console.log("secretName", secretName);
-
         if (!canReadSecretValue) {
           createNotification({
             text: "You do not have permission to access this secret",
@@ -432,7 +422,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           })
         });
       },
-      [navigate, projectId]
+      [navigate, projectId, permission, propEnvironment, propSecretPath]
     );
 
     return (

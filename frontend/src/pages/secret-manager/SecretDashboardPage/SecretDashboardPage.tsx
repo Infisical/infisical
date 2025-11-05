@@ -602,7 +602,7 @@ const Page = () => {
       tags: updatedTags,
       include: includeFilter
     }));
-    setDebouncedSearchFilter(routerQueryParams.search as string);
+    setDebouncedSearchFilter((routerQueryParams.search as string) ?? "");
   }, [routerQueryParams.search, routerQueryParams.tags, routerQueryParams.filterBy]);
 
   const selectedSecrets = useSelectedSecrets();
