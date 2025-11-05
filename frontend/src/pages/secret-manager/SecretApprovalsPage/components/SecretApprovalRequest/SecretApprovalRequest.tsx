@@ -107,7 +107,7 @@ export const SecretApprovalRequest = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId);
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
 
