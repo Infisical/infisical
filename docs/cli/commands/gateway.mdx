@@ -6,12 +6,12 @@ description: "Run the Infisical gateway or manage its systemd service"
 <Tabs>
   <Tab title="Start gateway">
     ```bash
-    infisical gateway start --name=<name> --relay=<relay-name> --auth-method=<auth-method>
+    infisical gateway start --name=<name> --auth-method=<auth-method>
     ```
   </Tab>
   <Tab title="Start gateway as background daemon (Linux only)">
     ```bash
-    sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name> --relay=<relay-name>
+    sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name>
     ```
   </Tab>
 </Tabs>
@@ -33,22 +33,27 @@ If you are moving from Gateway v1 to Gateway v2, this is NOT a drop-in switch. G
 
 <AccordionGroup>
 <Accordion title="infisical gateway start" defaultOpen="true">
-  Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to the specified relay server and provides secure access to private resources within your network.
+  Run the Infisical gateway component within your the network where your target resources are located. The gateway establishes an SSH reverse tunnel to a relay server and provides secure access to private resources within your network.
 
 ```bash
-infisical gateway start --relay=<relay-name> --name=<name> --auth-method=<auth-method>
+infisical gateway start --name=<name> --auth-method=<auth-method>
 ```
+
+<Info>
+    By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--relay=<relay-name>` flag.
+</Info>
 
 Once started, the gateway component will:
 
-- Establish outbound SSH reverse tunnels to relay servers (no inbound firewall rules needed)
+- Automatically connect to a healthy relay with the lowest latency (unless the `--relay` flag is specified)
+- Establish outbound SSH reverse tunnel to relay server (no inbound firewall rules needed)
 - Authenticate using SSH certificates issued by Infisical
 - Automatically reconnect if the connection is lost
 - Provide access to private resources within your network
 
 ### Authentication
 
-The Relay supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+The gateway supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
@@ -69,7 +74,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --name=<name>
     ```
 
   </Accordion>
@@ -93,7 +98,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
 
     ```bash
-      infisical gateway start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=kubernetes --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -114,7 +119,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
 
     ```bash
-      infisical gateway start --auth-method=azure --machine-identity-id=<machine-identity-id> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=azure --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -135,7 +140,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
 
     ```bash
-      infisical gateway start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=gcp-id-token --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -157,7 +162,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=gcp-iam --machine-identity-id=<machine-identity-id> --service-account-key-file-path=<service-account-key-file-path> --name=<name>
     ```
 
   </Accordion>
@@ -176,7 +181,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     </ParamField>
 
       ```bash
-        infisical gateway start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --relay=<relay-name> --name=<name>
+        infisical gateway start --auth-method=aws-iam --machine-identity-id=<machine-identity-id> --name=<name>
       ```
 
   </Accordion>
@@ -198,7 +203,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     </ParamField>
 
     ```bash
-      infisical gateway start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=oidc-auth --machine-identity-id=<machine-identity-id> --jwt=<oidc-jwt> --name=<name>
     ```
 
   </Accordion>
@@ -222,7 +227,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
 
     ```bash
-      infisical gateway start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --relay=<relay-name> --name=<name>
+      infisical gateway start --auth-method=jwt-auth --jwt=<jwt> --machine-identity-id=<machine-identity-id> --name=<name>
     ```
 
   </Accordion>
@@ -238,7 +243,7 @@ The Relay supports multiple authentication methods. Below are the available auth
     </ParamField>
 
     ```bash
-      infisical gateway start --token=<token> --relay=<relay-name> --name=<name>
+      infisical gateway start --token=<token> --name=<name>
     ```
 
   </Accordion>
@@ -249,6 +254,8 @@ The Relay supports multiple authentication methods. Below are the available auth
   <AccordionGroup>
   <Accordion title="--relay">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
+
+    If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
 
     ```bash
     # Example
@@ -264,7 +271,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
     ```bash
     # Example
-    infisical gateway start --name=my-gateway --relay=my-relay --token=<token>
+    infisical gateway start --name=my-gateway --token=<token>
     ```
 
   </Accordion>
@@ -274,7 +281,7 @@ The Relay supports multiple authentication methods. Below are the available auth
 
     ```bash
     # Example
-    infisical gateway start --domain=https://app.your-domain.com --relay=<relay-name> --name=<name>
+    infisical gateway start --domain=https://app.your-domain.com --name=<name>
     ```
 
   </Accordion>
@@ -285,7 +292,7 @@ The Relay supports multiple authentication methods. Below are the available auth
   Install and enable the gateway as a systemd service. This command must be run with sudo on Linux.
 
 ```bash
-sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name> --relay=<relay-name>
+sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=<name>
 ```
 
 ### Requirements
@@ -302,7 +309,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --token=<token> --name=<name> --relay=<relay-name>
+    sudo infisical gateway systemd install --token=<token> --name=<name>
     ```
 
     You may also expose the token to the CLI by setting the environment variable `INFISICAL_TOKEN` before executing the install command.
@@ -314,7 +321,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --domain=https://app.your-domain.com --name=<name> --relay=<relay-name>
+    sudo infisical gateway systemd install --domain=https://app.your-domain.com --name=<name>
     ```
 
   </Accordion>
@@ -324,18 +331,22 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --name=my-gateway --token=<token> --relay=<relay-name>
+    sudo infisical gateway systemd install --name=my-gateway --token=<token>
     ```
 
   </Accordion>
 
   <Accordion title="--relay">
-    The name of the relay that this gateway should connect to.
+    The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
+
+    If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
 
     ```bash
     # Example
     sudo infisical gateway systemd install --relay=my-relay --token=<token> --name=<name>
     ```
+
+    **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server using `infisical relay start` before connecting gateways to it. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical.
 
   </Accordion>
   </AccordionGroup>
@@ -670,4 +681,15 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 ```
 
 </Accordion>
+</AccordionGroup>
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="How are relays auto-selected?">
+      If the `--relay` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available platform relays.
+  </Accordion>
+  <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
+      No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
+  </Accordion>
 </AccordionGroup>
