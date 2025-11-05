@@ -3,6 +3,8 @@
  * https://datatracker.ietf.org/doc/html/rfc8555#section-6.7
  */
 
+/* eslint-disable max-classes-per-file */
+
 // RFC 8555 Section 6.7 - Error Types
 export enum AcmeErrorType {
   AccountDoesNotExist = "accountDoesNotExist",

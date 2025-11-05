@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { TPkiAcmeChallenges } from "@app/db/schemas";
 import { JWSHeaderParameters } from "jose";
 import {
   AcmeOrderResourceSchema,
@@ -51,7 +50,7 @@ export type TAcmeResponse<TPayload> = {
 
 export type TPkiAcmeServiceFactory = {
   validateJwsPayload: <
-    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    TSchema extends z.ZodSchema<unknown> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
     url,
@@ -72,7 +71,7 @@ export type TPkiAcmeServiceFactory = {
     rawJwsPayload: TRawJwsPayload;
   }) => Promise<TJwsPayload<TCreateAcmeAccountPayload>>;
   validateExistingAccountJwsPayload: <
-    TSchema extends z.ZodSchema<any> | undefined = undefined,
+    TSchema extends z.ZodSchema<unknown> | undefined = undefined,
     T = TSchema extends z.ZodSchema<infer R> ? R : string
   >({
     url,
