@@ -441,14 +441,13 @@ export const pkiAcmeServiceFactory = ({
 
   const deactivateAcmeAccount = async ({
     profileId,
-    accountId,
-    payload: { status } = { status: "deactivated" }
+    accountId
   }: {
     profileId: string;
     accountId: string;
     payload?: TDeactivateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TDeactivateAcmeAccountResponse>> => {
-    const profile = await validateAcmeProfile(profileId);
+    await validateAcmeProfile(profileId);
     // FIXME: Implement ACME account deactivation
     return {
       status: 200,
@@ -494,36 +493,35 @@ export const pkiAcmeServiceFactory = ({
       );
       const authorizations: TPkiAcmeAuths[] = await Promise.all(
         payload.identifiers.map(async (identifier) => {
-          if (identifier.type === AcmeIdentifierType.DNS) {
-            // TODO: reuse existing authorizations for this identifier if they exist
-            const auth = await acmeAuthDAL.create(
-              {
-                accountId: account.id,
-                status: AcmeAuthStatus.Pending,
-                identifierType: identifier.type,
-                identifierValue: identifier.value,
-                // RFC 8555 suggests a token with at least 128 bits of entropy
-                // We are using 256 bits of entropy here, should be enough for now
-                // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
-                token: crypto.randomBytes(32).toString("base64url"),
-                // TODO: read config from the profile to get the expiration time instead
-                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
-              },
-              tx
-            );
-            // TODO: support other challenge types here. Currently only HTTP-01 is supported.
-            await acmeChallengeDAL.create(
-              {
-                authId: auth.id,
-                status: AcmeChallengeStatus.Pending,
-                type: AcmeChallengeType.HTTP_01
-              },
-              tx
-            );
-            return auth;
-          } else {
+          if (identifier.type !== AcmeIdentifierType.DNS) {
             throw new AcmeUnsupportedIdentifierError({ detail: "Only DNS identifiers are supported" });
           }
+          // TODO: reuse existing authorizations for this identifier if they exist
+          const auth = await acmeAuthDAL.create(
+            {
+              accountId: account.id,
+              status: AcmeAuthStatus.Pending,
+              identifierType: identifier.type,
+              identifierValue: identifier.value,
+              // RFC 8555 suggests a token with at least 128 bits of entropy
+              // We are using 256 bits of entropy here, should be enough for now
+              // ref: https://datatracker.ietf.org/doc/html/rfc8555#section-11.3
+              token: crypto.randomBytes(32).toString("base64url"),
+              // TODO: read config from the profile to get the expiration time instead
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            },
+            tx
+          );
+          // TODO: support other challenge types here. Currently only HTTP-01 is supported.
+          await acmeChallengeDAL.create(
+            {
+              authId: auth.id,
+              status: AcmeChallengeStatus.Pending,
+              type: AcmeChallengeType.HTTP_01
+            },
+            tx
+          );
+          return auth;
         })
       );
 
@@ -591,13 +589,13 @@ export const pkiAcmeServiceFactory = ({
     }
     if (order.status === AcmeOrderStatus.Ready) {
       const { order: updatedOrder, error } = await acmeOrderDAL.transaction(async (tx) => {
-        const order = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
+        const finalizingOrder = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
         // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
         const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
-        if (order.status !== AcmeOrderStatus.Ready) {
+        if (finalizingOrder.status !== AcmeOrderStatus.Ready) {
           throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
         }
-        if (order.expiresAt < new Date()) {
+        if (finalizingOrder.expiresAt < new Date()) {
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
         const { csr } = payload;
@@ -612,8 +610,8 @@ export const pkiAcmeServiceFactory = ({
             actorOrgId,
             profileId,
             csr,
-            notBefore: order.notBefore ? new Date(order.notBefore) : undefined,
-            notAfter: order.notAfter ? new Date(order.notAfter) : undefined,
+            notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
+            notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
             validity: {
               // TODO: read config from the profile to get the expiration time instead
               ttl: (24 * 60 * 60 * 1000).toString()
@@ -630,20 +628,20 @@ export const pkiAcmeServiceFactory = ({
             },
             tx
           );
-        } catch (error) {
+        } catch (exp) {
           await acmeOrderDAL.updateById(
             orderId,
             {
               csr,
               status: AcmeOrderStatus.Invalid,
-              error: error instanceof Error ? error.message : "Unknown error"
+              error: exp instanceof Error ? exp.message : "Unknown error"
             },
             tx
           );
-          logger.error(error, "Failed to sign certificate");
+          logger.error(exp, "Failed to sign certificate");
           // TODO: audit log the error
-          if (error instanceof BadRequestError) {
-            errorToReturn = new AcmeBadCSRError({ detail: `Invalid CSR: ${error.message}` });
+          if (exp instanceof BadRequestError) {
+            errorToReturn = new AcmeBadCSRError({ detail: `Invalid CSR: ${exp.message}` });
           } else {
             errorToReturn = new AcmeServerInternalError({ detail: "Failed to sign certificate with internal error" });
           }
@@ -710,15 +708,14 @@ export const pkiAcmeServiceFactory = ({
     });
     const certificateChain = decryptedCertChain.toString();
 
+    const certLeaf = certObj.toString("pem").trim().replace("\n", "\r\n");
+    const certChain = certificateChain.trim().replace("\n", "\r\n");
     return {
       status: 200,
       body:
-        certObj.toString("pem").trim().replace("\n", "\r\n") +
-        "\r\n" +
-        certificateChain.trim().replace("\n", "\r\n") +
         // The final line is needed, otherwise some clients will not parse the certificate chain correctly
         // ref: https://github.com/certbot/certbot/blob/4d5d5f7ae8164884c841969e46caed8db1ad34af/certbot/src/certbot/crypto_util.py#L506-L514
-        "\r\n",
+        `${certLeaf}\r\n${certChain}\r\n`,
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}/certificate`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
