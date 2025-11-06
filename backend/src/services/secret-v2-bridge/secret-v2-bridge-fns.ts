@@ -793,6 +793,7 @@ export const reshapeBridgeSecret = (
     userActorId?: string | null;
     identityActorId?: string | null;
     membershipId?: string | null;
+    groupId?: string | null;
     actorType?: string | null;
     tags?: {
       id: string;
@@ -823,7 +824,8 @@ export const reshapeBridgeSecret = (
         actorType: secret.actorType,
         actorId: secret.userActorId || secret.identityActorId,
         name: secret.identityActorName || secret.userActorName,
-        membershipId: secret.membershipId
+        membershipId: secret.membershipId,
+        groupId: secret.groupId
       }
     : undefined,
   tags: secret.tags,
