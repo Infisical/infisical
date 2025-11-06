@@ -1,0 +1,433 @@
+import { z } from "zod";
+
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { AuthMode } from "@app/services/auth/auth-type";
+import {
+  CreatePkiAlertV2Schema,
+  PkiAlertEventType,
+  PkiFilterRuleSchema,
+  UpdatePkiAlertV2Schema
+} from "@app/services/pki-alert-v2/pki-alert-v2-types";
+
+export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    url: "/",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Create a new PKI alert",
+      tags: ["PKI Alerts"],
+      body: z.object({
+        projectId: z.string().uuid().describe("Project ID"),
+        ...CreatePkiAlertV2Schema.shape
+      }),
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          slug: z.string(),
+          description: z.string().nullable(),
+          eventType: z.nativeEnum(PkiAlertEventType),
+          alertBefore: z.string(),
+          filters: z.array(z.any()),
+          enabled: z.boolean(),
+          channels: z.array(
+            z.object({
+              id: z.string().uuid(),
+              channelType: z.string(),
+              config: z.record(z.any()),
+              enabled: z.boolean(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          createdAt: z.date(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alert = await server.services.pkiAlertV2.createAlert({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.CREATE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id,
+            name: alert.slug,
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore
+          }
+        }
+      });
+
+      return alert;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "List PKI alerts for a project",
+      tags: ["PKI Alerts"],
+      querystring: z.object({
+        projectId: z.string().uuid(),
+        search: z.string().optional(),
+        eventType: z.nativeEnum(PkiAlertEventType).optional(),
+        enabled: z.coerce.boolean().optional(),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          alerts: z.array(
+            z.object({
+              id: z.string().uuid(),
+              slug: z.string(),
+              description: z.string().nullable(),
+              eventType: z.nativeEnum(PkiAlertEventType),
+              alertBefore: z.string(),
+              filters: z.array(z.any()),
+              enabled: z.boolean(),
+              channels: z.array(
+                z.object({
+                  id: z.string().uuid(),
+                  channelType: z.string(),
+                  config: z.record(z.any()),
+                  enabled: z.boolean(),
+                  createdAt: z.date(),
+                  updatedAt: z.date()
+                })
+              ),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          total: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alerts = await server.services.pkiAlertV2.listAlerts({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return alerts;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:alertId",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Get a PKI alert by ID",
+      tags: ["PKI Alerts"],
+      params: z.object({
+        alertId: z.string().uuid().describe("Alert ID")
+      }),
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          slug: z.string(),
+          description: z.string().nullable(),
+          eventType: z.nativeEnum(PkiAlertEventType),
+          alertBefore: z.string(),
+          filters: z.array(z.any()),
+          enabled: z.boolean(),
+          channels: z.array(
+            z.object({
+              id: z.string().uuid(),
+              channelType: z.string(),
+              config: z.record(z.any()),
+              enabled: z.boolean(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          createdAt: z.date(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alert = await server.services.pkiAlertV2.getAlertById({
+        alertId: req.params.alertId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.GET_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id
+          }
+        }
+      });
+
+      return alert;
+    }
+  });
+
+  server.route({
+    method: "PATCH",
+    url: "/:alertId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Update a PKI alert",
+      tags: ["PKI Alerts"],
+      params: z.object({
+        alertId: z.string().uuid().describe("Alert ID")
+      }),
+      body: UpdatePkiAlertV2Schema,
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          slug: z.string(),
+          description: z.string().nullable(),
+          eventType: z.nativeEnum(PkiAlertEventType),
+          alertBefore: z.string(),
+          filters: z.array(z.any()),
+          enabled: z.boolean(),
+          channels: z.array(
+            z.object({
+              id: z.string().uuid(),
+              channelType: z.string(),
+              config: z.record(z.any()),
+              enabled: z.boolean(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          createdAt: z.date(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alert = await server.services.pkiAlertV2.updateAlert({
+        alertId: req.params.alertId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id,
+            name: alert.slug,
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore
+          }
+        }
+      });
+
+      return alert;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:alertId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Delete a PKI alert",
+      tags: ["PKI Alerts"],
+      params: z.object({
+        alertId: z.string().uuid().describe("Alert ID")
+      }),
+      response: {
+        200: z.object({
+          id: z.string().uuid(),
+          slug: z.string(),
+          description: z.string().nullable(),
+          eventType: z.nativeEnum(PkiAlertEventType),
+          alertBefore: z.string(),
+          filters: z.array(z.any()),
+          enabled: z.boolean(),
+          channels: z.array(
+            z.object({
+              id: z.string().uuid(),
+              channelType: z.string(),
+              config: z.record(z.any()),
+              enabled: z.boolean(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          createdAt: z.date(),
+          updatedAt: z.date()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alert = await server.services.pkiAlertV2.deleteAlert({
+        alertId: req.params.alertId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: alert.projectId,
+        event: {
+          type: EventType.DELETE_PKI_ALERT,
+          metadata: {
+            pkiAlertId: alert.id
+          }
+        }
+      });
+
+      return alert;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:alertId/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "List certificates that match an alert's filter rules",
+      tags: ["PKI Alerts"],
+      params: z.object({
+        alertId: z.string().uuid().describe("Alert ID")
+      }),
+      querystring: z.object({
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            z.object({
+              id: z.string().uuid(),
+              serialNumber: z.string(),
+              commonName: z.string(),
+              san: z.array(z.string()),
+              profileName: z.string().nullable(),
+              enrollmentType: z.string().nullable(),
+              notBefore: z.date(),
+              notAfter: z.date(),
+              status: z.string()
+            })
+          ),
+          total: z.number(),
+          limit: z.number(),
+          offset: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.listMatchingCertificates({
+        alertId: req.params.alertId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/preview/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      description: "Preview certificates that would match the given filter rules",
+      tags: ["PKI Alerts"],
+      body: z.object({
+        projectId: z.string().uuid().describe("Project ID"),
+        filters: z.array(PkiFilterRuleSchema),
+        alertBefore: z
+          .string()
+          .regex(/^\d+[dwmy]$/)
+          .describe("Alert timing (e.g., '30d', '1w')"),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            z.object({
+              id: z.string().uuid(),
+              serialNumber: z.string(),
+              commonName: z.string(),
+              san: z.array(z.string()),
+              profileName: z.string().nullable(),
+              enrollmentType: z.string().nullable(),
+              notBefore: z.date(),
+              notAfter: z.date(),
+              status: z.string()
+            })
+          ),
+          total: z.number(),
+          limit: z.number(),
+          offset: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.listCurrentMatchingCertificates({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      return result;
+    }
+  });
+};

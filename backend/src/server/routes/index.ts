@@ -267,6 +267,11 @@ import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rota
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
+import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
+import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
+import { pkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { pkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
@@ -547,6 +552,9 @@ export const registerRoutes = async (
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const roleDAL = roleDALFactory(db);
+  const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
+  const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
+  const pkiAlertV2DAL = pkiAlertV2DALFactory(db);
 
   const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
@@ -1801,6 +1809,21 @@ export const registerRoutes = async (
     groupDAL
   });
 
+  const pkiAlertV2Service = pkiAlertV2ServiceFactory({
+    pkiAlertV2DAL,
+    pkiAlertChannelDAL,
+    pkiAlertHistoryDAL,
+    permissionService,
+    smtpService
+  });
+
+  const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({
+    queueService,
+    pkiAlertV2Service,
+    pkiAlertV2DAL,
+    pkiAlertHistoryDAL
+  });
+
   const dynamicSecretProviders = buildDynamicSecretProviders({
     gatewayService,
     gatewayV2Service
@@ -2355,6 +2378,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
+  await pkiAlertV2Queue.startDailyAlertProcessing();
   await certificateV3Queue.init();
   await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
@@ -2486,7 +2510,8 @@ export const registerRoutes = async (
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
-    convertor: convertorService
+    convertor: convertorService,
+    pkiAlertV2: pkiAlertV2Service
   });
 
   const cronJobs: CronJob[] = [];

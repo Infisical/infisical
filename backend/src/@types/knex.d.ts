@@ -266,9 +266,21 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiAlertChannels,
+  TPkiAlertChannelsInsert,
+  TPkiAlertChannelsUpdate,
+  TPkiAlertHistory,
+  TPkiAlertHistoryCertificate,
+  TPkiAlertHistoryCertificateInsert,
+  TPkiAlertHistoryCertificateUpdate,
+  TPkiAlertHistoryInsert,
+  TPkiAlertHistoryUpdate,
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiAlertsV2,
+  TPkiAlertsV2Insert,
+  TPkiAlertsV2Update,
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
@@ -725,6 +737,22 @@ declare module "knex/types/tables" {
       TCertificateSecretsUpdate
     >;
     [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
+    [TableName.PkiAlertsV2]: KnexOriginal.CompositeTableType<TPkiAlertsV2, TPkiAlertsV2Insert, TPkiAlertsV2Update>;
+    [TableName.PkiAlertChannels]: KnexOriginal.CompositeTableType<
+      TPkiAlertChannels,
+      TPkiAlertChannelsInsert,
+      TPkiAlertChannelsUpdate
+    >;
+    [TableName.PkiAlertHistory]: KnexOriginal.CompositeTableType<
+      TPkiAlertHistory,
+      TPkiAlertHistoryInsert,
+      TPkiAlertHistoryUpdate
+    >;
+    [TableName.PkiAlertHistoryCertificate]: KnexOriginal.CompositeTableType<
+      TPkiAlertHistoryCertificate,
+      TPkiAlertHistoryCertificateInsert,
+      TPkiAlertHistoryCertificateUpdate
+    >;
     [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
       TPkiCollections,
       TPkiCollectionsInsert,
