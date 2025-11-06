@@ -198,6 +198,7 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
         .leftJoin(TableName.SecretFolder, `${TableName.SecretFolder}.id`, `${TableName.SecretVersionV2}.folderId`)
         .leftJoin(TableName.Environment, `${TableName.Environment}.id`, `${TableName.SecretFolder}.envId`)
         .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.SecretVersionV2}.userActorId`)
+        .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.UserGroupMembership, `${TableName.UserGroupMembership}.userId`, `${TableName.Users}.id`)
         .leftJoin(TableName.Membership, (qb) => {
           void qb
@@ -206,10 +207,10 @@ export const secretVersionV2BridgeDALFactory = (db: TDbClient) => {
             .andOn((sqb) => {
               void sqb
                 .on(`${TableName.Membership}.actorUserId`, `${TableName.SecretVersionV2}.userActorId`)
+                .orOn(`${TableName.Membership}.actorIdentityId`, `${TableName.SecretVersionV2}.identityActorId`)
                 .orOn(`${TableName.Membership}.actorGroupId`, `${TableName.UserGroupMembership}.groupId`);
             });
         })
-        .leftJoin(TableName.Identity, `${TableName.Identity}.id`, `${TableName.SecretVersionV2}.identityActorId`)
         .leftJoin(TableName.SecretV2, `${TableName.SecretVersionV2}.secretId`, `${TableName.SecretV2}.id`)
         .leftJoin(
           TableName.SecretVersionV2Tag,

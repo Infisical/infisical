@@ -202,9 +202,11 @@ export const SecretVersionItem = ({
                       className={actor.membershipId ? "cursor-pointer" : undefined}
                     >
                       <FontAwesomeIcon icon={getModifiedByIcon(actor.actorType)} className="ml-2" />
-                      {!actor.membershipId && (
-                        <FontAwesomeIcon className="ml-1 text-mineshaft-400" icon={faBan} />
-                      )}
+                      {!actor.membershipId &&
+                        actor.actorType &&
+                        [ActorType.USER, ActorType.IDENTITY].includes(
+                          actor.actorType as ActorType
+                        ) && <FontAwesomeIcon className="ml-1 text-mineshaft-400" icon={faBan} />}
                     </div>
                   </Tooltip>
                 </div>
