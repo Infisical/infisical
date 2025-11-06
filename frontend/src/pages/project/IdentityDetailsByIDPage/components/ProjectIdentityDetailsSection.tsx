@@ -143,7 +143,7 @@ export const ProjectIdentityDetailsSection = ({ identity, membership }: Props) =
         <div className="mb-4">
           <p className="text-sm font-medium text-mineshaft-300">Identity ID</p>
           <div className="group flex align-top">
-            <p className="text-sm text-mineshaft-300">{identity.id}</p>
+            <p className="text-sm break-all text-mineshaft-300">{identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
               <Tooltip content={copyTextId}>
                 <IconButton

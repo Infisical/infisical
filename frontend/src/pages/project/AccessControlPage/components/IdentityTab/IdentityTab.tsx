@@ -83,7 +83,7 @@ export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
-    const { isSubOrganization } = useOrganization();
+    const { isSubOrganization, currentOrg } = useOrganization();
 
     const {
       offset,
@@ -279,7 +279,7 @@ export const IdentityTab = withProjectPermission(
                 data.identityMemberships.length > 0 &&
                 data.identityMemberships.map((identityMember) => {
                   const {
-                    identity: { id, name, projectId: identityProjectId },
+                    identity: { id, name, projectId: identityProjectId, orgId: identityOrgId },
                     roles
                   } = identityMember;
                   return (
@@ -412,7 +412,7 @@ export const IdentityTab = withProjectPermission(
                               <ProjectIcon />
                               Project
                             </>
-                          ) : isSubOrganization ? (
+                          ) : isSubOrganization && currentOrg.id === identityOrgId ? (
                             <>
                               <SubOrgIcon />
                               Sub-Organization

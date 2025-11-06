@@ -234,20 +234,18 @@ export const identityAccessTokenServiceFactory = ({
 
       parentOrgId = subOrganization.parentOrgId as string;
     } else {
-      const organization = await orgDAL.findOne({ id: rootOrgId });
-
       const identityOrgMembership = await membershipIdentityDAL.findOne({
         scope: AccessScope.Organization,
         actorIdentityId: identityAccessToken.identityId,
-        scopeOrgId: rootOrgId
+        scopeOrgId: identityOrgDetails.id
       });
 
       if (!identityOrgMembership) {
         throw new BadRequestError({ message: "Identity does not belong to any organization" });
       }
 
-      orgId = rootOrgId;
-      orgName = organization.name;
+      orgId = identityOrgDetails.id;
+      orgName = identityOrgDetails.name;
       parentOrgId = rootOrgId;
     }
 

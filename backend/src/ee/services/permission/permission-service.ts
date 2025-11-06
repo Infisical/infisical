@@ -362,7 +362,7 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this project" });
 
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles
