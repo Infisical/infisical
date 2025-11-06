@@ -13,8 +13,6 @@ import {
   FormLabel,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Switch
 } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -49,7 +47,7 @@ type ContentProps = {
   identity?: TProjectIdentity;
 };
 
-const Content = ({ onClose, identity }: ContentProps) => {
+export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
   const navigate = useNavigate();
 
   const { currentProject } = useProject();
@@ -287,24 +285,5 @@ const Content = ({ onClose, identity }: ContentProps) => {
         </Button>
       </div>
     </form>
-  );
-};
-
-type Props = {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  identity?: TProjectIdentity;
-};
-
-export const ProjectIdentityModal = ({ isOpen, onOpenChange, identity }: Props) => {
-  return (
-    <Modal isOpen={isOpen} onOpenChange={(open) => onOpenChange(open)}>
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={`${identity ? "Update" : "Create"} Project Identity`}
-      >
-        <Content identity={identity} onClose={() => onOpenChange(false)} />
-      </ModalContent>
-    </Modal>
   );
 };

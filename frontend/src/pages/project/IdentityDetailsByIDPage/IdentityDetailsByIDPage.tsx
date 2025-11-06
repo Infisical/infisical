@@ -28,7 +28,6 @@ import { usePopUp } from "@app/hooks";
 import {
   useAssumeProjectPrivileges,
   useDeleteProjectIdentityMembership,
-  useGetProjectIdentityMembership,
   useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";

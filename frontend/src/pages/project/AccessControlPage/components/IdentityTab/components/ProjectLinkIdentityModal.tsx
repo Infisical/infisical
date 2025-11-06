@@ -5,15 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import {
-  Button,
-  FilterableSelect,
-  FormControl,
-  Modal,
-  ModalClose,
-  ModalContent,
-  Spinner
-} from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, ModalClose, Spinner } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
   projectIdentityMembershipQuery,
@@ -34,11 +26,10 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  popUp: UsePopUpState<["linkIdentity"]>;
-  handlePopUpToggle: (popUpName: keyof UsePopUpState<["linkIdentity"]>, state?: boolean) => void;
+  handlePopUpToggle: (popUpName: keyof UsePopUpState<["createIdentity"]>, state?: boolean) => void;
 };
 
-const Content = ({ popUp, handlePopUpToggle }: Props) => {
+export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
   const { projectId } = useProject();
 
   // const [searchValue, setSearchValue] = useState("");
@@ -107,7 +98,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
         id: nextAvailableMembership?.id
       }
     });
-    handlePopUpToggle("linkIdentity", false);
+    handlePopUpToggle("createIdentity", false);
   };
 
   if (isMembershipsLoading || isRolesLoading)
@@ -168,7 +159,7 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          {popUp?.linkIdentity?.data ? "Update" : "Link"}
+          Link
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
@@ -177,24 +168,5 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
         </ModalClose>
       </div>
     </form>
-  );
-};
-
-export const ProjectLinkIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
-  return (
-    <Modal
-      isOpen={popUp?.linkIdentity?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("linkIdentity", isOpen);
-      }}
-    >
-      <ModalContent
-        title="Assign Existing Identity"
-        subTitle="Assign an existing identity from the parent organization to this project. The identity will continue to be managed at its original scope."
-        bodyClassName="overflow-visible"
-      >
-        <Content popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      </ModalContent>
-    </Modal>
   );
 };

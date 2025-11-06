@@ -22,6 +22,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Modal,
+  ModalContent,
   Tag,
   Tooltip
 } from "@app/components/v2";
@@ -223,11 +225,18 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
           )}
         </div>
       </div>
-      <ProjectIdentityModal
-        identity={identity}
+      <Modal
         isOpen={popUp.editIdentity.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("editIdentity", isOpen)}
-      />
+        onOpenChange={(open) => handlePopUpToggle("editIdentity", open)}
+      >
+        <ModalContent bodyClassName="overflow-visible" title="Edit Project Identity">
+          <ProjectIdentityModal
+            identity={identity}
+            onClose={() => handlePopUpToggle("editIdentity", false)}
+          />
+        </ModalContent>
+      </Modal>
+
       <DeleteActionModal
         isOpen={popUp.deleteIdentity.isOpen}
         title={`Are you sure you want to delete ${identity.name}?`}

@@ -1,18 +1,19 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   faArrowDown,
   faArrowUp,
-  faChevronDown,
   faCircleXmark,
   faClock,
   faEllipsisV,
-  faLink,
   faMagnifyingGlass,
   faPlus,
   faServer
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { AnimatePresence, motion } from "framer-motion";
+import { LinkIcon, PlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -30,6 +31,8 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
   Pagination,
   Spinner,
   Table,
@@ -79,11 +82,19 @@ import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal"
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
+enum WizardSteps {
+  SelectAction = "select-action",
+  LinkIdentity = "link-identity",
+  ProjectIdentity = "project-identity"
+}
+
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
+
+    const [wizardStep, setWizardStep] = useState(WizardSteps.SelectAction);
 
     const {
       offset,
@@ -133,7 +144,6 @@ export const IdentityTab = withProjectPermission(
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "createIdentity",
-      "linkIdentity",
       "deleteIdentity",
       "upgradePlan",
       "addOptions"
@@ -201,37 +211,6 @@ export const IdentityTab = withProjectPermission(
                 </Button>
               )}
             </ProjectPermissionCan>
-            <DropdownMenu
-              open={popUp.addOptions.isOpen}
-              onOpenChange={(isOpen) => handlePopUpToggle("addOptions", isOpen)}
-            >
-              <DropdownMenuTrigger>
-                <Button variant="outline_bg" className="rounded-l-none border-l-mineshaft-800 px-3">
-                  <FontAwesomeIcon icon={faChevronDown} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={6} className="p-1">
-                <ProjectPermissionCan
-                  I={ProjectPermissionActions.Create}
-                  a={ProjectPermissionSub.Identity}
-                >
-                  {(isAllowed) => (
-                    <Button
-                      variant="outline_bg"
-                      className="w-full"
-                      isDisabled={!isAllowed}
-                      leftIcon={<FontAwesomeIcon icon={faLink} />}
-                      onClick={() => {
-                        handlePopUpOpen("linkIdentity");
-                        handlePopUpClose("addOptions");
-                      }}
-                    >
-                      Assign Org Identity
-                    </Button>
-                  )}
-                </ProjectPermissionCan>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
         <Input
@@ -494,11 +473,94 @@ export const IdentityTab = withProjectPermission(
             />
           )}
         </TableContainer>
-        <ProjectIdentityModal
+        <Modal
           isOpen={popUp.createIdentity.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("createIdentity", isOpen)}
-        />
-        <ProjectLinkIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+          onOpenChange={(open) => {
+            handlePopUpToggle("createIdentity", open);
+            if (!open) setWizardStep(WizardSteps.SelectAction);
+          }}
+        >
+          <ModalContent
+            bodyClassName="overflow-visible"
+            title="Add Project Identity"
+            subTitle="Create a new identity or assign an existing identity"
+          >
+            <AnimatePresence mode="wait">
+              {wizardStep === WizardSteps.SelectAction && (
+                <motion.div
+                  key="select-type-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <div
+                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(WizardSteps.ProjectIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(WizardSteps.ProjectIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <PlusIcon size="1rem" />
+                      <div>Create New Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Create a new machine identity specifically for this project. This identity
+                      will be managed at the project-level.
+                    </div>
+                  </div>
+                  <div
+                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(WizardSteps.LinkIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(WizardSteps.LinkIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size="1rem" />
+                      <div>Assign Existing Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Assign an existing identity from your organization or namespace to this
+                      project. The identity will continue to be managed at its original scope.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {wizardStep === WizardSteps.ProjectIdentity && (
+                <motion.div
+                  key="identity-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <ProjectIdentityModal onClose={() => handlePopUpClose("createIdentity")} />
+                </motion.div>
+              )}
+              {wizardStep === WizardSteps.LinkIdentity && (
+                <motion.div
+                  key="link-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </ModalContent>
+        </Modal>
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${
