@@ -85,7 +85,11 @@ export const UpdateLdapConnectionSchema = z
       AppConnections.UPDATE(AppConnection.LDAP).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP, {
+      supportsGateways: true
+    })
+  );
 
 export const LdapConnectionListItemSchema = z.object({
   name: z.literal("LDAP"),
