@@ -34,10 +34,11 @@ import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/compo
 
 type Props = {
   identity: TProjectIdentity;
+  isOrgIdentity?: boolean;
   membership: IdentityProjectMembership;
 };
 
-export const ProjectIdentityDetailsSection = ({ identity, membership }: Props) => {
+export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, membership }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -76,21 +77,23 @@ export const ProjectIdentityDetailsSection = ({ identity, membership }: Props) =
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-medium text-mineshaft-100">Identity Details</h3>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              rightIcon={
-                <FontAwesomeIcon
-                  className="ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180"
-                  icon={faChevronDown}
-                />
-              }
-              colorSchema="secondary"
-              className="group select-none"
-            >
-              Options
-            </Button>
-          </DropdownMenuTrigger>
+          {!isOrgIdentity && (
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="xs"
+                rightIcon={
+                  <FontAwesomeIcon
+                    className="ml-1 transition-transform duration-200 group-data-[state=open]:rotate-180"
+                    icon={faChevronDown}
+                  />
+                }
+                colorSchema="secondary"
+                className="group select-none"
+              >
+                Options
+              </Button>
+            </DropdownMenuTrigger>
+          )}
           <DropdownMenuContent className="mt-3 min-w-[120px]" align="end">
             <ProjectPermissionCan
               I={ProjectPermissionIdentityActions.Edit}
@@ -162,25 +165,35 @@ export const ProjectIdentityDetailsSection = ({ identity, membership }: Props) =
           </div>
         </div>
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
+          <p className="text-sm font-medium text-mineshaft-300">Managed By</p>
           <p className="text-sm text-mineshaft-300">
-            {membership.lastLoginAuthMethod
-              ? identityAuthToNameMap[membership.lastLoginAuthMethod]
-              : "-"}
+            {identity.projectId ? "Project" : "Organization"}
           </p>
         </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
-          <p className="text-sm text-mineshaft-300">
-            {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
-          </p>
-        </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
-          <p className="text-sm text-mineshaft-300">
-            {identity.hasDeleteProtection ? "On" : "Off"}
-          </p>
-        </div>
+        {!isOrgIdentity && (
+          <>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-mineshaft-300">Last Login Auth Method</p>
+              <p className="text-sm text-mineshaft-300">
+                {membership.lastLoginAuthMethod
+                  ? identityAuthToNameMap[membership.lastLoginAuthMethod]
+                  : "-"}
+              </p>
+            </div>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-mineshaft-300">Last Login Time</p>
+              <p className="text-sm text-mineshaft-300">
+                {membership.lastLoginTime ? format(membership.lastLoginTime, "PPpp") : "-"}
+              </p>
+            </div>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-mineshaft-300">Delete Protection</p>
+              <p className="text-sm text-mineshaft-300">
+                {identity.hasDeleteProtection ? "On" : "Off"}
+              </p>
+            </div>
+          </>
+        )}
         <div>
           <p className="text-sm font-medium text-mineshaft-300">Metadata</p>
           {identity?.metadata?.length ? (

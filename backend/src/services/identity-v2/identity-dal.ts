@@ -13,9 +13,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
     const doc = await db
       .replicaNode()(TableName.Identity)
       .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-        void queryBuilder
-          .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
-          .andOn(`${TableName.Identity}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        void queryBuilder.on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`);
       })
       .leftJoin(
         TableName.IdentityUniversalAuth,
@@ -134,9 +132,7 @@ export const identityV2DALFactory = (db: TDbClient) => {
     const query = db
       .replicaNode()(TableName.Identity)
       .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-        void queryBuilder
-          .on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`)
-          .andOn(`${TableName.Identity}.orgId`, `${TableName.IdentityMetadata}.orgId`);
+        void queryBuilder.on(`${TableName.Identity}.id`, `${TableName.IdentityMetadata}.identityId`);
       })
       .where(`${TableName.Identity}.orgId`, scopeData.orgId)
       .where((qb) => {

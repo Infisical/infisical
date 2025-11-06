@@ -222,8 +222,6 @@ export const identityServiceFactory = ({
 
     const identityDetails = await identityDAL.findById(id);
 
-    console.log("has project id", identityDetails);
-
     if (identityDetails.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
     }

@@ -99,3 +99,18 @@ export const useGetProjectIdentityMembership = (projectId: string, identityId: s
     }
   });
 };
+
+export const useGetProjectIdentityMembershipV2 = (projectId: string, identityId: string) => {
+  return useQuery({
+    enabled: Boolean(projectId && identityId),
+    queryKey: projectKeys.getProjectIdentityMembershipDetailsV2(projectId, identityId),
+    queryFn: async () => {
+      const {
+        data: { identityMembership }
+      } = await apiRequest.get<{ identityMembership: IdentityProjectMembership }>(
+        `/api/v2/projects/${projectId}/identity-memberships/${identityId}`
+      );
+      return identityMembership;
+    }
+  });
+};

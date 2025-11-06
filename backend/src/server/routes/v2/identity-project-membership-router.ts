@@ -141,7 +141,15 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
               })
             ),
             identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true }).extend({
-              authMethods: z.array(z.string())
+              authMethods: z.array(z.string()),
+              metadata: z
+                .object({
+                  id: z.string().trim().min(1),
+                  key: z.string().trim().min(1),
+                  value: z.string().trim().min(1)
+                })
+                .array()
+                .optional()
             })
           })
         })

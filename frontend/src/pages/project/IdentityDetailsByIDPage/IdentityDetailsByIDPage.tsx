@@ -28,7 +28,8 @@ import { usePopUp } from "@app/hooks";
 import {
   useAssumeProjectPrivileges,
   useDeleteProjectIdentityMembership,
-  useGetProjectIdentityMembership
+  useGetProjectIdentityMembership,
+  useGetProjectIdentityMembershipV2
 } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { projectIdentityQuery } from "@app/hooks/api/projectIdentity";
@@ -48,7 +49,7 @@ const Page = () => {
   const { currentProject, projectId } = useProject();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
-    useGetProjectIdentityMembership(projectId, identityId);
+    useGetProjectIdentityMembershipV2(projectId, identityId);
 
   const { mutateAsync: deleteMutateAsync, isPending: isDeletingIdentity } =
     useDeleteProjectIdentityMembership();
@@ -204,7 +205,7 @@ const Page = () => {
             </div>
           </PageHeader>
           <div className="flex gap-x-4">
-            {identity && (
+            {identity ? (
               <div className="flex w-72 flex-col gap-y-4">
                 <ProjectIdentityDetailsSection
                   identity={identity}
@@ -214,6 +215,16 @@ const Page = () => {
                   identity={identity}
                   refetchIdentity={() => refetchIdentity()}
                 />
+              </div>
+            ) : (
+              <div>
+                <div className="flex w-72 flex-col gap-y-4">
+                  <ProjectIdentityDetailsSection
+                    identity={{ ...identityMembershipDetails?.identity, projectId: "" }}
+                    isOrgIdentity
+                    membership={identityMembershipDetails!}
+                  />
+                </div>
               </div>
             )}
             <div className="flex-1">

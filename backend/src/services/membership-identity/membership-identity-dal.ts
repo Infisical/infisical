@@ -40,9 +40,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder
-            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
@@ -216,7 +214,10 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return data?.[0];
+      const el = data?.[0];
+      if (!el) return el;
+
+      return { ...el, identity: { ...el.identity, metadata: el.metadata } };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipGetByIdentityId" });
     }

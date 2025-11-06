@@ -242,67 +242,75 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               )}
             />
           )}
-          <div>
-            <FormLabel label="Metadata" />
-          </div>
-          <div className="mb-3 flex flex-col space-y-2">
-            {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-              <div key={metadataFieldId} className="flex items-end space-x-2">
-                <div className="grow">
-                  {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
-                  <Controller
-                    control={control}
-                    name={`metadata.${i}.key`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <div className="grow">
-                  {i === 0 && (
-                    <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
-                  )}
-                  <Controller
-                    control={control}
-                    name={`metadata.${i}.value`}
-                    render={({ field, fieldState: { error } }) => (
-                      <FormControl
-                        isError={Boolean(error?.message)}
-                        errorText={error?.message}
-                        className="mb-0"
-                      >
-                        <Input {...field} />
-                      </FormControl>
-                    )}
-                  />
-                </div>
-                <IconButton
-                  ariaLabel="delete key"
-                  className="bottom-0.5 h-9"
-                  variant="outline_bg"
-                  onClick={() => metadataFormFields.remove(i)}
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
+          {isOrgIdentity && (
+            <>
+              <div>
+                <FormLabel label="Metadata" />
               </div>
-            ))}
-            <div className="mt-2 flex justify-end">
-              <Button
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                size="xs"
-                variant="outline_bg"
-                onClick={() => metadataFormFields.append({ key: "", value: "" })}
-              >
-                Add Key
-              </Button>
-            </div>
-          </div>
+              <div className="mb-3 flex flex-col space-y-2">
+                {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+                  <div key={metadataFieldId} className="flex items-end space-x-2">
+                    <div className="grow">
+                      {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                      <Controller
+                        control={control}
+                        name={`metadata.${i}.key`}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                            className="mb-0"
+                          >
+                            <Input {...field} />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <div className="grow">
+                      {i === 0 && (
+                        <FormLabel
+                          label="Value"
+                          className="text-xs text-mineshaft-400"
+                          isOptional
+                        />
+                      )}
+                      <Controller
+                        control={control}
+                        name={`metadata.${i}.value`}
+                        render={({ field, fieldState: { error } }) => (
+                          <FormControl
+                            isError={Boolean(error?.message)}
+                            errorText={error?.message}
+                            className="mb-0"
+                          >
+                            <Input {...field} />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+                    <IconButton
+                      ariaLabel="delete key"
+                      className="bottom-0.5 h-9"
+                      variant="outline_bg"
+                      onClick={() => metadataFormFields.remove(i)}
+                    >
+                      <FontAwesomeIcon icon={faTrash} />
+                    </IconButton>
+                  </div>
+                ))}
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                    size="xs"
+                    variant="outline_bg"
+                    onClick={() => metadataFormFields.append({ key: "", value: "" })}
+                  >
+                    Add Key
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
           <div className="flex items-center">
             <Button
               className="mr-4"

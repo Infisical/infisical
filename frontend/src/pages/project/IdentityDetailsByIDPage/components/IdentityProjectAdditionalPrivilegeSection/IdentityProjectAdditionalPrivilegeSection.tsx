@@ -26,6 +26,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
@@ -46,13 +47,13 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   ] as const);
   const { permission } = useProjectPermission();
   const identityId = identityMembershipDetails?.identity?.id;
-  const projectId = identityMembershipDetails?.project?.id;
+  const { projectId } = useProject();
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
   const { data: identityProjectPrivileges, isPending } = useListIdentityProjectPrivileges({
     identityId: identityMembershipDetails?.identity?.id,
-    projectId: identityMembershipDetails?.project?.id
+    projectId
   });
 
   const handlePrivilegeDelete = async () => {
