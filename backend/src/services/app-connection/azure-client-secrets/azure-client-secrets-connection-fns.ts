@@ -1,9 +1,13 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
+import type { KeyObject } from "crypto";
+import { v4 as uuidv4 } from "uuid";
 
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, InternalServerError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import {
   decryptAppConnectionCredentials,
   encryptAppConnectionCredentials,
@@ -17,10 +21,69 @@ import { AppConnection } from "../app-connection-enums";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 import {
   ExchangeCodeAzureResponse,
+  TAzureClientSecretsConnectionCertificateCredentials,
   TAzureClientSecretsConnectionClientSecretCredentials,
   TAzureClientSecretsConnectionConfig,
   TAzureClientSecretsConnectionCredentials
 } from "./azure-client-secrets-connection-types";
+
+function generateClientAssertion(clientId: string, tenantId: string, privateKey: string, certificate: string): string {
+  const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+  const certBuffer = Buffer.from(
+    certificate
+      .replace(/-----BEGIN CERTIFICATE-----/, "")
+      .replace(/-----END CERTIFICATE-----/, "")
+      .replace(/\s/g, ""),
+    "base64"
+  );
+
+  // thumbprint of the certificate is used for the jwt header
+  const thumbprint = crypto.nativeCrypto.createHash("sha1").update(certBuffer).digest("hex");
+  const x5t = Buffer.from(thumbprint, "hex").toString("base64url");
+
+  // JWT Header
+  const header = {
+    alg: "RS256",
+    typ: "JWT",
+    x5t
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aud: tokenEndpoint,
+    exp: now + 600, // expire the assertion in 10 minutes (not the access access token TTL, but rather the assertion TTL itself)
+    iss: clientId,
+    jti: uuidv4(), // random ID for the JWT
+    nbf: now, // not before the jwt is valid
+    sub: clientId
+  };
+
+  // encode header and payload
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signatureInput = `${encodedHeader}.${encodedPayload}`;
+
+  let keyObject: KeyObject;
+  if (privateKey.includes("BEGIN PRIVATE KEY")) {
+    keyObject = crypto.nativeCrypto.createPrivateKey(privateKey);
+  } else {
+    // if user forgot to wrap in begin/end private key, decode and use as der format
+    keyObject = crypto.nativeCrypto.createPrivateKey({
+      key: Buffer.from(privateKey, "base64"),
+      format: "der",
+      type: "pkcs8"
+    });
+  }
+
+  // sign with private key
+  const signer = crypto.nativeCrypto.createSign("RSA-SHA256");
+  signer.update(signatureInput);
+  signer.end();
+  const signature = signer.sign(keyObject, "base64url");
+
+  return `${signatureInput}.${signature}`;
+}
 
 export const getAzureClientSecretsConnectionListItem = () => {
   const { INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID } = getConfig();
@@ -30,7 +93,8 @@ export const getAzureClientSecretsConnectionListItem = () => {
     app: AppConnection.AzureClientSecrets as const,
     methods: Object.values(AzureClientSecretsConnectionMethod) as [
       AzureClientSecretsConnectionMethod.OAuth,
-      AzureClientSecretsConnectionMethod.ClientSecret
+      AzureClientSecretsConnectionMethod.ClientSecret,
+      AzureClientSecretsConnectionMethod.Certificate
     ],
     oauthClientId: INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID
   };
@@ -64,7 +128,7 @@ export const getAzureConnectionAccessToken = async (
   const { refreshToken } = credentials;
   const currentTime = Date.now();
   switch (appConnection.method) {
-    case AzureClientSecretsConnectionMethod.OAuth:
+    case AzureClientSecretsConnectionMethod.OAuth: {
       if (
         !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_ID ||
         !appCfg.INF_APP_CONNECTION_AZURE_CLIENT_SECRETS_CLIENT_SECRET
@@ -101,7 +165,8 @@ export const getAzureConnectionAccessToken = async (
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials });
 
       return data.access_token;
-    case AzureClientSecretsConnectionMethod.ClientSecret:
+    }
+    case AzureClientSecretsConnectionMethod.ClientSecret: {
       const accessTokenCredentials = (await decryptAppConnectionCredentials({
         orgId: appConnection.orgId,
         projectId: appConnection.projectId,
@@ -139,6 +204,50 @@ export const getAzureConnectionAccessToken = async (
       await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
 
       return clientData.access_token;
+    }
+
+    case AzureClientSecretsConnectionMethod.Certificate: {
+      const accessTokenCredentials = (await decryptAppConnectionCredentials({
+        orgId: appConnection.orgId,
+        projectId: appConnection.projectId,
+        kmsService,
+        encryptedCredentials: appConnection.encryptedCredentials
+      })) as TAzureClientSecretsConnectionCertificateCredentials;
+      const { accessToken, expiresAt, clientId, tenantId, certificate, privateKey } = accessTokenCredentials;
+      if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
+        return accessToken;
+      }
+
+      const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificate);
+      const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
+        IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),
+        new URLSearchParams({
+          grant_type: "client_credentials",
+          scope: `https://graph.microsoft.com/.default`,
+          client_id: clientId,
+          client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+          client_assertion: clientAssertion
+        })
+      );
+
+      const updatedClientCredentials = {
+        ...accessTokenCredentials,
+        accessToken: clientData.access_token,
+        expiresAt: currentTime + clientData.expires_in * 1000
+      };
+
+      const encryptedClientCredentials = await encryptAppConnectionCredentials({
+        credentials: updatedClientCredentials,
+        orgId: appConnection.orgId,
+        projectId: appConnection.projectId,
+        kmsService
+      });
+
+      await appConnectionDAL.updateById(appConnection.id, { encryptedCredentials: encryptedClientCredentials });
+
+      return clientData.access_token;
+    }
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure connection method: ${appConnection.method as AzureClientSecretsConnectionMethod}`
@@ -156,7 +265,7 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
   } = getConfig();
 
   switch (method) {
-    case AzureClientSecretsConnectionMethod.OAuth:
+    case AzureClientSecretsConnectionMethod.OAuth: {
       if (!SITE_URL) {
         throw new InternalServerError({ message: "SITE_URL env var is required to complete Azure OAuth flow" });
       }
@@ -221,8 +330,9 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
         refreshToken: tokenResp.data.refresh_token,
         expiresAt: Date.now() + tokenResp.data.expires_in * 1000
       };
+    }
 
-    case AzureClientSecretsConnectionMethod.ClientSecret:
+    case AzureClientSecretsConnectionMethod.ClientSecret: {
       const { tenantId, clientId, clientSecret } = inputCredentials;
       try {
         const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
@@ -255,6 +365,55 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
           });
         }
       }
+    }
+    case AzureClientSecretsConnectionMethod.Certificate: {
+      const { tenantId, certificate, privateKey, clientId } = inputCredentials;
+      try {
+        const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificate);
+
+        const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
+
+        const params = new URLSearchParams({
+          client_id: clientId,
+          client_assertion_type: "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+          client_assertion: clientAssertion,
+          scope: "https://graph.microsoft.com/.default",
+          grant_type: "client_credentials"
+        });
+
+        const response = await request.post<ExchangeCodeAzureResponse>(tokenEndpoint, params.toString(), {
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          }
+        });
+
+        return {
+          tenantId,
+          clientId,
+          certificate,
+          privateKey,
+          accessToken: response.data.access_token,
+          expiresAt: Date.now() + response.data.expires_in * 1000
+        };
+      } catch (e: unknown) {
+        if (e instanceof AxiosError) {
+          throw new BadRequestError({
+            message: `Failed to get access token: ${
+              (e?.response?.data as { error_description?: string })?.error_description || "Unknown error"
+            }`
+          });
+        } else {
+          logger.error(
+            e,
+            "validateAzureClientSecretsConnectionCredentials: Failed to get access token using certificate authentication"
+          );
+          throw new InternalServerError({
+            message: "Failed to get access token"
+          });
+        }
+      }
+    }
+
     default:
       throw new InternalServerError({
         message: `Unhandled Azure connection method: ${method as AzureClientSecretsConnectionMethod}`

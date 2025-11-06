@@ -3,7 +3,8 @@ import { TRootAppConnection } from "@app/hooks/api/appConnections/types/root-con
 
 export enum AzureClientSecretsConnectionMethod {
   OAuth = "oauth",
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  Certificate = "certificate"
 }
 
 export type TAzureClientSecretsConnection = TRootAppConnection & {
@@ -22,6 +23,15 @@ export type TAzureClientSecretsConnection = TRootAppConnection & {
           clientSecret: string;
           clientId: string;
           tenantId: string;
+        };
+      }
+    | {
+        method: AzureClientSecretsConnectionMethod.Certificate;
+        credentials: {
+          clientId: string;
+          tenantId: string;
+          certificate: string;
+          privateKey: string;
         };
       }
   );
