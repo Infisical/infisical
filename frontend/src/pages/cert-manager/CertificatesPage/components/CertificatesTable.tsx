@@ -64,7 +64,7 @@ type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
       [
-        "certificateIssuance",
+        "issueCertificate",
         "deleteCertificate",
         "revokeCertificate",
         "certificateCert",
@@ -297,7 +297,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 onClick={async () =>
-                                  handlePopUpOpen("certificateIssuance", {
+                                  handlePopUpOpen("issueCertificate", {
                                     serialNumber: certificate.serialNumber
                                   })
                                 }
