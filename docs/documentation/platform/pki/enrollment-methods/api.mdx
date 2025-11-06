@@ -3,24 +3,156 @@ title: "Certificate Enrollment via API"
 sidebarTitle: "API"
 ---
 
+## Concept
+
+The API enrollment method allows you to issue certificates against a specific certificate profile over Web UI or by making an API request to Infisical.
+
+## Guide to Certificate Enrollment via API
+
+In the following steps, we explore how to issue a X.509 certificate using the API enrollment method.
+
 <Tabs>
-  <Tab title="API">
-    <ul>
-      <li>
-        Enable Auto-Renewal: Whether or not to opt-in issued certificates for
-        (server-side) auto-renewal.
-      </li>
-      <li>
-        Auto-Renewal Days: The number of days before the certificate expires to
-        trigger certificate renewal.
-      </li>
-    </ul>
+  <Tab title="Infisical UI">
+
+<Steps>
+  <Step title="Create a certificate profile">
+  Create a [certificate
+    profile](/documentation/platform/pki/certificates/profiles) with **API**
+    selected as the enrollment method.
+
+    Notice that the API enrollment method supports an option called **Enable Auto-Renewal By Default**.
+    If selected, _eligible_ certificates are automatically considered for server-side auto-renewal based
+    on a specified renewal days before expiration threshold at the time of issuance; for more information
+    about server-side auto-renewal, refer to the documentation [here](/documentation/platform/pki/certificates/certificates#guide-to-renewing-certificates).
+
+  </Step>
+  <Step title="Issue a certificate">
+  To create a certificate, head to your Project > Certificates > Certificates and press **Issue**.
+  
+  TODO: Image
+
+Here, select the certificate profile from step 1 that will be used to issue the certificate and fill out the rest of the details for the certificate to be issued.
+
+  </Step>
+  <Step title="Download the certificate details">
+  Once you have created the certificate from step 1, you'll be presented with the certificate details including the **Certificate Body**, **Certificate Chain**, and **Private Key**.
+  
+  TODO: Image
+
     <Note>
-      Note that auto-renewal only applies to certificates issued through
-      CSR-less enrollment where key generation is done internally by
-      Infisical; conversely certificates issued via CSR submission are not eligible for auto-renewal.
+      Make sure to download and store the **Private Key** in a secure location as it
+      will only be displayed once at the time of certificate issuance. The
+      **Certificate Body** and **Certificate Chain** will remain accessible and can
+      be copied at any time.
     </Note>
 
+  </Step>
+</Steps>
   </Tab>
-  <Tab title="EST">Test</Tab>
+  <Tab title="API">
+
+<Steps>
+  <Step title="Creating a certificate template">
+    A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA and can also be bound to a certificate collection for alerting such that any certificate issued under the template is automatically added to the collection.
+
+    With certificate templates, you can specify, for example, that issued certificates must have a common name (CN) adhering to a specific format like .*.acme.com or perhaps that the max TTL cannot be more than 1 year.
+
+    To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates/create) API endpoint, specifying the issuing CA.
+
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-templates' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "caId": "<ca-id>",
+          "name": "My Certificate Template",
+          "commonName": ".*.acme.com",
+          "subjectAlternativeName": ".*.acme.com",
+          "ttl": "1y",
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      id: "...",
+      caId: "...",
+      name: "...",
+      commonName: "...",
+      subjectAlternativeName: "...",
+      ttl: "...",
+    }
+    ```
+
+  </Step>
+  <Step title="Creating a certificate">
+    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
+    specifying the issuing CA.
+    
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/issue-certificate' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "certificateTemplateId": "<certificate-template-id>",
+          "commonName": "service.acme.com",
+          "ttl": "1y",
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      certificate: "...",
+      certificateChain: "...",
+      issuingCaCertificate: "...",
+      privateKey: "...",
+      serialNumber: "..."
+    }
+    ```
+
+    <Note>
+      Note that Infisical PKI supports issuing certificates without certificate templates as well. If this is desired, then you can set the **Certificate Template** field to **None**
+      and specify the **Issuing CA** and optional **Certificate Collection** fields; the rest of the fields for the issued certificate remain the same.
+
+      That said, we recommend using certificate templates to enforce policies and attach expiration monitoring on issued certificates.
+    </Note>
+
+    <Note>
+      Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
+    </Note>
+
+    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
+
+     ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/sign-certificate' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "certificateTemplateId": "<certificate-template-id>",
+          "csr": "...",
+          "ttl": "1y",
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      certificate: "...",
+      certificateChain: "...",
+      issuingCaCertificate: "...",
+      privateKey: "...",
+      serialNumber: "..."
+    }
+    ```
+
+  </Step>
+</Steps>
+  </Tab>
 </Tabs>

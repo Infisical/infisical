@@ -2,3 +2,67 @@
 title: "Certificate Enrollment via EST"
 sidebarTitle: "EST"
 ---
+
+## Concept
+
+The API enrollment method allows you to issue and manage certificates against a specific certificate profile using the [EST protocol](https://en.wikipedia.org/wiki/Enrollment_over_Secure_Transport).
+This method is suitable for environments requiring strong authentication and encrypted communication, such as in IoT, enterprise networks, and secure web services.
+
+Infisical's EST service is based on [RFC 7030](https://datatracker.ietf.org/doc/html/rfc7030) and implements the following endpoints:
+
+- **cacerts** - provides the necessary CA chain for the client to validate certificates issued by the CA.
+- **simpleenroll** - allows an EST client to request a new certificate from Infisical's EST server
+- **simplereenroll** - similar to the /simpleenroll endpoint but is used for renewing an existing certificate.
+
+These endpoints are exposed on port 8443 under the .well-known/est path (e.g.
+`https://app.infisical.com:8443/.well-known/est/:estLabel/cacerts`).
+
+## Prerequisites
+
+- Your client devices need to have a bootstrap/pre-installed certificate.
+- Your client devices must trust the server certificates used by Infisical's EST server. If the devices are new or lack existing trust configurations, you need to manually establish trust for the appropriate certificates.
+
+<Note>
+  For Infisical Cloud users, the devices must be configured to trust the [Amazon
+  root CA certificates](https://www.amazontrust.com/repository).
+</Note>
+
+## Guide to Certificate Enrollment via EST
+
+In the following steps, we explore how to issue a X.509 certificate using the EST enrollment method.
+
+<Steps>
+  <Step title="Set up up a certificate profile">
+    Create a [certificate
+    profile](/documentation/platform/pki/certificates/profiles) with **EST**
+    selected as the enrollment method and fill in EST-specific configuration.
+
+    Here's some guidance on each EST-specific configuration field:
+
+    - Disable Bootstrap CA Validation: Enable this if your devices are not configured with a bootstrap certificate.
+    - EST Passphrase: This is also used to authenticate your devices with Infisical's EST server. When configuring the clients, use the value defined here as the EST password.
+    - CA Chain Certificate: This is the certificate chain used to validate your devices' manufacturing/pre-installed certificates. This will be used to authenticate your devices with Infisical's EST server.
+
+    Note that forsecurity reasons, Infisical authenticates EST clients using both client certificate and passphrase.
+
+  </Step>
+  <Step title="Obtain the EST label">
+    Once the configuration of enrollment options is completed, a new EST Label field will appear in the enrollment settings. This is the value to use as label in the URL when configuring the connection of EST clients to Infisical.
+
+       The complete URL of the supported EST endpoints may look like the following:
+
+        - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/cacerts
+        - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simpleenroll
+        - https://app.infisical.com:8443/.well-known/est/f110f308-9888-40ab-b228-237b12de8b96/simplereenroll
+    </Step>
+
+    <Step title="Configure EST clients">
+    To use the EST passphrase in your clients, configure it as the EST password. The EST username can be set to any arbitrary value.
+    Use the appropriate client certificates for invoking the EST endpoints.
+      - For `simpleenroll`, use the bootstrapped/manufacturer client certificate.
+      - For `simplereenroll`, use a valid EST-issued client certificate.
+    When configuring the PKCS#12 objects for the client certificates, only include the leaf certificate and the private key.
+
+    </Step>
+
+</Steps>

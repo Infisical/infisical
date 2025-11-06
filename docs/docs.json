@@ -741,14 +741,9 @@
                     "pages": [
                       "documentation/platform/pki/enrollment-methods/overview",
                       "documentation/platform/pki/enrollment-methods/api",
-                      "documentation/platform/pki/enrollment-methods/est",
-                      "documentation/platform/pki/enrollment-methods/acme",
-                      "documentation/platform/pki/enrollment-methods/scep"
+                      "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
-                  "documentation/platform/pki/subscribers",
-                  "documentation/platform/pki/certificates",
-                  "documentation/platform/pki/est",
                   "documentation/platform/pki/alerting"
                 ]
               },
@@ -2975,6 +2970,14 @@
     {
       "source": "/documentation/platform/pki/azure-adcs",
       "destination": "/documentation/platform/pki/ca/azure-adcs"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates",
+      "destination": "/documentation/platform/pki/certificates/certificates"
+    },
+    {
+      "source": "/documentation/platform/pki/est",
+      "destination": "/documentation/platform/pki/enrollment-methods/est"
     }
   ]
 }

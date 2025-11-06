@@ -34,7 +34,7 @@ export const PkiManagerLayout = () => {
   return (
     <>
       <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
-        <div className="border-b border-mineshaft-600 bg-mineshaft-900">
+        <div className="border-mineshaft-600 bg-mineshaft-900 border-b">
           <motion.div
             key="menu-project-items"
             initial={{ x: -150 }}
@@ -110,9 +110,9 @@ export const PkiManagerLayout = () => {
                       <Tab value={isActive ? "selected" : ""}>App Connections</Tab>
                     )}
                   </Link>
-                  {showLegacySection && (
+                  {
                     <>
-                      {(subscription.pkiLegacyTemplates || hasExistingSubscribers) && (
+                      {
                         <Link
                           to="/projects/cert-management/$projectId/subscribers"
                           params={{
@@ -123,7 +123,7 @@ export const PkiManagerLayout = () => {
                             <Tab value={isActive ? "selected" : ""}>Subscribers (Legacy)</Tab>
                           )}
                         </Link>
-                      )}
+                      }
                       {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
                         <Link
                           to="/projects/cert-management/$projectId/certificate-templates"
@@ -139,7 +139,7 @@ export const PkiManagerLayout = () => {
                         </Link>
                       )}
                     </>
-                  )}
+                  }
                   <Link
                     to="/projects/cert-management/$projectId/access-management"
                     params={{
@@ -181,11 +181,11 @@ export const PkiManagerLayout = () => {
           </motion.div>
         </div>
         {assumedPrivilegeDetails && <AssumePrivilegeModeBanner />}
-        <div className="flex-1 overflow-x-hidden overflow-y-auto bg-bunker-800 px-12 pt-10 pb-4">
+        <div className="bg-bunker-800 flex-1 overflow-y-auto overflow-x-hidden px-12 pb-4 pt-10">
           <Outlet />
         </div>
       </div>
-      <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
+      <div className="z-200 bg-bunker-800 flex h-screen w-screen flex-col items-center justify-center md:hidden">
         <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
         <p className="max-w-sm px-6 text-center text-lg text-gray-200">
           {` ${t("common.no-mobile")} `}
