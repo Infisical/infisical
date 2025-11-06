@@ -2,6 +2,7 @@ import { useState } from "react";
 import { faEye } from "@fortawesome/free-regular-svg-icons";
 import {
   faArrowRotateRight,
+  faBan,
   faDesktop,
   faEyeSlash,
   faServer,
@@ -68,10 +69,14 @@ export const SecretVersionItem = ({
   const getLinkToModifyHistoryEntity = (
     actorId: string,
     actorType: string,
-    membershipId: string | null = ""
+    membershipId: string | null = "",
+    groupId: string | null = "",
+    actorName: string | null = ""
   ) => {
     switch (actorType) {
       case ActorType.USER:
+        if (groupId)
+          return `/projects/secret-management/${currentProject.id}/groups/${groupId}?username=${actorName}`;
         return `/projects/secret-management/${currentProject.id}/members/${membershipId}`;
       case ActorType.IDENTITY:
         return `/projects/secret-management/${currentProject.id}/identities/${actorId}`;
@@ -83,10 +88,26 @@ export const SecretVersionItem = ({
   const onModifyHistoryClick = (
     actorId: string | undefined | null,
     actorType: string | undefined | null,
-    membershipId: string | undefined | null
+    membershipId: string | undefined | null,
+    groupId: string | undefined | null,
+    actorName: string | undefined | null
   ) => {
+    if (!membershipId) {
+      createNotification({
+        type: "info",
+        text: `This ${actorType === ActorType.USER ? "user" : "identity"} is no longer a member of this project.`
+      });
+      return;
+    }
+
     if (actorType && actorId && actorType !== ActorType.PLATFORM) {
-      const redirectLink = getLinkToModifyHistoryEntity(actorId, actorType, membershipId);
+      const redirectLink = getLinkToModifyHistoryEntity(
+        actorId,
+        actorType,
+        membershipId,
+        groupId,
+        actorName
+      );
       if (redirectLink) {
         navigate({ to: redirectLink });
       }
@@ -157,15 +178,33 @@ export const SecretVersionItem = ({
               <div className="flex flex-row">
                 <div className="flex w-fit flex-row text-sm">
                   Modified by:
-                  <Tooltip content={getModifiedByName(actor.actorType, actor.name)}>
+                  <Tooltip
+                    className="z-[100] max-w-sm"
+                    content={
+                      getModifiedByName(actor.actorType, actor.name) +
+                      (!actor.membershipId && actor.actorId ? " (Removed from project)" : "")
+                    }
+                  >
                     {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
                     <div
-                      onClick={() =>
-                        onModifyHistoryClick(actor.actorId, actor.actorType, actor.membershipId)
+                      onClick={
+                        actor.membershipId
+                          ? () =>
+                              onModifyHistoryClick(
+                                actor.actorId,
+                                actor.actorType,
+                                actor.membershipId,
+                                actor.groupId,
+                                actor.name
+                              )
+                          : undefined
                       }
-                      className="cursor-pointer"
+                      className={actor.membershipId ? "cursor-pointer" : undefined}
                     >
                       <FontAwesomeIcon icon={getModifiedByIcon(actor.actorType)} className="ml-2" />
+                      {!actor.membershipId && (
+                        <FontAwesomeIcon className="ml-1 text-mineshaft-400" icon={faBan} />
+                      )}
                     </div>
                   </Tooltip>
                 </div>
