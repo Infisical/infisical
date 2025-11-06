@@ -1,4 +1,5 @@
 export enum AzureClientSecretsConnectionMethod {
   OAuth = "oauth",
-  ClientSecret = "client-secret"
+  ClientSecret = "client-secret",
+  Certificate = "certificate"
 }

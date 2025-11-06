@@ -6,7 +6,15 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Button, FormControl, Input, ModalClose, Select, SelectItem } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  ModalClose,
+  SecretInput,
+  Select,
+  SelectItem
+} from "@app/components/v2";
 import {
   APP_CONNECTION_MAP,
   getAppConnectionMethodDetails,
@@ -27,10 +35,13 @@ import {
 } from "./GenericAppConnectionFields";
 
 type ClientSecretForm = z.infer<typeof clientSecretSchema>;
+type CertificateForm = z.infer<typeof certificateSchema>;
+
+type TInputFormData = ClientSecretForm | CertificateForm;
 
 type Props = {
   appConnection?: TAzureClientSecretsConnection;
-  onSubmit: (formData: ClientSecretForm) => Promise<void>;
+  onSubmit: (formData: TInputFormData) => Promise<void>;
   projectId: string | undefined | null;
 };
 
@@ -53,7 +64,21 @@ const clientSecretSchema = baseSchema.extend({
   })
 });
 
-const formSchema = z.discriminatedUnion("method", [oauthSchema, clientSecretSchema]);
+const certificateSchema = baseSchema.extend({
+  method: z.literal(AzureClientSecretsConnectionMethod.Certificate),
+  credentials: z.object({
+    clientId: z.string().trim().min(1, "Client ID is required"),
+    certificate: z.string().trim().min(1, "Certificate is required"),
+    privateKey: z.string().trim().min(1, "Private Key is required"),
+    tenantId: z.string().trim().min(1, "Tenant ID is required")
+  })
+});
+
+const formSchema = z.discriminatedUnion("method", [
+  oauthSchema,
+  clientSecretSchema,
+  certificateSchema
+]);
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -92,6 +117,20 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
             clientSecret: credentials.clientSecret,
             clientId: credentials.clientId,
             tenantId: credentials.tenantId
+          }
+        };
+      }
+      break;
+    case AzureClientSecretsConnectionMethod.Certificate:
+      if ("clientId" in credentials && "tenantId" in credentials) {
+        return {
+          ...base,
+          method: AzureClientSecretsConnectionMethod.Certificate,
+          credentials: {
+            clientId: credentials.clientId,
+            tenantId: credentials.tenantId,
+            certificate: "",
+            privateKey: ""
           }
         };
       }
@@ -150,6 +189,9 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
         break;
 
       case AzureClientSecretsConnectionMethod.ClientSecret:
+        await onSubmit(formData);
+        break;
+      case AzureClientSecretsConnectionMethod.Certificate:
         await onSubmit(formData);
         break;
       default:
@@ -264,6 +306,59 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
           </>
         )}
 
+        {selectedMethod === AzureClientSecretsConnectionMethod.Certificate && (
+          <>
+            <Controller
+              name="credentials.clientId"
+              control={control}
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  label="Client ID"
+                  errorText={error?.message}
+                >
+                  <Input {...field} placeholder="00000000-0000-0000-0000-000000000000" />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.certificate"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  label="Certificate"
+                  errorText={error?.message}
+                >
+                  <SecretInput
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder="-----BEGIN CERTIFICATE-----..."
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              name="credentials.privateKey"
+              control={control}
+              render={({ field: { value, onChange }, fieldState: { error } }) => (
+                <FormControl
+                  isError={Boolean(error?.message)}
+                  label="Private Key"
+                  errorText={error?.message}
+                >
+                  <SecretInput
+                    placeholder="-----BEGIN PRIVATE KEY-----..."
+                    containerClassName="text-gray-400 group-focus-within:border-primary-400/50! border border-mineshaft-500 bg-mineshaft-900 px-2.5 py-1.5"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                  />
+                </FormControl>
+              )}
+            />
+          </>
+        )}
         <div className="mt-8 flex items-center">
           <Button
             className="mr-4"
