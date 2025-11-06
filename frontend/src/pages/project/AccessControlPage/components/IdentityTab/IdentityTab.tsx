@@ -530,8 +530,8 @@ export const IdentityTab = withProjectPermission(
                       <div>Assign Existing Identity</div>
                     </div>
                     <div className="mt-2 text-xs text-mineshaft-300">
-                      Assign an existing identity from your organization or namespace to this
-                      project. The identity will continue to be managed at its original scope.
+                      Assign an existing identity from your organization. The identity will continue
+                      to be managed at its original scope.
                     </div>
                   </div>
                 </motion.div>
