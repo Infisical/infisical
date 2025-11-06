@@ -1,5 +1,6 @@
 /* eslint-disable no-await-in-loop */
 
+import { getConfig } from "@app/lib/config/env";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 
@@ -24,6 +25,7 @@ export const pkiAlertV2QueueServiceFactory = ({
   pkiAlertV2DAL,
   pkiAlertHistoryDAL
 }: TPkiAlertV2QueueServiceFactoryDep) => {
+  const appCfg = getConfig();
   const calculateDeduplicationWindow = (alertBefore: string): number => {
     const alertDays = parseTimeToDays(alertBefore);
 
@@ -185,60 +187,34 @@ export const pkiAlertV2QueueServiceFactory = ({
     );
   };
 
-  queueService.start(QueueName.DailyPkiAlertV2Processing, async () => {
-    logger.info(`${QueueName.DailyPkiAlertV2Processing}: queue task started`);
-
-    try {
-      await processDailyAlerts();
-      logger.info(`${QueueName.DailyPkiAlertV2Processing}: queue task completed successfully`);
-    } catch (error) {
-      logger.error(error, `${QueueName.DailyPkiAlertV2Processing}: queue task failed`);
-      throw error;
+  const init = async () => {
+    if (appCfg.isSecondaryInstance) {
+      return;
     }
-  });
 
-  const startDailyAlertProcessing = async () => {
-    await queueService.stopRepeatableJob(
-      QueueName.DailyPkiAlertV2Processing,
+    await queueService.startPg<QueueName.DailyPkiAlertV2Processing>(
       QueueJobs.DailyPkiAlertV2Processing,
-      { pattern: "* * * * *", utc: true },
-      QueueName.DailyPkiAlertV2Processing
+      async () => {
+        try {
+          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task started`);
+          await processDailyAlerts();
+          logger.info(`${QueueJobs.DailyPkiAlertV2Processing}: queue task completed successfully`);
+        } catch (error) {
+          logger.error(error, `${QueueJobs.DailyPkiAlertV2Processing}: queue task failed`);
+          throw error;
+        }
+      },
+      {
+        batchSize: 1,
+        workerCount: 1,
+        pollingIntervalSeconds: 60
+      }
     );
 
-    await queueService.queue(QueueName.DailyPkiAlertV2Processing, QueueJobs.DailyPkiAlertV2Processing, undefined, {
-      delay: 5000,
-      jobId: QueueName.DailyPkiAlertV2Processing,
-      repeat: { pattern: "* * * * *", utc: true }
-    });
-
-    logger.info("Daily PKI alert processing job scheduled");
+    await queueService.schedulePg(QueueJobs.DailyPkiAlertV2Processing, "* * * * *", undefined, { tz: "UTC" });
   };
-
-  const stopDailyAlertProcessing = async () => {
-    await queueService.stopRepeatableJob(
-      QueueName.DailyPkiAlertV2Processing,
-      QueueJobs.DailyPkiAlertV2Processing,
-      { pattern: "* * * * *", utc: true },
-      QueueName.DailyPkiAlertV2Processing
-    );
-
-    logger.info("Daily PKI alert processing job stopped");
-  };
-
-  const triggerAlertProcessing = async () => {
-    await queueService.queue(QueueName.DailyPkiAlertV2Processing, QueueJobs.DailyPkiAlertV2Processing, undefined, {
-      delay: 1000
-    });
-  };
-
-  queueService.listen(QueueName.DailyPkiAlertV2Processing, "failed", (_, err) => {
-    logger.error(err, `${QueueName.DailyPkiAlertV2Processing}: Daily PKI alert processing failed`);
-  });
 
   return {
-    startDailyAlertProcessing,
-    stopDailyAlertProcessing,
-    triggerAlertProcessing,
-    processDailyAlerts
+    init
   };
 };

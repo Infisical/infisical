@@ -8,9 +8,12 @@ const createSecureSlugValidator = () => {
   return (value: string) => slugRegex.test(value);
 };
 
-const createSecureAlertBeforeValidator = () => {
+export const createSecureAlertBeforeValidator = () => {
   const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
-  return (value: string) => alertBeforeRegex.test(value);
+  return (value: string) => {
+    if (value.length > 32) return false;
+    return alertBeforeRegex.test(value);
+  };
 };
 
 export enum PkiAlertEventType {

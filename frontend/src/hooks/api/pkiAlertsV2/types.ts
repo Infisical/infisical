@@ -181,7 +181,8 @@ export const createPkiAlertV2Schema = z.object({
   eventType: z.nativeEnum(PkiAlertEventTypeV2),
   alertBefore: z
     .string()
-    .regex(/^\d+[dwmy]$/)
+    .regex(/^\d+[dwmy]$/, "Must be in format like '30d', '1w', '3m', '1y'")
+    .refine((val) => val.length <= 32, "Alert timing too long")
     .optional(),
   filters: z.array(pkiFilterRuleV2Schema),
   enabled: z.boolean().default(true),

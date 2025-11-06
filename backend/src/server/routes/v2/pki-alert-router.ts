@@ -6,6 +6,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
   CreatePkiAlertV2Schema,
+  createSecureAlertBeforeValidator,
   PkiAlertEventType,
   PkiFilterRuleSchema,
   UpdatePkiAlertV2Schema
@@ -392,7 +393,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         filters: z.array(PkiFilterRuleSchema),
         alertBefore: z
           .string()
-          .regex(/^\d+[dwmy]$/)
+          .refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'")
           .describe("Alert timing (e.g., '30d', '1w')"),
         limit: z.coerce.number().min(1).max(100).default(20),
         offset: z.coerce.number().min(0).default(0)

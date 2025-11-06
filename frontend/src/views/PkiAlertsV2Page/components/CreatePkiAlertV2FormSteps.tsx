@@ -249,7 +249,7 @@ export const CreatePkiAlertV2FormSteps = () => {
 
             {watchedFilters?.map((filter, index) => (
               <div
-                key={`filter-${filter.field}-${filter.operator}-${String(filter.value)}-${index}`}
+                key={`filter-${index}`}
                 className="space-y-2 rounded-md border border-mineshaft-600 p-3"
               >
                 <div className="flex items-center justify-between">
@@ -551,10 +551,7 @@ export const CreatePkiAlertV2FormSteps = () => {
             <div className="flex flex-wrap gap-x-8 gap-y-2">
               {watchedFilters && watchedFilters.length > 0 ? (
                 watchedFilters.map((filter, index) => (
-                  <GenericFieldLabel
-                    key={`review-filter-${filter.field}-${filter.operator}-${String(filter.value)}-${index}`}
-                    label={`Rule ${index + 1}`}
-                  >
+                  <GenericFieldLabel key={`review-filter-${index}`} label={`Rule ${index + 1}`}>
                     <span className="font-mono text-xs">
                       {filter.field
                         .replace(/_/g, " ")

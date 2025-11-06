@@ -20,6 +20,10 @@ export const sanitizeLikeInput = (input: string): string => {
 };
 
 export const parseTimeToPostgresInterval = (duration: string): string => {
+  if (duration.length > 32) {
+    throw new Error(`Invalid duration format: ${duration}. Use format like '30d', '1w', '3m', '1y'`);
+  }
+
   const durationRegex = new RE2("^(\\d+)([dwmy])$");
   const match = durationRegex.exec(duration);
 

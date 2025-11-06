@@ -374,6 +374,7 @@ export const pkiAlertV2ServiceFactory = ({
   const listCurrentMatchingCertificates = async ({
     projectId,
     filters,
+    alertBefore,
     limit = 20,
     offset = 0,
     actorId,
@@ -392,14 +393,22 @@ export const pkiAlertV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PkiAlerts);
 
+    try {
+      parseTimeToPostgresInterval(alertBefore);
+    } catch (error) {
+      throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
+    }
+
     const options: {
       limit: number;
       offset: number;
       showPreview?: boolean;
+      alertBefore?: string;
     } = {
       limit,
       offset,
-      showPreview: true
+      showPreview: true,
+      alertBefore: parseTimeToPostgresInterval(alertBefore)
     };
 
     const result = await pkiAlertV2DAL.findMatchingCertificates(projectId, filters, options);
