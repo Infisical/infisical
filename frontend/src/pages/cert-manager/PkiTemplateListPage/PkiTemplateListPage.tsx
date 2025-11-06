@@ -5,6 +5,7 @@ import {
   faCertificate,
   faCog,
   faEllipsis,
+  faFileContract,
   faPencil,
   faPlus,
   faTrash
@@ -40,6 +41,7 @@ import {
   Tr
 } from "@app/components/v2";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub,
   useProject,
@@ -50,6 +52,7 @@ import { useDeleteCertTemplateV2 } from "@app/hooks/api";
 import { useListCertificateTemplates } from "@app/hooks/api/certificateTemplates/queries";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { CertificateModal } from "../CertificatesPage/components/CertificateModal";
 import { CertificateTemplateEnrollmentModal } from "../CertificatesPage/components/CertificateTemplateEnrollmentModal";
 import { PkiTemplateForm } from "./components/PkiTemplateForm";
 
@@ -64,7 +67,8 @@ export const PkiTemplateListPage = () => {
     "certificateTemplate",
     "deleteTemplate",
     "enrollmentOptions",
-    "estUpgradePlan"
+    "estUpgradePlan",
+    "certificateFromTemplate"
   ] as const);
 
   const { subscription } = useSubscription();
@@ -160,6 +164,27 @@ export const PkiTemplateListPage = () => {
                                 </div>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="start" className="p-1">
+                                <ProjectPermissionCan
+                                  I={ProjectPermissionCertificateActions.Create}
+                                  a={ProjectPermissionSub.Certificates}
+                                >
+                                  {(isAllowed) => (
+                                    <DropdownMenuItem
+                                      className={twMerge(
+                                        !isAllowed &&
+                                          "pointer-events-none cursor-not-allowed opacity-50"
+                                      )}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePopUpOpen("certificateFromTemplate", template);
+                                      }}
+                                      disabled={!isAllowed}
+                                      icon={<FontAwesomeIcon icon={faFileContract} />}
+                                    >
+                                      Issue Certificate
+                                    </DropdownMenuItem>
+                                  )}
+                                </ProjectPermissionCan>
                                 <ProjectPermissionCan
                                   I={ProjectPermissionPkiTemplateActions.Edit}
                                   a={ProjectPermissionSub.CertificateTemplates}
@@ -284,6 +309,16 @@ export const PkiTemplateListPage = () => {
           </ModalContent>
         </Modal>
         <CertificateTemplateEnrollmentModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <CertificateModal
+          popUp={{
+            certificate: {
+              isOpen: popUp.certificateFromTemplate.isOpen,
+              data: popUp.certificateFromTemplate.data
+            }
+          }}
+          handlePopUpToggle={(_, state) => handlePopUpToggle("certificateFromTemplate", state)}
+          preselectedTemplate={popUp.certificateFromTemplate.data}
+        />
       </div>
       <UpgradePlanModal
         isOpen={popUp.estUpgradePlan.isOpen}
