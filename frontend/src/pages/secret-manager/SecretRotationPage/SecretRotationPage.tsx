@@ -95,42 +95,26 @@ const Page = () => {
 
   const handleDeleteRotation = async () => {
     const { id } = popUp.deleteRotation.data as { id: string };
-    try {
-      await deleteSecretRotation({
-        id,
-        workspaceId
-      });
-      handlePopUpClose("deleteRotation");
-      createNotification({
-        type: "success",
-        text: "Successfully removed rotation"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to remove rotation"
-      });
-    }
+    await deleteSecretRotation({
+      id,
+      workspaceId
+    });
+    handlePopUpClose("deleteRotation");
+    createNotification({
+      type: "success",
+      text: "Successfully removed rotation"
+    });
   };
 
   const handleRestartRotation = async (id: string) => {
-    try {
-      await restartSecretRotation({
-        id,
-        workspaceId
-      });
-      createNotification({
-        type: "success",
-        text: "Secret rotation  initiated"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to restart rotation"
-      });
-    }
+    await restartSecretRotation({
+      id,
+      workspaceId
+    });
+    createNotification({
+      type: "success",
+      text: "Secret rotation  initiated"
+    });
   };
 
   const handleCreateRotation = (provider: TSecretRotationProviderTemplate) => {
@@ -397,7 +381,7 @@ const Page = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add secret rotation if you switch to Infisical's Pro plan."
+        text="Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
       />
       <Modal
         isOpen={popUp.secretRotationV2.isOpen}

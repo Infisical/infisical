@@ -56,53 +56,31 @@ export const IdentitySection = withPermission(
     const isEnterprise = subscription?.slug === "enterprise";
 
     const onDeleteIdentitySubmit = async (identityId: string) => {
-      try {
-        await deleteMutateAsync({
-          identityId,
-          organizationId: orgId
-        });
+      await deleteMutateAsync({
+        identityId,
+        organizationId: orgId
+      });
 
-        createNotification({
-          text: "Successfully deleted identity",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted identity",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteIdentity");
-      } catch (err) {
-        console.error(err);
-        const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to delete identity";
-
-        createNotification({
-          text,
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteIdentity");
     };
 
     const onDeleteTemplateSubmit = async (templateId: string) => {
-      try {
-        await deleteTemplateMutateAsync({
-          templateId,
-          organizationId: orgId
-        });
+      await deleteTemplateMutateAsync({
+        templateId,
+        organizationId: orgId
+      });
 
-        createNotification({
-          text: "Successfully deleted template",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted template",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteTemplate");
-      } catch (err) {
-        console.error(err);
-        const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to delete template";
-
-        createNotification({
-          text,
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteTemplate");
     };
 
     return (
@@ -145,8 +123,7 @@ export const IdentitySection = withPermission(
                   onClick={() => {
                     if (!isMoreIdentitiesAllowed && !isEnterprise) {
                       handlePopUpOpen("upgradePlan", {
-                        description:
-                          "You can add more identities if you upgrade your Infisical Pro plan."
+                        text: "You have reached the maximum number of identities allowed on your current plan. Upgrade to Infisical Pro plan to add more identities."
                       });
                       return;
                     }
@@ -181,8 +158,7 @@ export const IdentitySection = withPermission(
                     if (subscription && !subscription.machineIdentityAuthTemplates) {
                       handlePopUpOpen("upgradePlan", {
                         isEnterpriseFeature: true,
-                        description:
-                          "You can use Identity Auth Templates if you switch to Infisical's Enterprise plan."
+                        text: "Your current plan does not include access to creating Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
                       });
                       return;
                     }
@@ -253,7 +229,7 @@ export const IdentitySection = withPermission(
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text={popUp.upgradePlan.data?.description}
+          text={popUp.upgradePlan.data?.text}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />
       </div>

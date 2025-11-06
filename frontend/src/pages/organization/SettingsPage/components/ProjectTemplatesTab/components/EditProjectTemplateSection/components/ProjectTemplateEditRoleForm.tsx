@@ -57,31 +57,23 @@ export const ProjectTemplateEditRoleForm = ({
   const updateProjectTemplate = useUpdateProjectTemplate();
 
   const onSubmit = async (form: TFormSchema) => {
-    try {
-      await updateProjectTemplate.mutateAsync({
-        templateId: projectTemplate.id,
-        roles: [
-          ...projectTemplate.roles.filter(
-            (r) => r.slug !== role?.slug && isCustomProjectRole(r.slug) // filter out default roles as well
-          ),
-          {
-            ...form,
-            permissions: formRolePermission2API(form.permissions)
-          }
-        ]
-      });
-      onGoBack();
-      createNotification({
-        text: "Template roles successfully updated",
-        type: "success"
-      });
-    } catch (e: any) {
-      console.error(e);
-      createNotification({
-        text: "Failed to update template roles",
-        type: "error"
-      });
-    }
+    await updateProjectTemplate.mutateAsync({
+      templateId: projectTemplate.id,
+      roles: [
+        ...projectTemplate.roles.filter(
+          (r) => r.slug !== role?.slug && isCustomProjectRole(r.slug) // filter out default roles as well
+        ),
+        {
+          ...form,
+          permissions: formRolePermission2API(form.permissions)
+        }
+      ]
+    });
+    onGoBack();
+    createNotification({
+      text: "Template roles successfully updated",
+      type: "success"
+    });
   };
 
   return (

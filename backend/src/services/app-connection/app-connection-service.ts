@@ -1,6 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
+import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
@@ -174,7 +176,8 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
-  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema
+  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
+  [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -881,6 +884,7 @@ export const appConnectionServiceFactory = ({
     netlify: netlifyConnectionService(connectAppConnectionById),
     northflank: northflankConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
-    laravelForge: laravelForgeConnectionService(connectAppConnectionById)
+    laravelForge: laravelForgeConnectionService(connectAppConnectionById),
+    chef: chefConnectionService(connectAppConnectionById, licenseService)
   };
 };

@@ -108,64 +108,49 @@ export const SSOModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDelet
     if (!currentOrg) {
       return;
     }
-    try {
-      await updateMutateAsync({
-        organizationId: currentOrg.id,
-        isActive: false,
-        entryPoint: "",
-        issuer: "",
-        cert: ""
-      });
+    await updateMutateAsync({
+      organizationId: currentOrg.id,
+      isActive: false,
+      entryPoint: "",
+      issuer: "",
+      cert: ""
+    });
 
-      createNotification({
-        text: "Successfully deleted SAML SSO configuration.",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed deleting SAML SSO configuration.",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted SAML SSO configuration.",
+      type: "success"
+    });
   };
 
   const onSSOModalSubmit = async ({ authProvider, entryPoint, issuer, cert }: AddSSOFormData) => {
-    try {
-      if (!currentOrg) return;
+    if (!currentOrg) return;
 
-      if (!data) {
-        await createMutateAsync({
-          organizationId: currentOrg.id,
-          authProvider,
-          isActive: false,
-          entryPoint,
-          issuer,
-          cert
-        });
-      } else {
-        await updateMutateAsync({
-          organizationId: currentOrg.id,
-          authProvider,
-          isActive: false,
-          entryPoint,
-          issuer,
-          cert
-        });
-      }
-
-      handlePopUpClose("addSSO");
-
-      createNotification({
-        text: `Successfully ${!data ? "added" : "updated"} SAML SSO configuration`,
-        type: "success"
+    if (!data) {
+      await createMutateAsync({
+        organizationId: currentOrg.id,
+        authProvider,
+        isActive: false,
+        entryPoint,
+        issuer,
+        cert
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${!data ? "add" : "update"} SAML SSO configuration`,
-        type: "error"
+    } else {
+      await updateMutateAsync({
+        organizationId: currentOrg.id,
+        authProvider,
+        isActive: false,
+        entryPoint,
+        issuer,
+        cert
       });
     }
+
+    handlePopUpClose("addSSO");
+
+    createNotification({
+      text: `Successfully ${!data ? "added" : "updated"} SAML SSO configuration`,
+      type: "success"
+    });
   };
 
   const renderLabels = (authProvider: string) => {

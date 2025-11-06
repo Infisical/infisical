@@ -75,30 +75,19 @@ const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   }, [workspaces, projectMemberships]);
 
   const onFormSubmit = async ({ project: selectedProject, role }: FormData) => {
-    try {
-      await addIdentityToWorkspace({
-        projectId: selectedProject.id,
-        identityId,
-        role: role.slug || undefined
-      });
+    await addIdentityToWorkspace({
+      projectId: selectedProject.id,
+      identityId,
+      role: role.slug || undefined
+    });
 
-      createNotification({
-        text: "Successfully added identity to project",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully added identity to project",
+      type: "success"
+    });
 
-      reset();
-      handlePopUpToggle("addIdentityToProject", false);
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to add identity to project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    reset();
+    handlePopUpToggle("addIdentityToProject", false);
   };
 
   const isProjectSelected = Boolean(projectId);

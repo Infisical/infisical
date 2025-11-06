@@ -90,28 +90,21 @@ export const OrgSecretShareLimitSection = () => {
   }, [currentOrg, reset]);
 
   const handleFormSubmit = async (formData: TForm) => {
-    try {
-      const maxSharedSecretLifetimeSeconds =
-        ms(`${formData.maxLifetimeValue}${formData.maxLifetimeUnit}`) / 1000;
+    const maxSharedSecretLifetimeSeconds =
+      ms(`${formData.maxLifetimeValue}${formData.maxLifetimeUnit}`) / 1000;
 
-      await mutateAsync({
-        orgId: currentOrg.id,
-        maxSharedSecretViewLimit: formData.shouldLimitView ? Number(formData.maxViewLimit) : null,
-        maxSharedSecretLifetime: maxSharedSecretLifetimeSeconds
-      });
+    await mutateAsync({
+      orgId: currentOrg.id,
+      maxSharedSecretViewLimit: formData.shouldLimitView ? Number(formData.maxViewLimit) : null,
+      maxSharedSecretLifetime: maxSharedSecretLifetimeSeconds
+    });
 
-      createNotification({
-        text: "Successfully updated secret share limits",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully updated secret share limits",
+      type: "success"
+    });
 
-      reset(formData);
-    } catch {
-      createNotification({
-        text: "Failed to update secret share limits",
-        type: "error"
-      });
-    }
+    reset(formData);
   };
 
   // Units for the dropdown with readable labels

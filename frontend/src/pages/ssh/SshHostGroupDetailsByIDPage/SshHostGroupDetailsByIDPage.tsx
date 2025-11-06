@@ -44,30 +44,22 @@ const Page = () => {
   ] as const);
 
   const onRemoveSshGroupSubmit = async (groupIdToDelete: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deleteSshHostGroup({ sshHostGroupId: groupIdToDelete });
+    await deleteSshHostGroup({ sshHostGroupId: groupIdToDelete });
 
-      createNotification({
-        text: "Successfully deleted SSH group",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted SSH group",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshHostGroup");
-      navigate({
-        to: "/projects/ssh/$projectId/overview",
-        params: {
-          projectId
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH group",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshHostGroup");
+    navigate({
+      to: "/projects/ssh/$projectId/overview",
+      params: {
+        projectId
+      }
+    });
   };
 
   return (

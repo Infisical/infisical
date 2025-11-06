@@ -84,49 +84,27 @@ export const MFASection = () => {
   }, [totpRegistration, showMobileAuthSetup]);
 
   const handleTotpDeletion = async () => {
-    try {
-      await deleteTotpConfiguration();
+    await deleteTotpConfiguration();
 
-      await mutateAsync({
-        selectedMfaMethod: MfaMethod.EMAIL
-      });
+    await mutateAsync({
+      selectedMfaMethod: MfaMethod.EMAIL
+    });
 
-      createNotification({
-        text: "Successfully deleted mobile authenticator and switched to email authentication",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted mobile authenticator and switched to email authentication",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteTotpConfig");
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete mobile authenticator";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteTotpConfig");
   };
 
   const handleGenerateMoreRecoveryCodes = async () => {
-    try {
-      await createTotpRecoveryCodes();
+    await createTotpRecoveryCodes();
 
-      createNotification({
-        text: "Successfully generated new recovery codes",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to generate new recovery codes";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully generated new recovery codes",
+      type: "success"
+    });
   };
 
   const handleFormDataChange = async (field: string, value: any) => {
@@ -200,10 +178,6 @@ export const MFASection = () => {
 
           await queryClient.invalidateQueries({ queryKey: userKeys.totpConfiguration });
         } catch {
-          createNotification({
-            text: "Failed to verify TOTP code. Please try again.",
-            type: "error"
-          });
           setIsLoading(false);
           return;
         }
@@ -249,12 +223,6 @@ export const MFASection = () => {
       setShowMobileAuthSetup(false);
       setTotpCode("");
       setShouldShowRecoveryCodes.off();
-    } catch (err) {
-      createNotification({
-        text: "Something went wrong while updating two-factor authentication settings.",
-        type: "error"
-      });
-      console.error(err);
     } finally {
       setIsLoading(false);
     }

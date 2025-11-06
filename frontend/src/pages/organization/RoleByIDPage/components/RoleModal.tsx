@@ -70,55 +70,46 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [role]);
 
   const onFormSubmit = async ({ name, description, slug }: FormData) => {
-    try {
-      if (!orgId) return;
+    if (!orgId) return;
 
-      if (role) {
-        // update
+    if (role) {
+      // update
 
-        await updateOrgRole({
-          orgId,
-          id: role.id,
-          name,
-          description,
-          slug
-        });
-
-        handlePopUpToggle("role", false);
-      } else {
-        // create
-
-        const newRole = await createOrgRole({
-          orgId,
-          name,
-          description,
-          slug,
-          permissions: []
-        });
-
-        handlePopUpToggle("role", false);
-        navigate({
-          to: "/organization/roles/$roleId",
-          params: {
-            roleId: newRole.id
-          }
-        });
-      }
-
-      createNotification({
-        text: `Successfully ${popUp?.role?.data ? "updated" : "created"} role`,
-        type: "success"
+      await updateOrgRole({
+        orgId,
+        id: role.id,
+        name,
+        description,
+        slug
       });
 
-      reset();
-    } catch {
-      const text = `Failed to ${popUp?.role?.data ? "update" : "create"} role`;
+      handlePopUpToggle("role", false);
+    } else {
+      // create
 
-      createNotification({
-        text,
-        type: "error"
+      const newRole = await createOrgRole({
+        orgId,
+        name,
+        description,
+        slug,
+        permissions: []
+      });
+
+      handlePopUpToggle("role", false);
+      navigate({
+        to: "/organization/roles/$roleId",
+        params: {
+          roleId: newRole.id
+        }
       });
     }
+
+    createNotification({
+      text: `Successfully ${popUp?.role?.data ? "updated" : "created"} role`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
@@ -996,7 +996,9 @@ export const relayServiceFactory = ({
         );
 
         if (existingRelay && (existingRelay.host !== host || existingRelay.name !== name)) {
-          return relayDAL.updateById(existingRelay.id, { host, name }, tx);
+          throw new BadRequestError({
+            message: `Machine identity already has an existing relay with the name "${existingRelay.name}" and host "${existingRelay.host}". Delete the existing relay or use a different machine identity.`
+          });
         }
 
         if (!existingRelay) {
@@ -1248,7 +1250,9 @@ export const relayServiceFactory = ({
             });
           }
         } else {
-          const admins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
+          const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
+            (admin) => admin.status !== OrgMembershipStatus.Invited
+          );
           if (admins.length === 0) {
             // eslint-disable-next-line no-continue
             continue;
@@ -1268,15 +1272,17 @@ export const relayServiceFactory = ({
             }))
           );
 
-          await smtpService.sendMail({
-            recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
-            subjectLine: "Relay Health Alert",
-            substitutions: {
-              type: "relay",
-              names: relayNames
-            },
-            template: SmtpTemplates.HealthAlert
-          });
+          // Temporarily disabled email notifications due to excessive noise. Will be revised later
+          //
+          // await smtpService.sendMail({
+          //   recipients: admins.map((admin) => admin.user.email).filter((v): v is string => !!v),
+          //   subjectLine: "Relay Health Alert",
+          //   substitutions: {
+          //     type: "relay",
+          //     names: relayNames
+          //   },
+          //   template: SmtpTemplates.HealthAlert
+          // });
         }
 
         await Promise.all(relays.map((r) => relayDAL.updateById(r.id, { healthAlertedAt: new Date() })));

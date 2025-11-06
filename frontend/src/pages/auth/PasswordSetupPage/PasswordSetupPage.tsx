@@ -75,11 +75,7 @@ export const PasswordSetupPage = () => {
         setTimeout(() => {
           window.location.href = "/login";
         }, 3000);
-      } catch (error) {
-        createNotification({
-          type: "error",
-          text: (error as Error).message ?? "Error setting password"
-        });
+      } catch {
         navigate({ to: "/personal-settings" });
       }
     }

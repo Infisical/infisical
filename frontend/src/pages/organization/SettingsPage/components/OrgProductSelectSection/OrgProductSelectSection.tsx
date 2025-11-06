@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
 
-import { createNotification } from "@app/components/notifications";
 import { Switch } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { useUpdateOrg } from "@app/hooks/api";
@@ -60,20 +58,10 @@ export const OrgProductSelectSection = () => {
       [key]: { ...products[key], enabled: value }
     }));
 
-    try {
-      await mutateAsync({
-        orgId: currentOrg.id,
-        [key]: value
-      });
-    } catch (e) {
-      if (axios.isAxiosError(e)) {
-        const { message = "Something went wrong" } = e.response?.data as { message: string };
-        createNotification({
-          type: "error",
-          text: message
-        });
-      }
-    }
+    await mutateAsync({
+      orgId: currentOrg.id,
+      [key]: value
+    });
 
     setIsLoading(false);
   };

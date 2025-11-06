@@ -28,46 +28,54 @@ This section walks you through the complete end-to-end process of setting up Azu
     **Certificate Authority** to access the external CAs page. ![External CA
     Page](/images/platform/pki/azure-adcs/azure-adcs-external-ca-page.png)
   </Step>
-<Step title="Create New Azure ADCS Certificate Service CA">
-  Click **Create CA** and configure: - **Type**: Choose **Azure AD Certificate
-  Service** - **Name**: Friendly name for this CA (e.g., "Production ADCS CA") -
-  **App Connection**: Choose your ADCS connection from the dropdown ![External
-  CA Form](/images/platform/pki/azure-adcs/azure-adcs-external-ca-form.png)
-</Step>
-<Step title="Certificate Authority Created">
-  Once created, your Azure ADCS Certificate Authority will appear in the list
-  and be ready for use. ![External CA
-  Created](/images/platform/pki/azure-adcs/azure-adcs-external-ca-created.png)
-</Step>
-<Step title="Navigate to Subscribers">
-  Go to **Subscribers** to access the subscribers page. ![Subscribers
-  Page](/images/platform/pki/azure-adcs/azure-adcs-subscribers-page.png)
-</Step>
-<Step title="Create New Subscriber">
-  Click **Add Subscriber** and configure: - **Name**: Unique subscriber name
-  (e.g., "web-server-certs") - **Certificate Authority**: Select your ADCS CA -
-  **Common Name**: Certificate CN (e.g., "api.example.com") - **Certificate
-  Template**: Select from dynamically loaded ADCS templates - **Subject
-  Alternative Names**: DNS names, IP addresses, or email addresses - **TTL**:
-  Certificate validity period (e.g., "1y" for 1 year) - **Additional Subject
-  Fields**: Organization, OU, locality, state, country, email (if required by
-  template) ![Subscribers
-  Form](/images/platform/pki/azure-adcs/azure-adcs-subscribers-form.png)
-</Step>
-<Step title="Subscriber Created">
-  Your subscriber is now created and ready to issue certificates. ![Subscriber
-  Created](/images/platform/pki/azure-adcs/azure-adcs-subscribers-created.png)
-</Step>
-<Step title="Issue New Certificate">
-  Click into your subscriber and click **Order Certificate** to generate a new
-  certificate using your ADCS template. ![Issue New
-  Certificate](/images/platform/pki/azure-adcs/azure-adcs-subscriber-issue-new-certificate.png)
-</Step>
-<Step title="Certificate Created">
-  Your certificate has been successfully issued by the ADCS server and is ready
-  for use. ![Certificate
-  Created](/images/platform/pki/azure-adcs/azure-adcs-certificate-created.png)
-</Step>
+
+  <Step title="Create New Azure ADCS Certificate Service CA">
+    Click **Create CA** and configure: - **Type**: Choose **Active Directory
+    Certificate Services (AD CS)** - **Name**: Friendly name for this CA (e.g.,
+    "Production ADCS CA") - **App Connection**: Choose your ADCS connection from
+    the dropdown ![External CA
+    Form](/images/platform/pki/azure-adcs/azure-adcs-external-ca-form.png)
+  </Step>
+
+  <Step title="Certificate Authority Created">
+    Once created, your Azure ADCS Certificate Authority will appear in the list
+    and be ready for use. ![External CA
+    Created](/images/platform/pki/azure-adcs/azure-adcs-external-ca-created.png)
+  </Step>
+
+  <Step title="Navigate to Subscribers">
+    Go to **Subscribers** to access the subscribers page. ![Subscribers
+    Page](/images/platform/pki/azure-adcs/azure-adcs-subscribers-page.png)
+  </Step>
+
+  <Step title="Create New Subscriber">
+    Click **Add Subscriber** and configure: - **Name**: Unique subscriber name
+    (e.g., "web-server-certs") - **Certificate Authority**: Select your ADCS CA
+    - **Common Name**: Certificate CN (e.g., "api.example.com") - **Certificate
+    Template**: Select from dynamically loaded ADCS templates - **Subject
+    Alternative Names**: DNS names, IP addresses, or email addresses - **TTL**:
+    Certificate validity period (e.g., "1y" for 1 year) - **Additional Subject
+    Fields**: Organization, OU, locality, state, country, email (if required by
+    template) ![Subscribers
+    Form](/images/platform/pki/azure-adcs/azure-adcs-subscribers-form.png)
+  </Step>
+
+  <Step title="Subscriber Created">
+    Your subscriber is now created and ready to issue certificates. ![Subscriber
+    Created](/images/platform/pki/azure-adcs/azure-adcs-subscribers-created.png)
+  </Step>
+
+  <Step title="Issue New Certificate">
+    Click into your subscriber and click **Order Certificate** to generate a new
+    certificate using your ADCS template. ![Issue New
+    Certificate](/images/platform/pki/azure-adcs/azure-adcs-subscriber-issue-new-certificate.png)
+  </Step>
+
+  <Step title="Certificate Created">
+    Your certificate has been successfully issued by the ADCS server and is
+    ready for use. ![Certificate
+    Created](/images/platform/pki/azure-adcs/azure-adcs-certificate-created.png)
+  </Step>
 
   <Step title="View Certificate Details">
     Navigate to **Certificates** to view detailed information about all issued

@@ -68,7 +68,8 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
               onClick={() =>
                 enterprise && !subscription.enterpriseSecretSyncs
                   ? handlePopUpOpen("upgradePlan", {
-                      isEnterpriseFeature: true
+                      isEnterpriseFeature: true,
+                      text: "All Secret Syncs can be unlocked if you switch to Infisical Enterprise plan."
                     })
                   : onSelect(destination)
               }
@@ -149,7 +150,7 @@ export const SecretSyncSelect = ({ onSelect }: Props) => {
         isOpen={popUp.upgradePlan.isOpen}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use every Secret Sync if you switch to Infisical's Enterprise plan."
+        text={popUp.upgradePlan.data?.text}
       />
     </div>
   );

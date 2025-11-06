@@ -35,25 +35,17 @@ export const CompanyNameSection = () => {
   }, [data]);
 
   const onFormSubmit = async ({ name }: { name: string }) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (name === "") return;
-      await mutateAsync({
-        name,
-        organizationId: currentOrg.id
-      });
+    if (!currentOrg?.id) return;
+    if (name === "") return;
+    await mutateAsync({
+      name,
+      organizationId: currentOrg.id
+    });
 
-      createNotification({
-        text: "Successfully updated business name",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update business name",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated business name",
+      type: "success"
+    });
   };
 
   return (

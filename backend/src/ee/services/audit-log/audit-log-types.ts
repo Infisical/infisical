@@ -426,6 +426,7 @@ export enum EventType {
   SECRET_SYNC_REMOVE_SECRETS = "secret-sync-remove-secrets",
   GET_PKI_SYNCS = "get-pki-syncs",
   GET_PKI_SYNC = "get-pki-sync",
+  GET_PKI_SYNC_CERTIFICATES = "get-pki-sync-certificates",
   CREATE_PKI_SYNC = "create-pki-sync",
   UPDATE_PKI_SYNC = "update-pki-sync",
   DELETE_PKI_SYNC = "delete-pki-sync",
@@ -3161,6 +3162,16 @@ interface GetPkiSyncEvent {
   };
 }
 
+interface GetPkiSyncCertificatesEvent {
+  type: EventType.GET_PKI_SYNC_CERTIFICATES;
+  metadata: {
+    syncId: string;
+    count: number;
+    certificateIds: string[];
+    destination: string;
+  };
+}
+
 interface CreatePkiSyncEvent {
   type: EventType.CREATE_PKI_SYNC;
   metadata: {
@@ -4329,6 +4340,7 @@ export type Event =
   | SecretSyncRemoveSecretsEvent
   | GetPkiSyncsEvent
   | GetPkiSyncEvent
+  | GetPkiSyncCertificatesEvent
   | CreatePkiSyncEvent
   | UpdatePkiSyncEvent
   | DeletePkiSyncEvent

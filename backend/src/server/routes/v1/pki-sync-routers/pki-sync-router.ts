@@ -2,10 +2,11 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
-import { readLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { PkiSync } from "@app/services/pki-sync/pki-sync-enums";
 
 const PkiSyncSchema = z.object({
@@ -60,7 +61,8 @@ const PkiSyncSchema = z.object({
       name: z.string()
     })
     .nullable()
-    .optional()
+    .optional(),
+  hasCertificate: z.boolean().optional()
 });
 
 const PkiSyncOptionsSchema = z.object({
@@ -74,6 +76,27 @@ const PkiSyncOptionsSchema = z.object({
   allowedCharacterPattern: z.string().optional(),
   maxCertificateNameLength: z.number().optional(),
   minCertificateNameLength: z.number().optional()
+});
+
+const PkiSyncCertificateSchema = z.object({
+  id: z.string().uuid(),
+  pkiSyncId: z.string().uuid(),
+  certificateId: z.string().uuid(),
+  syncStatus: z.nativeEnum(CertificateSyncStatus),
+  lastSyncMessage: z.string().nullable().optional(),
+  lastSyncedAt: z.date().nullable().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  certificateSerialNumber: z.string().optional(),
+  certificateCommonName: z.string().optional(),
+  certificateAltNames: z.string().optional(),
+  certificateStatus: z.string().optional(),
+  certificateNotBefore: z.date().optional(),
+  certificateNotAfter: z.date().optional(),
+  certificateRenewBeforeDays: z.number().nullish(),
+  certificateRenewalError: z.string().nullish(),
+  pkiSyncName: z.string().optional(),
+  pkiSyncDestination: z.string().optional()
 });
 
 export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
@@ -111,7 +134,8 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       tags: [ApiDocsTags.PkiSyncs],
       description: "List all the PKI Syncs for the specified project.",
       querystring: z.object({
-        projectId: z.string().trim().min(1)
+        projectId: z.string().trim().min(1),
+        certificateId: z.string().uuid().optional()
       }),
       response: {
         200: z.object({ pkiSyncs: PkiSyncSchema.array() })
@@ -120,11 +144,11 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const {
-        query: { projectId },
+        query: { projectId, certificateId },
         permission
       } = req;
 
-      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId }, permission);
+      const pkiSyncs = await server.services.pkiSync.listPkiSyncsByProjectId({ projectId, certificateId }, permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
@@ -177,6 +201,165 @@ export const registerPkiSyncRouter = async (server: FastifyZodProvider) => {
       });
 
       return pkiSync;
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:pkiSyncId/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "List all certificates associated with a PKI Sync.",
+      params: z.object({
+        pkiSyncId: z.string().uuid()
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(20)
+      }),
+      response: {
+        200: z.object({
+          certificates: PkiSyncCertificateSchema.array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiSyncId } = req.params;
+      const { offset, limit } = req.query;
+
+      const { certificates, totalCount, pkiSyncInfo } = await server.services.pkiSync.listPkiSyncCertificates(
+        { pkiSyncId, offset, limit },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiSyncInfo.projectId,
+        event: {
+          type: EventType.GET_PKI_SYNC_CERTIFICATES,
+          metadata: {
+            syncId: pkiSyncId,
+            destination: pkiSyncInfo.destination,
+            count: certificates.length,
+            certificateIds: certificates.map((c) => c.certificateId)
+          }
+        }
+      });
+
+      return { certificates, totalCount };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:pkiSyncId/certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "Add certificates to a PKI Sync.",
+      params: z.object({
+        pkiSyncId: z.string().uuid()
+      }),
+      body: z.object({
+        certificateIds: z.array(z.string().uuid()).min(1, "At least one certificate ID is required")
+      }),
+      response: {
+        200: z.object({
+          addedCertificates: z.array(
+            z.object({
+              id: z.string().uuid(),
+              pkiSyncId: z.string().uuid(),
+              certificateId: z.string().uuid(),
+              syncStatus: z.string().default("pending").optional().nullable(),
+              lastSyncMessage: z.string().optional().nullable(),
+              lastSyncedAt: z.date().optional().nullable(),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiSyncId } = req.params;
+      const { certificateIds } = req.body;
+
+      const { addedCertificates, pkiSyncInfo } = await server.services.pkiSync.addCertificatesToPkiSync(
+        { pkiSyncId, certificateIds },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiSyncInfo.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_SYNC,
+          metadata: {
+            pkiSyncId,
+            name: pkiSyncInfo.name
+          }
+        }
+      });
+
+      return { addedCertificates };
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:pkiSyncId/certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiSyncs],
+      description: "Remove certificates from a PKI Sync.",
+      params: z.object({
+        pkiSyncId: z.string().uuid()
+      }),
+      body: z.object({
+        certificateIds: z.array(z.string().uuid()).min(1, "At least one certificate ID is required")
+      }),
+      response: {
+        200: z.object({
+          removedCount: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { pkiSyncId } = req.params;
+      const { certificateIds } = req.body;
+
+      const { removedCount, pkiSyncInfo } = await server.services.pkiSync.removeCertificatesFromPkiSync(
+        { pkiSyncId, certificateIds },
+        req.permission
+      );
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: pkiSyncInfo.projectId,
+        event: {
+          type: EventType.UPDATE_PKI_SYNC,
+          metadata: {
+            pkiSyncId,
+            name: pkiSyncInfo.name
+          }
+        }
+      });
+
+      return { removedCount };
     }
   });
 };

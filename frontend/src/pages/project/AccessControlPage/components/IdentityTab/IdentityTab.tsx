@@ -119,28 +119,17 @@ export const IdentityTab = withProjectPermission(
     ] as const);
 
     const onRemoveIdentitySubmit = async (identityId: string) => {
-      try {
-        await deleteMutateAsync({
-          identityId,
-          projectId
-        });
+      await deleteMutateAsync({
+        identityId,
+        projectId
+      });
 
-        createNotification({
-          text: "Successfully removed identity from project",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully removed identity from project",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteIdentity");
-      } catch (err) {
-        console.error(err);
-        const error = err as any;
-        const text = error?.response?.data?.message ?? "Failed to remove identity from project";
-
-        createNotification({
-          text,
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteIdentity");
     };
 
     const handleSort = (column: ProjectIdentityOrderBy) => {

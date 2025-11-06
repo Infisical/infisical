@@ -189,38 +189,29 @@ export const EditDynamicSecretKubernetesForm = ({
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
     const isDefaultUsernameTemplate = formData.usernameTemplate === "{{randomUsername}}";
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          inputs: {
-            ...formData.inputs,
-            url: formData.inputs.url || undefined
-          },
-          newName: formData.newName === dynamicSecret.name ? undefined : formData.newName,
-          defaultTTL: formData.defaultTTL,
-          maxTTL: formData.maxTTL,
-          usernameTemplate:
-            !formData.usernameTemplate || isDefaultUsernameTemplate
-              ? null
-              : formData.usernameTemplate
-        }
-      });
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        inputs: {
+          ...formData.inputs,
+          url: formData.inputs.url || undefined
+        },
+        newName: formData.newName === dynamicSecret.name ? undefined : formData.newName,
+        defaultTTL: formData.defaultTTL,
+        maxTTL: formData.maxTTL,
+        usernameTemplate:
+          !formData.usernameTemplate || isDefaultUsernameTemplate ? null : formData.usernameTemplate
+      }
+    });
 
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to update dynamic secret"
-      });
-    }
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

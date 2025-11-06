@@ -55,24 +55,17 @@ export const EncryptionPageForm = () => {
     if (!subscription.hsm) {
       handlePopUpOpen("upgradePlan", {
         isEnterpriseFeature: true,
-        description: "Hardware Security Module's (HSM's), are only available on Enterprise plans."
+        text: "Your current plan does not include access to Hardware Security Module (HSM). To unlock this feature, please upgrade to Infisical Enterprise plan."
       });
       return;
     }
 
-    try {
-      await updateEncryptionStrategy(formData.encryptionStrategy);
+    await updateEncryptionStrategy(formData.encryptionStrategy);
 
-      createNotification({
-        type: "success",
-        text: "Encryption strategy updated successfully"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update encryption strategy"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Encryption strategy updated successfully"
+    });
   }, []);
 
   return (
@@ -144,7 +137,7 @@ export const EncryptionPageForm = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
+        text={popUp.upgradePlan?.data?.text}
         isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
     </>

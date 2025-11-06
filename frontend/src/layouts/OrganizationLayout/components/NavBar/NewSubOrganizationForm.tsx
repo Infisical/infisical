@@ -36,28 +36,21 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
   const router = useRouter();
 
   const onSubmit = async ({ name }: FormData) => {
-    try {
-      const { organization } = await createSubOrg.mutateAsync({
-        name
-      });
+    const { organization } = await createSubOrg.mutateAsync({
+      name
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully created sub organization"
-      });
-      onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully created sub organization"
+    });
+    onClose();
 
-      navigate({
-        to: "/organization/projects",
-        search: (prev) => ({ ...prev, subOrganization: organization.name })
-      });
-      await router.invalidate({ sync: true }).catch(() => null);
-    } catch {
-      createNotification({
-        text: "Failed to create sub organization",
-        type: "error"
-      });
-    }
+    navigate({
+      to: "/organization/projects",
+      search: (prev) => ({ ...prev, subOrganization: organization.name })
+    });
+    await router.invalidate({ sync: true }).catch(() => null);
   };
 
   return (

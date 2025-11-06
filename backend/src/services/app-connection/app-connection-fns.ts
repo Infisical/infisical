@@ -1,6 +1,11 @@
 import { ProjectType } from "@app/db/schemas";
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import {
+  ChefConnectionMethod,
+  getChefConnectionListItem,
+  validateChefConnectionCredentials
+} from "@app/ee/services/app-connections/chef";
+import {
   getOCIConnectionListItem,
   OCIConnectionMethod,
   validateOCIConnectionCredentials
@@ -210,7 +215,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNetlifyConnectionListItem(),
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
-    getRedisConnectionListItem()
+    getRedisConnectionListItem(),
+    getChefConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
@@ -341,6 +347,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Netlify]: validateNetlifyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
@@ -409,6 +416,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case RenderConnectionMethod.ApiKey:
     case ChecklyConnectionMethod.ApiKey:
       return "API Key";
+    case ChefConnectionMethod.UserKey:
+      return "User Key";
     case SupabaseConnectionMethod.AccessToken:
       return "Access Token";
     default:
@@ -483,7 +492,8 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
-  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported
+  [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
+  [AppConnection.Chef]: platformManagedCredentialsNotSupported
 };
 
 export const enterpriseAppCheck = async (

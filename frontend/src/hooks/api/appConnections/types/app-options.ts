@@ -148,6 +148,10 @@ export type TChecklyConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Checkly;
 };
 
+export type TChefConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.Chef;
+};
+
 export type TSupabaseConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Supabase;
 };
@@ -220,7 +224,8 @@ export type TAppConnectionOption =
   | TNorthflankConnectionOption
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption
-  | TLaravelForgeConnectionOption;
+  | TLaravelForgeConnectionOption
+  | TChefConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -264,4 +269,5 @@ export type TAppConnectionOptionMap = {
   [AppConnection.AzureADCS]: TAzureAdCsConnectionOption;
   [AppConnection.Redis]: TRedisConnectionOption;
   [AppConnection.LaravelForge]: TLaravelForgeConnectionOption;
+  [AppConnection.Chef]: TChefConnectionOption;
 };

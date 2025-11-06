@@ -147,25 +147,17 @@ export const SecretImportListView = ({
 
   const handleSecretImportDelete = async () => {
     const { id: secretImportId } = popUp.deleteSecretImport?.data as { id: string };
-    try {
-      await deleteSecretImport({
-        projectId,
-        environment,
-        path: secretPath,
-        id: secretImportId
-      });
-      handlePopUpClose("deleteSecretImport");
-      createNotification({
-        type: "success",
-        text: "Successfully removed secret link"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to remove secret link",
-        type: "error"
-      });
-    }
+    await deleteSecretImport({
+      projectId,
+      environment,
+      path: secretPath,
+      id: secretImportId
+    });
+    handlePopUpClose("deleteSecretImport");
+    createNotification({
+      type: "success",
+      text: "Successfully removed secret link"
+    });
   };
 
   const handleSecretImportReorder = ({ over, active }: DragEndEvent) => {

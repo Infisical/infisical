@@ -40,19 +40,11 @@ export const SessionsTable = () => {
   ] as const);
 
   const handleSignOut = async (sessionId: string) => {
-    try {
-      await revokeMySessionById(sessionId);
-      createNotification({
-        text: "Session revoked successfully",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to revoke session",
-        type: "error"
-      });
-    }
+    await revokeMySessionById(sessionId);
+    createNotification({
+      text: "Session revoked successfully",
+      type: "success"
+    });
 
     handlePopUpClose("deleteSession");
   };

@@ -202,6 +202,10 @@ export const getSecretSyncDestinationColValues = (secretSync: TSecretSync) => {
       primaryText = destinationConfig.siteName || destinationConfig.siteId;
       secondaryText = destinationConfig.orgName || destinationConfig.orgSlug;
       break;
+    case SecretSync.Chef:
+      primaryText = destinationConfig.dataBagName;
+      secondaryText = destinationConfig.dataBagItemName;
+      break;
     default:
       throw new Error(`Unhandled Destination Col Values ${destination}`);
   }

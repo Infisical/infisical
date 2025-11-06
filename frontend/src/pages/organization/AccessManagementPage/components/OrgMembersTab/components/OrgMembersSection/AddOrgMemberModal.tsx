@@ -122,62 +122,53 @@ export const AddOrgMemberModal = ({
       }
     }
 
-    try {
-      const parsedEmails = emails
-        .replace(/\s/g, "")
-        .split(",")
-        .map((email) => {
-          if (EmailSchema.safeParse(email).success) {
-            return email.trim();
-          }
+    const parsedEmails = emails
+      .replace(/\s/g, "")
+      .split(",")
+      .map((email) => {
+        if (EmailSchema.safeParse(email).success) {
+          return email.trim();
+        }
 
-          return null;
-        });
-
-      if (parsedEmails.includes(null)) {
-        createNotification({
-          text: "Invalid email addresses provided.",
-          type: "error"
-        });
-        return;
-      }
-
-      const usernames = emails.split(",").map((email) => email.trim());
-      const { data } = await addUsersMutateAsync({
-        organizationId: currentOrg?.id,
-        inviteeEmails: usernames,
-        organizationRoleSlug: organizationRole.slug
+        return null;
       });
 
-      await Promise.allSettled(
-        selectedProjects.map((el) =>
-          addUserToProject({
-            orgId: currentOrg.id,
-            projectId: el.id,
-            roleSlugs: [projectRoleSlug],
-            usernames
-          })
-        )
-      );
-
-      setCompleteInviteLinks(data?.completeInviteLinks ?? null);
-
-      // only show this notification when email is configured.
-      // A [completeInviteLink] will not be sent if smtp is configured
-
-      if (!data.completeInviteLinks) {
-        createNotification({
-          text: "Successfully invited user to the organization.",
-          type: "success"
-        });
-      }
-    } catch (error) {
-      console.error(error);
+    if (parsedEmails.includes(null)) {
       createNotification({
-        text: "Failed to invite user to org",
+        text: "Invalid email addresses provided.",
         type: "error"
       });
       return;
+    }
+
+    const usernames = emails.split(",").map((email) => email.trim());
+    const { data } = await addUsersMutateAsync({
+      organizationId: currentOrg?.id,
+      inviteeEmails: usernames,
+      organizationRoleSlug: organizationRole.slug
+    });
+
+    await Promise.allSettled(
+      selectedProjects.map((el) =>
+        addUserToProject({
+          orgId: currentOrg.id,
+          projectId: el.id,
+          roleSlugs: [projectRoleSlug],
+          usernames
+        })
+      )
+    );
+
+    setCompleteInviteLinks(data?.completeInviteLinks ?? null);
+
+    // only show this notification when email is configured.
+    // A [completeInviteLink] will not be sent if smtp is configured
+
+    if (!data.completeInviteLinks) {
+      createNotification({
+        text: "Successfully invited user to the organization.",
+        type: "success"
+      });
     }
 
     if (serverDetails?.emailConfigured) {

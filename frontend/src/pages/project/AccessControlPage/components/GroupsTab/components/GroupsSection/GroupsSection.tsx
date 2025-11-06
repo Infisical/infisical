@@ -33,8 +33,7 @@ export const GroupsSection = () => {
   const handleAddGroupModal = () => {
     if (!subscription?.groups) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "You can manage users more efficiently with groups if you switch to Infisical's Enterprise plan.",
+        text: "Managing groups can be unlocked if you upgrade to Infisical Enterprise plan.",
         isEnterpriseFeature: true
       });
     } else {
@@ -43,28 +42,17 @@ export const GroupsSection = () => {
   };
 
   const onRemoveGroupSubmit = async (groupId: string) => {
-    try {
-      await deleteMutateAsync({
-        groupId,
-        projectId: currentProject?.id || ""
-      });
+    await deleteMutateAsync({
+      groupId,
+      projectId: currentProject?.id || ""
+    });
 
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed identity from project",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteGroup");
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to remove group from project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteGroup");
   };
 
   return (
@@ -104,10 +92,8 @@ export const GroupsSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
-        isEnterpriseFeature={
-          (popUp.upgradePlan?.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
-        }
+        text={popUp.upgradePlan?.data?.text}
+        isEnterpriseFeature={popUp.upgradePlan?.data?.isEnterpriseFeature}
       />
     </div>
   );

@@ -11,21 +11,24 @@ type Props = {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   selectSync?: PkiSync | null;
+  initialData?: any;
 };
 
 type ContentProps = {
   onComplete: (pkiSync: TPkiSync) => void;
   selectedSync: PkiSync | null;
   setSelectedSync: (selectedSync: PkiSync | null) => void;
+  initialData?: any;
 };
 
-const Content = ({ onComplete, setSelectedSync, selectedSync }: ContentProps) => {
+const Content = ({ onComplete, setSelectedSync, selectedSync, initialData }: ContentProps) => {
   if (selectedSync) {
     return (
       <CreatePkiSyncForm
         onComplete={onComplete}
         onCancel={() => setSelectedSync(null)}
         destination={selectedSync}
+        initialData={initialData}
       />
     );
   }
@@ -33,7 +36,12 @@ const Content = ({ onComplete, setSelectedSync, selectedSync }: ContentProps) =>
   return <PkiSyncSelect onSelect={setSelectedSync} />;
 };
 
-export const CreatePkiSyncModal = ({ onOpenChange, selectSync = null, ...props }: Props) => {
+export const CreatePkiSyncModal = ({
+  onOpenChange,
+  selectSync = null,
+  initialData,
+  ...props
+}: Props) => {
   const [selectedSync, setSelectedSync] = useState<PkiSync | null>(selectSync);
 
   useEffect(() => {
@@ -69,6 +77,7 @@ export const CreatePkiSyncModal = ({ onOpenChange, selectSync = null, ...props }
           }}
           selectedSync={selectedSync}
           setSelectedSync={setSelectedSync}
+          initialData={initialData}
         />
       </ModalContent>
     </Modal>

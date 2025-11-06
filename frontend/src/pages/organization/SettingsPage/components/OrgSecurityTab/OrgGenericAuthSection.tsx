@@ -20,55 +20,39 @@ export const OrgGenericAuthSection = () => {
   const { mutateAsync } = useUpdateOrg();
 
   const handleEnforceMfaToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.enforceMfa) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        enforceMfa: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enforced" : "un-enforced"} MFA`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+    if (!currentOrg?.id) return;
+    if (!subscription?.enforceMfa) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      enforceMfa: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enforced" : "un-enforced"} MFA`,
+      type: "success"
+    });
   };
 
   const handleUpdateSelectedMfa = async (selectedMfaMethod: MfaMethod) => {
-    try {
-      if (!currentOrg?.id) return;
-      if (!subscription?.enforceMfa) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        orgId: currentOrg?.id,
-        selectedMfaMethod
-      });
-
-      createNotification({
-        text: "Successfully updated selected MFA method",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
-        type: "error"
-      });
+    if (!currentOrg?.id) return;
+    if (!subscription?.enforceMfa) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      orgId: currentOrg?.id,
+      selectedMfaMethod
+    });
+
+    createNotification({
+      text: "Successfully updated selected MFA method",
+      type: "success"
+    });
   };
 
   return (
@@ -110,7 +94,7 @@ export const OrgGenericAuthSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can enforce user MFA if you switch to Infisical's Pro plan."
+        text="Your current plan does not include access to enforce user MFA. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>
   );

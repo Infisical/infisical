@@ -9,7 +9,9 @@ import { IntegrationsListPage } from "./IntegrationsListPage";
 
 const IntegrationsListPageQuerySchema = z.object({
   selectedTab: z.nativeEnum(IntegrationsListPageTabs).optional(),
-  addSync: z.nativeEnum(PkiSync).optional()
+  addSync: z.nativeEnum(PkiSync).optional(),
+  connectionId: z.string().optional(),
+  connectionName: z.string().optional()
 });
 
 export const Route = createFileRoute(

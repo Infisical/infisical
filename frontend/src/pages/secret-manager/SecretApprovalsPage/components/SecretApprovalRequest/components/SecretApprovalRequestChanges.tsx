@@ -174,23 +174,15 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
   );
 
   const handleSecretApprovalStatusUpdate = async (status: ApprovalStatus, comment: string) => {
-    try {
-      await updateSecretApprovalRequestStatus({
-        id: approvalRequestId,
-        status,
-        comment
-      });
-      createNotification({
-        type: "success",
-        text: `Successfully ${status} the request`
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to update the request status"
-      });
-    }
+    await updateSecretApprovalRequestStatus({
+      id: approvalRequestId,
+      status,
+      comment
+    });
+    createNotification({
+      type: "success",
+      text: `Successfully ${status} the request`
+    });
 
     handlePopUpToggle("reviewChanges", false);
     reset({

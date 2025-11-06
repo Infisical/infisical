@@ -33,12 +33,11 @@ import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
   handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["ca", "deleteCa", "caStatus", "upgradePlan"]>,
+    popUpName: keyof UsePopUpState<["ca", "deleteCa", "caStatus"]>,
     data?: {
       name?: string;
       type?: CaType;
       status?: CaStatus;
-      description?: string;
     }
   ) => void;
 };

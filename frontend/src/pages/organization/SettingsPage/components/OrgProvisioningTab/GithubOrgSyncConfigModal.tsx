@@ -55,55 +55,40 @@ export const GithubOrgSyncConfigModal = ({
   });
 
   const onFormSubmit = async ({ githubOrgName, githubOrgAccessToken }: FormData) => {
-    try {
-      if (isUpdate) {
-        await updateGithubSyncOrgConfig({
-          githubOrgName,
-          githubOrgAccessToken
-        });
+    if (isUpdate) {
+      await updateGithubSyncOrgConfig({
+        githubOrgName,
+        githubOrgAccessToken
+      });
 
-        createNotification({
-          text: "Successfully updated GitHub Organization Sync",
-          type: "success"
-        });
-      } else {
-        await createGithubSyncOrgConfig({
-          githubOrgName,
-          githubOrgAccessToken,
-          isActive: false
-        });
-
-        createNotification({
-          text: "Successfully created GitHub Organization Sync",
-          type: "success"
-        });
-      }
-      handlePopUpToggle("githubOrgSyncConfig");
-    } catch {
       createNotification({
-        text: "Failed to setup GitHub Organization Sync",
-        type: "error"
+        text: "Successfully updated GitHub Organization Sync",
+        type: "success"
+      });
+    } else {
+      await createGithubSyncOrgConfig({
+        githubOrgName,
+        githubOrgAccessToken,
+        isActive: false
+      });
+
+      createNotification({
+        text: "Successfully created GitHub Organization Sync",
+        type: "success"
       });
     }
+    handlePopUpToggle("githubOrgSyncConfig");
   };
 
   const onDelete = async () => {
-    try {
-      await deleteGithubSyncOrgConfig();
+    await deleteGithubSyncOrgConfig();
 
-      handlePopUpToggle("deleteGithubOrgSyncConfig", false);
-      handlePopUpToggle("githubOrgSyncConfig", false);
-      createNotification({
-        text: "Successfully deleted GitHub Organization Sync",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete GitHub Organization Sync",
-        type: "error"
-      });
-    }
+    handlePopUpToggle("deleteGithubOrgSyncConfig", false);
+    handlePopUpToggle("githubOrgSyncConfig", false);
+    createNotification({
+      text: "Successfully deleted GitHub Organization Sync",
+      type: "success"
+    });
   };
 
   return (

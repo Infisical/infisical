@@ -1,14 +1,18 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { SingleValue } from "react-select";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link } from "@tanstack/react-router";
+import { useRouterState } from "@tanstack/react-router";
 
+import { AppConnectionOption } from "@app/components/app-connections";
 import { FilterableSelect, FormControl } from "@app/components/v2";
 import { ProjectPermissionSub, useProject, useProjectPermission } from "@app/context";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
 import { PKI_SYNC_CONNECTION_MAP } from "@app/helpers/pkiSyncs";
+import { usePopUp } from "@app/hooks";
 import { useListAvailableAppConnections } from "@app/hooks/api/appConnections";
+import { AddAppConnectionModal } from "@app/pages/organization/AppConnections/AppConnectionsPage/components";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 
@@ -18,11 +22,29 @@ type Props = {
 
 export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
   const { permission } = useProjectPermission();
-  const { control, watch } = useFormContext<TPkiSyncForm>();
-  const { currentProject } = useProject();
+  const { control, watch, setValue } = useFormContext<TPkiSyncForm>();
+
+  const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp(["addConnection"] as const);
 
   const destination = watch("destination");
   const app = PKI_SYNC_CONNECTION_MAP[destination];
+
+  const { currentProject } = useProject();
+
+  const {
+    location: { pathname }
+  } = useRouterState();
+
+  const getPkiSyncReturnUrl = () => {
+    if (pathname.includes("selectedTab=secret-syncs")) {
+      return pathname.replace("selectedTab=secret-syncs", "selectedTab=pki-syncs");
+    }
+    if (!pathname.includes("selectedTab=")) {
+      const separator = pathname.includes("?") ? "&" : "?";
+      return `${pathname}${separator}selectedTab=pki-syncs`;
+    }
+    return pathname;
+  };
 
   const { data: availableConnections, isPending } = useListAvailableAppConnections(
     app,
@@ -47,6 +69,7 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
       <Controller
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl
+            tooltipText="App Connections can be created from the Project Settings page."
             isError={Boolean(error)}
             errorText={error?.message}
             label={`${connectionName} Connection`}
@@ -54,36 +77,54 @@ export const PkiSyncConnectionField = ({ onChange: callback }: Props) => {
             <FilterableSelect
               value={value}
               onChange={(newValue) => {
+                if ((newValue as SingleValue<{ id: string; name: string }>)?.id === "_create") {
+                  handlePopUpOpen("addConnection");
+                  onChange(null);
+                  const formData = { ...watch(), returnUrl: getPkiSyncReturnUrl() };
+                  localStorage.setItem("pkiSyncFormData", JSON.stringify(formData));
+                  if (callback) callback();
+                  return;
+                }
+
                 onChange(newValue);
                 if (callback) callback();
               }}
               isLoading={isPending}
-              options={availableConnections}
+              options={[
+                ...(canCreateConnection ? [{ id: "_create", name: "Create Connection" }] : []),
+                ...(availableConnections ?? [])
+              ]}
               placeholder="Select connection..."
               getOptionLabel={(option) => option.name}
               getOptionValue={(option) => option.id}
+              components={{ Option: AppConnectionOption }}
             />
           </FormControl>
         )}
         control={control}
         name="connection"
       />
-      {availableConnections?.length === 0 && (
+      {!isPending && !availableConnections?.length && !canCreateConnection && (
         <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
           <FontAwesomeIcon className="mr-1" size="xs" icon={faInfoCircle} />
-          {canCreateConnection ? (
-            <>
-              You do not have access to any {appName} Connections. Create one from the{" "}
-              <Link to="/organization/app-connections" className="underline">
-                App Connections
-              </Link>{" "}
-              page.
-            </>
-          ) : (
-            `You do not have access to any ${appName} Connections. Contact an admin to create one.`
-          )}
+          You do not have access to any {appName} Connections. Contact an admin to create one.
         </p>
       )}
+      <AddAppConnectionModal
+        isOpen={popUp.addConnection.isOpen}
+        onOpenChange={(isOpen) => {
+          localStorage.removeItem("pkiSyncFormData");
+          handlePopUpToggle("addConnection", isOpen);
+        }}
+        projectType={currentProject.type}
+        projectId={currentProject.id}
+        app={app}
+        onComplete={(connection) => {
+          if (connection) {
+            setValue("connection", connection);
+          }
+        }}
+      />
     </>
   );
 };

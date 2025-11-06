@@ -84,27 +84,23 @@ export const CaRenewalModal = ({ popUp, handlePopUpToggle }: Props) => {
   //   }, [ca, parentCa]);
 
   const onFormSubmit = async ({ type, notAfter }: FormData) => {
-    try {
-      if (!projectSlug || !popUpData.caId) return;
+    if (!projectSlug || !popUpData.caId) return;
 
-      await renewCa({
-        projectSlug,
-        caId: popUpData.caId,
-        notAfter,
-        type
-      });
+    await renewCa({
+      projectSlug,
+      caId: popUpData.caId,
+      notAfter,
+      type
+    });
 
-      handlePopUpToggle("renewCa", false);
+    handlePopUpToggle("renewCa", false);
 
-      createNotification({
-        text: "Successfully renewed CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully renewed CA",
+      type: "success"
+    });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-    }
+    reset();
   };
 
   return (

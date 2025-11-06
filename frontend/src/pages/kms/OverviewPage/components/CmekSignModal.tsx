@@ -59,19 +59,11 @@ const SignForm = ({ cmek }: FormProps) => {
   });
 
   const handleSignData = async (formData: FormData) => {
-    try {
-      await cmekSign.mutateAsync({ ...formData, keyId: cmek.id });
-      createNotification({
-        text: "Successfully signed data",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to sign data",
-        type: "error"
-      });
-    }
+    await cmekSign.mutateAsync({ ...formData, keyId: cmek.id });
+    createNotification({
+      text: "Successfully signed data",
+      type: "success"
+    });
   };
 
   const signature = cmekSign.data?.signature;

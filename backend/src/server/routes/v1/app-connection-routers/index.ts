@@ -1,3 +1,4 @@
+import { registerChefConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/chef-connection-router";
 import { registerOCIConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oci-connection-router";
 import { registerOracleDBConnectionRouter } from "@app/ee/routes/v1/app-connection-routers/oracledb-connection-router";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -86,5 +87,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Netlify]: registerNetlifyConnectionRouter,
     [AppConnection.Northflank]: registerNorthflankConnectionRouter,
     [AppConnection.Okta]: registerOktaConnectionRouter,
-    [AppConnection.Redis]: registerRedisConnectionRouter
+    [AppConnection.Redis]: registerRedisConnectionRouter,
+    [AppConnection.Chef]: registerChefConnectionRouter
   };

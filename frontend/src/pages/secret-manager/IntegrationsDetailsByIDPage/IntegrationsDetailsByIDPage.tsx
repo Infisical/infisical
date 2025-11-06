@@ -53,28 +53,20 @@ export const IntegrationDetailsByIDPage = () => {
   const navigate = useNavigate();
 
   const handleIntegrationDelete = async (shouldDeleteIntegrationSecrets: boolean) => {
-    try {
-      await deleteIntegration({
-        id: integrationId,
-        workspaceId: currentProject.id,
-        shouldDeleteIntegrationSecrets
-      });
+    await deleteIntegration({
+      id: integrationId,
+      workspaceId: currentProject.id,
+      shouldDeleteIntegrationSecrets
+    });
 
-      createNotification({
-        type: "success",
-        text: "Deleted integration"
-      });
+    createNotification({
+      type: "success",
+      text: "Deleted integration"
+    });
 
-      await navigate({
-        to: `/${ProjectType.SecretManager}/${projectId}/integrations`
-      });
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        type: "error",
-        text: "Failed to delete integration"
-      });
-    }
+    await navigate({
+      to: `/${ProjectType.SecretManager}/${projectId}/integrations`
+    });
   };
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([

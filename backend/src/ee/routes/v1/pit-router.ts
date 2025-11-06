@@ -468,7 +468,10 @@ export const registerPITRouter = async (server: FastifyZodProvider) => {
                     .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
                     .optional(),
                   secretComment: z.string().trim().optional().default(""),
-                  skipMultilineEncoding: z.boolean().optional(),
+                  skipMultilineEncoding: z
+                    .boolean()
+                    .nullish()
+                    .transform((val) => (val === null ? false : val)),
                   metadata: z.record(z.string()).optional(),
                   secretMetadata: ResourceMetadataSchema.optional(),
                   tagIds: z.string().array().optional()

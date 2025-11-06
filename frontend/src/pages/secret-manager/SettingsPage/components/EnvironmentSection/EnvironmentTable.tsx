@@ -46,26 +46,18 @@ export const EnvironmentTable = ({ handlePopUpOpen }: Props) => {
   const updateEnvironment = useUpdateWsEnvironment();
 
   const handleReorderEnv = async (id: string, position: number) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await updateEnvironment.mutateAsync({
-        projectId: currentProject.id,
-        id,
-        position
-      });
+    await updateEnvironment.mutateAsync({
+      projectId: currentProject.id,
+      id,
+      position
+    });
 
-      createNotification({
-        text: "Successfully re-ordered environments",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to re-order environments",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully re-ordered environments",
+      type: "success"
+    });
   };
 
   const isMoreEnvironmentsAllowed =

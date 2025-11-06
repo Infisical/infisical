@@ -138,52 +138,44 @@ export const SshCertificateTemplateModal = ({ popUp, handlePopUpToggle, sshCaId 
     allowedHosts,
     allowCustomKeyIds
   }: FormData) => {
-    try {
-      if (certTemplate) {
-        await updateSshCertTemplate({
-          id: certTemplate.id,
-          name,
-          ttl,
-          maxTTL,
-          allowedUsers: allowedUsers ? allowedUsers.split(",").map((user) => user.trim()) : [],
-          allowedHosts: allowedHosts ? allowedHosts.split(",").map((host) => host.trim()) : [],
-          allowUserCertificates,
-          allowHostCertificates,
-          allowCustomKeyIds
-        });
+    if (certTemplate) {
+      await updateSshCertTemplate({
+        id: certTemplate.id,
+        name,
+        ttl,
+        maxTTL,
+        allowedUsers: allowedUsers ? allowedUsers.split(",").map((user) => user.trim()) : [],
+        allowedHosts: allowedHosts ? allowedHosts.split(",").map((host) => host.trim()) : [],
+        allowUserCertificates,
+        allowHostCertificates,
+        allowCustomKeyIds
+      });
 
-        createNotification({
-          text: "Successfully updated SSH certificate template",
-          type: "success"
-        });
-      } else {
-        await createSshCertTemplate({
-          sshCaId,
-          name,
-          ttl,
-          maxTTL,
-          allowedUsers: allowedUsers ? allowedUsers.split(",").map((user) => user.trim()) : [],
-          allowedHosts: allowedHosts ? allowedHosts.split(",").map((host) => host.trim()) : [],
-          allowUserCertificates,
-          allowHostCertificates,
-          allowCustomKeyIds
-        });
-
-        createNotification({
-          text: "Successfully created SSH certificate template",
-          type: "success"
-        });
-      }
-
-      reset();
-      handlePopUpToggle("sshCertificateTemplate", false);
-    } catch (err) {
-      console.error(err);
       createNotification({
-        text: "Failed to save changes",
-        type: "error"
+        text: "Successfully updated SSH certificate template",
+        type: "success"
+      });
+    } else {
+      await createSshCertTemplate({
+        sshCaId,
+        name,
+        ttl,
+        maxTTL,
+        allowedUsers: allowedUsers ? allowedUsers.split(",").map((user) => user.trim()) : [],
+        allowedHosts: allowedHosts ? allowedHosts.split(",").map((host) => host.trim()) : [],
+        allowUserCertificates,
+        allowHostCertificates,
+        allowCustomKeyIds
+      });
+
+      createNotification({
+        text: "Successfully created SSH certificate template",
+        type: "success"
       });
     }
+
+    reset();
+    handlePopUpToggle("sshCertificateTemplate", false);
   };
 
   return (

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   AccessScope,
+  OrgMembershipRole,
   ProjectMembershipRole,
   ProjectMembershipsSchema,
   ProjectUserMembershipRolesSchema,
@@ -266,6 +267,19 @@ export const registerProjectMembershipRouter = async (server: FastifyZodProvider
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.API_KEY, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
       const usernamesAndEmails = [...req.body.emails, ...req.body.usernames];
+
+      await server.services.membershipUser.createMembership({
+        permission: req.permission,
+        scopeData: {
+          scope: AccessScope.Organization,
+          orgId: req.permission.orgId
+        },
+        data: {
+          roles: [{ isTemporary: false, role: OrgMembershipRole.NoAccess }],
+          usernames: usernamesAndEmails
+        }
+      });
+
       const { memberships } = await server.services.membershipUser.createMembership({
         permission: req.permission,
         scopeData: {

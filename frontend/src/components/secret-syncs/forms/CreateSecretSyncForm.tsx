@@ -88,14 +88,8 @@ export const CreateSecretSyncForm = ({
         type: "success"
       });
       onComplete(secretSync);
-    } catch (err: any) {
-      console.error(err);
+    } catch {
       setShowConfirmation(false);
-      createNotification({
-        title: `Failed to add ${destinationName} Sync`,
-        text: err.message,
-        type: "error"
-      });
     }
   };
 

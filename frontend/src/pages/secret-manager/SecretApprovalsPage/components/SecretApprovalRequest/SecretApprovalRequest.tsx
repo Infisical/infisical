@@ -40,7 +40,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination } from "@app/hooks";
+import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   useGetSecretApprovalRequestCount,
   useGetSecretApprovalRequests,
@@ -99,6 +99,12 @@ export const SecretApprovalRequest = () => {
   const totalApprovalCount = data?.totalCount ?? 0;
   const secretApprovalRequests = data?.approvals ?? [];
 
+  useResetPageHelper({
+    totalCount: totalApprovalCount,
+    offset,
+    setPage
+  });
+
   const { data: secretApprovalRequestCount, isSuccess: isSecretApprovalReqCountSuccess } =
     useGetSecretApprovalRequestCount({ projectId });
   const { user: userSession } = useUser();
@@ -107,7 +113,7 @@ export const SecretApprovalRequest = () => {
   });
 
   const { permission } = useProjectPermission();
-  const { data: members } = useGetWorkspaceUsers(projectId);
+  const { data: members } = useGetWorkspaceUsers(projectId, true);
   const isSecretApprovalScreen = Boolean(selectedApprovalId);
   const { requestId } = search;
 

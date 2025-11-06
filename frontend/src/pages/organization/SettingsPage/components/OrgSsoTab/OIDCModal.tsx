@@ -122,31 +122,24 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     if (!currentOrg) {
       return;
     }
-    try {
-      await updateMutateAsync({
-        issuer: "",
-        discoveryURL: "",
-        authorizationEndpoint: "",
-        allowedEmailDomains: "",
-        jwksUri: "",
-        tokenEndpoint: "",
-        userinfoEndpoint: "",
-        clientId: "",
-        clientSecret: "",
-        isActive: false,
-        organizationId: currentOrg.id
-      });
+    await updateMutateAsync({
+      issuer: "",
+      discoveryURL: "",
+      authorizationEndpoint: "",
+      allowedEmailDomains: "",
+      jwksUri: "",
+      tokenEndpoint: "",
+      userinfoEndpoint: "",
+      clientId: "",
+      clientSecret: "",
+      isActive: false,
+      organizationId: currentOrg.id
+    });
 
-      createNotification({
-        text: "Successfully deleted OIDC configuration.",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed deleting OIDC configuration.",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted OIDC configuration.",
+      type: "success"
+    });
   };
 
   useEffect(() => {
@@ -178,58 +171,50 @@ export const OIDCModal = ({ popUp, handlePopUpClose, handlePopUpToggle, hideDele
     clientSecret,
     jwtSignatureAlgorithm
   }: OIDCFormData) => {
-    try {
-      if (!currentOrg) {
-        return;
-      }
+    if (!currentOrg) {
+      return;
+    }
 
-      if (!data) {
-        await createMutateAsync({
-          issuer,
-          configurationType,
-          discoveryURL,
-          authorizationEndpoint,
-          allowedEmailDomains,
-          jwksUri,
-          tokenEndpoint,
-          userinfoEndpoint,
-          clientId,
-          clientSecret,
-          isActive: true,
-          organizationId: currentOrg.id,
-          jwtSignatureAlgorithm
-        });
-      } else {
-        await updateMutateAsync({
-          issuer,
-          configurationType,
-          discoveryURL,
-          authorizationEndpoint,
-          allowedEmailDomains,
-          jwksUri,
-          tokenEndpoint,
-          userinfoEndpoint,
-          clientId,
-          clientSecret,
-          isActive: true,
-          organizationId: currentOrg.id,
-          jwtSignatureAlgorithm
-        });
-      }
-
-      handlePopUpClose("addOIDC");
-
-      createNotification({
-        text: `Successfully ${!data ? "added" : "updated"} OIDC SSO configuration`,
-        type: "success"
+    if (!data) {
+      await createMutateAsync({
+        issuer,
+        configurationType,
+        discoveryURL,
+        authorizationEndpoint,
+        allowedEmailDomains,
+        jwksUri,
+        tokenEndpoint,
+        userinfoEndpoint,
+        clientId,
+        clientSecret,
+        isActive: true,
+        organizationId: currentOrg.id,
+        jwtSignatureAlgorithm
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${!data ? "add" : "update"} OIDC SSO configuration`,
-        type: "error"
+    } else {
+      await updateMutateAsync({
+        issuer,
+        configurationType,
+        discoveryURL,
+        authorizationEndpoint,
+        allowedEmailDomains,
+        jwksUri,
+        tokenEndpoint,
+        userinfoEndpoint,
+        clientId,
+        clientSecret,
+        isActive: true,
+        organizationId: currentOrg.id,
+        jwtSignatureAlgorithm
       });
     }
+
+    handlePopUpClose("addOIDC");
+
+    createNotification({
+      text: `Successfully ${!data ? "added" : "updated"} OIDC SSO configuration`,
+      type: "success"
+    });
   };
 
   return (

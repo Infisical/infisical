@@ -68,28 +68,20 @@ export const ProjectTemplateEnvironmentsForm = ({
   const updateProjectTemplate = useUpdateProjectTemplate();
 
   const onFormSubmit = async (form: TFormSchema) => {
-    try {
-      const { environments: updatedEnvs } = await updateProjectTemplate.mutateAsync({
-        environments: form.environments?.map((env, index) => ({
-          ...env,
-          position: index + 1
-        })),
-        templateId: projectTemplate.id
-      });
+    const { environments: updatedEnvs } = await updateProjectTemplate.mutateAsync({
+      environments: form.environments?.map((env, index) => ({
+        ...env,
+        position: index + 1
+      })),
+      templateId: projectTemplate.id
+    });
 
-      reset({ environments: updatedEnvs });
+    reset({ environments: updatedEnvs });
 
-      createNotification({
-        text: "Project template updated successfully",
-        type: "success"
-      });
-    } catch (e: any) {
-      console.error(e);
-      createNotification({
-        text: e.message ?? "Failed to update project template",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Project template updated successfully",
+      type: "success"
+    });
   };
 
   const isEnvironmentLimitExceeded =

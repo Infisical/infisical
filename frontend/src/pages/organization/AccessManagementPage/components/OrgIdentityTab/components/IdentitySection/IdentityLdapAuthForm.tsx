@@ -316,83 +316,76 @@ export const IdentityLdapAuthForm = ({
   }, [subscription, handlePopUpOpen, handlePopUpToggle]);
 
   const onFormSubmit = async (formData: FormData) => {
-    try {
-      if (!identityId) return;
+    if (!identityId) return;
 
-      const {
-        scope: submissionScope,
-        templateId: submissionTemplateId,
-        url: submissionUrl,
-        bindDN: submissionBindDN,
-        bindPass: submissionBindPass,
-        searchBase: submissionSearchBase,
-        searchFilter,
-        ldapCaCertificate,
-        allowedFields,
-        accessTokenTTL,
-        accessTokenMaxTTL,
-        accessTokenNumUsesLimit,
-        accessTokenTrustedIps,
-        lockoutEnabled,
-        lockoutThreshold,
-        lockoutDurationValue,
-        lockoutDurationUnit,
-        lockoutCounterResetValue,
-        lockoutCounterResetUnit
-      } = formData;
+    const {
+      scope: submissionScope,
+      templateId: submissionTemplateId,
+      url: submissionUrl,
+      bindDN: submissionBindDN,
+      bindPass: submissionBindPass,
+      searchBase: submissionSearchBase,
+      searchFilter,
+      ldapCaCertificate,
+      allowedFields,
+      accessTokenTTL,
+      accessTokenMaxTTL,
+      accessTokenNumUsesLimit,
+      accessTokenTrustedIps,
+      lockoutEnabled,
+      lockoutThreshold,
+      lockoutDurationValue,
+      lockoutDurationUnit,
+      lockoutCounterResetValue,
+      lockoutCounterResetUnit
+    } = formData;
 
-      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
-      const lockoutCounterResetSeconds =
-        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
+    const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+    const lockoutCounterResetSeconds =
+      ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
-      const basePayload = {
-        organizationId: orgId,
-        identityId,
-        searchFilter,
-        ldapCaCertificate,
-        allowedFields,
-        accessTokenTTL: Number(accessTokenTTL),
-        accessTokenMaxTTL: Number(accessTokenMaxTTL),
-        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-        accessTokenTrustedIps,
-        lockoutEnabled,
-        lockoutThreshold: Number(lockoutThreshold),
-        lockoutDurationSeconds,
-        lockoutCounterResetSeconds
-      };
+    const basePayload = {
+      organizationId: orgId,
+      identityId,
+      searchFilter,
+      ldapCaCertificate,
+      allowedFields,
+      accessTokenTTL: Number(accessTokenTTL),
+      accessTokenMaxTTL: Number(accessTokenMaxTTL),
+      accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+      accessTokenTrustedIps,
+      lockoutEnabled,
+      lockoutThreshold: Number(lockoutThreshold),
+      lockoutDurationSeconds,
+      lockoutCounterResetSeconds
+    };
 
-      // Add scope-specific fields
-      const payload =
-        submissionScope === "template"
-          ? { ...basePayload, templateId: submissionTemplateId }
-          : {
-              ...basePayload,
-              url: submissionUrl,
-              bindDN: submissionBindDN,
-              bindPass: submissionBindPass,
-              searchBase: submissionSearchBase
-            };
+    // Add scope-specific fields
+    const payload =
+      submissionScope === "template"
+        ? { ...basePayload, templateId: submissionTemplateId }
+        : {
+            ...basePayload,
+            url: submissionUrl,
+            bindDN: submissionBindDN,
+            bindPass: submissionBindPass,
+            searchBase: submissionSearchBase
+          };
 
-      if (data) {
-        await updateMutateAsync(payload);
-      } else {
-        await addMutateAsync(payload);
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
-        type: "success"
-      });
-
-      reset();
-    } catch {
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
-        type: "error"
-      });
+    if (data) {
+      await updateMutateAsync(payload);
+    } else {
+      await addMutateAsync(payload);
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (
@@ -837,7 +830,9 @@ export const IdentityLdapAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -852,7 +847,9 @@ export const IdentityLdapAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -875,7 +872,9 @@ export const IdentityLdapAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"

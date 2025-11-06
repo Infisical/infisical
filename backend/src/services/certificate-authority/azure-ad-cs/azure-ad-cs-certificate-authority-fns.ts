@@ -192,7 +192,7 @@ export const castDbEntryToAzureAdCsCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
 ): TAzureAdCsCertificateAuthority & { credentials: unknown } => {
   if (!ca.externalCa?.id) {
-    throw new BadRequestError({ message: "Malformed Azure AD Certificate Service certificate authority" });
+    throw new BadRequestError({ message: "Malformed Active Directory Certificate Service certificate authority" });
   }
 
   if (!ca.externalCa.dnsAppConnectionId) {
@@ -776,7 +776,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.AZURE_AD_CS) {
-      throw new BadRequestError({ message: "CA is not an Azure AD Certificate Service CA" });
+      throw new BadRequestError({ message: "CA is not an Active Directory Certificate Service CA" });
     }
 
     const azureCa = castDbEntryToAzureAdCsCertificateAuthority(ca);

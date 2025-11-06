@@ -2,6 +2,12 @@ import { Job } from "bullmq";
 
 import { AuditLogInfo } from "@app/ee/services/audit-log/audit-log-types";
 import {
+  TChefSync,
+  TChefSyncInput,
+  TChefSyncListItem,
+  TChefSyncWithCredentials
+} from "@app/ee/services/secret-sync/chef";
+import {
   TOCIVaultSync,
   TOCIVaultSyncInput,
   TOCIVaultSyncListItem,
@@ -169,6 +175,7 @@ export type TSecretSync =
   | TGitHubSync
   | TGcpSync
   | TAzureKeyVaultSync
+  | TChefSync
   | TAzureAppConfigurationSync
   | TAzureDevOpsSync
   | TDatabricksSync
@@ -202,6 +209,7 @@ export type TSecretSyncWithCredentials =
   | TGitHubSyncWithCredentials
   | TGcpSyncWithCredentials
   | TAzureKeyVaultSyncWithCredentials
+  | TChefSyncWithCredentials
   | TAzureAppConfigurationSyncWithCredentials
   | TAzureDevOpsSyncWithCredentials
   | TDatabricksSyncWithCredentials
@@ -236,6 +244,7 @@ export type TSecretSyncInput =
   | TGitHubSyncInput
   | TGcpSyncInput
   | TAzureKeyVaultSyncInput
+  | TChefSyncInput
   | TAzureAppConfigurationSyncInput
   | TAzureDevOpsSyncInput
   | TDatabricksSyncInput
@@ -270,6 +279,7 @@ export type TSecretSyncListItem =
   | TGitHubSyncListItem
   | TGcpSyncListItem
   | TAzureKeyVaultSyncListItem
+  | TChefSyncListItem
   | TAzureAppConfigurationSyncListItem
   | TAzureDevOpsSyncListItem
   | TDatabricksSyncListItem

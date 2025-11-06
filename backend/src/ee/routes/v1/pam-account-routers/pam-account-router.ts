@@ -92,7 +92,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           gatewayClientCertificate: z.string(),
           gatewayClientPrivateKey: z.string(),
           gatewayServerCertificateChain: z.string(),
-          relayHost: z.string()
+          relayHost: z.string(),
+          metadata: z.record(z.string(), z.string()).optional()
         })
       }
     },

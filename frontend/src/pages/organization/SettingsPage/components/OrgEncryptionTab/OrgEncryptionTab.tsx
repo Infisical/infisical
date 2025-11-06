@@ -51,18 +51,14 @@ export const OrgEncryptionTab = withPermission(
         kmsId: string;
       };
 
-      try {
-        await removeExternalKms(kmsId);
+      await removeExternalKms(kmsId);
 
-        createNotification({
-          text: "Successfully deleted external KMS",
-          type: "success"
-        });
+      createNotification({
+        text: "Successfully deleted external KMS",
+        type: "success"
+      });
 
-        handlePopUpToggle("removeExternalKms", false);
-      } catch (err) {
-        console.error(err);
-      }
+      handlePopUpToggle("removeExternalKms", false);
     };
 
     return (
@@ -125,7 +121,7 @@ export const OrgEncryptionTab = withPermission(
         <UpgradePlanModal
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-          text="You can configure external KMS if you switch to Infisical's Enterprise plan."
+          text="Your current plan does not include access to external KMS. To unlock this feature, please upgrade to Infisical Enterprise plan."
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
         />
         <AddExternalKmsForm

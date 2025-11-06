@@ -2379,6 +2379,12 @@ export const AppConnections = {
     },
     LARAVEL_FORGE: {
       apiToken: "The API token used to authenticate with Laravel Forge."
+    },
+    CHEF: {
+      serverUrl: "The URL of the Chef server to connect to.",
+      orgName: "The short name of the Chef organization to connect to.",
+      userName: "The username used to access Chef.",
+      privateKey: "The private key used to access Chef."
     }
   }
 };
@@ -2623,6 +2629,10 @@ export const SecretSyncs = {
       siteName: "The name of the Netlify site to sync secrets to.",
       siteId: "The ID of the Netlify site to sync secrets to.",
       context: "The Netlify context to sync secrets to."
+    },
+    CHEF: {
+      dataBagName: "The name of the Chef data bag to sync secrets to.",
+      dataBagItemName: "The name of the Chef data bag item to sync secrets to."
     },
     NORTHFLANK: {
       projectId: "The ID of the Northflank project to sync secrets to.",

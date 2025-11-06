@@ -39,27 +39,19 @@ export const EnvironmentSection = () => {
   ] as const);
 
   const onEnvDeleteSubmit = async (id: string) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await deleteWsEnvironment.mutateAsync({
-        projectId: currentProject.id,
-        id
-      });
+    await deleteWsEnvironment.mutateAsync({
+      projectId: currentProject.id,
+      id
+    });
 
-      createNotification({
-        text: "Successfully deleted environment",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted environment",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteEnv");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete environment",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteEnv");
   };
 
   return (
@@ -123,7 +115,7 @@ export const EnvironmentSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can add custom environments if you switch to Infisical's Pro plan."
+        text="You have reached the maximum number of environments allowed on the free plan. Upgrade to Infisical Pro plan to add more environments."
       />
     </div>
   );

@@ -30,7 +30,8 @@ export enum SecretSync {
   Netlify = "netlify",
   Northflank = "northflank",
   Bitbucket = "bitbucket",
-  LaravelForge = "laravel-forge"
+  LaravelForge = "laravel-forge",
+  Chef = "chef"
 }
 
 export enum SecretSyncStatus {
