@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import { AxiosError } from "axios";
 
 import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
@@ -22,6 +23,7 @@ import {
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
 import { logger } from "@app/lib/logger";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -65,6 +67,7 @@ export const identityAliCloudAuthServiceFactory = ({
   orgDAL
 }: TIdentityAliCloudAuthServiceFactoryDep) => {
   const login = async ({ identityId, ...params }: TLoginAliCloudAuthDTO) => {
+    const appCfg = getConfig();
     const identityAliCloudAuth = await identityAliCloudAuthDAL.findOne({ identityId });
     if (!identityAliCloudAuth) {
       throw new NotFoundError({
@@ -75,73 +78,103 @@ export const identityAliCloudAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityAliCloudAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    const requestUrl = new URL("https://sts.aliyuncs.com");
+    const org = await orgDAL.findById(identity.orgId);
 
-    for (const key of Object.keys(params)) {
-      requestUrl.searchParams.set(key, (params as Record<string, string>)[key]);
-    }
+    try {
+      const requestUrl = new URL("https://sts.aliyuncs.com");
 
-    const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
-      logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
-      throw err;
-    });
+      for (const key of Object.keys(params)) {
+        requestUrl.searchParams.set(key, (params as Record<string, string>)[key]);
+      }
 
-    if (identityAliCloudAuth.allowedArns) {
-      // In the future we could do partial checks for role ARNs
-      const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
+      const { data } = await request.get<TAliCloudGetUserResponse>(requestUrl.toString()).catch((err: AxiosError) => {
+        logger.error(err.response, "AliCloudIdentityLogin: Failed to authenticate with Alibaba Cloud");
+        throw err;
+      });
 
-      if (!isAccountAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: Alibaba Cloud account ARN not allowed."
-        });
-    }
+      if (identityAliCloudAuth.allowedArns) {
+        // In the future we could do partial checks for role ARNs
+        const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
 
-    // Generate the token
-    const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
-          lastLoginTime: new Date()
-        },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+        if (!isAccountAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: Alibaba Cloud account ARN not allowed."
+          });
+      }
+
+      // Generate the token
+      const identityAccessToken = await identityAliCloudAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          {
+            lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+            lastLoginTime: new Date()
+          },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityAliCloudAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityAliCloudAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
+
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityAliCloudAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityAliCloudAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.ALICLOUD_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityAliCloudAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityAliCloudAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.ALICLOUD_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-    return {
-      identityAliCloudAuth,
-      accessToken,
-      identityAccessToken,
-      identity
-    };
+      return {
+        identityAliCloudAuth,
+        accessToken,
+        identityAccessToken,
+        identity
+      };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityAliCloudAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.ALICLOUD_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachAliCloudAuth = async ({

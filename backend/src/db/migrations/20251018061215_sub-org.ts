@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
 
-import { AccessScope, TableName } from "../schemas";
+import { TableName } from "../schemas";
 
 export async function up(knex: Knex): Promise<void> {
   const hasParentOrgId = await knex.schema.hasColumn(TableName.Organization, "parentOrgId");
@@ -18,8 +18,6 @@ export async function up(knex: Knex): Promise<void> {
       await dropConstraintIfExists(TableName.Organization, "organizations_slug_unique", knex);
       t.unique(["rootOrgId", "parentOrgId", "slug"]);
     });
-
-    // had to switch to raw for null not distinct
   }
 
   const hasIdentityOrgCol = await knex.schema.hasColumn(TableName.Identity, "orgId");
@@ -27,22 +25,6 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.alterTable(TableName.Identity, (t) => {
       t.uuid("orgId");
       t.foreign("orgId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
-    });
-
-    await knex.raw(
-      `
-  UPDATE ?? AS identity
-  SET "orgId" = membership."scopeOrgId"
-  FROM ?? AS membership
-  WHERE 
-    membership."actorIdentityId" = identity."id"
-    AND membership."scope" = ?
-`,
-      [TableName.Identity, TableName.Membership, AccessScope.Organization]
-    );
-
-    await knex.schema.alterTable(TableName.Identity, (t) => {
-      t.uuid("orgId").notNullable().alter();
     });
   }
 }

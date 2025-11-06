@@ -1,3 +1,4 @@
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
@@ -139,6 +140,9 @@ export type TIssueCertFromCaDTO = {
   signatureAlgorithm?: CertSignatureAlgorithm;
   keyAlgorithm?: CertKeyAlgorithm;
   isFromProfile?: boolean;
+  profileId?: string;
+  internal?: boolean;
+  tx?: Knex;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertFromCaDTO =
@@ -159,6 +163,7 @@ export type TSignCertFromCaDTO =
       signatureAlgorithm?: string;
       keyAlgorithm?: string;
       isFromProfile?: boolean;
+      profileId?: string;
     }
   | ({
       isInternal: false;
@@ -177,6 +182,7 @@ export type TSignCertFromCaDTO =
       signatureAlgorithm?: string;
       keyAlgorithm?: string;
       isFromProfile?: boolean;
+      profileId?: string;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Controller, FormProvider, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -29,6 +30,8 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: Props) => {
+  const [showPassword, setShowPassword] = useState(false);
+
   const isUpdate = Boolean(auditLogStream);
 
   const form = useForm<FormData>({
@@ -96,10 +99,10 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                 >
                   <Input
                     {...field}
-                    type="password"
-                    placeholder="Bearer <token>"
+                    type={showPassword ? "text" : "password"}
                     autoComplete="new-password"
-                    onFocus={(e) => {
+                    placeholder="Bearer <token>"
+                    onFocus={() => {
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
@@ -108,9 +111,9 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       ) {
                         field.onChange("");
                       }
-                      e.target.type = "text";
+                      setShowPassword(true);
                     }}
-                    onBlur={(e) => {
+                    onBlur={() => {
                       if (
                         auditLogStream &&
                         auditLogStream.credentials.headers[i] &&
@@ -119,7 +122,7 @@ export const CustomProviderAuditLogStreamForm = ({ auditLogStream, onSubmit }: P
                       ) {
                         field.onChange("******");
                       }
-                      e.target.type = "password";
+                      setShowPassword(false);
                     }}
                   />
                 </FormControl>

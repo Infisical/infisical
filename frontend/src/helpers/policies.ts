@@ -1,20 +1,20 @@
-import { IconDefinition } from "@fortawesome/free-brands-svg-icons";
-import { faArrowRightToBracket, faEdit } from "@fortawesome/free-solid-svg-icons";
+import { LucideIcon, UserCheckIcon, UserPenIcon } from "lucide-react";
 
+import { TBadgeProps } from "@app/components/v3";
 import { PolicyType } from "@app/hooks/api/policies/enums";
 
 export const policyDetails: Record<
   PolicyType,
-  { name: string; className: string; icon: IconDefinition }
+  { name: string; variant: TBadgeProps["variant"]; Icon: LucideIcon }
 > = {
   [PolicyType.AccessPolicy]: {
-    className: "bg-green/20 text-green",
+    variant: "ghost",
     name: "Access Policy",
-    icon: faArrowRightToBracket
+    Icon: UserCheckIcon
   },
   [PolicyType.ChangePolicy]: {
-    className: "bg-yellow/20 text-yellow",
+    variant: "ghost",
     name: "Change Policy",
-    icon: faEdit
+    Icon: UserPenIcon
   }
 };

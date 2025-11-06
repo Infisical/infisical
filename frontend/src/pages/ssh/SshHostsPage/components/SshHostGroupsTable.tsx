@@ -12,7 +12,6 @@ import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
-  Badge,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -28,6 +27,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { useListWorkspaceSshHostGroups } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -98,7 +98,7 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                     className="text-xs text-yellow/80"
                                   />
                                   <span>{username}</span>
-                                  <Badge variant="primary">user</Badge>
+                                  <Badge variant="warning">user</Badge>
                                 </div>
                               </div>
                             ))}

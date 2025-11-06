@@ -67,10 +67,10 @@ export const SecretRotationItem = ({
               </Tooltip>
             )}
           </div>
-          <SecretRotationV2StatusBadge className="mx-2" secretRotation={secretRotation} />
+          <SecretRotationV2StatusBadge secretRotation={secretRotation} />
           <div
             key="actions"
-            className="flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
+            className="ml-2 flex h-full shrink-0 self-start transition-all group-hover:gap-x-2"
           >
             <Tooltip content="View Rotation Secrets">
               <IconButton

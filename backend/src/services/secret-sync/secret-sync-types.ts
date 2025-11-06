@@ -125,6 +125,12 @@ import {
 } from "./laravel-forge";
 import { TNetlifySync, TNetlifySyncInput, TNetlifySyncListItem, TNetlifySyncWithCredentials } from "./netlify";
 import {
+  TNorthflankSync,
+  TNorthflankSyncInput,
+  TNorthflankSyncListItem,
+  TNorthflankSyncWithCredentials
+} from "./northflank";
+import {
   TRailwaySync,
   TRailwaySyncInput,
   TRailwaySyncListItem,
@@ -187,6 +193,7 @@ export type TSecretSync =
   | TChecklySync
   | TSupabaseSync
   | TNetlifySync
+  | TNorthflankSync
   | TBitbucketSync;
 
 export type TSecretSyncWithCredentials =
@@ -219,6 +226,7 @@ export type TSecretSyncWithCredentials =
   | TSupabaseSyncWithCredentials
   | TDigitalOceanAppPlatformSyncWithCredentials
   | TNetlifySyncWithCredentials
+  | TNorthflankSyncWithCredentials
   | TBitbucketSyncWithCredentials
   | TLaravelForgeSyncWithCredentials;
 
@@ -252,6 +260,7 @@ export type TSecretSyncInput =
   | TSupabaseSyncInput
   | TDigitalOceanAppPlatformSyncInput
   | TNetlifySyncInput
+  | TNorthflankSyncInput
   | TBitbucketSyncInput
   | TLaravelForgeSyncInput;
 
@@ -286,6 +295,7 @@ export type TSecretSyncListItem =
   | TSupabaseSyncListItem
   | TDigitalOceanAppPlatformSyncListItem
   | TNetlifySyncListItem
+  | TNorthflankSyncListItem
   | TBitbucketSyncListItem;
 
 export type TSyncOptionsConfig = {

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo } from "react";
-import { faArrowUpRightFromSquare, faBookOpen, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import { Button, Spinner } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
@@ -64,21 +65,10 @@ export const PkiSyncsTab = () => {
         <div className="mb-4 flex items-center justify-between">
           <div>
             <div className="flex items-start gap-1">
-              <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
-              <a
-                href="https://infisical.com/docs/integrations/pki-syncs/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className="mt-[0.32rem] ml-1 inline-block rounded-md bg-yellow/20 px-1.5 text-sm text-yellow opacity-80 hover:opacity-100">
-                  <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                  <span>Docs</span>
-                  <FontAwesomeIcon
-                    icon={faArrowUpRightFromSquare}
-                    className="mb-[0.07rem] ml-1.5 text-[10px]"
-                  />
-                </div>
-              </a>
+              <div className="flex items-center gap-x-2">
+                <p className="text-xl font-medium text-mineshaft-100">Certificate Syncs</p>
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/pki/certificate-syncs/overview" />
+              </div>
             </div>
             <p className="text-sm text-bunker-300">
               Use App Connections to sync certificates to third-party services.

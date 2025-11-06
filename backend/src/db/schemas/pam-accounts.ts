@@ -18,7 +18,12 @@ export const PamAccountsSchema = z.object({
   description: z.string().nullable().optional(),
   encryptedCredentials: zodBuffer,
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  rotationEnabled: z.boolean().default(false),
+  rotationIntervalSeconds: z.number().nullable().optional(),
+  lastRotatedAt: z.date().nullable().optional(),
+  rotationStatus: z.string().nullable().optional(),
+  encryptedLastRotationMessage: zodBuffer.nullable().optional()
 });
 
 export type TPamAccounts = z.infer<typeof PamAccountsSchema>;

@@ -1109,7 +1109,6 @@ const Page = () => {
             secretPath={secretPath}
             isSmaller={isNotEmpty}
             environments={currentProject?.environments}
-            isProtectedBranch={isProtectedBranch}
           />
           <PitDrawer
             secretSnaphots={snapshotList}

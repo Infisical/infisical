@@ -8,6 +8,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 
 type FormProps = {
@@ -33,8 +34,6 @@ const CreateForm = ({
   folderId
 }: CreateFormProps) => {
   const createPamAccount = useCreatePamAccount();
-
-  console.log({ folderId });
 
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
@@ -64,7 +63,17 @@ const CreateForm = ({
 
   switch (resourceType) {
     case PamResourceType.Postgres:
-      return <PostgresAccountForm onSubmit={onSubmit} />;
+      return (
+        <PostgresAccountForm
+          onSubmit={onSubmit}
+          resourceId={resourceId}
+          resourceType={resourceType}
+        />
+      );
+    case PamResourceType.MySQL:
+      return (
+        <MySQLAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -100,6 +109,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   switch (account.resource.resourceType) {
     case PamResourceType.Postgres:
       return <PostgresAccountForm account={account} onSubmit={onSubmit} />;
+    case PamResourceType.MySQL:
+      return <MySQLAccountForm account={account} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

@@ -187,31 +187,92 @@ Infisical supports two methods for connecting to GitLab: **OAuth** and **Access 
           </Step>
         </Steps>
       </Tab>
-    </Tabs>
 
-    ## Setup GitLab Access Token Connection in Infisical
+      <Tab title="Group Access Token">
+        Group access tokens provide access to all projects within a GitLab group, offering group-level control.
 
-    <Steps>
-      <Step title="Navigate to App Connections">
-        Navigate to the **App Connections** page in the desired project.
-        ![App Connections Tab](/images/app-connections/general/add-connection.png)
-      </Step>
-      <Step title="Add Connection">
-        Select the **GitLab Connection** option from the connection options modal.
-        ![Select GitLab Connection](/images/app-connections/gitlab/select-gitlab-connection.png)
-      </Step>
-      <Step title="Configure Access Token">
-        Select the **Access Token** method, paste your GitLab access token in the provided field, and select the appropriate token type.
+        <Steps>
+          <Step title="Navigate to Group Settings">
+            Go to your GitLab group and navigate to Settings > Access Tokens. Click **Add new token** to create a new group access token.
+            ![GitLab Group Access Tokens](/images/app-connections/gitlab/gitlab-group-access-token-list.png)
+          </Step>
+          <Step title="Configure Token">
+              Fill in the token details:
+              - **Token name**: A descriptive name for the token
+              - **Expiration date**: Set an appropriate expiration date
+              - **Select role and scopes**: Depending on your use case, add the required role and one or more of the following scopes:
 
-        ![Configure Access Token](/images/app-connections/gitlab/create-gitlab-access-token-connection.png)
+            <Tabs>
+                <Tab title="Secret Sync">
+                  For Secret Syncs, the required role depends on your sync destination:
+                  - **Project variables**: Requires **Maintainer** role or higher
+                  - **Group variables**: Requires **Owner** role
 
-        Click **Connect** to establish the connection.
-      </Step>
-      <Step title="Connection Created">
-        Your **GitLab Connection** is now available for use.
-        ![GitLab Access Token Connection](/images/app-connections/gitlab/gitlab-access-token-connection.png)
-      </Step>
-    </Steps>
+                  Your token will require the `api` scope.
+
+                  ![GitLab Create Group Token](/images/app-connections/gitlab/gitlab-group-access-token-form-secret-sync.png)
+
+                  Click **Create group access token** to create the token.
+
+                  <Note>
+                    Use the **Owner** role if you need to sync to group-level variables. The **Maintainer** role is sufficient only for project-level variables.
+                  </Note>
+                </Tab>
+                <Tab title="Secret Scanning">
+                     To set up Secret Scanning, the required permissions depend on the data source level:
+                      - **Project-level data source:** Requires **Maintainer** role or higher
+                      - **Group-level data source:** Requires **Owner** role
+
+                    Your token will require the `api` scope.
+
+                  ![GitLab Create Group Token](/images/app-connections/gitlab/gitlab-group-access-token-form-secret-sync.png)
+
+                  Click **Create group access token** to create the token.
+              </Tab>
+          </Tabs>
+
+          <Info>
+            Group Access Token connections require manual token rotation when your GitLab access token expires or is regenerated. Monitor your connection status and update the token as needed.
+          </Info>
+        </Step>
+        <Step title="Copy Token">
+          Copy the generated token immediately as it won't be shown again.
+          ![GitLab Group Token Created](/images/app-connections/gitlab/gitlab-group-access-token-created.png)
+          <Warning>
+            Keep your access token secure and do not share it. Anyone with access to this token can access all projects within your GitLab group.
+          </Warning>
+        </Step>
+      </Steps>
+
+    </Tab>
+
+</Tabs>
+
+## Setup GitLab Access Token Connection in Infisical
+
+  <Steps>
+  <Step title="Navigate to App Connections">
+    Navigate to the **App Connections** page in the desired project.
+    ![App Connections Tab](/images/app-connections/general/add-connection.png)
+  </Step>
+  <Step title="Add Connection">
+    Select the **GitLab Connection** option from the connection options modal.
+    ![Select GitLab Connection](/images/app-connections/gitlab/select-gitlab-connection.png)
+  </Step>
+  <Step title="Configure Access Token">
+    Select the **Access Token** method, paste your GitLab access token in the provided field, and select the appropriate token type.
+
+      ![Configure Access Token](/images/app-connections/gitlab/create-gitlab-access-token-connection.png)
+
+      Click **Connect** to establish the connection.
+
+    </Step>
+
+  <Step title="Connection Created">
+    Your **GitLab Connection** is now available for use.
+    ![GitLab Access Token Connection](/images/app-connections/gitlab/gitlab-access-token-connection.png)
+  </Step>
+</Steps>
 
   </Tab>
 </Tabs>

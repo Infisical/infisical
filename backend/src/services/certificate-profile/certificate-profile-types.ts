@@ -26,7 +26,7 @@ export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enr
   };
   apiConfig?: {
     autoRenew?: boolean;
-    autoRenewDays?: number;
+    renewBeforeDays?: number;
   };
 };
 
@@ -52,7 +52,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
   apiConfig?: {
     id: string;
     autoRenew: boolean;
-    autoRenewDays?: number;
+    renewBeforeDays?: number;
   };
   metrics?: TCertificateProfileMetrics;
 };

@@ -18,7 +18,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       .select(
         // resource
         db.ref("name").withSchema(TableName.PamResource).as("resourceName"),
-        db.ref("resourceType").withSchema(TableName.PamResource)
+        db.ref("resourceType").withSchema(TableName.PamResource),
+        db.ref("encryptedRotationAccountCredentials").withSchema(TableName.PamResource)
       );
 
     if (filter) {
@@ -28,16 +29,35 @@ export const pamAccountDALFactory = (db: TDbClient) => {
 
     const accounts = await query;
 
-    return accounts.map(({ resourceId, resourceName, resourceType, ...account }) => ({
-      ...account,
-      resourceId,
-      resource: {
-        id: resourceId,
-        name: resourceName,
-        resourceType
-      }
-    }));
+    return accounts.map(
+      ({ resourceId, resourceName, resourceType, encryptedRotationAccountCredentials, ...account }) => ({
+        ...account,
+        resourceId,
+        resource: {
+          id: resourceId,
+          name: resourceName,
+          resourceType,
+          encryptedRotationAccountCredentials
+        }
+      })
+    );
   };
 
-  return { ...orm, findWithResourceDetails };
+  const findAccountsDueForRotation = async (tx?: Knex) => {
+    const dbClient = tx || db.replicaNode();
+
+    const accounts = await dbClient(TableName.PamAccount)
+      .innerJoin(TableName.PamResource, `${TableName.PamAccount}.resourceId`, `${TableName.PamResource}.id`)
+      .whereNotNull(`${TableName.PamResource}.encryptedRotationAccountCredentials`)
+      .whereNotNull(`${TableName.PamAccount}.rotationIntervalSeconds`)
+      .where(`${TableName.PamAccount}.rotationEnabled`, true)
+      .whereRaw(
+        `COALESCE("${TableName.PamAccount}"."lastRotatedAt", "${TableName.PamAccount}"."createdAt") + "${TableName.PamAccount}"."rotationIntervalSeconds" * interval '1 second' < NOW()`
+      )
+      .select(selectAllTableCols(TableName.PamAccount));
+
+    return accounts;
+  };
+
+  return { ...orm, findWithResourceDetails, findAccountsDueForRotation };
 };

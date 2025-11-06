@@ -29,6 +29,7 @@ export type Organization = {
   shareSecretsProductEnabled: boolean;
   maxSharedSecretLifetime: number;
   maxSharedSecretViewLimit: number | null;
+  blockDuplicateSecretSyncDestinations: boolean;
 };
 
 export type UpdateOrgDTO = {
@@ -52,6 +53,7 @@ export type UpdateOrgDTO = {
   shareSecretsProductEnabled?: boolean;
   maxSharedSecretViewLimit?: number | null;
   maxSharedSecretLifetime?: number;
+  blockDuplicateSecretSyncDestinations?: boolean;
 };
 
 export type BillingDetails = {
@@ -66,6 +68,8 @@ export type PlanBillingInfo = {
   interval: "month" | "year";
   intervalCount: number;
   quantity: number;
+  users: number;
+  identities: number;
 };
 
 export type Invoice = {

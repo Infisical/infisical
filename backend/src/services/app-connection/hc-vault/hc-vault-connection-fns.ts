@@ -21,9 +21,28 @@ import {
   THCVaultKubernetesAuthConfig,
   THCVaultKubernetesAuthRole,
   THCVaultKubernetesAuthRoleWithConfig,
+  THCVaultKubernetesRole,
+  THCVaultKubernetesSecretsConfig,
   THCVaultMount,
   THCVaultMountResponse
 } from "./hc-vault-connection-types";
+
+// HashiCorp Vault stores JSON data, so values can be any valid JSON type
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+export const convertVaultValueToString = (value: JsonValue): string => {
+  if (value === null) {
+    return "";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  // For objects and arrays, serialize as JSON
+  return JSON.stringify(value);
+};
 
 // Concurrency limit for HC Vault API requests to avoid rate limiting
 const HC_VAULT_CONCURRENCY_LIMIT = 20;
@@ -598,7 +617,7 @@ export const getHCVaultSecretsForPath = async (
       // For KV v2: /v1/{mount}/data/{path}
       const { data } = await requestWithHCVaultGateway<{
         data: {
-          data: Record<string, string>; // KV v2 has nested data structure
+          data: Record<string, JsonValue>; // KV v2 has nested data structure, supports all JSON types
           metadata: {
             created_time: string;
             deletion_time: string;
@@ -620,7 +639,7 @@ export const getHCVaultSecretsForPath = async (
 
     // For KV v1: /v1/{mount}/{path}
     const { data } = await requestWithHCVaultGateway<{
-      data: Record<string, string>; // KV v1 has flat data structure
+      data: Record<string, JsonValue>; // KV v1 has flat data structure, supports all JSON types
       lease_duration: number;
       lease_id: string;
       renewable: boolean;
@@ -796,6 +815,125 @@ export const getHCVaultKubernetesAuthRoles = async (
 
     throw new BadRequestError({
       message: "Unable to list Kubernetes auth roles from HashiCorp Vault"
+    });
+  }
+};
+
+export const getHCVaultKubernetesRoles = async (
+  namespace: string,
+  mountPath: string,
+  connection: THCVaultConnection,
+  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">
+): Promise<THCVaultKubernetesRole[]> => {
+  // Remove trailing slash from mount path
+  const cleanMountPath = mountPath.endsWith("/") ? mountPath.slice(0, -1) : mountPath;
+
+  try {
+    const instanceUrl = await getHCVaultInstanceUrl(connection);
+    const accessToken = await getHCVaultAccessToken(connection, gatewayService);
+    // 1. Get the Kubernetes secrets engine configuration for this mount
+    const { data: configResponse } = await requestWithHCVaultGateway<{ data: THCVaultKubernetesSecretsConfig }>(
+      connection,
+      gatewayService,
+      {
+        url: `${instanceUrl}/v1/${cleanMountPath}/config`,
+        method: "GET",
+        headers: {
+          "X-Vault-Token": accessToken,
+          "X-Vault-Namespace": namespace
+        }
+      }
+    );
+
+    const kubernetesConfig = configResponse.data;
+
+    // 2. List all roles in this mount
+    let roleNames: string[] = [];
+    try {
+      const { data: roleListResponse } = await requestWithHCVaultGateway<{ data: { keys: string[] } }>(
+        connection,
+        gatewayService,
+        {
+          url: `${instanceUrl}/v1/${cleanMountPath}/roles?list=true`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        }
+      );
+      roleNames = roleListResponse.data.keys || [];
+    } catch (error) {
+      // Vault returns 404 when no roles are configured yet
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) {
+          return [];
+        }
+      }
+
+      throw error;
+    }
+
+    if (!roleNames || roleNames.length === 0) {
+      return [];
+    }
+
+    // 3. Fetch details for each role with concurrency control
+    const limiter = createConcurrencyLimiter(HC_VAULT_CONCURRENCY_LIMIT);
+
+    const roleDetailsPromises = roleNames.map((roleName) =>
+      limiter(async () => {
+        const { data: roleResponse } = await requestWithHCVaultGateway<{
+          data: {
+            allowed_kubernetes_namespaces?: string[];
+            allowed_kubernetes_namespace_selector?: string;
+            token_max_ttl?: number;
+            token_default_ttl?: number;
+            token_default_audiences?: string[];
+            service_account_name?: string;
+            kubernetes_role_name?: string;
+            kubernetes_role_type?: string;
+            generated_role_rules?: string;
+            name_template?: string;
+            extra_annotations?: Record<string, string>;
+            extra_labels?: Record<string, string>;
+          };
+        }>(connection, gatewayService, {
+          url: `${instanceUrl}/v1/${cleanMountPath}/roles/${roleName}`,
+          method: "GET",
+          headers: {
+            "X-Vault-Token": accessToken,
+            "X-Vault-Namespace": namespace
+          }
+        });
+
+        // 4. Merge the role with the config
+        return {
+          ...roleResponse.data,
+          name: roleName,
+          config: kubernetesConfig,
+          mountPath: cleanMountPath
+        } as THCVaultKubernetesRole;
+      })
+    );
+
+    const roles = await Promise.all(roleDetailsPromises);
+
+    return roles;
+  } catch (error: unknown) {
+    logger.error(error, "Unable to list HC Vault Kubernetes secrets engine roles");
+
+    if (error instanceof AxiosError) {
+      const errorMessage =
+        (error.response?.data as { errors?: string[] })?.errors?.[0] || error.message || "Unknown error";
+      throw new BadRequestError({
+        message: `Failed to list Kubernetes secrets engine roles: ${errorMessage}`
+      });
+    }
+
+    throw new BadRequestError({
+      message: "Unable to list Kubernetes secrets engine roles from HashiCorp Vault"
     });
   }
 };

@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 import { ForbiddenError } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import axios from "axios";
 import RE2 from "re2";
 
@@ -21,6 +22,8 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
+import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 
 import { ActorType, AuthTokenType } from "../auth/auth-type";
 import { TIdentityDALFactory } from "../identity/identity-dal";
@@ -97,6 +100,7 @@ export const identityAwsAuthServiceFactory = ({
   orgDAL
 }: TIdentityAwsAuthServiceFactoryDep) => {
   const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
+    const appCfg = getConfig();
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
     if (!identityAwsAuth) {
       throw new NotFoundError({ message: "AWS auth method not found for identity, did you configure AWS auth?" });
@@ -105,120 +109,156 @@ export const identityAwsAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityAwsAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
-    const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
-    const body: string = Buffer.from(iamRequestBody, "base64").toString();
+    const org = await orgDAL.findById(identity.orgId);
+    try {
+      const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
+      const body: string = Buffer.from(iamRequestBody, "base64").toString();
 
-    const authHeader = headers.Authorization || headers.authorization;
-    const region = authHeader ? awsRegionFromHeader(authHeader) : null;
+      const authHeader = headers.Authorization || headers.authorization;
+      const region = authHeader ? awsRegionFromHeader(authHeader) : null;
 
-    if (!isValidAwsRegion(region)) {
-      throw new BadRequestError({ message: "Invalid AWS region" });
-    }
+      if (!isValidAwsRegion(region)) {
+        throw new BadRequestError({ message: "Invalid AWS region" });
+      }
 
-    const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
+      const url = region ? `https://sts.${region}.amazonaws.com` : identityAwsAuth.stsEndpoint;
 
-    const {
-      data: {
-        GetCallerIdentityResponse: {
-          GetCallerIdentityResult: { Account, Arn, UserId }
+      const {
+        data: {
+          GetCallerIdentityResponse: {
+            GetCallerIdentityResult: { Account, Arn, UserId }
+          }
+        }
+      }: { data: TGetCallerIdentityResponse } = await axios({
+        method: iamHttpRequestMethod,
+        url,
+        headers,
+        data: body
+      });
+
+      if (identityAwsAuth.allowedAccountIds) {
+        // validate if Account is in the list of allowed Account IDs
+
+        const isAccountAllowed = identityAwsAuth.allowedAccountIds
+          .split(",")
+          .map((accountId) => accountId.trim())
+          .some((accountId) => accountId === Account);
+
+        if (!isAccountAllowed)
+          throw new UnauthorizedError({
+            message: "Access denied: AWS account ID not allowed."
+          });
+      }
+
+      if (identityAwsAuth.allowedPrincipalArns) {
+        // validate if Arn is in the list of allowed Principal ARNs
+
+        const formattedArn = extractPrincipalArn(Arn);
+
+        const isArnAllowed = identityAwsAuth.allowedPrincipalArns
+          .split(",")
+          .map((principalArn) => principalArn.trim())
+          .some((principalArn) => {
+            // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
+            // considers exact matches + wildcard matches
+            // heavily validated in router
+            const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
+            return regex.test(formattedArn) || regex.test(extractPrincipalArn(Arn, true));
+          });
+
+        if (!isArnAllowed) {
+          logger.error(
+            `AWS Auth Login: AWS principal ARN not allowed [principal-arn=${formattedArn}] [raw-arn=${Arn}] [identity-id=${identity.id}]`
+          );
+
+          throw new UnauthorizedError({
+            message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`
+          });
         }
       }
-    }: { data: TGetCallerIdentityResponse } = await axios({
-      method: iamHttpRequestMethod,
-      url,
-      headers,
-      data: body
-    });
 
-    if (identityAwsAuth.allowedAccountIds) {
-      // validate if Account is in the list of allowed Account IDs
+      const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
+        await membershipIdentityDAL.update(
+          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
+          {
+            lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
+            lastLoginTime: new Date()
+          },
+          tx
+        );
+        const newToken = await identityAccessTokenDAL.create(
+          {
+            identityId: identityAwsAuth.identityId,
+            isAccessTokenRevoked: false,
+            accessTokenTTL: identityAwsAuth.accessTokenTTL,
+            accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
+            accessTokenNumUses: 0,
+            accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
+            authMethod: IdentityAuthMethod.AWS_AUTH
+          },
+          tx
+        );
+        return newToken;
+      });
 
-      const isAccountAllowed = identityAwsAuth.allowedAccountIds
-        .split(",")
-        .map((accountId) => accountId.trim())
-        .some((accountId) => accountId === Account);
-
-      if (!isAccountAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: AWS account ID not allowed."
-        });
-    }
-
-    if (identityAwsAuth.allowedPrincipalArns) {
-      // validate if Arn is in the list of allowed Principal ARNs
-
-      const isArnAllowed = identityAwsAuth.allowedPrincipalArns
-        .split(",")
-        .map((principalArn) => principalArn.trim())
-        .some((principalArn) => {
-          // convert wildcard ARN to a regular expression: "arn:aws:iam::123456789012:*" -> "^arn:aws:iam::123456789012:.*$"
-          // considers exact matches + wildcard matches
-          // heavily validated in router
-          const regex = new RE2(`^${principalArn.replaceAll("*", ".*")}$`);
-          return regex.test(extractPrincipalArn(Arn));
-        });
-
-      if (!isArnAllowed)
-        throw new UnauthorizedError({
-          message: "Access denied: AWS principal ARN not allowed."
-        });
-    }
-
-    const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
-      await membershipIdentityDAL.update(
-        { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-        {
-          lastLoginAuthMethod: IdentityAuthMethod.AWS_AUTH,
-          lastLoginTime: new Date()
-        },
-        tx
-      );
-      const newToken = await identityAccessTokenDAL.create(
+      const splitArn = extractPrincipalArnEntity(Arn);
+      const accessToken = crypto.jwt().sign(
         {
           identityId: identityAwsAuth.identityId,
-          isAccessTokenRevoked: false,
-          accessTokenTTL: identityAwsAuth.accessTokenTTL,
-          accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
-          accessTokenNumUses: 0,
-          accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
-          authMethod: IdentityAuthMethod.AWS_AUTH
-        },
-        tx
+          identityAccessTokenId: identityAccessToken.id,
+          authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
+          identityAuth: {
+            aws: {
+              accountId: Account,
+              arn: Arn,
+              userId: UserId,
+
+              // Derived from ARN
+              partition: splitArn.Partition,
+              service: splitArn.Service,
+              resourceType: splitArn.Type,
+              resourceName: splitArn.FriendlyName
+            }
+          }
+        } as TIdentityAccessTokenJwtPayload,
+        appCfg.AUTH_SECRET,
+        // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
+        Number(identityAccessToken.accessTokenTTL) === 0
+          ? undefined
+          : {
+              expiresIn: Number(identityAccessToken.accessTokenTTL)
+            }
       );
-      return newToken;
-    });
 
-    const appCfg = getConfig();
-    const splitArn = extractPrincipalArnEntity(Arn);
-    const accessToken = crypto.jwt().sign(
-      {
-        identityId: identityAwsAuth.identityId,
-        identityAccessTokenId: identityAccessToken.id,
-        authTokenType: AuthTokenType.IDENTITY_ACCESS_TOKEN,
-        identityAuth: {
-          aws: {
-            accountId: Account,
-            arn: Arn,
-            userId: UserId,
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityAwsAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.SUCCESS,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
 
-            // Derived from ARN
-            partition: splitArn.Partition,
-            service: splitArn.Service,
-            resourceType: splitArn.Type,
-            resourceName: splitArn.FriendlyName
-          }
-        }
-      } as TIdentityAccessTokenJwtPayload,
-      appCfg.AUTH_SECRET,
-      // akhilmhdh: for non-expiry tokens you should not even set the value, including undefined. Even for undefined jsonwebtoken throws error
-      Number(identityAccessToken.accessTokenTTL) === 0
-        ? undefined
-        : {
-            expiresIn: Number(identityAccessToken.accessTokenTTL)
-          }
-    );
-
-    return { accessToken, identityAwsAuth, identityAccessToken, identity };
+      return { accessToken, identityAwsAuth, identityAccessToken, identity };
+    } catch (error) {
+      if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
+        authAttemptCounter.add(1, {
+          "infisical.identity.id": identityAwsAuth.identityId,
+          "infisical.identity.name": identity.name,
+          "infisical.organization.id": org.id,
+          "infisical.organization.name": org.name,
+          "infisical.identity.auth_method": AuthAttemptAuthMethod.AWS_AUTH,
+          "infisical.identity.auth_result": AuthAttemptAuthResult.FAILURE,
+          "client.address": requestContext.get("ip"),
+          "user_agent.original": requestContext.get("userAgent")
+        });
+      }
+      throw error;
+    }
   };
 
   const attachAwsAuth = async ({

@@ -1,13 +1,12 @@
 import { useState } from "react";
 import {
-  faArrowUpRightFromSquare,
-  faBookOpen,
   faCopy,
   faDoorClosed,
   faEdit,
   faEllipsisV,
   faInfoCircle,
   faMagnifyingGlass,
+  faPlus,
   faSearch,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
@@ -17,6 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
+  Button,
   DeleteActionModal,
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
@@ -47,6 +48,7 @@ import { gatewaysQueryKeys, useDeleteGatewayById } from "@app/hooks/api/gateways
 import { useDeleteGatewayV2ById } from "@app/hooks/api/gateways-v2";
 
 import { EditGatewayDetailsModal } from "./components/EditGatewayDetailsModal";
+import { GatewayDeployModal } from "./components/GatewayDeployModal";
 
 const GatewayHealthStatus = ({ heartbeat }: { heartbeat?: string }) => {
   const heartbeatDate = heartbeat ? new Date(heartbeat) : null;
@@ -73,6 +75,7 @@ export const GatewayTab = withPermission(
     const { data: gateways, isPending: isGatewaysLoading } = useQuery(gatewaysQueryKeys.list());
 
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
+      "deployGateway",
       "deleteGateway",
       "editDetails"
     ] as const);
@@ -101,23 +104,18 @@ export const GatewayTab = withPermission(
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex grow items-center gap-x-2">
             <h3 className="text-lg font-medium text-mineshaft-100">Gateways</h3>
-            <a
-              href="https://infisical.com/docs/documentation/platform/gateways/overview"
-              target="_blank"
-              rel="noopener noreferrer"
+            <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/gateways/overview" />
+            <div className="flex grow" />
+            <Button
+              variant="outline_bg"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={() => handlePopUpOpen("deployGateway")}
             >
-              <div className="inline-block rounded-md bg-yellow/20 px-1.5 py-0.5 text-sm font-normal text-yellow opacity-80 hover:opacity-100">
-                <FontAwesomeIcon icon={faBookOpen} className="mr-1.5" />
-                <span>Docs</span>
-                <FontAwesomeIcon
-                  icon={faArrowUpRightFromSquare}
-                  className="mb-[0.07rem] ml-1.5 text-[10px]"
-                />
-              </div>
-            </a>
+              Deploy Gateway
+            </Button>
           </div>
         </div>
         <p className="mb-4 text-sm text-mineshaft-400">
@@ -256,6 +254,10 @@ export const GatewayTab = withPermission(
               onChange={(isOpen) => handlePopUpToggle("deleteGateway", isOpen)}
               deleteKey="confirm"
               onDeleteApproved={() => handleDeleteGateway()}
+            />
+            <GatewayDeployModal
+              isOpen={popUp.deployGateway.isOpen}
+              onOpenChange={(isOpen) => handlePopUpToggle("deployGateway", isOpen)}
             />
           </TableContainer>
         </div>

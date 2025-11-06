@@ -5,6 +5,7 @@ import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
+import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
@@ -33,7 +34,8 @@ export const GroupsSection = () => {
     if (!subscription?.groups) {
       handlePopUpOpen("upgradePlan", {
         description:
-          "You can manage users more efficiently with groups if you upgrade your Infisical plan to an Enterprise license."
+          "You can manage users more efficiently with groups if you switch to Infisical's Enterprise plan.",
+        isEnterpriseFeature: true
       });
     } else {
       handlePopUpOpen("group");
@@ -68,7 +70,10 @@ export const GroupsSection = () => {
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">User Groups</p>
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">User Groups</p>
+          <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/groups#user-groups" />
+        </div>
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Groups}>
           {(isAllowed) => (
             <Button
@@ -100,6 +105,9 @@ export const GroupsSection = () => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
+        isEnterpriseFeature={
+          (popUp.upgradePlan?.data as { isEnterpriseFeature: boolean })?.isEnterpriseFeature
+        }
       />
     </div>
   );

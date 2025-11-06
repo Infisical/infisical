@@ -54,10 +54,10 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
   const handleResourceSelect = (resource: PamResourceType) => {
     if (!subscription.pam) {
-      handlePopUpOpen(
-        "upgradePlan",
-        "PAM (Privileged Access Management) requires an enterprise plan."
-      );
+      handlePopUpOpen("upgradePlan", {
+        description: "PAM (Privileged Access Management) requires an enterprise plan.",
+        isEnterpriseFeature: true
+      });
       return;
     }
 
@@ -67,10 +67,11 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       resource === PamResourceType.SSH ||
       resource === PamResourceType.Kubernetes
     ) {
-      handlePopUpOpen(
-        "upgradePlan",
-        "This resource type requires a special license add-on to be enabled in your enterprise plan."
-      );
+      handlePopUpOpen("upgradePlan", {
+        description:
+          "This resource type requires a special license add-on to be enabled in your enterprise plan.",
+        isEnterpriseFeature: true
+      });
       return;
     }
 
@@ -179,7 +180,8 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={popUp.upgradePlan.data || ""}
+        text={popUp.upgradePlan.data?.description}
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>
   );

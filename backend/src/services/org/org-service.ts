@@ -58,7 +58,6 @@ import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
 import { TUserDALFactory } from "../user/user-dal";
 import { TIncidentContactsDALFactory } from "./incident-contacts-dal";
-import { TOrgBotDALFactory } from "./org-bot-dal";
 import { TOrgDALFactory } from "./org-dal";
 import { deleteOrgMembershipsFn } from "./org-fns";
 import {
@@ -82,7 +81,6 @@ type TOrgServiceFactoryDep = {
   secretV2BridgeDAL: Pick<TSecretV2BridgeDALFactory, "find">;
   folderDAL: Pick<TSecretFolderDALFactory, "findByProjectId">;
   orgDAL: TOrgDALFactory;
-  orgBotDAL: TOrgBotDALFactory;
   roleDAL: TRoleDALFactory;
   userDAL: TUserDALFactory;
   groupDAL: TGroupDALFactory;
@@ -136,7 +134,6 @@ export const orgServiceFactory = ({
   projectKeyDAL,
   orgMembershipDAL,
   tokenService,
-  orgBotDAL,
   licenseService,
   samlConfigDAL,
   oidcConfigDAL,
@@ -408,7 +405,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      blockDuplicateSecretSyncDestinations
     }
   }: TUpdateOrgDTO) => {
     const appCfg = getConfig();
@@ -519,7 +517,7 @@ export const orgServiceFactory = ({
     if (slug) {
       const existingOrg = await orgDAL.findOne({ slug, rootOrgId: null });
       if (existingOrg && existingOrg?.id !== orgId)
-        throw new BadRequestError({ message: `Organization with slug ${slug} already exist` });
+        throw new BadRequestError({ message: `Organization with slug ${slug} already exists` });
     }
 
     if (googleSsoAuthEnforced) {
@@ -592,7 +590,8 @@ export const orgServiceFactory = ({
       scannerProductEnabled,
       shareSecretsProductEnabled,
       maxSharedSecretLifetime,
-      maxSharedSecretViewLimit
+      maxSharedSecretViewLimit,
+      blockDuplicateSecretSyncDestinations
     });
     if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
     return org;
@@ -612,23 +611,6 @@ export const orgServiceFactory = ({
     },
     trx?: Knex
   ) => {
-    const { privateKey, publicKey } = await crypto.encryption().asymmetric().generateKeyPair();
-    const key = crypto.randomBytes(32).toString("base64");
-    const {
-      ciphertext: encryptedPrivateKey,
-      iv: privateKeyIV,
-      tag: privateKeyTag,
-      encoding: privateKeyKeyEncoding,
-      algorithm: privateKeyAlgorithm
-    } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(privateKey);
-    const {
-      ciphertext: encryptedSymmetricKey,
-      iv: symmetricKeyIV,
-      tag: symmetricKeyTag,
-      encoding: symmetricKeyKeyEncoding,
-      algorithm: symmetricKeyAlgorithm
-    } = crypto.encryption().symmetric().encryptWithRootEncryptionKey(key);
-
     const customerId = await licenseService.generateOrgCustomerId(orgName, userEmail);
 
     const createOrg = async (tx: Knex) => {
@@ -656,24 +638,7 @@ export const orgServiceFactory = ({
           tx
         );
       }
-      await orgBotDAL.create(
-        {
-          name: org.name,
-          publicKey,
-          privateKeyIV,
-          encryptedPrivateKey,
-          symmetricKeyIV,
-          symmetricKeyTag,
-          encryptedSymmetricKey,
-          symmetricKeyAlgorithm,
-          orgId: org.id,
-          privateKeyTag,
-          privateKeyAlgorithm,
-          privateKeyKeyEncoding,
-          symmetricKeyKeyEncoding
-        },
-        tx
-      );
+
       return org;
     };
 
@@ -1184,7 +1149,7 @@ export const orgServiceFactory = ({
     const doesIncidentContactExist = await incidentContactDAL.findOne(orgId, { email });
     if (doesIncidentContactExist) {
       throw new BadRequestError({
-        message: "Incident contact already exist",
+        message: "Incident contact already exists",
         name: "Incident contact exist"
       });
     }

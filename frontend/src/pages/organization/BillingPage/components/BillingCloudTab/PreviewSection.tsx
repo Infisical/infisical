@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { faArrowUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUpRightFromSquare, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button } from "@app/components/v2";
+import { Button, Tooltip } from "@app/components/v2";
 import {
   OrgPermissionBillingActions,
   OrgPermissionSubjects,
@@ -27,6 +27,9 @@ export const PreviewSection = () => {
   const { subscription } = useSubscription(true);
   const queryClient = useQueryClient();
   const { data, isPending } = useGetOrgPlanBillingInfo(currentOrg?.id ?? "");
+
+  const totalAmount = data?.amount ? data.amount * (data.users + data.identities) : 0;
+
   const getOrgTrialUrl = useGetOrgTrialUrl();
   const createCustomerPortalSession = useCreateCustomerPortalSession();
 
@@ -190,14 +193,28 @@ export const PreviewSection = () => {
               </OrgPermissionCan>
             )}
           </div>
-          <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <p className="mb-2 text-gray-400">Price</p>
-            <p className="mb-8 text-2xl font-medium text-mineshaft-50">
-              {subscription.status === "trialing"
-                ? "$0.00 / month"
-                : `${formatAmount(data.amount)} / ${data.interval}`}
-            </p>
-          </div>
+          {subscription.slug !== "enterprise" ? (
+            <div className="mr-4 flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
+              <p className="mb-2 text-gray-400">Price</p>
+              <p className="mb-8 text-2xl font-medium text-mineshaft-50">
+                {subscription.status === "trialing" ? (
+                  "$0.00 / month"
+                ) : (
+                  <>
+                    {formatAmount(totalAmount)} / {data.interval}
+                    {(subscription.slug === "pro" || subscription.slug === "pro-annual") && (
+                      <Tooltip
+                        content={`Total price is based on the number of users and machine identities at ${formatAmount(data.amount)} each. You have ${data.users} ${data.users > 1 ? "users" : "user"} and ${data.identities} ${data.identities > 1 ? "machine identities" : "machine identity"}.`}
+                        className="max-w-lg"
+                      >
+                        <FontAwesomeIcon icon={faInfoCircle} className="ml-2" size="xs" />
+                      </Tooltip>
+                    )}
+                  </>
+                )}
+              </p>
+            </div>
+          ) : null}
           <div className="flex-1 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
             <p className="mb-2 text-gray-400">Subscription renews on</p>
             <p className="mb-8 text-2xl font-medium text-mineshaft-50">

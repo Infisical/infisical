@@ -525,7 +525,7 @@ export const fnSecretBlindIndexCheck = async ({
   );
 
   if (isNew) {
-    if (secrets.length) throw new BadRequestError({ message: "Secret already exist" });
+    if (secrets.length) throw new BadRequestError({ message: "Secret already exists" });
   } else {
     const secretKeysInDB = unique(secrets, (el) => el.secretBlindIndex as string).map(
       (el) => blindIndex2KeyName[el.secretBlindIndex as string]
@@ -819,7 +819,7 @@ export const createManySecretsRawFnFactory = ({
       );
       if (secretsStoredInDB.length)
         throw new BadRequestError({
-          message: `Secret already exist: ${secretsStoredInDB.map((el) => el.key).join(",")}`
+          message: `Secret already exists: ${secretsStoredInDB.map((el) => el.key).join(",")}`
         });
 
       const inputSecrets = secrets.map((secret) => {

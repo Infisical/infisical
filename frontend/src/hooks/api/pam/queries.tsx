@@ -3,6 +3,7 @@ import { useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
+import { PamResourceType } from "./enums";
 import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
 
 export const pamKeys = {
@@ -12,6 +13,12 @@ export const pamKeys = {
   session: () => [...pamKeys.all, "session"] as const,
   listResourceOptions: () => [...pamKeys.resource(), "options"] as const,
   listResources: (projectId: string) => [...pamKeys.resource(), "list", projectId],
+  getResource: (resourceType: string, resourceId: string) => [
+    ...pamKeys.resource(),
+    "get",
+    resourceType,
+    resourceId
+  ],
   listAccounts: (projectId: string) => [...pamKeys.account(), "list", projectId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
@@ -64,6 +71,28 @@ export const useListPamResources = (
 
       return data.resources;
     },
+    ...options
+  });
+};
+
+export const useGetPamResourceById = (
+  resourceType?: PamResourceType,
+  resourceId?: string,
+  options?: Omit<
+    UseQueryOptions<TPamResource, unknown, TPamResource, ReturnType<typeof pamKeys.getResource>>,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getResource(resourceType || "", resourceId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ resource: TPamResource }>(
+        `/api/v1/pam/resources/${resourceType}/${resourceId}`
+      );
+
+      return data.resource;
+    },
+    enabled: !!resourceId && !!resourceType && (options?.enabled ?? true),
     ...options
   });
 };

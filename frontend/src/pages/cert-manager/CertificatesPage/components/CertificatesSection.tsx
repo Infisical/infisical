@@ -16,7 +16,9 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
+import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
 import { CertificateModal } from "./CertificateModal";
+import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
@@ -33,7 +35,9 @@ export const CertificatesSection = () => {
     "certificateImport",
     "certificateCert",
     "deleteCertificate",
-    "revokeCertificate"
+    "revokeCertificate",
+    "manageRenewal",
+    "renewCertificate"
   ] as const);
 
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
@@ -98,6 +102,8 @@ export const CertificatesSection = () => {
       )}
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}

@@ -18,7 +18,6 @@ A helm chart to deploy Infisical
 |-----|------|---------|-------------|
 | fullnameOverride | string | `""` | Overrides the full name of the release, affecting resource names |
 | infisical.affinity | object | `{}` | Node affinity settings for pod placement |
-| infisical.autoDatabaseSchemaMigration | bool | `true` | Automatically migrates new database schema when deploying |
 | infisical.databaseSchemaMigrationJob.image.pullPolicy | string | `"IfNotPresent"` | Pulls image only if not present on the node |
 | infisical.databaseSchemaMigrationJob.image.repository | string | `"ghcr.io/groundnuty/k8s-wait-for"` | Image repository for migration wait job |
 | infisical.databaseSchemaMigrationJob.image.tag | string | `"no-root-v2.0"` | Image tag version |
