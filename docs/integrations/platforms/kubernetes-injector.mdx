@@ -82,6 +82,12 @@ You will need to set the `nodeSelector.kubernetes.io/os` label to `windows` and 
     nodeSelector:
       kubernetes.io/os: windows
     ```
+
+    Install the agent injector using the values.yaml file you created above.
+
+    ```bash
+    helm install --generate-name infisical-helm-charts/infisical-agent-injector -f values.yaml
+    ```
   </Accordion>
 
   <Accordion title="Run Agent Injector on Windows Server 2022">
@@ -93,8 +99,8 @@ You will need to set the `nodeSelector.kubernetes.io/os` label to `windows` and 
       repository: infisical/infisical-agent-injector
       tag: "v0.1.4-windows-server-2022"
 
-      nodeSelector:
-        kubernetes.io/os: windows
+    nodeSelector:
+      kubernetes.io/os: windows
     ```
 
     Install the agent injector using the values.yaml file you created above.
