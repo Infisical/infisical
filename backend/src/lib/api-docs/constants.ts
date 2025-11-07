@@ -2309,7 +2309,7 @@ export const AppConnections = {
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
       clientSecret: "The Client Secret to use to connect with Azure Client Secrets.",
-      certificate: "The certificate to use to connect with Azure Client Secrets.",
+      certificateBody: "The certificate body in PEM format to use to connect with Azure Client Secrets.",
       privateKey:
         "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with."
     },

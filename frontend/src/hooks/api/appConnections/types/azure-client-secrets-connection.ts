@@ -30,7 +30,7 @@ export type TAzureClientSecretsConnection = TRootAppConnection & {
         credentials: {
           clientId: string;
           tenantId: string;
-          certificate: string;
+          certificateBody: string;
           privateKey: string;
         };
       }

@@ -1,6 +1,7 @@
 /* eslint-disable no-case-declarations */
 import { AxiosError, AxiosResponse } from "axios";
 import type { KeyObject } from "crypto";
+import RE2 from "re2";
 import { v4 as uuidv4 } from "uuid";
 
 import { getConfig } from "@app/lib/config/env";
@@ -37,9 +38,9 @@ const generateClientAssertion = (
 
   const certBuffer = Buffer.from(
     certificate
-      .replace(/-----BEGIN CERTIFICATE-----/, "")
-      .replace(/-----END CERTIFICATE-----/, "")
-      .replace(/\s/g, ""),
+      .replace(new RE2("-----BEGIN CERTIFICATE-----"), "")
+      .replace(new RE2("-----END CERTIFICATE-----"), "")
+      .replace(new RE2("\\s", "g"), ""),
     "base64"
   );
 
@@ -225,12 +226,12 @@ export const getAzureConnectionAccessToken = async (
         kmsService,
         encryptedCredentials: appConnection.encryptedCredentials
       })) as TAzureClientSecretsConnectionCertificateCredentials;
-      const { accessToken, expiresAt, clientId, tenantId, certificate, privateKey } = accessTokenCredentials;
+      const { accessToken, expiresAt, clientId, tenantId, certificateBody, privateKey } = accessTokenCredentials;
       if (accessToken && expiresAt && expiresAt > currentTime + 300000) {
         return accessToken;
       }
 
-      const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificate);
+      const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificateBody);
       const { data: clientData } = await request.post<ExchangeCodeAzureResponse>(
         IntegrationUrls.AZURE_TOKEN_URL.replace("common", tenantId || "common"),
         new URLSearchParams({
@@ -379,9 +380,9 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
       }
     }
     case AzureClientSecretsConnectionMethod.Certificate: {
-      const { tenantId, certificate, privateKey, clientId } = inputCredentials;
+      const { tenantId, certificateBody, privateKey, clientId } = inputCredentials;
       try {
-        const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificate);
+        const clientAssertion = generateClientAssertion(clientId, tenantId, privateKey, certificateBody);
 
         const tokenEndpoint = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
 
@@ -402,7 +403,7 @@ export const validateAzureClientSecretsConnectionCredentials = async (config: TA
         return {
           tenantId,
           clientId,
-          certificate,
+          certificateBody,
           privateKey,
           accessToken: response.data.access_token,
           expiresAt: Date.now() + response.data.expires_in * 1000

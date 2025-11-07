@@ -61,11 +61,11 @@ export const AzureClientSecretsConnectionCertificateInputCredentialsSchema = z.o
     .trim()
     .min(1, "Client ID required")
     .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.clientId),
-  certificate: z
+  certificateBody: z
     .string()
     .trim()
-    .min(1, "Certificate required")
-    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.certificate),
+    .min(1, "Certificate body required")
+    .describe(AppConnections.CREDENTIALS.AZURE_CLIENT_SECRETS.certificateBody),
   privateKey: z
     .string()
     .trim()
@@ -84,7 +84,7 @@ export const AzureClientSecretsConnectionClientSecretOutputCredentialsSchema = z
 export const AzureClientSecretsConnectionCertificateOutputCredentialsSchema = z.object({
   clientId: z.string(),
   tenantId: z.string(),
-  certificate: z.string(),
+  certificateBody: z.string(),
   privateKey: z.string(),
   accessToken: z.string(),
   expiresAt: z.number()

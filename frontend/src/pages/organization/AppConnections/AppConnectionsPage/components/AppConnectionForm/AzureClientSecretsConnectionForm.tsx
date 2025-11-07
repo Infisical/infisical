@@ -68,7 +68,7 @@ const certificateSchema = baseSchema.extend({
   method: z.literal(AzureClientSecretsConnectionMethod.Certificate),
   credentials: z.object({
     clientId: z.string().trim().min(1, "Client ID is required"),
-    certificate: z.string().trim().min(1, "Certificate is required"),
+    certificateBody: z.string().trim().min(1, "Certificate is required"),
     privateKey: z.string().trim().min(1, "Private Key is required"),
     tenantId: z.string().trim().min(1, "Tenant ID is required")
   })
@@ -129,7 +129,7 @@ const getDefaultValues = (appConnection?: TAzureClientSecretsConnection): Partia
           credentials: {
             clientId: credentials.clientId,
             tenantId: credentials.tenantId,
-            certificate: "",
+            certificateBody: "",
             privateKey: ""
           }
         };
@@ -249,7 +249,11 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
         />
 
         <Controller
-          name="tenantId"
+          name={
+            selectedMethod === AzureClientSecretsConnectionMethod.OAuth
+              ? "tenantId"
+              : "credentials.tenantId"
+          }
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
@@ -322,7 +326,7 @@ export const AzureClientSecretsConnectionForm = ({ appConnection, onSubmit, proj
               )}
             />
             <Controller
-              name="credentials.certificate"
+              name="credentials.certificateBody"
               control={control}
               render={({ field: { value, onChange }, fieldState: { error } }) => (
                 <FormControl
