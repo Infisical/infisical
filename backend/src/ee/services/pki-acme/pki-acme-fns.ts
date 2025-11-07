@@ -13,7 +13,7 @@ export const buildUrl = (profileId: string, path: string): string => {
 export const extractAccountIdFromKid = (kid: string, profileId: string): string => {
   const kidPrefix = buildUrl(profileId, "/accounts/");
   if (!kid.startsWith(kidPrefix)) {
-    throw new AcmeMalformedError({ detail: "KID must start with the profile account URL" });
+    throw new AcmeMalformedError({ message: "KID must start with the profile account URL" });
   }
   return z.string().uuid().parse(kid.slice(kidPrefix.length));
 };

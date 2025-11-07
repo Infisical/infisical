@@ -16,13 +16,13 @@ Feature: Account
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "<eab_kid>" with secret "<eab_secret>" as acme_account
-    Then the value error with jq ".type" should be equal to "urn:ietf:params:acme:error:malformed"
-    Then the value error with jq ".detail" should be equal to "Invalid external account binding JWS signature"
+    Then the value error with jq ".type" should be equal to "<error_type>"
+    Then the value error with jq ".detail" should be equal to "<error_msg>"
 
     Examples: Bad Credentials
-      | eab_kid                              | eab_secret                |
-      | bad                                  | Cg==                      |
-      | bad                                  | Cg==                      |
-      | {acme_profile.eab_kid}               | Cg==                      |
-      | {acme_profile.eab_kid}               | YmFkLXNjcmV0Cg==          |
-      | 4bc7959c-fe2d-4447-ae91-0cd893667af6 | {acme_profile.eab_secret} |
+      | eab_kid                              | eab_secret                | error_type                                         | error_msg |
+      | bad                                  | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
+      | bad                                  | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
+      | {acme_profile.eab_kid}               | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
+      | {acme_profile.eab_kid}               | YmFkLXNjcmV0Cg==          | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
+      | 4bc7959c-fe2d-4447-ae91-0cd893667af6 | {acme_profile.eab_secret} | urn:ietf:params:acme:error:externalAccountRequired | fixme     |

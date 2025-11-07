@@ -251,8 +251,8 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     )
     try:
         context.vars[account_var] = acme_client.new_account(registration)
-    except Exception:
-        context.vars["error"] = acme_client.new_account(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
 
 
 @then("I register a new ACME account with email {email} without EAB")
