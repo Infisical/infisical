@@ -64,6 +64,8 @@ export type TGetFoldersDeepByEnvsDTO = {
 
 export type TFindFoldersDeepByParentIdsDTO = {
   parentIds: string[];
+  orderBy?: SecretsOrderBy;
+  orderDirection?: OrderByDirection;
 };
 
 export type TCreateManyFoldersDTO = {

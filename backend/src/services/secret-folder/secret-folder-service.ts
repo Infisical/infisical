@@ -14,6 +14,7 @@ import { PgSqlLock } from "@app/keystore/keystore";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrderByDirection, OrgServiceActor } from "@app/lib/types";
 import { ActorType } from "@app/services/auth/auth-type";
+import { SecretsOrderBy } from "@app/services/secret/secret-types";
 import { buildFolderPath } from "@app/services/secret-folder/secret-folder-fns";
 
 import {
@@ -781,7 +782,11 @@ export const secretFolderServiceFactory = ({
     if (!parentFolder) return [];
 
     if (recursive) {
-      const recursiveFolders = await folderDAL.findByEnvsDeep({ parentIds: [parentFolder.id] });
+      const recursiveFolders = await folderDAL.findByEnvsDeep({
+        parentIds: [parentFolder.id],
+        orderBy: orderBy || SecretsOrderBy.Name,
+        orderDirection: orderDirection || OrderByDirection.ASC
+      });
       // remove the parent folder
       return recursiveFolders
         .filter((folder) => {
@@ -800,19 +805,15 @@ export const secretFolderServiceFactory = ({
         }));
     }
 
-    const folders = await folderDAL.find(
-      {
-        envId: env.id,
-        parentId: parentFolder.id,
-        isReserved: false,
-        $search: search ? { name: `%${search}%` } : undefined
-      },
-      {
-        sort: orderBy ? [[orderBy, orderDirection ?? OrderByDirection.ASC]] : undefined,
-        limit,
-        offset
-      }
-    );
+    const folders = await folderDAL.findByMultiEnv({
+      environmentIds: [env.id],
+      parentIds: [parentFolder.id],
+      search,
+      orderBy: orderBy || SecretsOrderBy.Name,
+      orderDirection: orderDirection || OrderByDirection.ASC,
+      limit,
+      offset
+    });
     if (lastSecretModified) {
       return folders.filter((el) =>
         el.lastSecretModified ? el.lastSecretModified >= new Date(lastSecretModified) : false

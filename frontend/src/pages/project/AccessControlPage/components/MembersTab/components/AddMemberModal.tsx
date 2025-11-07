@@ -25,14 +25,12 @@ import {
   useProject
 } from "@app/context";
 import {
-  useAddUsersToOrg,
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
@@ -86,7 +84,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMemberships: [], projectRoleSlugs: [] }
   });
 
-  const { mutateAsync: addMemberToOrg } = useAddUsersToOrg();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
   useEffect(() => {
@@ -140,13 +137,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
         return;
       }
 
-      if (newInvitees.length) {
-        await addMemberToOrg({
-          inviteeEmails: newInvitees,
-          organizationId: orgId,
-          organizationRoleSlug: ProjectMembershipRole.Member // only applies to new invites
-        });
-      }
       if (newInvitees.length || inviteeEmails.length) {
         await addUserToProject({
           usernames: [...inviteeEmails, ...newInvitees],

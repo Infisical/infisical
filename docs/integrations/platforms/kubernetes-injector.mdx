@@ -51,6 +51,27 @@ $ kubectl logs deployment/infisical-agent-injector
 2025/05/19 14:20:06 Successfully updated webhook configuration with CA bundle
 ```
 
+## Windows support
+
+The Infisical Agent Injector supports both running on Windows-based pods, and injecting the agent into Windows-based pods.
+
+To run the agent injector on a Windows pod, it's important that you add the `nodeSelector.kubernetes.io/os` label to the pod's deployment with the value `windows`.
+This can be done by changing the helm values.yaml by adding the following:
+
+```yaml values.yaml
+nodeSelector:
+  kubernetes.io/os: windows
+```
+
+By default the agent injector will run on Linux-based pods, unless you specify otherwise like in the example above.
+No extra configuration is needed to inject into Windows-based pods, as the agent injector will detect and handle the injection automatically.
+
+The Agent Injector will only run and inject into Windows-based pods that are running on the supported Windows versions:
+- **Windows Server 2022**
+
+We're looking to add support for other Windows versions in the future. If you're using a different Windows version, please let us know by opening [an issue](https://github.com/Infisical/infisical-agent-injector/issues/new), and we'll look into adding support for your desired version as soon as possible.
+
+
 ## Supported annotations
 
 The Infisical Agent Injector supports the following annotations:

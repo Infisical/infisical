@@ -419,13 +419,14 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select(
           selectAllTableCols(TableName.SecretFolder),
           db.raw(
-            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" ${
-              orderDirection ?? OrderByDirection.ASC
-            }) as rank`
+            `DENSE_RANK() OVER (ORDER BY ${TableName.SecretFolder}."name" COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}) as rank`
           ),
           db.ref("slug").withSchema(TableName.Environment).as("environment")
         )
-        .orderBy(`${TableName.SecretFolder}.${orderBy}`, orderDirection);
+        .orderByRaw(
+          `${TableName.SecretFolder}.?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`,
+          [orderBy]
+        );
 
       if (limit) {
         const rankOffset = offset + 1; // ranks start from 1
@@ -434,7 +435,10 @@ export const secretFolderDALFactory = (db: TDbClient) => {
           .select("*")
           .from<Awaited<typeof query>[number]>("w")
           .where("w.rank", ">=", rankOffset)
-          .andWhere("w.rank", "<", rankOffset + limit);
+          .andWhere("w.rank", "<", rankOffset + limit)
+          .orderByRaw(`"w".?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+            orderBy
+          ]);
       }
 
       const folders = await query;
@@ -445,7 +449,10 @@ export const secretFolderDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByEnvsDeep = async ({ parentIds }: TFindFoldersDeepByParentIdsDTO, tx?: Knex) => {
+  const findByEnvsDeep = async (
+    { parentIds, orderBy = SecretsOrderBy.Name, orderDirection = OrderByDirection.ASC }: TFindFoldersDeepByParentIdsDTO,
+    tx?: Knex
+  ) => {
     try {
       const folders = await (tx || db.replicaNode())
         .withRecursive("parents", (qb) =>
@@ -480,7 +487,9 @@ export const secretFolderDALFactory = (db: TDbClient) => {
         .select<(TSecretFolders & { path: string; depth: number; environment: string })[]>("*")
         .from("parents")
         .orderBy("depth")
-        .orderBy(`name`);
+        .orderByRaw(`"parents".?? COLLATE "en-x-icu" ${orderDirection === OrderByDirection.ASC ? "ASC" : "DESC"}`, [
+          orderBy
+        ]);
 
       return folders;
     } catch (error) {

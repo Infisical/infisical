@@ -7,7 +7,6 @@ import { Input } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { TPamSession } from "@app/hooks/api/pam";
 
-import { PamSessionLogOutput } from "./PamSessionLogOutput";
 import { formatLogContent } from "./PamSessionLogsSection.utils";
 
 type Props = {
@@ -104,20 +103,9 @@ export const PamSessionLogsSection = ({ session }: Props) => {
                 >
                   <div className="overflow-hidden">
                     {log.output && (
-                      <>
-                        <div className="mt-2 flex items-center gap-2">
-                          <div className="h-px w-full bg-mineshaft-400" />
-                          <span className="text-xs text-mineshaft-400">OUTPUT</span>
-                          <div className="h-px w-full bg-mineshaft-400" />
-                        </div>
-                        <div className="pt-2 text-bunker-300">
-                          <PamSessionLogOutput
-                            content={log.output}
-                            resourceType={session.resourceType}
-                            search={search}
-                          />
-                        </div>
-                      </>
+                      <div className="pt-2 text-bunker-300">
+                        <HighlightText text={log.output} highlight={search} />
+                      </div>
                     )}
                   </div>
                 </div>

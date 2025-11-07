@@ -90,7 +90,12 @@ export const useCreateCertTemplateV2 = () => {
       return data.certificateTemplate;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [firstKey, queryProjectId] = query.queryKey;
+          return firstKey === "list-template" && queryProjectId === projectId;
+        }
+      });
     }
   });
 };
@@ -107,7 +112,12 @@ export const useUpdateCertTemplateV2 = () => {
       return data.certificateTemplate;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [firstKey, queryProjectId] = query.queryKey;
+          return firstKey === "list-template" && queryProjectId === projectId;
+        }
+      });
     }
   });
 };
@@ -127,7 +137,12 @@ export const useDeleteCertTemplateV2 = () => {
       return data.certificateTemplate;
     },
     onSuccess: (_, { projectId }) => {
-      queryClient.invalidateQueries({ queryKey: certTemplateKeys.listTemplates({ projectId }) });
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const [firstKey, queryProjectId] = query.queryKey;
+          return firstKey === "list-template" && queryProjectId === projectId;
+        }
+      });
     }
   });
 };
