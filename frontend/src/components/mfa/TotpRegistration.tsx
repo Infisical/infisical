@@ -25,27 +25,20 @@ const TotpRegistration = ({ onComplete, shouldCenterQr }: Props) => {
 
   const handleTotpVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    try {
-      const result = await verifyUserTotp({
-        totp
-      });
+    const result = await verifyUserTotp({
+      totp
+    });
 
-      createNotification({
-        text: "Successfully configured mobile authenticator",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully configured mobile authenticator",
+      type: "success"
+    });
 
-      if (result.recoveryCodes && result.recoveryCodes.length > 0) {
-        setRecoveryCodes(result.recoveryCodes);
-        setShowRecoveryModal(true);
-      } else if (onComplete) {
-        onComplete();
-      }
-    } catch {
-      createNotification({
-        text: "Failed to verify TOTP code",
-        type: "error"
-      });
+    if (result.recoveryCodes && result.recoveryCodes.length > 0) {
+      setRecoveryCodes(result.recoveryCodes);
+      setShowRecoveryModal(true);
+    } else if (onComplete) {
+      onComplete();
     }
   };
 

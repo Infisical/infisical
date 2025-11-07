@@ -199,53 +199,37 @@ export const CreateReminderForm = ({
 
   // Form submission handler
   const handleFormSubmit = async (data: TReminderFormSchema) => {
-    try {
-      await createReminder({
-        repeatDays: data.repeatDays,
-        message: data.message,
-        recipients: data.recipients?.map((r) => r.value) || [],
-        secretId,
-        nextReminderDate: data.nextReminderDate,
-        fromDate: data.fromDate
-      });
+    await createReminder({
+      repeatDays: data.repeatDays,
+      message: data.message,
+      recipients: data.recipients?.map((r) => r.value) || [],
+      secretId,
+      nextReminderDate: data.nextReminderDate,
+      fromDate: data.fromDate
+    });
 
-      invalidateQueries();
+    invalidateQueries();
 
-      createNotification({
-        type: "success",
-        text: `Successfully ${isEditMode ? "updated" : "created"} secret reminder`
-      });
+    createNotification({
+      type: "success",
+      text: `Successfully ${isEditMode ? "updated" : "created"} secret reminder`
+    });
 
-      reset();
-      onOpenChange();
-    } catch (error) {
-      console.error("Failed to save reminder:", error);
-      createNotification({
-        type: "error",
-        text: "Failed to save reminder. Please try again."
-      });
-    }
+    reset();
+    onOpenChange();
   };
 
   // Delete reminder handler
   const handleDeleteReminder = async () => {
-    try {
-      await deleteReminder({ reminderId: reminder?.id || "", secretId });
-      invalidateQueries();
-      reset();
-      onOpenChange();
+    await deleteReminder({ reminderId: reminder?.id || "", secretId });
+    invalidateQueries();
+    reset();
+    onOpenChange();
 
-      createNotification({
-        type: "success",
-        text: "Successfully deleted reminder"
-      });
-    } catch (error) {
-      console.error("Failed to delete reminder:", error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete reminder. Please try again."
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Successfully deleted reminder"
+    });
   };
 
   // Handle reminder type change

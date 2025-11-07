@@ -29,25 +29,18 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
 
   const { mutateAsync: removeUserFromGroupMutateAsync } = useRemoveUserFromGroup();
   const handleRemoveUserFromGroup = async (username: string) => {
-    try {
-      await removeUserFromGroupMutateAsync({
-        groupId,
-        username,
-        slug: groupSlug
-      });
+    await removeUserFromGroupMutateAsync({
+      groupId,
+      username,
+      slug: groupSlug
+    });
 
-      createNotification({
-        text: `Successfully removed user ${username} from the group`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully removed user ${username} from the group`,
+      type: "success"
+    });
 
-      handlePopUpToggle("removeMemberFromGroup", false);
-    } catch {
-      createNotification({
-        text: `Failed to remove user ${username} from the group`,
-        type: "error"
-      });
-    }
+    handlePopUpToggle("removeMemberFromGroup", false);
   };
 
   return (

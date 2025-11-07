@@ -101,11 +101,6 @@ export const CreateSecretImportForm = ({
           text: "You do not have access to the selected environment/path",
           type: "error"
         });
-      } else {
-        createNotification({
-          type: "error",
-          text: "Failed to link secrets"
-        });
       }
     }
   };

@@ -11,7 +11,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, linkOptions } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { NewProjectModal } from "@app/components/projects";
 import {
@@ -59,31 +58,17 @@ export const ProjectSelect = () => {
   const { mutateAsync: updateUserProjectFavorites } = useUpdateUserProjectFavorites();
 
   const addProjectToFavorites = async (projectId: string) => {
-    try {
-      await updateUserProjectFavorites({
-        orgId: currentOrg!.id,
-        projectFavorites: [...(projectFavorites || []), projectId]
-      });
-    } catch {
-      createNotification({
-        text: "Failed to add project to favorites.",
-        type: "error"
-      });
-    }
+    await updateUserProjectFavorites({
+      orgId: currentOrg!.id,
+      projectFavorites: [...(projectFavorites || []), projectId]
+    });
   };
 
   const removeProjectFromFavorites = async (projectId: string) => {
-    try {
-      await updateUserProjectFavorites({
-        orgId: currentOrg!.id,
-        projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
-      });
-    } catch {
-      createNotification({
-        text: "Failed to remove project from favorites.",
-        type: "error"
-      });
-    }
+    await updateUserProjectFavorites({
+      orgId: currentOrg!.id,
+      projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
+    });
   };
 
   const isAddingProjectsAllowed = subscription?.workspaceLimit

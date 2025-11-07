@@ -73,51 +73,43 @@ export const CircleCIConfigurePage = () => {
     : undefined;
 
   const onSubmit = async (data: TFormData) => {
-    try {
-      if (data.scope === CircleCiScope.Context) {
-        await mutateAsync({
-          scope: data.scope,
-          integrationAuthId,
-          isActive: true,
-          sourceEnvironment: data.sourceEnvironment.slug,
-          app: data.targetContext.name,
-          appId: data.targetContext.id,
-          owner: data.targetOrg.name,
-          secretPath: data.secretPath
-        });
-      } else {
-        await mutateAsync({
-          scope: data.scope,
-          integrationAuthId,
-          isActive: true,
-          app: data.targetProject.name, // project name
-          owner: data.targetOrg.name, // organization name
-          appId: data.targetProject.id, // project id (used for syncing)
-          sourceEnvironment: data.sourceEnvironment.slug,
-          secretPath: data.secretPath
-        });
-      }
-
-      createNotification({
-        type: "success",
-        text: "Successfully created integration"
+    if (data.scope === CircleCiScope.Context) {
+      await mutateAsync({
+        scope: data.scope,
+        integrationAuthId,
+        isActive: true,
+        sourceEnvironment: data.sourceEnvironment.slug,
+        app: data.targetContext.name,
+        appId: data.targetContext.id,
+        owner: data.targetOrg.name,
+        secretPath: data.secretPath
       });
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: IntegrationsListPageTabs.NativeIntegrations
-        }
+    } else {
+      await mutateAsync({
+        scope: data.scope,
+        integrationAuthId,
+        isActive: true,
+        app: data.targetProject.name, // project name
+        owner: data.targetOrg.name, // organization name
+        appId: data.targetProject.id, // project id (used for syncing)
+        sourceEnvironment: data.sourceEnvironment.slug,
+        secretPath: data.secretPath
       });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: "Failed to create integration"
-      });
-      console.error(err);
     }
+
+    createNotification({
+      type: "success",
+      text: "Successfully created integration"
+    });
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.NativeIntegrations
+      }
+    });
   };
 
   if (isCircleCIOrganizationsLoading)

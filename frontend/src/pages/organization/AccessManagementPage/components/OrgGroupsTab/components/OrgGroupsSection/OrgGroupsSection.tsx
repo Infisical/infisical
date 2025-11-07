@@ -36,21 +36,13 @@ export const OrgGroupsSection = () => {
   };
 
   const onDeleteGroupSubmit = async ({ name, groupId }: { name: string; groupId: string }) => {
-    try {
-      await deleteMutateAsync({
-        id: groupId
-      });
-      createNotification({
-        text: `Successfully deleted the group named ${name}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to delete the group named ${name}`,
-        type: "error"
-      });
-    }
+    await deleteMutateAsync({
+      id: groupId
+    });
+    createNotification({
+      text: `Successfully deleted the group named ${name}`,
+      type: "success"
+    });
 
     handlePopUpClose("deleteGroup");
   };

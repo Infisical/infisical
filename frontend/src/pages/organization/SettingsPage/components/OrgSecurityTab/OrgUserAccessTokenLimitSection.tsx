@@ -57,24 +57,17 @@ export const OrgUserAccessTokenLimitSection = () => {
   if (!currentOrg) return null;
 
   const handleUserTokenExpirationSubmit = async (formData: TForm) => {
-    try {
-      const userTokenExpiration = formatDuration(formData.expirationValue, formData.expirationUnit);
+    const userTokenExpiration = formatDuration(formData.expirationValue, formData.expirationUnit);
 
-      await updateUserTokenExpiration({
-        userTokenExpiration,
-        orgId: currentOrg.id
-      });
+    await updateUserTokenExpiration({
+      userTokenExpiration,
+      orgId: currentOrg.id
+    });
 
-      createNotification({
-        text: "Successfully updated user token expiration",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed updating user token expiration",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated user token expiration",
+      type: "success"
+    });
   };
 
   // Units for the dropdown with readable labels

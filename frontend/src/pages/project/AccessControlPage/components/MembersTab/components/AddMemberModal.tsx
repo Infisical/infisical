@@ -25,14 +25,12 @@ import {
   useProject
 } from "@app/context";
 import {
-  useAddUsersToOrg,
   useAddUserToWsNonE2EE,
   useGetOrgUsers,
   useGetProjectRoles,
   useGetWorkspaceUsers
 } from "@app/hooks/api";
 import { ProjectVersion } from "@app/hooks/api/projects/types";
-import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const addMemberFormSchema = z.object({
@@ -86,7 +84,6 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
     defaultValues: { orgMemberships: [], projectRoleSlugs: [] }
   });
 
-  const { mutateAsync: addMemberToOrg } = useAddUsersToOrg();
   const { mutateAsync: addUserToProject } = useAddUserToWsNonE2EE();
 
   useEffect(() => {
@@ -110,65 +107,49 @@ export const AddMemberModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     if (!selectedMembers) return;
 
-    try {
-      if (currentProject.version === ProjectVersion.V1) {
+    if (currentProject.version === ProjectVersion.V1) {
+      createNotification({
+        type: "error",
+        text: "Please upgrade your project to invite new members to the project."
+      });
+    } else {
+      const inviteeEmails = selectedMembers
+        .map((member) => {
+          if (!member) return null;
+
+          if (member.user.username) {
+            return member.user.username;
+          }
+
+          if (member.user.email) {
+            return member.user.email;
+          }
+
+          return null;
+        })
+        .filter(Boolean) as string[];
+
+      if (inviteeEmails.length !== selectedMembers.length) {
         createNotification({
-          type: "error",
-          text: "Please upgrade your project to invite new members to the project."
+          text: "Failed to add users to project. One or more users were invalid.",
+          type: "error"
         });
-      } else {
-        const inviteeEmails = selectedMembers
-          .map((member) => {
-            if (!member) return null;
-
-            if (member.user.username) {
-              return member.user.username;
-            }
-
-            if (member.user.email) {
-              return member.user.email;
-            }
-
-            return null;
-          })
-          .filter(Boolean) as string[];
-
-        if (inviteeEmails.length !== selectedMembers.length) {
-          createNotification({
-            text: "Failed to add users to project. One or more users were invalid.",
-            type: "error"
-          });
-          return;
-        }
-
-        if (newInvitees.length) {
-          await addMemberToOrg({
-            inviteeEmails: newInvitees,
-            organizationId: orgId,
-            organizationRoleSlug: ProjectMembershipRole.Member // only applies to new invites
-          });
-        }
-        if (newInvitees.length || inviteeEmails.length) {
-          await addUserToProject({
-            usernames: [...inviteeEmails, ...newInvitees],
-            orgId,
-            projectId: currentProject.id,
-            roleSlugs: projectRoleSlugs.map((role) => role.slug)
-          });
-        }
+        return;
       }
-      createNotification({
-        text: "Successfully added user to the project",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to add user to project",
-        type: "error"
-      });
-      return;
+
+      if (newInvitees.length || inviteeEmails.length) {
+        await addUserToProject({
+          usernames: [...inviteeEmails, ...newInvitees],
+          orgId,
+          projectId: currentProject.id,
+          roleSlugs: projectRoleSlugs.map((role) => role.slug)
+        });
+      }
     }
+    createNotification({
+      text: "Successfully added user to the project",
+      type: "success"
+    });
     handlePopUpToggle("addMember", false);
     reset();
   };

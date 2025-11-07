@@ -45,68 +45,60 @@ export const OrgGeneralAuthSection = ({
   const logout = useLogoutUser();
 
   const handleEnforceOrgAuthToggle = async (value: boolean, type: EnforceAuthType) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (type === EnforceAuthType.SAML) {
-        if (!subscription?.samlSSO) {
-          handlePopUpOpen("upgradePlan");
-          return;
-        }
-
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          authEnforced: value
-        });
-      } else if (type === EnforceAuthType.GOOGLE) {
-        if (!subscription?.enforceGoogleSSO) {
-          handlePopUpOpen("upgradePlan");
-          return;
-        }
-
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          googleSsoAuthEnforced: value
-        });
-      } else if (type === EnforceAuthType.OIDC) {
-        if (!subscription?.oidcSSO) {
-          handlePopUpOpen("upgradePlan");
-          return;
-        }
-
-        await mutateAsync({
-          orgId: currentOrg?.id,
-          authEnforced: value
-        });
-      } else {
-        createNotification({
-          text: `Invalid auth enforcement type ${type}`,
-          type: "error"
-        });
+    if (type === EnforceAuthType.SAML) {
+      if (!subscription?.samlSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
       }
 
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} org-level auth`,
-        type: "success"
+      await mutateAsync({
+        orgId: currentOrg?.id,
+        authEnforced: value
       });
-
-      if (value) {
-        await logout.mutateAsync();
-
-        if (type === EnforceAuthType.SAML) {
-          window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
-        } else if (type === EnforceAuthType.GOOGLE) {
-          window.open(`/api/v1/sso/redirect/google?org_slug=${currentOrg.slug}`);
-        }
-
-        window.close();
+    } else if (type === EnforceAuthType.GOOGLE) {
+      if (!subscription?.enforceGoogleSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
       }
-    } catch (err) {
-      console.error(err);
+
+      await mutateAsync({
+        orgId: currentOrg?.id,
+        googleSsoAuthEnforced: value
+      });
+    } else if (type === EnforceAuthType.OIDC) {
+      if (!subscription?.oidcSSO) {
+        handlePopUpOpen("upgradePlan");
+        return;
+      }
+
+      await mutateAsync({
+        orgId: currentOrg?.id,
+        authEnforced: value
+      });
+    } else {
       createNotification({
-        text: (err as { response: { data: { message: string } } }).response.data.message,
+        text: `Invalid auth enforcement type ${type}`,
         type: "error"
       });
+    }
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} org-level auth`,
+      type: "success"
+    });
+
+    if (value) {
+      await logout.mutateAsync();
+
+      if (type === EnforceAuthType.SAML) {
+        window.open(`/api/v1/sso/redirect/saml2/organizations/${currentOrg.slug}`);
+      } else if (type === EnforceAuthType.GOOGLE) {
+        window.open(`/api/v1/sso/redirect/google?org_slug=${currentOrg.slug}`);
+      }
+
+      window.close();
     }
   };
 

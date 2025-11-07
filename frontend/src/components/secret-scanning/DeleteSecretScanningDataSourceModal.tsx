@@ -28,26 +28,19 @@ export const DeleteSecretScanningDataSourceModal = ({
   const handleDeleteDataSource = async () => {
     const dataSourceType = SECRET_SCANNING_DATA_SOURCE_MAP[type].name;
 
-    try {
-      await deleteDataSource.mutateAsync({
-        dataSourceId,
-        type,
-        projectId
-      });
+    await deleteDataSource.mutateAsync({
+      dataSourceId,
+      type,
+      projectId
+    });
 
-      createNotification({
-        text: `Successfully deleted ${dataSourceType} Data Source`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted ${dataSourceType} Data Source`,
+      type: "success"
+    });
 
-      if (onComplete) onComplete();
-      onOpenChange(false);
-    } catch {
-      createNotification({
-        text: `Failed to delete ${dataSourceType} Data Source`,
-        type: "error"
-      });
-    }
+    if (onComplete) onComplete();
+    onOpenChange(false);
   };
 
   return (

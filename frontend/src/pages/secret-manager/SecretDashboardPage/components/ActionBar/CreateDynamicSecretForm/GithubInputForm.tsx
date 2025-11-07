@@ -4,7 +4,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FilterableSelect,
@@ -71,27 +70,20 @@ export const GithubInputForm = ({
 
   const handleCreateDynamicSecret = async ({ name, provider, environment }: TForm) => {
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.Github,
-          inputs: {
-            ...provider
-          }
-        },
-        defaultTTL: "1h", // Github is limited to 1 hour tokens
-        name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment.slug
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: {
+        type: DynamicSecretProviders.Github,
+        inputs: {
+          ...provider
+        }
+      },
+      defaultTTL: "1h", // Github is limited to 1 hour tokens
+      name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment.slug
+    });
+    onCompleted();
   };
 
   return (

@@ -20,25 +20,18 @@ export const UserGroupsSection = ({ orgMembership }: Props) => {
   const { mutateAsync: removeUserFromGroup } = useRemoveUserFromGroup();
 
   const handleRemoveUserFromGroup = useCallback(async (groupId: string, groupSlug: string) => {
-    try {
-      await removeUserFromGroup({
-        groupId,
-        slug: groupSlug,
-        username: orgMembership.user.username
-      });
+    await removeUserFromGroup({
+      groupId,
+      slug: groupSlug,
+      username: orgMembership.user.username
+    });
 
-      createNotification({
-        type: "success",
-        text: "User removed from group successfully"
-      });
+    createNotification({
+      type: "success",
+      text: "User removed from group successfully"
+    });
 
-      handlePopUpClose("removeUserFromGroup");
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to remove user from group"
-      });
-    }
+    handlePopUpClose("removeUserFromGroup");
   }, []);
 
   return (

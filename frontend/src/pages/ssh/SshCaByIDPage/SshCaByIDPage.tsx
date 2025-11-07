@@ -43,30 +43,22 @@ const Page = () => {
   ] as const);
 
   const onRemoveCaSubmit = async (caIdToDelete: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deleteSshCa({ caId: caIdToDelete });
+    await deleteSshCa({ caId: caIdToDelete });
 
-      createNotification({
-        text: "Successfully deleted SSH CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted SSH CA",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshCa");
-      navigate({
-        to: "/projects/ssh/$projectId/overview",
-        params: {
-          projectId
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH CA",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshCa");
+    navigate({
+      to: "/projects/ssh/$projectId/overview",
+      params: {
+        projectId
+      }
+    });
   };
 
   return (

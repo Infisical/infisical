@@ -217,46 +217,32 @@ export const PkiSyncsTable = ({ pkiSyncs }: Props) => {
 
     const isAutoSyncEnabled = !pkiSync.isAutoSyncEnabled;
 
-    try {
-      await updateSync.mutateAsync({
-        syncId: pkiSync.id,
-        projectId: pkiSync.projectId,
-        destination: pkiSync.destination,
-        isAutoSyncEnabled
-      });
+    await updateSync.mutateAsync({
+      syncId: pkiSync.id,
+      projectId: pkiSync.projectId,
+      destination: pkiSync.destination,
+      isAutoSyncEnabled
+    });
 
-      createNotification({
-        text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to ${isAutoSyncEnabled ? "enable" : "disable"} auto-sync for ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully ${isAutoSyncEnabled ? "enabled" : "disabled"} auto-sync for ${destinationName} Sync`,
+      type: "success"
+    });
   };
 
   const handleTriggerSync = async (pkiSync: TPkiSync) => {
     const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
 
-    try {
-      await triggerSync.mutateAsync({
-        syncId: pkiSync.id,
-        destination: pkiSync.destination,
-        projectId: pkiSync.projectId
-      });
+    await triggerSync.mutateAsync({
+      syncId: pkiSync.id,
+      destination: pkiSync.destination,
+      projectId: pkiSync.projectId
+    });
 
-      createNotification({
-        text: `Successfully triggered ${destinationName} Sync`,
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: `Failed to trigger ${destinationName} Sync`,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully triggered ${destinationName} Sync`,
+      type: "success"
+    });
   };
 
   return (

@@ -1,16 +1,15 @@
 import z from "zod";
 
-import { readLimit } from "@app/server/config/rateLimiter";
-import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
-import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import {
   CreateChefConnectionSchema,
   SanitizedChefConnectionSchema,
   UpdateChefConnectionSchema
-} from "@app/services/app-connection/chef";
+} from "@app/ee/services/app-connections/chef";
+import { readLimit } from "@app/server/config/rateLimiter";
+import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
+import { registerAppConnectionEndpoints } from "@app/server/routes/v1/app-connection-routers/app-connection-endpoints";
+import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { AuthMode } from "@app/services/auth/auth-type";
-
-import { registerAppConnectionEndpoints } from "./app-connection-endpoints";
 
 export const registerChefConnectionRouter = async (server: FastifyZodProvider) => {
   registerAppConnectionEndpoints({

@@ -43,24 +43,15 @@ const Content = ({ appConnection, onComplete }: ContentProps) => {
   } = form;
 
   const onSubmit = async (formData: FormData) => {
-    try {
-      await updateAppConnection.mutateAsync({
-        connectionId: appConnection.id,
-        ...formData
-      });
-      createNotification({
-        text: `Successfully updated ${appName} Connection`,
-        type: "success"
-      });
-      onComplete();
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${appName} Connection`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    await updateAppConnection.mutateAsync({
+      connectionId: appConnection.id,
+      ...formData
+    });
+    createNotification({
+      text: `Successfully updated ${appName} Connection`,
+      type: "success"
+    });
+    onComplete();
   };
 
   return (

@@ -16,25 +16,16 @@ export const DeleteProjectTemplateModal = ({ isOpen, onOpenChange, template }: P
   const { id: templateId, name } = template;
 
   const handleDeleteProjectTemplate = async () => {
-    try {
-      await deleteTemplate.mutateAsync({
-        templateId
-      });
+    await deleteTemplate.mutateAsync({
+      templateId
+    });
 
-      createNotification({
-        text: "Successfully removed project template",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed project template",
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: "Failed remove project template",
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

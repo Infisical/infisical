@@ -122,19 +122,14 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { mutateAsync: updateRole } = useUpdateProjectRole();
 
   const onSubmit = async (el: TFormSchema) => {
-    try {
-      if (!projectId || !role?.id) return;
-      await updateRole({
-        id: role?.id as string,
-        projectId,
-        ...el,
-        permissions: formRolePermission2API(el.permissions)
-      });
-      createNotification({ type: "success", text: "Successfully updated role" });
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to update role" });
-    }
+    if (!projectId || !role?.id) return;
+    await updateRole({
+      id: role?.id as string,
+      projectId,
+      ...el,
+      permissions: formRolePermission2API(el.permissions)
+    });
+    createNotification({ type: "success", text: "Successfully updated role" });
   };
 
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(

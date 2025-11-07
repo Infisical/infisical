@@ -784,7 +784,10 @@
             "groups": [
               {
                 "group": "Infisical PAM",
-                "pages": ["documentation/platform/pam/overview"]
+                "pages": [
+                  "documentation/platform/pam/overview",
+                  "documentation/platform/pam/session-recording"
+                ]
               }
             ]
           }

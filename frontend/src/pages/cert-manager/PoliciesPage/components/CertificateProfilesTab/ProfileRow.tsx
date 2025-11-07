@@ -44,7 +44,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
   const { data: caData } = useGetCaById(profile.caId);
 
-  const { popUp, handlePopUpToggle } = usePopUp(["certificateIssuance"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -147,7 +147,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handlePopUpToggle("certificateIssuance");
+                  handlePopUpToggle("issueCertificate");
                 }}
                 icon={<FontAwesomeIcon icon={faPlus} />}
               >

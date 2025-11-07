@@ -33,23 +33,15 @@ export const MembersSection = () => {
     if (!currentOrg?.id) return;
     if (!currentProject?.id) return;
 
-    try {
-      await removeUserFromWorkspace({
-        projectId: currentProject.id,
-        usernames: [username],
-        orgId: currentOrg.id
-      });
-      createNotification({
-        text: "Successfully removed user from project",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to remove user from the project",
-        type: "error"
-      });
-    }
+    await removeUserFromWorkspace({
+      projectId: currentProject.id,
+      usernames: [username],
+      orgId: currentOrg.id
+    });
+    createNotification({
+      text: "Successfully removed user from project",
+      type: "success"
+    });
     handlePopUpClose("removeMember");
   };
 

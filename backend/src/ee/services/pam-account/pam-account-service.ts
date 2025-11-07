@@ -480,6 +480,36 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: `Gateway connection details for gateway '${gatewayId}' not found.` });
     }
 
+    let metadata;
+
+    switch (resourceType) {
+      case PamResource.Postgres:
+      case PamResource.MySQL:
+        {
+          const connectionCredentials = await decryptResourceConnectionDetails({
+            encryptedConnectionDetails: resource.encryptedConnectionDetails,
+            kmsService,
+            projectId: account.projectId
+          });
+
+          const credentials = await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId: account.projectId
+          });
+
+          metadata = {
+            username: credentials.username,
+            database: connectionCredentials.database,
+            accountName: account.name,
+            accountPath
+          };
+        }
+        break;
+      default:
+        break;
+    }
+
     return {
       sessionId: session.id,
       resourceType,
@@ -491,7 +521,8 @@ export const pamAccountServiceFactory = ({
       gatewayServerCertificateChain: gatewayConnectionDetails.gateway.serverCertificateChain,
       relayHost: gatewayConnectionDetails.relayHost,
       projectId: account.projectId,
-      account
+      account,
+      metadata
     };
   };
 

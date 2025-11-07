@@ -28,21 +28,12 @@ const CreateForm = ({ provider, onComplete }: CreateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<TAuditLogStream, "provider" | "credentials">
   ) => {
-    try {
-      const logStream = await createAuditLogStream.mutateAsync(formData);
-      createNotification({
-        text: `Successfully created ${providerName} Log Stream`,
-        type: "success"
-      });
-      onComplete(logStream);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to create ${providerName} Log Stream`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const logStream = await createAuditLogStream.mutateAsync(formData);
+    createNotification({
+      text: `Successfully created ${providerName} Log Stream`,
+      type: "success"
+    });
+    onComplete(logStream);
   };
 
   switch (provider) {
@@ -68,24 +59,15 @@ const UpdateForm = ({ auditLogStream, onComplete }: UpdateFormProps) => {
   const onSubmit = async (
     formData: DiscriminativePick<TAuditLogStream, "provider" | "credentials">
   ) => {
-    try {
-      const connection = await updateAuditLogStream.mutateAsync({
-        auditLogStreamId: auditLogStream.id,
-        ...formData
-      });
-      createNotification({
-        text: `Successfully updated ${providerName} Log Stream`,
-        type: "success"
-      });
-      onComplete(connection);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${providerName} Log Stream`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const connection = await updateAuditLogStream.mutateAsync({
+      auditLogStreamId: auditLogStream.id,
+      ...formData
+    });
+    createNotification({
+      text: `Successfully updated ${providerName} Log Stream`,
+      type: "success"
+    });
+    onComplete(connection);
   };
 
   switch (auditLogStream.provider) {

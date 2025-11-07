@@ -65,28 +65,20 @@ const Content = ({ accessRequest, onComplete, projectSlug }: ContentProps) => {
   });
 
   const onSubmit = async (form: FormData) => {
-    try {
-      const request = await update.mutateAsync({
-        requestId: accessRequest.id,
-        projectSlug,
-        ...form
-      });
-      await queryClient.refetchQueries({
-        queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
-      });
+    const request = await update.mutateAsync({
+      requestId: accessRequest.id,
+      projectSlug,
+      ...form
+    });
+    await queryClient.refetchQueries({
+      queryKey: accessApprovalKeys.getAccessApprovalPolicies(projectSlug)
+    });
 
-      createNotification({
-        type: "success",
-        text: "Access request updated successfully."
-      });
-      onComplete(request);
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        type: "error",
-        text: "Failed to update access request"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Access request updated successfully."
+    });
+    onComplete(request);
   };
 
   return (

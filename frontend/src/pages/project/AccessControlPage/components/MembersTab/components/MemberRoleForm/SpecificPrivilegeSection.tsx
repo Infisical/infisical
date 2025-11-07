@@ -182,21 +182,14 @@ export const SpecificPrivilegeSecretForm = ({
     }
 
     if (deleteUserPrivilege.isPending) return;
-    try {
-      await deleteUserPrivilege.mutateAsync({
-        privilegeId: privilege.id,
-        projectMembershipId: privilege.projectMembershipId
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully deleted privilege"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to delete privilege"
-      });
-    }
+    await deleteUserPrivilege.mutateAsync({
+      privilegeId: privilege.id,
+      projectMembershipId: privilege.projectMembershipId
+    });
+    createNotification({
+      type: "success",
+      text: "Successfully deleted privilege"
+    });
   };
 
   // This is used for requesting access additional privileges, not directly creating a privilege!

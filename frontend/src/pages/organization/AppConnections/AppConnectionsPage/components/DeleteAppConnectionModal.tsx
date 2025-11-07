@@ -18,26 +18,17 @@ export const DeleteAppConnectionModal = ({ isOpen, onOpenChange, appConnection }
   const { id: connectionId, name, app } = appConnection;
 
   const handleDeleteAppConnection = async () => {
-    try {
-      await deleteAppConnection.mutateAsync({
-        connectionId,
-        app
-      });
+    await deleteAppConnection.mutateAsync({
+      connectionId,
+      app
+    });
 
-      createNotification({
-        text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully removed ${APP_CONNECTION_MAP[app].name} connection`,
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to remove ${APP_CONNECTION_MAP[app].name} connection`,
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

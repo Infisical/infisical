@@ -83,23 +83,14 @@ export const ChangeEmailSection = () => {
       return;
     }
 
-    try {
-      await requestEmailChangeOTP({ newEmail });
-      setPendingEmail(newEmail);
-      setIsOTPModalOpen(true);
+    await requestEmailChangeOTP({ newEmail });
+    setPendingEmail(newEmail);
+    setIsOTPModalOpen(true);
 
-      createNotification({
-        text: "Verification code sent to your new email address. Check your inbox!",
-        type: "success"
-      });
-    } catch (err: any) {
-      console.error(err);
-      const errorMessage = err?.response?.data?.message || "Failed to send verification code";
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Verification code sent to your new email address. Check your inbox!",
+      type: "success"
+    });
   };
 
   const [typedOTP, setTypedOTP] = useState("");
@@ -135,8 +126,6 @@ export const ChangeEmailSection = () => {
         navigate({ to: "/login" });
       }, 2000);
     } catch (err: any) {
-      console.error(err);
-
       const errorMessage = err?.response?.data?.message || "Invalid verification code";
       if (errorMessage.includes("Invalid verification code")) {
         // Reset to email step so user must request new OTP
@@ -147,11 +136,6 @@ export const ChangeEmailSection = () => {
 
         createNotification({
           text: "Invalid verification code. Please request a new one.",
-          type: "error"
-        });
-      } else {
-        createNotification({
-          text: errorMessage,
           type: "error"
         });
       }

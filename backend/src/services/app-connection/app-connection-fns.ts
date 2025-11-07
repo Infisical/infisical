@@ -1,6 +1,11 @@
 import { ProjectType } from "@app/db/schemas";
 import { TAppConnections } from "@app/db/schemas/app-connections";
 import {
+  ChefConnectionMethod,
+  getChefConnectionListItem,
+  validateChefConnectionCredentials
+} from "@app/ee/services/app-connections/chef";
+import {
   getOCIConnectionListItem,
   OCIConnectionMethod,
   validateOCIConnectionCredentials
@@ -68,7 +73,6 @@ import {
 } from "./bitbucket";
 import { CamundaConnectionMethod, getCamundaConnectionListItem, validateCamundaConnectionCredentials } from "./camunda";
 import { ChecklyConnectionMethod, getChecklyConnectionListItem, validateChecklyConnectionCredentials } from "./checkly";
-import { ChefConnectionMethod, getChefConnectionListItem, validateChefConnectionCredentials } from "./chef";
 import { CloudflareConnectionMethod } from "./cloudflare/cloudflare-connection-enum";
 import {
   getCloudflareConnectionListItem,

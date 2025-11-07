@@ -86,44 +86,28 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   }, [pkiSync.id, setIsIdCopied]);
 
   const handleTriggerSync = useCallback(async () => {
-    try {
-      await triggerSyncMutation.mutateAsync({
-        syncId: id,
-        destination,
-        projectId
-      });
-      createNotification({
-        text: "PKI sync job queued successfully",
-        type: "success"
-      });
-    } catch (error) {
-      console.error("Failed to trigger sync:", error);
-      createNotification({
-        text: "Failed to trigger PKI sync",
-        type: "error"
-      });
-    }
+    await triggerSyncMutation.mutateAsync({
+      syncId: id,
+      destination,
+      projectId
+    });
+    createNotification({
+      text: "PKI sync job queued successfully",
+      type: "success"
+    });
   }, [triggerSyncMutation, id, destination, projectId]);
 
   const handleToggleAutoSync = useCallback(async () => {
-    try {
-      await updatePkiSyncMutation.mutateAsync({
-        syncId: id,
-        projectId,
-        destination,
-        isAutoSyncEnabled: !pkiSync.isAutoSyncEnabled
-      });
-      createNotification({
-        text: `Auto-sync ${pkiSync.isAutoSyncEnabled ? "disabled" : "enabled"} successfully`,
-        type: "success"
-      });
-    } catch (error) {
-      console.error("Failed to toggle auto-sync:", error);
-      createNotification({
-        text: "Failed to toggle auto-sync",
-        type: "error"
-      });
-    }
+    await updatePkiSyncMutation.mutateAsync({
+      syncId: id,
+      projectId,
+      destination,
+      isAutoSyncEnabled: !pkiSync.isAutoSyncEnabled
+    });
+    createNotification({
+      text: `Auto-sync ${pkiSync.isAutoSyncEnabled ? "disabled" : "enabled"} successfully`,
+      type: "success"
+    });
   }, [updatePkiSyncMutation, id, projectId, pkiSync.isAutoSyncEnabled]);
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {

@@ -42,36 +42,25 @@ export const Page = () => {
   ] as const);
 
   const onDeleteOrgRoleSubmit = async () => {
-    try {
-      if (!orgId || !roleId) return;
+    if (!orgId || !roleId) return;
 
-      await deleteOrgRole({
-        orgId,
-        id: roleId
-      });
+    await deleteOrgRole({
+      orgId,
+      id: roleId
+    });
 
-      createNotification({
-        text: "Successfully deleted organization role",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted organization role",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteOrgRole");
-      navigate({
-        to: "/organization/access-management" as const,
-        search: {
-          selectedTab: OrgAccessControlTabSections.Roles
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete organization role";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteOrgRole");
+    navigate({
+      to: "/organization/access-management" as const,
+      search: {
+        selectedTab: OrgAccessControlTabSections.Roles
+      }
+    });
   };
 
   const isCustomRole = !["admin", "member", "no-access"].includes(data?.slug ?? "");

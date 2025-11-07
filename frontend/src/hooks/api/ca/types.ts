@@ -159,8 +159,8 @@ export type TCreateCertificateDTO = {
   ttl: string; // string compatible with ms
   notBefore?: string;
   notAfter?: string;
-  keyUsages: CertKeyUsage[];
-  extendedKeyUsages: CertExtendedKeyUsage[];
+  keyUsages: string[];
+  extendedKeyUsages: string[];
 };
 
 export type TCreateCertificateResponse = {

@@ -126,16 +126,12 @@ export const MemberRoleModify = ({ projectMember, onOpenUpgradeModal }: Props) =
       return;
     }
 
-    try {
-      await updateMembershipRole.mutateAsync({
-        projectId,
-        membershipId: projectMember.id,
-        roles: sanitizedRoles
-      });
-      createNotification({ text: "Successfully updated roles", type: "success" });
-    } catch {
-      createNotification({ text: "Failed to update roles", type: "error" });
-    }
+    await updateMembershipRole.mutateAsync({
+      projectId,
+      membershipId: projectMember.id,
+      roles: sanitizedRoles
+    });
+    createNotification({ text: "Successfully updated roles", type: "success" });
   };
 
   if (isRolesLoading)

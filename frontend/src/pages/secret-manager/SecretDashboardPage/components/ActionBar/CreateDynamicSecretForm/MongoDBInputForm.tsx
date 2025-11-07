@@ -6,7 +6,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FilterableSelect,
@@ -113,32 +112,25 @@ export const MongoDBDatabaseInputForm = ({
     if (createDynamicSecret.isPending) return;
 
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.MongoDB,
-          inputs: {
-            ...provider,
-            port: provider?.port ? provider.port : undefined,
-            roles: provider.roles.map((el) => el.roleName)
-          }
-        },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: {
+        type: DynamicSecretProviders.MongoDB,
+        inputs: {
+          ...provider,
+          port: provider?.port ? provider.port : undefined,
+          roles: provider.roles.map((el) => el.roleName)
+        }
+      },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
+    onCompleted();
   };
 
   return (

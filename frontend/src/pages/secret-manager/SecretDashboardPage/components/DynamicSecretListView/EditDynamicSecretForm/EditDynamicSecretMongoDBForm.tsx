@@ -108,36 +108,28 @@ export const EditDynamicSecretMongoDBForm = ({
     if (updateDynamicSecret.isPending) return;
 
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
-          inputs: {
-            ...inputs,
-            port: inputs?.port ? inputs.port : undefined,
-            roles: inputs?.roles?.map((el) => el.roleName)
-          },
-          usernameTemplate:
-            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
-          newName: newName === dynamicSecret.name ? undefined : newName
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update dynamic secret"
-      });
-    }
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        maxTTL: maxTTL || undefined,
+        defaultTTL,
+        inputs: {
+          ...inputs,
+          port: inputs?.port ? inputs.port : undefined,
+          roles: inputs?.roles?.map((el) => el.roleName)
+        },
+        usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
+        newName: newName === dynamicSecret.name ? undefined : newName
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

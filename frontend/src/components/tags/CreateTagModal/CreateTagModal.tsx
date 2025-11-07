@@ -130,26 +130,18 @@ export const CreateTagModal = ({ isOpen, onToggle, append, currentSecret }: Prop
   }, [isOpen]);
 
   const onFormSubmit = async ({ slug, color }: FormData) => {
-    try {
-      const data = await createWsTag({
-        projectId,
-        tagColor: color,
-        tagSlug: slug
-      });
-      append(data);
-      onToggle(false);
-      reset();
-      createNotification({
-        text: "Successfully created a tag",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to create a tag",
-        type: "error"
-      });
-    }
+    const data = await createWsTag({
+      projectId,
+      tagColor: color,
+      tagSlug: slug
+    });
+    append(data);
+    onToggle(false);
+    reset();
+    createNotification({
+      text: "Successfully created a tag",
+      type: "success"
+    });
   };
 
   return (

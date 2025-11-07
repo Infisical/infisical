@@ -62,26 +62,19 @@ const Content = ({ popUp, handlePopUpToggle }: Props) => {
   });
 
   const onFormSubmit = async ({ group, role }: FormData) => {
-    try {
-      await addGroupToWorkspaceMutateAsync({
-        projectId: currentProject?.id || "",
-        groupId: group.id,
-        role: role.slug || undefined
-      });
+    await addGroupToWorkspaceMutateAsync({
+      projectId: currentProject?.id || "",
+      groupId: group.id,
+      role: role.slug || undefined
+    });
 
-      reset();
-      handlePopUpToggle("group", false);
+    reset();
+    handlePopUpToggle("group", false);
 
-      createNotification({
-        text: "Successfully added group to project",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to add group to project",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully added group to project",
+      type: "success"
+    });
   };
 
   return filteredGroupMembershipOrgs.length ? (

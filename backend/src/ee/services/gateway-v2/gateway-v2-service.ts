@@ -3,7 +3,7 @@ import net from "node:net";
 import { ForbiddenError } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
-import { OrganizationActionScope, OrgMembershipRole, TRelays } from "@app/db/schemas";
+import { OrganizationActionScope, OrgMembershipRole, OrgMembershipStatus, TRelays } from "@app/db/schemas";
 import { PgSqlLock } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -909,7 +909,9 @@ export const gatewayV2ServiceFactory = ({
 
     for await (const [orgId, gateways] of Object.entries(gatewaysByOrg)) {
       try {
-        const admins = await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin);
+        const admins = (await orgDAL.findOrgMembersByRole(orgId, OrgMembershipRole.Admin)).filter(
+          (admin) => admin.status !== OrgMembershipStatus.Invited
+        );
         if (admins.length === 0) {
           logger.warn({ orgId }, "Organization has no admins to notify about unhealthy gateway.");
           // eslint-disable-next-line no-continue

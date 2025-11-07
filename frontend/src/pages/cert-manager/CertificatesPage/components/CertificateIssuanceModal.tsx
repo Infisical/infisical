@@ -94,9 +94,9 @@ const createSchema = (shouldShowSubjectSection: boolean) => {
 export type FormData = z.infer<ReturnType<typeof createSchema>>;
 
 type Props = {
-  popUp: UsePopUpState<["certificateIssuance"]>;
+  popUp: UsePopUpState<["issueCertificate"]>;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["certificateIssuance"]>,
+    popUpName: keyof UsePopUpState<["issueCertificate"]>,
     state?: boolean
   ) => void;
   profileId?: string;
@@ -115,7 +115,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const { currentProject } = useProject();
 
   const inputSerialNumber =
-    (popUp?.certificateIssuance?.data as { serialNumber: string })?.serialNumber || "";
+    (popUp?.issueCertificate?.data as { serialNumber: string })?.serialNumber || "";
   const sanitizedSerialNumber = inputSerialNumber.replace(/[^a-fA-F0-9:]/g, "");
 
   const { data: cert } = useGetCert(sanitizedSerialNumber);
@@ -181,7 +181,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   } = useCertificateTemplate(
     templateData,
     actualSelectedProfile,
-    popUp?.certificateIssuance?.isOpen || false,
+    popUp?.issueCertificate?.isOpen || false,
     setValue,
     watch
   );
@@ -227,10 +227,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   }, [cert, reset]);
 
   useEffect(() => {
-    if (popUp?.certificateIssuance?.isOpen && profileId && !cert) {
+    if (popUp?.issueCertificate?.isOpen && profileId && !cert) {
       setValue("profileId", profileId);
     }
-  }, [popUp?.certificateIssuance?.isOpen, profileId, cert, setValue]);
+  }, [popUp?.issueCertificate?.isOpen, profileId, cert, setValue]);
 
   const onFormSubmit = useCallback(
     async ({
@@ -243,84 +243,72 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
       keyUsages,
       extendedKeyUsages
     }: FormData) => {
-      try {
-        if (!currentProject?.slug) {
-          createNotification({
-            text: "Project not found. Please refresh and try again.",
-            type: "error"
-          });
-          return;
-        }
-
-        if (!formProfileId) {
-          createNotification({
-            text: "Please select a certificate profile.",
-            type: "error"
-          });
-          return;
-        }
-
-        let commonName = "";
-        if (
-          constraints.shouldShowSubjectSection &&
-          subjectAttributes &&
-          subjectAttributes.length > 0
-        ) {
-          commonName = getAttributeValue(subjectAttributes, "common_name");
-          if (!commonName.trim()) {
-            createNotification({
-              text: "Common name is required.",
-              type: "error"
-            });
-            return;
-          }
-        }
-
-        const certificateRequest: any = {
-          profileId: formProfileId,
-          projectSlug: currentProject.slug,
-          ttl,
-          signatureAlgorithm,
-          keyAlgorithm,
-          keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
-          extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
-        };
-
-        if (constraints.shouldShowSubjectSection && commonName) {
-          certificateRequest.commonName = commonName;
-        }
-        if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
-          const formattedSans = formatSubjectAltNames(subjectAltNames);
-          if (formattedSans && formattedSans.length > 0) {
-            certificateRequest.altNames = formattedSans;
-          }
-        }
-
-        const { serialNumber, certificate, certificateChain, privateKey } =
-          await createCertificate(certificateRequest);
-
-        setCertificateDetails({
-          serialNumber,
-          certificate,
-          certificateChain,
-          privateKey
-        });
-
+      if (!currentProject?.slug) {
         createNotification({
-          text: "Successfully created certificate",
-          type: "success"
-        });
-      } catch (err) {
-        console.error("Certificate creation failed:", err);
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "An unexpected error occurred while creating the certificate";
-        createNotification({
-          text: `Failed to create certificate: ${errorMessage}`,
+          text: "Project not found. Please refresh and try again.",
           type: "error"
         });
+        return;
       }
+
+      if (!formProfileId) {
+        createNotification({
+          text: "Please select a certificate profile.",
+          type: "error"
+        });
+        return;
+      }
+
+      let commonName = "";
+      if (
+        constraints.shouldShowSubjectSection &&
+        subjectAttributes &&
+        subjectAttributes.length > 0
+      ) {
+        commonName = getAttributeValue(subjectAttributes, "common_name");
+        if (!commonName.trim()) {
+          createNotification({
+            text: "Common name is required.",
+            type: "error"
+          });
+          return;
+        }
+      }
+
+      const certificateRequest: any = {
+        profileId: formProfileId,
+        projectSlug: currentProject.slug,
+        ttl,
+        signatureAlgorithm,
+        keyAlgorithm,
+        keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
+        extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+      };
+
+      if (constraints.shouldShowSubjectSection && commonName) {
+        certificateRequest.commonName = commonName;
+      }
+      if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
+        const formattedSans = formatSubjectAltNames(subjectAltNames);
+        if (formattedSans && formattedSans.length > 0) {
+          certificateRequest.altNames = formattedSans;
+        }
+      }
+
+      const { serialNumber, certificate, certificateChain, privateKey } =
+        await createCertificate(certificateRequest);
+
+      setCertificateDetails({
+        serialNumber,
+        certificate,
+        certificateChain,
+        privateKey
+      });
+
+      createNotification({
+        text: "Successfully created certificate",
+        type: "success"
+      });
     },
     [
       currentProject?.slug,
@@ -344,9 +332,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   return (
     <Modal
-      isOpen={popUp?.certificateIssuance?.isOpen}
+      isOpen={popUp?.issueCertificate?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("certificateIssuance", isOpen);
+        handlePopUpToggle("issueCertificate", isOpen);
         if (!isOpen) {
           resetAllState();
         }
@@ -515,7 +503,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 colorSchema="secondary"
                 variant="plain"
                 onClick={() => {
-                  handlePopUpToggle("certificateIssuance", false);
+                  handlePopUpToggle("issueCertificate", false);
                 }}
               >
                 Cancel

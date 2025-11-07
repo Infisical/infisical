@@ -33,28 +33,20 @@ export const OrgIncidentContactsTable = () => {
   const { mutateAsync } = useDeleteIncidentContact();
 
   const onRemoveIncidentContact = async () => {
-    try {
-      const incidentContactId = (popUp?.removeContact?.data as { id: string })?.id;
+    const incidentContactId = (popUp?.removeContact?.data as { id: string })?.id;
 
-      if (!currentOrg?.id) return;
-      await mutateAsync({
-        orgId: currentOrg.id,
-        incidentContactId
-      });
+    if (!currentOrg?.id) return;
+    await mutateAsync({
+      orgId: currentOrg.id,
+      incidentContactId
+    });
 
-      createNotification({
-        text: "Successfully removed incident contact",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed incident contact",
+      type: "success"
+    });
 
-      handlePopUpClose("removeContact");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to remove incident contact",
-        type: "error"
-      });
-    }
+    handlePopUpClose("removeContact");
   };
 
   const filteredContacts = contacts

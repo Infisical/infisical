@@ -55,39 +55,32 @@ const Content = ({ findings, onComplete }: ContentProps) => {
   const onSubmit = async (data: FormType) => {
     if (!data.status) return;
 
-    try {
-      if (findings.length > 1) {
-        await updateMultipleFindings.mutateAsync(
-          findings.map((f) => ({
-            ...data,
-            status: data.status!,
-            findingId: f.id,
-            projectId: f.projectId
-          }))
-        );
-      } else {
-        await updateMultipleFindings.mutateAsync([
-          {
-            ...data,
-            status: data.status,
-            findingId: findings[0].id,
-            projectId: findings[0].projectId
-          }
-        ]);
-      }
-
-      createNotification({
-        type: "success",
-        text: `Finding status${single ? "" : "es"} successfully updated`
-      });
-
-      onComplete();
-    } catch {
-      createNotification({
-        type: "error",
-        text: `Failed to update finding status${single ? "" : "es"}`
-      });
+    if (findings.length > 1) {
+      await updateMultipleFindings.mutateAsync(
+        findings.map((f) => ({
+          ...data,
+          status: data.status!,
+          findingId: f.id,
+          projectId: f.projectId
+        }))
+      );
+    } else {
+      await updateMultipleFindings.mutateAsync([
+        {
+          ...data,
+          status: data.status,
+          findingId: findings[0].id,
+          projectId: findings[0].projectId
+        }
+      ]);
     }
+
+    createNotification({
+      type: "success",
+      text: `Finding status${single ? "" : "es"} successfully updated`
+    });
+
+    onComplete();
   };
 
   return (

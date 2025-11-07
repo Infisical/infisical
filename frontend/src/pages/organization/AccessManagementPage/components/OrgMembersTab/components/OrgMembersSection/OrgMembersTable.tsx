@@ -127,34 +127,26 @@ export const OrgMembersTable = ({
   const onRoleChange = async (membershipId: string, role: string) => {
     if (!currentOrg?.id) return;
 
-    try {
-      // TODO: replace hardcoding default role
-      const isCustomRole = !["admin", "member", "no-access"].includes(role);
+    // TODO: replace hardcoding default role
+    const isCustomRole = !["admin", "member", "no-access"].includes(role);
 
-      if (isCustomRole && subscription && !subscription?.rbac) {
-        handlePopUpOpen("upgradePlan", {
-          text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
-        });
-        return;
-      }
-
-      await updateOrgMembership({
-        organizationId: currentOrg?.id,
-        membershipId,
-        role
+    if (isCustomRole && subscription && !subscription?.rbac) {
+      handlePopUpOpen("upgradePlan", {
+        text: "Your current plan does not include access to assigning custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
       });
-
-      createNotification({
-        text: "Successfully updated user role",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to update user role",
-        type: "error"
-      });
+      return;
     }
+
+    await updateOrgMembership({
+      organizationId: currentOrg?.id,
+      membershipId,
+      role
+    });
+
+    createNotification({
+      text: "Successfully updated user role",
+      type: "success"
+    });
   };
 
   const onResendInvite = async (membershipId: string) => {
@@ -172,12 +164,6 @@ export const OrgMembersTable = ({
       createNotification({
         text: "Successfully resent org invitation",
         type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to resend org invitation",
-        type: "error"
       });
     } finally {
       setResendInviteId(null);

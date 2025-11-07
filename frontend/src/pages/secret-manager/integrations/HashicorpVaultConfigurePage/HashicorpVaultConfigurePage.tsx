@@ -10,10 +10,8 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import axios from "axios";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -90,38 +88,24 @@ export const HashicorpVaultConfigurePage = () => {
   });
 
   const handleFormSubmit = async (formData: TForm) => {
-    try {
-      if (!integrationAuth?.id) return;
-      await mutateAsync({
-        integrationAuthId: integrationAuth?.id,
-        isActive: true,
-        app: formData.vaultEnginePath,
-        sourceEnvironment: formData.selectedSourceEnvironment,
-        path: formData.vaultSecretPath,
-        secretPath: formData.secretPath
-      });
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: IntegrationsListPageTabs.NativeIntegrations
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      let errorMessage: string = "Something went wrong!";
-      if (axios.isAxiosError(err)) {
-        const { message } = err?.response?.data as { message: string };
-        errorMessage = message;
+    if (!integrationAuth?.id) return;
+    await mutateAsync({
+      integrationAuthId: integrationAuth?.id,
+      isActive: true,
+      app: formData.vaultEnginePath,
+      sourceEnvironment: formData.selectedSourceEnvironment,
+      path: formData.vaultSecretPath,
+      secretPath: formData.secretPath
+    });
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.NativeIntegrations
       }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
-    }
+    });
   };
 
   return integrationAuth ? (

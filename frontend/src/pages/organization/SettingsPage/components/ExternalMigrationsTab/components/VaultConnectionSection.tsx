@@ -54,21 +54,13 @@ export const VaultConnectionSection = () => {
   const handleDeleteConfirm = async () => {
     if (!configToDelete) return;
 
-    try {
-      await deleteConfig({ id: configToDelete.id });
-      createNotification({
-        type: "success",
-        text: "Namespace configuration deleted successfully"
-      });
-      setIsDeleteModalOpen(false);
-      setConfigToDelete(null);
-    } catch (error) {
-      console.error("Failed to delete namespace config:", error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete namespace configuration"
-      });
-    }
+    await deleteConfig({ id: configToDelete.id });
+    createNotification({
+      type: "success",
+      text: "Namespace configuration deleted successfully"
+    });
+    setIsDeleteModalOpen(false);
+    setConfigToDelete(null);
   };
 
   const getConnectionName = (connectionId: string | null) => {

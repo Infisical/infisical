@@ -30,12 +30,6 @@ export const SecretSnapshotsLegacySection = () => {
         text: `Successfully ${state ? "enabled" : "disabled"} secret snapshots legacy for this project`,
         type: "success"
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update secret snapshots legacy for this project",
-        type: "error"
-      });
     } finally {
       setIsLoading(false);
     }

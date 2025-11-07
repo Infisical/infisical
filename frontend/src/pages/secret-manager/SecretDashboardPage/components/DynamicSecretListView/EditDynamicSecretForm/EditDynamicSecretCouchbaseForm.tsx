@@ -386,37 +386,30 @@ export const EditDynamicSecretCouchbaseForm = ({
         })()
       : transformedInputs;
 
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          defaultTTL,
-          maxTTL: maxTTL || undefined,
-          newName: newName === dynamicSecret.name ? undefined : newName,
-          metadata,
-          usernameTemplate:
-            !usernameTemplate || usernameTemplate === "{{randomUsername}}"
-              ? undefined
-              : usernameTemplate,
-          inputs: finalInputs
-        }
-      });
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        defaultTTL,
+        maxTTL: maxTTL || undefined,
+        newName: newName === dynamicSecret.name ? undefined : newName,
+        metadata,
+        usernameTemplate:
+          !usernameTemplate || usernameTemplate === "{{randomUsername}}"
+            ? undefined
+            : usernameTemplate,
+        inputs: finalInputs
+      }
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
 
-      onClose();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: `Failed to update dynamic secret: ${err}`
-      });
-    }
+    onClose();
   };
 
   return (

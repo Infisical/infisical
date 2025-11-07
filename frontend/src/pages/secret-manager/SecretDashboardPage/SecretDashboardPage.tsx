@@ -338,45 +338,37 @@ const Page = () => {
   const isProtectedBranch = Boolean(boardPolicy);
 
   const handleCreateCommit = async (changes: PendingChanges, message: string) => {
-    try {
-      await createCommit({
-        projectId,
-        environment,
-        secretPath,
-        pendingChanges: changes,
-        message
-      });
+    await createCommit({
+      projectId,
+      environment,
+      secretPath,
+      pendingChanges: changes,
+      message
+    });
 
-      if (!isProtectedBranch) {
-        pendingChanges.secrets.forEach((secret) => {
-          if (secret.type === "update" && secret.secretValue !== undefined) {
-            queryClient.setQueryData(
-              dashboardKeys.getSecretValue({
-                projectId,
-                environment,
-                secretPath,
-                secretKey: secret.newSecretName ?? secret.secretKey,
-                isOverride: false
-              }),
-              { value: secret.secretValue }
-            );
-          }
-        });
-      }
-
-      createNotification({
-        text: isProtectedBranch
-          ? "Requested changes have been sent for review"
-          : "Changes saved successfully",
-        type: "success"
+    if (!isProtectedBranch) {
+      pendingChanges.secrets.forEach((secret) => {
+        if (secret.type === "update" && secret.secretValue !== undefined) {
+          queryClient.setQueryData(
+            dashboardKeys.getSecretValue({
+              projectId,
+              environment,
+              secretPath,
+              secretKey: secret.newSecretName ?? secret.secretKey,
+              isOverride: false
+            }),
+            { value: secret.secretValue }
+          );
+        }
       });
-    } catch (error) {
-      createNotification({
-        text: "Failed to save changes",
-        type: "error"
-      });
-      console.error(error);
     }
+
+    createNotification({
+      text: isProtectedBranch
+        ? "Requested changes have been sent for review"
+        : "Changes saved successfully",
+      type: "success"
+    });
   };
 
   const {

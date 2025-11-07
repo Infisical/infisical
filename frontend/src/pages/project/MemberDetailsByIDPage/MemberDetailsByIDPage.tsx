@@ -83,29 +83,21 @@ export const Page = () => {
   const handleRemoveUser = async () => {
     if (!currentOrg?.id || !currentProject?.id || !membershipDetails?.user?.username) return;
 
-    try {
-      await removeUserFromWorkspace({
-        projectId,
-        usernames: [membershipDetails?.user?.username],
-        orgId: currentOrg.id
-      });
-      createNotification({
-        text: "Successfully removed user from project",
-        type: "success"
-      });
-      navigate({
-        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
-        params: {
-          projectId: currentProject.id
-        }
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to remove user from the project",
-        type: "error"
-      });
-    }
+    await removeUserFromWorkspace({
+      projectId,
+      usernames: [membershipDetails?.user?.username],
+      orgId: currentOrg.id
+    });
+    createNotification({
+      text: "Successfully removed user from project",
+      type: "success"
+    });
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
+      params: {
+        projectId: currentProject.id
+      }
+    });
     handlePopUpClose("removeMember");
   };
 

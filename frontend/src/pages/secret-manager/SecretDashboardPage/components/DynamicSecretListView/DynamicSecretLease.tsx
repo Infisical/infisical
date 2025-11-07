@@ -69,31 +69,23 @@ export const DynamicSecretLease = ({
   const deleteDynamicSecretLease = useRevokeDynamicSecretLease();
 
   const handleDynamicSecretDeleteLease = async () => {
-    try {
-      const { leaseId, isForced } = popUp.deleteSecret.data as {
-        leaseId: string;
-        isForced?: boolean;
-      };
-      await deleteDynamicSecretLease.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        dynamicSecretName,
-        leaseId,
-        isForced
-      });
-      handlePopUpClose("deleteSecret");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted lease"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete lease"
-      });
-    }
+    const { leaseId, isForced } = popUp.deleteSecret.data as {
+      leaseId: string;
+      isForced?: boolean;
+    };
+    await deleteDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      dynamicSecretName,
+      leaseId,
+      isForced
+    });
+    handlePopUpClose("deleteSecret");
+    createNotification({
+      type: "success",
+      text: "Successfully deleted lease"
+    });
   };
 
   const canRenew = !DYNAMIC_SECRETS_WITHOUT_RENEWAL.includes(dynamicSecret.type);
