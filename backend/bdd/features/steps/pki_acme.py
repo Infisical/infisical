@@ -252,6 +252,18 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     context.vars[account_var] = acme_client.new_account(registration)
 
 
+@then("I register a new ACME account with email {email} without EAB")
+def step_impl(context: Context, email: str):
+    acme_client = context.acme_client
+    registration = messages.NewRegistration.from_data(
+        email=email,
+    )
+    try:
+        acme_client.new_account(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
+
+
 def send_raw_acme_req(context: Context, url: str):
     acme_client = context.acme_client
     content = json.loads(context.text)
