@@ -7,8 +7,8 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { CertStatus } from "@app/services/certificate/certificate-types";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -44,7 +44,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               autoRenew: z.boolean().default(false),
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
-            .optional()
+            .optional(),
+          acmeConfig: z.object({}).optional()
         })
         .refine(
           (data) => {
@@ -55,6 +56,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               if (data.apiConfig) {
                 return false;
               }
+              if (data.acmeConfig) {
+                return false;
+              }
             }
             if (data.enrollmentType === EnrollmentType.API) {
               if (!data.apiConfig) {
@@ -63,12 +67,26 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               if (data.estConfig) {
                 return false;
               }
+              if (data.acmeConfig) {
+                return false;
+              }
+            }
+            if (data.enrollmentType === EnrollmentType.ACME) {
+              if (!data.acmeConfig) {
+                return false;
+              }
+              if (data.estConfig) {
+                return false;
+              }
+              if (data.apiConfig) {
+                return false;
+              }
             }
             return true;
           },
           {
             message:
-              "EST enrollment type requires EST configuration and cannot have API configuration. API enrollment type requires API configuration and cannot have EST configuration."
+              "EST enrollment type requires EST configuration and cannot have API or ACME configuration. API enrollment type requires API configuration and cannot have EST or ACME configuration. ACME enrollment type requires ACME configuration and cannot have EST or API configuration."
           }
         ),
       response: {
@@ -149,6 +167,12 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 id: z.string(),
                 autoRenew: z.boolean(),
                 renewBeforeDays: z.number().optional()
+              })
+              .optional(),
+            acmeConfig: z
+              .object({
+                id: z.string(),
+                directoryUrl: z.string()
               })
               .optional()
           }).array(),
@@ -471,6 +495,38 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       });
 
       return { certificates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/acme/eab-secret/reveal",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateProfiles],
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          eabKid: z.string(),
+          eabSecret: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const { eabKid, eabSecret } = await server.services.certificateProfile.revealAcmeEabSecret({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        profileId: req.params.id
+      });
+      return { eabKid, eabSecret };
     }
   });
 };

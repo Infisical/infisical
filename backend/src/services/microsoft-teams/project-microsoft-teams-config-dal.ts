@@ -1,16 +1,20 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { TableName } from "@app/db/schemas";
+import { TableName, TMicrosoftTeamsIntegrations } from "@app/db/schemas";
+import { TProjectMicrosoftTeamsConfigs } from "@app/db/schemas/project-microsoft-teams-configs";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 export type TProjectMicrosoftTeamsConfigDALFactory = ReturnType<typeof projectMicrosoftTeamsConfigDALFactory>;
+export type TProjectMicrosoftTeamsConfigWithIntegrations = TProjectMicrosoftTeamsConfigs & TMicrosoftTeamsIntegrations;
 
 export const projectMicrosoftTeamsConfigDALFactory = (db: TDbClient) => {
   const projectMicrosoftTeamsConfigOrm = ormify(db, TableName.ProjectMicrosoftTeamsConfigs);
 
   const getIntegrationDetailsByProject = (projectId: string, tx?: Knex) => {
-    return (tx || db.replicaNode())(TableName.ProjectMicrosoftTeamsConfigs)
+    return (tx || db.replicaNode())<TProjectMicrosoftTeamsConfigWithIntegrations>(
+      TableName.ProjectMicrosoftTeamsConfigs
+    )
       .join(
         TableName.MicrosoftTeamsIntegrations,
         `${TableName.ProjectMicrosoftTeamsConfigs}.microsoftTeamsIntegrationId`,

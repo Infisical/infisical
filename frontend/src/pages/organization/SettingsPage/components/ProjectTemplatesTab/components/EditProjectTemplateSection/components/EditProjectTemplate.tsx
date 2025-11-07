@@ -31,22 +31,14 @@ export const EditProjectTemplate = ({ isInfisicalTemplate, projectTemplate, onBa
   const deleteProjectTemplate = useDeleteProjectTemplate();
 
   const handleRemoveTemplate = async () => {
-    try {
-      await deleteProjectTemplate.mutateAsync({
-        templateId
-      });
-      createNotification({
-        text: "Successfully removed project template",
-        type: "success"
-      });
-      onBack();
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to remove project template",
-        type: "error"
-      });
-    }
+    await deleteProjectTemplate.mutateAsync({
+      templateId
+    });
+    createNotification({
+      text: "Successfully removed project template",
+      type: "success"
+    });
+    onBack();
     handlePopUpClose("removeTemplate");
   };
 

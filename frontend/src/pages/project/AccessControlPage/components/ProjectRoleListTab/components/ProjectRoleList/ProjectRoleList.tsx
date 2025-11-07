@@ -77,17 +77,12 @@ export const ProjectRoleList = () => {
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
-    try {
-      await deleteRole({
-        projectId,
-        id
-      });
-      createNotification({ type: "success", text: "Successfully removed the role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
-    }
+    await deleteRole({
+      projectId,
+      id
+    });
+    createNotification({ type: "success", text: "Successfully removed the role" });
+    handlePopUpClose("deleteRole");
   };
 
   const {

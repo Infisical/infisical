@@ -34,22 +34,14 @@ export const SshHostGroupsSection = () => {
   };
 
   const onRemoveSshHostGroupSubmit = async (sshHostGroupId: string) => {
-    try {
-      const hostGroup = await deleteSshHostGroup({ sshHostGroupId });
+    const hostGroup = await deleteSshHostGroup({ sshHostGroupId });
 
-      createNotification({
-        text: `Successfully deleted SSH host group: ${hostGroup.name}`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted SSH host group: ${hostGroup.name}`,
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshHostGroup");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH host group",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshHostGroup");
   };
 
   return (

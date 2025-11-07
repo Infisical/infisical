@@ -17,25 +17,16 @@ export const PamAddFolderModal = ({ isOpen, onOpenChange, projectId, currentFold
   console.log({ currentFolderId });
 
   const onSubmit = async (formData: Pick<TPamFolder, "name" | "description">) => {
-    try {
-      await createPamFolder.mutateAsync({
-        ...formData,
-        parentId: currentFolderId,
-        projectId
-      });
-      createNotification({
-        text: "Successfully created folder",
-        type: "success"
-      });
-      onOpenChange(false);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: "Failed to create folder",
-        text: err.message,
-        type: "error"
-      });
-    }
+    await createPamFolder.mutateAsync({
+      ...formData,
+      parentId: currentFolderId,
+      projectId
+    });
+    createNotification({
+      text: "Successfully created folder",
+      type: "success"
+    });
+    onOpenChange(false);
   };
 
   return (

@@ -54,27 +54,19 @@ const Page = () => {
   ] as const);
 
   const onDeleteGroupSubmit = async ({ name, id }: { name: string; id: string }) => {
-    try {
-      await deleteMutateAsync({
-        id
-      });
-      createNotification({
-        text: `Successfully deleted the ${name} group`,
-        type: "success"
-      });
-      navigate({
-        to: "/organization/access-management" as const,
-        search: {
-          selectedTab: TabSections.Groups
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to delete the ${name} group`,
-        type: "error"
-      });
-    }
+    await deleteMutateAsync({
+      id
+    });
+    createNotification({
+      text: `Successfully deleted the ${name} group`,
+      type: "success"
+    });
+    navigate({
+      to: "/organization/access-management" as const,
+      search: {
+        selectedTab: TabSections.Groups
+      }
+    });
 
     handlePopUpClose("deleteGroup");
   };

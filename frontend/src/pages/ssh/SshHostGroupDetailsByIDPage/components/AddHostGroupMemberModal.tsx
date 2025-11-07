@@ -42,30 +42,23 @@ export const AddHostGroupMemberModal = ({ popUp, handlePopUpToggle }: Props) => 
     useAddHostToSshHostGroup();
 
   const handleAddHost = async (sshHostId: string) => {
-    try {
-      if (!popUpData?.sshHostGroupId) {
-        createNotification({
-          text: "Some data is missing, please refresh the page and try again",
-          type: "error"
-        });
-        return;
-      }
-
-      await addHostToSshHostGroup({
-        sshHostGroupId: popUpData.sshHostGroupId,
-        sshHostId
-      });
-
+    if (!popUpData?.sshHostGroupId) {
       createNotification({
-        text: "Successfully added host to the group",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed to add host to the group",
+        text: "Some data is missing, please refresh the page and try again",
         type: "error"
       });
+      return;
     }
+
+    await addHostToSshHostGroup({
+      sshHostGroupId: popUpData.sshHostGroupId,
+      sshHostId
+    });
+
+    createNotification({
+      text: "Successfully added host to the group",
+      type: "success"
+    });
   };
 
   return (

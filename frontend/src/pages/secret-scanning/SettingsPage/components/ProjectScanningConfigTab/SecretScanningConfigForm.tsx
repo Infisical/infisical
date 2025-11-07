@@ -38,22 +38,15 @@ export const SecretScanningConfigForm = ({ config }: Props) => {
   });
 
   const onSubmit = async ({ content }: FormType) => {
-    try {
-      await updateConfig.mutateAsync({
-        projectId: config.projectId,
-        content: content || null
-      });
+    await updateConfig.mutateAsync({
+      projectId: config.projectId,
+      content: content || null
+    });
 
-      createNotification({
-        type: "success",
-        text: "Configuration successfully updated"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update Configuration"
-      });
-    }
+    createNotification({
+      type: "success",
+      text: "Configuration successfully updated"
+    });
   };
 
   return (

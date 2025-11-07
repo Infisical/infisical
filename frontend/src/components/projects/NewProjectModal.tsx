@@ -141,29 +141,24 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     // type check
     if (!currentOrg) return;
     if (!user) return;
-    try {
-      const {
-        data: { project }
-      } = await createWs.mutateAsync({
-        projectName: name,
-        projectDescription: description,
-        kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
-        template,
-        type
-      });
-      await refetchWorkspaces();
+    const {
+      data: { project }
+    } = await createWs.mutateAsync({
+      projectName: name,
+      projectDescription: description,
+      kmsKeyId: kmsKeyId !== INTERNAL_KMS_KEY_ID ? kmsKeyId : undefined,
+      template,
+      type
+    });
+    await refetchWorkspaces();
 
-      createNotification({ text: "Project created", type: "success" });
-      reset();
-      onOpenChange(false);
-      navigate({
-        to: getProjectHomePage(project.type, project.environments),
-        params: { projectId: project.id }
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({ text: "Failed to create project", type: "error" });
-    }
+    createNotification({ text: "Project created", type: "success" });
+    reset();
+    onOpenChange(false);
+    navigate({
+      to: getProjectHomePage(project.type, project.environments),
+      params: { projectId: project.id }
+    });
   };
   const onSubmit = handleSubmit((data) => {
     return onCreateProject(data);

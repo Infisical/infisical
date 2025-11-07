@@ -86,20 +86,12 @@ const CmekForm = ({ onComplete, cmek }: FormProps) => {
           encryptionAlgorithm: encryptionAlgorithm as AsymmetricKeyAlgorithm | SymmetricKeyAlgorithm
         });
 
-    try {
-      await mutation;
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "added"} key`,
-        type: "success"
-      });
-      onComplete();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "add"} key`,
-        type: "error"
-      });
-    }
+    await mutation;
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "added"} key`,
+      type: "success"
+    });
+    onComplete();
   };
 
   const selectedKeyUsage = watch("keyUsage");

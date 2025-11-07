@@ -162,33 +162,26 @@ export const EditDynamicSecretAzureSqlDatabaseForm = ({
   }: TForm) => {
     if (updateDynamicSecret.isPending) return;
 
-    try {
-      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-      await updateDynamicSecret.mutateAsync({
-        projectSlug,
-        environmentSlug: environment,
-        path: secretPath,
-        name: dynamicSecret.name,
-        data: {
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
-          inputs: inputs ? { ...inputs, masterDatabase: "master" } : undefined,
-          newName: newName === dynamicSecret.name ? undefined : newName,
-          metadata,
-          usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update dynamic secret"
-      });
-    }
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
+    await updateDynamicSecret.mutateAsync({
+      projectSlug,
+      environmentSlug: environment,
+      path: secretPath,
+      name: dynamicSecret.name,
+      data: {
+        maxTTL: maxTTL || undefined,
+        defaultTTL,
+        inputs: inputs ? { ...inputs, masterDatabase: "master" } : undefined,
+        newName: newName === dynamicSecret.name ? undefined : newName,
+        metadata,
+        usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

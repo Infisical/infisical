@@ -185,18 +185,11 @@ export const MachineIdentitiesTable = () => {
   const handleRemoveServerAdmin = async () => {
     const { id } = popUp?.removeServerAdmin?.data as { id: string; name: string };
 
-    try {
-      await deleteIdentitySuperAdminAccess(id);
-      createNotification({
-        type: "success",
-        text: "Successfully removed server admin permissions"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Error removing server admin permissions"
-      });
-    }
+    await deleteIdentitySuperAdminAccess(id);
+    createNotification({
+      type: "success",
+      text: "Successfully removed server admin permissions"
+    });
 
     handlePopUpClose("removeServerAdmin");
   };

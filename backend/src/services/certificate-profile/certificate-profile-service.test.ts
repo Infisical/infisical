@@ -10,6 +10,7 @@ import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
+import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import type { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import type { TKmsServiceFactory } from "../kms/kms-service";
@@ -142,6 +143,17 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TEstEnrollmentConfigDALFactory;
 
+  const mockAcmeEnrollmentConfigDAL = {
+    create: vi.fn().mockResolvedValue({ id: "acme-config-123" }),
+    findById: vi.fn(),
+    updateById: vi.fn(),
+    transaction: vi.fn(),
+    find: vi.fn(),
+    findOne: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn()
+  } as unknown as TAcmeEnrollmentConfigDALFactory;
+
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
@@ -182,6 +194,7 @@ describe("CertificateProfileService", () => {
       certificateTemplateV2DAL: mockCertificateTemplateV2DAL,
       apiEnrollmentConfigDAL: mockApiEnrollmentConfigDAL,
       estEnrollmentConfigDAL: mockEstEnrollmentConfigDAL,
+      acmeEnrollmentConfigDAL: mockAcmeEnrollmentConfigDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
       projectDAL: mockProjectDAL
@@ -234,6 +247,7 @@ describe("CertificateProfileService", () => {
           certificateTemplateId: "template-123",
           apiConfigId: "api-config-123",
           estConfigId: null,
+          acmeConfigId: null,
           projectId: "project-123"
         },
         undefined

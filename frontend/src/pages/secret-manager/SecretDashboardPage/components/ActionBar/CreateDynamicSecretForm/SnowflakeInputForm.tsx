@@ -4,7 +4,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import {
   Accordion,
   AccordionContent,
@@ -102,26 +101,19 @@ export const SnowflakeInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Snowflake, inputs: provider },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug,
-        usernameTemplate:
-          !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
-      });
-      onCompleted();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
-      });
-    }
+    const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
+    await createDynamicSecret.mutateAsync({
+      provider: { type: DynamicSecretProviders.Snowflake, inputs: provider },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug,
+      usernameTemplate:
+        !usernameTemplate || isDefaultUsernameTemplate ? undefined : usernameTemplate
+    });
+    onCompleted();
   };
 
   return (

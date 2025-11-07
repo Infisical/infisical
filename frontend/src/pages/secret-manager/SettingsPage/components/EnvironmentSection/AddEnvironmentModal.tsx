@@ -36,28 +36,20 @@ const Content = ({ onComplete }: ContentProps) => {
   });
 
   const onFormSubmit = async ({ environmentName, environmentSlug }: FormData) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      const env = await mutateAsync({
-        projectId: currentProject.id,
-        name: environmentName,
-        slug: environmentSlug
-      });
+    const env = await mutateAsync({
+      projectId: currentProject.id,
+      name: environmentName,
+      slug: environmentSlug
+    });
 
-      createNotification({
-        text: "Successfully created environment",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully created environment",
+      type: "success"
+    });
 
-      onComplete(env);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create environment",
-        type: "error"
-      });
-    }
+    onComplete(env);
   };
 
   return (

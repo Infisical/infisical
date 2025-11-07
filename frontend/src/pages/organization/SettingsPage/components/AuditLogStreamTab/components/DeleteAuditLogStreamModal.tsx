@@ -20,26 +20,17 @@ export const DeleteAuditLogStreamModal = ({ isOpen, onOpenChange, auditLogStream
   const providerDetails = AUDIT_LOG_STREAM_PROVIDER_MAP[provider];
 
   const handleDelete = async () => {
-    try {
-      await deleteAuditLogStream.mutateAsync({
-        auditLogStreamId,
-        provider
-      });
+    await deleteAuditLogStream.mutateAsync({
+      auditLogStreamId,
+      provider
+    });
 
-      createNotification({
-        text: `Successfully deleted ${providerDetails.name} stream`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted ${providerDetails.name} stream`,
+      type: "success"
+    });
 
-      onOpenChange(false);
-    } catch (err) {
-      console.error(err);
-
-      createNotification({
-        text: `Failed to delete ${providerDetails.name} stream`,
-        type: "error"
-      });
-    }
+    onOpenChange(false);
   };
 
   return (

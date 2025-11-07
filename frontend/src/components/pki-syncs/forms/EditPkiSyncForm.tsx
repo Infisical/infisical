@@ -42,28 +42,19 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
   });
 
   const onSubmit = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
-    try {
-      const updatedPkiSync = await updatePkiSync.mutateAsync({
-        syncId: pkiSync.id,
-        ...formData,
-        connectionId: connection.id,
-        projectId: pkiSync.projectId,
-        destination: pkiSync.destination
-      });
+    const updatedPkiSync = await updatePkiSync.mutateAsync({
+      syncId: pkiSync.id,
+      ...formData,
+      connectionId: connection.id,
+      projectId: pkiSync.projectId,
+      destination: pkiSync.destination
+    });
 
-      createNotification({
-        text: `Successfully updated ${destinationName} PKI Sync`,
-        type: "success"
-      });
-      onComplete(updatedPkiSync);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${destinationName} PKI Sync`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully updated ${destinationName} PKI Sync`,
+      type: "success"
+    });
+    onComplete(updatedPkiSync);
   };
 
   let Component: ReactNode;

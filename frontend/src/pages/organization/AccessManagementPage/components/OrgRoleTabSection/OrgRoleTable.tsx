@@ -86,17 +86,12 @@ export const OrgRoleTable = () => {
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TOrgRole;
-    try {
-      await deleteRole({
-        orgId,
-        id
-      });
-      createNotification({ type: "success", text: "Successfully removed the role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
-    }
+    await deleteRole({
+      orgId,
+      id
+    });
+    createNotification({ type: "success", text: "Successfully removed the role" });
+    handlePopUpClose("deleteRole");
   };
 
   const handleSetRoleAsDefault = async (defaultMembershipRoleSlug: string) => {
@@ -109,17 +104,12 @@ export const OrgRoleTable = () => {
       return;
     }
 
-    try {
-      await updateOrg({
-        orgId,
-        defaultMembershipRoleSlug
-      });
-      createNotification({ type: "success", text: "Successfully updated default membership role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to update default membership role" });
-    }
+    await updateOrg({
+      orgId,
+      defaultMembershipRoleSlug
+    });
+    createNotification({ type: "success", text: "Successfully updated default membership role" });
+    handlePopUpClose("deleteRole");
   };
 
   const {

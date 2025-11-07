@@ -1,5 +1,6 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
 
+import { getConfig } from "@app/lib/config/env";
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
@@ -30,6 +31,7 @@ import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
+import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
@@ -107,6 +109,10 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+      // Notice: current this feature is still in development and is not yet ready for production.
+      if (getConfig().isAcmeFeatureEnabled === true) {
+        await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
+      }
     },
     { prefix: "/pki" }
   );

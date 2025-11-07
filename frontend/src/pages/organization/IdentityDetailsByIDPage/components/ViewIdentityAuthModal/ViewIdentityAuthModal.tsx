@@ -140,25 +140,17 @@ export const Content = ({
   }
 
   const handleDeleteAuthMethod = async () => {
-    try {
-      await revokeMethod({
-        identityId,
-        organizationId: orgId
-      });
+    await revokeMethod({
+      identityId,
+      organizationId: orgId
+    });
 
-      createNotification({
-        text: "Successfully removed auth method",
-        type: "success"
-      });
-
-      handlePopUpToggle("revokeAuthMethod", false);
-      onDeleteAuthMethod();
-    } catch {
-      createNotification({
-        text: "Failed to remove auth method",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully removed auth method",
+      type: "success"
+    });
+    handlePopUpToggle("revokeAuthMethod", false);
+    onDeleteAuthMethod();
   };
 
   return (

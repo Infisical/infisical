@@ -96,7 +96,25 @@ export const SlackConfigRow = ({ handlePopUpOpen, isSlackConfigLoading, slackCon
           </Badge>
         )}
       </Td>
-
+      <Td>
+        {slackConfig.isSecretSyncErrorNotificationEnabled &&
+        !isLoadingConfig &&
+        slackConfig.secretSyncErrorChannels.length > 0 ? (
+          <p>
+            {slackConfig.secretSyncErrorChannels
+              .split(", ")
+              .map((channel) => slackChannelIdToName[channel])
+              .join(", ")}
+          </p>
+        ) : isLoadingConfig ? (
+          <Spinner size="xs" />
+        ) : (
+          <Badge variant="neutral">
+            <BanIcon />
+            Disabled
+          </Badge>
+        )}
+      </Td>
       <Td>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">

@@ -42,5 +42,6 @@ export const ChefSyncListItemSchema = z.object({
   name: z.literal("Chef"),
   connection: z.literal(AppConnection.Chef),
   destination: z.literal(SecretSync.Chef),
-  canImportSecrets: z.literal(true)
+  canImportSecrets: z.literal(true),
+  enterprise: z.boolean()
 });

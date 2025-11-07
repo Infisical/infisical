@@ -102,32 +102,24 @@ export const EditDynamicSecretRedisProviderForm = ({
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
     const isDefaultUsernameTemplate = usernameTemplate === "{{randomUsername}}";
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          usernameTemplate:
-            !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
-          inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update dynamic secret"
-      });
-    }
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        usernameTemplate: !usernameTemplate || isDefaultUsernameTemplate ? null : usernameTemplate,
+        maxTTL: maxTTL || undefined,
+        defaultTTL,
+        inputs,
+        newName: newName === dynamicSecret.name ? undefined : newName
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

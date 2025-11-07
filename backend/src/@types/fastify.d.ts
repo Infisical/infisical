@@ -106,6 +106,7 @@ import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-c
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
 import { TPkiTemplatesServiceFactory } from "@app/services/pki-templates/pki-templates-service";
+import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TProjectServiceFactory } from "@app/services/project/project-service";
 import { TProjectBotServiceFactory } from "@app/services/project-bot/project-bot-service";
 import { TProjectEnvServiceFactory } from "@app/services/project-env/project-env-service";
@@ -295,6 +296,7 @@ declare module "fastify" {
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
+      pkiAcme: TPkiAcmeServiceFactory;
       certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;

@@ -30,49 +30,41 @@ export const OrgOIDCSection = (): JSX.Element => {
   ] as const);
 
   const handleOIDCToggle = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        isActive: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} OIDC SSO`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
+    if (!subscription?.oidcSSO) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      isActive: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} OIDC SSO`,
+      type: "success"
+    });
   };
 
   const handleOIDCGroupManagement = async (value: boolean) => {
-    try {
-      if (!currentOrg?.id) return;
+    if (!currentOrg?.id) return;
 
-      if (!subscription?.oidcSSO) {
-        handlePopUpOpen("upgradePlan");
-        return;
-      }
-
-      await mutateAsync({
-        organizationId: currentOrg?.id,
-        manageGroupMemberships: value
-      });
-
-      createNotification({
-        text: `Successfully ${value ? "enabled" : "disabled"} OIDC group membership mapping`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
+    if (!subscription?.oidcSSO) {
+      handlePopUpOpen("upgradePlan");
+      return;
     }
+
+    await mutateAsync({
+      organizationId: currentOrg?.id,
+      manageGroupMemberships: value
+    });
+
+    createNotification({
+      text: `Successfully ${value ? "enabled" : "disabled"} OIDC group membership mapping`,
+      type: "success"
+    });
   };
 
   const addOidcButtonClick = async () => {

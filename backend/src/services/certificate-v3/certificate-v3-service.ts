@@ -64,12 +64,14 @@ import {
   TSignCertificateFromProfileDTO,
   TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
+import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">;
+  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">;
   certificateTemplateV2Service: Pick<
     TCertificateTemplateV2ServiceFactory,
     "validateCertificateRequest" | "getTemplateV2ById"
@@ -93,6 +95,7 @@ const validateProfileAndPermissions = async (
   actorAuthMethod: ActorAuthMethod,
   actorOrgId: string,
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs">,
+  acmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById">,
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">,
   requiredEnrollmentType: EnrollmentType
 ) => {
@@ -105,6 +108,19 @@ const validateProfileAndPermissions = async (
     throw new ForbiddenRequestError({
       message: `Profile is not configured for ${requiredEnrollmentType} enrollment`
     });
+  }
+
+  if (actor === ActorType.ACME_ACCOUNT && requiredEnrollmentType === EnrollmentType.ACME) {
+    const account = await acmeAccountDAL.findById(actorId);
+    if (!account) {
+      throw new NotFoundError({ message: "ACME account not found" });
+    }
+    if (account.profileId !== profile.id) {
+      throw new ForbiddenRequestError({
+        message: "ACME account is not associated with this profile"
+      });
+    }
+    return profile;
   }
 
   const { permission } = await permissionService.getProjectPermission({
@@ -336,6 +352,7 @@ export const certificateV3ServiceFactory = ({
   certificateSecretDAL,
   certificateAuthorityDAL,
   certificateProfileDAL,
+  acmeAccountDAL,
   certificateTemplateV2Service,
   internalCaService,
   permissionService,
@@ -358,6 +375,7 @@ export const certificateV3ServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       certificateProfileDAL,
+      acmeAccountDAL,
       permissionService,
       EnrollmentType.API
     );
@@ -484,7 +502,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    enrollmentType
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -493,8 +512,9 @@ export const certificateV3ServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       certificateProfileDAL,
+      acmeAccountDAL,
       permissionService,
-      EnrollmentType.API
+      enrollmentType
     );
 
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
@@ -595,6 +615,7 @@ export const certificateV3ServiceFactory = ({
       actorAuthMethod,
       actorOrgId,
       certificateProfileDAL,
+      acmeAccountDAL,
       permissionService,
       EnrollmentType.API
     );

@@ -4,7 +4,6 @@ import ms from "ms";
 import { z } from "zod";
 
 import { TtlFormLabel } from "@app/components/features";
-import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import { useCreateDynamicSecret } from "@app/hooks/api";
 import { DynamicSecretProviders } from "@app/hooks/api/dynamicSecret/types";
@@ -83,28 +82,21 @@ export const GcpIamInputForm = ({
   }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: {
-          type: DynamicSecretProviders.GcpIam,
-          inputs: {
-            ...provider
-          }
-        },
-        maxTTL,
-        name,
-        path: secretPath,
-        defaultTTL,
-        projectSlug,
-        environmentSlug: environment.slug
-      });
-      onCompleted();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: {
+        type: DynamicSecretProviders.GcpIam,
+        inputs: {
+          ...provider
+        }
+      },
+      maxTTL,
+      name,
+      path: secretPath,
+      defaultTTL,
+      projectSlug,
+      environmentSlug: environment.slug
+    });
+    onCompleted();
   };
 
   return (

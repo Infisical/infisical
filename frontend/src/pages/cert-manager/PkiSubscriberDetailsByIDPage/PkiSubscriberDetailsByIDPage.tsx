@@ -51,30 +51,22 @@ const Page = () => {
   ] as const);
 
   const onRemoveSubscriberSubmit = async (subscriberNameToDelete: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
+    await deletePkiSubscriber({ subscriberName: subscriberNameToDelete, projectId });
 
-      createNotification({
-        text: "Successfully deleted subscriber",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted subscriber",
+      type: "success"
+    });
 
-      handlePopUpClose("deletePkiSubscriber");
-      navigate({
-        to: "/projects/cert-management/$projectId/subscribers",
-        params: {
-          projectId
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete subscriber",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deletePkiSubscriber");
+    navigate({
+      to: "/projects/cert-management/$projectId/subscribers",
+      params: {
+        projectId
+      }
+    });
   };
 
   return (

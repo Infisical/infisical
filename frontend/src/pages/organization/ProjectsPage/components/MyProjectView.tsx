@@ -15,7 +15,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
@@ -158,32 +157,18 @@ export const MyProjectView = ({
   };
 
   const addProjectToFavorites = async (projectId: string) => {
-    try {
-      if (currentOrg?.id) {
-        await updateUserProjectFavorites({
-          orgId: currentOrg?.id,
-          projectFavorites: [...(projectFavorites || []), projectId]
-        });
-      }
-    } catch {
-      createNotification({
-        text: "Failed to add project to favorites.",
-        type: "error"
+    if (currentOrg?.id) {
+      await updateUserProjectFavorites({
+        orgId: currentOrg?.id,
+        projectFavorites: [...(projectFavorites || []), projectId]
       });
     }
   };
   const removeProjectFromFavorites = async (projectId: string) => {
-    try {
-      if (currentOrg?.id) {
-        await updateUserProjectFavorites({
-          orgId: currentOrg?.id,
-          projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
-        });
-      }
-    } catch {
-      createNotification({
-        text: "Failed to remove project from favorites.",
-        type: "error"
+    if (currentOrg?.id) {
+      await updateUserProjectFavorites({
+        orgId: currentOrg?.id,
+        projectFavorites: [...(projectFavorites || []).filter((entry) => entry !== projectId)]
       });
     }
   };

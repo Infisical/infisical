@@ -68,12 +68,6 @@ export const DeleteProjectSection = () => {
         to: "/organization/projects"
       });
       handlePopUpClose("deleteWorkspace");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete project",
-        type: "error"
-      });
     } finally {
       setIsDeleting.off();
     }
@@ -117,12 +111,6 @@ export const DeleteProjectSection = () => {
 
       navigate({
         to: "/organization/projects"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to leave project",
-        type: "error"
       });
     } finally {
       setIsLeaving.off();

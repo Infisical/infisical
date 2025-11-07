@@ -53,19 +53,11 @@ const EncryptForm = ({ cmek }: FormProps) => {
   });
 
   const handleEncryptData = async (formData: FormData) => {
-    try {
-      await cmekEncrypt.mutateAsync({ ...formData, keyId: cmek.id });
-      createNotification({
-        text: "Successfully encrypted data",
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to encrypt data",
-        type: "error"
-      });
-    }
+    await cmekEncrypt.mutateAsync({ ...formData, keyId: cmek.id });
+    createNotification({
+      text: "Successfully encrypted data",
+      type: "success"
+    });
   };
 
   const ciphertext = cmekEncrypt.data?.ciphertext;

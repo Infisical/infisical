@@ -30,6 +30,7 @@ import {
   extractCertificateRequestFromCSR
 } from "../certificate-common/certificate-csr-utils";
 import { certificateV3ServiceFactory, TCertificateV3ServiceFactory } from "./certificate-v3-service";
+import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 
 vi.mock("../certificate-common/certificate-csr-utils", () => ({
   extractCertificateRequestFromCSR: vi.fn(),
@@ -67,6 +68,10 @@ describe("CertificateV3Service", () => {
   > = {
     validateCertificateRequest: vi.fn(),
     getTemplateV2ById: vi.fn()
+  };
+
+  const mockAcmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById"> = {
+    findById: vi.fn()
   };
 
   const mockInternalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa"> =
@@ -132,6 +137,7 @@ describe("CertificateV3Service", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateProfileDAL: mockCertificateProfileDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
+      acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
       permissionService: mockPermissionService,
       certificateSyncDAL: {
@@ -697,6 +703,7 @@ describe("CertificateV3Service", () => {
         profileId,
         csr: mockCSR,
         validity: mockValidity,
+        enrollmentType: EnrollmentType.API,
         ...mockActor
       });
 
@@ -731,6 +738,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow(ForbiddenRequestError);
@@ -740,6 +748,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");

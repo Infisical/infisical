@@ -22,23 +22,15 @@ export const RequestSecretTab = () => {
   const { mutateAsync: deleteSecretRequest } = useDeleteSecretRequest();
 
   const onDeleteApproved = async () => {
-    try {
-      await deleteSecretRequest({
-        secretRequestId: popUp.deleteSecretRequestConfirmation.data?.id
-      });
-      createNotification({
-        text: "Successfully deleted secret request",
-        type: "success"
-      });
+    await deleteSecretRequest({
+      secretRequestId: popUp.deleteSecretRequestConfirmation.data?.id
+    });
+    createNotification({
+      text: "Successfully deleted secret request",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSecretRequestConfirmation");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete shared secret",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSecretRequestConfirmation");
   };
 
   return (

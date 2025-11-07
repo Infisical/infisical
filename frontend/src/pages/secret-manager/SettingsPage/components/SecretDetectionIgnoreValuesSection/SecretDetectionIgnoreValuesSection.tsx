@@ -55,22 +55,15 @@ export const SecretDetectionIgnoreValuesSection = () => {
   }, [currentProject?.secretDetectionIgnoreValues, reset]);
 
   const handleIgnoreValuesSubmit = async ({ ignoreValues }: TForm) => {
-    try {
-      await updateProject({
-        projectId: currentProject.id,
-        secretDetectionIgnoreValues: ignoreValues.map((item) => item.value)
-      });
+    await updateProject({
+      projectId: currentProject.id,
+      secretDetectionIgnoreValues: ignoreValues.map((item) => item.value)
+    });
 
-      createNotification({
-        text: "Successfully updated secret detection ignore values",
-        type: "success"
-      });
-    } catch {
-      createNotification({
-        text: "Failed updating secret detection ignore values",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully updated secret detection ignore values",
+      type: "success"
+    });
   };
 
   const isAdmin = hasProjectRole(ProjectMembershipRole.Admin);

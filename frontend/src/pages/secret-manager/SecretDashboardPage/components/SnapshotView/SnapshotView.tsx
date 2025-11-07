@@ -128,25 +128,17 @@ export const SnapshotView = ({
       });
       return;
     }
-    try {
-      await performRollback({
-        projectId,
-        snapshotId: snapshotData.id,
-        environment,
-        directory: secretPath
-      });
-      createNotification({
-        text: "Successfully rollback secrets",
-        type: "success"
-      });
-      onGoBack();
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        text: "Failed to rollback secrets",
-        type: "error"
-      });
-    }
+    await performRollback({
+      projectId,
+      snapshotId: snapshotData.id,
+      environment,
+      directory: secretPath
+    });
+    createNotification({
+      text: "Successfully rollback secrets",
+      type: "success"
+    });
+    onGoBack();
   };
 
   if (isSnapshotLoading) {

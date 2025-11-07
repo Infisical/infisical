@@ -33,29 +33,21 @@ export const UpdateEnvironmentModal = ({ popUp, handlePopUpClose, handlePopUpTog
   const oldEnvId = (popUp?.updateEnv?.data as { id: string })?.id;
 
   const onFormSubmit = async ({ name, slug }: FormData) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await mutateAsync({
-        projectId: currentProject.id,
-        name,
-        slug,
-        id: oldEnvId
-      });
+    await mutateAsync({
+      projectId: currentProject.id,
+      name,
+      slug,
+      id: oldEnvId
+    });
 
-      createNotification({
-        text: "Successfully updated environment",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully updated environment",
+      type: "success"
+    });
 
-      handlePopUpClose("updateEnv");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update environment",
-        type: "error"
-      });
-    }
+    handlePopUpClose("updateEnv");
   };
 
   return (

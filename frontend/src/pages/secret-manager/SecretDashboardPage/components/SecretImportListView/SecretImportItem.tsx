@@ -118,24 +118,16 @@ export const SecretImportItem = ({
 
   const handleResyncSecretReplication = async () => {
     if (resyncSecretReplication.isPending) return;
-    try {
-      await resyncSecretReplication.mutateAsync({
-        id,
-        environment,
-        path: secretPath,
-        projectId: currentProject?.id || ""
-      });
-      createNotification({
-        text: "Please refresh the dashboard to view changes",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to resync replication",
-        type: "error"
-      });
-    }
+    await resyncSecretReplication.mutateAsync({
+      id,
+      environment,
+      path: secretPath,
+      projectId: currentProject?.id || ""
+    });
+    createNotification({
+      text: "Please refresh the dashboard to view changes",
+      type: "success"
+    });
   };
 
   const handleRowClick = () => {

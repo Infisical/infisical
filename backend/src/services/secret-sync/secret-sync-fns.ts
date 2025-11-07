@@ -4,6 +4,7 @@ import handlebars from "handlebars";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "@app/ee/services/secret-sync/chef";
 import { OCI_VAULT_SYNC_LIST_OPTION, OCIVaultSyncFns } from "@app/ee/services/secret-sync/oci-vault";
 import { BadRequestError } from "@app/lib/errors";
 import {
@@ -34,7 +35,6 @@ import { BITBUCKET_SYNC_LIST_OPTION, BitbucketSyncFns } from "./bitbucket";
 import { CAMUNDA_SYNC_LIST_OPTION, camundaSyncFactory } from "./camunda";
 import { CHECKLY_SYNC_LIST_OPTION } from "./checkly/checkly-sync-constants";
 import { ChecklySyncFns } from "./checkly/checkly-sync-fns";
-import { CHEF_SYNC_LIST_OPTION, ChefSyncFns } from "./chef";
 import { CLOUDFLARE_PAGES_SYNC_LIST_OPTION } from "./cloudflare-pages/cloudflare-pages-constants";
 import { CloudflarePagesSyncFns } from "./cloudflare-pages/cloudflare-pages-fns";
 import { CLOUDFLARE_WORKERS_SYNC_LIST_OPTION, CloudflareWorkersSyncFns } from "./cloudflare-workers";

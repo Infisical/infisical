@@ -93,25 +93,15 @@ const ProjectTemplateForm = ({ onComplete, projectTemplate }: FormProps) => {
       ? updateProjectTemplate.mutateAsync({ templateId: projectTemplate.id, ...data })
       : createProjectTemplate.mutateAsync({ ...data });
 
-    try {
-      const template = await mutation;
-      createNotification({
-        text: `Successfully ${
-          projectTemplate ? "updated template details" : "created project template"
-        }`,
-        type: "success"
-      });
+    const template = await mutation;
+    createNotification({
+      text: `Successfully ${
+        projectTemplate ? "updated template details" : "created project template"
+      }`,
+      type: "success"
+    });
 
-      onComplete(template);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${
-          projectTemplate ? "update template details" : "create project template"
-        }`,
-        type: "error"
-      });
-    }
+    onComplete(template);
   };
 
   return (

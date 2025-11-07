@@ -40,25 +40,17 @@ export const SshHostGroupHostsSection = ({ sshHostGroupId }: Props) => {
   };
 
   const onRemoveSshHostSubmit = async (sshHostId: string) => {
-    try {
-      await removeHostFromGroup({
-        sshHostId,
-        sshHostGroupId
-      });
+    await removeHostFromGroup({
+      sshHostId,
+      sshHostGroupId
+    });
 
-      await createNotification({
-        text: "Successfully removed host from SSH group",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed host from SSH group",
+      type: "success"
+    });
 
-      handlePopUpClose("removeHostFromSshHostGroup");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to remove host from SSH group",
-        type: "error"
-      });
-    }
+    handlePopUpClose("removeHostFromSshHostGroup");
   };
 
   return (

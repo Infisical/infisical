@@ -106,7 +106,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateProfileActions.Edit,
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionCertificateProfileActions.Delete,
-      ProjectPermissionCertificateProfileActions.IssueCert
+      ProjectPermissionCertificateProfileActions.IssueCert,
+      ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+      ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret
     ],
     ProjectPermissionSub.CertificateProfiles
   );

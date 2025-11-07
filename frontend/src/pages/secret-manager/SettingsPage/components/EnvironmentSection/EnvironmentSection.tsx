@@ -39,27 +39,19 @@ export const EnvironmentSection = () => {
   ] as const);
 
   const onEnvDeleteSubmit = async (id: string) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await deleteWsEnvironment.mutateAsync({
-        projectId: currentProject.id,
-        id
-      });
+    await deleteWsEnvironment.mutateAsync({
+      projectId: currentProject.id,
+      id
+    });
 
-      createNotification({
-        text: "Successfully deleted environment",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted environment",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteEnv");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete environment",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteEnv");
   };
 
   return (

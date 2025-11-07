@@ -77,30 +77,23 @@ export const EditDynamicSecretGcpIamForm = ({
   const handleUpdateDynamicSecret = async ({ inputs, maxTTL, defaultTTL, newName }: TForm) => {
     // wait till previous request is finished
     if (updateDynamicSecret.isPending) return;
-    try {
-      await updateDynamicSecret.mutateAsync({
-        name: dynamicSecret.name,
-        path: secretPath,
-        projectSlug,
-        environmentSlug: environment,
-        data: {
-          maxTTL: maxTTL || undefined,
-          defaultTTL,
-          inputs,
-          newName: newName === dynamicSecret.name ? undefined : newName
-        }
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully updated dynamic secret"
-      });
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to update dynamic secret"
-      });
-    }
+    await updateDynamicSecret.mutateAsync({
+      name: dynamicSecret.name,
+      path: secretPath,
+      projectSlug,
+      environmentSlug: environment,
+      data: {
+        maxTTL: maxTTL || undefined,
+        defaultTTL,
+        inputs,
+        newName: newName === dynamicSecret.name ? undefined : newName
+      }
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully updated dynamic secret"
+    });
   };
 
   return (

@@ -51,28 +51,17 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
     tokenId: string;
     name: string;
   }) => {
-    try {
-      await revokeToken({
-        identityId: parentIdentityId,
-        tokenId
-      });
+    await revokeToken({
+      identityId: parentIdentityId,
+      tokenId
+    });
 
-      handlePopUpClose("revokeToken");
+    handlePopUpClose("revokeToken");
 
-      createNotification({
-        text: `Successfully revoked token ${name ?? ""}`,
-        type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to revoke token";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully revoked token ${name ?? ""}`,
+      type: "success"
+    });
   };
 
   return (

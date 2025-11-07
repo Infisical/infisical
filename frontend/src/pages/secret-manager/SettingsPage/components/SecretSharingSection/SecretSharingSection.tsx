@@ -15,12 +15,12 @@ export const SecretSharingSection = () => {
   const handleToggle = async (state: boolean) => {
     setIsLoading(true);
 
-    try {
-      if (!currentProject?.id) {
-        setIsLoading(false);
-        return;
-      }
+    if (!currentProject?.id) {
+      setIsLoading(false);
+      return;
+    }
 
+    try {
       await updateProject({
         projectId: currentProject.id,
         secretSharing: state
@@ -29,12 +29,6 @@ export const SecretSharingSection = () => {
       createNotification({
         text: `Successfully ${state ? "enabled" : "disabled"} secret sharing for this project`,
         type: "success"
-      });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update secret sharing for this project",
-        type: "error"
       });
     } finally {
       setIsLoading(false);

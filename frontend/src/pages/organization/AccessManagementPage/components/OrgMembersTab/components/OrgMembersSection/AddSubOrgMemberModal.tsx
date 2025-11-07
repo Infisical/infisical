@@ -106,32 +106,24 @@ export const AddSubOrgMemberModal = ({ onClose }: Props) => {
       }
     }
 
-    try {
-      const usernames = users.map((el) => el.username);
-      await addUsersMutateAsync({
-        organizationId: currentOrg?.id,
-        inviteeEmails: usernames,
-        organizationRoleSlug: organizationRole.slug
-      });
+    const usernames = users.map((el) => el.username);
+    await addUsersMutateAsync({
+      organizationId: currentOrg?.id,
+      inviteeEmails: usernames,
+      organizationRoleSlug: organizationRole.slug
+    });
 
-      await Promise.allSettled(
-        selectedProjects.map((el) =>
-          addUserToProject({
-            orgId: currentOrg.id,
-            projectId: el.id,
-            roleSlugs: [projectRoleSlug],
-            usernames
-          })
-        )
-      );
-      onClose();
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to add user to suborganization",
-        type: "error"
-      });
-    }
+    await Promise.allSettled(
+      selectedProjects.map((el) =>
+        addUserToProject({
+          orgId: currentOrg.id,
+          projectId: el.id,
+          roleSlugs: [projectRoleSlug],
+          usernames
+        })
+      )
+    );
+    onClose();
   };
 
   const getGroupHeaderLabel = (type: ProjectType) => {

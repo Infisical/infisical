@@ -64,27 +64,19 @@ export const RenewDynamicSecretLease = ({
 
   const handleDynamicSecretLeaseCreate = async ({ ttl }: TForm) => {
     if (renewDynamicSecretLease.isPending) return;
-    try {
-      await renewDynamicSecretLease.mutateAsync({
-        environmentSlug: environment,
-        projectSlug,
-        path: secretPath,
-        ttl,
-        dynamicSecretName,
-        leaseId
-      });
-      onClose();
-      createNotification({
-        type: "success",
-        text: "Successfully renewed lease"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to renew lease"
-      });
-    }
+    await renewDynamicSecretLease.mutateAsync({
+      environmentSlug: environment,
+      projectSlug,
+      path: secretPath,
+      ttl,
+      dynamicSecretName,
+      leaseId
+    });
+    onClose();
+    createNotification({
+      type: "success",
+      text: "Successfully renewed lease"
+    });
   };
 
   return (
