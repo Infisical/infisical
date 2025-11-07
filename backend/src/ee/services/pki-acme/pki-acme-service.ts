@@ -614,10 +614,13 @@ export const pkiAcmeServiceFactory = ({
             csr,
             notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
             notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
-            validity: {
-              // TODO: read config from the profile to get the expiration time instead
-              ttl: (24 * 60 * 60 * 1000).toString()
-            },
+            validity: !finalizingOrder.notAfter
+              ? {
+                  // TODO: read config from the profile to get the expiration time instead
+                  ttl: (24 * 60 * 60 * 1000).toString()
+                }
+              : // ttl is not used if notAfter is provided
+                ({ ttl: "0" } as const),
             enrollmentType: EnrollmentType.ACME
           });
           // TODO: associate the certificate with the order
