@@ -199,7 +199,7 @@ export const pkiAcmeServiceFactory = ({
         throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
       }
       logger.error(error, "Unexpected error while parsing JWS payload");
-      throw new AcmeServerInternalError({ detail: "Failed to verify JWS payload" });
+      throw new AcmeMalformedError({ detail: "Failed to verify JWS payload" });
     }
   };
 
