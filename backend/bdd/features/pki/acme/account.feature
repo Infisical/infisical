@@ -20,9 +20,10 @@ Feature: Account
     Then the value error with jq ".detail" should be equal to "<error_msg>"
 
     Examples: Bad Credentials
-      | eab_kid                              | eab_secret                | error_type                                         | error_msg |
-      | bad                                  | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
-      | bad                                  | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
-      | {acme_profile.eab_kid}               | Cg==                      | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
-      | {acme_profile.eab_kid}               | YmFkLXNjcmV0Cg==          | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
-      | 4bc7959c-fe2d-4447-ae91-0cd893667af6 | {acme_profile.eab_secret} | urn:ietf:params:acme:error:externalAccountRequired | fixme     |
+      | eab_kid                              | eab_secret                   | error_type                                         | error_msg                                      |
+      | bad                                  | Cg==                         | urn:ietf:params:acme:error:externalAccountRequired | Invalid external account binding JWS signature |
+      | {acme_profile.eab_kid}               | Cg==                         | urn:ietf:params:acme:error:externalAccountRequired | Invalid external account binding JWS signature |
+      | {acme_profile.eab_kid}               | YmFkLXNjcmV0Cg==             | urn:ietf:params:acme:error:externalAccountRequired | Invalid external account binding JWS signature |
+      | bad                                  | {acme_profile.eab_secret}    | urn:ietf:params:acme:error:externalAccountRequired | External account binding KID mismatch          |
+      | 4bc7959c-fe2d-4447-ae91-0cd893667af6 | {acme_profile.eab_secret}    | urn:ietf:params:acme:error:externalAccountRequired | External account binding KID mismatch          |
+      | {acme_profile.eab_kid}               | ABC{acme_profile.eab_secret} | urn:ietf:params:acme:error:externalAccountRequired | Invalid external account binding JWS signature |
