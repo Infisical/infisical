@@ -8,7 +8,7 @@ Feature: Nonce
 
   Scenario Outline: Send a bad nonce to account endpoints
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr
@@ -51,7 +51,7 @@ Feature: Nonce
 
   Scenario Outline: Send the same nonce twice
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
     When I create certificate signing request as csr

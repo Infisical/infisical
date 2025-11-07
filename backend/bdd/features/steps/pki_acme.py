@@ -191,21 +191,32 @@ def step_impl(context: Context, method: str, url: str):
     logger.debug("Response JSON payload: %r", response.json())
 
 
-@when("I have an ACME client connecting to {url}")
-def step_impl(context: Context, url: str):
-    private_key = rsa.generate_private_key(
-        public_exponent=ACC_KEY_PUBLIC_EXPONENT, key_size=ACC_KEY_BITS
-    )
-    pem_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    acc_jwk = JWKRSA.load(pem_bytes)
+def create_acme_client(context: Context, url: str, acc_jwk: JWKRSA | None = None):
+    if acc_jwk is None:
+        private_key = rsa.generate_private_key(
+            public_exponent=ACC_KEY_PUBLIC_EXPONENT, key_size=ACC_KEY_BITS
+        )
+        pem_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        acc_jwk = JWKRSA.load(pem_bytes)
     net = client.ClientNetwork(acc_jwk)
     directory_url = url.format(**context.vars)
     directory = client.ClientV2.get_directory(directory_url, net)
     context.acme_client = client.ClientV2(directory, net=net)
+
+
+@when('I have an ACME client connecting to "{url}"')
+def step_impl(context: Context, url: str):
+    create_acme_client(context, url)
+
+
+@when('I have an ACME client connecting to "{url}" with the key pair from {client_var}')
+def step_impl(context: Context, url: str, client_var: str):
+    another_client = eval_var(context, client_var, as_json=False)
+    create_acme_client(context, url, acc_jwk=another_client.net.key)
 
 
 @then('the response status code should be "{expected_status_code:d}"')
