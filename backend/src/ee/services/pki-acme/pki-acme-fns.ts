@@ -1,3 +1,5 @@
+import { getConfig } from "@app/lib/config/env";
+import RE2 from "re2";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
@@ -16,4 +18,11 @@ export const extractAccountIdFromKid = (kid: string, profileId: string): string 
     throw new AcmeAccountDoesNotExistError({ message: "KID must start with the profile account URL" });
   }
   return z.string().uuid().parse(kid.slice(kidPrefix.length));
+};
+
+export const validateDnsIdentifier = (identifier: string): boolean => {
+  // DNS label pattern: 1-63 chars, alphanumeric or hyphen, but not starting or ending with hyphen
+  const labelPattern = new RE2(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/);
+  const labels = identifier.split(".");
+  return labels.every((label) => label.length >= 1 && label.length <= 63 && labelPattern.test(label));
 };

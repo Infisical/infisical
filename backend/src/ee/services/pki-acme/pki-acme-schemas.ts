@@ -1,4 +1,3 @@
-import RE2 from "re2";
 import { z } from "zod";
 
 export enum AcmeIdentifierType {
@@ -84,19 +83,12 @@ export const CreateAcmeAccountResponseSchema = z.object({
   orders: z.string().optional()
 });
 
-export const ValidDNSIdentifierRegex = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/;
-
 // New Order payload schema
 export const CreateAcmeOrderBodySchema = z.object({
   identifiers: z.array(
     z.object({
-      type: z.enum(Object.values(AcmeIdentifierType) as [string, ...string[]]),
-      value: z.string().refine((val) => {
-        // DNS label pattern: 1-63 chars, alphanumeric or hyphen, but not starting or ending with hyphen
-        const labelPattern = new RE2(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/);
-        const labels = val.split(".");
-        return labels.every((label) => label.length >= 1 && label.length <= 63 && labelPattern.test(label));
-      }, "Invalid DNS identifier")
+      type: z.string(),
+      value: z.string()
     })
   ),
   notBefore: z.string().optional(),

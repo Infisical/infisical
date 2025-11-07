@@ -43,7 +43,7 @@ import {
   AcmeServerInternalError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
-import { buildUrl, extractAccountIdFromKid } from "./pki-acme-fns";
+import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
@@ -53,8 +53,7 @@ import {
   AcmeIdentifierType,
   AcmeOrderStatus,
   CreateAcmeAccountBodySchema,
-  ProtectedHeaderSchema,
-  ValidDNSIdentifierRegex
+  ProtectedHeaderSchema
 } from "./pki-acme-schemas";
 import {
   TAcmeOrderResource,
@@ -497,7 +496,7 @@ export const pkiAcmeServiceFactory = ({
     if (
       payload.identifiers.some(
         (identifier) =>
-          !ValidDNSIdentifierRegex.test(identifier.value) ||
+          !validateDnsIdentifier(identifier.value) ||
           isPrivateIp(identifier.value) ||
           (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
       )
