@@ -249,7 +249,10 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
         email=email,
         external_account_binding=eab,
     )
-    context.vars[account_var] = acme_client.new_account(registration)
+    try:
+        context.vars[account_var] = acme_client.new_account(registration)
+    except Exception:
+        context.vars["error"] = acme_client.new_account(registration)
 
 
 @then("I register a new ACME account with email {email} without EAB")
@@ -259,7 +262,7 @@ def step_impl(context: Context, email: str):
         email=email,
     )
     try:
-        acme_client.new_account(registration)
+        context.vars["error"] = acme_client.new_account(registration)
     except Exception as exp:
         context.vars["error"] = exp
 
