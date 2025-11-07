@@ -32,13 +32,15 @@ Feature: Account
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
     When I use a different new-account URL "<url>" for EAB signature
-    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "<eab_kid>" with secret "<eab_secret>" as acme_account
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     Then the value error with jq ".type" should be equal to "urn:ietf:params:acme:error:externalAccountRequired"
     Then the value error with jq ".detail" should be equal to "External account binding URL mismatch"
 
     Examples: Bad URLs
       | url                                                                            |
       | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-account-bad          |
+      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-account?foo=bar      |
+      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-account#foobar       |
       | {BASE_URL}/acme/new-account                                                    |
       | https://example.com/api/v1/pki/acme/profiles/{acme_profile.id}/new-account-bad |
       | bad                                                                            |
