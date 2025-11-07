@@ -29,32 +29,23 @@ export const PkiExpirationAlertTemplate = ({
     }
   };
 
-  const daysText = alertBeforeDays === 1 ? "1 day" : `${alertBeforeDays} days`;
   const certificateText = items.length === 1 ? "certificate" : "certificates";
+  const daysText = alertBeforeDays === 1 ? "1 day" : `${alertBeforeDays} days`;
+
+  const message = `Alert ${alertName}: You have ${items.length === 1 ? "one" : items.length} ${certificateText} that will expire in ${daysText}.`;
 
   return (
-    <BaseEmailWrapper
-      title="Certificate Expiration Notice"
-      preview={`${items.length} ${certificateText} expiring in ${daysText}`}
-      siteUrl={siteUrl}
-    >
+    <BaseEmailWrapper title="Certificate Expiration Notice" preview={message} siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        <strong>Certificate expiration notice</strong>
+        <strong>Certificate Expiration Notice</strong>
       </Heading>
 
       <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
         <Text className="text-[14px]">
-          You have{" "}
-          <strong>
-            {items.length} {certificateText}
-          </strong>{" "}
-          expiring in {daysText}.
-        </Text>
-        <Text className="text-[14px]">
-          Alert: <strong>{alertName}</strong>
+          Alert <strong className="font-semibold">{alertName}</strong>: You have{" "}
+          {items.length === 1 ? "one" : items.length} {certificateText} that will expire in {daysText}.
         </Text>
       </Section>
-
       <Section className="mb-[28px]">
         <Text className="text-[14px] font-semibold mb-[12px]">Expiring certificates:</Text>
         {items.map((item) => (

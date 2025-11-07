@@ -464,7 +464,7 @@ export const pkiAlertV2ServiceFactory = ({
 
         return smtpService.sendMail({
           recipients: config.recipients,
-          subjectLine: `Infisical PKI Alert: ${alertName}`,
+          subjectLine: `Infisical Certificate Alert - ${alertName}`,
           substitutions: {
             alertName,
             alertBeforeDays,
