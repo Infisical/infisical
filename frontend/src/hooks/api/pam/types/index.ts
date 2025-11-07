@@ -1,5 +1,11 @@
 import { OrderByDirection } from "../../generic/types";
-import { PamAccountOrderBy, PamAccountView, PamResourceType, PamSessionStatus } from "../enums";
+import {
+  PamAccountOrderBy,
+  PamAccountView,
+  PamResourceOrderBy,
+  PamResourceType,
+  PamSessionStatus
+} from "../enums";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 
@@ -46,6 +52,15 @@ export type TPamSession = {
 };
 
 // Resource DTOs
+export type TListPamResourcesDTO = {
+  projectId: string;
+  offset?: number;
+  limit?: number;
+  orderBy?: PamResourceOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
 export type TCreatePamResourceDTO = Pick<
   TPamResource,
   "name" | "connectionDetails" | "resourceType" | "gatewayId" | "projectId"

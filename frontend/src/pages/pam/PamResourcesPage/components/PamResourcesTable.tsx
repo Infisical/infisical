@@ -27,6 +27,7 @@ import {
   Pagination,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Th,
   THead,
@@ -39,18 +40,24 @@ import {
   OrgGatewayPermissionActions,
   OrgPermissionSubjects
 } from "@app/context/OrgPermissionContext/types";
-import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
+import { usePagination, usePopUp } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { PAM_RESOURCE_TYPE_MAP, PamResourceType, TPamResource } from "@app/hooks/api/pam";
+import {
+  PAM_RESOURCE_TYPE_MAP,
+  PamResourceOrderBy,
+  PamResourceType,
+  useListPamResources
+} from "@app/hooks/api/pam";
 
 import { PamAddResourceModal } from "./PamAddResourceModal";
 import { PamDeleteResourceModal } from "./PamDeleteResourceModal";
 import { PamResourceRow } from "./PamResourceRow";
 import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
-
-enum OrderBy {
-  Name = "name"
-}
 
 type Filters = {
   resourceType: PamResourceType[];
@@ -58,10 +65,9 @@ type Filters = {
 
 type Props = {
   projectId: string;
-  resources: TPamResource[];
 };
 
-export const PamResourcesTable = ({ projectId, resources }: Props) => {
+export const PamResourcesTable = ({ projectId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.ResourcesPage.path });
 
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -80,6 +86,7 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
 
   const {
     search,
+    debouncedSearch,
     setSearch,
     setPage,
     page,
@@ -91,51 +98,48 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<OrderBy>(OrderBy.Name, { initPerPage: 20, initSearch });
+  } = usePagination<PamResourceOrderBy>(PamResourceOrderBy.Name, {
+    initPerPage: getUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, 20),
+    initSearch
+  });
+
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("pamResourcesTable", PreferenceKey.PerPage, newPerPage);
+  };
+
+  const { data, isLoading } = useListPamResources({
+    projectId,
+    offset,
+    limit: perPage,
+    search: debouncedSearch,
+    orderBy,
+    orderDirection
+  });
+
+  const resources = data?.resources || [];
+  const totalCount = data?.totalCount || 0;
 
   const filteredResources = useMemo(
     () =>
-      resources
-        .filter((resource) => {
-          const { name, resourceType } = resource;
+      resources.filter((resource) => {
+        const { name, resourceType } = resource;
 
-          if (filters.resourceType.length && !filters.resourceType.includes(resourceType)) {
-            return false;
-          }
+        if (filters.resourceType.length && !filters.resourceType.includes(resourceType)) {
+          return false;
+        }
 
-          const searchValue = search.trim().toLowerCase();
+        const searchValue = search.trim().toLowerCase();
 
-          const { name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
-
-          return (
-            name.toLowerCase().includes(searchValue) ||
-            resourceTypeName.toLowerCase().includes(searchValue)
-          );
-        })
-        .sort((a, b) => {
-          const [one, two] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          switch (orderBy) {
-            case OrderBy.Name:
-            default:
-              return one.name.toLowerCase().localeCompare(two.name.toLowerCase());
-          }
-        }),
-    [resources, orderDirection, search, orderBy, filters]
+        return (
+          name.toLowerCase().includes(searchValue) ||
+          resourceType.toLowerCase().includes(searchValue)
+        );
+      }),
+    [resources, search, filters]
   );
 
-  useResetPageHelper({
-    totalCount: filteredResources.length,
-    offset,
-    setPage
-  });
-
-  const currentPageData = useMemo(
-    () => filteredResources.slice(offset, perPage * page),
-    [filteredResources, offset, perPage, page]
-  );
-
-  const handleSort = (column: OrderBy) => {
+  const handleSort = (column: PamResourceOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
       return;
@@ -145,9 +149,10 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: OrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getClassName = (col: PamResourceOrderBy) =>
+    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
 
-  const getColSortIcon = (col: OrderBy) =>
+  const getColSortIcon = (col: PamResourceOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
   const isTableFiltered = Boolean(filters.resourceType.length);
@@ -263,11 +268,11 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
                   Resource
                   <IconButton
                     variant="plain"
-                    className={getClassName(OrderBy.Name)}
+                    className={getClassName(PamResourceOrderBy.Name)}
                     ariaLabel="sort"
-                    onClick={() => handleSort(OrderBy.Name)}
+                    onClick={() => handleSort(PamResourceOrderBy.Name)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(OrderBy.Name)} />
+                    <FontAwesomeIcon icon={getColSortIcon(PamResourceOrderBy.Name)} />
                   </IconButton>
                 </div>
               </Th>
@@ -275,27 +280,29 @@ export const PamResourcesTable = ({ projectId, resources }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {currentPageData.map((resource) => (
-              <PamResourceRow
-                key={resource.id}
-                resource={resource}
-                onUpdate={(e) => handlePopUpOpen("updateResource", e)}
-                onDelete={(e) => handlePopUpOpen("deleteResource", e)}
-                search={search.trim().toLowerCase()}
-              />
-            ))}
+            {isLoading && <TableSkeleton columns={2} innerKey="pam-resources" />}
+            {!isLoading &&
+              filteredResources.map((resource) => (
+                <PamResourceRow
+                  key={resource.id}
+                  resource={resource}
+                  onUpdate={(e) => handlePopUpOpen("updateResource", e)}
+                  onDelete={(e) => handlePopUpOpen("deleteResource", e)}
+                  search={search.trim().toLowerCase()}
+                />
+              ))}
           </TBody>
         </Table>
-        {Boolean(filteredResources.length) && (
+        {Boolean(totalCount) && !isLoading && (
           <Pagination
-            count={filteredResources.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
           />
         )}
-        {isContentEmpty && (
+        {!isLoading && isContentEmpty && (
           <EmptyState
             title={isSearchEmpty ? "No resources match search" : "No resources"}
             icon={isSearchEmpty ? faSearch : faCircleXmark}

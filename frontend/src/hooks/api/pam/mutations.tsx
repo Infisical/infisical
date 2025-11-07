@@ -31,7 +31,7 @@ export const useCreatePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };
@@ -48,7 +48,7 @@ export const useUpdatePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };
@@ -64,7 +64,7 @@ export const useDeletePamResource = () => {
       return data.resource;
     },
     onSuccess: ({ projectId }) => {
-      queryClient.invalidateQueries({ queryKey: pamKeys.listResources(projectId) });
+      queryClient.invalidateQueries({ queryKey: pamKeys.listResources({ projectId }) });
     }
   });
 };

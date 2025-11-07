@@ -4,7 +4,14 @@ import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
 import { PamResourceType } from "./enums";
-import { TListPamAccountsDTO, TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
+import {
+  TListPamAccountsDTO,
+  TListPamResourcesDTO,
+  TPamAccount,
+  TPamFolder,
+  TPamResource,
+  TPamSession
+} from "./types";
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -12,7 +19,12 @@ export const pamKeys = {
   account: () => [...pamKeys.all, "account"] as const,
   session: () => [...pamKeys.all, "session"] as const,
   listResourceOptions: () => [...pamKeys.resource(), "options"] as const,
-  listResources: (projectId: string) => [...pamKeys.resource(), "list", projectId],
+  listResources: ({ projectId, ...params }: TListPamResourcesDTO) => [
+    ...pamKeys.resource(),
+    "list",
+    projectId,
+    params
+  ],
   getResource: (resourceType: string, resourceId: string) => [
     ...pamKeys.resource(),
     "get",
@@ -54,27 +66,31 @@ export const useListPamResourceOptions = (
   });
 };
 
+type TListPamResourcesResponse = {
+  resources: TPamResource[];
+  totalCount: number;
+};
+
 export const useListPamResources = (
-  projectId: string,
+  params: TListPamResourcesDTO,
   options?: Omit<
     UseQueryOptions<
-      TPamResource[],
+      TListPamResourcesResponse,
       unknown,
-      TPamResource[],
+      TListPamResourcesResponse,
       ReturnType<typeof pamKeys.listResources>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: pamKeys.listResources(projectId),
+    queryKey: pamKeys.listResources(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ resources: TPamResource[] }>(
-        "/api/v1/pam/resources",
-        { params: { projectId } }
-      );
+      const { data } = await apiRequest.get<TListPamResourcesResponse>("/api/v1/pam/resources", {
+        params
+      });
 
-      return data.resources;
+      return data;
     },
     ...options
   });

@@ -1,3 +1,4 @@
+// Resources
 export enum PamResourceType {
   Postgres = "postgres",
   MySQL = "mysql",
@@ -6,6 +7,11 @@ export enum PamResourceType {
   Kubernetes = "kubernetes"
 }
 
+export enum PamResourceOrderBy {
+  Name = "name"
+}
+
+// Sessions
 export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
@@ -13,6 +19,7 @@ export enum PamSessionStatus {
   Terminated = "terminated"
 }
 
+// Accounts
 export enum PamAccountOrderBy {
   Name = "name"
 }
