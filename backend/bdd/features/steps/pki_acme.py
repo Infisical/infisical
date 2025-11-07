@@ -140,14 +140,14 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 def step_impl(context: Context, profile_var: str):
     profile_id = os.getenv("PROFILE_ID")
     secret = os.getenv("EAB_SECRET")
-    if profile_id is None and secret is None:
+    if profile_id is not None and secret is not None:
         kid = profile_id
-
     else:
         profile_slug = faker.slug()
+        jwt_token = context.vars["AUTH_TOKEN"]
         response = context.http_client.post(
             "/api/v1/pki/certificate-profiles",
-            headers=prepare_headers(context),
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
             json={
                 "projectId": context.vars["PROJECT_ID"],
                 "slug": profile_slug,
@@ -165,7 +165,7 @@ def step_impl(context: Context, profile_var: str):
 
         response = context.http_client.get(
             f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
-            headers=prepare_headers(context),
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
         )
         response.raise_for_status()
         resp_json = response.json()
