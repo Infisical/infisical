@@ -51,13 +51,9 @@ const buildSlackPayload = (notification: TNotification) => {
       const messageBody = `A secret approval request has been opened by ${payload.userEmail}.
 *Environment*: ${payload.environment}
 *Secret path*: ${payload.secretPath || "/"}
-*Secret Key${payload.secretKeys.length > 1 ? "s" : ""}*: ${payload.secretKeys.join(", ")}
+*Secret Key${payload.secretKeys.length > 1 ? "s" : ""}*: ${payload.secretKeys.join(", ")}`;
 
-View the complete details <${appCfg.SITE_URL}/projects/secret-management/${payload.projectId}/approval?requestId=${
-        payload.requestId
-      }|here>.`;
-
-      const payloadBlocks = [
+      const headerBlocks = [
         {
           type: "header",
           text: {
@@ -65,18 +61,36 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
             text: "Secret approval request",
             emoji: true
           }
-        },
+        }
+      ];
+
+      const payloadBlocks = [
         {
           type: "section",
           text: {
             type: "mrkdwn",
             text: messageBody
           }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
         }
       ];
 
       return {
-        headerBlocks: [],
+        headerBlocks,
         payloadMessage: messageBody,
         payloadBlocks,
         color: COMPANY_BRAND_COLOR
@@ -84,12 +98,12 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
     }
     case TriggerFeature.ACCESS_REQUEST: {
       const { payload } = notification;
-      const projectUrl = `${appCfg.SITE_URL}${payload.projectPath}`;
+      const projectUrl = `${appCfg.SITE_URL}${payload.projectPath}/overview`;
       const accessType = payload.isTemporary ? "temporary" : "permanent";
       const permissionsFormatted = payload.permissions.map((p) => `*${p}*`).join(", ");
 
       const messageBody = `${payload.requesterFullName} (${payload.requesterEmail}) has requested ${accessType} access to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.\n\nThe following permissions are requested: ${payload.permissions.join(", ")}${
-        payload.note ? `\n\nUser note\n${payload.note}` : ""
+        payload.note ? `\n\nUser note: ${payload.note}` : ""
       }`;
 
       const headerBlocks = [
@@ -109,7 +123,7 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
           text: {
             type: "mrkdwn",
             text: `*${payload.requesterFullName}* (${payload.requesterEmail}) has requested *${accessType}* access to *${payload.secretPath}* in the *${payload.environment}* environment of *<${projectUrl}|${payload.projectName}>*.\n\nThe following permissions are requested: ${permissionsFormatted}${
-              payload.note ? `\n\n*User note*\n${payload.note}` : ""
+              payload.note ? `\n\n*User note:* ${payload.note}` : ""
             }`
           }
         },
@@ -139,20 +153,15 @@ View the complete details <${appCfg.SITE_URL}/projects/secret-management/${paylo
     }
     case TriggerFeature.ACCESS_REQUEST_UPDATED: {
       const { payload } = notification;
-      const messageBody = `${payload.editorFullName} (${payload.editorEmail}) has updated the ${
-        payload.isTemporary ? "temporary" : "permanent"
-      } access request from ${payload.requesterFullName} (${payload.requesterEmail}) to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.
+      const projectUrl = `${appCfg.SITE_URL}${payload.projectPath}/overview`;
+      const accessType = payload.isTemporary ? "temporary" : "permanent";
+      const permissionsFormatted = payload.permissions.map((p) => `*${p}*`).join(", ");
 
-The following permissions are requested: ${payload.permissions.join(", ")}
-
-View the request and approve or deny it <${payload.approvalUrl}|here>.${
-        payload.editNote
-          ? `
-Editor Note: ${payload.editNote}`
-          : ""
+      const messageBody = `${payload.editorFullName} (${payload.editorEmail}) has updated the ${accessType} access request from ${payload.requesterFullName} (${payload.requesterEmail}) to ${payload.secretPath} in the ${payload.environment} environment of ${payload.projectName}.\n\nThe following permissions are requested: ${payload.permissions.join(", ")}${
+        payload.editNote ? `\n\nEditor Note: ${payload.editNote}` : ""
       }`;
 
-      const payloadBlocks = [
+      const headerBlocks = [
         {
           type: "header",
           text: {
@@ -160,18 +169,38 @@ Editor Note: ${payload.editNote}`
             text: "Updated access approval request pending for review",
             emoji: true
           }
-        },
+        }
+      ];
+
+      const payloadBlocks = [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: messageBody
+            text: `*${payload.editorFullName}* (${payload.editorEmail}) has updated the *${accessType}* access request from *${payload.requesterFullName}* (${payload.requesterEmail}) to *${payload.secretPath}* in the *${payload.environment}* environment of *<${projectUrl}|${payload.projectName}>*.\n\nThe following permissions are requested: ${permissionsFormatted}${
+              payload.editNote ? `\n\n*Editor Note:* ${payload.editNote}` : ""
+            }`
           }
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: {
+                type: "plain_text",
+                text: "View request",
+                emoji: true
+              },
+              style: "primary",
+              url: payload.approvalUrl
+            }
+          ]
         }
       ];
 
       return {
-        headerBlocks: [],
+        headerBlocks,
         payloadMessage: messageBody,
         payloadBlocks,
         color: COMPANY_BRAND_COLOR
@@ -198,7 +227,7 @@ Editor Note: ${payload.editNote}`
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `*Environment*\n${payload.environment}\n\n\n*Secret Path*\n${payload.secretPath}\n\n\n*Project*\n<${projectUrl}|${payload.projectName}>\n\n\n*Reason*\n${payload.failureMessage}`
+            text: `*Environment:* ${payload.environment}\n\n*Secret Path:* ${payload.secretPath}\n\n*Project:* <${projectUrl}|${payload.projectName}>\n\n*Reason:* ${payload.failureMessage}`
           }
         },
         {

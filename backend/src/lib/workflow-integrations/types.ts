@@ -21,6 +21,7 @@ export type TNotification =
         requestId: string;
         projectId: string;
         secretKeys: string[];
+        approvalUrl: string;
       };
     }
   | {
@@ -52,6 +53,7 @@ export type TNotification =
         editNote?: string;
         editorFullName?: string;
         editorEmail?: string;
+        projectPath: string;
       };
     }
   | {
