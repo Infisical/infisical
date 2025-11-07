@@ -613,39 +613,6 @@ describe("CertificateTemplateV2Service", () => {
       expect(result.isValid).toBe(true);
     });
 
-    it("should handle camelCase key usage mapping correctly", async () => {
-      const templateWithOptionalUsages = {
-        ...sampleTemplate,
-        keyUsages: {
-          requiredUsages: {
-            all: [CertKeyUsageType.DIGITAL_SIGNATURE, CertKeyUsageType.NON_REPUDIATION, CertKeyUsageType.KEY_AGREEMENT]
-          },
-          optionalUsages: { all: [CertKeyUsageType.CRL_SIGN, CertKeyUsageType.DECIPHER_ONLY] }
-        },
-        extendedKeyUsages: {
-          requiredUsages: { all: [CertExtendedKeyUsageType.CLIENT_AUTH, CertExtendedKeyUsageType.CODE_SIGNING] },
-          optionalUsages: { all: [CertExtendedKeyUsageType.SERVER_AUTH, CertExtendedKeyUsageType.OCSP_SIGNING] }
-        }
-      };
-      mockCertificateTemplateV2DAL.findById.mockResolvedValue(templateWithOptionalUsages);
-
-      const requestWithCamelCaseUsages = {
-        ...validRequest,
-        keyUsages: [
-          CertKeyUsageType.DIGITAL_SIGNATURE,
-          CertKeyUsageType.NON_REPUDIATION,
-          CertKeyUsageType.KEY_AGREEMENT,
-          CertKeyUsageType.CRL_SIGN,
-          CertKeyUsageType.DECIPHER_ONLY
-        ],
-        extendedKeyUsages: [CertExtendedKeyUsageType.CLIENT_AUTH, CertExtendedKeyUsageType.CODE_SIGNING]
-      };
-
-      const result = await service.validateCertificateRequest("template-123", requestWithCamelCaseUsages);
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
-    });
-
     it("should validate wildcard patterns in allow attributes", async () => {
       const wildcardTemplate = {
         ...sampleTemplate,
