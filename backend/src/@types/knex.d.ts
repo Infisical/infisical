@@ -266,6 +266,24 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiAcmeAccounts,
+  TPkiAcmeAccountsInsert,
+  TPkiAcmeAccountsUpdate,
+  TPkiAcmeAuths,
+  TPkiAcmeAuthsInsert,
+  TPkiAcmeAuthsUpdate,
+  TPkiAcmeChallenges,
+  TPkiAcmeChallengesInsert,
+  TPkiAcmeChallengesUpdate,
+  TPkiAcmeEnrollmentConfigs,
+  TPkiAcmeEnrollmentConfigsInsert,
+  TPkiAcmeEnrollmentConfigsUpdate,
+  TPkiAcmeOrderAuths,
+  TPkiAcmeOrderAuthsInsert,
+  TPkiAcmeOrderAuthsUpdate,
+  TPkiAcmeOrders,
+  TPkiAcmeOrdersInsert,
+  TPkiAcmeOrdersUpdate,
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
@@ -708,6 +726,32 @@ declare module "knex/types/tables" {
       TPkiApiEnrollmentConfigs,
       TPkiApiEnrollmentConfigsInsert,
       TPkiApiEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiAcmeEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiAcmeEnrollmentConfigs,
+      TPkiAcmeEnrollmentConfigsInsert,
+      TPkiAcmeEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiAcmeAccount]: KnexOriginal.CompositeTableType<
+      TPkiAcmeAccounts,
+      TPkiAcmeAccountsInsert,
+      TPkiAcmeAccountsUpdate
+    >;
+    [TableName.PkiAcmeOrder]: KnexOriginal.CompositeTableType<
+      TPkiAcmeOrders,
+      TPkiAcmeOrdersInsert,
+      TPkiAcmeOrdersUpdate
+    >;
+    [TableName.PkiAcmeAuth]: KnexOriginal.CompositeTableType<TPkiAcmeAuths, TPkiAcmeAuthsInsert, TPkiAcmeAuthsUpdate>;
+    [TableName.PkiAcmeOrderAuth]: KnexOriginal.CompositeTableType<
+      TPkiAcmeOrderAuths,
+      TPkiAcmeOrderAuthsInsert,
+      TPkiAcmeOrderAuthsUpdate
+    >;
+    [TableName.PkiAcmeChallenge]: KnexOriginal.CompositeTableType<
+      TPkiAcmeChallenges,
+      TPkiAcmeChallengesInsert,
+      TPkiAcmeChallengesUpdate
     >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,

@@ -1,14 +1,15 @@
-import { useCallback } from "react";
 import {
   faCheck,
   faCircleInfo,
   faCopy,
   faEdit,
   faEllipsis,
+  faEye,
   faPlus,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useCallback } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -36,10 +37,16 @@ import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPa
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
+  onRevealProfileAcmeEabSecret: (profile: TCertificateProfile) => void;
   onDeleteProfile: (profile: TCertificateProfile) => void;
 }
 
-export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) => {
+export const ProfileRow = ({
+  profile,
+  onEditProfile,
+  onRevealProfileAcmeEabSecret,
+  onDeleteProfile
+}: Props) => {
   const { permission } = useProjectPermission();
 
   const { data: caData } = useGetCaById(profile.caId);
@@ -69,6 +76,11 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
     ProjectPermissionSub.CertificateAuthorities
   );
 
+  const canRevealProfileAcmeEabSecret = permission.can(
+    ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+    ProjectPermissionSub.CertificateProfiles
+  );
+
   const canIssueCertificate = permission.can(
     ProjectPermissionCertificateProfileActions.IssueCert,
     ProjectPermissionSub.CertificateProfiles
@@ -82,7 +94,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
     const config = {
       api: { variant: "ghost" as const, label: "API" },
-      est: { variant: "ghost" as const, label: "EST" }
+      est: { variant: "ghost" as const, label: "EST" },
+      acme: { variant: "ghost" as const, label: "ACME" }
     } as const;
 
     const configKey = Object.keys(config).includes(enrollmentType)
@@ -127,7 +140,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="p-1">
             <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} className="w-3" />}
               onClick={() => handleCopyId()}
             >
               Copy Profile ID
@@ -138,9 +151,20 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                   e.stopPropagation();
                   onEditProfile(profile);
                 }}
-                icon={<FontAwesomeIcon icon={faEdit} />}
+                icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
               >
                 Edit Profile
+              </DropdownMenuItem>
+            )}
+            {canRevealProfileAcmeEabSecret && profile.enrollmentType === "acme" && (
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRevealProfileAcmeEabSecret(profile);
+                }}
+                icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
+              >
+                Reveal ACME EAB
               </DropdownMenuItem>
             )}
             {canIssueCertificate && profile.enrollmentType === "api" && (
@@ -149,7 +173,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                   e.stopPropagation();
                   handlePopUpToggle("issueCertificate");
                 }}
-                icon={<FontAwesomeIcon icon={faPlus} />}
+                icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
               >
                 Issue Certificate
               </DropdownMenuItem>
@@ -160,7 +184,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
                   e.stopPropagation();
                   onDeleteProfile(profile);
                 }}
-                icon={<FontAwesomeIcon icon={faTrash} />}
+                icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
               >
                 Delete Profile
               </DropdownMenuItem>

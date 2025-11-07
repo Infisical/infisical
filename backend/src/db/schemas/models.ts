@@ -27,6 +27,7 @@ export enum TableName {
   PkiCertificateProfile = "pki_certificate_profiles",
   PkiEstEnrollmentConfig = "pki_est_enrollment_configs",
   PkiApiEnrollmentConfig = "pki_api_enrollment_configs",
+  PkiAcmeEnrollmentConfig = "pki_acme_enrollment_configs",
   PkiSubscriber = "pki_subscribers",
   PkiAlert = "pki_alerts",
   PkiCollection = "pki_collections",
@@ -210,7 +211,14 @@ export enum TableName {
   PamAccount = "pam_accounts",
   PamSession = "pam_sessions",
 
-  VaultExternalMigrationConfig = "vault_external_migration_configs"
+  VaultExternalMigrationConfig = "vault_external_migration_configs",
+
+  // PKI ACME
+  PkiAcmeAccount = "pki_acme_accounts",
+  PkiAcmeOrder = "pki_acme_orders",
+  PkiAcmeOrderAuth = "pki_acme_order_auths",
+  PkiAcmeAuth = "pki_acme_auths",
+  PkiAcmeChallenge = "pki_acme_challenges"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

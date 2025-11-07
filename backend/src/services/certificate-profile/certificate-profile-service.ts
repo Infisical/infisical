@@ -13,10 +13,10 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
+import { isCertChainValid } from "../certificate/certificate-fns";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
-import { TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
+import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
 import { TEstEnrollmentConfigDALFactory } from "../enrollment-config/est-enrollment-config-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TProjectDALFactory } from "../project/project-dal";
@@ -30,6 +30,38 @@ import {
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
+import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
+import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+
+const generateAndEncryptAcmeEabSecret = async (
+  projectId: string,
+  kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey">,
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">
+) => {
+  try {
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const appCfg = getConfig();
+    const secret = crypto.randomBytes(32).toString("hex");
+    const secretHash = await crypto.hashing().createHash(secret, appCfg.SALT_ROUNDS);
+
+    const { cipherTextBlob } = await kmsEncryptor({
+      plainText: Buffer.from(secretHash)
+    });
+
+    return { encryptedEabSecret: cipherTextBlob };
+  } catch (error) {
+    throw new BadRequestError({ message: `Failed to generate ACME EAB secret: ${(error as Error).message}` });
+  }
+};
 
 const validateAndEncryptPemCaChain = async (
   caChain: string,
@@ -95,9 +127,13 @@ const decryptCaChain = async (
   }
 };
 
-export type TCertificateProfileCreateData = Omit<TCertificateProfileInsert, "estConfigId" | "apiConfigId"> & {
+export type TCertificateProfileCreateData = Omit<
+  TCertificateProfileInsert,
+  "estConfigId" | "apiConfigId" | "acmeConfigId"
+> & {
   estConfig?: TEstConfigData;
   apiConfig?: TApiConfigData;
+  acmeConfig?: TAcmeConfigData;
 };
 
 type TCertificateProfileServiceFactoryDep = {
@@ -105,6 +141,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateTemplateV2DAL: TCertificateTemplateV2DALFactory;
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
+  acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -124,6 +161,7 @@ export const certificateProfileServiceFactory = ({
   certificateTemplateV2DAL,
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
+  acmeEnrollmentConfigDAL,
   permissionService,
   kmsService,
   projectDAL
@@ -188,11 +226,14 @@ export const certificateProfileServiceFactory = ({
         message: "API enrollment requires API configuration"
       });
     }
+    // TODO: acme type currently doesn't require config obj, but add a check in the future if
+    //       we have options
 
     // Create enrollment configs and profile
     const profile = await certificateProfileDAL.transaction(async (tx) => {
       let estConfigId: string | null = null;
       let apiConfigId: string | null = null;
+      let acmeConfigId: string | null = null;
 
       if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         const appCfg = getConfig();
@@ -228,16 +269,21 @@ export const certificateProfileServiceFactory = ({
           tx
         );
         apiConfigId = apiConfig.id;
+      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
+        const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
+        const acmeConfig = await acmeEnrollmentConfigDAL.create({ encryptedEabSecret }, tx);
+        acmeConfigId = acmeConfig.id;
       }
 
       // Create the profile with the created config IDs
-      const { estConfig, apiConfig, ...profileData } = data;
+      const { estConfig, apiConfig, acmeConfig, ...profileData } = data;
       const profileResult = await certificateProfileDAL.create(
         {
           ...profileData,
           projectId,
           estConfigId,
-          apiConfigId
+          apiConfigId,
+          acmeConfigId
         },
         tx
       );
@@ -439,6 +485,12 @@ export const certificateProfileServiceFactory = ({
         profile.estConfig.caChain = "";
       }
     }
+    if (profile.enrollmentType === EnrollmentType.ACME && profile.acmeConfig) {
+      profile.acmeConfig.directoryUrl = buildUrl(profile.id, "/directory");
+      if (profile.acmeConfig.encryptedEabSecret) {
+        profile.acmeConfig.encryptedEabSecret = undefined;
+      }
+    }
 
     return {
       ...profile,
@@ -574,7 +626,10 @@ export const certificateProfileServiceFactory = ({
         const result: TCertificateProfileWithConfigs = {
           ...converted,
           estConfig: decryptedEstConfig,
-          apiConfig: profileWithConfigs.apiConfig
+          apiConfig: profileWithConfigs.apiConfig,
+          acmeConfig: profileWithConfigs.acmeConfig
+            ? { ...profileWithConfigs.acmeConfig, directoryUrl: buildUrl(profile.id, "/directory") }
+            : undefined
         };
 
         return result;
@@ -737,6 +792,59 @@ export const certificateProfileServiceFactory = ({
     };
   };
 
+  const revealAcmeEabSecret = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    profileId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    profileId: string;
+  }) => {
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+      ProjectPermissionSub.CertificateProfiles
+    );
+
+    if (profile.enrollmentType !== EnrollmentType.ACME) {
+      throw new ForbiddenRequestError({
+        message: "Profile is not configured for ACME enrollment"
+      });
+    }
+    if (!profile.acmeConfig) {
+      throw new NotFoundError({ message: "ACME configuration not found for this profile" });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: profile.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+    const eabSecret = await kmsDecryptor({ cipherTextBlob: profile.acmeConfig.encryptedEabSecret! });
+    return { eabKid: profile.id, eabSecret: eabSecret.toString("base64url") };
+  };
+
   return {
     createProfile,
     updateProfile,
@@ -746,6 +854,7 @@ export const certificateProfileServiceFactory = ({
     listProfiles,
     deleteProfile,
     getProfileCertificates,
-    getEstConfigurationByProfile
+    getEstConfigurationByProfile,
+    revealAcmeEabSecret
   };
 };

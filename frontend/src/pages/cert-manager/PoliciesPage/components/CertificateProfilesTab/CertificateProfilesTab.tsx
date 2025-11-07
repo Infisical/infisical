@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
@@ -16,6 +16,7 @@ import {
 
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
+import { RevealAcmeEabSecretModal } from "./RevealAcmeEabSecretModal";
 
 export const CertificateProfilesTab = () => {
   const { permission } = useProjectPermission();
@@ -23,6 +24,8 @@ export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRevealProfileAcmeEabSecretModalOpen, setIsRevealProfileAcmeEabSecretModalOpen] =
+    useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
@@ -41,6 +44,11 @@ export const CertificateProfilesTab = () => {
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
+  };
+
+  const handleRevealProfileAcmeEabSecret = (profile: TCertificateProfileWithDetails) => {
+    setSelectedProfile(profile);
+    setIsRevealProfileAcmeEabSecretModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -85,7 +93,11 @@ export const CertificateProfilesTab = () => {
         )}
       </div>
 
-      <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
+      <ProfileList
+        onEditProfile={handleEditProfile}
+        onRevealProfileAcmeEabSecret={handleRevealProfileAcmeEabSecret}
+        onDeleteProfile={handleDeleteProfile}
+      />
 
       <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
 
@@ -100,6 +112,17 @@ export const CertificateProfilesTab = () => {
             profile={selectedProfile}
             mode="edit"
           />
+
+          {selectedProfile.enrollmentType === "acme" && (
+            <RevealAcmeEabSecretModal
+              isOpen={isRevealProfileAcmeEabSecretModalOpen}
+              onClose={() => {
+                setIsRevealProfileAcmeEabSecretModalOpen(false);
+                setSelectedProfile(null);
+              }}
+              profile={selectedProfile}
+            />
+          )}
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}

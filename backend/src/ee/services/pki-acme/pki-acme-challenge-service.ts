@@ -1,0 +1,133 @@
+import { getConfig } from "@app/lib/config/env";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { isPrivateIp } from "@app/lib/ip/ipRange";
+import { logger } from "@app/lib/logger";
+import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
+import {
+  AcmeConnectionError,
+  AcmeDnsFailureError,
+  AcmeIncorrectResponseError,
+  AcmeServerInternalError
+} from "./pki-acme-errors";
+import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
+import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
+
+type FetchError = Error & {
+  code?: string;
+};
+
+type TPkiAcmeChallengeServiceFactoryDep = {
+  acmeChallengeDAL: Pick<
+    TPkiAcmeChallengeDALFactory,
+    "transaction" | "findByIdForChallengeValidation" | "markAsValidCascadeById" | "markAsInvalidCascadeById"
+  >;
+};
+
+export const pkiAcmeChallengeServiceFactory = ({
+  acmeChallengeDAL
+}: TPkiAcmeChallengeServiceFactoryDep): TPkiAcmeChallengeServiceFactory => {
+  const appCfg = getConfig();
+
+  const validateChallengeResponse = async (challengeId: string): Promise<void> => {
+    const error: Error | undefined = await acmeChallengeDAL.transaction(async (tx) => {
+      logger.info({ challengeId }, "Validating ACME challenge response");
+      const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
+      if (!challenge) {
+        throw new NotFoundError({ message: "ACME challenge not found" });
+      }
+      if (challenge.status !== AcmeChallengeStatus.Pending) {
+        throw new BadRequestError({
+          message: `ACME challenge is ${challenge.status} instead of ${AcmeChallengeStatus.Pending}`
+        });
+      }
+      if (challenge.auth.expiresAt < new Date()) {
+        throw new BadRequestError({ message: "ACME auth has expired" });
+      }
+      if (challenge.auth.status !== AcmeAuthStatus.Pending) {
+        throw new BadRequestError({
+          message: `ACME auth status is ${challenge.auth.status} instead of ${AcmeAuthStatus.Pending}`
+        });
+      }
+
+      // TODO: support other challenge types here. Currently only HTTP-01 is supported
+      if (challenge.type !== AcmeChallengeType.HTTP_01) {
+        throw new BadRequestError({ message: "Only HTTP-01 challenges are supported for now" });
+      }
+      let host = challenge.auth.identifierValue;
+      // check if host is a private ip address
+      if (isPrivateIp(host)) {
+        throw new BadRequestError({ message: "Private IP addresses are not allowed" });
+      }
+      if (appCfg.isAcmeDevelopmentMode && appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host]) {
+        host = appCfg.ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES[host];
+        logger.warn(
+          { srcHost: challenge.auth.identifierValue, dstHost: host },
+          "Using ACME development HTTP-01 challenge host override"
+        );
+      }
+      const challengeUrl = new URL(`/.well-known/acme-challenge/${challenge.auth.token}`, `http://${host}`);
+      logger.info({ challengeUrl }, "Performing ACME HTTP-01 challenge validation");
+      try {
+        // TODO: read config from the profile to get the timeout instead
+        const timeoutMs = 10 * 1000; // 10 seconds
+        // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
+        //         a long running operation for long time. But assuming we are not performing a tons of
+        //         challenge validation at the same time, it should be fine.
+        const challengeResponse = await fetch(challengeUrl, { signal: AbortSignal.timeout(timeoutMs) });
+        if (challengeResponse.status !== 200) {
+          throw new BadRequestError({ message: "ACME challenge response is not 200" });
+        }
+        const challengeResponseBody = await challengeResponse.text();
+        const thumbprint = challenge.auth.account.publicKeyThumbprint;
+        const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
+        if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
+          throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
+        }
+        await acmeChallengeDAL.markAsValidCascadeById(challengeId, tx);
+      } catch (exp) {
+        // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
+        await acmeChallengeDAL.markAsInvalidCascadeById(challengeId, tx);
+        // Properly type and inspect the error
+        if (exp instanceof TypeError && exp.message.includes("fetch failed")) {
+          const { cause } = exp;
+          let errors: Error[] = [];
+          if (cause instanceof AggregateError) {
+            errors = cause.errors as Error[];
+          } else if (cause instanceof Error) {
+            errors = [cause];
+          }
+          // eslint-disable-next-line no-unreachable-loop
+          for (const err of errors) {
+            // TODO: handle multiple errors, return a compound error instead of just the first error
+            const fetchError = err as FetchError;
+            if (fetchError.code === "ECONNREFUSED" || fetchError.message.includes("ECONNREFUSED")) {
+              return new AcmeConnectionError({ message: "Connection refused" });
+            }
+            if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
+              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
+            }
+            return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
+          }
+        } else if (exp instanceof DOMException) {
+          if (exp.name === "TimeoutError") {
+            logger.error(exp, "Connection timed out while validating ACME challenge response");
+            return new AcmeConnectionError({ message: "Connection timed out" });
+          }
+          logger.error(exp, "Unknown error validating ACME challenge response");
+          return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
+        } else if (exp instanceof Error) {
+          logger.error(exp, "Error validating ACME challenge response");
+        } else {
+          logger.error(exp, "Unknown error validating ACME challenge response");
+          return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
+        }
+        return exp;
+      }
+    });
+    if (error) {
+      throw error;
+    }
+  };
+
+  return { validateChallengeResponse };
+};
