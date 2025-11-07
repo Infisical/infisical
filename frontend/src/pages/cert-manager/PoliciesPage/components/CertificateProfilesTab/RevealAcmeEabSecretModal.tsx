@@ -14,6 +14,8 @@ import { useRevealAcmeEabSecret } from "@app/hooks/api/certificateProfiles/queri
 import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+const RESET_COPIED_DELAY = 1 * 1000;
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -67,6 +69,9 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
                 onClick={() => {
                   navigator.clipboard.writeText(directoryUrl);
                   setIsAcmeDirectoryUrlCopied.on();
+                  setTimeout(() => {
+                    setIsAcmeDirectoryUrlCopied.off();
+                  }, RESET_COPIED_DELAY);
                 }}
                 className="w-10"
               >
@@ -88,6 +93,9 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
                 onClick={() => {
                   navigator.clipboard.writeText(eabKid);
                   setIsEabKidCopied.on();
+                  setTimeout(() => {
+                    setIsEabKidCopied.off();
+                  }, RESET_COPIED_DELAY);
                 }}
                 className="w-10"
               >
@@ -109,6 +117,9 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
                 onClick={() => {
                   navigator.clipboard.writeText(eabSecret);
                   setIsEabSecretCopied.on();
+                  setTimeout(() => {
+                    setIsEabSecretCopied.off();
+                  }, RESET_COPIED_DELAY);
                 }}
                 className="w-10"
               >
