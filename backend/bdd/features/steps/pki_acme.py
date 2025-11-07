@@ -138,12 +138,39 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    # TODO: Fixed value for now, just to make test much easier,
-    #       we should call infisical API to create such profile instead
-    #       in the future
     profile_id = os.getenv("PROFILE_ID")
-    kid = profile_id
     secret = os.getenv("EAB_SECRET")
+    if profile_id is None and secret is None:
+        kid = profile_id
+
+    else:
+        profile_slug = faker.slug()
+        response = context.http_client.post(
+            "/api/v1/pki/certificate-profiles",
+            headers=prepare_headers(context),
+            json={
+                "projectId": context.vars["PROJECT_ID"],
+                "slug": profile_slug,
+                "description": "ACME Profile created by BDD test",
+                "enrollmentType": "acme",
+                "caId": context.vars["CERT_CA_ID"],
+                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "acmeConfig": {},
+            },
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        profile_id = resp_json["certificateProfile"]["id"]
+        kid = profile_id
+
+        response = context.http_client.get(
+            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            headers=prepare_headers(context),
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        secret = resp_json["eabSecret"]
+
     context.vars[profile_var] = AcmeProfile(
         profile_id,
         eab_kid=kid,
