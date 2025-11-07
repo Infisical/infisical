@@ -41,7 +41,6 @@ import {
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
-  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 import { buildUrl, extractAccountIdFromKid } from "./pki-acme-fns";
@@ -171,9 +170,16 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      const parsedUrl = (() => {
+        try {
+          return new URL(protectedHeader.url);
+        } catch (error) {
+          throw new AcmeMalformedError({ message: "Invalid URL in the protected header" });
+        }
+      })();
       // Validate the URL
-      if (new URL(protectedHeader.url).href !== url.href) {
-        throw new AcmeUnauthorizedError({ message: "URL mismatch in the protected header" });
+      if (parsedUrl.href !== url.href) {
+        throw new AcmeMalformedError({ message: "URL mismatch in the protected header" });
       }
       // Consume the nonce
       if (!protectedHeader.nonce) {

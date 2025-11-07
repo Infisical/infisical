@@ -23,17 +23,17 @@ Feature: Nonce
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<url>"
-    """
-    {
-      "protected": {
-        "alg": "RS256",
-        "nonce": "oFvnlFP1wIhRlYS2jTaXbA",
-        "url": "<url>",
-        "kid": "{acme_account.uri}"
-      },
-      "payload": {}
-    }
-    """
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "oFvnlFP1wIhRlYS2jTaXbA",
+          "url": "<url>",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {}
+      }
+      """
     Then the value response.status_code should be equal to 400
     Then the value response with jq ".status" should be equal to 400
     Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:badNonce"
@@ -66,31 +66,31 @@ Feature: Nonce
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
     Then I peak and memorize the next nonce as nonce_value
     When I send a raw ACME request to "/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders"
-    """
-    {
-      "protected": {
-        "alg": "RS256",
-        "nonce": "{nonce_value}",
-        "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders",
-        "kid": "{acme_account.uri}"
-      },
-      "payload": {}
-    }
-    """
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce_value}",
+          "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {}
+      }
+      """
     Then the value response.status_code should be equal to 200
     Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<url>"
-    """
-    {
-      "protected": {
-        "alg": "RS256",
-        "nonce": "{nonce_value}",
-        "url": "<url>",
-        "kid": "{acme_account.uri}"
-      },
-      "payload": {}
-    }
-    """
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce_value}",
+          "url": "<url>",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {}
+      }
+      """
     Then the value response.status_code should be equal to 400
     Then the value response with jq ".status" should be equal to 400
     Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:badNonce"

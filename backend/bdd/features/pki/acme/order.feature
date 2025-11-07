@@ -112,21 +112,21 @@ Feature: Order
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     Then I peak and memorize the next nonce as nonce
     When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
-    """
-    {
-      "protected": {
-        "alg": "RS256",
-        "nonce": "{nonce}",
-        "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
-        "kid": "{acme_account.uri}"
-      },
-      "payload": {
-        "identifiers": [
-           { "type": "dns", "value": "<identifier_value>" }
-         ]
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce}",
+          "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {
+          "identifiers": [
+             { "type": "dns", "value": "<identifier_value>" }
+           ]
+        }
       }
-    }
-    """
+      """
 
     Examples: Bad Identifier Vluaes
       | identifier_value |
