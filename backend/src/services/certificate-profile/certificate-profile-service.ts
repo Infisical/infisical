@@ -802,7 +802,6 @@ export const certificateProfileServiceFactory = ({
       cipherTextBlob: certBody.encryptedCertificate
     });
 
-    // @ts-expect-error - Buffer type is compatible at runtime despite TypeScript error
     const certObj = new x509.X509Certificate(decryptedCert);
     const certificate = certObj.toString("pem");
 
