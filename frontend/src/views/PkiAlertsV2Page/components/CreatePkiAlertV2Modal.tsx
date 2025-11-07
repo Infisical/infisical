@@ -37,7 +37,7 @@ const FORM_TABS: { name: string; key: string; fields: (keyof TFormData)[] }[] = 
   {
     name: "Details",
     key: "basicInfo",
-    fields: ["slug", "description", "alertBefore"]
+    fields: ["name", "description", "alertBefore"]
   },
   { name: "Filters", key: "filterRules", fields: ["filters"] },
   { name: "Preview", key: "preview", fields: [] },
@@ -61,7 +61,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     resolver: zodResolver(isEditing ? updatePkiAlertV2Schema : createPkiAlertV2Schema),
     defaultValues: {
       projectId: currentProject?.id || "",
-      slug: "",
+      name: "",
       description: "",
       eventType: PkiAlertEventTypeV2.EXPIRATION,
       alertBefore: "30d",
@@ -93,7 +93,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     if (editingAlert && isEditing) {
       reset({
         projectId: currentProject?.id || "",
-        slug: editingAlert.slug,
+        name: editingAlert.name,
         description: editingAlert.description || "",
         eventType: editingAlert.eventType,
         alertBefore: editingAlert.alertBefore || "30d",
@@ -121,7 +121,7 @@ export const CreatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertToEdit, alert
     } else if (!isEditing) {
       reset({
         projectId: currentProject?.id || "",
-        slug: "",
+        name: "",
         description: "",
         eventType: PkiAlertEventTypeV2.EXPIRATION,
         alertBefore: "30d",

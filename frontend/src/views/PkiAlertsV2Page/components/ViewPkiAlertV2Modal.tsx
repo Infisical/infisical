@@ -136,7 +136,7 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
       <ModalContent title="Certificate Alert Details" className="max-w-6xl">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-200">{alert.slug}</h2>
+            <h2 className="text-xl font-semibold text-gray-200">{alert.name}</h2>
             <Badge variant={alert.enabled ? "success" : "neutral"}>
               {alert.enabled ? "Enabled" : "Disabled"}
             </Badge>
@@ -176,11 +176,11 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
 
                 <div className="space-y-3">
                   <h3 className="text-lg font-medium text-gray-200">Filter Rules</h3>
-                  {alert.filters.length === 0 ? (
+                  {(alert.filters || []).length === 0 ? (
                     <p className="text-gray-400">No filter rules configured</p>
                   ) : (
                     <div className="space-y-2">
-                      {alert.filters.map((filter) => {
+                      {(alert.filters || []).map((filter) => {
                         const formatFilterText = () => {
                           const field = filter.field.replace(/_/g, " ");
                           const operator = filter.operator.replace(/_/g, " ");
@@ -207,14 +207,14 @@ export const ViewPkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) =>
 
                 <div className="space-y-3">
                   <h3 className="text-lg font-medium text-gray-200">Notification Recipients</h3>
-                  {alert.channels.some(
+                  {(alert.channels || []).some(
                     (channel) =>
                       channel.channelType === "email" && (channel.config as any)?.recipients
                   ) ? (
                     <div className="space-y-3">
                       <div>
                         <div className="flex flex-wrap gap-1">
-                          {alert.channels
+                          {(alert.channels || [])
                             .filter(
                               (channel) =>
                                 channel.channelType === "email" &&

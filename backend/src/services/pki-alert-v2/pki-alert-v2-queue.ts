@@ -63,7 +63,7 @@ export const pkiAlertV2QueueServiceFactory = ({
   const evaluateAlert = async (
     alert: {
       id: string;
-      slug: string;
+      name: string;
       eventType: string;
       alertBefore: string;
       filters: TPkiFilterRule[];
@@ -135,7 +135,7 @@ export const pkiAlertV2QueueServiceFactory = ({
     for (const alert of alerts) {
       const typedAlert = alert as {
         id: string;
-        slug: string;
+        name: string;
         eventType: string;
         alertBefore: string;
         filters: TPkiFilterRule[];
@@ -147,13 +147,13 @@ export const pkiAlertV2QueueServiceFactory = ({
           await pkiAlertV2Service.sendAlertNotifications(typedAlert.id, certificateIds);
           notificationsSent += 1;
           logger.info(
-            `Sent notification for alert ${typedAlert.id} (${typedAlert.slug}) with ${certificateIds.length} certificates`
+            `Sent notification for alert ${typedAlert.id} (${typedAlert.name}) with ${certificateIds.length} certificates`
           );
         }
 
         alertsProcessed += 1;
       } catch (error) {
-        logger.error(error, `Failed to process alert ${typedAlert.id} (${typedAlert.slug})`);
+        logger.error(error, `Failed to process alert ${typedAlert.id} (${typedAlert.name})`);
       }
     }
 

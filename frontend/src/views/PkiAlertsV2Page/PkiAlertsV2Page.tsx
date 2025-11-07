@@ -45,7 +45,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean;
     alertId?: string;
-    slug?: string;
+    name?: string;
   }>({
     isOpen: false
   });
@@ -113,7 +113,7 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
             setDeleteModal({
               isOpen: true,
               alertId: alert.id,
-              slug: alert.slug
+              name: alert.name
             })
           }
         />
@@ -199,8 +199,8 @@ export const PkiAlertsV2Page = ({ hideContainer = false }: Props) => {
       <DeleteActionModal
         isOpen={deleteModal.isOpen}
         deleteKey="delete"
-        title={`Delete PKI Alert "${deleteModal.slug}"`}
-        onChange={(isOpen) => setDeleteModal({ isOpen, alertId: undefined, slug: undefined })}
+        title={`Delete PKI Alert "${deleteModal.name}"`}
+        onChange={(isOpen) => setDeleteModal({ isOpen, alertId: undefined, name: undefined })}
         onDeleteApproved={handleDeleteAlert}
       />
     </div>

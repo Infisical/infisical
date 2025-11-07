@@ -60,7 +60,7 @@ export const UpdatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) 
   useEffect(() => {
     if (alert) {
       reset({
-        slug: alert.slug,
+        name: alert.name,
         description: alert.description || "",
         eventType: alert.eventType,
         alertBefore: alert.alertBefore || "",
@@ -190,7 +190,7 @@ export const UpdatePkiAlertV2Modal = ({ isOpen, onOpenChange, alertId }: Props) 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Controller
               control={control}
-              name="slug"
+              name="name"
               render={({ field, fieldState: { error } }) => (
                 <FormControl label="Alert Name" isError={Boolean(error)} errorText={error?.message}>
                   <Input {...field} placeholder="certificate-expiration-alert" />

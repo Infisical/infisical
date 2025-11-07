@@ -7,6 +7,13 @@ import { logger } from "@app/lib/logger";
 import { PkiFilterField, PkiFilterOperator, TPkiFilterRule } from "./pki-alert-v2-types";
 
 export const sanitizeLikeInput = (input: string): string => {
+  const allowedCharsRegex = new RE2("^[a-zA-Z0-9\\s\\-_\\.@\\*]+$");
+  if (!allowedCharsRegex.test(input)) {
+    throw new Error(
+      "Invalid characters in input. Only alphanumeric characters, spaces, hyphens, underscores, dots, @ and * are allowed."
+    );
+  }
+
   const backslashRegex = new RE2("\\\\", "g");
   const percentRegex = new RE2("%", "g");
   const underscoreRegex = new RE2("_", "g");
@@ -169,25 +176,32 @@ const applySanFilter = (query: Knex.QueryBuilder, filter: TPkiFilterRule): Knex.
       if (Array.isArray(value)) {
         return query.where((builder) => {
           value.forEach((v, index) => {
-            const condition = `${columnName}::text ILIKE ?`;
+            const sanitizedValue = `%"${String(v)}"%`;
             if (index === 0) {
-              void builder.whereRaw(condition, [`%"${String(v)}"%`]);
+              void builder.whereRaw(`??."altNames"::text ILIKE ?`, [TableName.Certificate, sanitizedValue]);
             } else {
-              void builder.orWhereRaw(condition, [`%"${String(v)}"%`]);
+              void builder.orWhereRaw(`??."altNames"::text ILIKE ?`, [TableName.Certificate, sanitizedValue]);
             }
           });
         });
       }
-      return query.whereRaw(`${columnName}::text ILIKE ?`, [`%"${String(value)}"%`]);
+      {
+        const sanitizedValue = `%"${String(value)}"%`;
+        return query.whereRaw(`??."altNames"::text ILIKE ?`, [TableName.Certificate, sanitizedValue]);
+      }
 
     case PkiFilterOperator.CONTAINS:
       return applySanFilter(query, { ...filter, operator: PkiFilterOperator.MATCHES });
 
-    case PkiFilterOperator.STARTS_WITH:
-      return query.whereRaw(`${columnName}::text ILIKE ?`, [`%"${String(value)}%`]);
+    case PkiFilterOperator.STARTS_WITH: {
+      const startsWithValue = `%"${String(value)}%`;
+      return query.whereRaw(`??."altNames"::text ILIKE ?`, [TableName.Certificate, startsWithValue]);
+    }
 
-    case PkiFilterOperator.ENDS_WITH:
-      return query.whereRaw(`${columnName}::text ILIKE ?`, [`%${String(value)}"%`]);
+    case PkiFilterOperator.ENDS_WITH: {
+      const endsWithValue = `%${String(value)}"%`;
+      return query.whereRaw(`??."altNames"::text ILIKE ?`, [TableName.Certificate, endsWithValue]);
+    }
 
     default:
       logger.warn(`Unsupported operator for SAN: ${String(filter.operator)}`);
@@ -244,7 +258,7 @@ export const applyCaFilters = (
   filters: TPkiFilterRule[],
   projectId: string
 ): Knex.QueryBuilder => {
-  let filteredQuery = query.where(`${TableName.CertificateAuthority}.projectId`, projectId);
+  let filteredQuery = query.where(`${TableName.CertificateAuthority}.projectId`, projectId).whereNotNull("ica.caId"); // Only include CAs that have internal CA data
 
   filters.forEach((filter) => {
     switch (filter.field) {

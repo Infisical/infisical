@@ -12,7 +12,7 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
     alertId: string,
     certificateIds: string[],
     options?: {
-      notificationSent?: boolean;
+      hasNotificationSent?: boolean;
       notificationError?: string;
     }
   ): Promise<TPkiAlertHistory> => {
@@ -21,7 +21,7 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
         const historyRecords = await tx(TableName.PkiAlertHistory)
           .insert({
             alertId,
-            notificationSent: options?.notificationSent || false,
+            hasNotificationSent: options?.hasNotificationSent || false,
             notificationError: options?.notificationError
           })
           .returning("*");
@@ -91,7 +91,7 @@ export const pkiAlertHistoryDALFactory = (db: TDbClient) => {
         .from(`${TableName.PkiAlertHistory} as hist`)
         .join(`${TableName.PkiAlertHistoryCertificate} as cert`, "hist.id", "cert.alertHistoryId")
         .where("hist.alertId", alertId)
-        .where("hist.notificationSent", true)
+        .where("hist.hasNotificationSent", true)
         .where("hist.triggeredAt", ">=", cutoffDate)
         .whereIn("cert.certificateId", certificateIds)) as Array<{ certificateId: string }>;
 

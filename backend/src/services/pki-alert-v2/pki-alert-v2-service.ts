@@ -39,8 +39,10 @@ type TPkiAlertV2ServiceFactoryDep = {
     | "updateById"
     | "deleteById"
     | "findByProjectId"
+    | "findByProjectIdWithCount"
     | "countByProjectId"
     | "findMatchingCertificates"
+    | "transaction"
   >;
   pkiAlertChannelDAL: Pick<TPkiAlertChannelDALFactory, "create" | "findByAlertId" | "deleteByAlertId" | "insertMany">;
   pkiAlertHistoryDAL: Pick<TPkiAlertHistoryDALFactory, "createWithCertificates" | "findByAlertId">;
@@ -59,7 +61,7 @@ export const pkiAlertV2ServiceFactory = ({
 }: TPkiAlertV2ServiceFactoryDep) => {
   type TAlertWithChannels = {
     id: string;
-    slug: string;
+    name: string;
     description: string;
     eventType: string;
     alertBefore: string;
@@ -81,7 +83,7 @@ export const pkiAlertV2ServiceFactory = ({
   const formatAlertResponse = (alert: TAlertWithChannels): TAlertV2Response => {
     return {
       id: alert.id,
-      slug: alert.slug,
+      name: alert.name,
       description: alert.description,
       eventType: alert.eventType as PkiAlertEventType,
       alertBefore: alert.alertBefore,
@@ -103,7 +105,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const createAlert = async ({
     projectId,
-    slug,
+    name,
     description,
     eventType,
     alertBefore,
@@ -132,31 +134,36 @@ export const pkiAlertV2ServiceFactory = ({
       throw new BadRequestError({ message: "Invalid alertBefore format. Use format like '30d', '1w', '3m', '1y'" });
     }
 
-    const alert = await pkiAlertV2DAL.create({
-      projectId,
-      slug,
-      description,
-      eventType,
-      alertBefore,
-      filters,
-      enabled
+    return pkiAlertV2DAL.transaction(async (tx) => {
+      const alert = await pkiAlertV2DAL.create(
+        {
+          projectId,
+          name,
+          description,
+          eventType,
+          alertBefore,
+          filters,
+          enabled
+        },
+        tx
+      );
+
+      const channelInserts = channels.map((channel) => ({
+        alertId: alert.id,
+        channelType: channel.channelType,
+        config: channel.config,
+        enabled: channel.enabled
+      }));
+
+      await pkiAlertChannelDAL.insertMany(channelInserts, tx);
+
+      const completeAlert = await pkiAlertV2DAL.findByIdWithChannels(alert.id, tx);
+      if (!completeAlert) {
+        throw new NotFoundError({ message: "Failed to retrieve created alert" });
+      }
+
+      return formatAlertResponse(completeAlert as TAlertWithChannels);
     });
-
-    const channelInserts = channels.map((channel) => ({
-      alertId: alert.id,
-      channelType: channel.channelType,
-      config: channel.config,
-      enabled: channel.enabled
-    }));
-
-    await pkiAlertChannelDAL.insertMany(channelInserts);
-
-    const completeAlert = await pkiAlertV2DAL.findByIdWithChannels(alert.id);
-    if (!completeAlert) {
-      throw new NotFoundError({ message: "Failed to retrieve created alert" });
-    }
-
-    return formatAlertResponse(completeAlert as TAlertWithChannels);
   };
 
   const getAlertById = async ({
@@ -208,10 +215,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     const filters = { search, eventType, enabled, limit, offset };
 
-    const [alerts, total] = await Promise.all([
-      pkiAlertV2DAL.findByProjectId(projectId, filters),
-      pkiAlertV2DAL.countByProjectId(projectId, { search, eventType, enabled })
-    ]);
+    const { alerts, total } = await pkiAlertV2DAL.findByProjectIdWithCount(projectId, filters);
 
     return {
       alerts: alerts.map((alert) => formatAlertResponse(alert as TAlertWithChannels)),
@@ -221,7 +225,7 @@ export const pkiAlertV2ServiceFactory = ({
 
   const updateAlert = async ({
     alertId,
-    slug,
+    name,
     description,
     eventType,
     alertBefore,
@@ -256,41 +260,43 @@ export const pkiAlertV2ServiceFactory = ({
     }
 
     const updateData: {
-      slug?: string;
+      name?: string;
       description?: string;
       eventType?: PkiAlertEventType;
       alertBefore?: string;
       filters?: TPkiFilterRule[];
       enabled?: boolean;
     } = {};
-    if (slug !== undefined) updateData.slug = slug;
+    if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (eventType !== undefined) updateData.eventType = eventType;
     if (alertBefore !== undefined) updateData.alertBefore = alertBefore;
     if (filters !== undefined) updateData.filters = filters;
     if (enabled !== undefined) updateData.enabled = enabled;
 
-    alert = await pkiAlertV2DAL.updateById(alertId, updateData);
+    return pkiAlertV2DAL.transaction(async (tx) => {
+      alert = await pkiAlertV2DAL.updateById(alertId, updateData, tx);
 
-    if (channels) {
-      await pkiAlertChannelDAL.deleteByAlertId(alertId);
+      if (channels) {
+        await pkiAlertChannelDAL.deleteByAlertId(alertId, tx);
 
-      const channelInserts = channels.map((channel) => ({
-        alertId,
-        channelType: channel.channelType,
-        config: channel.config,
-        enabled: channel.enabled
-      }));
+        const channelInserts = channels.map((channel) => ({
+          alertId,
+          channelType: channel.channelType,
+          config: channel.config,
+          enabled: channel.enabled
+        }));
 
-      await pkiAlertChannelDAL.insertMany(channelInserts);
-    }
+        await pkiAlertChannelDAL.insertMany(channelInserts, tx);
+      }
 
-    const completeAlert = await pkiAlertV2DAL.findByIdWithChannels(alertId);
-    if (!completeAlert) {
-      throw new NotFoundError({ message: "Failed to retrieve updated alert" });
-    }
+      const completeAlert = await pkiAlertV2DAL.findByIdWithChannels(alertId, tx);
+      if (!completeAlert) {
+        throw new NotFoundError({ message: "Failed to retrieve updated alert" });
+      }
 
-    return formatAlertResponse(completeAlert as TAlertWithChannels);
+      return formatAlertResponse(completeAlert as TAlertWithChannels);
+    });
   };
 
   const deleteAlert = async ({
@@ -365,9 +371,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     return {
       certificates: result.certificates,
-      total: result.total,
-      limit,
-      offset
+      total: result.total
     };
   };
 
@@ -415,9 +419,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     return {
       certificates: result.certificates,
-      total: result.total,
-      limit,
-      offset
+      total: result.total
     };
   };
 
@@ -445,7 +447,7 @@ export const pkiAlertV2ServiceFactory = ({
 
     if (matchingCertificates.length === 0) return;
 
-    let notificationSent = false;
+    let hasNotificationSent = false;
     let notificationError: string | undefined;
 
     try {
@@ -455,7 +457,7 @@ export const pkiAlertV2ServiceFactory = ({
       );
 
       const alertBeforeDays = parseTimeToDays((alert as { alertBefore: string }).alertBefore);
-      const alertName = (alert as { slug: string }).slug;
+      const alertName = (alert as { name: string }).name;
 
       const emailPromises = emailChannels.map((channel) => {
         const config = channel.config as TEmailChannelConfig;
@@ -480,14 +482,14 @@ export const pkiAlertV2ServiceFactory = ({
 
       await Promise.all(emailPromises);
 
-      notificationSent = true;
+      hasNotificationSent = true;
     } catch (error) {
       notificationError = error instanceof Error ? error.message : "Unknown error occurred";
       logger.error(error, `Failed to send notifications for alert ${alertId}`);
     }
 
     await pkiAlertHistoryDAL.createWithCertificates(alertId, certificateIds, {
-      notificationSent,
+      hasNotificationSent,
       notificationError
     });
   };

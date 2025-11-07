@@ -87,7 +87,7 @@ export const PkiAlertV2Row = ({ alert, onView, onEdit, onDelete }: Props) => {
     <Tr>
       <Td>
         <div className="flex items-center gap-2">
-          <div className="font-medium text-gray-200">{alert.slug}</div>
+          <div className="font-medium text-gray-200">{alert.name}</div>
           {alert.description && (
             <Tooltip content={alert.description}>
               <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />

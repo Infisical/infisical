@@ -102,7 +102,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectId = async (
+  const findByProjectIdWithCount = async (
     projectId: string,
     filters?: {
       search?: string;
@@ -112,15 +112,32 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
       offset?: number;
     },
     tx?: Knex
-  ): Promise<TAlertWithChannels[]> => {
+  ): Promise<{ alerts: TAlertWithChannels[]; total: number }> => {
     try {
+      let countQuery = (tx || db.replicaNode())
+        .count("* as count")
+        .from(TableName.PkiAlertsV2)
+        .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
+
+      if (filters?.search) {
+        countQuery = countQuery.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
+      }
+
+      if (filters?.eventType) {
+        countQuery = countQuery.where(`${TableName.PkiAlertsV2}.eventType`, filters.eventType);
+      }
+
+      if (filters?.enabled !== undefined) {
+        countQuery = countQuery.where(`${TableName.PkiAlertsV2}.enabled`, filters.enabled);
+      }
+
       let alertQuery = (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertsV2))
         .from(TableName.PkiAlertsV2)
         .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
 
       if (filters?.search) {
-        alertQuery = alertQuery.whereILike(`${TableName.PkiAlertsV2}.slug`, `%${sanitizeLikeInput(filters.search)}%`);
+        alertQuery = alertQuery.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
       }
 
       if (filters?.eventType) {
@@ -141,13 +158,11 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         alertQuery = alertQuery.offset(filters.offset);
       }
 
-      const alerts = (await alertQuery) as TPkiAlertsV2[];
+      const [countResult, alerts] = await Promise.all([countQuery, alertQuery]);
 
-      if (alerts.length === 0) {
-        return [];
-      }
+      const total = parseInt((countResult[0] as { count: string }).count, 10);
 
-      const alertIds = alerts.map((alert) => alert.id);
+      const alertIds = (alerts as TPkiAlertsV2[]).map((alert) => alert.id);
       const channels = (await (tx || db.replicaNode())
         .select(selectAllTableCols(TableName.PkiAlertChannels))
         .from(TableName.PkiAlertChannels)
@@ -164,15 +179,30 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         {} as Record<string, TChannelResult[]>
       );
 
-      const result: TAlertWithChannels[] = alerts.map((alert) => ({
+      const alertsWithChannels: TAlertWithChannels[] = (alerts as TPkiAlertsV2[]).map((alert) => ({
         ...alert,
         channels: channelsByAlertId[alert.id] || []
       }));
 
-      return result;
+      return { alerts: alertsWithChannels, total };
     } catch (error) {
-      throw new DatabaseError({ error, name: "FindByProjectId" });
+      throw new DatabaseError({ error, name: "FindByProjectIdWithCount" });
     }
+  };
+
+  const findByProjectId = async (
+    projectId: string,
+    filters?: {
+      search?: string;
+      eventType?: string;
+      enabled?: boolean;
+      limit?: number;
+      offset?: number;
+    },
+    tx?: Knex
+  ): Promise<TAlertWithChannels[]> => {
+    const result = await findByProjectIdWithCount(projectId, filters, tx);
+    return result.alerts;
   };
 
   const countByProjectId = async (
@@ -191,7 +221,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         .where(`${TableName.PkiAlertsV2}.projectId`, projectId);
 
       if (filters?.search) {
-        query = query.whereILike(`${TableName.PkiAlertsV2}.slug`, `%${sanitizeLikeInput(filters.search)}%`);
+        query = query.whereILike(`${TableName.PkiAlertsV2}.name`, `%${sanitizeLikeInput(filters.search)}%`);
       }
 
       if (filters?.eventType) {
@@ -257,7 +287,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         let caCountQuery = (tx || db.replicaNode())
           .count("* as count")
           .from(TableName.CertificateAuthority)
-          .leftJoin(
+          .innerJoin(
             `${TableName.InternalCertificateAuthority} as ica`,
             `${TableName.CertificateAuthority}.id`,
             `ica.caId`
@@ -268,16 +298,16 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         if (options?.alertBefore) {
           if (options.showFutureMatches) {
             caCountQuery = caCountQuery
-              .whereRaw(`ica."notAfter" > NOW() + INTERVAL '${options.alertBefore}'`)
+              .whereRaw(`ica."notAfter" > NOW() + ?::interval`, [options.alertBefore])
               .whereRaw(`ica."notAfter" > NOW()`);
           } else if (options.showCurrentMatches) {
             caCountQuery = caCountQuery
               .whereRaw(`ica."notAfter" > NOW()`)
-              .whereRaw(`ica."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`);
+              .whereRaw(`ica."notAfter" <= NOW() + ?::interval`, [options.alertBefore]);
           } else {
             caCountQuery = caCountQuery
               .whereRaw(`ica."notAfter" > NOW()`)
-              .whereRaw(`ica."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`);
+              .whereRaw(`ica."notAfter" <= NOW() + ?::interval`, [options.alertBefore]);
           }
         }
 
@@ -290,23 +320,23 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
       if (options?.showPreview) {
         certCountQuery = certCountQuery
-          .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
+          .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
           .whereNot(`${TableName.Certificate}.status`, "revoked");
       } else if (options?.alertBefore) {
         if (options.showFutureMatches) {
           certCountQuery = certCountQuery
-            .whereRaw(`${TableName.Certificate}."notAfter" > NOW() + INTERVAL '${options.alertBefore}'`)
-            .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW() + ?::interval`, [options.alertBefore])
+            .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
             .whereNot(`${TableName.Certificate}.status`, "revoked");
         } else if (options.showCurrentMatches) {
           certCountQuery = certCountQuery
-            .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
-            .whereRaw(`${TableName.Certificate}."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" <= NOW() + ?::interval`, [options.alertBefore])
             .whereNot(`${TableName.Certificate}.status`, "revoked");
         } else {
           certCountQuery = certCountQuery
-            .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
-            .whereRaw(`${TableName.Certificate}."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" <= NOW() + ?::interval`, [options.alertBefore])
             .whereNot(`${TableName.Certificate}.status`, "revoked");
         }
       }
@@ -322,7 +352,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
               `${TableName.PkiAlertHistoryCertificate}.alertHistoryId`
             )
             .where(`${TableName.PkiAlertHistory}.alertId`, options.alertId)
-            .whereRaw(`"${TableName.PkiAlertHistoryCertificate}"."certificateId" = "${TableName.Certificate}"."id"`)
+            .whereRaw(`"${TableName.PkiAlertHistoryCertificate}"."certificateId" = "${TableName.Certificate}".id`)
         );
       }
 
@@ -346,7 +376,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         ];
 
         if (needsProfileJoin) {
-          selectColumns.push("profile.slug as profileName");
+          selectColumns.push("profile.name as profileName");
         }
 
         let certificateQuery = (tx || db.replicaNode()).select(selectColumns).from(TableName.Certificate);
@@ -355,23 +385,23 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
 
         if (options?.showPreview) {
           certificateQuery = certificateQuery
-            .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
+            .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
             .whereNot(`${TableName.Certificate}.status`, "revoked");
         } else if (options?.alertBefore) {
           if (options.showFutureMatches) {
             certificateQuery = certificateQuery
-              .whereRaw(`${TableName.Certificate}."notAfter" > NOW() + INTERVAL '${options.alertBefore}'`)
-              .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
+              .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW() + ?::interval`, [options.alertBefore])
+              .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
               .whereNot(`${TableName.Certificate}.status`, "revoked");
           } else if (options.showCurrentMatches) {
             certificateQuery = certificateQuery
-              .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
-              .whereRaw(`${TableName.Certificate}."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`)
+              .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
+              .whereRaw(`"${TableName.Certificate}"."notAfter" <= NOW() + ?::interval`, [options.alertBefore])
               .whereNot(`${TableName.Certificate}.status`, "revoked");
           } else {
             certificateQuery = certificateQuery
-              .whereRaw(`${TableName.Certificate}."notAfter" > NOW()`)
-              .whereRaw(`${TableName.Certificate}."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`)
+              .whereRaw(`"${TableName.Certificate}"."notAfter" > NOW()`)
+              .whereRaw(`"${TableName.Certificate}"."notAfter" <= NOW() + ?::interval`, [options.alertBefore])
               .whereNot(`${TableName.Certificate}.status`, "revoked");
           }
         }
@@ -387,7 +417,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
                 `${TableName.PkiAlertHistoryCertificate}.alertHistoryId`
               )
               .where(`${TableName.PkiAlertHistory}.alertId`, options.alertId)
-              .whereRaw(`"${TableName.PkiAlertHistoryCertificate}"."certificateId" = "${TableName.Certificate}"."id"`)
+              .whereRaw(`"${TableName.PkiAlertHistoryCertificate}"."certificateId" = "${TableName.Certificate}".id`)
           );
         }
 
@@ -447,7 +477,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
             `ica.notAfter`
           )
           .from(TableName.CertificateAuthority)
-          .leftJoin(
+          .innerJoin(
             `${TableName.InternalCertificateAuthority} as ica`,
             `${TableName.CertificateAuthority}.id`,
             `ica.caId`
@@ -458,12 +488,12 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
         if (options?.alertBefore) {
           if (options.showFutureMatches) {
             caQuery = caQuery
-              .whereRaw(`ica."notAfter" > NOW() + INTERVAL '${options.alertBefore}'`)
+              .whereRaw(`ica."notAfter" > NOW() + ?::interval`, [options.alertBefore])
               .whereRaw(`ica."notAfter" > NOW()`);
           } else {
             caQuery = caQuery
               .whereRaw(`ica."notAfter" > NOW()`)
-              .whereRaw(`ica."notAfter" <= NOW() + INTERVAL '${options.alertBefore}'`);
+              .whereRaw(`ica."notAfter" <= NOW() + ?::interval`, [options.alertBefore]);
           }
         }
 
@@ -518,6 +548,7 @@ export const pkiAlertV2DALFactory = (db: TDbClient) => {
     findById,
     findByIdWithChannels,
     findByProjectId,
+    findByProjectIdWithCount,
     countByProjectId,
     getDistinctProjectIds,
     findMatchingCertificates

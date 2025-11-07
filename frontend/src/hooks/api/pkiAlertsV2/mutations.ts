@@ -10,8 +10,11 @@ export const useCreatePkiAlertV2 = () => {
 
   return useMutation<TPkiAlertV2, unknown, TCreatePkiAlertV2>({
     mutationFn: async (data) => {
-      const { data: response } = await apiRequest.post<TPkiAlertV2>("/api/v2/pki/alerts", data);
-      return response;
+      const { data: response } = await apiRequest.post<{ alert: TPkiAlertV2 }>(
+        "/api/v2/pki/alerts",
+        data
+      );
+      return response.alert;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -26,11 +29,11 @@ export const useUpdatePkiAlertV2 = () => {
 
   return useMutation<TPkiAlertV2, unknown, TUpdatePkiAlertV2>({
     mutationFn: async ({ alertId, ...data }) => {
-      const { data: response } = await apiRequest.patch<TPkiAlertV2>(
+      const { data: response } = await apiRequest.patch<{ alert: TPkiAlertV2 }>(
         `/api/v2/pki/alerts/${alertId}`,
         data
       );
-      return response;
+      return response.alert;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
@@ -48,8 +51,10 @@ export const useDeletePkiAlertV2 = () => {
 
   return useMutation<TPkiAlertV2, unknown, TDeletePkiAlertV2>({
     mutationFn: async ({ alertId }) => {
-      const { data } = await apiRequest.delete<TPkiAlertV2>(`/api/v2/pki/alerts/${alertId}`);
-      return data;
+      const { data } = await apiRequest.delete<{ alert: TPkiAlertV2 }>(
+        `/api/v2/pki/alerts/${alertId}`
+      );
+      return data.alert;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({

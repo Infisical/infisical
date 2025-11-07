@@ -162,7 +162,7 @@ export const CreatePkiAlertV2FormSteps = () => {
               render={({ field, fieldState: { error } }) => (
                 <FormControl label="Alert Type" isError={Boolean(error)} errorText={error?.message}>
                   <Select
-                    defaultValue={field.value}
+                    value={field.value}
                     onValueChange={(value) => field.onChange(value)}
                     className="w-full"
                   >
@@ -185,9 +185,9 @@ export const CreatePkiAlertV2FormSteps = () => {
 
           <Controller
             control={control}
-            name="slug"
+            name="name"
             render={({ field, fieldState: { error } }) => (
-              <FormControl label="Alert Slug" isError={Boolean(error)} errorText={error?.message}>
+              <FormControl label="Alert Name" isError={Boolean(error)} errorText={error?.message}>
                 <Input {...field} placeholder="e.g., prod-cert-expiring-soon" />
               </FormControl>
             )}
@@ -490,12 +490,12 @@ export const CreatePkiAlertV2FormSteps = () => {
           <div className="space-y-4">
             <FormControl label="Email Recipients">
               <TextArea
-                defaultValue={
+                value={
                   Array.isArray((watchedChannels?.[0]?.config as any)?.recipients)
                     ? (watchedChannels[0].config as any).recipients.join(", ")
                     : ""
                 }
-                onBlur={(e) => {
+                onChange={(e) => {
                   const emailList = e.target.value
                     .split(",")
                     .map((email) => email.trim())
@@ -522,7 +522,7 @@ export const CreatePkiAlertV2FormSteps = () => {
               <span className="text-sm text-mineshaft-300">Basic Information</span>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-2">
-              <GenericFieldLabel label="Slug">{watch("slug") || "Not specified"}</GenericFieldLabel>
+              <GenericFieldLabel label="Name">{watch("name") || "Not specified"}</GenericFieldLabel>
               <GenericFieldLabel label="Event Type">
                 {formatEventType(watchedEventType)}
               </GenericFieldLabel>

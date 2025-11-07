@@ -3,12 +3,18 @@ import { z } from "zod";
 
 import { TGenericPermission } from "@app/lib/types";
 
-const createSecureSlugValidator = () => {
-  const slugRegex = new RE2("^[a-z0-9]+(?:-[a-z0-9]+)*$");
-  return (value: string) => slugRegex.test(value);
+const createSecureNameValidator = () => {
+  // Validates name format: lowercase alphanumeric characters with optional hyphens
+  // Pattern: starts and ends with alphanumeric, allows hyphens between segments
+  // Examples: "my-alert", "alert1", "test-alert-2"
+  const nameRegex = new RE2("^[a-z0-9]+(?:-[a-z0-9]+)*$");
+  return (value: string) => nameRegex.test(value);
 };
 
 export const createSecureAlertBeforeValidator = () => {
+  // Validates alertBefore duration format: number followed by time unit
+  // Pattern: one or more digits followed by d(days), w(weeks), m(months), or y(years)
+  // Examples: "30d", "2w", "6m", "1y"
   const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
   return (value: string) => {
     if (value.length > 32) return false;
@@ -98,11 +104,11 @@ export const CreateChannelSchema = z.object({
 export type TCreateChannel = z.infer<typeof CreateChannelSchema>;
 
 export const CreatePkiAlertV2Schema = z.object({
-  slug: z
+  name: z
     .string()
     .min(1)
     .max(255)
-    .refine(createSecureSlugValidator(), "Must be a valid slug (lowercase, numbers, hyphens only)"),
+    .refine(createSecureNameValidator(), "Must be a valid name (lowercase, numbers, hyphens only)"),
   description: z.string().max(1000).optional(),
   eventType: z.nativeEnum(PkiAlertEventType),
   alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
@@ -169,7 +175,7 @@ export type TCertificatePreview = {
 
 export type TAlertV2Response = {
   id: string;
-  slug: string;
+  name: string;
   description: string | null;
   eventType: PkiAlertEventType;
   alertBefore: string;
@@ -196,6 +202,4 @@ export type TListAlertsV2Response = {
 export type TListMatchingCertificatesResponse = {
   certificates: TCertificatePreview[];
   total: number;
-  limit: number;
-  offset: number;
 };

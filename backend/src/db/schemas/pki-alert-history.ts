@@ -11,7 +11,7 @@ export const PkiAlertHistorySchema = z.object({
   id: z.string().uuid(),
   alertId: z.string().uuid(),
   triggeredAt: z.date().nullable().optional(),
-  notificationSent: z.boolean().default(false).nullable().optional(),
+  hasNotificationSent: z.boolean().default(false).nullable().optional(),
   notificationError: z.string().nullable().optional(),
   createdAt: z.date(),
   updatedAt: z.date()

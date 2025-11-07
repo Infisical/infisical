@@ -9,7 +9,7 @@ import { TImmutableDBKeys } from "./models";
 
 export const PkiAlertsV2Schema = z.object({
   id: z.string().uuid(),
-  slug: z.string(),
+  name: z.string(),
   description: z.string().nullable().optional(),
   eventType: z.string(),
   alertBefore: z.string().nullable().optional(),

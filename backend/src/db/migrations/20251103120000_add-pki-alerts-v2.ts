@@ -6,7 +6,7 @@ export async function up(knex: Knex): Promise<void> {
   if (!(await knex.schema.hasTable(TableName.PkiAlertsV2))) {
     await knex.schema.createTable(TableName.PkiAlertsV2, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
-      t.string("slug").notNullable();
+      t.string("name").notNullable();
       t.text("description").nullable();
       t.string("eventType").notNullable();
       t.string("alertBefore").nullable();
@@ -17,9 +17,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.index("projectId");
-      t.index("eventType");
-      t.index("enabled");
-      t.unique(["slug", "projectId"]);
+      t.unique(["name", "projectId"]);
     });
   }
 
@@ -44,7 +42,7 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.uuid("alertId").notNullable();
       t.timestamp("triggeredAt").defaultTo(knex.fn.now());
-      t.boolean("notificationSent").defaultTo(false);
+      t.boolean("hasNotificationSent").defaultTo(false);
       t.text("notificationError").nullable();
       t.timestamps(true, true, true);
 

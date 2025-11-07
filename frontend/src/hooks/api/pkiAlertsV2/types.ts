@@ -51,7 +51,7 @@ export interface TPkiAlertChannelV2 {
 export interface TPkiAlertV2 {
   id: string;
   projectId: string;
-  slug: string;
+  name: string;
   description?: string;
   eventType: PkiAlertEventTypeV2;
   alertBefore?: string;
@@ -94,7 +94,7 @@ export interface TGetPkiAlertV2ById {
 
 export interface TCreatePkiAlertV2 {
   projectId: string;
-  slug: string;
+  name: string;
   description?: string;
   eventType: PkiAlertEventTypeV2;
   alertBefore?: string;
@@ -105,7 +105,7 @@ export interface TCreatePkiAlertV2 {
 
 export interface TUpdatePkiAlertV2 {
   alertId: string;
-  slug?: string;
+  name?: string;
   description?: string;
   eventType?: PkiAlertEventTypeV2;
   alertBefore?: string;
@@ -172,11 +172,11 @@ export const pkiAlertChannelV2Schema = z.object({
 
 export const createPkiAlertV2Schema = z.object({
   projectId: z.string().uuid(),
-  slug: z
+  name: z
     .string()
     .min(1)
     .max(255)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Must be a valid slug (lowercase, numbers, hyphens only)"),
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Must be a valid name (lowercase, numbers, hyphens only)"),
   description: z.string().max(1000).optional(),
   eventType: z.nativeEnum(PkiAlertEventTypeV2),
   alertBefore: z
