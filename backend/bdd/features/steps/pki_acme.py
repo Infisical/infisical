@@ -3,7 +3,9 @@ import logging
 import os
 import re
 import threading
+import urllib.parse
 
+import acme.client
 import httpx
 import jq
 import requests
@@ -12,12 +14,14 @@ from faker import Faker
 from acme import client
 from acme import messages
 from acme import standalone
+from acme.jws import Signature
 from behave.runner import Context
 from behave import given
 from behave import when
 from behave import then
 from josepy.jwk import JWKRSA
 from josepy import JSONObjectWithFields
+from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
@@ -152,7 +156,7 @@ def step_impl(context: Context, token_var: str):
     context.auth_token = eval_var(context, token_var)
 
 
-@when('I send a {method} request to "{url}"')
+@when('I send a "{method}" request to "{url}"')
 def step_impl(context: Context, method: str, url: str):
     logger.debug("Sending %s request to %s", method, url)
     response = context.http_client.request(
@@ -166,7 +170,7 @@ def step_impl(context: Context, method: str, url: str):
         pass
 
 
-@when('I send a {method} request to "{url}" with JSON payload')
+@when('I send a "{method}" request to "{url}" with JSON payload')
 def step_impl(context: Context, method: str, url: str):
     json_payload = json.loads(context.text)
     json_payload = replace_vars(json_payload, context.vars)
@@ -246,6 +250,43 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
         external_account_binding=eab,
     )
     context.vars[account_var] = acme_client.new_account(registration)
+
+
+def send_raw_acme_req(context: Context, url: str):
+    acme_client = context.acme_client
+    content = json.loads(context.text)
+    protected = replace_vars(content["protected"], context.vars)
+    payload = (
+        replace_vars(content["payload"], context.vars) if "payload" in content else None
+    )
+    alg = acme_client.net.alg
+    encoded_payload = json.dumps(payload).encode() if payload else b""
+    protected_headers = json.dumps(protected)
+    signature = alg.sign(
+        key=acme_client.net.key.key,
+        msg=Signature._msg(protected_headers, encoded_payload),
+    )
+    jws = json.dumps(
+        {
+            "protected": json_util.encode_b64jose(protected_headers.encode()),
+            "payload": json_util.encode_b64jose(encoded_payload),
+            "signature": json_util.encode_b64jose(signature),
+        }
+    )
+    base_url = context.vars["BASE_URL"]
+    url = urllib.parse.urljoin(base_url, replace_vars(url, context.vars))
+    response = acme_client.net._send_request(
+        "POST",
+        url,
+        data=jws,
+        headers={"Content-Type": acme.client.ClientNetwork.JOSE_CONTENT_TYPE},
+    )
+    context.vars["response"] = response
+
+
+@when('I send a raw ACME request to "{url}"')
+def step_impl(context: Context, url: str):
+    send_raw_acme_req(context, url)
 
 
 @then(
