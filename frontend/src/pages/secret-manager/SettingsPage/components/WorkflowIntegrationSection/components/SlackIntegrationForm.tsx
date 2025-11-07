@@ -76,32 +76,25 @@ export const SlackIntegrationForm = ({ onClose }: Props) => {
   });
 
   const handleIntegrationSave = async (data: TSlackConfigForm) => {
-    try {
-      if (!currentProject) {
-        return;
-      }
-
-      await updateProjectSlackConfig({
-        ...data,
-        projectId: currentProject.id,
-        integration: WorkflowIntegrationPlatform.SLACK,
-        integrationId: data.slackIntegrationId,
-        accessRequestChannels: data.accessRequestChannels.filter(Boolean).join(", "),
-        secretRequestChannels: data.secretRequestChannels.filter(Boolean).join(", ")
-      });
-
-      createNotification({
-        type: "success",
-        text: "Successfully created slack integration"
-      });
-
-      onClose();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create slack integration"
-      });
+    if (!currentProject) {
+      return;
     }
+
+    await updateProjectSlackConfig({
+      ...data,
+      projectId: currentProject.id,
+      integration: WorkflowIntegrationPlatform.SLACK,
+      integrationId: data.slackIntegrationId,
+      accessRequestChannels: data.accessRequestChannels.filter(Boolean).join(", "),
+      secretRequestChannels: data.secretRequestChannels.filter(Boolean).join(", ")
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully created slack integration"
+    });
+
+    onClose();
   };
 
   const secretRequestNotifState = watch("isSecretRequestNotificationEnabled");

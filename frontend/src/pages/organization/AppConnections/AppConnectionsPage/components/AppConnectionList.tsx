@@ -72,6 +72,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
 
           return (
             <button
+              key={option.app}
               type="button"
               onClick={() =>
                 enterprise && !subscription.enterpriseAppConnections
@@ -168,7 +169,7 @@ export const AppConnectionsSelect = ({ onSelect, projectType }: Props) => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use every App Connection if you switch to Infisical's Enterprise plan."
+        text="All App Connections can be unlocked if you switch to Infisical Enterprise plan."
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
     </div>

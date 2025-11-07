@@ -87,34 +87,23 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
   }, [popUp?.orgMembership?.data, roles]);
 
   const onFormSubmit = async ({ role, metadata }: FormData) => {
-    try {
-      if (!orgId) return;
+    if (!orgId) return;
 
-      await updateOrgMembership({
-        organizationId: orgId,
-        membershipId: popUpData.membershipId,
-        role: role.slug,
-        metadata
-      });
+    await updateOrgMembership({
+      organizationId: orgId,
+      membershipId: popUpData.membershipId,
+      role: role.slug,
+      metadata
+    });
 
-      handlePopUpToggle("orgMembership", false);
+    handlePopUpToggle("orgMembership", false);
 
-      createNotification({
-        text: "Successfully updated user organization role",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully updated user organization role",
+      type: "success"
+    });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to update user organization role";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    reset();
   };
 
   return (
@@ -148,8 +137,7 @@ export const UserOrgMembershipModal = ({ popUp, handlePopUpOpen, handlePopUpTogg
 
                     if (isCustomRole && subscription && !subscription?.rbac) {
                       handlePopUpOpen("upgradePlan", {
-                        description:
-                          "You can assign custom roles to members if you switch to Infisical's Pro plan."
+                        text: "Your current plan does not include access to assig custom roles to members. To unlock this feature, please upgrade to Infisical Pro plan."
                       });
                       return;
                     }

@@ -29,8 +29,7 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
     projectId: currentProject?.id || "",
     limit: 100,
     offset: 0,
-    includeConfigs: true,
-    includeMetrics: true
+    includeConfigs: true
   });
 
   const profiles = data?.certificateProfiles || [];
@@ -42,10 +41,9 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
           <THead>
             <Tr>
               <Th>Name</Th>
-              <Th>Enrollment Type</Th>
+              <Th>Enrollment Method</Th>
               <Th>Issuing CA</Th>
               <Th>Certificate Template</Th>
-              <Th>Certificates</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -67,10 +65,9 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
         <THead>
           <Tr>
             <Th>Name</Th>
-            <Th>Enrollment Type</Th>
+            <Th>Enrollment Method</Th>
             <Th>Issuing CA</Th>
             <Th>Certificate Template</Th>
-            <Th>Certificates</Th>
             <Th className="w-5" />
           </Tr>
         </THead>

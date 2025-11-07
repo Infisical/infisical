@@ -1,4 +1,5 @@
 import { ForbiddenError, PureAbility } from "@casl/ability";
+import { requestContext } from "@fastify/request-context";
 import opentelemetry from "@opentelemetry/api";
 import fastifyPlugin from "fastify-plugin";
 import jwt from "jsonwebtoken";
@@ -47,6 +48,12 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
     unit: "1"
   });
 
+  const infisicalMeter = opentelemetry.metrics.getMeter("Infisical");
+  const errorCounter = infisicalMeter.createCounter("infisical.http.server.error.count", {
+    description: "Total number of API errors in Infisical (covers both human users and machine identities)",
+    unit: "{error}"
+  });
+
   server.setErrorHandler((error, req, res) => {
     req.log.error(error);
     if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -61,6 +68,67 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
         type: errorType,
         name: error.name
       });
+
+      const orgId = requestContext.get("orgId");
+      const orgName = requestContext.get("orgName");
+      const userAuthInfo = requestContext.get("userAuthInfo");
+      const identityAuthInfo = requestContext.get("identityAuthInfo");
+      const projectDetails = requestContext.get("projectDetails");
+
+      const attributes: Record<string, string | number> = {
+        "http.request.method": method,
+        "http.route": route,
+        "error.type": errorType,
+        "error.name": error.name
+      };
+
+      if (orgId) {
+        attributes["infisical.organization.id"] = orgId;
+      }
+      if (orgName) {
+        attributes["infisical.organization.name"] = orgName;
+      }
+
+      if (userAuthInfo) {
+        if (userAuthInfo.userId) {
+          attributes["infisical.user.id"] = userAuthInfo.userId;
+        }
+        if (userAuthInfo.email) {
+          attributes["infisical.user.email"] = userAuthInfo.email;
+        }
+      }
+
+      if (identityAuthInfo) {
+        if (identityAuthInfo.identityId) {
+          attributes["infisical.identity.id"] = identityAuthInfo.identityId;
+        }
+        if (identityAuthInfo.identityName) {
+          attributes["infisical.identity.name"] = identityAuthInfo.identityName;
+        }
+        if (identityAuthInfo.authMethod) {
+          attributes["infisical.auth.method"] = identityAuthInfo.authMethod;
+        }
+      }
+
+      if (projectDetails) {
+        if (projectDetails.id) {
+          attributes["infisical.project.id"] = projectDetails.id;
+        }
+        if (projectDetails.name) {
+          attributes["infisical.project.name"] = projectDetails.name;
+        }
+      }
+
+      const userAgent = req.headers["user-agent"];
+      if (userAgent) {
+        attributes["user_agent.original"] = userAgent;
+      }
+
+      if (req.realIp) {
+        attributes["client.address"] = req.realIp;
+      }
+
+      errorCounter.add(1, attributes);
     }
 
     if (error instanceof BadRequestError) {

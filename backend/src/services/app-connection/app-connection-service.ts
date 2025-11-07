@@ -1,6 +1,8 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TAppConnections } from "@app/db/schemas";
+import { ValidateChefConnectionCredentialsSchema } from "@app/ee/services/app-connections/chef";
+import { chefConnectionService } from "@app/ee/services/app-connections/chef/chef-connection-service";
 import { ValidateOCIConnectionCredentialsSchema } from "@app/ee/services/app-connections/oci";
 import { ociConnectionService } from "@app/ee/services/app-connections/oci/oci-connection-service";
 import { ValidateOracleDBConnectionCredentialsSchema } from "@app/ee/services/app-connections/oracledb";
@@ -96,6 +98,8 @@ import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
 import { netlifyConnectionService } from "./netlify/netlify-connection-service";
+import { ValidateNorthflankConnectionCredentialsSchema } from "./northflank";
+import { northflankConnectionService } from "./northflank/northflank-connection-service";
 import { ValidateOktaConnectionCredentialsSchema } from "./okta";
 import { oktaConnectionService } from "./okta/okta-connection-service";
 import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
@@ -170,8 +174,10 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Supabase]: ValidateSupabaseConnectionCredentialsSchema,
   [AppConnection.DigitalOcean]: ValidateDigitalOceanConnectionCredentialsSchema,
   [AppConnection.Netlify]: ValidateNetlifyConnectionCredentialsSchema,
+  [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
-  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema
+  [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
+  [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
 };
 
 export const appConnectionServiceFactory = ({
@@ -876,7 +882,9 @@ export const appConnectionServiceFactory = ({
     supabase: supabaseConnectionService(connectAppConnectionById),
     digitalOcean: digitalOceanAppPlatformConnectionService(connectAppConnectionById),
     netlify: netlifyConnectionService(connectAppConnectionById),
+    northflank: northflankConnectionService(connectAppConnectionById),
     okta: oktaConnectionService(connectAppConnectionById),
-    laravelForge: laravelForgeConnectionService(connectAppConnectionById)
+    laravelForge: laravelForgeConnectionService(connectAppConnectionById),
+    chef: chefConnectionService(connectAppConnectionById, licenseService)
   };
 };

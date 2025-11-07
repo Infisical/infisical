@@ -133,7 +133,18 @@ describe("CertificateV3Service", () => {
       certificateProfileDAL: mockCertificateProfileDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
       internalCaService: mockInternalCaService,
-      permissionService: mockPermissionService
+      permissionService: mockPermissionService,
+      certificateSyncDAL: {
+        findPkiSyncIdsByCertificateId: vi.fn().mockResolvedValue([]),
+        addCertificates: vi.fn().mockResolvedValue([]),
+        findByPkiSyncAndCertificate: vi.fn().mockResolvedValue(null)
+      },
+      pkiSyncDAL: {
+        find: vi.fn().mockResolvedValue([])
+      },
+      pkiSyncQueue: {
+        queuePkiSyncSyncCertificatesById: vi.fn().mockResolvedValue(undefined)
+      }
     });
   });
 

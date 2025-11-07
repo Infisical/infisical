@@ -24,6 +24,7 @@ import { AzureKeyVaultSyncReviewFields } from "./AzureKeyVaultSyncReviewFields";
 import { BitbucketSyncReviewFields } from "./BitbucketSyncReviewFields";
 import { CamundaSyncReviewFields } from "./CamundaSyncReviewFields";
 import { ChecklySyncReviewFields } from "./ChecklySyncReviewFields";
+import { ChefSyncReviewFields } from "./ChefSyncReviewFields";
 import { CloudflarePagesSyncReviewFields } from "./CloudflarePagesReviewFields";
 import { CloudflareWorkersSyncReviewFields } from "./CloudflareWorkersReviewFields";
 import { DatabricksSyncReviewFields } from "./DatabricksSyncReviewFields";
@@ -37,6 +38,7 @@ import { HerokuSyncReviewFields } from "./HerokuSyncReviewFields";
 import { HumanitecSyncReviewFields } from "./HumanitecSyncReviewFields";
 import { LaravelForgeSyncReviewFields } from "./LaravelForgeSyncReviewFields";
 import { NetlifySyncReviewFields } from "./NetlifySyncReviewFields";
+import { NorthflankSyncReviewFields } from "./NorthflankSyncReviewFields";
 import { OCIVaultSyncReviewFields } from "./OCIVaultSyncReviewFields";
 import { OnePassSyncReviewFields } from "./OnePassSyncReviewFields";
 import { RailwaySyncReviewFields } from "./RailwaySyncReviewFields";
@@ -167,11 +169,17 @@ export const SecretSyncReviewFields = () => {
     case SecretSync.Netlify:
       DestinationFieldsComponent = <NetlifySyncReviewFields />;
       break;
+    case SecretSync.Northflank:
+      DestinationFieldsComponent = <NorthflankSyncReviewFields />;
+      break;
     case SecretSync.Bitbucket:
       DestinationFieldsComponent = <BitbucketSyncReviewFields />;
       break;
     case SecretSync.LaravelForge:
       DestinationFieldsComponent = <LaravelForgeSyncReviewFields />;
+      break;
+    case SecretSync.Chef:
+      DestinationFieldsComponent = <ChefSyncReviewFields />;
       break;
     default:
       throw new Error(`Unhandled Destination Review Fields: ${destination}`);

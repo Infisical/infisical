@@ -33,43 +33,6 @@ import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
-const MetricsBadges = ({
-  metrics
-}: {
-  metrics?: {
-    totalCertificates: number;
-    activeCertificates: number;
-    expiringCertificates: number;
-    expiredCertificates: number;
-    revokedCertificates: number;
-  };
-}) => {
-  if (!metrics) {
-    return <Badge variant="warning">No metrics</Badge>;
-  }
-
-  if (metrics.totalCertificates === 0) {
-    return <Badge variant="warning">No certificates</Badge>;
-  }
-
-  return (
-    <>
-      {metrics.activeCertificates > 0 && (
-        <Badge variant="success">{metrics.activeCertificates} active</Badge>
-      )}
-      {metrics.expiringCertificates > 0 && (
-        <Badge variant="warning">{metrics.expiringCertificates} expiring</Badge>
-      )}
-      {metrics.expiredCertificates > 0 && (
-        <Badge variant="danger">{metrics.expiredCertificates} expired</Badge>
-      )}
-      {metrics.revokedCertificates > 0 && (
-        <Badge variant="danger">{metrics.revokedCertificates} revoked</Badge>
-      )}
-    </>
-  );
-};
-
 interface Props {
   profile: TCertificateProfile;
   onEditProfile: (profile: TCertificateProfile) => void;
@@ -81,7 +44,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
   const { data: caData } = useGetCaById(profile.caId);
 
-  const { popUp, handlePopUpToggle } = usePopUp(["certificateIssuance"] as const);
+  const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
@@ -118,8 +81,8 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
 
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
     const config = {
-      api: { variant: "success" as const, label: "API" },
-      est: { variant: "warning" as const, label: "EST" }
+      api: { variant: "ghost" as const, label: "API" },
+      est: { variant: "ghost" as const, label: "EST" }
     } as const;
 
     const configKey = Object.keys(config).includes(enrollmentType)
@@ -153,11 +116,6 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
           {templateData?.name || profile.certificateTemplateId}
         </span>
       </Td>
-      <Td>
-        <div className="flex flex-wrap gap-1">
-          <MetricsBadges metrics={profile.metrics} />
-        </div>
-      </Td>
       <Td className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">
@@ -189,7 +147,7 @@ export const ProfileRow = ({ profile, onEditProfile, onDeleteProfile }: Props) =
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
-                  handlePopUpToggle("certificateIssuance");
+                  handlePopUpToggle("issueCertificate");
                 }}
                 icon={<FontAwesomeIcon icon={faPlus} />}
               >

@@ -1,6 +1,5 @@
 import knex from "knex";
 import mysql, { Connection } from "mysql2/promise";
-import * as pg from "pg";
 import tls, { PeerCertificate } from "tls";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
@@ -41,7 +40,10 @@ export interface SqlResourceConnection {
    *
    * @returns Promise to be resolved with the new credentials
    */
-  rotateCredentials: (currentCredentials: TSqlAccountCredentials) => Promise<TSqlAccountCredentials>;
+  rotateCredentials: (
+    currentCredentials: TSqlAccountCredentials,
+    newPassword: string
+  ) => Promise<TSqlAccountCredentials>;
 
   /**
    * Close the connection.
@@ -94,7 +96,7 @@ const makeSqlConnection = (
           try {
             await client.raw(SIMPLE_QUERY);
           } catch (error) {
-            if (error instanceof pg.DatabaseError) {
+            if (error instanceof Error) {
               // Hacky way to know if we successfully hit the database.
               // TODO: potentially two approaches to solve the problem.
               //       1. change the work flow, add account first then resource
@@ -113,8 +115,7 @@ const makeSqlConnection = (
             });
           }
         },
-        rotateCredentials: async (currentCredentials) => {
-          const newPassword = alphaNumericNanoId(32);
+        rotateCredentials: async (currentCredentials, newPassword) => {
           // Note: The generated random password is not really going to make SQL Injection possible.
           //       The reason we are not using parameters binding is that the "ALTER USER" syntax is DDL,
           //       parameters binding is not supported. But just in case if the this code got copied
@@ -295,6 +296,7 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     rotationAccountCredentials,
     currentCredentials
   ) => {
+    const newPassword = alphaNumericNanoId(32);
     try {
       return await executeWithGateway(
         {
@@ -305,7 +307,7 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
           password: rotationAccountCredentials.password
         },
         gatewayV2Service,
-        (client) => client.rotateCredentials(currentCredentials)
+        (client) => client.rotateCredentials(currentCredentials, newPassword)
       );
     } catch (error) {
       if (error instanceof BadRequestError) {
@@ -328,8 +330,10 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
         }
       }
 
+      const sanitizedErrorMessage = ((error as Error).message || String(error)).replaceAll(newPassword, "REDACTED");
+
       throw new BadRequestError({
-        message: `Unable to rotate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
+        message: `Unable to rotate account credentials for ${resourceType}: ${sanitizedErrorMessage}`
       });
     }
   };

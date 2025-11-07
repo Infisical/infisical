@@ -72,46 +72,33 @@ export const IdentityTokenModal = ({ popUp, handlePopUpToggle }: Props) => {
   }, [popUp?.token?.data]);
 
   const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      if (tokenData?.tokenId) {
-        // update
+    if (tokenData?.tokenId) {
+      // update
 
-        await updateToken({
-          identityId: tokenData.identityId,
-          tokenId: tokenData.tokenId,
-          name
-        });
-
-        handlePopUpToggle("token", false);
-      } else {
-        // create
-
-        const newTokenData = await createToken({
-          identityId: tokenData.identityId,
-          name
-        });
-
-        setToken(newTokenData.accessToken);
-      }
-
-      createNotification({
-        text: `Successfully ${popUp?.token?.data ? "updated" : "created"} token`,
-        type: "success"
+      await updateToken({
+        identityId: tokenData.identityId,
+        tokenId: tokenData.tokenId,
+        name
       });
 
-      reset();
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text =
-        error?.response?.data?.message ??
-        `Failed to ${popUp?.token?.data ? "update" : "create"} token`;
+      handlePopUpToggle("token", false);
+    } else {
+      // create
 
-      createNotification({
-        text,
-        type: "error"
+      const newTokenData = await createToken({
+        identityId: tokenData.identityId,
+        name
       });
+
+      setToken(newTokenData.accessToken);
     }
+
+    createNotification({
+      text: `Successfully ${popUp?.token?.data ? "updated" : "created"} token`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (

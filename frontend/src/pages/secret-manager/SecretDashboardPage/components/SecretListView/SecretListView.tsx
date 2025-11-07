@@ -139,7 +139,7 @@ export const SecretListView = ({
         tags?: { id: string; name?: string; slug?: string }[];
         secretMetadata?: { key: string; value: string }[];
       },
-      cb?: () => void
+      callback?: () => void
     ) => {
       const { key: oldKey, secretValueHidden } = orgSecret;
       const {
@@ -245,12 +245,17 @@ export const SecretListView = ({
             if (!isReminderEvent) {
               handlePopUpClose("secretDetail");
             }
-            if (cb) cb();
+            callback?.();
             return;
           }
-
           await handleSecretOperation(
-            { operation: "update", type: SecretType.Shared, key: oldKey, secretPath, environment },
+            {
+              operation: "update",
+              type: SecretType.Shared,
+              key: oldKey,
+              secretPath,
+              environment
+            },
             {
               value,
               tags: tagIds,
@@ -266,7 +271,8 @@ export const SecretListView = ({
               secretValueHidden
             }
           );
-          if (cb) cb();
+
+          callback?.();
         }
 
         if (!isReminderEvent) {
@@ -342,7 +348,6 @@ export const SecretListView = ({
         handlePopUpClose("secretDetail");
         return;
       }
-
       await handleSecretOperation(
         { operation: "delete", type: SecretType.Shared, key, secretPath, environment },
         { secretId }

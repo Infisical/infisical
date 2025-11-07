@@ -126,43 +126,35 @@ export const BitbucketConfigurePage = () => {
   }: TFormData) => {
     if (!targetRepo || !targetWorkspace) return;
 
-    try {
-      await createIntegration.mutateAsync({
-        integrationAuthId,
-        isActive: true,
-        app: targetRepo.name,
-        appId: targetRepo.appId,
-        sourceEnvironment: sourceEnvironment.slug,
-        targetEnvironment: targetWorkspace.name,
-        targetEnvironmentId: targetWorkspace.slug,
-        ...(scope.value === BitbucketScope.Env &&
-          targetEnvironment && {
-            targetService: targetEnvironment.name,
-            targetServiceId: targetEnvironment.uuid
-          }),
-        secretPath
-      });
+    await createIntegration.mutateAsync({
+      integrationAuthId,
+      isActive: true,
+      app: targetRepo.name,
+      appId: targetRepo.appId,
+      sourceEnvironment: sourceEnvironment.slug,
+      targetEnvironment: targetWorkspace.name,
+      targetEnvironmentId: targetWorkspace.slug,
+      ...(scope.value === BitbucketScope.Env &&
+        targetEnvironment && {
+          targetService: targetEnvironment.name,
+          targetServiceId: targetEnvironment.uuid
+        }),
+      secretPath
+    });
 
-      createNotification({
-        type: "success",
-        text: "Successfully created integration"
-      });
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: IntegrationsListPageTabs.NativeIntegrations
-        }
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: "Failed to create integration"
-      });
-      console.error(err);
-    }
+    createNotification({
+      type: "success",
+      text: "Successfully created integration"
+    });
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.NativeIntegrations
+      }
+    });
   };
 
   useEffect(() => {

@@ -86,17 +86,12 @@ export const OrgRoleTable = () => {
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TOrgRole;
-    try {
-      await deleteRole({
-        orgId,
-        id
-      });
-      createNotification({ type: "success", text: "Successfully removed the role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to delete role" });
-    }
+    await deleteRole({
+      orgId,
+      id
+    });
+    createNotification({ type: "success", text: "Successfully removed the role" });
+    handlePopUpClose("deleteRole");
   };
 
   const handleSetRoleAsDefault = async (defaultMembershipRoleSlug: string) => {
@@ -104,23 +99,17 @@ export const OrgRoleTable = () => {
 
     if (isCustomRole && subscription && !subscription?.rbac) {
       handlePopUpOpen("upgradePlan", {
-        description:
-          "You can set the default org role to a custom role if you switch to Infisical's Pro plan."
+        text: "Your current plan does not include access to set a custom default organization role. To unlock this feature, please upgrade to Infisical Pro plan."
       });
       return;
     }
 
-    try {
-      await updateOrg({
-        orgId,
-        defaultMembershipRoleSlug
-      });
-      createNotification({ type: "success", text: "Successfully updated default membership role" });
-      handlePopUpClose("deleteRole");
-    } catch (err) {
-      console.log(err);
-      createNotification({ type: "error", text: "Failed to update default membership role" });
-    }
+    await updateOrg({
+      orgId,
+      defaultMembershipRoleSlug
+    });
+    createNotification({ type: "success", text: "Successfully updated default membership role" });
+    handlePopUpClose("deleteRole");
   };
 
   const {
@@ -471,7 +460,7 @@ export const OrgRoleTable = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
+        text={popUp.upgradePlan?.data?.text}
       />
       <DuplicateOrgRoleModal
         isOpen={popUp.duplicateRole.isOpen}

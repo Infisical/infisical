@@ -27,39 +27,34 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
   const formMethods = useForm<TUpdatePkiSyncForm>({
     resolver: zodResolver(UpdatePkiSyncFormSchema),
     defaultValues: {
-      ...pkiSync,
+      name: pkiSync.name,
+      destination: pkiSync.destination,
       description: pkiSync.description ?? "",
       connection: {
         id: pkiSync.connectionId,
         name: pkiSync.appConnectionName
-      }
+      },
+      syncOptions: pkiSync.syncOptions,
+      destinationConfig: pkiSync.destinationConfig,
+      isAutoSyncEnabled: pkiSync.isAutoSyncEnabled
     } as Partial<TUpdatePkiSyncForm>,
     reValidateMode: "onChange"
   });
 
   const onSubmit = async ({ connection, ...formData }: TUpdatePkiSyncForm) => {
-    try {
-      const updatedPkiSync = await updatePkiSync.mutateAsync({
-        syncId: pkiSync.id,
-        ...formData,
-        connectionId: connection.id,
-        projectId: pkiSync.projectId,
-        destination: pkiSync.destination
-      });
+    const updatedPkiSync = await updatePkiSync.mutateAsync({
+      syncId: pkiSync.id,
+      ...formData,
+      connectionId: connection.id,
+      projectId: pkiSync.projectId,
+      destination: pkiSync.destination
+    });
 
-      createNotification({
-        text: `Successfully updated ${destinationName} PKI Sync`,
-        type: "success"
-      });
-      onComplete(updatedPkiSync);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${destinationName} PKI Sync`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: `Successfully updated ${destinationName} PKI Sync`,
+      type: "success"
+    });
+    onComplete(updatedPkiSync);
   };
 
   let Component: ReactNode;

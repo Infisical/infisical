@@ -45,31 +45,24 @@ export const PkiCollectionPage = () => {
   ] as const);
 
   const onDeletePkiCollectionSubmit = async (collectionIdToDelete: string) => {
-    try {
-      if (!projectId) return;
+    if (!projectId) return;
 
-      await deletePkiCollection({
-        projectId,
-        collectionId: collectionIdToDelete
-      });
+    await deletePkiCollection({
+      projectId,
+      collectionId: collectionIdToDelete
+    });
 
-      createNotification({
-        text: "Successfully deleted PKI collection",
-        type: "success"
-      });
-      handlePopUpClose("deletePkiCollection");
-      navigate({
-        to: "/projects/cert-management/$projectId/certificates",
-        params: {
-          projectId
-        }
-      });
-    } catch {
-      createNotification({
-        text: "Failed to delete PKI collection",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted PKI collection",
+      type: "success"
+    });
+    handlePopUpClose("deletePkiCollection");
+    navigate({
+      to: "/projects/cert-management/$projectId/policies",
+      params: {
+        projectId: params.projectId
+      }
+    });
   };
 
   return (
@@ -77,9 +70,9 @@ export const PkiCollectionPage = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/certificates"
+            to="/projects/cert-management/$projectId/policies"
             params={{
-              projectId
+              projectId: params.projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >

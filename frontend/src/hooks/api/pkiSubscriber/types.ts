@@ -47,8 +47,8 @@ export type TCreatePkiSubscriberDTO = {
   commonName: string;
   ttl?: string;
   subjectAlternativeNames: string[];
-  keyUsages: CertKeyUsage[];
-  extendedKeyUsages: CertExtendedKeyUsage[];
+  keyUsages: string[];
+  extendedKeyUsages: string[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
   properties?: TPkiSubscriberProperties;
@@ -63,8 +63,8 @@ export type TUpdatePkiSubscriberDTO = {
   status?: PkiSubscriberStatus;
   ttl?: string;
   subjectAlternativeNames?: string[];
-  keyUsages?: CertKeyUsage[];
-  extendedKeyUsages?: CertExtendedKeyUsage[];
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
   enableAutoRenewal?: boolean;
   autoRenewalPeriodInDays?: number;
   properties?: TPkiSubscriberProperties;

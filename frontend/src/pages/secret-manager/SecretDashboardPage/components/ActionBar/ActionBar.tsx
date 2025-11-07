@@ -209,48 +209,40 @@ export const ActionBar = ({
   const isOrgAdmin = hasOrgRole(OrgMembershipRole.Admin);
 
   const handleFolderCreate = async (folderName: string, description: string | null) => {
-    try {
-      if (isBatchMode) {
-        const folderId = `${folderName}`;
-        const pendingFolderCreate: PendingFolderCreate = {
-          id: folderId,
-          resourceType: "folder",
-          type: PendingAction.Create,
-          folderName,
-          description: description || undefined,
-          parentPath: secretPath,
-          timestamp: Date.now()
-        };
+    if (isBatchMode) {
+      const folderId = `${folderName}`;
+      const pendingFolderCreate: PendingFolderCreate = {
+        id: folderId,
+        resourceType: "folder",
+        type: PendingAction.Create,
+        folderName,
+        description: description || undefined,
+        parentPath: secretPath,
+        timestamp: Date.now()
+      };
 
-        addPendingChange(pendingFolderCreate, {
-          projectId,
-          environment,
-          secretPath
-        });
-
-        handlePopUpClose("addFolder");
-        return;
-      }
-
-      await createFolder({
-        name: folderName,
-        path: secretPath,
-        environment,
+      addPendingChange(pendingFolderCreate, {
         projectId,
-        description
+        environment,
+        secretPath
       });
+
       handlePopUpClose("addFolder");
-      createNotification({
-        type: "success",
-        text: "Successfully created folder"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to create folder"
-      });
+      return;
     }
+
+    await createFolder({
+      name: folderName,
+      path: secretPath,
+      environment,
+      projectId,
+      description
+    });
+    handlePopUpClose("addFolder");
+    createNotification({
+      type: "success",
+      text: "Successfully created folder"
+    });
   };
 
   const handleSecretDownload = async () => {
@@ -323,26 +315,18 @@ export const ActionBar = ({
 
   const handleSecretBulkDelete = async () => {
     const bulkDeletedSecrets = Object.values(selectedSecrets);
-    try {
-      await deleteBatchSecretV3({
-        secretPath,
-        projectId,
-        environment,
-        secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
-      });
-      resetSelectedSecret();
-      handlePopUpClose("bulkDeleteSecrets");
-      createNotification({
-        type: "success",
-        text: "Successfully deleted secrets"
-      });
-    } catch (error) {
-      console.log(error);
-      createNotification({
-        type: "error",
-        text: "Failed to delete secrets"
-      });
-    }
+    await deleteBatchSecretV3({
+      secretPath,
+      projectId,
+      environment,
+      secrets: bulkDeletedSecrets.map(({ key }) => ({ secretKey: key, type: SecretType.Shared }))
+    });
+    resetSelectedSecret();
+    handlePopUpClose("bulkDeleteSecrets");
+    createNotification({
+      type: "success",
+      text: "Successfully deleted secrets"
+    });
   };
 
   const handleSecretsMove = async ({
@@ -678,35 +662,23 @@ export const ActionBar = ({
   };
 
   const handleVaultImport = async (vaultPath: string, namespace: string) => {
-    try {
-      const result = await importVaultSecrets({
-        projectId,
-        environment,
-        secretPath,
-        vaultNamespace: namespace,
-        vaultSecretPath: vaultPath
-      });
+    const result = await importVaultSecrets({
+      projectId,
+      environment,
+      secretPath,
+      vaultNamespace: namespace,
+      vaultSecretPath: vaultPath
+    });
 
-      if (result.status === VaultImportStatus.ApprovalRequired) {
-        createNotification({
-          type: "info",
-          text: "Secret change request created successfully. Awaiting approval."
-        });
-      } else {
-        createNotification({
-          type: "success",
-          text: "Successfully imported secrets from HashiCorp Vault"
-        });
-      }
-    } catch (err) {
-      console.error("Vault import error:", err);
-      const error = err as AxiosError<{ message?: string }>;
-      const errorMessage =
-        error.response?.data?.message || "Failed to import secrets from Vault. Please try again.";
-
+    if (result.status === VaultImportStatus.ApprovalRequired) {
       createNotification({
-        type: "error",
-        text: errorMessage
+        type: "info",
+        text: "Secret change request created successfully. Awaiting approval."
+      });
+    } else {
+      createNotification({
+        type: "success",
+        text: "Successfully imported secrets from HashiCorp Vault"
       });
     }
   };
@@ -912,7 +884,7 @@ export const ActionBar = ({
                   }
 
                   handlePopUpOpen("upgradePlan", {
-                    feature: "PIT Recovery"
+                    featureName: "PIT Recovery"
                   });
                 }}
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
@@ -1028,7 +1000,7 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
-                          feature: "Dynamic Secrets",
+                          featureName: "Dynamic Secrets",
                           isEnterpriseFeature: true
                         });
                       }}
@@ -1058,7 +1030,7 @@ export const ActionBar = ({
                           return;
                         }
                         handlePopUpOpen("upgradePlan", {
-                          feature: "Secret Rotation"
+                          featureName: "Secret Rotation"
                         });
                       }}
                       variant="outline_bg"
@@ -1235,7 +1207,7 @@ export const ActionBar = ({
         projectId={projectId}
         onUpgradePlan={() =>
           handlePopUpOpen("upgradePlan", {
-            feature: "Secret Imports"
+            featureName: "Secret Imports"
           })
         }
         isOpen={popUp.addSecretImport.isOpen}
@@ -1300,7 +1272,7 @@ export const ActionBar = ({
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={`You can use ${popUp.upgradePlan.data?.feature} if you switch to Infisical's ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
+          text={`Your current plan does not include access to ${popUp.upgradePlan.data?.featureName}. To unlock this feature, please upgrade to Infisical ${popUp.upgradePlan.data?.isEnterpriseFeature ? "Enterprise" : "Pro"} plan.`}
         />
       )}
       <Modal

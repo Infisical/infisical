@@ -12,13 +12,14 @@ import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
+import { IntegrationsListPageTabs } from "@app/types/integrations";
 
 import { PkiSyncsTable } from "./PkiSyncTable";
 
 export const PkiSyncsTab = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["addSync"] as const);
 
-  const { addSync, ...search } = useSearch({
+  const { addSync, connectionId, connectionName, ...search } = useSearch({
     from: ROUTE_PATHS.CertManager.IntegrationsListPage.id
   });
 
@@ -44,6 +45,42 @@ export const PkiSyncsTab = () => {
     handlePopUpOpen("addSync", addSync);
     navigateToBase();
   }, [addSync, handlePopUpOpen, navigateToBase]);
+
+  useEffect(() => {
+    const storedFormData = localStorage.getItem("pkiSyncFormData");
+    if (storedFormData && !popUp.addSync.isOpen) {
+      try {
+        const parsedData = JSON.parse(storedFormData);
+        if (connectionId && connectionName) {
+          const initialData = {
+            ...parsedData,
+            connection: { id: connectionId, name: connectionName }
+          };
+          handlePopUpOpen("addSync", { destination: parsedData.destination, initialData });
+          navigate({
+            to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
+            params: { projectId: currentProject?.id },
+            search: { selectedTab: IntegrationsListPageTabs.PkiSyncs },
+            replace: true
+          });
+        } else {
+          handlePopUpOpen("addSync", { destination: parsedData.destination });
+        }
+        localStorage.removeItem("pkiSyncFormData");
+      } catch (error) {
+        console.error("Failed to parse stored PKI sync form data:", error);
+        localStorage.removeItem("pkiSyncFormData");
+        handlePopUpOpen("addSync");
+      }
+    }
+  }, [
+    handlePopUpOpen,
+    popUp.addSync.isOpen,
+    connectionId,
+    connectionName,
+    navigate,
+    currentProject?.id
+  ]);
 
   const { data: pkiSyncs = [], isPending: isPkiSyncsPending } = useListPkiSyncs(
     currentProject?.id || "",
@@ -94,7 +131,8 @@ export const PkiSyncsTab = () => {
         <PkiSyncsTable pkiSyncs={pkiSyncs} />
       </div>
       <CreatePkiSyncModal
-        selectSync={popUp.addSync.data}
+        selectSync={popUp.addSync.data?.destination || popUp.addSync.data}
+        initialData={popUp.addSync.data?.initialData}
         isOpen={popUp.addSync.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addSync", isOpen)}
       />

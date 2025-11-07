@@ -12,12 +12,10 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import axios from "axios";
 import { motion } from "framer-motion";
 import { twMerge } from "tailwind-merge";
 import { z, ZodIssueCode } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Card,
@@ -275,19 +273,7 @@ export const GithubConfigurePage = () => {
           selectedTab: IntegrationsListPageTabs.NativeIntegrations
         }
       });
-    } catch (err) {
-      console.error(err);
-
-      let errorMessage: string = "Something went wrong!";
-      if (axios.isAxiosError(err)) {
-        const { message } = err?.response?.data as { message: string };
-        errorMessage = message;
-      }
-
-      createNotification({
-        text: errorMessage,
-        type: "error"
-      });
+    } catch {
       setIsLoading(false);
     }
   };

@@ -1,3 +1,4 @@
+import { registerChefSyncRouter } from "@app/ee/routes/v1/secret-sync-routers/chef-sync-router";
 import { registerOCIVaultSyncRouter } from "@app/ee/routes/v1/secret-sync-routers/oci-vault-sync-router";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
 
@@ -23,6 +24,7 @@ import { registerHerokuSyncRouter } from "./heroku-sync-router";
 import { registerHumanitecSyncRouter } from "./humanitec-sync-router";
 import { registerLaravelForgeSyncRouter } from "./laravel-forge-sync-router";
 import { registerNetlifySyncRouter } from "./netlify-sync-router";
+import { registerNorthflankSyncRouter } from "./northflank-sync-router";
 import { registerRailwaySyncRouter } from "./railway-sync-router";
 import { registerRenderSyncRouter } from "./render-sync-router";
 import { registerSupabaseSyncRouter } from "./supabase-sync-router";
@@ -64,6 +66,8 @@ export const SECRET_SYNC_REGISTER_ROUTER_MAP: Record<SecretSync, (server: Fastif
   [SecretSync.Checkly]: registerChecklySyncRouter,
   [SecretSync.DigitalOceanAppPlatform]: registerDigitalOceanAppPlatformSyncRouter,
   [SecretSync.Netlify]: registerNetlifySyncRouter,
+  [SecretSync.Northflank]: registerNorthflankSyncRouter,
   [SecretSync.Bitbucket]: registerBitbucketSyncRouter,
-  [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter
+  [SecretSync.LaravelForge]: registerLaravelForgeSyncRouter,
+  [SecretSync.Chef]: registerChefSyncRouter
 };

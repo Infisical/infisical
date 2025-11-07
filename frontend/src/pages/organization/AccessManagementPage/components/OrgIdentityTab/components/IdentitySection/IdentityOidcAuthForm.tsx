@@ -75,7 +75,10 @@ const schema = z.object({
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: { featureName?: string }
+  ) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
@@ -201,63 +204,56 @@ export const IdentityOidcAuthForm = ({
     claimMetadataMapping,
     boundSubject
   }: FormData) => {
-    try {
-      if (!identityId) {
-        return;
-      }
+    if (!identityId) {
+      return;
+    }
 
-      if (data) {
-        await updateMutateAsync({
-          identityId,
-          organizationId: orgId,
-          oidcDiscoveryUrl,
-          caCert,
-          boundIssuer,
-          boundAudiences,
-          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          claimMetadataMapping: claimMetadataMapping
-            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
-            : undefined,
-          boundSubject,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      } else {
-        await addMutateAsync({
-          identityId,
-          oidcDiscoveryUrl,
-          caCert,
-          boundIssuer,
-          boundAudiences,
-          boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
-          claimMetadataMapping: claimMetadataMapping
-            ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
-            : undefined,
-          boundSubject,
-          organizationId: orgId,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
-        type: "success"
+    if (data) {
+      await updateMutateAsync({
+        identityId,
+        organizationId: orgId,
+        oidcDiscoveryUrl,
+        caCert,
+        boundIssuer,
+        boundAudiences,
+        boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+        claimMetadataMapping: claimMetadataMapping
+          ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+          : undefined,
+        boundSubject,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
-
-      reset();
-    } catch {
-      createNotification({
-        text: `Failed to ${isUpdate ? "update" : "configure"} identity`,
-        type: "error"
+    } else {
+      await addMutateAsync({
+        identityId,
+        oidcDiscoveryUrl,
+        caCert,
+        boundIssuer,
+        boundAudiences,
+        boundClaims: Object.fromEntries(boundClaims.map((entry) => [entry.key, entry.value])),
+        claimMetadataMapping: claimMetadataMapping
+          ? Object.fromEntries(claimMetadataMapping.map((entry) => [entry.key, entry.value]))
+          : undefined,
+        boundSubject,
+        organizationId: orgId,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (
@@ -606,7 +602,9 @@ export const IdentityOidcAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -621,7 +619,9 @@ export const IdentityOidcAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -644,7 +644,9 @@ export const IdentityOidcAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"

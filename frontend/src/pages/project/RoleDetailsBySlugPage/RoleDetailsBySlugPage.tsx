@@ -53,38 +53,27 @@ const Page = () => {
   ] as const);
 
   const onDeleteRoleSubmit = async () => {
-    try {
-      if (!currentProject?.slug || !data?.id) return;
+    if (!currentProject?.slug || !data?.id) return;
 
-      await deleteProjectRole({
-        projectId,
-        id: data.id
-      });
+    await deleteProjectRole({
+      projectId,
+      id: data.id
+    });
 
-      createNotification({
-        text: "Successfully deleted project role",
-        type: "success"
-      });
-      handlePopUpClose("deleteRole");
-      navigate({
-        to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
-        params: {
-          projectId
-        },
-        search: {
-          selectedTab: ProjectAccessControlTabs.Roles
-        }
-      });
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to delete project role";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully deleted project role",
+      type: "success"
+    });
+    handlePopUpClose("deleteRole");
+    navigate({
+      to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
+      params: {
+        projectId
+      },
+      search: {
+        selectedTab: ProjectAccessControlTabs.Roles
+      }
+    });
   };
 
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(

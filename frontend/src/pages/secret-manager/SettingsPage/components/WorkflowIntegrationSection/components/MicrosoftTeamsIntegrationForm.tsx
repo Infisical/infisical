@@ -130,37 +130,30 @@ export const MicrosoftTeamsIntegrationForm = ({ onClose }: Props) => {
   });
 
   const handleIntegrationSave = async (data: TMicrosoftTeamsConfigForm) => {
-    try {
-      if (!currentProject) {
-        return;
-      }
-
-      await updateProjectMicrosoftTeamsConfig({
-        projectId: currentProject.id,
-        isAccessRequestNotificationEnabled: data.isAccessRequestNotificationEnabled,
-        isSecretRequestNotificationEnabled: data.isSecretRequestNotificationEnabled,
-        ...(data.isAccessRequestNotificationEnabled && {
-          accessRequestChannels: data.accessRequestChannels
-        }),
-        ...(data.isSecretRequestNotificationEnabled && {
-          secretRequestChannels: data.secretRequestChannels
-        }),
-        integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
-        integrationId: data.microsoftTeamsIntegrationId
-      });
-
-      createNotification({
-        type: "success",
-        text: "Successfully created microsoft teams integration"
-      });
-
-      onClose();
-    } catch {
-      createNotification({
-        type: "error",
-        text: "Failed to create microsoft teams integration"
-      });
+    if (!currentProject) {
+      return;
     }
+
+    await updateProjectMicrosoftTeamsConfig({
+      projectId: currentProject.id,
+      isAccessRequestNotificationEnabled: data.isAccessRequestNotificationEnabled,
+      isSecretRequestNotificationEnabled: data.isSecretRequestNotificationEnabled,
+      ...(data.isAccessRequestNotificationEnabled && {
+        accessRequestChannels: data.accessRequestChannels
+      }),
+      ...(data.isSecretRequestNotificationEnabled && {
+        secretRequestChannels: data.secretRequestChannels
+      }),
+      integration: WorkflowIntegrationPlatform.MICROSOFT_TEAMS,
+      integrationId: data.microsoftTeamsIntegrationId
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully created microsoft teams integration"
+    });
+
+    onClose();
   };
 
   const selectedAccessRequestTeamId = watch("accessRequestChannels.teamId");

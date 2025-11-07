@@ -670,6 +670,7 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .select(
           db.ref("projectId").withSchema(TableName.Environment),
           db.ref("slug").withSchema(TableName.Environment).as("environment"),
+          db.ref("name").withSchema(TableName.Environment).as("environmentName"),
           db.ref("id").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerId"),
           db.ref("reviewerUserId").withSchema(TableName.SecretApprovalRequestReviewer),
           db.ref("status").withSchema(TableName.SecretApprovalRequestReviewer).as("reviewerStatus"),
@@ -699,29 +700,29 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         )
         .as("inner");
 
-      const countQuery = (await (tx || db)
-        .select(db.raw("count(*) OVER() as total_count"))
-        .from(innerQuery.clone().distinctOn(`${TableName.SecretApprovalRequest}.id`))) as Array<{
-        total_count: number;
-      }>;
-
       const query = (tx || db).select("*").from(innerQuery).orderBy("createdAt", "desc") as typeof innerQuery;
 
       if (search) {
         void query.where((qb) => {
           void qb
             .whereRaw(`CONCAT_WS(' ', ??, ??) ilike ?`, [
-              db.ref("firstName").withSchema("committerUser"),
-              db.ref("lastName").withSchema("committerUser"),
+              db.ref("committerUserFirstName"),
+              db.ref("committerUserLastName"),
               `%${search}%`
             ])
-            .orWhereRaw(`?? ilike ?`, [db.ref("username").withSchema("committerUser"), `%${search}%`])
-            .orWhereRaw(`?? ilike ?`, [db.ref("email").withSchema("committerUser"), `%${search}%`])
-            .orWhereILike(`${TableName.Environment}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.Environment}.slug`, `%${search}%`)
-            .orWhereILike(`${TableName.SecretApprovalPolicy}.secretPath`, `%${search}%`);
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserUsername"), `%${search}%`])
+            .orWhereRaw(`?? ilike ?`, [db.ref("committerUserEmail"), `%${search}%`])
+            .orWhereILike(`environmentName`, `%${search}%`)
+            .orWhereILike(`environment`, `%${search}%`)
+            .orWhereILike(`policySecretPath`, `%${search}%`);
         });
       }
+
+      const countQuery = (await (tx || db)
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(query.clone().as("outer"))) as Array<{
+        total_count: number;
+      }>;
 
       const rankOffset = offset + 1;
       const docs = await (tx || db)

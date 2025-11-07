@@ -22,28 +22,17 @@ export const IdentityProjectsSection = ({ identityId }: Props) => {
   ] as const);
 
   const onRemoveIdentitySubmit = async (id: string, projectId: string) => {
-    try {
-      await deleteMutateAsync({
-        identityId: id,
-        projectId
-      });
+    await deleteMutateAsync({
+      identityId: id,
+      projectId
+    });
 
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully removed identity from project",
+      type: "success"
+    });
 
-      handlePopUpClose("removeIdentityFromProject");
-    } catch (err) {
-      console.error(err);
-      const error = err as any;
-      const text = error?.response?.data?.message ?? "Failed to remove identity from project";
-
-      createNotification({
-        text,
-        type: "error"
-      });
-    }
+    handlePopUpClose("removeIdentityFromProject");
   };
 
   return (

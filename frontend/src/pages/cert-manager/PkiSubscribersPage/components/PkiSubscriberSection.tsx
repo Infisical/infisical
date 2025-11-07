@@ -7,8 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useUpdatePkiSubscriber } from "@app/hooks/api";
 import { PkiSubscriberStatus } from "@app/hooks/api/pkiSubscriber/types";
@@ -19,10 +18,10 @@ import { PkiSubscribersTable } from "./PkiSubscribersTable";
 
 export const PkiSubscriberSection = () => {
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
   const projectId = currentProject.id;
 
-  const canCreateLegacySubscribers = subscription.pkiLegacyTemplates;
+  // TODO: Use subscription.pkiLegacyTemplates to block legacy templates creation
+  const canCreateLegacySubscribers = true;
   const { mutateAsync: deletePkiSubscriber } = useDeletePkiSubscriber();
   const { mutateAsync: updatePkiSubscriber } = useUpdatePkiSubscriber();
 
@@ -33,22 +32,14 @@ export const PkiSubscriberSection = () => {
   ] as const);
 
   const onRemovePkiSubscriberSubmit = async (subscriberName: string) => {
-    try {
-      const subscriber = await deletePkiSubscriber({ subscriberName, projectId });
+    const subscriber = await deletePkiSubscriber({ subscriberName, projectId });
 
-      createNotification({
-        text: `Successfully deleted PKI subscriber: ${subscriber.name}`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully deleted PKI subscriber: ${subscriber.name}`,
+      type: "success"
+    });
 
-      handlePopUpClose("deletePkiSubscriber");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete PKI subscriber",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deletePkiSubscriber");
   };
 
   const onUpdatePkiSubscriberStatus = async ({
@@ -58,24 +49,16 @@ export const PkiSubscriberSection = () => {
     subscriberName: string;
     status: PkiSubscriberStatus;
   }) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await updatePkiSubscriber({ subscriberName, projectId, status });
+    await updatePkiSubscriber({ subscriberName, projectId, status });
 
-      createNotification({
-        text: `Successfully ${status === PkiSubscriberStatus.ACTIVE ? "enabled" : "disabled"} subscriber`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully ${status === PkiSubscriberStatus.ACTIVE ? "enabled" : "disabled"} subscriber`,
+      type: "success"
+    });
 
-      handlePopUpClose("pkiSubscriberStatus");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${status === PkiSubscriberStatus.ACTIVE ? "enable" : "disable"} subscriber`,
-        type: "error"
-      });
-    }
+    handlePopUpClose("pkiSubscriberStatus");
   };
 
   const subscriberStatusData = popUp?.pkiSubscriberStatus?.data as {

@@ -5,11 +5,12 @@ import {
   faEdit,
   faEllipsisV,
   faRightToBracket,
+  faRotate,
   faTrash
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { formatDistance } from "date-fns";
-import { FolderIcon, PackageOpenIcon, RefreshCwIcon } from "lucide-react";
+import { FolderIcon, PackageOpenIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -101,10 +102,16 @@ export const PamAccountRow = ({
               </Badge>
             )}
             {account.lastRotatedAt && (
-              <Badge variant="info">
-                <RefreshCwIcon />
-                <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
-              </Badge>
+              <Tooltip
+                className="max-w-sm text-center"
+                isDisabled={!account.lastRotationMessage}
+                content={account.lastRotationMessage}
+              >
+                <Badge variant={account.rotationStatus === "failed" ? "danger" : "success"}>
+                  <FontAwesomeIcon icon={faRotate} />
+                  <span>Rotated {formatDistance(new Date(), account.lastRotatedAt)} ago</span>
+                </Badge>
+              </Tooltip>
             )}
           </div>
         </div>

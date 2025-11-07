@@ -172,6 +172,7 @@ import { internalCertificateAuthorityServiceFactory } from "@app/services/certif
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
+import { certificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
 import { certificateTemplateServiceFactory } from "@app/services/certificate-template/certificate-template-service";
@@ -608,6 +609,10 @@ export const registerRoutes = async (
   const membershipGroupService = membershipGroupServiceFactory({
     membershipGroupDAL,
     membershipRoleDAL,
+    accessApprovalPolicyDAL,
+    accessApprovalPolicyApproverDAL,
+    secretApprovalPolicyDAL,
+    secretApprovalPolicyApproverDAL: sapApproverDAL,
     roleDAL,
     permissionService,
     orgDAL
@@ -1060,6 +1065,7 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
+  const certificateSyncDAL = certificateSyncDALFactory(db);
 
   const pkiAlertDAL = pkiAlertDALFactory(db);
   const pkiCollectionDAL = pkiCollectionDALFactory(db);
@@ -1705,7 +1711,8 @@ export const registerRoutes = async (
     licenseService,
     permissionService,
     kmsService,
-    membershipIdentityDAL
+    membershipIdentityDAL,
+    orgDAL
   });
 
   const identityAwsAuthService = identityAwsAuthServiceFactory({
@@ -2022,7 +2029,8 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
-    certificateAuthorityCertDAL
+    certificateAuthorityCertDAL,
+    certificateSyncDAL
   });
 
   const pkiSyncCleanup = pkiSyncCleanupQueueServiceFactory({
@@ -2133,6 +2141,7 @@ export const registerRoutes = async (
     permissionService,
     pkiCollectionDAL,
     pkiCollectionItemDAL,
+    certificateSyncDAL,
     pkiSyncDAL,
     pkiSyncQueue
   });
@@ -2144,7 +2153,10 @@ export const registerRoutes = async (
     certificateProfileDAL,
     certificateTemplateV2Service,
     internalCaService: internalCertificateAuthorityService,
-    permissionService
+    permissionService,
+    certificateSyncDAL,
+    pkiSyncDAL,
+    pkiSyncQueue
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2186,6 +2198,8 @@ export const registerRoutes = async (
 
   const pkiSyncService = pkiSyncServiceFactory({
     pkiSyncDAL,
+    certificateDAL,
+    certificateSyncDAL,
     pkiSubscriberDAL,
     appConnectionService,
     permissionService,

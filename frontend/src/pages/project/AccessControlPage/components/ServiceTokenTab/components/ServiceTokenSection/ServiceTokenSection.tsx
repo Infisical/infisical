@@ -28,23 +28,15 @@ export const ServiceTokenSection = withProjectPermission(
     ] as const);
 
     const onDeleteApproved = async () => {
-      try {
-        deleteServiceToken.mutateAsync(
-          (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.id
-        );
-        createNotification({
-          text: "Successfully deleted service token",
-          type: "success"
-        });
+      await deleteServiceToken.mutateAsync(
+        (popUp?.deleteAPITokenConfirmation?.data as DeleteModalData)?.id
+      );
+      createNotification({
+        text: "Successfully deleted service token",
+        type: "success"
+      });
 
-        handlePopUpClose("deleteAPITokenConfirmation");
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to delete service token",
-          type: "error"
-        });
-      }
+      handlePopUpClose("deleteAPITokenConfirmation");
     };
 
     return (

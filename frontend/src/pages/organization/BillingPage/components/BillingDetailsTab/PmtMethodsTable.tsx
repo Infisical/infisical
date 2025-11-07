@@ -39,22 +39,15 @@ export const PmtMethodsTable = () => {
       });
       return;
     }
-    try {
-      await deleteOrgPmtMethod.mutateAsync({
-        organizationId: currentOrg.id,
-        pmtMethodId: pmtMethodToRemove.id
-      });
-      createNotification({
-        type: "success",
-        text: "Successfully removed payment method"
-      });
-      handlePopUpClose("removeCard");
-    } catch (error: any) {
-      createNotification({
-        type: "error",
-        text: error.message ?? "Error removing payment method"
-      });
-    }
+    await deleteOrgPmtMethod.mutateAsync({
+      organizationId: currentOrg.id,
+      pmtMethodId: pmtMethodToRemove.id
+    });
+    createNotification({
+      type: "success",
+      text: "Successfully removed payment method"
+    });
+    handlePopUpClose("removeCard");
   };
 
   return (

@@ -30,12 +30,6 @@ export const OrgProductSettingsTab = () => {
         text: `Successfully ${state ? "enabled" : "disabled"} blocking duplicate secret sync destinations for this organization`,
         type: "success"
       });
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update blocking duplicate secret sync destinations setting for this organization",
-        type: "error"
-      });
     } finally {
       setIsLoading(false);
     }

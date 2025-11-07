@@ -107,49 +107,41 @@ export const OctopusDeployConfigurePage = () => {
     targetRoles,
     scope
   }: TFormData) => {
-    try {
-      await createIntegration.mutateAsync({
-        integrationAuthId,
-        isActive: true,
-        scope,
-        app: targetResource.name,
-        appId: targetResource.appId,
-        targetEnvironment: targetSpace.Name,
-        targetEnvironmentId: targetSpace.Id,
-        metadata: {
-          octopusDeployScopeValues: {
-            Environment: targetEnvironments?.map(({ Id }) => Id),
-            Action: targetActions?.map(({ Id }) => Id),
-            Channel: targetChannels?.map(({ Id }) => Id),
-            ProcessOwner: targetProcesses?.map(({ Id }) => Id),
-            Role: targetRoles?.map(({ Id }) => Id),
-            Machine: targetMachines?.map(({ Id }) => Id)
-          }
-        },
-        sourceEnvironment: sourceEnvironment.slug,
-        secretPath
-      });
-
-      createNotification({
-        type: "success",
-        text: "Successfully created integration"
-      });
-      navigate({
-        to: "/projects/secret-management/$projectId/integrations",
-        params: {
-          projectId: currentProject.id
-        },
-        search: {
-          selectedTab: IntegrationsListPageTabs.NativeIntegrations
+    await createIntegration.mutateAsync({
+      integrationAuthId,
+      isActive: true,
+      scope,
+      app: targetResource.name,
+      appId: targetResource.appId,
+      targetEnvironment: targetSpace.Name,
+      targetEnvironmentId: targetSpace.Id,
+      metadata: {
+        octopusDeployScopeValues: {
+          Environment: targetEnvironments?.map(({ Id }) => Id),
+          Action: targetActions?.map(({ Id }) => Id),
+          Channel: targetChannels?.map(({ Id }) => Id),
+          ProcessOwner: targetProcesses?.map(({ Id }) => Id),
+          Role: targetRoles?.map(({ Id }) => Id),
+          Machine: targetMachines?.map(({ Id }) => Id)
         }
-      });
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: "Failed to create integration"
-      });
-      console.error(err);
-    }
+      },
+      sourceEnvironment: sourceEnvironment.slug,
+      secretPath
+    });
+
+    createNotification({
+      type: "success",
+      text: "Successfully created integration"
+    });
+    navigate({
+      to: "/projects/secret-management/$projectId/integrations",
+      params: {
+        projectId: currentProject.id
+      },
+      search: {
+        selectedTab: IntegrationsListPageTabs.NativeIntegrations
+      }
+    });
   };
 
   useEffect(() => {

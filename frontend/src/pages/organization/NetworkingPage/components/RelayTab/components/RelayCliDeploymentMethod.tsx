@@ -31,8 +31,7 @@ import { slugSchema } from "@app/lib/schemas";
 
 const baseFormSchema = z.object({
   name: slugSchema({ field: "name" }),
-  host: z.string().min(1, "Host is required"),
-  instanceDomain: z.string().url("Must be a valid URL").or(z.literal(""))
+  host: z.string().min(1, "Host is required")
 });
 
 const formSchemaWithIdentity = baseFormSchema.extend({
@@ -62,7 +61,6 @@ export const RelayCliDeploymentMethod = () => {
   const [name, setName] = useState("");
   const [host, setHost] = useState("");
 
-  const [instanceDomain, setInstanceDomain] = useState(siteURL);
   const [identity, setIdentity] = useState<null | {
     id: string;
     name: string;
@@ -106,7 +104,7 @@ export const RelayCliDeploymentMethod = () => {
     setFormErrors([]);
 
     if (canCreateToken && autogenerateToken) {
-      const validation = formSchemaWithIdentity.safeParse({ name, host, instanceDomain, identity });
+      const validation = formSchemaWithIdentity.safeParse({ name, host, identity });
       if (!validation.success) {
         setFormErrors(validation.error.issues);
         return;
@@ -141,19 +139,13 @@ export const RelayCliDeploymentMethod = () => {
           type: "info"
         });
         setStep("command");
-      } catch (err) {
-        console.error(err);
-        createNotification({
-          text: "Failed to generate token for the selected identity",
-          type: "error"
-        });
+      } catch {
         setIdentityToken("");
       }
     } else {
       const validation = formSchemaWithToken.safeParse({
         name,
         host,
-        instanceDomain,
         identityToken
       });
       if (!validation.success) {
@@ -174,9 +166,8 @@ export const RelayCliDeploymentMethod = () => {
   };
 
   const command = useMemo(() => {
-    const domainFlag = instanceDomain ? ` --domain=${instanceDomain}` : "";
-    return `infisical relay start --name=${name}${domainFlag} --host=${host} --token=${identityToken}`;
-  }, [name, instanceDomain, host, identityToken]);
+    return `infisical relay start --name=${name} --domain=${siteURL} --host=${host} --token=${identityToken}`;
+  }, [name, siteURL, host, identityToken]);
 
   if (step === "command") {
     return (
@@ -243,19 +234,6 @@ export const RelayCliDeploymentMethod = () => {
         isError={Boolean(errors.host)}
       />
       {errors.host && <p className="mt-1 text-sm text-red">{errors.host}</p>}
-
-      <FormLabel
-        label="Infisical Instance Host Address"
-        tooltipText="The host address of the infisical instance that's accessible by the relay."
-        className="mt-4"
-      />
-      <Input
-        value={instanceDomain}
-        onChange={(e) => setInstanceDomain(e.target.value)}
-        placeholder="https://app.infisical.com"
-        isError={Boolean(errors.instanceDomain)}
-      />
-      {errors.instanceDomain && <p className="mt-1 text-sm text-red">{errors.instanceDomain}</p>}
 
       {canCreateToken && autogenerateToken ? (
         <>

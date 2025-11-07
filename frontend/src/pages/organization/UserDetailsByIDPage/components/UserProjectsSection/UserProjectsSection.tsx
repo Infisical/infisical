@@ -31,19 +31,11 @@ export const UserProjectsSection = ({ membershipId }: Props) => {
   ] as const);
 
   const handleRemoveUser = async (projectId: string, username: string) => {
-    try {
-      await removeUserFromWorkspace({ projectId, usernames: [username], orgId });
-      createNotification({
-        text: "Successfully removed user from project",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to remove user from the project",
-        type: "error"
-      });
-    }
+    await removeUserFromWorkspace({ projectId, usernames: [username], orgId });
+    createNotification({
+      text: "Successfully removed user from project",
+      type: "success"
+    });
     handlePopUpClose("removeUserFromProject");
   };
 

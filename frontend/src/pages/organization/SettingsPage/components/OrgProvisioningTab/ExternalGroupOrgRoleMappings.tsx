@@ -75,19 +75,11 @@ export const ExternalGroupOrgRoleMappings = () => {
   const mappingField = useFieldArray({ control, name: "mappings" });
 
   const handleUpdateMappings = async (form: TForm) => {
-    try {
-      await updateMappings.mutateAsync(form);
-      createNotification({
-        text: "Group organization role mappings updated.",
-        type: "success"
-      });
-    } catch (e) {
-      console.error(e);
-      createNotification({
-        text: "Failed to update group organization role mappings.",
-        type: "error"
-      });
-    }
+    await updateMappings.mutateAsync(form);
+    createNotification({
+      text: "Group organization role mappings updated.",
+      type: "success"
+    });
   };
 
   const disableScimEdit = permission.cannot(OrgPermissionActions.Edit, OrgPermissionSubjects.Scim);

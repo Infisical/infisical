@@ -39,29 +39,21 @@ export const AddSecretTagModal = ({ popUp, handlePopUpClose, handlePopUpToggle }
   });
 
   const onFormSubmit = async ({ slug }: FormData) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await createWsTag.mutateAsync({
-        projectId: currentProject?.id,
-        tagSlug: slug,
-        tagColor: ""
-      });
+    await createWsTag.mutateAsync({
+      projectId: currentProject?.id,
+      tagSlug: slug,
+      tagColor: ""
+    });
 
-      handlePopUpClose("CreateSecretTag");
+    handlePopUpClose("CreateSecretTag");
 
-      createNotification({
-        text: "Successfully created a tag",
-        type: "success"
-      });
-      reset();
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to create a tag",
-        type: "error"
-      });
-    }
+    createNotification({
+      text: "Successfully created a tag",
+      type: "success"
+    });
+    reset();
   };
 
   return (

@@ -41,25 +41,17 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
       return;
     }
 
-    try {
-      await deleteCertTemplate({
-        id,
-        projectId: currentProject.id
-      });
+    await deleteCertTemplate({
+      id,
+      projectId: currentProject.id
+    });
 
-      createNotification({
-        text: "Successfully deleted certificate template",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted certificate template",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCertificateTemplate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete certificate template",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCertificateTemplate");
   };
 
   return (
@@ -105,7 +97,7 @@ export const CertificateTemplatesSection = ({ caId }: Props) => {
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-        text="Managing template enrollment options for EST is only available on Infisical's Enterprise plan."
+        text="Your current plan does not include access to managing template enrollment options for EST. To unlock this feature, please upgrade to Infisical Enterprise plan."
       />
     </div>
   );

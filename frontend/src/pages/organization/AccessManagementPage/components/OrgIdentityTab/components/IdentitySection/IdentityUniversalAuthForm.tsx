@@ -87,7 +87,10 @@ const schema = z
 export type FormData = z.infer<typeof schema>;
 
 type Props = {
-  handlePopUpOpen: (popUpName: keyof UsePopUpState<["upgradePlan"]>) => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: { featureName?: string }
+  ) => void;
   handlePopUpToggle: (
     popUpName: keyof UsePopUpState<["identityAuthMethod"]>,
     state?: boolean
@@ -220,64 +223,55 @@ export const IdentityUniversalAuthForm = ({
     lockoutCounterResetValue,
     lockoutCounterResetUnit
   }: FormData) => {
-    try {
-      if (!identityId) return;
+    if (!identityId) return;
 
-      const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
-      const lockoutCounterResetSeconds =
-        ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
+    const lockoutDurationSeconds = ms(`${lockoutDurationValue}${lockoutDurationUnit}`) / 1000;
+    const lockoutCounterResetSeconds =
+      ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
-      if (data) {
-        // update universal auth configuration
-        await updateMutateAsync({
-          organizationId: orgId,
-          identityId,
-          clientSecretTrustedIps,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod),
-          lockoutEnabled,
-          lockoutThreshold: Number(lockoutThreshold),
-          lockoutDurationSeconds,
-          lockoutCounterResetSeconds
-        });
-      } else {
-        // create new universal auth configuration
-
-        await addMutateAsync({
-          organizationId: orgId,
-          identityId,
-          clientSecretTrustedIps,
-          accessTokenTTL: Number(accessTokenTTL),
-          accessTokenMaxTTL: Number(accessTokenMaxTTL),
-          accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
-          accessTokenTrustedIps,
-          accessTokenPeriod: Number(accessTokenPeriod),
-          lockoutEnabled,
-          lockoutThreshold: Number(lockoutThreshold),
-          lockoutDurationSeconds: Number(lockoutDurationSeconds),
-          lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
-        });
-      }
-
-      handlePopUpToggle("identityAuthMethod", false);
-
-      createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} auth method`,
-        type: "success"
+    if (data) {
+      // update universal auth configuration
+      await updateMutateAsync({
+        organizationId: orgId,
+        identityId,
+        clientSecretTrustedIps,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps,
+        accessTokenPeriod: Number(accessTokenPeriod),
+        lockoutEnabled,
+        lockoutThreshold: Number(lockoutThreshold),
+        lockoutDurationSeconds,
+        lockoutCounterResetSeconds
       });
+    } else {
+      // create new universal auth configuration
 
-      reset();
-    } catch {
-      const text = `Failed to ${isUpdate ? "update" : "configure"} identity`;
-
-      createNotification({
-        text,
-        type: "error"
+      await addMutateAsync({
+        organizationId: orgId,
+        identityId,
+        clientSecretTrustedIps,
+        accessTokenTTL: Number(accessTokenTTL),
+        accessTokenMaxTTL: Number(accessTokenMaxTTL),
+        accessTokenNumUsesLimit: Number(accessTokenNumUsesLimit),
+        accessTokenTrustedIps,
+        accessTokenPeriod: Number(accessTokenPeriod),
+        lockoutEnabled,
+        lockoutThreshold: Number(lockoutThreshold),
+        lockoutDurationSeconds: Number(lockoutDurationSeconds),
+        lockoutCounterResetSeconds: Number(lockoutCounterResetSeconds)
       });
     }
+
+    handlePopUpToggle("identityAuthMethod", false);
+
+    createNotification({
+      text: `Successfully ${isUpdate ? "updated" : "created"} auth method`,
+      type: "success"
+    });
+
+    reset();
   };
 
   return (
@@ -409,7 +403,9 @@ export const IdentityUniversalAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -424,7 +420,9 @@ export const IdentityUniversalAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -447,7 +445,9 @@ export const IdentityUniversalAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"
@@ -477,7 +477,9 @@ export const IdentityUniversalAuthForm = ({
                             return;
                           }
 
-                          handlePopUpOpen("upgradePlan");
+                          handlePopUpOpen("upgradePlan", {
+                            featureName: "IP allowlisting"
+                          });
                         }}
                         placeholder="123.456.789.0"
                       />
@@ -492,7 +494,9 @@ export const IdentityUniversalAuthForm = ({
                     return;
                   }
 
-                  handlePopUpOpen("upgradePlan");
+                  handlePopUpOpen("upgradePlan", {
+                    featureName: "IP allowlisting"
+                  });
                 }}
                 size="lg"
                 colorSchema="danger"
@@ -515,7 +519,9 @@ export const IdentityUniversalAuthForm = ({
                   return;
                 }
 
-                handlePopUpOpen("upgradePlan");
+                handlePopUpOpen("upgradePlan", {
+                  featureName: "IP allowlisting"
+                });
               }}
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               size="xs"

@@ -2,7 +2,6 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { createNotification } from "@app/components/notifications";
 import {
   Button,
   FilterableSelect,
@@ -100,23 +99,16 @@ export const TotpInputForm = ({
   const handleCreateDynamicSecret = async ({ name, provider, environment }: TForm) => {
     // wait till previous request is finished
     if (createDynamicSecret.isPending) return;
-    try {
-      await createDynamicSecret.mutateAsync({
-        provider: { type: DynamicSecretProviders.Totp, inputs: provider },
-        maxTTL: "24h",
-        name,
-        path: secretPath,
-        defaultTTL: "1m",
-        projectSlug,
-        environmentSlug: environment.slug
-      });
-      onCompleted();
-    } catch (err) {
-      createNotification({
-        type: "error",
-        text: err instanceof Error ? err.message : "Failed to create dynamic secret"
-      });
-    }
+    await createDynamicSecret.mutateAsync({
+      provider: { type: DynamicSecretProviders.Totp, inputs: provider },
+      maxTTL: "24h",
+      name,
+      path: secretPath,
+      defaultTTL: "1m",
+      projectSlug,
+      environmentSlug: environment.slug
+    });
+    onCompleted();
   };
 
   return (

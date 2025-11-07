@@ -2,7 +2,6 @@ import { faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
-import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { RequestProjectAccessModal } from "@app/components/projects";
 import { AccessRestrictedBanner, Button } from "@app/components/v2";
@@ -35,19 +34,12 @@ export const ProjectAccessError = () => {
 
   const handleAccessProject = async () => {
     if (!project) return;
-    try {
-      await orgAdminAccessProject.mutateAsync({
-        projectId: project.id
-      });
-      await navigate({
-        to: "."
-      });
-    } catch {
-      createNotification({
-        text: "Failed to access project",
-        type: "error"
-      });
-    }
+    await orgAdminAccessProject.mutateAsync({
+      projectId: project.id
+    });
+    await navigate({
+      to: "."
+    });
   };
 
   return (

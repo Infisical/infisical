@@ -7,8 +7,7 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
   ProjectPermissionSub,
-  useProject,
-  useSubscription
+  useProject
 } from "@app/context";
 import { useDeleteCert } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -16,49 +15,38 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { CertificateCertModal } from "./CertificateCertModal";
 import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
+import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
 import { CertificateManageRenewalModal } from "./CertificateManageRenewalModal";
-import { CertificateModal } from "./CertificateModal";
 import { CertificateRenewalModal } from "./CertificateRenewalModal";
 import { CertificateRevocationModal } from "./CertificateRevocationModal";
 import { CertificatesTable } from "./CertificatesTable";
 
 export const CertificatesSection = () => {
   const { currentProject } = useProject();
-  const { subscription } = useSubscription();
   const { mutateAsync: deleteCert } = useDeleteCert();
 
-  const isLegacyTemplatesEnabled = subscription.pkiLegacyTemplates;
-
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "certificateIssuance",
-    "certificate",
+    "issueCertificate",
     "certificateImport",
     "certificateCert",
     "deleteCertificate",
     "revokeCertificate",
     "manageRenewal",
-    "renewCertificate"
+    "renewCertificate",
+    "managePkiSyncs"
   ] as const);
 
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await deleteCert({ serialNumber, projectSlug: currentProject.slug });
+    await deleteCert({ serialNumber, projectSlug: currentProject.slug });
 
-      createNotification({
-        text: "Successfully deleted certificate",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted certificate",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCertificate");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete certificate",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCertificate");
   };
 
   return (
@@ -83,9 +71,7 @@ export const CertificatesSection = () => {
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() =>
-                  handlePopUpOpen(isLegacyTemplatesEnabled ? "certificate" : "certificateIssuance")
-                }
+                onClick={() => handlePopUpOpen("issueCertificate")}
                 isDisabled={!isAllowed}
               >
                 Issue
@@ -95,16 +81,16 @@ export const CertificatesSection = () => {
         </ProjectPermissionCan>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
-      {isLegacyTemplatesEnabled ? (
-        <CertificateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      ) : (
-        <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-      )}
+      <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateManagePkiSyncsModal
+        popUp={popUp.managePkiSyncs}
+        handlePopUpToggle={handlePopUpToggle}
+      />
       <DeleteActionModal
         isOpen={popUp.deleteCertificate.isOpen}
         title={`Are you sure you want to remove the certificate ${

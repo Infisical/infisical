@@ -39,26 +39,18 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   const { mutateAsync, isPending } = useUpdateSubOrganization();
 
   const onFormSubmit = async ({ name }: FormData) => {
-    try {
-      await mutateAsync({
-        name,
-        subOrgId: currentOrg.id
-      });
+    await mutateAsync({
+      name,
+      subOrgId: currentOrg.id
+    });
 
-      navigate({ to: "/organization/settings", search: { subOrganization: name } });
-      queryClient.invalidateQueries();
-      await router.invalidate({ sync: true });
-      createNotification({
-        text: "Successfully updated sub-organization details",
-        type: "success"
-      });
-    } catch (error) {
-      console.error(error);
-      createNotification({
-        text: "Failed to update sub-organization details",
-        type: "error"
-      });
-    }
+    navigate({ to: "/organization/settings", search: { subOrganization: name } });
+    queryClient.invalidateQueries();
+    await router.invalidate({ sync: true });
+    createNotification({
+      text: "Successfully updated sub-organization details",
+      type: "success"
+    });
   };
 
   return (

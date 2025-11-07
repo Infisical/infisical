@@ -48,6 +48,10 @@ import {
   mapEnumsForValidation,
   normalizeDateForApi
 } from "../certificate-common/certificate-utils";
+import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
+import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
+import { TPkiSyncQueueFactory } from "../pki-sync/pki-sync-queue";
+import { addRenewedCertificateToSyncs, triggerAutoSyncForCertificate } from "../pki-sync/pki-sync-utils";
 import {
   TCertificateFromProfileResponse,
   TCertificateOrderResponse,
@@ -72,6 +76,12 @@ type TCertificateV3ServiceFactoryDep = {
   >;
   internalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  certificateSyncDAL: Pick<
+    TCertificateSyncDALFactory,
+    "findPkiSyncIdsByCertificateId" | "addCertificates" | "findByPkiSyncAndCertificate"
+  >;
+  pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
+  pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -328,7 +338,10 @@ export const certificateV3ServiceFactory = ({
   certificateProfileDAL,
   certificateTemplateV2Service,
   internalCaService,
-  permissionService
+  permissionService,
+  certificateSyncDAL,
+  pkiSyncDAL,
+  pkiSyncQueue
 }: TCertificateV3ServiceFactoryDep) => {
   const issueCertificateFromProfile = async ({
     profileId,
@@ -872,6 +885,8 @@ export const certificateV3ServiceFactory = ({
         tx
       );
 
+      await addRenewedCertificateToSyncs(originalCert.id, newCert.id, { certificateSyncDAL }, tx);
+
       return {
         certificate,
         certificateChain,
@@ -881,6 +896,12 @@ export const certificateV3ServiceFactory = ({
         originalCert,
         profile
       };
+    });
+
+    await triggerAutoSyncForCertificate(renewalResult.newCert.id, {
+      certificateSyncDAL,
+      pkiSyncDAL,
+      pkiSyncQueue
     });
 
     return {

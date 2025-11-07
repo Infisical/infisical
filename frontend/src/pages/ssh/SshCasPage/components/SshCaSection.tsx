@@ -18,46 +18,29 @@ export const SshCaSection = () => {
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "sshCa",
     "deleteSshCa",
-    "sshCaStatus", // enable / disable
-    "upgradePlan"
+    "sshCaStatus" // enable / disable
   ] as const);
 
   const onRemoveSshCaSubmit = async (caId: string) => {
-    try {
-      await deleteSshCa({ caId });
+    await deleteSshCa({ caId });
 
-      createNotification({
-        text: "Successfully deleted SSH CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted SSH CA",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteSshCa");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to delete SSH CA",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteSshCa");
   };
 
   const onUpdateSshCaStatus = async ({ caId, status }: { caId: string; status: SshCaStatus }) => {
-    try {
-      await updateSshCa({ caId, status });
+    await updateSshCa({ caId, status });
 
-      createNotification({
-        text: `Successfully ${status === SshCaStatus.ACTIVE ? "enabled" : "disabled"} SSH CA`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully ${status === SshCaStatus.ACTIVE ? "enabled" : "disabled"} SSH CA`,
+      type: "success"
+    });
 
-      handlePopUpClose("sshCaStatus");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${status === SshCaStatus.ACTIVE ? "enabled" : "disabled"} SSH CA`,
-        type: "error"
-      });
-    }
+    handlePopUpClose("sshCaStatus");
   };
 
   return (
@@ -110,11 +93,6 @@ export const SshCaSection = () => {
           onUpdateSshCaStatus(popUp?.sshCaStatus?.data as { caId: string; status: SshCaStatus })
         }
       />
-      {/* <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
-      /> */}
     </div>
   );
 };

@@ -20,6 +20,7 @@ import { AzureKeyVaultConnectionForm } from "./AzureKeyVaultConnectionForm";
 import { BitbucketConnectionForm } from "./BitbucketConnectionForm";
 import { CamundaConnectionForm } from "./CamundaConnectionForm";
 import { ChecklyConnectionForm } from "./ChecklyConnectionForm";
+import { ChefConnectionForm } from "./ChefConnectionForm";
 import { CloudflareConnectionForm } from "./CloudflareConnectionForm";
 import { DatabricksConnectionForm } from "./DatabricksConnectionForm";
 import { DigitalOceanConnectionForm } from "./DigitalOceanConnectionForm";
@@ -36,6 +37,7 @@ import { LdapConnectionForm } from "./LdapConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
+import { NorthflankConnectionForm } from "./NorthflankConnectionForm";
 import { OCIConnectionForm } from "./OCIConnectionForm";
 import { OktaConnectionForm } from "./OktaConnectionForm";
 import { OracleDBConnectionForm } from "./OracleDBConnectionForm";
@@ -72,24 +74,15 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
     >
   ) => {
-    try {
-      const connection = await createAppConnection.mutateAsync({
-        ...formData,
-        projectId
-      });
-      createNotification({
-        text: `Successfully added ${appName} Connection`,
-        type: "success"
-      });
-      onComplete(connection);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to add ${appName} Connection`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const connection = await createAppConnection.mutateAsync({
+      ...formData,
+      projectId
+    });
+    createNotification({
+      text: `Successfully added ${appName} Connection`,
+      type: "success"
+    });
+    onComplete(connection);
   };
 
   switch (app) {
@@ -163,12 +156,16 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Chef:
+      return <ChefConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} />;
     case AppConnection.DigitalOcean:
       return <DigitalOceanConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Netlify:
       return <NetlifyConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.Northflank:
+      return <NorthflankConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Redis:
@@ -188,24 +185,15 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       "method" | "name" | "app" | "credentials" | "isPlatformManagedCredentials"
     >
   ) => {
-    try {
-      const connection = await updateAppConnection.mutateAsync({
-        connectionId: appConnection.id,
-        ...formData
-      });
-      createNotification({
-        text: `Successfully updated ${appName} Connection`,
-        type: "success"
-      });
-      onComplete(connection);
-    } catch (err: any) {
-      console.error(err);
-      createNotification({
-        title: `Failed to update ${appName} Connection`,
-        text: err.message,
-        type: "error"
-      });
-    }
+    const connection = await updateAppConnection.mutateAsync({
+      connectionId: appConnection.id,
+      ...formData
+    });
+    createNotification({
+      text: `Successfully updated ${appName} Connection`,
+      type: "success"
+    });
+    onComplete(connection);
   };
 
   switch (appConnection.app) {
@@ -326,10 +314,14 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <RailwayConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Checkly:
       return <ChecklyConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Chef:
+      return <ChefConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Supabase:
       return <SupabaseConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.DigitalOcean:
       return <DigitalOceanConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.Northflank:
+      return <NorthflankConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Okta:
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Redis:

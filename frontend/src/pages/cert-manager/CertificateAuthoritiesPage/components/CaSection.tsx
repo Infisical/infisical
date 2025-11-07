@@ -1,7 +1,6 @@
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
@@ -24,49 +23,33 @@ export const CaSection = () => {
     "caCert",
     "installCaCert",
     "deleteCa",
-    "caStatus", // enable / disable
-    "upgradePlan"
+    "caStatus" // enable / disable
   ] as const);
 
   const onRemoveCaSubmit = async (caName: string) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await deleteCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL });
+    await deleteCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL });
 
-      createNotification({
-        text: "Successfully deleted CA",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted CA",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteCa");
-    } catch {
-      createNotification({
-        text: "Failed to delete CA",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteCa");
   };
 
   const onUpdateCaStatus = async ({ caName, status }: { caName: string; status: CaStatus }) => {
-    try {
-      if (!currentProject?.slug) return;
+    if (!currentProject?.slug) return;
 
-      await updateCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL, status });
+    await updateCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL, status });
 
-      createNotification({
-        text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
-        type: "success"
-      });
+    createNotification({
+      text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
+      type: "success"
+    });
 
-      handlePopUpClose("caStatus");
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: `Failed to ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
-        type: "error"
-      });
-    }
+    handlePopUpClose("caStatus");
   };
 
   return (
@@ -123,11 +106,6 @@ export const CaSection = () => {
         onDeleteApproved={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caName: string; status: CaStatus })
         }
-      />
-      <UpgradePlanModal
-        isOpen={popUp.upgradePlan.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text={(popUp.upgradePlan?.data as { description: string })?.description}
       />
     </div>
   );

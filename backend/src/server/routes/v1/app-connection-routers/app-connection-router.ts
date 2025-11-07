@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ProjectType } from "@app/db/schemas";
+import { ChefConnectionListItemSchema, SanitizedChefConnectionSchema } from "@app/ee/services/app-connections/chef";
 import { OCIConnectionListItemSchema, SanitizedOCIConnectionSchema } from "@app/ee/services/app-connections/oci";
 import {
   OracleDBConnectionListItemSchema,
@@ -88,6 +89,10 @@ import {
   NetlifyConnectionListItemSchema,
   SanitizedNetlifyConnectionSchema
 } from "@app/services/app-connection/netlify";
+import {
+  NorthflankConnectionListItemSchema,
+  SanitizedNorthflankConnectionSchema
+} from "@app/services/app-connection/northflank";
 import { OktaConnectionListItemSchema, SanitizedOktaConnectionSchema } from "@app/services/app-connection/okta";
 import {
   PostgresConnectionListItemSchema,
@@ -160,10 +165,12 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedSupabaseConnectionSchema.options,
   ...SanitizedDigitalOceanConnectionSchema.options,
   ...SanitizedNetlifyConnectionSchema.options,
+  ...SanitizedNorthflankConnectionSchema.options,
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
-  ...SanitizedLaravelForgeConnectionSchema.options
+  ...SanitizedLaravelForgeConnectionSchema.options,
+  ...SanitizedChefConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -203,10 +210,12 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   SupabaseConnectionListItemSchema,
   DigitalOceanConnectionListItemSchema,
   NetlifyConnectionListItemSchema,
+  NorthflankConnectionListItemSchema,
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
-  LaravelForgeConnectionListItemSchema
+  LaravelForgeConnectionListItemSchema,
+  ChefConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

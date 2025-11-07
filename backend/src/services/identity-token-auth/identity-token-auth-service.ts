@@ -244,8 +244,8 @@ export const identityTokenAuthServiceFactory = ({
     }
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
-      throw new BadRequestError({
-        message: "The identity does not have Token Auth attached"
+      throw new NotFoundError({
+        message: "Token Auth configuration not found for identity"
       });
     }
 

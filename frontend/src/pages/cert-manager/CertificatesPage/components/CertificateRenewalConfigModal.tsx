@@ -61,34 +61,26 @@ export const CertificateRenewalConfigModal = ({ popUp, handlePopUpToggle }: Prop
   const renewBeforeDays = watch("renewBeforeDays");
 
   const onSubmit = async (data: FormData) => {
-    try {
-      if (!currentProject?.slug) {
-        createNotification({
-          text: "Project not found",
-          type: "error"
-        });
-        return;
-      }
-
-      await updateRenewalConfig({
-        certificateId: certificateData.certificateId,
-        renewBeforeDays: data.renewBeforeDays,
-        projectSlug: currentProject.slug
-      });
-
+    if (!currentProject?.slug) {
       createNotification({
-        text: "Successfully updated auto-renewal configuration",
-        type: "success"
-      });
-
-      handlePopUpToggle("configureRenewal", false);
-    } catch (err) {
-      console.error(err);
-      createNotification({
-        text: "Failed to update auto-renewal configuration",
+        text: "Project not found",
         type: "error"
       });
+      return;
     }
+
+    await updateRenewalConfig({
+      certificateId: certificateData.certificateId,
+      renewBeforeDays: data.renewBeforeDays,
+      projectSlug: currentProject.slug
+    });
+
+    createNotification({
+      text: "Successfully updated auto-renewal configuration",
+      type: "success"
+    });
+
+    handlePopUpToggle("configureRenewal", false);
   };
 
   return (

@@ -29,27 +29,19 @@ export const IPAllowlistSection = () => {
   ] as const);
 
   const onDeleteTrustedIpSubmit = async (trustedIpId: string) => {
-    try {
-      if (!currentProject?.id) return;
+    if (!currentProject?.id) return;
 
-      await mutateAsync({
-        projectId: currentProject.id,
-        trustedIpId
-      });
+    await mutateAsync({
+      projectId: currentProject.id,
+      trustedIpId
+    });
 
-      createNotification({
-        text: "Successfully deleted IP access range",
-        type: "success"
-      });
+    createNotification({
+      text: "Successfully deleted IP access range",
+      type: "success"
+    });
 
-      handlePopUpClose("deleteTrustedIp");
-    } catch (err) {
-      console.log(err);
-      createNotification({
-        text: "Failed to delete IP access range",
-        type: "error"
-      });
-    }
+    handlePopUpClose("deleteTrustedIp");
   };
 
   return (
@@ -105,7 +97,7 @@ export const IPAllowlistSection = () => {
       <UpgradePlanModal
         isOpen={popUp.upgradePlan.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
-        text="You can use IP allowlisting if you switch to Infisical's Pro plan."
+        text="Your current plan does not include access to IP allowlisting. To unlock this feature, please upgrade to Infisical Pro plan."
       />
     </div>
   );
