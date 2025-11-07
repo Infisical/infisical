@@ -164,7 +164,7 @@ export const ProfileRow = ({
                 }}
                 icon={<FontAwesomeIcon icon={faEye} />}
               >
-                Reveal EAB Secret
+                Reveal ACME EAB
               </DropdownMenuItem>
             )}
             {canIssueCertificate && profile.enrollmentType === "api" && (

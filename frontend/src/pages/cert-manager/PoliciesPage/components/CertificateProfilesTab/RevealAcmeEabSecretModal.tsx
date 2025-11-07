@@ -41,7 +41,7 @@ export const RevealAcmeEabSecretModal = ({ isOpen, onClose, profile }: Props) =>
       }}
     >
       <ModalContent
-        title="Reveal EAB Secret"
+        title="Reveal ACME EAB"
         subTitle="To issue certificates automatically, your ACME client needs the following details."
       >
         {isLoading && (
