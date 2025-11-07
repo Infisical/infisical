@@ -1251,7 +1251,10 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
-    notificationService
+    notificationService,
+    projectSlackConfigDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService
   });
 
   const secretQueueService = secretQueueFactory({

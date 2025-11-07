@@ -1416,6 +1416,11 @@ export const secretApprovalRequestServiceFactory = ({
     const env = await projectEnvDAL.findOne({ id: policy.envId });
     const user = await userDAL.findById(actorId);
 
+    const projectPath = `/projects/secret-management/${projectId}`;
+    const approvalPath = `${projectPath}/approval`;
+    const cfg = getConfig();
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,
@@ -1427,7 +1432,8 @@ export const secretApprovalRequestServiceFactory = ({
             secretPath,
             projectId,
             requestId: secretApprovalRequest.id,
-            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))]
+            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretName) ?? []))],
+            approvalUrl
           }
         }
       },
@@ -1786,6 +1792,11 @@ export const secretApprovalRequestServiceFactory = ({
     const user = await userDAL.findById(actorId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
 
+    const projectPath = `/projects/secret-management/${project.id}`;
+    const approvalPath = `${projectPath}/approval`;
+    const cfg = getConfig();
+    const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
+
     await triggerWorkflowIntegrationNotification({
       input: {
         projectId,
@@ -1797,7 +1808,8 @@ export const secretApprovalRequestServiceFactory = ({
             secretPath,
             projectId,
             requestId: secretApprovalRequest.id,
-            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))]
+            secretKeys: [...new Set(Object.values(data).flatMap((arr) => arr?.map((item) => item.secretKey) ?? []))],
+            approvalUrl
           }
         }
       },
