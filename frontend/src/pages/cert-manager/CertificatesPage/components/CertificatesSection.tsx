@@ -26,7 +26,7 @@ export const CertificatesSection = () => {
   const { mutateAsync: deleteCert } = useDeleteCert();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-    "certificateIssuance",
+    "issueCertificate",
     "certificateImport",
     "certificateCert",
     "deleteCertificate",
@@ -71,7 +71,7 @@ export const CertificatesSection = () => {
                 colorSchema="primary"
                 type="submit"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("certificateIssuance")}
+                onClick={() => handlePopUpOpen("issueCertificate")}
                 isDisabled={!isAllowed}
               >
                 Issue

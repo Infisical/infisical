@@ -251,7 +251,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
 
   const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
     resolver: zodResolver(templateSchema),
-    defaultValues: getDefaultValues()
+    defaultValues: getDefaultValues(),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    criteriaMode: "all"
   });
 
   useEffect(() => {

@@ -94,9 +94,9 @@ const createSchema = (shouldShowSubjectSection: boolean) => {
 export type FormData = z.infer<ReturnType<typeof createSchema>>;
 
 type Props = {
-  popUp: UsePopUpState<["certificateIssuance"]>;
+  popUp: UsePopUpState<["issueCertificate"]>;
   handlePopUpToggle: (
-    popUpName: keyof UsePopUpState<["certificateIssuance"]>,
+    popUpName: keyof UsePopUpState<["issueCertificate"]>,
     state?: boolean
   ) => void;
   profileId?: string;
@@ -115,7 +115,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const { currentProject } = useProject();
 
   const inputSerialNumber =
-    (popUp?.certificateIssuance?.data as { serialNumber: string })?.serialNumber || "";
+    (popUp?.issueCertificate?.data as { serialNumber: string })?.serialNumber || "";
   const sanitizedSerialNumber = inputSerialNumber.replace(/[^a-fA-F0-9:]/g, "");
 
   const { data: cert } = useGetCert(sanitizedSerialNumber);
@@ -181,7 +181,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   } = useCertificateTemplate(
     templateData,
     actualSelectedProfile,
-    popUp?.certificateIssuance?.isOpen || false,
+    popUp?.issueCertificate?.isOpen || false,
     setValue,
     watch
   );
@@ -227,10 +227,10 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   }, [cert, reset]);
 
   useEffect(() => {
-    if (popUp?.certificateIssuance?.isOpen && profileId && !cert) {
+    if (popUp?.issueCertificate?.isOpen && profileId && !cert) {
       setValue("profileId", profileId);
     }
-  }, [popUp?.certificateIssuance?.isOpen, profileId, cert, setValue]);
+  }, [popUp?.issueCertificate?.isOpen, profileId, cert, setValue]);
 
   const onFormSubmit = useCallback(
     async ({
@@ -332,9 +332,9 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   return (
     <Modal
-      isOpen={popUp?.certificateIssuance?.isOpen}
+      isOpen={popUp?.issueCertificate?.isOpen}
       onOpenChange={(isOpen) => {
-        handlePopUpToggle("certificateIssuance", isOpen);
+        handlePopUpToggle("issueCertificate", isOpen);
         if (!isOpen) {
           resetAllState();
         }
@@ -503,7 +503,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 colorSchema="secondary"
                 variant="plain"
                 onClick={() => {
-                  handlePopUpToggle("certificateIssuance", false);
+                  handlePopUpToggle("issueCertificate", false);
                 }}
               >
                 Cancel
