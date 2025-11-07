@@ -92,7 +92,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_RESOURCE_LIST,
           metadata: {
-            count: totalCount
+            count: resources.length
           }
         }
       });
