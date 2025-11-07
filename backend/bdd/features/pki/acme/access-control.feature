@@ -126,7 +126,7 @@ Feature: Access Control
           "url": "<url>",
           "kid": "{acme_account1.uri}"
         },
-        "raw_payload": "<payload>"
+        "payload": {}
       }
       """
     Then the value response.status_code should be equal to 404
@@ -139,6 +139,7 @@ Feature: Access Control
       | order   | .                                         | not_used      | {order.uri}/certificate                                                             |                 |
       | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                          |                 |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                     | {}              |
+
 
   Scenario Outline: Access resources across a different profile with the same key pair
     Given I have an ACME cert profile as "acme_profile"
