@@ -274,10 +274,10 @@ def send_raw_acme_req(context: Context, url: str):
         }
     )
     base_url = context.vars["BASE_URL"]
-    url = urllib.parse.urljoin(base_url, replace_vars(url, context.vars))
+    actual_url = urllib.parse.urljoin(base_url, replace_vars(url, context.vars))
     response = acme_client.net._send_request(
         "POST",
-        url,
+        actual_url,
         data=jws,
         headers={"Content-Type": acme.client.ClientNetwork.JOSE_CONTENT_TYPE},
     )

@@ -45,6 +45,7 @@ Feature: Nonce
       | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
       | order   | .                                         | not_used      | {order.uri}                                                                        |
       | order   | .                                         | not_used      | {order.uri}/finalize                                                               |
+      | order   | .                                         | not_used      | {order.uri}/certificate                                                            |
       | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                         |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    |
 
