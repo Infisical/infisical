@@ -7,8 +7,8 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -495,6 +495,51 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       });
 
       return { certificates };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/certificates/latest-active-bundle",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateProfiles],
+      description: "Get latest active certificate bundle for a profile",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().nullable(),
+          certificateChain: z.string().nullable(),
+          privateKey: z.string().nullable(),
+          serialNumber: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const bundle = await server.services.certificateProfile.getLatestActiveCertificateBundle({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        profileId: req.params.id
+      });
+
+      if (!bundle) {
+        return {
+          certificate: null,
+          certificateChain: null,
+          privateKey: null,
+          serialNumber: null
+        };
+      }
+
+      return bundle;
     }
   });
 
