@@ -21,6 +21,7 @@ Feature: Nonce
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
+    Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<path>"
     """
     {
@@ -39,10 +40,12 @@ Feature: Nonce
     Then the value response with jq ".detail" should be equal to "Invalid nonce"
 
     Examples: Endpoints
-      | path                                                                               |
-      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
-      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
-      | {order.uri}                                                                        |
+      | src_var | jq                 | dest_var | path                                                                               |
+      | order   | .                  | not_used | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
+      | order   | .                  | not_used | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
+      | order   | .                  | not_used | {order.uri}                                                                        |
+      | order   | .                  | not_used | {order.uri}/finalize                                                               |
+      | order   | .authorizations[0] | auth_uri | {auth_uri}                                                                             |
 
   Scenario: Send the same nonce twice
     Given I have an ACME cert profile as "acme_profile"
