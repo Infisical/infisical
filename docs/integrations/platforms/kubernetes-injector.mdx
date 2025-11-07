@@ -53,24 +53,62 @@ $ kubectl logs deployment/infisical-agent-injector
 
 ## Windows support
 
-The Infisical Agent Injector supports both running on Windows-based pods, and injecting the agent into Windows-based pods.
+By default the agent injector is built for Linux-based pods, but supports injecting into Windows-based pods.
 
-To run the agent injector on a Windows pod, it's important that you add the `nodeSelector.kubernetes.io/os` label to the pod's deployment with the value `windows`.
-This can be done by changing the helm values.yaml by adding the following:
+**To inject into Windows-based pods, no extra configuration is needed.** The agent injector will automatically detect and handle injections into Windows-based pods.
 
-```yaml values.yaml
-nodeSelector:
-  kubernetes.io/os: windows
-```
+However, if you are trying to run the agent injector itself on a Windows-based pod, you'll need to configure your helm values.yaml file to point to a Windows-based image.
 
-By default the agent injector will run on Linux-based pods, unless you specify otherwise like in the example above.
-No extra configuration is needed to inject into Windows-based pods, as the agent injector will detect and handle the injection automatically.
 
-The Agent Injector will only run and inject into Windows-based pods that are running on the supported Windows versions:
+The Agent Injector will only run on and inject into Windows-based pods that are running on the supported Windows versions:
 - **Windows Server 2022**
+- **Windows Server 2019**
 
 We're looking to add support for other Windows versions in the future. If you're using a different Windows version, please let us know by opening [an issue](https://github.com/Infisical/infisical-agent-injector/issues/new), and we'll look into adding support for your desired version as soon as possible.
 
+
+You will need to set the `nodeSelector.kubernetes.io/os` label to `windows` and set the image tag to a Windows-based image. Below are two examples for Windows Server 2019 and Windows Server 2022.
+
+<AccordionGroup>
+  <Accordion title="Run Agent Injector on Windows Server 2019">
+
+    Create your `values.yaml` file and add the following:
+
+    ```yaml values.yaml
+    image:
+      repository: infisical/infisical-agent-injector
+      tag: "v0.1.4-windows-server-2019"
+
+    nodeSelector:
+      kubernetes.io/os: windows
+    ```
+  </Accordion>
+
+  <Accordion title="Run Agent Injector on Windows Server 2022">
+
+    Create your `values.yaml` file and add the following:
+
+    ```yaml values.yaml
+    image:
+      repository: infisical/infisical-agent-injector
+      tag: "v0.1.4-windows-server-2022"
+
+      nodeSelector:
+        kubernetes.io/os: windows
+    ```
+
+    Install the agent injector using the values.yaml file you created above.
+
+    ```bash
+    helm install --generate-name infisical-helm-charts/infisical-agent-injector -f values.yaml
+    ```
+  </Accordion>  
+</AccordionGroup>
+
+
+<Tip>
+  Note that Windows support is only supported in version `v0.1.4` and above. If you are using an older version, you will need to upgrade to `v0.1.4` or above to use Windows support.
+</Tip>
 
 ## Supported annotations
 
