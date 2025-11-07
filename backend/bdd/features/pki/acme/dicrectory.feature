@@ -4,7 +4,7 @@ Feature: Directory
     Given I have an ACME cert profile as "acme_profile"
     When I send a "GET" request to "/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
     Then the response status code should be "200"
-    Then the response body should match JSON value
+    And the response body should match JSON value
       """
       {
         "newNonce": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-nonce",

@@ -12,13 +12,13 @@ Feature: Order
       }
       """
     Then I create a RSA private key pair as cert_key
-    Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
-    Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.uri with jq "." should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)
-    Then the value order.body with jq ".status" should be equal to "pending"
-    Then the value order.body with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
-    Then the value order.body with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
-    Then the value order.body with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
+    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
+    And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
+    And the value order.uri with jq "." should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)
+    And the value order.body with jq ".status" should be equal to "pending"
+    And the value order.body with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
+    And the value order.body with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
+    And the value order.body with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
 
   Scenario: Create a new order with SANs
     Given I have an ACME cert profile as "acme_profile"
@@ -31,17 +31,17 @@ Feature: Order
         "COMMON_NAME": "localhost"
       }
       """
-    Then I add subject alternative name to certificate signing request csr
+    And I add subject alternative name to certificate signing request csr
       """
       [
         "example.com",
         "infisical.com"
       ]
       """
-    Then I create a RSA private key pair as cert_key
-    Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
-    Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then the value order.body with jq ".identifiers | sort_by(.value)" should be equal to json
+    And I create a RSA private key pair as cert_key
+    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
+    And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
+    And the value order.body with jq ".identifiers | sort_by(.value)" should be equal to json
       """
       [
         {"type": "dns", "value": "example.com"},
@@ -62,19 +62,19 @@ Feature: Order
       }
       """
     Then I create a RSA private key pair as cert_key
-    Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
-    Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    Then I send an ACME post-as-get to order.uri as fetched_order
-    Then the value fetched_order with jq ".status" should be equal to "pending"
-    Then the value fetched_order with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
-    Then the value fetched_order with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
-    Then the value fetched_order with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
+    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
+    And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
+    And I send an ACME post-as-get to order.uri as fetched_order
+    And the value fetched_order with jq ".status" should be equal to "pending"
+    And the value fetched_order with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
+    And the value fetched_order with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
+    And the value fetched_order with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
 
   Scenario Outline: Create an order with invalid identifier types
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
-    Then I peak and memorize the next nonce as nonce
+    And I peak and memorize the next nonce as nonce
     When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
     """
     {
@@ -92,22 +92,22 @@ Feature: Order
     }
     """
 
+    Then the value response.status_code should be equal to 400
+    And the value response with jq ".status" should be equal to 400
+    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
+    And the value response with jq ".detail" should be equal to "Only DNS identifiers are supported"
+
     Examples: Bad Identifier Types
       | identifier_type |
       | bad             |
       | ip              |
       | email           |
 
-    Then the value response.status_code should be equal to 400
-    Then the value response with jq ".status" should be equal to 400
-    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
-    Then the value response with jq ".detail" should be equal to "Only DNS identifiers are supported"
-
   Scenario Outline: Create an order with invalid identifier values
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
-    Then I peak and memorize the next nonce as nonce
+    And I peak and memorize the next nonce as nonce
     When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
       """
       {
@@ -125,6 +125,11 @@ Feature: Order
       }
       """
 
+    Then the value response.status_code should be equal to 400
+    And the value response with jq ".status" should be equal to 400
+    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
+    And the value response with jq ".detail" should be equal to "Invalid DNS identifier"
+   
     Examples: Bad Identifier Vluaes
       | identifier_value |
       | 127.0.0.1        |
@@ -135,7 +140,3 @@ Feature: Order
       | !                |
       | https://evil.com |
 
-    Then the value response.status_code should be equal to 400
-    Then the value response with jq ".status" should be equal to 400
-    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
-    Then the value response with jq ".detail" should be equal to "Invalid DNS identifier"
