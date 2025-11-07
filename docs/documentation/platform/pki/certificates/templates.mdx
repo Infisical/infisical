@@ -13,11 +13,13 @@ Each certificate requested against a profile is validated against the template b
 
 To create a certificate template, head to your Certificate Management Project > Certificates > Certificate Templates and press **Create Template**.
 
-TODO: image
+![pki certificate template](/images/platform/pki/certificate/cert-template.png)
+
+![pki certificate template modal](/images/platform/pki/certificate/cert-template-modal.png)
 
 Here's some guidance on each field:
 
-- Template Name: The name of the template such as `tls-server`.
+- Template Name: A slug-friendly name for the template such as `tls-server`.
 - Description: An optional description for the template.
 - Subject Attributes: A list of common names that can be included in the certificate subject. Each row accepts a fixed value or pattern such as `example.com` or `*.example.com` and whether it is allowed or denied.
 - Subject Alternative Names (SANs): A list of SANs that can appear in the certificate. Each row accepts a SAN type (e.g. DNS, IP, Email, URI), a fixed value or pattern such as `example.com` or `*.example.com`, and an allow or deny flag.

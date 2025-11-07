@@ -52,14 +52,13 @@ Here, select the certificate profile from step 1 that will be used to issue the 
   <Tab title="API">
 
 <Steps>
-  <Step title="Creating a certificate template">
-    A certificate template is a set of policies for certificates issued under that template; each template is bound to a specific CA and can also be bound to a certificate collection for alerting such that any certificate issued under the template is automatically added to the collection.
+  <Step title="Create a certificate profile">
 
-    With certificate templates, you can specify, for example, that issued certificates must have a common name (CN) adhering to a specific format like .*.acme.com or perhaps that the max TTL cannot be more than 1 year.
-
-    To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates/create) API endpoint, specifying the issuing CA.
+    To create a certificate [profile](/documentation/platform/pki/certificates/profiles), make an API request to the [Create Certificate Profile](/docs/api-reference/endpoints/certificate-profiles/create) API endpoint.
 
     ### Sample request
+
+    TODO: update this sample request.
 
     ```bash Request
     curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-templates' \
@@ -87,10 +86,13 @@ Here, select the certificate profile from step 1 that will be used to issue the 
     ```
 
   </Step>
-  <Step title="Creating a certificate">
-    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
+  <Step title="Issue a certificate">
+  
+    TODO: update this sample request.
+
+    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
     specifying the issuing CA.
-    
+
     ### Sample request
 
     ```bash Request
@@ -116,17 +118,12 @@ Here, select the certificate profile from step 1 that will be used to issue the 
     ```
 
     <Note>
-      Note that Infisical PKI supports issuing certificates without certificate templates as well. If this is desired, then you can set the **Certificate Template** field to **None**
-      and specify the **Issuing CA** and optional **Certificate Collection** fields; the rest of the fields for the issued certificate remain the same.
-
-      That said, we recommend using certificate templates to enforce policies and attach expiration monitoring on issued certificates.
-    </Note>
-
-    <Note>
       Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
     </Note>
 
-    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
+    TODO: update this sample request.
+
+    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
 
      ### Sample request
 

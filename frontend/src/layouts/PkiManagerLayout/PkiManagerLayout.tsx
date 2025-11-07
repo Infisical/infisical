@@ -94,7 +94,7 @@ export const PkiManagerLayout = () => {
                   </Link>
                   {
                     <>
-                      {
+                      {/* {
                         <Link
                           to="/projects/cert-management/$projectId/subscribers"
                           params={{
@@ -105,7 +105,7 @@ export const PkiManagerLayout = () => {
                             <Tab value={isActive ? "selected" : ""}>Subscribers (Legacy)</Tab>
                           )}
                         </Link>
-                      }
+                      } */}
                       {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
                         <Link
                           to="/projects/cert-management/$projectId/certificate-templates"
