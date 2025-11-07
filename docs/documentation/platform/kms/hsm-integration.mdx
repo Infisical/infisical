@@ -30,13 +30,96 @@ Using a hardware security module comes with the added benefit of having a secure
 Enabling HSM encryption has a set of key benefits:
 1. **Root Key Wrapping**: The root KMS encryption key that is used to secure your Infisical instance will be encrypted using the HSM device rather than the standard software-protected key.
 
+
 #### Caveats
 - **Performance**: Using an HSM device can have a performance impact on your Infisical instance. This is due to the additional latency introduced by the HSM device. This is however only noticeable when your instance(s) start up or when the encryption strategy is changed.
 - **Key Recovery**: If the HSM device is lost or destroyed, you will no longer be able to decrypt your data stored within Infisical. Most HSM providers offer recovery options, which you should consider when setting up an HSM device.
 
-### Requirements
-- An Infisical instance with a version number that is equal to or greater than `v0.91.0`.
-- An HSM device from a provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
+## Requirements
+- An HSM device _(PKCS#11 compatible library)_ from a compatible provider such as [Thales Luna HSM](https://cpl.thalesgroup.com/encryption/data-protection-on-demand/services/luna-cloud-hsm), [AWS CloudHSM](https://aws.amazon.com/cloudhsm/), [Fortanix HSM](https://www.fortanix.com/platform/data-security-manager), or others.
+  Infisical is validated to work with PKCS#11 2.30 and newer. If your HSM device doesn't follow the >=2.30 PKCS#11 standard you may see degraded performance.
+
+
+## Environment Variable Configuration
+To configure your Infisical instance to use an HSM, you must set the required environment variables. Below you'll find an example of the required environment variables.
+For further instructions on how to configure the HSM device for your Infisical instance, please see the [Setup Instructions](#setup-instructions) section.
+
+
+```dotenv
+HSM_LIB_PATH=/usr/local/lib/cloudhsm/cloudhsm.so
+HSM_SLOT=1
+HSM_KEY_LABEL=infisical-key
+HSM_PIN=your:pin
+```
+
+- `HSM_LIB_PATH`: The path to the PKCS#11 library provided by the HSM provider. This usually comes in the form of a `.so` for Linux and MacOS, or a `.dll` file for Windows. For Docker, you need to mount the library path as a volume. Further instructions can be found below. If you are using Docker, make sure to set the HSM_LIB_PATH environment variable to the path where the library is mounted in the container.
+- `HSM_PIN`: The PKCS#11 PIN to use for authentication with the HSM device.
+- `HSM_SLOT`: The slot number to use for the HSM device. This is typically between `0` and `5` for most HSM devices.
+- `HSM_KEY_LABEL`: The label of the key to use for encryption. **Please note that if no key is found with the provided label, the HSM will create a new key with the provided label.**
+
+You can read more about the [default instance configurations](/self-hosting/configuration/envars) here.
+
+## PKCS#11 Key Attributes
+
+If no AES key or HMAC key already exists with the label you defined on the `HSM_KEY_LABEL` environment variable, then Infisical will create one for you automatically using the label specified on `HSM_KEY_LABEL`.
+Below you'll find a list of the attributes each key will be created with.
+
+### AES Key
+
+<Accordion title="Bring your own key minimum requirements (optional)">
+  If you bring your own AES key and don't let Infisical create it for you it must have at least the following attributes:
+
+  * `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
+  * `CKA_KEY_TYPE`: `CKO_AES` — Defines the key type _(AES key)_.
+  * `CKA_VALUE_LEN`: `32` — 256-bit key size.
+  * `CKA_ENCRYPT`: `true` — Encryption capabilities enabled.
+  * `CKA_DECRYPT`: `true` — Decryption capabilities enabled.
+  * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
+
+  <Warning>
+    Note that for security reasons it is highly recommended to create an AES key with the full set of key attributes seen below if you're going to bring your own key.
+  </Warning>
+</Accordion>
+
+* `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
+* `CKA_KEY_TYPE`: `CKO_AES` — Defines the key type _(AES key)_.
+* `CKA_VALUE_LEN`: `32` — 256-bit key size.
+* `CKA_LABEL`: Your specified label in the `HSM_KEY_LABEL` environment variable.
+* `CKA_ENCRYPT`: `true` — Encryption capabilities enabled.
+* `CKA_DECRYPT`: `true` — Decryption capabilities enabled.
+* `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
+* `CKA_EXTRACTABLE`: `false` — The key material is not extractable from the HSM.
+* `CKA_SENSITIVE`: `true` — The key material is marked as sensitive.
+* `CKA_PRIVATE`: `true` — The key material is marked as private to the slot and can't be accessed from other slots.
+
+### HMAC Key
+
+<Accordion title="Bring your own key minimum requirements (optional)">
+  If you bring your own HMAC key and don't let Infisical create it for you it must have at least the following attributes:
+
+  * `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
+  * `CKA_KEY_TYPE`: `CKO_GENERIC_SECRET` — Defines the key class _(generic secret key)_.
+  * `CKA_VALUE_LEN`: `32` — 256-bit key size
+  * `CKA_SIGN`: `true` — Signing capabilities enabled
+  * `CKA_VERIFY`: `true` — Verifying capabilities enabled.
+  * `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
+
+  <Warning>
+    Note that for security reasons it is highly recommended to create an HMAC key with the full set of key attributes seen below if you're going to bring your own key.
+  </Warning>
+</Accordion>
+
+* `CKA_CLASS`: `CKO_SECRET_KEY` — Defines the key class _(secret key)_.
+* `CKA_KEY_TYPE`: `CKO_GENERIC_SECRET` — Defines the key class _(generic secret key)_.
+* `CKA_VALUE_LEN`: `32` — 256-bit key size.
+* `CKA_LABEL`: Your specified label in the `HSM_KEY_LABEL` environment variable, suffixed with `_HMAC`. If you specify `infisical-key-v1`, then the HMAC key label will become `infisical-key-v1_HMAC`.
+* `CKA_SIGN`: `true` — Signing capabilities enabled
+* `CKA_VERIFY`: `true` — Verifying capabilities enabled.
+* `CKA_TOKEN`: `true` — The key material will persist in your HSM so it can be reused.
+* `CKA_EXTRACTABLE`: `false` — The key material is not extractable from the HSM.
+* `CKA_SENSITIVE`: `true` — The key material is marked as sensitive.
+* `CKA_PRIVATE`: `true` — The key material is marked as private to the slot and can't be accessed from other slots.
+
 
 
 ## Setup Instructions
