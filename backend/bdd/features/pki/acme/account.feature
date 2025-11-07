@@ -22,5 +22,7 @@ Feature: Account
     Examples: Bad Credentials
       | eab_kid                              | eab_secret                |
       | bad                                  | Cg==                      |
+      | bad                                  | Cg==                      |
       | {acme_profile.eab_kid}               | Cg==                      |
+      | {acme_profile.eab_kid}               | YmFkLXNjcmV0Cg==          |
       | 4bc7959c-fe2d-4447-ae91-0cd893667af6 | {acme_profile.eab_secret} |
