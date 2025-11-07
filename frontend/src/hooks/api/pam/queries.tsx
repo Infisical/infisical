@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
 import { PamResourceType } from "./enums";
-import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
+import { TListPamAccountsDTO, TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
 
 export const pamKeys = {
   all: ["pam"] as const,
@@ -19,7 +19,12 @@ export const pamKeys = {
     resourceType,
     resourceId
   ],
-  listAccounts: (projectId: string) => [...pamKeys.account(), "list", projectId],
+  listAccounts: ({ projectId, ...params }: TListPamAccountsDTO) => [
+    ...pamKeys.account(),
+    "list",
+    projectId,
+    params
+  ],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
 };
@@ -98,25 +103,32 @@ export const useGetPamResourceById = (
 };
 
 // Accounts
+type TListPamAccountsResponse = {
+  accounts: TPamAccount[];
+  folders: TPamFolder[];
+  totalCount: number;
+  folderId?: string;
+  folderPaths: Record<string, string>;
+};
+
 export const useListPamAccounts = (
-  projectId: string,
+  params: TListPamAccountsDTO,
   options?: Omit<
     UseQueryOptions<
-      { accounts: TPamAccount[]; folders: TPamFolder[] },
+      TListPamAccountsResponse,
       unknown,
-      { accounts: TPamAccount[]; folders: TPamFolder[] },
+      TListPamAccountsResponse,
       ReturnType<typeof pamKeys.listAccounts>
     >,
     "queryKey" | "queryFn"
   >
 ) => {
   return useQuery({
-    queryKey: pamKeys.listAccounts(projectId),
+    queryKey: pamKeys.listAccounts(params),
     queryFn: async () => {
-      const { data } = await apiRequest.get<{ accounts: TPamAccount[]; folders: TPamFolder[] }>(
-        "/api/v1/pam/accounts",
-        { params: { projectId } }
-      );
+      const { data } = await apiRequest.get<TListPamAccountsResponse>("/api/v1/pam/accounts", {
+        params
+      });
 
       return data;
     },

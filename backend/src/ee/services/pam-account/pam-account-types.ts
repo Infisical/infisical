@@ -1,3 +1,5 @@
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+
 import { TPamAccount } from "../pam-resource/pam-resource-types";
 
 // DTOs
@@ -18,3 +20,22 @@ export type TAccessAccountDTO = {
   actorUserAgent: string;
   duration: number;
 };
+
+export type TListAccountsDTO = {
+  accountPath: string;
+  accountView: PamAccountView;
+  search?: string;
+  orderBy?: PamAccountOrderBy;
+  orderDirection?: OrderByDirection;
+  limit?: number;
+  offset?: number;
+} & TProjectPermission;
+
+export enum PamAccountOrderBy {
+  Name = "name"
+}
+
+export enum PamAccountView {
+  Flat = "flat",
+  Nested = "nested"
+}

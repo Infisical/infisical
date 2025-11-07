@@ -12,3 +12,12 @@ export enum PamSessionStatus {
   Ended = "ended",
   Terminated = "terminated"
 }
+
+export enum PamAccountOrderBy {
+  Name = "name"
+}
+
+export enum PamAccountView {
+  Flat = "flat",
+  Nested = "nested"
+}

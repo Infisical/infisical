@@ -1,4 +1,5 @@
-import { PamResourceType, PamSessionStatus } from "../enums";
+import { OrderByDirection } from "../../generic/types";
+import { PamAccountOrderBy, PamAccountView, PamResourceType, PamSessionStatus } from "../enums";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 
@@ -63,6 +64,17 @@ export type TDeletePamResourceDTO = {
 };
 
 // Account DTOs
+export type TListPamAccountsDTO = {
+  projectId: string;
+  accountPath?: string | null;
+  accountView?: PamAccountView;
+  offset?: number;
+  limit?: number;
+  orderBy?: PamAccountOrderBy;
+  orderDirection?: OrderByDirection;
+  search?: string;
+};
+
 export type TCreatePamAccountDTO = Pick<
   TPamAccount,
   "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId"
