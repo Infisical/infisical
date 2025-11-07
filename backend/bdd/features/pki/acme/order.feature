@@ -130,8 +130,9 @@ Feature: Order
 
     Examples: Bad Identifier Vluaes
       | identifier_value |
-      | 127.0.0.1 |
-      | 192.168.123.111 |
+      | 127.0.0.1        |
+      | 192.168.123.111  |
+      | 169.254.169.254  |
       | ../../etc/passwd |
 
     Then the value response.status_code should be equal to 400

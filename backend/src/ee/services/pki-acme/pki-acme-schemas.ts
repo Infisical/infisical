@@ -84,6 +84,8 @@ export const CreateAcmeAccountResponseSchema = z.object({
   orders: z.string().optional()
 });
 
+export const ValidDNSIdentifierRegex = /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.(?!-)[A-Za-z0-9-]{1,63}(?<!-))*$/;
+
 // New Order payload schema
 export const CreateAcmeOrderBodySchema = z.object({
   identifiers: z.array(
