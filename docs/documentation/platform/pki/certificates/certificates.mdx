@@ -68,16 +68,16 @@ In the following steps, we explore how to revoke a X.509 certificate and obtain 
     selecting the **Revoke Certificate** option for it and specifying the reason
     for revocation.
 
-    ![pki revoke certificate](/images/platform/pki/cert-revoke.png)
+    ![pki revoke certificate](/images/platform/pki/certificate/cert-revoke.png)
 
-    ![pki revoke certificate modal](/images/platform/pki/cert-revoke-modal.png)
+    ![pki revoke certificate modal](/images/platform/pki/certificate/cert-revoke-modal.png)
 
   </Step>
   <Step title="Obtaining a CRL">
     In order to check the revocation status of a certificate, you can check it
     against the CRL of a CA by heading to its Issuing CA and downloading the CRL.
 
-    ![pki view crl](/images/platform/pki/ca-crl.png)
+    ![pki view crl](/images/platform/pki/ca/ca-crl.png)
 
     To verify a certificate against the
     downloaded CRL with OpenSSL, you can use the following command:
