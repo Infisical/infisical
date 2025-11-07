@@ -742,10 +742,8 @@
                     "group": "Enrollment Methods",
                     "pages": [
                       "documentation/platform/pki/enrollment-methods/overview",
-                      "documentation/platform/pki/enrollment-methods/acme",
                       "documentation/platform/pki/enrollment-methods/api",
-                      "documentation/platform/pki/enrollment-methods/est",
-                      "documentation/platform/pki/enrollment-methods/scep"
+                      "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
                   "documentation/platform/pki/alerting"
