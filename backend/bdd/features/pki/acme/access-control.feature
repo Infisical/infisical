@@ -15,10 +15,6 @@ Feature: Access Control
     Then I create a RSA private key pair as cert_key
     Then I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     Then I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    And I put away current ACME client as client0
-
-    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
-    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account1
     Then I peak and memorize the next nonce as nonce
     Then I memorize <src_var> with jq "<jq>" as <dest_var>
     When I send a raw ACME request to "<url>"
@@ -28,21 +24,41 @@ Feature: Access Control
           "alg": "RS256",
           "nonce": "{nonce}",
           "url": "<url>",
+          "kid": "{acme_account0.uri}"
+        },
+        "payload": {"invalid": "payload"}
+      }
+      """
+    # With original owner account, the invalid payload is going to trigger other errors instead of 404, this is to make sure
+    # that our URLs are actually correct
+    Then the value response.status_code should not be equal to 404
+    And I put away current ACME client as client0
+
+    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    Then I register a new ACME account with email maidu@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account1
+    Then I peak and memorize the next nonce as nonce
+    When I send a raw ACME request to "<url>"
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce}",
+          "url": "<url>",
           "kid": "{acme_account1.uri}"
         },
-        "payload": {}
+        "raw_payload": "<payload>"
       }
       """
     Then the value response.status_code should be equal to 404
 
     Examples: Endpoints
-      | src_var | jq                                        | dest_var      | url
-      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account0_id}/orders |
-      | order   | .                                         | not_used      | {order.uri}                                                                         |
-      | order   | .                                         | not_used      | {order.uri}/finalize                                                                |
-      | order   | .                                         | not_used      | {order.uri}/certificate                                                             |
-      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                          |
-      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                     |
+      | src_var | jq                                        | dest_var      | url                                                                                 | payload         |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account0_id}/orders |                 |
+      | order   | .                                         | not_used      | {order.uri}                                                                         |                 |
+      | order   | .                                         | not_used      | {order.uri}/finalize                                                                | {\"csr\": \"\"} |
+      | order   | .                                         | not_used      | {order.uri}/certificate                                                             |                 |
+      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                          |                 |
+      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                     | {}              |
 
   Scenario Outline: URL mismatch
     Given I have an ACME cert profile as "acme_profile"

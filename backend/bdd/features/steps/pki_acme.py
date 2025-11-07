@@ -310,11 +310,21 @@ def send_raw_acme_req(context: Context, url: str):
     acme_client = context.acme_client
     content = json.loads(context.text)
     protected = replace_vars(content["protected"], context.vars)
-    payload = (
-        replace_vars(content["payload"], context.vars) if "payload" in content else None
-    )
     alg = acme_client.net.alg
-    encoded_payload = json.dumps(payload).encode() if payload is not None else b""
+    if "raw_payload" in content:
+        encoded_payload = content["raw_payload"].encode("utf-8")
+    else:
+        if "payload" not in content:
+            payload = (
+                replace_vars(content["payload"], context.vars)
+                if "payload" in content
+                else None
+            )
+            encoded_payload = (
+                json.dumps(payload).encode() if payload is not None else b""
+            )
+        else:
+            encoded_payload = b""
     protected_headers = json.dumps(protected)
     signature = alg.sign(
         key=acme_client.net.key.key,
@@ -481,6 +491,13 @@ def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
     expected_value = replace_vars(json.loads(expected), context.vars)
     assert value == expected_value, f"{value!r} does not match {expected_value!r}"
+
+
+@then("the value {var_path} should not be equal to {expected}")
+def step_impl(context: Context, var_path: str, expected: str):
+    value = eval_var(context, var_path)
+    expected_value = replace_vars(json.loads(expected), context.vars)
+    assert value != expected_value, f"{value!r} does match {expected_value!r}"
 
 
 @then('I memorize {var_path} with jq "{jq_query}" as {var_name}')

@@ -139,7 +139,7 @@ export class AcmeAccountDoesNotExistError extends AcmeError {
     super({
       type: AcmeErrorType.AccountDoesNotExist,
       message,
-      status: 400,
+      status: 404,
       error
     });
     this.name = "AcmeAccountDoesNotExistError";

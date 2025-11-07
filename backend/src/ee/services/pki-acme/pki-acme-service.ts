@@ -165,7 +165,7 @@ export const pkiAcmeServiceFactory = ({
         throw new AcmeBadPublicKeyError({ message: "Invalid JWS payload" });
       }
       logger.error(error, "Unexpected error while verifying JWS payload");
-      throw new AcmeServerInternalError({ message: "Failed to verify JWS payload" });
+      throw new AcmeMalformedError({ message: "Failed to verify JWS payload" });
     }
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
@@ -257,7 +257,7 @@ export const pkiAcmeServiceFactory = ({
         }
         const accountId = extractAccountIdFromKid(protectedHeader.kid, profileId);
         if (expectedAccountId && accountId !== expectedAccountId) {
-          throw new NotFoundError({ message: "ACME resource not found" });
+          throw new AcmeAccountDoesNotExistError({ message: "ACME resource not found" });
         }
         const account = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         if (!account) {
