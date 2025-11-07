@@ -765,7 +765,7 @@
                 ]
               },
               {
-                "group": "CA Integrations",
+                "group": "External CA Integrations",
                 "pages": [
                   "documentation/platform/pki/ca/acme-ca",
                   "documentation/platform/pki/ca/azure-adcs"
