@@ -31,14 +31,9 @@ import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
+import { PamAccountView } from "./pam-account-enums";
 import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
-import {
-  PamAccountView,
-  TAccessAccountDTO,
-  TCreateAccountDTO,
-  TListAccountsDTO,
-  TUpdateAccountDTO
-} from "./pam-account-types";
+import { TAccessAccountDTO, TCreateAccountDTO, TListAccountsDTO, TUpdateAccountDTO } from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;

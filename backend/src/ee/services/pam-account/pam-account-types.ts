@@ -1,6 +1,7 @@
 import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 import { TPamAccount } from "../pam-resource/pam-resource-types";
+import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 
 // DTOs
 export type TCreateAccountDTO = Pick<
@@ -30,12 +31,3 @@ export type TListAccountsDTO = {
   limit?: number;
   offset?: number;
 } & TProjectPermission;
-
-export enum PamAccountOrderBy {
-  Name = "name"
-}
-
-export enum PamAccountView {
-  Flat = "flat",
-  Nested = "nested"
-}

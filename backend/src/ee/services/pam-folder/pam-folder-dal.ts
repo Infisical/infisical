@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
-import { PamAccountOrderBy } from "../pam-account/pam-account-types";
+import { PamAccountOrderBy } from "../pam-account/pam-account-enums";
 
 export type TPamFolderDALFactory = ReturnType<typeof pamFolderDALFactory>;
 export const pamFolderDALFactory = (db: TDbClient) => {

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-types";
+import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";

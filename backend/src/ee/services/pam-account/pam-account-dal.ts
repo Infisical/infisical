@@ -6,7 +6,7 @@ import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
-import { PamAccountOrderBy, PamAccountView } from "./pam-account-types";
+import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 
 export type TPamAccountDALFactory = ReturnType<typeof pamAccountDALFactory>;
 
