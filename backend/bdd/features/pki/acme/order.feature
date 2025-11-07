@@ -72,3 +72,69 @@ Feature: Order
     Then the value fetched_order with jq ".identifiers" should be equal to [{"type": "dns", "value": "localhost"}]
     Then the value fetched_order with jq ".finalize" should match pattern {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/orders/(.+)/finalize
     Then the value fetched_order with jq "all(.authorizations[]; startswith("{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/authorizations/"))" should be equal to true
+
+  Scenario Outline: Create an order with invalid identifier types
+    Given I have an ACME cert profile as "acme_profile"
+    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
+    Then I peak and memorize the next nonce as nonce
+    When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
+    """
+    {
+      "protected": {
+        "alg": "RS256",
+        "nonce": "{nonce}",
+        "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
+        "kid": "{acme_account.uri}"
+      },
+      "payload": {
+        "identifiers": [
+           { "type": "<identifier_type>", "value": "www.example.org" }
+         ]
+      }
+    }
+    """
+
+    Examples: Bad Identifier Types
+      | identifier_type |
+      | bad             |
+      | ip              |
+      | email           |
+
+    Then the value response.status_code should be equal to 400
+    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
+    Then the value response with jq ".status" should be equal to 400
+    Then the value response with jq ".detail" should be equal to "Only DNS identifiers are supported"
+
+  Scenario Outline: Create an order with invalid identifier values
+    Given I have an ACME cert profile as "acme_profile"
+    When I have an ACME client connecting to {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
+    Then I peak and memorize the next nonce as nonce
+    When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
+    """
+    {
+      "protected": {
+        "alg": "RS256",
+        "nonce": "{nonce}",
+        "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
+        "kid": "{acme_account.uri}"
+      },
+      "payload": {
+        "identifiers": [
+           { "type": "dns", "value": "<identifier_value>" }
+         ]
+      }
+    }
+    """
+
+    Examples: Bad Identifier Vluaes
+      | identifier_value |
+      | 127.0.0.1 |
+      | 192.168.123.111 |
+      | ../../etc/passwd |
+
+    Then the value response.status_code should be equal to 400
+    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
+    Then the value response with jq ".status" should be equal to 400
+    Then the value response with jq ".detail" should be equal to "Invalid DNS identifier"
