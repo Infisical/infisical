@@ -53,3 +53,5 @@ docs/integrations/app-connections/railway.mdx:generic-api-key:156
 k8-operator/config/samples/universalAuthIdentitySecret.yaml:generic-api-key:8
 docs/integrations/app-connections/redis.mdx:generic-api-key:80
 backend/src/ee/services/app-connections/chef/chef-connection-fns.ts:private-key:42
+docs/documentation/platform/pki/enrollment-methods/api.mdx:generic-api-key:93
+docs/documentation/platform/pki/enrollment-methods/api.mdx:private-key:139

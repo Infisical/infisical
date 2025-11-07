@@ -60,17 +60,21 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ### Sample request
 
-    TODO: update this sample request.
-
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-templates' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-profiles' \
+      --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
+          "projectId": "<project-id>",
           "caId": "<ca-id>",
-          "name": "My Certificate Template",
-          "commonName": ".*.acme.com",
-          "subjectAlternativeName": ".*.acme.com",
-          "ttl": "1y",
+          "certificateTemplateId": "<certificate-template-id>",
+          "slug": "my-api-profile",
+          "description": "Certificate profile for API enrollment",
+          "enrollmentType": "API",
+          "apiConfig": {
+              "autoRenew": true,
+              "renewBeforeDays": 7
+          }
       }'
     ```
 
@@ -78,32 +82,50 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ```bash Response
     {
-      id: "...",
-      caId: "...",
-      name: "...",
-      commonName: "...",
-      subjectAlternativeName: "...",
-      ttl: "...",
+      "certificateProfile": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "projectId": "65f0a4b0-c123-4567-8901-23456789abcd",
+        "caId": "550e8400-e29b-41d4-a716-446655440000",
+        "certificateTemplateId": "660f1234-e29b-41d4-a716-446655440001",
+        "slug": "my-api-profile",
+        "description": "Certificate profile for API enrollment",
+        "enrollmentType": "API",
+        "apiConfigId": "770g2345-e29b-41d4-a716-446655440002",
+        "createdAt": "2023-01-19T09:44:36.267Z",
+        "updatedAt": "2023-01-19T09:44:36.267Z"
+      }
     }
     ```
 
   </Step>
   <Step title="Issue a certificate">
-  
-    TODO: update this sample request.
 
-    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
-    specifying the issuing CA.
+    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
 
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v3/certificates/issue-certificate' \
+      --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "certificateTemplateId": "<certificate-template-id>",
+          "profileId": "<certificate-profile-id>",
           "commonName": "service.acme.com",
           "ttl": "1y",
+          "signatureAlgorithm": "RSA-SHA256",
+          "keyAlgorithm": "RSA_2048",
+          "keyUsages": ["digital_signature", "key_encipherment"],
+          "extendedKeyUsages": ["server_auth"],
+          "altNames": [
+              {
+                  "type": "DNS",
+                  "value": "service.acme.com"
+              },
+              {
+                  "type": "DNS",
+                  "value": "www.service.acme.com"
+              }
+          ]
       }'
     ```
 
@@ -111,11 +133,12 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ```bash Response
     {
-      certificate: "...",
-      certificateChain: "...",
-      issuingCaCertificate: "...",
-      privateKey: "...",
-      serialNumber: "..."
+      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "privateKey": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----",
+      "serialNumber": "123456789012345678",
+      "certificateId": "880h3456-e29b-41d4-a716-446655440003"
     }
     ```
 
@@ -123,19 +146,18 @@ Here, select the certificate profile from step 1 that will be used to issue the 
       Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
     </Note>
 
-    TODO: update this sample request.
-
-    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
+    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint.
 
      ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/sign-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v3/certificates/sign-certificate' \
+      --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "certificateTemplateId": "<certificate-template-id>",
-          "csr": "...",
-          "ttl": "1y",
+          "profileId": "<certificate-profile-id>",
+          "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIICvDCCAaQCAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBE9oaW8...\n-----END CERTIFICATE REQUEST-----",
+          "ttl": "1y"
       }'
     ```
 
@@ -143,11 +165,11 @@ Here, select the certificate profile from step 1 that will be used to issue the 
 
     ```bash Response
     {
-      certificate: "...",
-      certificateChain: "...",
-      issuingCaCertificate: "...",
-      privateKey: "...",
-      serialNumber: "..."
+      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "serialNumber": "123456789012345679",
+      "certificateId": "990i4567-e29b-41d4-a716-446655440004"
     }
     ```
 
