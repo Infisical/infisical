@@ -237,10 +237,14 @@ def step_impl(context: Context, url: str):
     context.alt_eab_url = replace_vars(url, context.vars)
 
 
-@then(
-    'I register a new ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
-)
-def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+def register_account_with_eab(
+    context: Context,
+    email: str,
+    kid: str,
+    secret: str,
+    account_var: str,
+    only_return_existing: bool = False,
+):
     acme_client = context.acme_client
     account_public_key = acme_client.net.key.public_key()
     if hasattr(context, "alt_eab_url"):
@@ -259,11 +263,35 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     registration = messages.NewRegistration.from_data(
         email=email,
         external_account_binding=eab,
+        only_return_existing=only_return_existing,
     )
     try:
         context.vars[account_var] = acme_client.new_account(registration)
     except Exception as exp:
         context.vars["error"] = exp
+
+
+@then(
+    'I register a new ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
+)
+def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+    register_account_with_eab(
+        context=context, email=email, kid=kid, secret=secret, account_var=account_var
+    )
+
+
+@then(
+    'I find the existing ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
+)
+def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+    register_account_with_eab(
+        context=context,
+        email=email,
+        kid=kid,
+        secret=secret,
+        account_var=account_var,
+        only_return_existing=True,
+    )
 
 
 @then("I register a new ACME account with email {email} without EAB")
@@ -451,7 +479,7 @@ def step_impl(context: Context, var_path: str):
 @then("the value {var_path} should be equal to {expected}")
 def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
-    expected_value = json.loads(expected)
+    expected_value = replace_vars(json.loads(expected), context.vars)
     assert value == expected_value, f"{value!r} does not match {expected_value!r}"
 
 
