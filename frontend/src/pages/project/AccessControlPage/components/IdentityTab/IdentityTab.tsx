@@ -543,7 +543,12 @@ export const IdentityTab = withProjectPermission(
                   animate={{ opacity: 1, translateX: 0 }}
                   exit={{ opacity: 0, translateX: -30 }}
                 >
-                  <ProjectIdentityModal onClose={() => handlePopUpClose("createIdentity")} />
+                  <ProjectIdentityModal
+                    onClose={() => {
+                      handlePopUpClose("createIdentity");
+                      setWizardStep(WizardSteps.SelectAction);
+                    }}
+                  />
                 </motion.div>
               )}
               {wizardStep === WizardSteps.LinkIdentity && (

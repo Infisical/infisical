@@ -13,6 +13,7 @@ import {
   FormLabel,
   IconButton,
   Input,
+  ModalClose,
   Switch
 } from "@app/components/v2";
 import { useProject } from "@app/context";
@@ -280,9 +281,11 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
         >
           {isUpdate ? "Update" : "Create"}
         </Button>
-        <Button colorSchema="secondary" variant="plain" onClick={() => onClose()}>
-          Cancel
-        </Button>
+        <ModalClose asChild>
+          <Button colorSchema="secondary" variant="plain">
+            Cancel
+          </Button>
+        </ModalClose>
       </div>
     </form>
   );
