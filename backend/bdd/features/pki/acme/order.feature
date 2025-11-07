@@ -131,6 +131,9 @@ Feature: Order
       | 192.168.123.111  |
       | 169.254.169.254  |
       | ../../etc/passwd |
+      | !@#$             |
+      | !                |
+      | https://evil.com |
 
     Then the value response.status_code should be equal to 400
     Then the value response with jq ".status" should be equal to 400
