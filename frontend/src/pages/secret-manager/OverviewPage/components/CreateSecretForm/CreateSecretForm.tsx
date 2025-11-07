@@ -255,10 +255,12 @@ export const CreateSecretForm = ({ secretPath = "/", onClose }: Props) => {
                 <code>
                   &#36;{"{"}secret_name{"}"}
                 </code>
-                .
                 <br />
-                <br /> You can go to the referenced secret by holding the <code>Cmd</code> (Mac) or{" "}
-                <code>Ctrl</code> (Windows/Linux) key and clicking on the secret name.
+                <br />
+                You can go to the referenced secret by holding the{" "}
+                <code className="rounded-sm bg-mineshaft-600 p-0.5">Cmd</code> (Mac) or{" "}
+                <code className="rounded-sm bg-mineshaft-600 p-0.5">Ctrl</code> (Windows/Linux) key
+                and clicking on the secret name.
               </div>
             }
             tooltipClassName="max-w-md"

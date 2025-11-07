@@ -337,10 +337,10 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             permission,
             ProjectPermissionSecretActions.ReadValue,
             {
-              environment: propEnvironment ?? "",
+              environment: propEnvironment ?? "*",
               secretPath: propSecretPath ?? "/",
               secretName: segment,
-              secretTags: []
+              secretTags: ["*"]
             }
           );
 
@@ -395,14 +395,21 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           {
             environment: environmentSlug,
             secretPath,
-            secretName: secretName ?? "",
-            secretTags: []
+            secretName: secretName ?? "*",
+            secretTags: ["*"]
           }
         );
 
+        let resourceName = "secret";
+        if (segment === environmentSlug) {
+          resourceName = "environment";
+        } else if (segment !== secretName && folderPath.includes(segment)) {
+          resourceName = "folder";
+        }
+
         if (!canReadSecretValue) {
           createNotification({
-            text: "You do not have permission to access this secret",
+            text: `You do not have permission to access this ${resourceName}`,
             type: "error"
           });
           return;
