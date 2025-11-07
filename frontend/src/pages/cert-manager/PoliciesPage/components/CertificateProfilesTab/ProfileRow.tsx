@@ -140,7 +140,7 @@ export const ProfileRow = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="p-1">
             <DropdownMenuItem
-              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+              icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} className="w-3" />}
               onClick={() => handleCopyId()}
             >
               Copy Profile ID
@@ -151,7 +151,7 @@ export const ProfileRow = ({
                   e.stopPropagation();
                   onEditProfile(profile);
                 }}
-                icon={<FontAwesomeIcon icon={faEdit} />}
+                icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
               >
                 Edit Profile
               </DropdownMenuItem>
@@ -162,7 +162,7 @@ export const ProfileRow = ({
                   e.stopPropagation();
                   onRevealProfileAcmeEabSecret(profile);
                 }}
-                icon={<FontAwesomeIcon icon={faEye} />}
+                icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
               >
                 Reveal ACME EAB
               </DropdownMenuItem>
@@ -173,7 +173,7 @@ export const ProfileRow = ({
                   e.stopPropagation();
                   handlePopUpToggle("issueCertificate");
                 }}
-                icon={<FontAwesomeIcon icon={faPlus} />}
+                icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
               >
                 Issue Certificate
               </DropdownMenuItem>
@@ -184,7 +184,7 @@ export const ProfileRow = ({
                   e.stopPropagation();
                   onDeleteProfile(profile);
                 }}
-                icon={<FontAwesomeIcon icon={faTrash} />}
+                icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
               >
                 Delete Profile
               </DropdownMenuItem>
