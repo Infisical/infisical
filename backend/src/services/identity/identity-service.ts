@@ -329,14 +329,14 @@ export const identityServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Delete, OrgPermissionSubjects.Identity);
 
-    if (identityOrgMembership.identity.hasDeleteProtection)
-      throw new BadRequestError({ message: "Identity has delete protection" });
-
     if (identityOrgMembership.identity.projectId) {
       throw new BadRequestError({ message: `Identity is managed by project` });
     }
 
     if (identityOrgMembership.identity.orgId === actorOrgId) {
+      if (identityOrgMembership.identity.hasDeleteProtection)
+        throw new BadRequestError({ message: "Identity has delete protection" });
+
       const deletedIdentity = await identityDAL.deleteById(id);
       await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
