@@ -202,7 +202,6 @@ export const IdentityTab = withProjectPermission(
               {(isAllowed) => (
                 <Button
                   variant="outline_bg"
-                  className="rounded-r-none"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
                   onClick={() => handlePopUpOpen("createIdentity")}
                   isDisabled={!isAllowed}
