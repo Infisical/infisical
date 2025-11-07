@@ -324,18 +324,15 @@ def send_raw_acme_req(context: Context, url: str):
     alg = acme_client.net.alg
     if "raw_payload" in content:
         encoded_payload = content["raw_payload"].encode("utf-8")
+    elif "payload" in content:
+        payload = (
+            replace_vars(content["payload"], context.vars)
+            if "payload" in content
+            else None
+        )
+        encoded_payload = json.dumps(payload).encode() if payload is not None else b""
     else:
-        if "payload" not in content:
-            payload = (
-                replace_vars(content["payload"], context.vars)
-                if "payload" in content
-                else None
-            )
-            encoded_payload = (
-                json.dumps(payload).encode() if payload is not None else b""
-            )
-        else:
-            encoded_payload = b""
+        encoded_payload = b""
     protected_headers = json.dumps(protected)
     signature = alg.sign(
         key=acme_client.net.key.key,
