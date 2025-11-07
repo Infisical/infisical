@@ -102,8 +102,8 @@ Feature: Order
       | email           |
 
     Then the value response.status_code should be equal to 400
-    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
     Then the value response with jq ".status" should be equal to 400
+    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
     Then the value response with jq ".detail" should be equal to "Only DNS identifiers are supported"
 
   Scenario Outline: Create an order with invalid identifier values
@@ -136,6 +136,6 @@ Feature: Order
       | ../../etc/passwd |
 
     Then the value response.status_code should be equal to 400
-    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
     Then the value response with jq ".status" should be equal to 400
+    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:unsupportedIdentifier"
     Then the value response with jq ".detail" should be equal to "Invalid DNS identifier"

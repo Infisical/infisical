@@ -499,6 +499,13 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = json_util.encode_b64jose(list(acme_client.net._nonces)[0])
 
 
+@then("I put away current ACME client as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    del context.acme_client
+    context.vars[var_name] = acme_client
+
+
 @then("I memorize {var_path} as {var_name}")
 def step_impl(context: Context, var_path: str, var_name: str):
     value = eval_var(context, var_path)
