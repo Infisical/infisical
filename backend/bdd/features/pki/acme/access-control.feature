@@ -1,6 +1,6 @@
 Feature: Access Control
 
-  Scenario Outline: Access across resources across different account
+  Scenario Outline: Access resources across different account
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account0
@@ -60,7 +60,7 @@ Feature: Access Control
       | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                          |                 |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                     | {}              |
 
-  Scenario Outline: Access resources across a different profile
+  Scenario Outline: Access resources across a different profiles
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account0
