@@ -45,7 +45,7 @@ jobs:
         run: npm install
         working-directory: backend
       - name: Copy .env.bdd to .env
-        run: .github/resources/.env.bdd .env
+        run: cp .github/resources/.env.bdd .env
         working-directory: backend
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@v5
