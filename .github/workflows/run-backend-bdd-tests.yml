@@ -47,7 +47,8 @@ jobs:
 
       - name: Output .env file
         run: |
-          echo "ACME_DEVELOPMENT_MODE=true" > .env
+          cp .env.example .env
+          echo "ACME_DEVELOPMENT_MODE=true" >> .env
           echo "ACME_FEATURE_ENABLED=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
       - name: Set up Docker Buildx
