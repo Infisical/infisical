@@ -60,8 +60,7 @@ jobs:
         with:
           files: docker-compose.dev.yml
           targets: backend
-          push: true  # Or false if just building locally
-          no-cache: false
+          # no-cache: false
           set: |
               *.cache-from=type=gha,scope=infisical-backend-bdd-tests
               *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
