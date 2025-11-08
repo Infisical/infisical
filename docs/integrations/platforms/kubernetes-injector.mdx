@@ -145,6 +145,17 @@ The entire config needs to be of string format and needs to be assigned to the `
   The address of your Infisical instance. This field is optional and will default to `https://app.infisical.com` if not provided.
 </Accordion>
 
+<Accordion title="infisical.revoke-credentials-on-shutdown">
+  Whether to revoke all managed dynamic secret leases and identity access tokens on shutdown. Default: `"false"`.
+
+  If this is set to `true`, all managed dynamic secret leases and identity access tokens will be revoked when a `SIGTERM` signal is sent to the agents container _(such as when a pod is terminated or when the pod is restarted)_.
+  **Note:** In disaster events such as cluster power outages, a `SIGTERM` signal won't be sent to the agents container, and the credentials will not be revoked.
+
+  <Note>
+    Note that this is currently unsupported on Windows-based pods, and will only work when injecting into Linux-based pods.
+  </Note>
+</Accordion>
+
 <Accordion title="infisical.auth.type">
   The authentication type to use to connect to Infisical. Currently only the `kubernetes` authentication type is supported.
   You can refer to our [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) documentation for more information on how to create a machine identity for Kubernetes Auth.
