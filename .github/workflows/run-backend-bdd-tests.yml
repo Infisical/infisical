@@ -44,6 +44,15 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: backend
+      - name: Build Infisical backend Docker image with caching
+        uses: docker/bake-action@v5
+        with:
+          files: docker-compose.dev.yml
+          targets: backend
+          set: |
+            *.cache-from: type=gha,scope=${{ github.ref_name }}-compose  # Import cache key (unique per branch)
+            *.cache-to: type=gha,scope=${{ github.ref_name }}-compose,mode=max  # Export full cache
+          load: true
       - name: Start Infisical
         run: cp .github/resources/.env.bdd .env && docker compose -f docker-compose.dev.yml up -d
       - name: Wait for service to return 200
