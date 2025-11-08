@@ -173,164 +173,147 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Modal
-      isOpen={popUp?.identity?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("identity", isOpen);
-        reset();
-      }}
-    >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          {isOrgIdentity && (
-            <Controller
-              control={control}
-              defaultValue=""
-              name="name"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="mb-4"
-                  label="Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="Machine 1" />
-                </FormControl>
-              )}
-            />
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      {isOrgIdentity && (
+        <Controller
+          control={control}
+          defaultValue=""
+          name="name"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              className="mb-4"
+              label="Name"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="Machine 1" />
+            </FormControl>
           )}
-          <Controller
-            control={control}
-            name="role"
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl
-                label={`${popUp?.identity?.data ? "Update" : ""} Role`}
-                errorText={error?.message}
-                isError={Boolean(error)}
+        />
+      )}
+      <Controller
+        control={control}
+        name="role"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            label={`${popUp?.identity?.data ? "Update" : ""} Role`}
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <FilterableSelect
+              placeholder="Select role..."
+              options={roles}
+              onChange={onChange}
+              value={value}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+            />
+          </FormControl>
+        )}
+      />
+      {isOrgIdentity && (
+        <Controller
+          control={control}
+          name="hasDeleteProtection"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <FormControl errorText={error?.message} isError={Boolean(error)}>
+              <Switch
+                className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                containerClassName="flex-row-reverse w-fit"
+                id="delete-protection-enabled"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
               >
-                <FilterableSelect
-                  placeholder="Select role..."
-                  options={roles}
-                  onChange={onChange}
-                  value={value}
-                  getOptionValue={(option) => option.slug}
-                  getOptionLabel={(option) => option.name}
-                />
-              </FormControl>
-            )}
-          />
-          {isOrgIdentity && (
-            <Controller
-              control={control}
-              name="hasDeleteProtection"
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <FormControl errorText={error?.message} isError={Boolean(error)}>
-                  <Switch
-                    className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                    containerClassName="flex-row-reverse w-fit"
-                    id="delete-protection-enabled"
-                    thumbClassName="bg-mineshaft-800"
-                    onCheckedChange={onChange}
-                    isChecked={value}
-                  >
-                    <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
-                  </Switch>
-                </FormControl>
-              )}
-            />
+                <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
+              </Switch>
+            </FormControl>
           )}
-          {isOrgIdentity && (
-            <>
-              <div>
-                <FormLabel label="Metadata" />
-              </div>
-              <div className="mb-3 flex flex-col space-y-2">
-                {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
-                  <div key={metadataFieldId} className="flex items-end space-x-2">
-                    <div className="grow">
-                      {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
-                      <Controller
-                        control={control}
-                        name={`metadata.${i}.key`}
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            isError={Boolean(error?.message)}
-                            errorText={error?.message}
-                            className="mb-0"
-                          >
-                            <Input {...field} />
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                    <div className="grow">
-                      {i === 0 && (
-                        <FormLabel
-                          label="Value"
-                          className="text-xs text-mineshaft-400"
-                          isOptional
-                        />
-                      )}
-                      <Controller
-                        control={control}
-                        name={`metadata.${i}.value`}
-                        render={({ field, fieldState: { error } }) => (
-                          <FormControl
-                            isError={Boolean(error?.message)}
-                            errorText={error?.message}
-                            className="mb-0"
-                          >
-                            <Input {...field} />
-                          </FormControl>
-                        )}
-                      />
-                    </div>
-                    <IconButton
-                      ariaLabel="delete key"
-                      className="bottom-0.5 h-9"
-                      variant="outline_bg"
-                      onClick={() => metadataFormFields.remove(i)}
-                    >
-                      <FontAwesomeIcon icon={faTrash} />
-                    </IconButton>
-                  </div>
-                ))}
-                <div className="mt-2 flex justify-end">
-                  <Button
-                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                    size="xs"
-                    variant="outline_bg"
-                    onClick={() => metadataFormFields.append({ key: "", value: "" })}
-                  >
-                    Add Key
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {popUp?.identity?.data ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("identity", false)}
-            >
-              Cancel
-            </Button>
+        />
+      )}
+      {isOrgIdentity && (
+        <>
+          <div>
+            <FormLabel label="Metadata" />
           </div>
-        </form>
-      </ModalContent>
-    </Modal>
+          <div className="mb-3 flex flex-col space-y-2">
+            {metadataFormFields.fields.map(({ id: metadataFieldId }, i) => (
+              <div key={metadataFieldId} className="flex items-end space-x-2">
+                <div className="grow">
+                  {i === 0 && <span className="text-xs text-mineshaft-400">Key</span>}
+                  <Controller
+                    control={control}
+                    name={`metadata.${i}.key`}
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        className="mb-0"
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                <div className="grow">
+                  {i === 0 && (
+                    <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
+                  )}
+                  <Controller
+                    control={control}
+                    name={`metadata.${i}.value`}
+                    render={({ field, fieldState: { error } }) => (
+                      <FormControl
+                        isError={Boolean(error?.message)}
+                        errorText={error?.message}
+                        className="mb-0"
+                      >
+                        <Input {...field} />
+                      </FormControl>
+                    )}
+                  />
+                </div>
+                <IconButton
+                  ariaLabel="delete key"
+                  className="bottom-0.5 h-9"
+                  variant="outline_bg"
+                  onClick={() => metadataFormFields.remove(i)}
+                >
+                  <FontAwesomeIcon icon={faTrash} />
+                </IconButton>
+              </div>
+            ))}
+            <div className="mt-2 flex justify-end">
+              <Button
+                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                size="xs"
+                variant="outline_bg"
+                onClick={() => metadataFormFields.append({ key: "", value: "" })}
+              >
+                Add Key
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+      <div className="flex items-center">
+        <Button
+          className="mr-4"
+          size="sm"
+          type="submit"
+          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {popUp?.identity?.data ? "Update" : "Create"}
+        </Button>
+        <Button
+          colorSchema="secondary"
+          variant="plain"
+          onClick={() => handlePopUpToggle("identity", false)}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 };

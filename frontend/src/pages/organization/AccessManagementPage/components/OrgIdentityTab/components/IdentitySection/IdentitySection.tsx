@@ -22,7 +22,7 @@ import {
 } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { useDeleteOrgIdentity } from "@app/hooks/api";
+import { subOrganizationsQuery, useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 
@@ -33,12 +33,23 @@ import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
 import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
 import { OrgIdentityModal } from "./OrgIdentityModal";
+import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { LinkIcon, PlusIcon } from "lucide-react";
+
+enum IdentityWizardSteps {
+  SelectAction = "select-action",
+  LinkIdentity = "link-identity",
+  OrganizationIdentity = "project-identity"
+}
 
 export const IdentitySection = withPermission(
   () => {
     const { subscription } = useSubscription();
     const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
+
+    const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.SelectAction);
 
     const { mutateAsync: deleteMutateAsync } = useDeleteOrgIdentity();
     const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
@@ -54,7 +65,6 @@ export const IdentitySection = withPermission(
       "editTemplate",
       "deleteTemplate",
       "viewUsages",
-      "linkIdentity",
       "addOptions"
     ] as const);
 
@@ -119,6 +129,11 @@ export const IdentitySection = withPermission(
                         });
                         return;
                       }
+
+                      if (!isSubOrganization) {
+                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
+                      }
+
                       handlePopUpOpen("identity");
                     }}
                     isDisabled={!isAllowed}
@@ -127,42 +142,6 @@ export const IdentitySection = withPermission(
                   </Button>
                 )}
               </OrgPermissionCan>
-              {isSubOrganization && (
-                <DropdownMenu
-                  open={popUp.addOptions.isOpen}
-                  onOpenChange={(isOpen) => handlePopUpToggle("addOptions", isOpen)}
-                >
-                  <DropdownMenuTrigger>
-                    <Button
-                      variant="outline_bg"
-                      className="rounded-l-none border-l-mineshaft-800 px-3"
-                    >
-                      <FontAwesomeIcon icon={faChevronDown} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" sideOffset={6} className="p-1">
-                    <OrgPermissionCan
-                      I={OrgPermissionIdentityActions.Create}
-                      a={OrgPermissionSubjects.Identity}
-                    >
-                      {(isAllowed) => (
-                        <Button
-                          variant="outline_bg"
-                          className="w-full"
-                          isDisabled={!isAllowed}
-                          leftIcon={<FontAwesomeIcon icon={faLink} />}
-                          onClick={() => {
-                            handlePopUpClose("addOptions");
-                            handlePopUpOpen("linkIdentity");
-                          }}
-                        >
-                          Assign Org Identity
-                        </Button>
-                      )}
-                    </OrgPermissionCan>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
           </div>
           <IdentityTable handlePopUpOpen={handlePopUpOpen} />
@@ -202,7 +181,6 @@ export const IdentitySection = withPermission(
           </div>
           <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
         </div>
-        <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <MachineAuthTemplateUsagesModal
           isOpen={popUp.viewUsages.isOpen}
@@ -216,19 +194,99 @@ export const IdentitySection = withPermission(
               ?.name || ""
           }
         />
+        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <Modal
-          isOpen={popUp.linkIdentity.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("linkIdentity", isOpen)}
+          isOpen={popUp.identity.isOpen}
+          onOpenChange={(open) => {
+            handlePopUpToggle("identity", open);
+            if (!open) {
+              setWizardStep(IdentityWizardSteps.SelectAction);
+            }
+          }}
         >
           <ModalContent
-            title="Assign Existing Identity"
-            subTitle="Assign an existing identity from your root organization to this sub organization. The identity will continue to be managed at its original scope."
             bodyClassName="overflow-visible"
+            title="Add Identity"
+            subTitle={
+              isSubOrganization ? "Create a new identity or assign an existing identity" : undefined
+            }
           >
-            <OrgIdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
+            <AnimatePresence mode="wait">
+              {wizardStep === IdentityWizardSteps.SelectAction && (
+                <motion.div
+                  key="select-type-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <div
+                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(IdentityWizardSteps.OrganizationIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <PlusIcon size="1rem" />
+                      <div>Create New Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Create a new machine identity specifically for this sub-organization. This
+                      identity will be managed at the sub-organization level.
+                    </div>
+                  </div>
+                  <div
+                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(IdentityWizardSteps.LinkIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(IdentityWizardSteps.LinkIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size="1rem" />
+                      <div>Assign Existing Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Assign an existing identity from your parent organization. The identity will
+                      continue to be managed at its original scope.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {wizardStep === IdentityWizardSteps.OrganizationIdentity && (
+                <motion.div
+                  key="identity-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+                </motion.div>
+              )}
+              {wizardStep === IdentityWizardSteps.LinkIdentity && (
+                <motion.div
+                  key="link-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </ModalContent>
         </Modal>
-        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to delete ${

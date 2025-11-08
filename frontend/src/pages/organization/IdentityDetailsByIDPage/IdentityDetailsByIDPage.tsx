@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useDeleteOrgIdentity, useGetOrgIdentityMembershipById } from "@app/hooks/api";
@@ -100,7 +100,17 @@ const Page = () => {
           </div>
         </div>
       )}
-      <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <Modal
+        isOpen={popUp?.identity?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("identity", isOpen)}
+      >
+        <ModalContent
+          bodyClassName="overflow-visible"
+          title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
+        >
+          <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        </ModalContent>
+      </Modal>
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}

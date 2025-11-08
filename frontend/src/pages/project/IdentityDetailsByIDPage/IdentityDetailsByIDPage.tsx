@@ -21,6 +21,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject
 } from "@app/context";
 import { getProjectBaseURL, getProjectHomePage } from "@app/helpers/project";
@@ -46,6 +47,7 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId);
@@ -54,6 +56,8 @@ const Page = () => {
     useDeleteProjectIdentityMembership();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
+  const isNonScopedIdentity =
+    !isProjectIdentity && currentOrg.id !== identityMembershipDetails?.identity?.orgId;
 
   const {
     data: identity,
@@ -86,7 +90,7 @@ const Page = () => {
             type: "success",
             text: "Identity privilege assumption has started"
           });
-          const url = getProjectHomePage(currentProject.type, currentProject.environments);
+          const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
           window.location.href = url.replace("$projectId", currentProject.id);
         }
       }
