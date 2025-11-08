@@ -30,10 +30,8 @@ jobs:
           sparse-checkout: |
             .
             .github/resources
-
       - name: Copy .env.bdd to .env
         run: cp .github/resources/.env.bdd .env
-        working-directory: backend
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Python
