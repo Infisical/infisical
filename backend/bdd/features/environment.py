@@ -1,11 +1,15 @@
+import json
 import os
 
+import pathlib
 import httpx
 from behave.runner import Context
 from dotenv import load_dotenv
 from faker import Faker
+import logging
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 BASE_URL = os.environ.get("INFISICAL_API_URL", "http://localhost:8080")
 PROJECT_ID = os.environ.get("PROJECT_ID")
@@ -17,6 +21,13 @@ BOOTSTRAP_INFISICAL = int(os.environ.get("BOOTSTRAP_INFISICAL", 0))
 
 # Called mostly from a CI to setup the new Infisical instance to get it ready for BDD tests
 def bootstrap_infisical(context: Context):
+    bootstrap_result_file = pathlib.Path.cwd() / ".bootstrap-result.json"
+    if bootstrap_result_file.exists():
+        logger.info(
+            "Bootstrap result file exists at %s, loading it now", bootstrap_result_file
+        )
+        return json.loads(bootstrap_result_file.read_text())
+
     faker = Faker()
     with httpx.Client(base_url=BASE_URL) as client:
         resp = client.post(
@@ -33,10 +44,12 @@ def bootstrap_infisical(context: Context):
         org = body["organization"]
         user = body["user"]
         auth_token = body["token"]
+        headers = dict(authorization=f"Bearer {auth_token}")
 
         project_slug = faker.slug()
         resp = client.post(
             "/api/v1/projects",
+            headers=headers,
             json={
                 "projectName": project_slug,
                 "projectDescription": faker.paragraph(),
@@ -51,6 +64,7 @@ def bootstrap_infisical(context: Context):
         ca_slug = faker.slug()
         resp = client.post(
             "/api/v1/pki/ca/internal",
+            headers=headers,
             json={
                 "projectId": project["id"],
                 "name": ca_slug,
@@ -78,6 +92,7 @@ def bootstrap_infisical(context: Context):
         cert_template_slug = faker.slug()
         resp = client.post(
             "/api/v2/certificate-templates",
+            headers=headers,
             json={
                 "projectId": project["id"],
                 "name": cert_template_slug,
@@ -134,7 +149,7 @@ def bootstrap_infisical(context: Context):
         body = resp.json()
         cert_template = body["certificateTemplate"]
 
-    return dict(
+    bootstrap_result = dict(
         org=org,
         user=user,
         project=project,
@@ -142,6 +157,8 @@ def bootstrap_infisical(context: Context):
         cert_template=cert_template,
         auth_token=auth_token,
     )
+    bootstrap_result_file.write_text(json.dumps(bootstrap_result))
+    return bootstrap_result
 
 
 def before_all(context: Context):
