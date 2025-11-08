@@ -55,7 +55,11 @@ jobs:
         with:
           files: docker-compose.dev.yml
           targets: backend
-          load: true
+          push: true  # Or false if just building locally
+          no-cache: false
+          set: |
+              *.cache-from=type=gha,scope=infisical-backend-bdd-tests
+              *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
       - name: Start Infisical
         run: docker compose -f docker-compose.dev.yml up -d
       - name: Wait for API to be ready
