@@ -27,8 +27,13 @@ jobs:
       - name: ☁️ Checkout source
         uses: actions/checkout@v4
         with:
-          fetch-tags: true
-          fetch-depth: 0
+          sparse-checkout: |
+            .github/resources
+          sparse-checkout-cone-mode: false
+      # XXX:
+      - name: Copy .env.bdd to .env
+        run: cp .github/resources/.env.bdd .env
+        working-directory: backend
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Python
@@ -47,9 +52,7 @@ jobs:
       - name: Install dependencies
         run: npm install
         working-directory: backend
-      - name: Copy .env.bdd to .env
-        run: cp .github/resources/.env.bdd .env
-        working-directory: backend
+
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@v5
         with:
