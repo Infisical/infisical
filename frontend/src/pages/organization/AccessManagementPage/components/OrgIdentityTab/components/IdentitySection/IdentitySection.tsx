@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { faChevronDown, faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AnimatePresence, motion } from "framer-motion";
+import { LinkIcon, PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -33,9 +36,6 @@ import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
 import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
 import { OrgIdentityModal } from "./OrgIdentityModal";
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { LinkIcon, PlusIcon } from "lucide-react";
 
 enum IdentityWizardSteps {
   SelectAction = "select-action",
@@ -118,7 +118,6 @@ export const IdentitySection = withPermission(
                 {(isAllowed) => (
                   <Button
                     variant="outline_bg"
-                    className={isSubOrganization ? "rounded-r-none" : ""}
                     type="submit"
                     leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
