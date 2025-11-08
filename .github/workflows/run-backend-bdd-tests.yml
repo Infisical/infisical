@@ -58,13 +58,13 @@ jobs:
           load: true
       - name: Start Infisical
         run: docker compose -f docker-compose.dev.yml up -d
-      - name: Wait for service to return 200
-        uses: nev7n/wait_for_response@v1
+      - name: Wait for API to be ready
+        uses: nick-fields/retry@v3
         with:
-          url: "http://localhost:8080/api/v1/admin/config" # Replace with your service URL
-          responseCode: "200"
-          timeout: 60000
-          interval: 500
+          timeout_seconds: 60
+          max_attempts: 12
+          command: |
+            curl -f -X GET http://localhost:8080/api/v1/admin/config
       - name: Run bdd tests
         run: npm run test:bdd
         working-directory: backend
