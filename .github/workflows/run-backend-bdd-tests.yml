@@ -60,6 +60,7 @@ jobs:
         with:
           files: docker-compose.dev.yml
           targets: backend
+          load: true
           # no-cache: false
           set: |
               *.cache-from=type=gha,scope=infisical-backend-bdd-tests
