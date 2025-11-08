@@ -43,6 +43,15 @@ def bootstrap_infisical(context: Context):
         body = resp.json()
         org = body["organization"]
         user = body["user"]
+        temp_token = body["token"]
+
+        resp = client.post(
+            "/api/v1/auth/token",
+            headers={"Authorization": f"Bearer {temp_token}"},
+            json={},
+        )
+        resp.raise_for_status()
+        body = resp.json()
         auth_token = body["token"]
         headers = dict(authorization=f"Bearer {auth_token}")
 
