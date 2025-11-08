@@ -26,7 +26,11 @@ jobs:
 
       - name: ☁️ Checkout source
         uses: actions/checkout@v4
-      # XXX:
+        with:
+          sparse-checkout: |
+            .
+            .github/resources
+
       - name: Copy .env.bdd to .env
         run: cp .github/resources/.env.bdd .env
         working-directory: backend
