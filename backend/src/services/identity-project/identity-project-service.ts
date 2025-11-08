@@ -63,7 +63,7 @@ export const identityProjectServiceFactory = ({
     const filteredMemberships = identityMemberships.filter((el) =>
       permission.can(
         ProjectPermissionIdentityActions.Read,
-        subject(ProjectPermissionSub.Identity, { identityId: el.id })
+        subject(ProjectPermissionSub.Identity, { identityId: el.identity.id })
       )
     );
 
