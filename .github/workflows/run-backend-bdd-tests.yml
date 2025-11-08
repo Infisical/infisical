@@ -45,7 +45,14 @@ jobs:
         run: npm install
         working-directory: backend
       - name: Start Infisical
-        run: cp .github/resources/.env.bdd .env && docker compose -f docker-compose.dev.yml up
+        run: cp .github/resources/.env.bdd .env && docker compose -f docker-compose.dev.yml up -d
+      - name: Wait for service to return 200
+        uses: nev7n/wait_for_response@v1
+        with:
+          url: "http://localhost:8080/api/v1/admin/config" # Replace with your service URL
+          responseCode: "200"
+          timeout: 60000
+          interval: 500
       - name: Run bdd tests
         run: npm run test:bdd
         working-directory: backend
