@@ -79,6 +79,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
+import { Blur } from "@app/components/v2/Blur";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -174,7 +175,6 @@ export const IdentityTab = withProjectPermission(
 
       handlePopUpClose("deleteIdentity");
     };
-
     const handleSort = (column: ProjectIdentityOrderBy) => {
       if (column === orderBy) {
         setOrderDirection((prev) =>
@@ -186,6 +186,12 @@ export const IdentityTab = withProjectPermission(
       setOrderBy(column);
       setOrderDirection(OrderByDirection.ASC);
     };
+
+    const noAccessIdentityCount = Math.max(
+      (page * perPage > totalCount ? totalCount % perPage : perPage) -
+        (data?.identityMemberships?.length || 0),
+      0
+    );
 
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -450,6 +456,20 @@ export const IdentityTab = withProjectPermission(
                     </Tr>
                   );
                 })}
+              {!isPending &&
+                data &&
+                data?.totalCount !== 0 &&
+                Array.from(Array(noAccessIdentityCount)).map((_e, i) => (
+                  <Tr key={`hid-identity-${i + 1}`}>
+                    <Td>No Access</Td>
+                    <Td colSpan={3}>
+                      <Blur
+                        className="w-min"
+                        tooltipText="You do not have permission to read this identity."
+                      />
+                    </Td>
+                  </Tr>
+                ))}
             </TBody>
           </Table>
           {!isPending && data && totalCount > 0 && (
@@ -461,16 +481,19 @@ export const IdentityTab = withProjectPermission(
               onChangePerPage={handlePerPageChange}
             />
           )}
-          {!isPending && data && data?.identityMemberships.length === 0 && (
-            <EmptyState
-              title={
-                debouncedSearch.trim().length > 0
-                  ? "No identities match search filter"
-                  : "No identities have been added to this project"
-              }
-              icon={faServer}
-            />
-          )}
+          {!isPending &&
+            data &&
+            data?.identityMemberships.length === 0 &&
+            data?.totalCount === 0 && (
+              <EmptyState
+                title={
+                  debouncedSearch.trim().length > 0
+                    ? "No identities match search filter"
+                    : "No identities have been added to this project"
+                }
+                icon={faServer}
+              />
+            )}
         </TableContainer>
         <Modal
           isOpen={popUp.createIdentity.isOpen}

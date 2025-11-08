@@ -299,7 +299,7 @@ export const membershipIdentityServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onListMembershipIdentityGuard(dto);
+    const listFilter = await factory.onListMembershipIdentityGuard(dto);
     const memberships = await membershipIdentityDAL.findIdentities({
       scopeData,
       filter: {
@@ -317,7 +317,7 @@ export const membershipIdentityServiceFactory = ({
           : undefined
       }
     });
-    return memberships;
+    return { ...memberships, data: memberships.data.filter((el) => listFilter({ identityId: el.identity.id })) };
   };
 
   const getMembershipByIdentityId = async (dto: TGetMembershipIdentityByIdentityIdDTO) => {
