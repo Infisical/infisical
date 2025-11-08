@@ -48,7 +48,8 @@ jobs:
       - name: Output .env file
         run: |
           cp .env.example .env
-          sed -i 's/^ENCRYPTION_KEY=.*$/ENCRYPTION_KEY=9DEgoAeERSd4uBYeCV5iuCHMhnpL5QQFdX+j1nTrkrc==/' .env
+          NEW_ENCRYPTION_KEY=$(openssl rand -base64 32)
+          sed -i "s/ENCRYPTION_KEY=.*/ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY/" .env
           echo "ACME_DEVELOPMENT_MODE=true" >> .env
           echo "ACME_FEATURE_ENABLED=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
