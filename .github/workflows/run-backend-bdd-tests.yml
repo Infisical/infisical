@@ -25,13 +25,7 @@ jobs:
           docker system prune -af
 
       - name: ☁️ Checkout source
-        uses: actions/checkout@v4
-        with:
-          sparse-checkout: |
-            .
-            .github/resources
-      - name: Copy .env.bdd to .env
-        run: cp .github/resources/.env.bdd .env
+        uses: actions/checkout@v3
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Install Python
@@ -51,6 +45,11 @@ jobs:
         run: npm install
         working-directory: backend
 
+      - name: Output .env file
+        run: |
+          echo "ACME_DEVELOPMENT_MODE=true" > .env
+          echo "ACME_FEATURE_ENABLED=true" >> .env
+          echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@v5
         with:
