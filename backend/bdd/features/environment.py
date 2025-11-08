@@ -21,7 +21,7 @@ BOOTSTRAP_INFISICAL = int(os.environ.get("BOOTSTRAP_INFISICAL", 0))
 
 # Called mostly from a CI to setup the new Infisical instance to get it ready for BDD tests
 def bootstrap_infisical(context: Context):
-    bootstrap_result_file = pathlib.Path.cwd() / ".bootstrap-result.json"
+    bootstrap_result_file = pathlib.Path.cwd() / ".bdd-infisical-bootstrap-result.json"
     if bootstrap_result_file.exists():
         logger.info(
             "Bootstrap result file exists at %s, loading it now", bootstrap_result_file
@@ -43,6 +43,15 @@ def bootstrap_infisical(context: Context):
         body = resp.json()
         org = body["organization"]
         user = body["user"]
+        temp_token = body["token"]
+
+        resp = client.post(
+            "/api/v3/auth/select-organization",
+            headers={"Authorization": f"Bearer {temp_token}"},
+            json={"organizationId": org["id"]},
+        )
+        resp.raise_for_status()
+        body = resp.json()
         temp_token = body["token"]
 
         resp = client.post(
@@ -96,7 +105,7 @@ def bootstrap_infisical(context: Context):
         )
         resp.raise_for_status()
         body = resp.json()
-        ca = body["certificateAuthorities"]
+        ca = body
 
         cert_template_slug = faker.slug()
         resp = client.post(
