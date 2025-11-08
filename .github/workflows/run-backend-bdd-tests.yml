@@ -50,6 +50,11 @@ jobs:
           echo "ACME_DEVELOPMENT_MODE=true" > .env
           echo "ACME_FEATURE_ENABLED=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@v5
         with:
