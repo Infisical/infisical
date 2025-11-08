@@ -7,8 +7,8 @@ import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { CertStatus } from "@app/services/certificate/certificate-types";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({

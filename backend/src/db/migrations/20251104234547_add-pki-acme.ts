@@ -1,7 +1,9 @@
 import { Knex } from "knex";
+
+import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
+
 import { TableName } from "../schemas";
 import { createOnUpdateTrigger, dropOnUpdateTrigger } from "../utils";
-import { dropConstraintIfExists } from "@app/db/migrations/utils/dropConstraintIfExists";
 
 // Notice: the old constraint name is "enrollmentType_check" instead of "enrollment_type_check"
 //         with psql, if there's no quote around an identifier, it will be lowercased.

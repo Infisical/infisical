@@ -1,4 +1,9 @@
 import {
+  TPkiAcmeEnrollmentConfigs,
+  TPkiAcmeEnrollmentConfigsInsert,
+  TPkiAcmeEnrollmentConfigsUpdate
+} from "@app/db/schemas/pki-acme-enrollment-configs";
+import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate
@@ -8,11 +13,6 @@ import {
   TPkiEstEnrollmentConfigsInsert,
   TPkiEstEnrollmentConfigsUpdate
 } from "@app/db/schemas/pki-est-enrollment-configs";
-import {
-  TPkiAcmeEnrollmentConfigs,
-  TPkiAcmeEnrollmentConfigsInsert,
-  TPkiAcmeEnrollmentConfigsUpdate
-} from "@app/db/schemas/pki-acme-enrollment-configs";
 
 export type TEstEnrollmentConfig = TPkiEstEnrollmentConfigs;
 export type TEstEnrollmentConfigInsert = TPkiEstEnrollmentConfigsInsert;

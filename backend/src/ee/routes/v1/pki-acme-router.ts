@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
-import type { TAcmeResponse, TAuthenciatedJwsPayload, TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
@@ -19,6 +18,7 @@ import {
   RespondToAcmeChallengeBodySchema,
   RespondToAcmeChallengeResponseSchema
 } from "@app/ee/services/pki-acme/pki-acme-schemas";
+import type { TAcmeResponse, TAuthenciatedJwsPayload, TRawJwsPayload } from "@app/ee/services/pki-acme/pki-acme-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 
