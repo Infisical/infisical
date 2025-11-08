@@ -148,7 +148,8 @@ The entire config needs to be of string format and needs to be assigned to the `
 <Accordion title="infisical.revoke-credentials-on-shutdown">
   Whether to revoke all managed dynamic secret leases and identity access tokens on shutdown. Default: `"false"`.
 
-  If this is set to `true`, all managed dynamic secret leases and identity access tokens will be revoked when the pod is deleted.
+  If this is set to `true`, all managed dynamic secret leases and identity access tokens will be revoked when a `SIGTERM` signal is sent to the agents container _(such as when a pod is terminated or when the pod is restarted)_.
+  **Note:** In disaster events such as cluster power outages, a `SIGTERM` signal won't be sent to the agents container, and the credentials will not be revoked.
 
   <Note>
     Note that this is currently unsupported on Windows-based pods, and will only work when injecting into Linux-based pods.
