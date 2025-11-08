@@ -65,6 +65,8 @@ export const newOrgIdentityFactory = ({ permissionService }: TOrgIdentityFactory
       scope: OrganizationActionScope.Any
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+    return () => true;
   };
 
   const onGetIdentityByIdGuard: TIdentityV2Factory["onGetIdentityByIdGuard"] = async (dto) => {

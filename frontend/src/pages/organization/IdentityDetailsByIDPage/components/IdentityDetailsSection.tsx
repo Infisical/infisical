@@ -86,7 +86,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   }}
                   disabled={!isAllowed}
                 >
-                  Edit Identity
+                  {isOrgIdentity ? "Edit Identity" : "Edit Identity Role"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
@@ -110,7 +110,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   icon={<FontAwesomeIcon icon={faTrash} />}
                   disabled={!isAllowed}
                 >
-                  Delete Identity
+                  {!isOrgIdentity ? "Unlink Identity" : "Delete Identity"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>

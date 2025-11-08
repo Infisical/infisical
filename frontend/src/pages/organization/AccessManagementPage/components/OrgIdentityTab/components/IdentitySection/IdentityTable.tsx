@@ -423,7 +423,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   isDisabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                 >
-                                  Delete Identity
+                                  {orgId !== currentOrg.id
+                                    ? "Remove From Sub-organization"
+                                    : "Delete Identity"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>

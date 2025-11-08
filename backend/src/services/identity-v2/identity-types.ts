@@ -5,7 +5,7 @@ export interface TIdentityV2Factory {
   onCreateIdentityGuard: (arg: TCreateIdentityV2DTO) => Promise<void>;
   onUpdateIdentityGuard: (arg: TUpdateIdentityV2DTO) => Promise<void>;
   onDeleteIdentityGuard: (arg: TDeleteIdentityV2DTO) => Promise<void>;
-  onListIdentityGuard: (arg: TListIdentityV2DTO) => Promise<void>;
+  onListIdentityGuard: (arg: TListIdentityV2DTO) => Promise<(arg: { identityId: string }) => boolean>;
   onGetIdentityByIdGuard: (arg: TGetIdentityByIdV2DTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
 }

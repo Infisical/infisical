@@ -81,6 +81,12 @@ export const newProjectIdentityFactory = ({ permissionService }: TProjectIdentit
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionSub.Identity
     );
+
+    return (arg) =>
+      permission.can(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: arg.identityId })
+      );
   };
 
   const onGetIdentityByIdGuard: TIdentityV2Factory["onGetIdentityByIdGuard"] = async (dto) => {

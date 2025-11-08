@@ -230,7 +230,7 @@ export const identityV2ServiceFactory = ({
     const { scopeData } = dto;
     const factory = scopeFactory[scopeData.scope];
 
-    await factory.onListIdentityGuard(dto);
+    const isIdentityAccessible = await factory.onListIdentityGuard(dto);
 
     const identities = await identityDAL.listIdentities(dto.scopeData, {
       search: dto.data.search,
@@ -238,7 +238,7 @@ export const identityV2ServiceFactory = ({
       limit: dto.data.limit
     });
 
-    return identities;
+    return { ...identities, docs: identities.docs.filter((el) => isIdentityAccessible({ identityId: el.id })) };
   };
 
   return {

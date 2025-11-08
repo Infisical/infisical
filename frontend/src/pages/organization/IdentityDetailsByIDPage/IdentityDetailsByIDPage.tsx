@@ -7,9 +7,14 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
+import { Button, DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
 import { useDeleteOrgIdentity, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
@@ -32,7 +37,7 @@ const Page = () => {
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { data } = useGetOrgIdentityMembershipById(identityId);
-  const { mutateAsync: deleteIdentity } = useDeleteOrgIdentity();
+  const { mutateAsync: deleteIdentity, isPending: isDeletingIdentity } = useDeleteOrgIdentity();
   const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -81,7 +86,36 @@ const Page = () => {
             scope={isSubOrganization ? "namespace" : "org"}
             description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
             title={data.identity.name}
-          />
+          >
+            <div className="flex items-center gap-2">
+              {isSubOrganization && data.identity.orgId !== currentOrg.id && (
+                <OrgPermissionCan
+                  I={OrgPermissionActions.Delete}
+                  a={OrgPermissionSubjects.Identity}
+                  renderTooltip
+                  allowedLabel="Remove from sub-organization"
+                >
+                  {(isAllowed) => (
+                    <Button
+                      colorSchema="danger"
+                      variant="outline_bg"
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      isLoading={isDeletingIdentity}
+                      onClick={() =>
+                        handlePopUpOpen("deleteIdentity", {
+                          identityId: data.identity.id,
+                          name: data.identity.name
+                        })
+                      }
+                    >
+                      Unlink Identity
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              )}
+            </div>
+          </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
               <IdentityDetailsSection
