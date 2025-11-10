@@ -65,7 +65,7 @@ jobs:
         uses: docker/bake-action@v5
         timeout-minutes: 30
         with:
-          files: docker-compose.dev.yml
+          files: docker-compose.bdd.yml
           targets: backend
           load: true
           # Uncomment this to force a rebuild of the image
@@ -74,7 +74,7 @@ jobs:
               *.cache-from=type=gha,scope=infisical-backend-bdd-tests
               *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
       - name: Start Infisical
-        run: docker compose -f docker-compose.dev.yml up -d
+        run: docker compose -f docker-compose.bdd.yml up -d
       - name: Wait for API to be ready
         uses: nick-fields/retry@v3
         with:
@@ -90,12 +90,12 @@ jobs:
           BOOTSTRAP_INFISICAL: "1"
       - name: cleanup
         run: |
-          docker compose -f "docker-compose.dev.yml" down
+          docker compose -f "docker-compose.bdd.yml" down
       - name: Dump backend logs
         if: always()  # Ensures this runs even if previous steps fail
         run: |
           mkdir -p logs
-          docker compose -f docker-compose.dev.yml logs backend > logs/backend.log 2>&1 || true
+          docker compose -f docker-compose.bdd.yml logs backend > logs/backend.log 2>&1 || true
       - name: Upload backend logs as artifact
         if: always()  # Always upload, even on failure/cancellation
         uses: actions/upload-artifact@v4
