@@ -99,7 +99,9 @@ export const MicrosoftTeamsConfigRow = ({
           </Badge>
         )}
       </Td>
-
+      <Td>
+        <Badge variant="danger">Disabled</Badge>
+      </Td>
       <Td>
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">

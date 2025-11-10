@@ -7,6 +7,7 @@ import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -67,6 +68,10 @@ describe("CertificateV3Service", () => {
   > = {
     validateCertificateRequest: vi.fn(),
     getTemplateV2ById: vi.fn()
+  };
+
+  const mockAcmeAccountDAL: Pick<TPkiAcmeAccountDALFactory, "findById"> = {
+    findById: vi.fn()
   };
 
   const mockInternalCaService: Pick<TInternalCertificateAuthorityServiceFactory, "signCertFromCa" | "issueCertFromCa"> =
@@ -132,6 +137,7 @@ describe("CertificateV3Service", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateProfileDAL: mockCertificateProfileDAL,
       certificateTemplateV2Service: mockCertificateTemplateV2Service,
+      acmeAccountDAL: mockAcmeAccountDAL,
       internalCaService: mockInternalCaService,
       permissionService: mockPermissionService,
       certificateSyncDAL: {
@@ -697,6 +703,7 @@ describe("CertificateV3Service", () => {
         profileId,
         csr: mockCSR,
         validity: mockValidity,
+        enrollmentType: EnrollmentType.API,
         ...mockActor
       });
 
@@ -731,6 +738,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow(ForbiddenRequestError);
@@ -740,6 +748,7 @@ describe("CertificateV3Service", () => {
           profileId,
           csr: mockCSR,
           validity: mockValidity,
+          enrollmentType: EnrollmentType.API,
           ...mockActor
         })
       ).rejects.toThrow("Profile is not configured for api enrollment");

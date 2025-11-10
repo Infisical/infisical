@@ -1,4 +1,9 @@
 import {
+  TPkiAcmeEnrollmentConfigs,
+  TPkiAcmeEnrollmentConfigsInsert,
+  TPkiAcmeEnrollmentConfigsUpdate
+} from "@app/db/schemas/pki-acme-enrollment-configs";
+import {
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate
@@ -17,6 +22,10 @@ export type TApiEnrollmentConfig = TPkiApiEnrollmentConfigs;
 export type TApiEnrollmentConfigInsert = TPkiApiEnrollmentConfigsInsert;
 export type TApiEnrollmentConfigUpdate = TPkiApiEnrollmentConfigsUpdate;
 
+export type TAcmeEnrollmentConfig = TPkiAcmeEnrollmentConfigs;
+export type TAcmeEnrollmentConfigInsert = TPkiAcmeEnrollmentConfigsInsert;
+export type TAcmeEnrollmentConfigUpdate = TPkiAcmeEnrollmentConfigsUpdate;
+
 export interface TEstConfigData {
   disableBootstrapCaValidation: boolean;
   passphrase: string;
@@ -27,3 +36,5 @@ export interface TApiConfigData {
   autoRenew: boolean;
   renewBeforeDays?: number;
 }
+
+export interface TAcmeConfigData {}

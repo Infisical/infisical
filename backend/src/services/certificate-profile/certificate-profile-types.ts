@@ -6,7 +6,8 @@ import {
 
 export enum EnrollmentType {
   API = "api",
-  EST = "est"
+  EST = "est",
+  ACME = "acme"
 }
 
 export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType"> & {
@@ -28,6 +29,7 @@ export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enr
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
+  acmeConfig?: unknown;
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {
@@ -53,6 +55,11 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     id: string;
     autoRenew: boolean;
     renewBeforeDays?: number;
+  };
+  acmeConfig?: {
+    id: string;
+    directoryUrl: string;
+    encryptedEabSecret?: Buffer;
   };
 };
 

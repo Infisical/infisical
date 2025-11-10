@@ -36,6 +36,7 @@ import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/servi
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -370,6 +371,7 @@ export enum EventType {
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   RENEW_CERTIFICATE = "renew-certificate",
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
@@ -2318,10 +2320,11 @@ interface CreatePkiAlert {
   type: EventType.CREATE_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
-    pkiCollectionId: string;
+    pkiCollectionId?: string;
     name: string;
-    alertBeforeDays: number;
-    recipientEmails: string;
+    alertBefore: string;
+    eventType: PkiAlertEventType;
+    recipientEmails?: string;
   };
 }
 interface GetPkiAlert {
@@ -2337,7 +2340,8 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     name?: string;
-    alertBeforeDays?: number;
+    alertBefore?: string;
+    eventType?: PkiAlertEventType;
     recipientEmails?: string;
   };
 }
@@ -2746,6 +2750,17 @@ interface OrderCertificateFromProfile {
     certificateProfileId: string;
     orderId: string;
     profileName: string;
+  };
+}
+
+interface GetCertificateProfileLatestActiveBundle {
+  type: EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    commonName: string;
+    profileName: string;
+    serialNumber: string;
   };
 }
 
@@ -4279,6 +4294,7 @@ export type Event =
   | DeleteCertificateProfile
   | GetCertificateProfile
   | ListCertificateProfiles
+  | GetCertificateProfileLatestActiveBundle
   | IssueCertificateFromProfile
   | SignCertificateFromProfile
   | OrderCertificateFromProfile

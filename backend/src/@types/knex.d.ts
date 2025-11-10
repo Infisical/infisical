@@ -266,9 +266,39 @@ import {
   TOrgRoles,
   TOrgRolesInsert,
   TOrgRolesUpdate,
+  TPkiAcmeAccounts,
+  TPkiAcmeAccountsInsert,
+  TPkiAcmeAccountsUpdate,
+  TPkiAcmeAuths,
+  TPkiAcmeAuthsInsert,
+  TPkiAcmeAuthsUpdate,
+  TPkiAcmeChallenges,
+  TPkiAcmeChallengesInsert,
+  TPkiAcmeChallengesUpdate,
+  TPkiAcmeEnrollmentConfigs,
+  TPkiAcmeEnrollmentConfigsInsert,
+  TPkiAcmeEnrollmentConfigsUpdate,
+  TPkiAcmeOrderAuths,
+  TPkiAcmeOrderAuthsInsert,
+  TPkiAcmeOrderAuthsUpdate,
+  TPkiAcmeOrders,
+  TPkiAcmeOrdersInsert,
+  TPkiAcmeOrdersUpdate,
+  TPkiAlertChannels,
+  TPkiAlertChannelsInsert,
+  TPkiAlertChannelsUpdate,
+  TPkiAlertHistory,
+  TPkiAlertHistoryCertificate,
+  TPkiAlertHistoryCertificateInsert,
+  TPkiAlertHistoryCertificateUpdate,
+  TPkiAlertHistoryInsert,
+  TPkiAlertHistoryUpdate,
   TPkiAlerts,
   TPkiAlertsInsert,
   TPkiAlertsUpdate,
+  TPkiAlertsV2,
+  TPkiAlertsV2Insert,
+  TPkiAlertsV2Update,
   TPkiApiEnrollmentConfigs,
   TPkiApiEnrollmentConfigsInsert,
   TPkiApiEnrollmentConfigsUpdate,
@@ -709,6 +739,32 @@ declare module "knex/types/tables" {
       TPkiApiEnrollmentConfigsInsert,
       TPkiApiEnrollmentConfigsUpdate
     >;
+    [TableName.PkiAcmeEnrollmentConfig]: KnexOriginal.CompositeTableType<
+      TPkiAcmeEnrollmentConfigs,
+      TPkiAcmeEnrollmentConfigsInsert,
+      TPkiAcmeEnrollmentConfigsUpdate
+    >;
+    [TableName.PkiAcmeAccount]: KnexOriginal.CompositeTableType<
+      TPkiAcmeAccounts,
+      TPkiAcmeAccountsInsert,
+      TPkiAcmeAccountsUpdate
+    >;
+    [TableName.PkiAcmeOrder]: KnexOriginal.CompositeTableType<
+      TPkiAcmeOrders,
+      TPkiAcmeOrdersInsert,
+      TPkiAcmeOrdersUpdate
+    >;
+    [TableName.PkiAcmeAuth]: KnexOriginal.CompositeTableType<TPkiAcmeAuths, TPkiAcmeAuthsInsert, TPkiAcmeAuthsUpdate>;
+    [TableName.PkiAcmeOrderAuth]: KnexOriginal.CompositeTableType<
+      TPkiAcmeOrderAuths,
+      TPkiAcmeOrderAuthsInsert,
+      TPkiAcmeOrderAuthsUpdate
+    >;
+    [TableName.PkiAcmeChallenge]: KnexOriginal.CompositeTableType<
+      TPkiAcmeChallenges,
+      TPkiAcmeChallengesInsert,
+      TPkiAcmeChallengesUpdate
+    >;
     [TableName.CertificateTemplateEstConfig]: KnexOriginal.CompositeTableType<
       TCertificateTemplateEstConfigs,
       TCertificateTemplateEstConfigsInsert,
@@ -725,6 +781,22 @@ declare module "knex/types/tables" {
       TCertificateSecretsUpdate
     >;
     [TableName.PkiAlert]: KnexOriginal.CompositeTableType<TPkiAlerts, TPkiAlertsInsert, TPkiAlertsUpdate>;
+    [TableName.PkiAlertsV2]: KnexOriginal.CompositeTableType<TPkiAlertsV2, TPkiAlertsV2Insert, TPkiAlertsV2Update>;
+    [TableName.PkiAlertChannels]: KnexOriginal.CompositeTableType<
+      TPkiAlertChannels,
+      TPkiAlertChannelsInsert,
+      TPkiAlertChannelsUpdate
+    >;
+    [TableName.PkiAlertHistory]: KnexOriginal.CompositeTableType<
+      TPkiAlertHistory,
+      TPkiAlertHistoryInsert,
+      TPkiAlertHistoryUpdate
+    >;
+    [TableName.PkiAlertHistoryCertificate]: KnexOriginal.CompositeTableType<
+      TPkiAlertHistoryCertificate,
+      TPkiAlertHistoryCertificateInsert,
+      TPkiAlertHistoryCertificateUpdate
+    >;
     [TableName.PkiCollection]: KnexOriginal.CompositeTableType<
       TPkiCollections,
       TPkiCollectionsInsert,

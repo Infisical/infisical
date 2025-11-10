@@ -16,12 +16,14 @@ const syntaxHighlight = (
   onHoverPart?: (part: string) => void,
   hoveredPart?: string,
   isCmdOrCtrlPressed?: boolean,
-  onClickSegment?: (segment: string, allSegments: string[]) => void
+  onClickSegment?: (segment: string, allSegments: string[]) => void,
+  placeholder?: string
 ) => {
   if (isLoadingValue) return HIDDEN_SECRET_VALUE;
   if (isErrorLoadingValue)
     return <span className="ph-no-capture text-red/75">Error loading secret value.</span>;
   if (isImport && !content) return "IMPORTED";
+  if (placeholder && (content === "" || !content)) return placeholder;
   if (content === "") return "EMPTY";
   if (!content) return "EMPTY";
   if (!isVisible) return HIDDEN_SECRET_VALUE;
@@ -132,6 +134,7 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
       isLoadingValue,
       isErrorLoadingValue,
       onClickSegment,
+      placeholder,
       ...props
     },
     ref
@@ -176,7 +179,12 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
         <div className="relative overflow-hidden">
           <pre aria-hidden className="pointer-events-none relative z-10 m-0">
             <code className={`inline-block w-full ${commonClassName}`}>
-              <span style={{ whiteSpace: "break-spaces" }}>
+              <span
+                className={twMerge(
+                  "whitespace-break-spaces",
+                  placeholder && !value && "text-gray-500/50"
+                )}
+              >
                 {syntaxHighlight(
                   value,
                   isVisible || (isSecretFocused && !valueAlwaysHidden),
@@ -188,12 +196,14 @@ export const SecretInput = forwardRef<HTMLTextAreaElement, Props>(
                   },
                   hoveredPart,
                   isCmdOrCtrlPressed,
-                  onClickSegment
+                  onClickSegment,
+                  placeholder
                 )}
               </span>
             </code>
           </pre>
           <textarea
+            placeholder={placeholder}
             style={{ whiteSpace: "break-spaces" }}
             aria-label="secret value"
             ref={ref}

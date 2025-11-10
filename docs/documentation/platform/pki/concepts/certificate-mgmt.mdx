@@ -1,0 +1,20 @@
+---
+title: "Certificate Management"
+description: "Learn what is certificate management and why it matters for building secure systems."
+---
+
+## What is a Certificate?
+
+A (digital) _certificate_ is a file that is tied to a cryptographic key pair and is used to verify the identity of a website, user, device, or service. It helps establish trust and secure, encrypted communication between systems.
+
+For example, when you visit a website over HTTPS, your browser checks the TLS certificate deployed on the web server or load balancer to make sure it’s really the site it claims to be. If the certificate is valid, your browser establishes an encrypted connection with the server.
+
+Certificates contain information about the subject (who it identifies), the public key, and a digital signature from the CA that issued the certificate. They also include additional fields such as key usages, validity periods, and extensions that define how and where the certificate can be used. When a certificate expires, the service presenting it is no longer trusted, and clients won't be able to establish a secure connection to the service.
+
+## What is Certificate Management?
+
+As infrastructure scales and systems become more distributed, certificates sprawl. Without proper visibility and automation in place, certificates scatter across IT infrastructure, creating blind spots that can lead to service outages when certificates aren't renewed in time.
+
+To solve certificate sprawl and avoid outages, organizations rely on certificate management: the practice of centralizing and automating the certificate lifecycle from issuance through renewal and revocation.
+
+A consistent approach makes it easier to keep certificates valid and trusted, reduce operational risk, and maintain secure communication across environments.
