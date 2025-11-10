@@ -63,6 +63,7 @@ jobs:
             image=moby/buildkit:latest
       - name: Build Infisical backend Docker image with caching
         uses: docker/bake-action@v5
+        timeout-minutes: 30
         with:
           files: docker-compose.dev.yml
           targets: backend
