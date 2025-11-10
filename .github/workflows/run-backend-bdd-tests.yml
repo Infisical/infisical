@@ -86,3 +86,16 @@ jobs:
       - name: cleanup
         run: |
           docker compose -f "docker-compose.dev.yml" down
+      - name: Dump backend logs
+        if: always()  # Ensures this runs even if previous steps fail
+        run: |
+          mkdir -p logs
+          docker compose logs backend > logs/backend.log 2>&1 || true
+      - name: Upload backend logs as artifact
+        if: always()  # Always upload, even on failure/cancellation
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs-${{ github.run_id }}
+          path: logs/backend.log
+          retention-days: 7
+          if-no-files-found: warn
