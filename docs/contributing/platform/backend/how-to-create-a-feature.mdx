@@ -39,10 +39,10 @@ Use the custom Infisical function `ormify` in `src/lib/knex` for simple database
 
 ## Connecting the Service Layer to the Server Layer
 
-Server-related logic is handled in `/src/server`. To connect the service layer to the server layer, we use Fastify plugins for dependency injection:
+Server-related logic is handled in `/src/server`. To connect the service layer to the server layer, we use Fastify's dependency injection pattern:
 
-1. Add the service type in the `fastify.d.ts` file under the `service` namespace of a FastifyServerInstance type.
-2. In `/src/server/routes/index.ts`, instantiate the required dependencies for `feature-x`, such as the DAL and service layers, and then pass them to `fastify.register("service,{...dependencies})`.
+1. Add the service type in `/src/@types/fastify.d.ts` under the `services` namespace of the `FastifyInstance` interface.
+2. In `/src/server/routes/index.ts`, instantiate the required dependencies for `feature-x` (such as the DAL and service layers), and then add the service instance to the `server.decorate()` call, where all services are registered for dependency injection.
 3. This makes the service layer accessible within all routes under the Fastify service instance, accessed via `server.services.<registered service name>.<function>`.
 
 ## Writing API Routes
