@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   nginx:
-    container_name: infisical-dev-nginx
+    container_name: infisical-bdd-nginx
     image: nginx
     restart: "always"
     ports:
@@ -12,6 +12,7 @@ services:
       - ./nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - backend
+      - frontend
 
   db:
     image: postgres:14-alpine
@@ -26,7 +27,7 @@ services:
 
   redis:
     image: redis
-    container_name: infisical-dev-redis
+    container_name: infisical-bdd-redis
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     ports:
@@ -36,7 +37,7 @@ services:
 
 
   backend:
-    container_name: infisical-dev-api
+    container_name: infisical-bdd-api
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
@@ -59,6 +60,20 @@ services:
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  # TODO: not really needed, but it seems like nginx needs it to be present
+  frontend:
+    container_name: infisical-bdd-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
+      - ./frontend/public:/app/public
+    env_file: .env
 
 volumes:
   postgres-data:
