@@ -1,6 +1,6 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
-
 import { getConfig } from "@app/lib/config/env";
+
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";

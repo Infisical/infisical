@@ -1,5 +1,7 @@
-import { getConfig } from "@app/lib/config/env";
 import { z } from "zod";
+
+import { getConfig } from "@app/lib/config/env";
+
 import { AcmeMalformedError } from "./pki-acme-errors";
 
 export const buildUrl = (profileId: string, path: string): string => {

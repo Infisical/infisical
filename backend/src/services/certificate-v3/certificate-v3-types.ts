@@ -1,12 +1,12 @@
 import { TProjectPermission } from "@app/lib/types";
 
+import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
 import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
-import { ACMESANType, CertificateOrderStatus } from "../certificate/certificate-types";
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
