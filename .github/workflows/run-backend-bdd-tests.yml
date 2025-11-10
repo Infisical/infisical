@@ -90,7 +90,7 @@ jobs:
         if: always()  # Ensures this runs even if previous steps fail
         run: |
           mkdir -p logs
-          docker compose logs backend > logs/backend.log 2>&1 || true
+          docker compose -f docker-compose.dev.yml logs backend > logs/backend.log 2>&1 || true
       - name: Upload backend logs as artifact
         if: always()  # Always upload, even on failure/cancellation
         uses: actions/upload-artifact@v4
