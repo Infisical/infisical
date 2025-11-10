@@ -252,7 +252,8 @@ export const projectServiceFactory = ({
     tx: trx,
     createDefaultEnvs = true,
     template = InfisicalProjectTemplate.Default,
-    type = ProjectType.SecretManager
+    type = ProjectType.SecretManager,
+    hasDeleteProtection
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
@@ -325,7 +326,8 @@ export const projectServiceFactory = ({
             slug,
             kmsSecretManagerKeyId: kmsKeyId,
             version: ProjectVersion.V3,
-            pitVersionLimit: 10
+            pitVersionLimit: 10,
+            hasDeleteProtection
           },
           tx
         );
@@ -587,6 +589,7 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
+
     return project;
   };
 
