@@ -643,10 +643,10 @@ export const pkiAcmeServiceFactory = ({
               ? {
                   // 47 days, the default TTL comes with Let's Encrypt
                   // TODO: read config from the profile to get the expiration time instead
-                  ttl: `${47 * 24 * 60}m`
+                  ttl: `${47}d`
                 }
               : // ttl is not used if notAfter is provided
-                ({ ttl: "0m" } as const),
+                ({ ttl: "0d" } as const),
             enrollmentType: EnrollmentType.ACME
           });
           // TODO: associate the certificate with the order
