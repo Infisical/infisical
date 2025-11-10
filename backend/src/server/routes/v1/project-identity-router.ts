@@ -40,7 +40,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       tags: [ApiDocsTags.Identities],
       description: "Create an identity in a project",
@@ -102,7 +102,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       tags: [ApiDocsTags.Identities],
       description: "Update an identity in a project",
@@ -168,7 +168,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: writeLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       tags: [ApiDocsTags.Identities],
       description: "Delete an identity from a project",
@@ -221,7 +221,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       tags: [ApiDocsTags.Identities],
       description: "Get an identity by ID in a project",
@@ -263,7 +263,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       tags: [ApiDocsTags.Identities],
       description: "List identities in a project",

@@ -227,7 +227,7 @@ export const identityAccessTokenServiceFactory = ({
       });
 
       if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+        throw new BadRequestError({ message: "Identity does not belong to this organization" });
       }
       orgId = subOrganization.id;
       orgName = subOrganization.name;
@@ -241,7 +241,7 @@ export const identityAccessTokenServiceFactory = ({
       });
 
       if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+        throw new BadRequestError({ message: "Identity does not belong to this organization" });
       }
 
       orgId = identityOrgDetails.id;
