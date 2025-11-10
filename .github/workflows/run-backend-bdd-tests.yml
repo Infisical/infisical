@@ -67,7 +67,8 @@ jobs:
           files: docker-compose.dev.yml
           targets: backend
           load: true
-          # no-cache: false
+          # Uncomment this to force a rebuild of the image
+          no-cache: true
           set: |
               *.cache-from=type=gha,scope=infisical-backend-bdd-tests
               *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
