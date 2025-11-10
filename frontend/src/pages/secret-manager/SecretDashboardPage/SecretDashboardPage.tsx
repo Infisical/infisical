@@ -219,17 +219,19 @@ const Page = () => {
     ProjectPermissionSub.Commits
   );
 
+  const defaultIncludeFilters = {
+    [RowType.Folder]: routerQueryParams.filterBy?.includes(RowType.Folder) || false,
+    [RowType.Import]: routerQueryParams.filterBy?.includes(RowType.Import) || false,
+    [RowType.DynamicSecret]: routerQueryParams.filterBy?.includes(RowType.DynamicSecret) || false,
+    [RowType.Secret]: routerQueryParams.filterBy?.includes(RowType.Secret) || false,
+    [RowType.SecretRotation]: routerQueryParams.filterBy?.includes(RowType.SecretRotation) || false
+  };
+
   const defaultFilterState = {
     tags: {},
     searchFilter: (routerQueryParams.search as string) || "",
     // these should always be on by default for the UI, they will be disabled for the query below based off permissions
-    include: {
-      [RowType.Folder]: false,
-      [RowType.Import]: false,
-      [RowType.DynamicSecret]: false,
-      [RowType.Secret]: false,
-      [RowType.SecretRotation]: false
-    }
+    include: defaultIncludeFilters
   };
 
   const [filter, setFilter] = useState<Filter>(defaultFilterState);
@@ -528,6 +530,19 @@ const Page = () => {
     },
     [navigate]
   );
+
+  const handleClearFilters = useCallback(() => {
+    setFilter(defaultFilterState);
+    setDebouncedSearchFilter("");
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        search: "",
+        tags: "",
+        filterBy: ""
+      })
+    });
+  }, [navigate]);
 
   const handleSearchChange = useCallback(
     (searchFilter: string) => {
@@ -882,19 +897,7 @@ const Page = () => {
             isPITEnabled={isPITEnabled}
             hasPathPolicies={hasPathPolicies}
             onRequestAccess={(params) => handlePopUpOpen("requestAccess", params)}
-            onClearFilters={() =>
-              setFilter((prev) => ({
-                ...prev,
-                tags: {},
-                include: {
-                  secret: false,
-                  import: false,
-                  dynamic: false,
-                  rotation: false,
-                  folder: false
-                }
-              }))
-            }
+            onClearFilters={handleClearFilters}
           />
           <div
             ref={tableRef}
