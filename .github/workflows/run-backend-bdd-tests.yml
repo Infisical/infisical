@@ -11,7 +11,7 @@ on:
   workflow_call:
 
 jobs:
-  check-be-pr:
+  run-backend-bdd-tests:
     name: Run BDD tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -49,7 +49,7 @@ jobs:
         run: |
           cp .env.example .env
           NEW_ENCRYPTION_KEY=$(openssl rand -base64 32)
-          sed -i "s/ENCRYPTION_KEY=.*/ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY/" .env
+          sed -i "s#ENCRYPTION_KEY=.*#ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY#" .env
           echo "ACME_DEVELOPMENT_MODE=true" >> .env
           echo "ACME_FEATURE_ENABLED=true" >> .env
           echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
