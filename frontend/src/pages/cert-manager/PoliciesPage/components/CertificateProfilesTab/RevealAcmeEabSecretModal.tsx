@@ -1,3 +1,6 @@
+import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+
 import {
   Alert,
   AlertDescription,
@@ -11,8 +14,6 @@ import {
 import { useToggle } from "@app/hooks";
 import { TCertificateProfileWithDetails } from "@app/hooks/api/certificateProfiles";
 import { useRevealAcmeEabSecret } from "@app/hooks/api/certificateProfiles/queries";
-import { faCheck, faCopy } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 const RESET_COPIED_DELAY = 1 * 1000;
 

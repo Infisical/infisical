@@ -29,7 +29,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { getCertificateCredentials, revocationReasonToCrlCode, splitPemChain } from "./certificate-fns";
+import {
+  generatePkcs12FromCertificate,
+  getCertificateCredentials,
+  revocationReasonToCrlCode,
+  splitPemChain
+} from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -40,6 +45,7 @@ import {
   TGetCertBodyDTO,
   TGetCertBundleDTO,
   TGetCertDTO,
+  TGetCertPkcs12DTO,
   TGetCertPrivateKeyDTO,
   TImportCertDTO,
   TRevokeCertDTO
@@ -656,6 +662,65 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const getCertPkcs12 = async ({
+    serialNumber,
+    password,
+    alias,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertPkcs12DTO) => {
+    if (!password || password.trim() === "") {
+      throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
+    }
+
+    if (!alias || alias.trim() === "") {
+      throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
+    }
+    const cert = await certificateDAL.findOne({ serialNumber });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    // Get certificate bundle (certificate, chain, private key)
+    const { certificate, certificateChain, privateKey } = await getCertBundle({
+      serialNumber,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    if (!privateKey) {
+      throw new BadRequestError({ message: "Certificate private key is required for PKCS12 export" });
+    }
+
+    const pkcs12Data = await generatePkcs12FromCertificate({
+      certificate,
+      certificateChain: certificateChain || "",
+      privateKey,
+      password,
+      alias
+    });
+
+    return {
+      pkcs12Data,
+      cert
+    };
+  };
+
   return {
     getCert,
     getCertPrivateKey,
@@ -663,6 +728,7 @@ export const certificateServiceFactory = ({
     revokeCert,
     getCertBody,
     importCert,
-    getCertBundle
+    getCertBundle,
+    getCertPkcs12
   };
 };
