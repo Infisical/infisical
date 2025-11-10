@@ -48,6 +48,12 @@ The resulting renewed certificate is stored in the platform and made available t
 Note that server-driven certificate renewal is only available for certificates issued via the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) where key pairs are generated server-side.
 A certificate can be considered for auto-renewal at time of issuance if the **Enable Auto-Renewal By Default** option is selected on its [certificate profile](/documentation/platform/pki/certificates/profiles) or after issuance by toggling this option manually.
 
+<Info>
+  For server-driven certificate renewal workflows, you can programmatically fetch the latest active certificate bundle for a certificate profile using the [Get Latest Active Certificate Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) API endpoint. 
+  
+  This ensures you always retrieve the most current valid certificate, including any that have been automatically renewed, making it particularly useful for deployment pipelines and automation workflows where you don't want to track individual serial numbers.
+</Info>
+
 The following examples demonstrate different approaches to certificate renewal:
 
 - Using the ACME enrollment method, you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for Apache, Nginx, or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.

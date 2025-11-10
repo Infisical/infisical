@@ -2644,7 +2644,8 @@
                   "api-reference/endpoints/certificate-profiles/get-by-id",
                   "api-reference/endpoints/certificate-profiles/get-by-slug",
                   "api-reference/endpoints/certificate-profiles/delete",
-                  "api-reference/endpoints/certificate-profiles/list-certificates"
+                  "api-reference/endpoints/certificate-profiles/list-certificates",
+                  "api-reference/endpoints/certificate-profiles/get-latest-active-bundle"
                 ]
               },
               {
