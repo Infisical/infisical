@@ -86,7 +86,7 @@ export const useRenewCertificate = () => {
   return useMutation<TRenewCertificateResponse, object, TRenewCertificateDTO>({
     mutationFn: async ({ certificateId }) => {
       const { data } = await apiRequest.post<TRenewCertificateResponse>(
-        `/api/v3/certificates/${certificateId}/renew`,
+        `/api/v3/pki/certificates/${certificateId}/renew`,
         {}
       );
       return data;
@@ -119,7 +119,7 @@ export const useUpdateRenewalConfig = () => {
   >({
     mutationFn: async ({ certificateId, renewBeforeDays, enableAutoRenewal }) => {
       const { data } = await apiRequest.patch<{ message: string; renewBeforeDays?: number }>(
-        `/api/v3/certificates/${certificateId}/config`,
+        `/api/v3/pki/certificates/${certificateId}/config`,
         { renewBeforeDays, enableAutoRenewal }
       );
       return data;

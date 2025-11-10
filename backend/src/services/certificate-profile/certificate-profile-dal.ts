@@ -462,6 +462,24 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getLatestActiveCertificateForProfile = async (profileId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+
+      const certificate = await (tx || db)(TableName.Certificate)
+        .where("profileId", profileId)
+        .where("status", "active")
+        .where("notAfter", ">", now)
+        .whereNull("revokedAt")
+        .orderBy("createdAt", "desc")
+        .first();
+
+      return certificate;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get latest active certificate by profile" });
+    }
+  };
+
   const isProfileInUse = async (profileId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.Certificate).where("profileId", profileId).count("*").first();
@@ -485,6 +503,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     countByProjectId,
     findByNameAndProjectId,
     getCertificatesByProfile,
+    getLatestActiveCertificateForProfile,
     isProfileInUse
   };
 };

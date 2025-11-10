@@ -1178,6 +1178,10 @@ export const registerRoutes = async (
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
     acmeEnrollmentConfigDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
     permissionService,
     kmsService,
     projectDAL

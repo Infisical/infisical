@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
+  ProjectPermissionCertificateActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -15,6 +16,11 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { isCertChainValid } from "../certificate/certificate-fns";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
+import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -142,6 +148,10 @@ type TCertificateProfileServiceFactoryDep = {
   apiEnrollmentConfigDAL: TApiEnrollmentConfigDALFactory;
   estEnrollmentConfigDAL: TEstEnrollmentConfigDALFactory;
   acmeEnrollmentConfigDAL: TAcmeEnrollmentConfigDALFactory;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
+  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
@@ -162,6 +172,8 @@ export const certificateProfileServiceFactory = ({
   apiEnrollmentConfigDAL,
   estEnrollmentConfigDAL,
   acmeEnrollmentConfigDAL,
+  certificateBodyDAL,
+  certificateSecretDAL,
   permissionService,
   kmsService,
   projectDAL
@@ -729,6 +741,106 @@ export const certificateProfileServiceFactory = ({
     return certificates;
   };
 
+  const getLatestActiveCertificateBundle = async ({
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    profileId
+  }: {
+    actor: ActorType;
+    actorId: string;
+    actorAuthMethod: ActorAuthMethod;
+    actorOrgId: string;
+    profileId: string;
+  }) => {
+    const profile = await certificateProfileDAL.findById(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionSub.CertificateProfiles
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const cert = await certificateProfileDAL.getLatestActiveCertificateForProfile(profileId);
+
+    if (!cert) {
+      return null;
+    }
+
+    const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
+      projectId: cert.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsDecryptor = await kmsService.decryptWithKmsKey({
+      kmsId: certificateManagerKeyId
+    });
+    const decryptedCert = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificate
+    });
+
+    const certObj = new x509.X509Certificate(decryptedCert);
+    const certificate = certObj.toString("pem");
+
+    const decryptedCertChain = await kmsDecryptor({
+      cipherTextBlob: certBody.encryptedCertificateChain!
+    });
+
+    const certificateChain = decryptedCertChain.toString();
+
+    let privateKey = null;
+    try {
+      const { certPrivateKey } = await getCertificateCredentials({
+        certId: cert.id,
+        projectId: cert.projectId,
+        certificateSecretDAL,
+        projectDAL,
+        kmsService
+      });
+      privateKey = certPrivateKey;
+    } catch (error) {
+      // Private key might not exist for ACME certificates or other external workflows
+      // where the key is generated client-side
+      if (error instanceof NotFoundError) {
+        privateKey = null;
+      } else {
+        throw error;
+      }
+    }
+
+    return {
+      certificate,
+      certificateChain,
+      privateKey,
+      profile,
+      certObj: cert
+    };
+  };
+
   const getEstConfigurationByProfile = async (
     params:
       | {
@@ -854,6 +966,7 @@ export const certificateProfileServiceFactory = ({
     listProfiles,
     deleteProfile,
     getProfileCertificates,
+    getLatestActiveCertificateBundle,
     getEstConfigurationByProfile,
     revealAcmeEabSecret
   };

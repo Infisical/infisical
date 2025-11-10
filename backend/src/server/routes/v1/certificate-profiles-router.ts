@@ -500,6 +500,71 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
 
   server.route({
     method: "GET",
+    url: "/:id/certificates/latest-active-bundle",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateProfiles],
+      description: "Get latest active certificate bundle for a profile",
+      params: z.object({
+        id: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().nullable(),
+          certificateChain: z.string().nullable(),
+          privateKey: z.string().nullable(),
+          serialNumber: z.string().nullable()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    handler: async (req) => {
+      const response = await server.services.certificateProfile.getLatestActiveCertificateBundle({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        profileId: req.params.id
+      });
+
+      if (!response) {
+        return {
+          certificate: null,
+          certificateChain: null,
+          privateKey: null,
+          serialNumber: null
+        };
+      }
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: response.certObj.projectId,
+        event: {
+          type: EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE,
+          metadata: {
+            certificateProfileId: response.profile.id,
+            certificateId: response.certObj.id,
+            commonName: response.certObj.commonName,
+            profileName: response.profile.slug,
+            serialNumber: response.certObj.serialNumber
+          }
+        }
+      });
+
+      return {
+        certificate: response.certificate,
+        certificateChain: response.certificateChain,
+        privateKey: response.privateKey,
+        serialNumber: response.certObj.serialNumber
+      };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:id/acme/eab-secret/reveal",
     config: {
       rateLimit: readLimit
