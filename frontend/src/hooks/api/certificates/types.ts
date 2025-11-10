@@ -72,3 +72,10 @@ export type TUpdateRenewalConfigDTO = {
   enableAutoRenewal?: boolean;
   projectSlug: string;
 };
+
+export type TDownloadJksDTO = {
+  serialNumber: string;
+  projectSlug: string;
+  password: string;
+  alias: string;
+};

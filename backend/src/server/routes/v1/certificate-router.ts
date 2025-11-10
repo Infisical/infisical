@@ -616,4 +616,58 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
       };
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/:serialNumber/jks",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Download certificate in JKS-compatible format (PKCS12)",
+      params: z.object({
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
+      }),
+      querystring: z.object({
+        password: z.string().describe("Password for the keystore"),
+        alias: z.string().describe("Alias for the certificate in the keystore")
+      }),
+      response: {
+        200: z.any().describe("PKCS12 keystore as binary data")
+      }
+    },
+    handler: async (req, reply) => {
+      const { jksData, cert } = await server.services.certificate.getCertJks({
+        serialNumber: req.params.serialNumber,
+        password: req.query.password,
+        alias: req.query.alias,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.EXPORT_CERT_JKS,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+      reply.header("Content-Type", "application/octet-stream");
+      reply.header("Content-Disposition", `attachment; filename="certificate-${req.params.serialNumber}.jks"`);
+
+      return jksData;
+    }
+  });
 };

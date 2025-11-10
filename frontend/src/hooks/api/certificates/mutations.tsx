@@ -7,6 +7,7 @@ import { projectKeys } from "../projects";
 import {
   TCertificate,
   TDeleteCertDTO,
+  TDownloadJksDTO,
   TImportCertificateDTO,
   TImportCertificateResponse,
   TRenewCertificateDTO,
@@ -131,6 +132,28 @@ export const useUpdateRenewalConfig = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
       });
+    }
+  });
+};
+
+export const useDownloadCertJks = () => {
+  return useMutation<void, object, TDownloadJksDTO>({
+    mutationFn: async ({ serialNumber, projectSlug, password, alias }) => {
+      const response = await apiRequest.get(`/api/v1/pki/certificates/${serialNumber}/jks`, {
+        params: { projectSlug, password, alias },
+        responseType: "arraybuffer"
+      });
+
+      // Create blob and trigger download
+      const blob = new Blob([response.data], { type: "application/octet-stream" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `certificate-${serialNumber}.jks`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
     }
   });
 };

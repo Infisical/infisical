@@ -29,7 +29,12 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { expandInternalCa, getCaCertChain, rebuildCaCrl } from "../certificate-authority/certificate-authority-fns";
-import { getCertificateCredentials, revocationReasonToCrlCode, splitPemChain } from "./certificate-fns";
+import {
+  generateJksFromCertificate,
+  getCertificateCredentials,
+  revocationReasonToCrlCode,
+  splitPemChain
+} from "./certificate-fns";
 import { TCertificateSecretDALFactory } from "./certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
@@ -40,6 +45,7 @@ import {
   TGetCertBodyDTO,
   TGetCertBundleDTO,
   TGetCertDTO,
+  TGetCertJksDTO,
   TGetCertPrivateKeyDTO,
   TImportCertDTO,
   TRevokeCertDTO
@@ -656,6 +662,65 @@ export const certificateServiceFactory = ({
     };
   };
 
+  const getCertJks = async ({
+    serialNumber,
+    password,
+    alias,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertJksDTO) => {
+    if (!password || password.trim() === "") {
+      throw new BadRequestError({ message: "Password is required for JKS keystore generation" });
+    }
+
+    if (!alias || alias.trim() === "") {
+      throw new BadRequestError({ message: "Alias is required for JKS keystore generation" });
+    }
+    const cert = await certificateDAL.findOne({ serialNumber });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: cert.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    // Get certificate bundle (certificate, chain, private key)
+    const { certificate, certificateChain, privateKey } = await getCertBundle({
+      serialNumber,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId
+    });
+
+    if (!privateKey) {
+      throw new BadRequestError({ message: "Certificate private key is required for JKS export" });
+    }
+
+    const jksData = await generateJksFromCertificate({
+      certificate,
+      certificateChain: certificateChain || "",
+      privateKey,
+      password,
+      alias
+    });
+
+    return {
+      jksData,
+      cert
+    };
+  };
+
   return {
     getCert,
     getCertPrivateKey,
@@ -663,6 +728,7 @@ export const certificateServiceFactory = ({
     revokeCert,
     getCertBody,
     importCert,
-    getCertBundle
+    getCertBundle,
+    getCertJks
   };
 };
