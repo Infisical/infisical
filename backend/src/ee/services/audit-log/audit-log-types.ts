@@ -371,6 +371,7 @@ export enum EventType {
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   RENEW_CERTIFICATE = "renew-certificate",
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
@@ -2752,6 +2753,17 @@ interface OrderCertificateFromProfile {
   };
 }
 
+interface GetCertificateProfileLatestActiveBundle {
+  type: EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    commonName: string;
+    profileName: string;
+    serialNumber: string;
+  };
+}
+
 interface RenewCertificate {
   type: EventType.RENEW_CERTIFICATE;
   metadata: {
@@ -4282,6 +4294,7 @@ export type Event =
   | DeleteCertificateProfile
   | GetCertificateProfile
   | ListCertificateProfiles
+  | GetCertificateProfileLatestActiveBundle
   | IssueCertificateFromProfile
   | SignCertificateFromProfile
   | OrderCertificateFromProfile
