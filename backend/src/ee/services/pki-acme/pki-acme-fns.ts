@@ -1,10 +1,7 @@
 import { getConfig } from "@app/lib/config/env";
 import RE2 from "re2";
 import { z } from "zod";
-
-import { getConfig } from "@app/lib/config/env";
-
-import { AcmeMalformedError } from "./pki-acme-errors";
+import { AcmeAccountDoesNotExistError } from "./pki-acme-errors";
 
 export const buildUrl = (profileId: string, path: string): string => {
   const appCfg = getConfig();
