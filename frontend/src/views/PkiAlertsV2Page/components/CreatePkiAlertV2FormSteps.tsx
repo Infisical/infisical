@@ -151,7 +151,7 @@ export const CreatePkiAlertV2FormSteps = () => {
     <>
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Choose the event that will trigger this alert notification.
           </p>
 
@@ -179,7 +179,7 @@ export const CreatePkiAlertV2FormSteps = () => {
 
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Configure the name, description, and timing for your alert.
           </p>
 
@@ -188,7 +188,7 @@ export const CreatePkiAlertV2FormSteps = () => {
             name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Alert Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g., prod-cert-expiring-soon" />
+                <Input {...field} placeholder="e.g., tls-expiry-alert" />
               </FormControl>
             )}
           />
@@ -228,7 +228,7 @@ export const CreatePkiAlertV2FormSteps = () => {
 
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Add filter rules to specify which certificates should trigger this alert. Leave empty to
             monitor all certificates.
           </p>
@@ -250,10 +250,10 @@ export const CreatePkiAlertV2FormSteps = () => {
             {watchedFilters?.map((filter, index) => (
               <div
                 key={`filter-${index}`}
-                className="space-y-2 rounded-md border border-mineshaft-600 p-3"
+                className="border-mineshaft-600 space-y-2 rounded-md border p-3"
               >
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-medium text-mineshaft-100">
+                  <h4 className="text-mineshaft-100 text-sm font-medium">
                     Filter Rule #{index + 1}
                   </h4>
                   <IconButton
@@ -366,7 +366,7 @@ export const CreatePkiAlertV2FormSteps = () => {
             ))}
 
             {(!watchedFilters || watchedFilters.length === 0) && (
-              <div className="py-8 text-center text-bunker-400">
+              <div className="text-bunker-400 py-8 text-center">
                 No filter rules configured. This alert will monitor all certificates.
               </div>
             )}
@@ -376,7 +376,7 @@ export const CreatePkiAlertV2FormSteps = () => {
 
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Preview all certificates that match your filter criteria. This shows all non-expired
             certificates that would be monitored by this alert.
           </p>
@@ -483,7 +483,7 @@ export const CreatePkiAlertV2FormSteps = () => {
 
       <Tab.Panel>
         <div className="space-y-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Set up email notifications to receive alerts when events occur.
           </p>
 
@@ -513,13 +513,13 @@ export const CreatePkiAlertV2FormSteps = () => {
 
       <Tab.Panel>
         <div className="mb-4 flex flex-col gap-6">
-          <p className="mb-4 text-sm text-bunker-300">
+          <p className="text-bunker-300 mb-4 text-sm">
             Please review the settings below before creating your alert.
           </p>
 
           <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Basic Information</span>
+            <div className="border-mineshaft-600 w-full border-b">
+              <span className="text-mineshaft-300 text-sm">Basic Information</span>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-2">
               <GenericFieldLabel label="Name">{watch("name") || "Not specified"}</GenericFieldLabel>
@@ -545,8 +545,8 @@ export const CreatePkiAlertV2FormSteps = () => {
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Filter Rules</span>
+            <div className="border-mineshaft-600 w-full border-b">
+              <span className="text-mineshaft-300 text-sm">Filter Rules</span>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-2">
               {watchedFilters && watchedFilters.length > 0 ? (
@@ -574,8 +574,8 @@ export const CreatePkiAlertV2FormSteps = () => {
           </div>
 
           <div className="flex flex-col gap-3">
-            <div className="w-full border-b border-mineshaft-600">
-              <span className="text-sm text-mineshaft-300">Notifications</span>
+            <div className="border-mineshaft-600 w-full border-b">
+              <span className="text-mineshaft-300 text-sm">Notifications</span>
             </div>
             <div className="flex flex-wrap gap-x-8 gap-y-3">
               <GenericFieldLabel label="Email Recipients">
