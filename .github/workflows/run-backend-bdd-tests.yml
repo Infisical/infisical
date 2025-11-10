@@ -68,7 +68,7 @@ jobs:
           targets: backend
           load: true
           # Uncomment this to force a rebuild of the image
-          no-cache: true
+          # no-cache: true
           set: |
               *.cache-from=type=gha,scope=infisical-backend-bdd-tests
               *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
