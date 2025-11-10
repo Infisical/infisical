@@ -1,0 +1,158 @@
+---
+title: "Certificates"
+sidebarTitle: "Certificates"
+---
+
+<Note>
+  PKI architecture is a complex topic and there are many ways to orchestrate
+  certificate management including renewal operations. For specific guidance and
+  access to enterprise features, we recommend reaching out to
+  sales@infisical.com to schedule a demo.
+</Note>
+
+## Concept
+
+A certificate is the (X.509) leaf certificate issued for a certificate profile.
+
+Once issued, a certificate is kept track of in the certificate inventory
+where you can manage various aspects of its lifecycle including deployment to cloud key stores, server-side auto-renewal behavior, revocation, and more.
+
+## Guide to Issuing Certificates
+
+To issue a certificate, you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
+
+The [enrollment method](/documentation/platform/pki/enrollment-methods/overview) configured on the certificate profile determines how a certificate is issued for it.
+Refer to the documentation for each enrollment method below to learn more about how to issue certificates using it.
+
+- [API](/documentation/platform/pki/enrollment-methods/api): Issue a certificate over UI or by making an API request to Infisical.
+- [EST](/documentation/platform/pki/enrollment-methods/est): Issue a certificate over the EST protocol.
+
+## Guide to Renewing Certificates
+
+To [renew a certificate](/documentation/platform/pki/concepts/certificate-lifecycle#renewal), you can either request a new certificate from a certificate profile or have the platform
+automatically request a new one for you. Whether you pursue a client-driven or server-driven approach is totally dependent on the enrollment method configured on your certificate
+profile as well as your infrastructure use-case.
+
+### Client-Driven Certificate Renewal
+
+Client-driven certificate renewal is when renewal is initiated client-side by the end-entity consuming the certificate.
+This is the most common approach to certificate renewal and is suitable for most use-cases.
+
+### Server-Driven Certificate Renewal
+
+Server-driven certificate renewal is when renewal is initiated server-side by Infisical rather than by the end-entity consuming the certificate.
+When a certificate considered for auto-renewal meets a specified _renewal days before expiration_ threshold, Infisical reaches out to the issuing CA bound to the [certificate profile](/documentation/platform/pki/certificates/profiles) of the expiring certificate
+to request for a new one.
+The resulting renewed certificate is stored in the platform and made available to be fetched back or pushed downstream to end-entities or external systems such as cloud key stores.
+
+Note that server-driven certificate renewal is only available for certificates issued via the [API enrollment method](/documentation/platform/pki/enrollment-methods/api) where key pairs are generated server-side.
+A certificate can be considered for auto-renewal at time of issuance if the **Enable Auto-Renewal By Default** option is selected on its [certificate profile](/documentation/platform/pki/certificates/profiles) or after issuance by toggling this option manually.
+
+The following examples demonstrate different approaches to certificate renewal:
+
+- Using the ACME enrollment method, you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for Apache, Nginx, or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.
+- Using the ACME enrollment method, you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
+- Using the API enrollment method, you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
+
+## Guide to Revoking Certificates
+
+In the following steps, we explore how to revoke a X.509 certificate and obtain a Certificate Revocation List (CRL) for a CA.
+
+<Tabs>
+  <Tab title="Infisical UI">
+<Steps>
+  <Step title="Revoking a Certificate">
+    Assuming that you've issued a certificate under a CA, you can revoke it by
+    selecting the **Revoke Certificate** option for it and specifying the reason
+    for revocation.
+
+    ![pki revoke certificate](/images/platform/pki/certificate/cert-revoke.png)
+
+    ![pki revoke certificate modal](/images/platform/pki/certificate/cert-revoke-modal.png)
+
+  </Step>
+  <Step title="Obtaining a CRL">
+    In order to check the revocation status of a certificate, you can check it
+    against the CRL of a CA by heading to its Issuing CA and downloading the CRL.
+
+    ![pki view crl](/images/platform/pki/ca/ca-crl.png)
+
+    To verify a certificate against the
+    downloaded CRL with OpenSSL, you can use the following command:
+
+```bash
+openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
+```
+
+Note that you can also obtain the CRL from the certificate itself by
+referencing the CRL distribution point extension on the certificate.
+
+To check a certificate against the CRL distribution point specified within it with OpenSSL, you can use the following command:
+
+```bash
+openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
+```
+
+  </Step>
+</Steps>
+  </Tab>
+  <Tab title="API">
+    <Steps>
+      <Step title="Revoking a certificate">
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        specifying the serial number of the certificate and the reason for revocation.
+        
+        ### Sample request
+
+        ```bash Request
+        curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/<cert-serial-number>/revoke' \
+          --header 'Authorization: Bearer <access-token>' \
+          --header 'Content-Type: application/json' \
+          --data-raw '{
+              "revocationReason": "UNSPECIFIED"
+          }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          message: "Successfully revoked certificate",
+          serialNumber: "...",
+          revokedAt: "..."
+        }
+        ```
+      </Step>
+      <Step title="Obtaining a CRL">
+        In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crls' \
+          --header 'Authorization: Bearer <access-token>'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        [
+          {
+            id: "...",
+            crl: "..."
+          },
+          ...
+        ]
+        ```
+
+        To verify a certificate against the CRL with OpenSSL, you can use the following command:
+
+        ```bash
+        openssl verify -crl_check -CAfile chain.pem -CRLfile crl.pem cert.pem
+        ```
+      </Step>
+    </Steps>
+
+  </Tab>
+</Tabs>

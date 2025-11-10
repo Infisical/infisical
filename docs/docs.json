@@ -706,37 +706,69 @@
             "item": "Infisical PKI",
             "groups": [
               {
-                "group": "Infisical PKI",
+                "group": "Certificate Management",
                 "pages": [
                   "documentation/platform/pki/overview",
-                  "documentation/platform/pki/private-ca",
-                  "documentation/platform/pki/external-ca",
-                  "documentation/platform/pki/subscribers",
-                  "documentation/platform/pki/certificates",
-                  "documentation/platform/pki/acme-ca",
-                  "documentation/platform/pki/azure-adcs",
-                  "documentation/platform/pki/est",
-                  "documentation/platform/pki/alerting",
                   {
-                    "group": "Integrations",
+                    "group": "Concepts",
                     "pages": [
-                      "documentation/platform/pki/pki-issuer",
-                      "documentation/platform/pki/integration-guides/gloo-mesh"
+                      "documentation/platform/pki/concepts/certificate-mgmt",
+                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  {
+                    "group": "Certificate Authorities",
+                    "pages": [
+                      "documentation/platform/pki/ca/overview",
+                      "documentation/platform/pki/ca/private-ca",
+                      "documentation/platform/pki/ca/external-ca"
                     ]
                   },
                   {
-                    "group": "Certificate Syncs",
+                    "group": "Certificates",
                     "pages": [
-                      "documentation/platform/pki/certificate-syncs/overview",
-                      {
-                        "group": "Syncs",
-                        "pages": [
-                          "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                          "documentation/platform/pki/certificate-syncs/azure-key-vault"
-                        ]
-                      }
+                      "documentation/platform/pki/certificates/overview",
+                      "documentation/platform/pki/certificates/profiles",
+                      "documentation/platform/pki/certificates/templates",
+                      "documentation/platform/pki/certificates/certificates"
                     ]
-                  }
+                  },
+                  {
+                    "group": "Enrollment Methods",
+                    "pages": [
+                      "documentation/platform/pki/enrollment-methods/overview",
+                      "documentation/platform/pki/enrollment-methods/api",
+                      "documentation/platform/pki/enrollment-methods/est"
+                    ]
+                  },
+                  "documentation/platform/pki/alerting"
+                ]
+              },
+              {
+                "group": "Infrastructure Integrations",
+                "pages": [
+                  "documentation/platform/pki/pki-issuer",
+                  "documentation/platform/pki/integration-guides/gloo-mesh"
+                ]
+              },
+              {
+                "group": "Certificate Syncs",
+                "pages": [
+                  "documentation/platform/pki/certificate-syncs/overview",
+                  "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
+                  "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                ]
+              },
+              {
+                "group": "External CA Integrations",
+                "pages": [
+                  "documentation/platform/pki/ca/acme-ca",
+                  "documentation/platform/pki/ca/azure-adcs"
                 ]
               }
             ]
@@ -2563,13 +2595,15 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
+                  "api-reference/endpoints/certificates/issue-certificate",
+                  "api-reference/endpoints/certificates/sign-certificate",
+                  "api-reference/endpoints/certificates/renew",
+                  "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",
                   "api-reference/endpoints/certificates/delete",
                   "api-reference/endpoints/certificates/cert-body",
                   "api-reference/endpoints/certificates/bundle",
-                  "api-reference/endpoints/certificates/private-key",
-                  "api-reference/endpoints/certificates/issue-certificate",
-                  "api-reference/endpoints/certificates/sign-certificate"
+                  "api-reference/endpoints/certificates/private-key"
                 ]
               },
               {
@@ -2606,10 +2640,13 @@
               {
                 "group": "Certificate Profiles",
                 "pages": [
+                  "api-reference/endpoints/certificate-profiles/list",
                   "api-reference/endpoints/certificate-profiles/create",
                   "api-reference/endpoints/certificate-profiles/update",
                   "api-reference/endpoints/certificate-profiles/get-by-id",
-                  "api-reference/endpoints/certificate-profiles/delete"
+                  "api-reference/endpoints/certificate-profiles/get-by-slug",
+                  "api-reference/endpoints/certificate-profiles/delete",
+                  "api-reference/endpoints/certificate-profiles/list-certificates"
                 ]
               },
               {
@@ -2618,6 +2655,9 @@
                   "api-reference/endpoints/pki/syncs/list",
                   "api-reference/endpoints/pki/syncs/get-by-id",
                   "api-reference/endpoints/pki/syncs/options",
+                  "api-reference/endpoints/pki/syncs/list-certificates",
+                  "api-reference/endpoints/pki/syncs/add-certificates",
+                  "api-reference/endpoints/pki/syncs/remove-certificates",
                   {
                     "group": "AWS Certificate Manager",
                     "pages": [
@@ -2989,6 +3029,30 @@
     {
       "source": "/sdks/languages/csharp",
       "destination": "/sdks/languages/dotnet"
+    },
+    {
+      "source": "/documentation/platform/pki/private-ca",
+      "destination": "/documentation/platform/pki/ca/private-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/external-ca",
+      "destination": "/documentation/platform/pki/ca/external-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/acme-ca",
+      "destination": "/documentation/platform/pki/ca/acme-ca"
+    },
+    {
+      "source": "/documentation/platform/pki/azure-adcs",
+      "destination": "/documentation/platform/pki/ca/azure-adcs"
+    },
+    {
+      "source": "/documentation/platform/pki/certificates",
+      "destination": "/documentation/platform/pki/certificates/certificates"
+    },
+    {
+      "source": "/documentation/platform/pki/est",
+      "destination": "/documentation/platform/pki/enrollment-methods/est"
     }
   ]
 }

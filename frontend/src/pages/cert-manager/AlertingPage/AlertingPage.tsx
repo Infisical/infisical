@@ -1,15 +1,27 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
+import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { useListWorkspacePkiAlerts } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
+import { PkiAlertsV2Page } from "@app/views/PkiAlertsV2Page";
 
-import { PkiAlertsSection } from "./components";
+import { PkiAlertsSection, PkiCollectionSection } from "./components";
 
 export const AlertingPage = () => {
   const { t } = useTranslation();
+  const { currentProject } = useProject();
+  const [selectedTab, setSelectedTab] = useState("rule-based");
+
+  const { data: v1AlertsData } = useListWorkspacePkiAlerts({
+    projectId: currentProject?.id || ""
+  });
+
+  const hasV1Alerts = v1AlertsData?.alerts && v1AlertsData.alerts.length > 0;
+
   return (
     <div className="mx-auto flex h-full flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
@@ -26,7 +38,33 @@ export const AlertingPage = () => {
           I={ProjectPermissionActions.Read}
           a={ProjectPermissionSub.PkiAlerts}
         >
-          <PkiAlertsSection />
+          {!hasV1Alerts ? (
+            <div>
+              <PkiAlertsV2Page hideContainer />
+            </div>
+          ) : (
+            <Tabs orientation="vertical" value={selectedTab} onValueChange={setSelectedTab}>
+              <TabList>
+                <Tab variant="project" value="rule-based">
+                  Certificate Alerts
+                </Tab>
+                <Tab variant="project" value="legacy">
+                  Collection Alerts (Legacy)
+                </Tab>
+              </TabList>
+
+              <TabPanel value="rule-based">
+                <PkiAlertsV2Page />
+              </TabPanel>
+
+              <TabPanel value="legacy">
+                <div className="space-y-6">
+                  <PkiAlertsSection />
+                  <PkiCollectionSection />
+                </div>
+              </TabPanel>
+            </Tabs>
+          )}
         </ProjectPermissionCan>
       </div>
     </div>

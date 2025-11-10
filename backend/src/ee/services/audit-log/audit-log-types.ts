@@ -36,6 +36,7 @@ import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/servi
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -2318,10 +2319,11 @@ interface CreatePkiAlert {
   type: EventType.CREATE_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
-    pkiCollectionId: string;
+    pkiCollectionId?: string;
     name: string;
-    alertBeforeDays: number;
-    recipientEmails: string;
+    alertBefore: string;
+    eventType: PkiAlertEventType;
+    recipientEmails?: string;
   };
 }
 interface GetPkiAlert {
@@ -2337,7 +2339,8 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     name?: string;
-    alertBeforeDays?: number;
+    alertBefore?: string;
+    eventType?: PkiAlertEventType;
     recipientEmails?: string;
   };
 }

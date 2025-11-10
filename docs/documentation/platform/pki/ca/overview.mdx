@@ -1,0 +1,13 @@
+---
+title: "Overview"
+sidebarTitle: "Overview"
+---
+
+Before issuing and managing certificates with Infisical, you'll need to configure a Certificate Authority (CA).
+
+This is the trusted entity that signs and validates the X.509 certificates used to secure your end-entities.
+
+Infisical supports two categories of CAs:
+
+- [Internal CA](/documentation/platform/pki/ca/private-ca): Internally operated root and intermediate CAs managed within Infisical. This is useful if you need complete control over your PKI and are issuing certificates for private networks, internal services, or managed devices.
+- [External CA](/documentation/platform/pki/ca/external-ca): Third-party public (e.g. Let's Encrypt, DigiCert) or private (e.g. AWS Private CA, HashiCorp Vault PKI, etc.) CAs that can be integrated with Infisical. This is useful if you want to leverage existing PKI infrastructure or issue publicly trusted certificates.
