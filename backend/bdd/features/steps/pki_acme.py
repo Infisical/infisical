@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import re
 import threading
 import urllib.parse
@@ -138,8 +137,8 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    profile_id = os.getenv("PROFILE_ID")
-    secret = os.getenv("EAB_SECRET")
+    profile_id = context.vars.get("PROFILE_ID")
+    secret = context.vars.get("EAB_SECRET")
     if profile_id is not None and secret is not None:
         kid = profile_id
     else:
