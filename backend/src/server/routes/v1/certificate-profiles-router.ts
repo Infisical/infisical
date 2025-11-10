@@ -522,7 +522,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const bundle = await server.services.certificateProfile.getLatestActiveCertificateBundle({
+      const response = await server.services.certificateProfile.getLatestActiveCertificateBundle({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -530,7 +530,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         profileId: req.params.id
       });
 
-      if (!bundle) {
+      if (!response) {
         return {
           certificate: null,
           certificateChain: null,
@@ -539,7 +539,27 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         };
       }
 
-      return bundle;
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: response.certObj.projectId,
+        event: {
+          type: EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE,
+          metadata: {
+            certificateProfileId: response.profile.id,
+            certificateId: response.certObj.id,
+            commonName: response.certObj.commonName,
+            profileName: response.profile.slug,
+            serialNumber: response.certObj.serialNumber
+          }
+        }
+      });
+
+      return {
+        certificate: response.certificate,
+        certificateChain: response.certificateChain,
+        privateKey: response.privateKey,
+        serialNumber: response.certObj.serialNumber
+      };
     }
   });
 

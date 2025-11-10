@@ -835,7 +835,8 @@ export const certificateProfileServiceFactory = ({
       certificate,
       certificateChain,
       privateKey,
-      serialNumber: cert.serialNumber
+      profile,
+      certObj: cert
     };
   };
 
