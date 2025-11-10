@@ -543,6 +543,10 @@ export const certificateV3ServiceFactory = ({
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
 
+    mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
+    mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
+    mappedCertificateRequest.validity = validity;
+
     const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
       profile.certificateTemplateId,
       mappedCertificateRequest

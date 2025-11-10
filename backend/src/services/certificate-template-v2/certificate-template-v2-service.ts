@@ -482,7 +482,7 @@ export const certificateTemplateV2ServiceFactory = ({
       }
 
       // Check ALLOWED key usages - if present, all usages must be in allowed list
-      if (request.keyUsages && keyUsagePolicy && keyUsagePolicy.allowed && keyUsagePolicy.allowed.length > 0) {
+      if (request.keyUsages && keyUsagePolicy) {
         const allAllowedUsages = [...(keyUsagePolicy.required || []), ...(keyUsagePolicy.allowed || [])];
         const invalidUsages = request.keyUsages.filter((usage) => !allAllowedUsages.includes(usage));
         if (invalidUsages.length > 0) {
@@ -517,12 +517,7 @@ export const certificateTemplateV2ServiceFactory = ({
       }
 
       // Check ALLOWED extended key usages - if present, all usages must be in allowed list
-      if (
-        request.extendedKeyUsages &&
-        extendedKeyUsagePolicy &&
-        extendedKeyUsagePolicy.allowed &&
-        extendedKeyUsagePolicy.allowed.length > 0
-      ) {
+      if (request.extendedKeyUsages && extendedKeyUsagePolicy) {
         const allAllowedExtendedUsages = [
           ...(extendedKeyUsagePolicy.required || []),
           ...(extendedKeyUsagePolicy.allowed || [])
