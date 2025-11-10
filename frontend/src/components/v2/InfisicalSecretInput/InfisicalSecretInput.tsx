@@ -387,8 +387,6 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
           }
         }
 
-        const secretPath = segment === environmentSlug ? "/" : folderPath;
-
         // Only validate secret permission, users can always view environments and folders
         if (segment === secretName) {
           const canReadSecretValue = hasSecretReadValueOrDescribePermission(
@@ -396,8 +394,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ProjectPermissionSecretActions.ReadValue,
             {
               environment: environmentSlug,
-              secretPath,
-              secretName: secretName ?? "*",
+              secretPath: folderPath,
+              secretName,
               secretTags: ["*"]
             }
           );
