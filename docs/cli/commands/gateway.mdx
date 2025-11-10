@@ -53,7 +53,7 @@ Once started, the gateway component will:
 
 ### Authentication
 
-The gateway supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
+The Gateway supports multiple authentication methods. Below are the available authentication methods, with their respective flags.
 
 <AccordionGroup>
   <Accordion title="Universal Auth">
@@ -262,7 +262,7 @@ The gateway supports multiple authentication methods. Below are the available au
     sudo infisical gateway start --relay=my-relay --name=my-gateway --token=<token>
     ```
 
-    **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server using `infisical relay start` before connecting gateways to it. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical.
+    **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
   </Accordion>
 
@@ -346,7 +346,7 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
     sudo infisical gateway systemd install --relay=my-relay --token=<token> --name=<name>
     ```
 
-    **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server using `infisical relay start` before connecting gateways to it. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical.
+    **Note:** If using organization relays or self-hosted instance relays, you must first start a relay server. For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
 
   </Accordion>
   </AccordionGroup>
@@ -687,7 +687,7 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 
 <AccordionGroup>
   <Accordion title="How are relays auto-selected?">
-      If the `--relay` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available platform relays.
+      If the `--relay` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
