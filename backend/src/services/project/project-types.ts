@@ -51,6 +51,7 @@ export type TCreateProjectDTO = {
   pitVersionLimit?: number;
   tx?: Knex;
   type?: ProjectType;
+  hasDeleteProtection?: boolean;
 };
 
 export type TDeleteProjectBySlugDTO = {
