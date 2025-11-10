@@ -219,24 +219,43 @@ const Page = () => {
     ProjectPermissionSub.Commits
   );
 
-  const defaultIncludeFilters = {
-    [RowType.Folder]: routerQueryParams.filterBy?.includes(RowType.Folder) || false,
-    [RowType.Import]: routerQueryParams.filterBy?.includes(RowType.Import) || false,
-    [RowType.DynamicSecret]: routerQueryParams.filterBy?.includes(RowType.DynamicSecret) || false,
-    [RowType.Secret]: routerQueryParams.filterBy?.includes(RowType.Secret) || false,
-    [RowType.SecretRotation]: routerQueryParams.filterBy?.includes(RowType.SecretRotation) || false
-  };
+  const getFilterStateFromQueryParams = useCallback(() => {
+    const filterByArray = routerQueryParams.filterBy
+      ? (routerQueryParams.filterBy as string).split(",").filter(Boolean)
+      : [];
 
-  const defaultFilterState = {
-    tags: {},
-    searchFilter: (routerQueryParams.search as string) || "",
-    // these should always be on by default for the UI, they will be disabled for the query below based off permissions
-    include: defaultIncludeFilters
-  };
+    const includeFilters = {
+      [RowType.Folder]: filterByArray.includes("folder") || false,
+      [RowType.Import]: filterByArray.includes("import") || false,
+      [RowType.DynamicSecret]: filterByArray.includes("dynamic") || false,
+      [RowType.Secret]: filterByArray.includes("secret") || false,
+      [RowType.SecretRotation]: filterByArray.includes("rotation") || false
+    };
+
+    const tags = routerQueryParams.tags
+      ? routerQueryParams.tags.split(",").reduce(
+          (acc, tag) => {
+            const trimmedTag = tag.trim();
+            if (trimmedTag) {
+              acc[trimmedTag] = true;
+            }
+            return acc;
+          },
+          {} as Record<string, boolean>
+        )
+      : {};
+
+    return {
+      tags,
+      searchFilter: (routerQueryParams.search as string) || "",
+      include: includeFilters
+    };
+  }, [routerQueryParams.search, routerQueryParams.tags, routerQueryParams.filterBy]);
+
+  const defaultFilterState = getFilterStateFromQueryParams();
 
   const [filter, setFilter] = useState<Filter>(defaultFilterState);
   const [debouncedSearchFilter, setDebouncedSearchFilter] = useDebounce(filter.searchFilter);
-  const [filterHistory, setFilterHistory] = useState<Map<string, Filter>>(new Map());
 
   const createSecretPopUp = usePopUpState(PopUpNames.CreateSecretForm);
   const { togglePopUp } = usePopUpAction();
@@ -532,7 +551,17 @@ const Page = () => {
   );
 
   const handleClearFilters = useCallback(() => {
-    setFilter(defaultFilterState);
+    setFilter({
+      searchFilter: "",
+      tags: {},
+      include: {
+        [RowType.Folder]: false,
+        [RowType.Import]: false,
+        [RowType.DynamicSecret]: false,
+        [RowType.Secret]: false,
+        [RowType.SecretRotation]: false
+      }
+    });
     setDebouncedSearchFilter("");
     navigate({
       search: (prev) => ({
@@ -581,43 +610,10 @@ const Page = () => {
   });
 
   useEffect(() => {
-    // restore filters for path if set
-    const restore = filterHistory.get(secretPath);
-    setFilter(restore ?? defaultFilterState);
-    setDebouncedSearchFilter(restore?.searchFilter ?? "");
-  }, [secretPath]);
-
-  useEffect(() => {
-    if (!routerQueryParams.search && !routerQueryParams.tags && !routerQueryParams.filterBy) return;
-
-    const queryTags = routerQueryParams.tags
-      ? (routerQueryParams.tags as string).split(",").filter((tag) => Boolean(tag.trim()))
-      : [];
-    const updatedTags: Record<string, boolean> = {};
-    queryTags.forEach((tag) => {
-      updatedTags[tag] = true;
-    });
-
-    const filterBy = routerQueryParams.filterBy
-      ? (routerQueryParams.filterBy as string).split(",").filter(Boolean)
-      : [];
-
-    const includeFilter: Record<RowType, boolean> = {
-      [RowType.Folder]: filterBy.includes("folder"),
-      [RowType.Import]: filterBy.includes("import"),
-      [RowType.DynamicSecret]: filterBy.includes("dynamic"),
-      [RowType.Secret]: filterBy.includes("secret"),
-      [RowType.SecretRotation]: filterBy.includes("rotation")
-    };
-
-    setFilter((prev) => ({
-      ...prev,
-      searchFilter: (routerQueryParams.search as string) ?? "",
-      tags: updatedTags,
-      include: includeFilter
-    }));
-    setDebouncedSearchFilter((routerQueryParams.search as string) ?? "");
-  }, [routerQueryParams.search, routerQueryParams.tags, routerQueryParams.filterBy]);
+    const filterState = getFilterStateFromQueryParams();
+    setFilter(filterState);
+    setDebouncedSearchFilter(filterState.searchFilter);
+  }, [getFilterStateFromQueryParams]);
 
   const selectedSecrets = useSelectedSecrets();
   const selectedSecretActions = useSelectedSecretActions();
@@ -656,13 +652,6 @@ const Page = () => {
   }
 
   const handleResetFilter = () => {
-    // store for breadcrumb nav to restore previously used filters
-    setFilterHistory((prev) => {
-      const curr = new Map(prev);
-      curr.set(secretPath, filter);
-      return curr;
-    });
-
     setFilter(defaultFilterState);
     setDebouncedSearchFilter("");
   };
