@@ -122,11 +122,13 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
       <Tab title="Linux Server (Production)">
         For production deployments on Linux servers, install the Gateway as a systemd service so that it runs securely in the background and automatically restarts on failure or system reboot:
         ```bash
-        sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name> --relay <relay-name>
+        sudo infisical gateway systemd install --token <your-machine-identity-token> --domain <your-infisical-domain> --name <gateway-name>
         sudo systemctl start infisical-gateway
         ```
 
-
+        <Info>
+          By default, the gateway connects to the most optimal relay. Use the `--relay` flag to manually specify a different relay server.
+        </Info>
 
         <Warning>
           The systemd install command requires a Linux operating system with root/sudo
@@ -153,9 +155,12 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
           --from-literal=INFISICAL_AUTH_METHOD=universal-auth \
           --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_ID=<client-id> \
           --from-literal=INFISICAL_UNIVERSAL_AUTH_CLIENT_SECRET=<client-secret> \
-          --from-literal=INFISICAL_RELAY_NAME=<relay-name> \
           --from-literal=INFISICAL_GATEWAY_NAME=<gateway-name>
         ```
+
+        <Info>
+          By default, the gateway connects to the most optimal relay. Use the `--from-literal=INFISICAL_RELAY_NAME=<relay-name>` flag to manually specify a different relay server.
+        </Info>
 
         #### Install the Gateway
 
@@ -168,8 +173,12 @@ To successfully deploy an Infisical Gateway for use, follow these steps in order
         For development or testing environments:
 
         ```bash
-        infisical gateway start --token <token> --relay=<relay-name> --name=<gateway-name>
+        sudo infisical gateway start --token <token> --name=<gateway-name>
         ```
+
+        <Info>
+          By default, the gateway connects to the most optimal relay. Use the `--relay` flag to manually specify a different relay server.
+        </Info>
       </Tab>
     </Tabs>
   </Step>
