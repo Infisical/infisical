@@ -9,6 +9,7 @@ import {
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ActorAuthMethod, ActorType } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
@@ -64,7 +65,6 @@ import {
   TSignCertificateFromProfileDTO,
   TUpdateRenewalConfigDTO
 } from "./certificate-v3-types";
-import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
 
 type TCertificateV3ServiceFactoryDep = {
   certificateDAL: Pick<TCertificateDALFactory, "findOne" | "findById" | "updateById" | "transaction">;
@@ -542,6 +542,10 @@ export const certificateV3ServiceFactory = ({
 
     const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
       extractAlgorithmsFromCSR(csr);
+
+    mappedCertificateRequest.keyAlgorithm = extractedKeyAlgorithm;
+    mappedCertificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
+    mappedCertificateRequest.validity = validity;
 
     const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
       profile.certificateTemplateId,
