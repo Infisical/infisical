@@ -680,15 +680,16 @@ export const pkiAcmeServiceFactory = ({
           tx
         ))!;
         const csrIdentifierValues = new Set(
-          orderWithAuthorizations.authorizations
-            .map((auth) => auth.identifierValue.toLowerCase())
+          (certificateRequest.subjectAlternativeNames ?? [])
+            .map((san) => san.value.toLowerCase())
             .concat([certificateRequest.commonName!.toLowerCase()])
         );
+        const expectedIdentifierValues = new Set(
+          orderWithAuthorizations.authorizations.map((auth) => auth.identifierValue.toLowerCase())
+        );
         if (
-          csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
-          !orderWithAuthorizations.authorizations.every((auth) =>
-            csrIdentifierValues.has(auth.identifierValue.toLowerCase())
-          )
+          csrIdentifierValues.size != expectedIdentifierValues.size ||
+          !csrIdentifierValues.isSubsetOf(expectedIdentifierValues)
         ) {
           throw new AcmeBadCSRError({ detail: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
