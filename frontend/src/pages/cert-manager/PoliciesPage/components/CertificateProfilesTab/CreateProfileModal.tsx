@@ -18,7 +18,6 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { envConfig } from "@app/config/env";
 import { useProject, useSubscription } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
@@ -490,7 +489,7 @@ export const CreateProfileModal = ({
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
-                  {envConfig.ACME_FEATURE_ENABLED && <SelectItem value="acme">ACME</SelectItem>}
+                  <SelectItem value="acme">ACME</SelectItem>
                 </Select>
               </FormControl>
             )}
