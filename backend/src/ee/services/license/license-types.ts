@@ -78,7 +78,7 @@ export type TFeatureSet = {
     secretsLimit: number;
   };
   pkiEst: boolean;
-  pkiAcme: boolean;
+  pkiAcme: false;
   enforceMfa: boolean;
   projectTemplates: false;
   kmip: false;
