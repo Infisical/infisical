@@ -42,6 +42,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       tags: [ApiDocsTags.Identities],
       description: "Create an identity in a project",
       security: [
@@ -104,6 +105,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       tags: [ApiDocsTags.Identities],
       description: "Update an identity in a project",
       security: [
@@ -170,6 +172,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       tags: [ApiDocsTags.Identities],
       description: "Delete an identity from a project",
       security: [
@@ -223,6 +226,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       tags: [ApiDocsTags.Identities],
       description: "Get an identity by ID in a project",
       security: [
@@ -265,6 +269,7 @@ export const registerProjectIdentityRouter = async (server: FastifyZodProvider) 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
       tags: [ApiDocsTags.Identities],
       description: "List identities in a project",
       security: [
