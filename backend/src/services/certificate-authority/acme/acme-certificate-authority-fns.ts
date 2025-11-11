@@ -317,13 +317,16 @@ export const AcmeCertificateAuthorityFns = ({
     return cas.map(castDbEntryToAcmeCertificateAuthority);
   };
 
-  const orderSubscriberCertificate = async (subscriberId: string) => {
-    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
-    if (!subscriber.caId) {
-      throw new BadRequestError({ message: "Subscriber does not have a CA" });
-    }
-
-    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(subscriber.caId);
+  const orderCertificate = async ({
+    caId,
+    commonName,
+    altNames
+  }: {
+    caId: string;
+    commonName: string;
+    altNames?: string[];
+  }): Promise<string> => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
       throw new BadRequestError({ message: "CA is not an ACME CA" });
     }
@@ -401,8 +404,8 @@ export const AcmeCertificateAuthorityFns = ({
 
     const [, certificateCsr] = await acme.crypto.createCsr(
       {
-        altNames: subscriber.subjectAlternativeNames,
-        commonName: subscriber.commonName
+        altNames,
+        commonName
       },
       skLeaf
     );
@@ -535,10 +538,21 @@ export const AcmeCertificateAuthorityFns = ({
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
   };
 
+  const orderCertificateForAcmeProfile = async (profileId: string, commonName: string): Promise<string> => {
+    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
+    if (!profile) {
+      throw new NotFoundError({ message: "Certificate profile not found" });
+    }
+    if (profile.enrollmentType !== EnrollmentType.ACME) {
+      throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
+    }
+  };
+
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderSubscriberCertificate
+    orderSubscriberCertificate,
+    orderCertificateForAcmeProfile
   };
 };
