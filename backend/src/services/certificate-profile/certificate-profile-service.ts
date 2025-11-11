@@ -14,13 +14,14 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
@@ -153,6 +154,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
 };
 
@@ -175,6 +177,7 @@ export const certificateProfileServiceFactory = ({
   certificateSecretDAL,
   permissionService,
   kmsService,
+  licenseService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
   const createProfile = async ({
@@ -236,6 +239,20 @@ export const certificateProfileServiceFactory = ({
       throw new ForbiddenRequestError({
         message: "API enrollment requires API configuration"
       });
+    }
+    if (data.enrollmentType === EnrollmentType.ACME) {
+      const orgLicensePlan = await licenseService.getPlan(actorOrgId);
+      if (!orgLicensePlan.pkiAcme) {
+        throw new BadRequestError({
+          message:
+            "Failed to create certificate profile due to plan restriction. Upgrade plan to create ACME certificate profile."
+        });
+      }
+      if (!data.acmeConfig) {
+        throw new ForbiddenRequestError({
+          message: "ACME enrollment requires ACME configuration"
+        });
+      }
     }
     // TODO: acme type currently doesn't require config obj, but add a check in the future if
     //       we have options
