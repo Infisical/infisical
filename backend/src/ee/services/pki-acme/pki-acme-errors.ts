@@ -42,6 +42,7 @@ export interface IAcmeError {
 
 export class AcmeError extends Error implements IAcmeError {
   type: AcmeErrorType;
+
   message: string;
 
   status: number;
