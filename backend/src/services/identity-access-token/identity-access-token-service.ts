@@ -186,8 +186,8 @@ export const identityAccessTokenServiceFactory = ({
 
   const fnValidateIdentityAccessToken = async (
     token: TIdentityAccessTokenJwtPayload,
-    subOrganizationSelector?: string,
-    ipAddress?: string
+    ipAddress?: string,
+    subOrganizationSelector?: string
   ) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
