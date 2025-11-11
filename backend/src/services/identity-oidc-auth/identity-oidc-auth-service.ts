@@ -23,6 +23,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
@@ -145,6 +146,10 @@ export const identityOidcAuthServiceFactory = ({
         }
       } else {
         // If kid is not provided, try all available signing keys
+        logger.warn(
+          `OIDC login without KID header [identityId=${identityOidcAuth.identityId}] [orgId=${org.id}] [ip=${requestContext.get("ip")}]`
+        );
+
         let allSigningKeys;
         try {
           allSigningKeys = await client.getSigningKeys();
@@ -157,6 +162,14 @@ export const identityOidcAuthServiceFactory = ({
         if (!allSigningKeys || allSigningKeys.length === 0) {
           throw new UnauthorizedError({
             message: "Access denied: No signing keys available from OIDC provider's JWKS endpoint."
+          });
+        }
+
+        // Limit the number of keys to try to prevent abuse
+        const MAX_KEYS_TO_TRY = 10;
+        if (allSigningKeys.length > MAX_KEYS_TO_TRY) {
+          throw new UnauthorizedError({
+            message: `Access denied: OIDC provider has ${allSigningKeys.length} signing keys. Tokens must include 'kid' header when provider has more than ${MAX_KEYS_TO_TRY} keys.`
           });
         }
 
