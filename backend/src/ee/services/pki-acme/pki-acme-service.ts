@@ -32,7 +32,10 @@ import { getConfig } from "@app/lib/config/env";
 import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
   CertExtendedKeyUsage,
   CertKeyUsage,
@@ -87,10 +90,14 @@ import {
 } from "./pki-acme-types";
 
 type TPkiAcmeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -119,9 +126,13 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   projectDAL,
+  appConnectionDAL,
+  certificateDAL,
   certificateAuthorityDAL,
+  externalCertificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
+  certificateSecretDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
