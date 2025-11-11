@@ -293,6 +293,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   lastLoginAuthMethod,
                   lastLoginTime
                 }) => {
+                  const isSubOrgIdentity = currentOrg.id === orgId;
+
                   return (
                     <Tr
                       className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -357,8 +359,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       </Td>
                       {isSubOrganization && (
                         <Td>
-                          <Badge variant="ghost">
-                            {currentOrg.id === orgId ? (
+                          <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                            {isSubOrgIdentity ? (
                               <>
                                 <SubOrgIcon />
                                 Sub-Organization
@@ -403,7 +405,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   }}
                                   isDisabled={!isAllowed}
                                 >
-                                  Edit Identity
+                                  Edit Identity {isSubOrgIdentity ? "" : "Membership"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -423,9 +425,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   isDisabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                 >
-                                  {orgId !== currentOrg.id
-                                    ? "Remove From Sub-organization"
-                                    : "Delete Identity"}
+                                  {isSubOrgIdentity
+                                    ? "Delete Identity"
+                                    : "Remove From Sub-Organization"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>

@@ -46,6 +46,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Blur } from "@app/components/v2/Blur";
 import {
   Badge,
   DocumentationLinkBadge,
@@ -79,7 +80,6 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
-import { Blur } from "@app/components/v2/Blur";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
@@ -389,7 +389,16 @@ export const IdentityTab = withProjectPermission(
                         </div>
                       </Td>
                       <Td>
-                        <Badge variant="ghost">
+                        <Badge
+                          variant={
+                            // eslint-disable-next-line no-nested-ternary
+                            identityProjectId
+                              ? "project"
+                              : isSubOrganization && currentOrg.id === identityOrgId
+                                ? "sub-org"
+                                : "org"
+                          }
+                        >
                           {/* eslint-disable-next-line no-nested-ternary */}
                           {identityProjectId ? (
                             <>
@@ -443,9 +452,7 @@ export const IdentityTab = withProjectPermission(
                                       });
                                     }}
                                   >
-                                    {identityProjectId
-                                      ? "Delete Project Identity"
-                                      : "Remove Identity From Project"}
+                                    {identityProjectId ? "Delete Identity" : "Remove From Project"}
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>

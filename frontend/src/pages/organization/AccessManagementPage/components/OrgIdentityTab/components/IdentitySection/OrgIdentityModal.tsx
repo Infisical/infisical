@@ -14,8 +14,6 @@ import {
   FormLabel,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Switch
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";

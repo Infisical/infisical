@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { faChevronDown, faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AnimatePresence, motion } from "framer-motion";
 import { LinkIcon, PlusIcon } from "lucide-react";
@@ -7,15 +7,7 @@ import { LinkIcon, PlusIcon } from "lucide-react";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import {
-  Button,
-  DeleteActionModal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  Modal,
-  ModalContent
-} from "@app/components/v2";
+import { Button, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -25,7 +17,7 @@ import {
 } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { subOrganizationsQuery, useDeleteOrgIdentity } from "@app/hooks/api";
+import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 

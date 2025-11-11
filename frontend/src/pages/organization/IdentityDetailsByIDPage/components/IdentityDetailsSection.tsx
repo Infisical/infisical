@@ -110,7 +110,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   icon={<FontAwesomeIcon icon={faTrash} />}
                   disabled={!isAllowed}
                 >
-                  {!isOrgIdentity ? "Unlink Identity" : "Delete Identity"}
+                  {!isOrgIdentity ? "Remove From Sub-Organization" : "Delete Identity"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
