@@ -85,7 +85,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
   const findByIdWithConfigs = async (id: string, tx?: Knex): Promise<TCertificateProfileWithConfigs | undefined> => {
     try {
       const query = (tx || db)(TableName.PkiCertificateProfile)
-        .leftJoin(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCertificateProfile}.caId`,
@@ -113,8 +112,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
-          db.ref("id").withSchema(TableName.Project).as("projectId"),
-          db.ref("orgId").withSchema(TableName.Project).as("orgId"),
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
@@ -188,11 +185,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             } as TCertificateProfileWithConfigs["certificateTemplate"])
           : undefined;
 
-      const project = {
-        id: result.projectId,
-        orgId: result.orgId
-      } as TCertificateProfileWithConfigs["project"];
-
       const transformedResult: TCertificateProfileWithConfigs = {
         id: result.id,
         projectId: result.projectId,
@@ -209,7 +201,6 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         estConfig,
         apiConfig,
         acmeConfig,
-        project,
         certificateAuthority,
         certificateTemplate
       };
