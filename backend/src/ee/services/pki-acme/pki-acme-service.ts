@@ -31,6 +31,12 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import { getConfig } from "@app/lib/config/env";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate/certificate-types";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -641,7 +647,40 @@ export const pkiAcmeServiceFactory = ({
         if (finalizingOrder.expiresAt < new Date()) {
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
+
         const { csr } = payload;
+
+        // Check and validate the CSR
+        const certificateRequest = extractCertificateRequestFromCSR(csr);
+        if (!certificateRequest.commonName) {
+          throw new AcmeBadCSRError({ detail: "Invalid CSR: Common name is required" });
+        }
+        if (
+          certificateRequest.subjectAlternativeNames?.some(
+            (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
+          )
+        ) {
+          throw new AcmeBadCSRError({ detail: "Invalid CSR: Only DNS subject alternative names are supported" });
+        }
+        const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
+          accountId,
+          orderId,
+          tx
+        ))!;
+        const csrIdentifierValues = new Set(
+          orderWithAuthorizations.authorizations
+            .map((auth) => auth.identifierValue.toLowerCase())
+            .concat([certificateRequest.commonName!.toLowerCase()])
+        );
+        if (
+          csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
+          !orderWithAuthorizations.authorizations.every((auth) =>
+            csrIdentifierValues.has(auth.identifierValue.toLowerCase())
+          )
+        ) {
+          throw new AcmeBadCSRError({ detail: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+        }
+
         const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
@@ -672,16 +711,15 @@ export const pkiAcmeServiceFactory = ({
               });
               return { certificateId: result.certificateId };
             } else {
-              const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
-                accountId,
-                orderId,
-                tx
-              ))!;
-              const result = await orderCertificateForAcmeProfile(
-                profileId,
-                orderWithAuthorizations.authorizations[0].identifierValue
-              );
-              return { certificateId: result };
+              const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
+              const cert = await acmeCertificateAuthorityFns.orderCertificate({
+                caId: certificateAuthority.id,
+                commonName: certificateRequest.commonName,
+                altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
+                keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
+                extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
+              });
+              return { certificateId: cert.id };
             }
           })();
           await acmeOrderDAL.updateById(
