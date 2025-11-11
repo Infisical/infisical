@@ -188,7 +188,7 @@ export const CreatePkiAlertV2FormSteps = () => {
             name="name"
             render={({ field, fieldState: { error } }) => (
               <FormControl label="Alert Name" isError={Boolean(error)} errorText={error?.message}>
-                <Input {...field} placeholder="e.g., prod-cert-expiring-soon" />
+                <Input {...field} placeholder="e.g., tls-expiry-alert" />
               </FormControl>
             )}
           />

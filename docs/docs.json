@@ -703,7 +703,7 @@
             ]
           },
           {
-            "item": "Infisical PKI",
+            "item": "Certificate Management",
             "groups": [
               {
                 "group": "Certificate Management",
@@ -2624,15 +2624,6 @@
                   "api-reference/endpoints/pki-collections/add-item",
                   "api-reference/endpoints/pki-collections/list-items",
                   "api-reference/endpoints/pki-collections/delete-item"
-                ]
-              },
-              {
-                "group": "PKI Alerting",
-                "pages": [
-                  "api-reference/endpoints/pki-alerts/create",
-                  "api-reference/endpoints/pki-alerts/read",
-                  "api-reference/endpoints/pki-alerts/update",
-                  "api-reference/endpoints/pki-alerts/delete"
                 ]
               },
               {
