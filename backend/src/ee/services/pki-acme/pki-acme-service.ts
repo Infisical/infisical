@@ -29,6 +29,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getConfig } from "@app/lib/config/env";
+import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
@@ -712,13 +713,30 @@ export const pkiAcmeServiceFactory = ({
               return { certificateId: result.certificateId };
             } else {
               const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
-              const cert = await acmeCertificateAuthorityFns.orderCertificate({
-                caId: certificateAuthority.id,
-                commonName: certificateRequest.commonName,
-                altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
-                keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
-                extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
-              });
+              const cert = await orderCertificate(
+                {
+                  caId: certificateAuthority.id,
+                  commonName: certificateRequest.commonName!,
+                  altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
+                  // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
+                  keyUsages: [
+                    CertKeyUsage.DIGITAL_SIGNATURE,
+                    CertKeyUsage.KEY_ENCIPHERMENT,
+                    CertKeyUsage.KEY_AGREEMENT
+                  ],
+                  extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
+                },
+                {
+                  appConnectionDAL,
+                  certificateAuthorityDAL,
+                  externalCertificateAuthorityDAL,
+                  certificateDAL,
+                  certificateBodyDAL,
+                  certificateSecretDAL,
+                  kmsService,
+                  projectDAL
+                }
+              );
               return { certificateId: cert.id };
             }
           })();
