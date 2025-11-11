@@ -114,7 +114,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.Project).as("projectId"),
-          db.ref("orgId").withSchema(TableName.Project).as("orgId")
+          db.ref("orgId").withSchema(TableName.Project).as("orgId"),
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
@@ -134,7 +134,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
           db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId"),
-          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret"),
+          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
