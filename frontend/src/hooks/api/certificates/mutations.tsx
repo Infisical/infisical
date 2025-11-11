@@ -7,6 +7,7 @@ import { projectKeys } from "../projects";
 import {
   TCertificate,
   TDeleteCertDTO,
+  TDownloadPkcs12DTO,
   TImportCertificateDTO,
   TImportCertificateResponse,
   TRenewCertificateDTO,
@@ -131,6 +132,45 @@ export const useUpdateRenewalConfig = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.allProjectCertificates()
       });
+    }
+  });
+};
+
+export const useDownloadCertPkcs12 = () => {
+  return useMutation<void, object, TDownloadPkcs12DTO>({
+    mutationFn: async ({ serialNumber, projectSlug, password, alias }) => {
+      try {
+        const response = await apiRequest.post(
+          `/api/v1/pki/certificates/${serialNumber}/pkcs12`,
+          {
+            password,
+            alias
+          },
+          {
+            params: { projectSlug },
+            responseType: "arraybuffer"
+          }
+        );
+
+        // Create blob and trigger download
+        const blob = new Blob([response.data], { type: "application/octet-stream" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `certificate-${serialNumber}.p12`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } catch (error: any) {
+        if (error.response?.data instanceof ArrayBuffer) {
+          const decoder = new TextDecoder();
+          const errorText = decoder.decode(error.response.data);
+          const errorData = JSON.parse(errorText);
+          throw new Error(errorData.message);
+        }
+        throw error;
+      }
     }
   });
 };
