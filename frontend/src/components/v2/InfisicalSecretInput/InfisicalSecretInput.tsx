@@ -356,7 +356,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             search: (prev) => ({
               ...prev,
               search: segment,
-              filterBy: "secret"
+              filterBy: "secret",
+              tags: ""
             })
           });
           return;
@@ -419,7 +420,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             ...prev,
             secretPath: segment === environmentSlug ? "/" : folderPath,
             search: segment === secretName ? secretName : prev.search,
-            filterBy: segment === secretName ? "secret" : prev.filterBy
+            filterBy: segment === secretName ? "secret" : prev.filterBy,
+            tags: ""
           })
         });
       },
