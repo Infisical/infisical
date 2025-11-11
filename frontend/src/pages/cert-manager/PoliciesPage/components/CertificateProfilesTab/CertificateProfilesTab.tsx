@@ -31,7 +31,7 @@ export const CertificateProfilesTab = () => {
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
-  const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "enrollmentOptions",
     "upgradePlan"
   ] as const);
