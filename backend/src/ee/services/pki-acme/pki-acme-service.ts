@@ -29,7 +29,8 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getConfig } from "@app/lib/config/env";
-import { TLicenseServiceFactory } from "../license/license-service";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -80,6 +81,7 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   acmeAccountDAL: Pick<
@@ -110,6 +112,7 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   projectDAL,
+  certificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
   acmeAccountDAL,
@@ -622,6 +625,7 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
+    const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
     let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -638,28 +642,48 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
         const { csr } = payload;
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+        if (!ca) {
+          throw new NotFoundError({ message: "Certificate Authority not found" });
+        }
+        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
         let errorToReturn: Error | undefined;
         try {
-          const { certificateId } = await certificateV3Service.signCertificateFromProfile({
-            actor: ActorType.ACME_ACCOUNT,
-            actorId: accountId,
-            actorAuthMethod: null,
-            actorOrgId,
-            profileId,
-            csr,
-            notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
-            notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
-            validity: !finalizingOrder.notAfter
-              ? {
-                  // 47 days, the default TTL comes with Let's Encrypt
-                  // TODO: read config from the profile to get the expiration time instead
-                  ttl: `${47}d`
-                }
-              : // ttl is not used if notAfter is provided
-                ({ ttl: "0d" } as const),
-            enrollmentType: EnrollmentType.ACME
-          });
-          // TODO: associate the certificate with the order
+          const { certificateId } = await (async () => {
+            if (caType === CaType.INTERNAL) {
+              const result = await certificateV3Service.signCertificateFromProfile({
+                actor: ActorType.ACME_ACCOUNT,
+                actorId: accountId,
+                actorAuthMethod: null,
+                actorOrgId,
+                profileId,
+                csr,
+                notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
+                notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
+                validity: !finalizingOrder.notAfter
+                  ? {
+                      // 47 days, the default TTL comes with Let's Encrypt
+                      // TODO: read config from the profile to get the expiration time instead
+                      ttl: `${47}d`
+                    }
+                  : // ttl is not used if notAfter is provided
+                    ({ ttl: "0d" } as const),
+                enrollmentType: EnrollmentType.ACME
+              });
+              return { certificateId: result.certificateId };
+            } else {
+              const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
+                accountId,
+                orderId,
+                tx
+              ))!;
+              const result = await orderCertificateForAcmeProfile(
+                profileId,
+                orderWithAuthorizations.authorizations[0].identifierValue
+              );
+              return { certificateId: result };
+            }
+          })();
           await acmeOrderDAL.updateById(
             orderId,
             {
