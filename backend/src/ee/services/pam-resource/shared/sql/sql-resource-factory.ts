@@ -104,8 +104,7 @@ const makeSqlConnection = (
               //          (like being able to do an auth handshake regardless pass or not)
               if (
                 connectOnly &&
-                (error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"` ||
-                  error.message.includes("no pg_hba.conf entry for host"))
+                error.message === `password authentication failed for user "${TEST_CONNECTION_USERNAME}"`
               ) {
                 return;
               }
