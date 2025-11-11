@@ -29,6 +29,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getConfig } from "@app/lib/config/env";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -101,6 +102,7 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
   kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
@@ -116,6 +118,7 @@ export const pkiAcmeServiceFactory = ({
   acmeChallengeDAL,
   keyStore,
   kmsService,
+  licenseService,
   certificateV3Service,
   acmeChallengeService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
@@ -126,6 +129,10 @@ export const pkiAcmeServiceFactory = ({
     }
     if (profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
+    }
+    const orgLicensePlan = await licenseService.getPlan(profile.project.orgId);
+    if (!orgLicensePlan.pkiAcme) {
+      throw new AcmeUnauthorizedError({ message: "The organization does not have a valid license to use ACME" });
     }
     return profile;
   };
