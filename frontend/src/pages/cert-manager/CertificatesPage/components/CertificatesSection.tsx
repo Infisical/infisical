@@ -53,16 +53,16 @@ export const CertificatesSection = () => {
   };
 
   const handleCertificateExport = async (
-    format: "pem" | "jks",
+    format: "pem" | "pkcs12",
     serialNumber: string,
     options?: ExportOptions
   ) => {
     if (format === "pem") {
       handlePopUpOpen("certificateCert", { serialNumber });
-    } else if (format === "jks") {
+    } else if (format === "pkcs12") {
       if (!currentProject?.slug) return;
 
-      if (!options?.jks?.password || !options?.jks?.alias) {
+      if (!options?.pkcs12?.password || !options?.pkcs12?.alias) {
         createNotification({
           text: "Password and alias are required for PKCS12 export",
           type: "error"
@@ -74,17 +74,17 @@ export const CertificatesSection = () => {
         await downloadCertPkcs12({
           serialNumber,
           projectSlug: currentProject.slug,
-          password: options.jks.password,
-          alias: options.jks.alias
+          password: options.pkcs12.password,
+          alias: options.pkcs12.alias
         });
 
         createNotification({
           text: "PKCS12 certificate downloaded successfully",
           type: "success"
         });
-      } catch {
+      } catch (error: any) {
         createNotification({
-          text: "Failed to download PKCS12 certificate",
+          text: error?.message || "Failed to download PKCS12 certificate",
           type: "error"
         });
       }

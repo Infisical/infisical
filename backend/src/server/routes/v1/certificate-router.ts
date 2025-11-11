@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
@@ -632,8 +633,11 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
       }),
       body: z.object({
-        password: z.string().describe("Password for the keystore"),
-        alias: z.string().describe("Alias for the certificate in the keystore")
+        password: z
+          .string()
+          .min(6, "Password must be at least 6 characters long")
+          .describe("Password for the keystore (minimum 6 characters)"),
+        alias: z.string().min(1, "Alias is required").describe("Alias for the certificate in the keystore")
       }),
       response: {
         200: z.any().describe("PKCS12 keystore as binary data")
@@ -665,7 +669,10 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
 
       addNoCacheHeaders(reply);
       reply.header("Content-Type", "application/octet-stream");
-      reply.header("Content-Disposition", `attachment; filename="certificate-${req.params.serialNumber}.p12"`);
+      reply.header(
+        "Content-Disposition",
+        `attachment; filename="certificate-${req.params.serialNumber.replace(new RE2("[^\\w.-]", "g"), "_")}.p12"`
+      );
 
       return pkcs12Data;
     }

@@ -19,13 +19,17 @@ type Props = {
     popUpName: keyof UsePopUpState<["certificateExport"]>,
     state?: boolean
   ) => void;
-  onFormatSelected: (format: "pem" | "jks", serialNumber: string, options?: ExportOptions) => void;
+  onFormatSelected: (
+    format: "pem" | "pkcs12",
+    serialNumber: string,
+    options?: ExportOptions
+  ) => void;
 };
 
-export type CertificateExportFormat = "pem" | "jks";
+export type CertificateExportFormat = "pem" | "pkcs12";
 
 export type ExportOptions = {
-  jks?: {
+  pkcs12?: {
     password: string;
     alias: string;
   };
@@ -33,7 +37,7 @@ export type ExportOptions = {
 
 export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelected }: Props) => {
   const [selectedFormat, setSelectedFormat] = useState<CertificateExportFormat>("pem");
-  const [jksOptions, setJksOptions] = useState({
+  const [pkcs12Options, setPkcs12Options] = useState({
     password: "",
     alias: ""
   });
@@ -45,7 +49,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   useEffect(() => {
     if (popUp?.certificateExport?.isOpen) {
       setSelectedFormat("pem");
-      setJksOptions({
+      setPkcs12Options({
         password: "",
         alias: ""
       });
@@ -53,8 +57,8 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   }, [popUp?.certificateExport?.isOpen]);
 
   const isFormValid = () => {
-    if (selectedFormat === "jks") {
-      return jksOptions.password.trim() !== "" && jksOptions.alias.trim() !== "";
+    if (selectedFormat === "pkcs12") {
+      return pkcs12Options.password.length >= 6 && pkcs12Options.alias.trim() !== "";
     }
     return true;
   };
@@ -63,8 +67,8 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
     if (serialNumber && isFormValid()) {
       const options: ExportOptions = {};
 
-      if (selectedFormat === "jks") {
-        options.jks = jksOptions;
+      if (selectedFormat === "pkcs12") {
+        options.pkcs12 = pkcs12Options;
       }
 
       onFormatSelected(selectedFormat, serialNumber, options);
@@ -97,20 +101,28 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
               onValueChange={(value) => setSelectedFormat(value as CertificateExportFormat)}
             >
               <SelectItem value="pem">PEM Format</SelectItem>
-              <SelectItem value="jks">PKCS12 Format</SelectItem>
+              <SelectItem value="pkcs12">PKCS12 Format</SelectItem>
             </Select>
           </FormControl>
 
-          {selectedFormat === "jks" && (
+          {selectedFormat === "pkcs12" && (
             <>
               <FormControl
                 label="Keystore Password"
-                helperText="Password to protect the PKCS12 keystore"
+                helperText={
+                  pkcs12Options.password.length > 0 && pkcs12Options.password.length < 6
+                    ? undefined
+                    : "Password to protect the PKCS12 keystore (minimum 6 characters)"
+                }
+                isError={pkcs12Options.password.length > 0 && pkcs12Options.password.length < 6}
+                errorText="Password must be at least 6 characters long"
               >
                 <Input
                   placeholder="Enter keystore password"
-                  value={jksOptions.password}
-                  onChange={(e) => setJksOptions((prev) => ({ ...prev, password: e.target.value }))}
+                  value={pkcs12Options.password}
+                  onChange={(e) =>
+                    setPkcs12Options((prev) => ({ ...prev, password: e.target.value }))
+                  }
                   type="password"
                 />
               </FormControl>
@@ -121,8 +133,8 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
               >
                 <Input
                   placeholder="Enter certificate alias"
-                  value={jksOptions.alias}
-                  onChange={(e) => setJksOptions((prev) => ({ ...prev, alias: e.target.value }))}
+                  value={pkcs12Options.alias}
+                  onChange={(e) => setPkcs12Options((prev) => ({ ...prev, alias: e.target.value }))}
                 />
               </FormControl>
             </>

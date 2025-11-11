@@ -675,6 +675,12 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
     }
 
+    if (password.length < 6) {
+      throw new BadRequestError({
+        message: "Password must be at least 6 characters long for PKCS12 keystore security"
+      });
+    }
+
     if (!alias || alias.trim() === "") {
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
