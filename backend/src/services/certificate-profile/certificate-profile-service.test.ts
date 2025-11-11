@@ -22,6 +22,7 @@ import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
 import { EnrollmentType, TCertificateProfile, TCertificateProfileWithConfigs } from "./certificate-profile-types";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 
 vi.mock("@app/lib/crypto/cryptography", () => ({
   crypto: {
@@ -99,6 +100,10 @@ describe("CertificateProfileService", () => {
 
   const sampleProfileWithConfigs: TCertificateProfileWithConfigs = {
     ...sampleProfile,
+    project: {
+      id: "project-123",
+      orgId: "org-123"
+    },
     certificateAuthority: {
       id: "ca-123",
       projectId: "project-123",
@@ -173,6 +178,12 @@ describe("CertificateProfileService", () => {
     decryptWithKmsKey: vi.fn().mockResolvedValue(() => Promise.resolve(Buffer.from("decrypted-ca-chain"))),
     generateKmsKey: vi.fn()
   } as unknown as Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
+
+  const mockLicenseService = {
+    getPlan: vi.fn().mockResolvedValue({
+      pkiAcme: true
+    })
+  } as unknown as Pick<TLicenseServiceFactory, "getPlan">;
 
   const mockProjectDAL = {
     findById: vi.fn(),
@@ -253,6 +264,7 @@ describe("CertificateProfileService", () => {
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       permissionService: mockPermissionService,
       kmsService: mockKmsService,
+      licenseService: mockLicenseService,
       projectDAL: mockProjectDAL
     });
   });
