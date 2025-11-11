@@ -14,6 +14,7 @@ import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authori
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
 import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
@@ -34,7 +35,7 @@ import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
-import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
+import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -69,7 +70,6 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
-import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });

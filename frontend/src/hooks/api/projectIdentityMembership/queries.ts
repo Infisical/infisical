@@ -8,8 +8,8 @@ import {
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
-  IdentityProjectMembership,
-  TProjectIdentityMembershipsList
+  IdentityProjectMembershipV1,
+  TProjectIdentityMembershipsListV2
 } from "@app/hooks/api/identities/types";
 import { ProjectIdentityOrderBy, TListProjectIdentitiesDTO } from "@app/hooks/api/projects/types";
 
@@ -23,7 +23,7 @@ export const projectIdentityMembershipQuery = {
       queryFn: async () => {
         const { data } = await apiRequest.get<{
           identities: TAvailableProjectIdentities;
-        }>(`/api/v1/projects/${params.projectId}/available-identities`, {
+        }>(`/api/v1/projects/${params.projectId}/memberships/available-identities`, {
           params: {
             offset: params.offset,
             limit: params.limit,
@@ -48,9 +48,9 @@ export const useListProjectIdentityMemberships = (
   }: TListProjectIdentitiesDTO,
   options?: Omit<
     UseQueryOptions<
-      TProjectIdentityMembershipsList,
+      TProjectIdentityMembershipsListV2,
       unknown,
-      TProjectIdentityMembershipsList,
+      TProjectIdentityMembershipsListV2,
       ReturnType<typeof projectKeys.getProjectIdentityMembershipsWithParams>
     >,
     "queryKey" | "queryFn"
@@ -74,8 +74,8 @@ export const useListProjectIdentityMemberships = (
         search: String(search)
       });
 
-      const { data } = await apiRequest.get<TProjectIdentityMembershipsList>(
-        `/api/v1/projects/${projectId}/identity-memberships`,
+      const { data } = await apiRequest.get<TProjectIdentityMembershipsListV2>(
+        `/api/v1/projects/${projectId}/memberships/identities`,
         { params }
       );
       return data;
@@ -92,7 +92,7 @@ export const useGetProjectIdentityMembership = (projectId: string, identityId: s
     queryFn: async () => {
       const {
         data: { identityMembership }
-      } = await apiRequest.get<{ identityMembership: IdentityProjectMembership }>(
+      } = await apiRequest.get<{ identityMembership: IdentityProjectMembershipV1 }>(
         `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
       );
       return identityMembership;
@@ -107,8 +107,8 @@ export const useGetProjectIdentityMembershipV2 = (projectId: string, identityId:
     queryFn: async () => {
       const {
         data: { identityMembership }
-      } = await apiRequest.get<{ identityMembership: IdentityProjectMembership }>(
-        `/api/v2/projects/${projectId}/identity-memberships/${identityId}`
+      } = await apiRequest.get<{ identityMembership: IdentityProjectMembershipV1 }>(
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`
       );
       return identityMembership;
     }

@@ -27,13 +27,13 @@ import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
 import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
-import { IdentityProjectMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
 
 type Props = {
-  identityMembershipDetails: IdentityProjectMembership;
+  identityMembershipDetails: IdentityProjectMembershipV1;
   isMembershipDetailsLoading?: boolean;
 };
 

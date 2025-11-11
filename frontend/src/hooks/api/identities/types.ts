@@ -56,10 +56,43 @@ export type IdentityMembershipOrg = {
   updatedAt: string;
 };
 
-export type IdentityProjectMembership = {
+export type IdentityProjectMembershipV1 = {
   id: string;
   identity: Identity;
   project: Pick<Project, "id" | "name" | "type">;
+  roles: Array<
+    {
+      id: string;
+      role: "owner" | "admin" | "member" | "no-access" | "custom";
+      customRoleId: string;
+      customRoleName: string;
+      customRoleSlug: string;
+    } & (
+      | {
+          isTemporary: false;
+          temporaryRange: null;
+          temporaryMode: null;
+          temporaryAccessEndTime: null;
+          temporaryAccessStartTime: null;
+        }
+      | {
+          isTemporary: true;
+          temporaryRange: string;
+          temporaryMode: TemporaryPermissionMode;
+          temporaryAccessEndTime: string;
+          temporaryAccessStartTime: string;
+        }
+    )
+  >;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginTime?: string;
+  lastLoginAuthMethod?: IdentityAuthMethod;
+};
+
+export type IdentityProjectMembershipV2 = {
+  id: string;
+  identity: Identity;
   roles: Array<
     {
       id: string;
@@ -828,7 +861,12 @@ export type RevokeTokenRes = {
 };
 
 export type TProjectIdentityMembershipsList = {
-  identityMemberships: IdentityProjectMembership[];
+  identityMemberships: IdentityProjectMembershipV1[];
+  totalCount: number;
+};
+
+export type TProjectIdentityMembershipsListV2 = {
+  identityMemberships: IdentityProjectMembershipV2[];
   totalCount: number;
 };
 

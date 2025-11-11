@@ -31,13 +31,13 @@ import { ProjectPermissionIdentityActions, ProjectPermissionSub, useProject } fr
 import { getProjectBaseURL } from "@app/helpers/project";
 import { usePopUp, useTimedReset } from "@app/hooks";
 import { identityAuthToNameMap, TProjectIdentity, useDeleteProjectIdentity } from "@app/hooks/api";
-import { IdentityProjectMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
 type Props = {
   identity: TProjectIdentity;
   isOrgIdentity?: boolean;
-  membership: IdentityProjectMembership;
+  membership: IdentityProjectMembershipV1;
 };
 
 export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, membership }: Props) => {

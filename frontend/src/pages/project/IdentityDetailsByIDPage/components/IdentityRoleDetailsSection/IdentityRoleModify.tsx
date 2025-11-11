@@ -33,7 +33,7 @@ import {
   useProjectPermission
 } from "@app/context";
 import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
-import { IdentityProjectMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 
@@ -58,7 +58,7 @@ const roleFormSchema = z.object({
 type TRoleForm = z.infer<typeof roleFormSchema>;
 
 type Props = {
-  identityProjectMembership: IdentityProjectMembership;
+  identityProjectMembership: IdentityProjectMembershipV1;
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {

@@ -31,13 +31,13 @@ import {
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
-import { IdentityProjectMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
 
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
 type Props = {
-  identityMembershipDetails: IdentityProjectMembership;
+  identityMembershipDetails: IdentityProjectMembershipV1;
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {

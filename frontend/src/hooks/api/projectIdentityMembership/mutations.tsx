@@ -18,7 +18,7 @@ export const useCreateProjectIdentityMembership = () => {
       const {
         data: { identityMembership }
       } = await apiRequest.post<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`,
         {
           role
         }
@@ -49,7 +49,7 @@ export const useUpdateProjectIdentityMembership = () => {
       const {
         data: { identityMembership }
       } = await apiRequest.patch<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`,
         updates
       );
       return identityMembership;
@@ -76,7 +76,7 @@ export const useDeleteProjectIdentityMembership = () => {
       const {
         data: { identityMembership }
       } = await apiRequest.delete<{ identityMembership: TProjectIdentityMembership }>(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
+        `/api/v1/projects/${projectId}/memberships/identities/${identityId}`
       );
       return identityMembership;
     },

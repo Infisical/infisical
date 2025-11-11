@@ -47,7 +47,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
 
   const { data: identityMembershipsData } = useListProjectIdentityMemberships({
     projectId,
-    limit: 20000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
+    limit: 1000 // TODO: this is temp to preserve functionality for larger projects, will optimize in PR referenced above
   });
   const identityMemberships = identityMembershipsData?.identityMemberships;
 

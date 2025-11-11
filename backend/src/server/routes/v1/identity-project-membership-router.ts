@@ -7,13 +7,13 @@ import {
   ProjectMembershipRole,
   TemporaryPermissionMode
 } from "@app/db/schemas";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 
 export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -289,7 +289,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
+          .max(1000)
           .default(20)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
@@ -456,7 +456,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
+          .max(1000)
           .default(20)
           .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
           .optional(),

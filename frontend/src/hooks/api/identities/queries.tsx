@@ -16,7 +16,7 @@ import {
   IdentityMembershipOrg,
   IdentityOciAuth,
   IdentityOidcAuth,
-  IdentityProjectMembership,
+  IdentityProjectMembershipV1,
   IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -95,7 +95,7 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
     queryFn: async () => {
       const {
         data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityProjectMembership[] }>(
+      } = await apiRequest.get<{ identityMemberships: IdentityProjectMembershipV1[] }>(
         `/api/v1/identities/${identityId}/identity-memberships`
       );
       return identityMemberships;

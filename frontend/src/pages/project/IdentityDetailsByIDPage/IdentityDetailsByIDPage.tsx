@@ -10,6 +10,8 @@ import { formatRelative } from "date-fns";
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
+  Alert,
+  AlertDescription,
   Button,
   ConfirmActionModal,
   DeleteActionModal,
@@ -147,6 +149,7 @@ const Page = () => {
             scope={currentProject.type}
             title={identityMembershipDetails?.identity?.name}
             description={`Identity ${isProjectIdentity ? "created" : "added"} on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
+            className={!isProjectIdentity ? "mb-4" : undefined}
           >
             <div className="flex items-center gap-2">
               <Button
@@ -207,6 +210,23 @@ const Page = () => {
               )}
             </div>
           </PageHeader>
+          {!isProjectIdentity && (
+            <Alert hideTitle className="mb-4 border-primary/50 bg-primary/10">
+              <AlertDescription>
+                This identity is managed by your organization.{" "}
+                <Link
+                  to="/organization/identities/$identityId"
+                  params={{
+                    identityId
+                  }}
+                >
+                  <span className="cursor-pointer text-primary underline underline-offset-2">
+                    Click here to retrieve credentials.
+                  </span>
+                </Link>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="flex gap-x-4">
             {identity ? (
               <div className="flex w-72 flex-col gap-y-4">
