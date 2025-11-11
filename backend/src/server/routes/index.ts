@@ -2238,6 +2238,7 @@ export const registerRoutes = async (
     acmeChallengeDAL,
     keyStore,
     kmsService,
+    licenseService,
     certificateV3Service,
     acmeChallengeService
   });
