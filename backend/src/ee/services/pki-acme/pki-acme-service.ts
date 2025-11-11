@@ -29,6 +29,7 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
 import { getConfig } from "@app/lib/config/env";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
@@ -665,14 +666,14 @@ export const pkiAcmeServiceFactory = ({
         // Check and validate the CSR
         const certificateRequest = extractCertificateRequestFromCSR(csr);
         if (!certificateRequest.commonName) {
-          throw new AcmeBadCSRError({ detail: "Invalid CSR: Common name is required" });
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name is required" });
         }
         if (
           certificateRequest.subjectAlternativeNames?.some(
             (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
           )
         ) {
-          throw new AcmeBadCSRError({ detail: "Invalid CSR: Only DNS subject alternative names are supported" });
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Only DNS subject alternative names are supported" });
         }
         const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
           accountId,
@@ -690,7 +691,7 @@ export const pkiAcmeServiceFactory = ({
             csrIdentifierValues.has(auth.identifierValue.toLowerCase())
           )
         ) {
-          throw new AcmeBadCSRError({ detail: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
 
         const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
