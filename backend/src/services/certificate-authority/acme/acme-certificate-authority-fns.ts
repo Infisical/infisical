@@ -319,13 +319,19 @@ export const AcmeCertificateAuthorityFns = ({
 
   const orderCertificate = async ({
     caId,
+    subscriberId,
     commonName,
-    altNames
+    altNames,
+    keyUsages,
+    extendedKeyUsages
   }: {
     caId: string;
+    subscriberId?: string;
     commonName: string;
     altNames?: string[];
-  }): Promise<string> => {
+    keyUsages?: CertKeyUsage[];
+    extendedKeyUsages?: CertExtendedKeyUsage[];
+  }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.externalCa || ca.externalCa.type !== CaType.ACME) {
       throw new BadRequestError({ message: "CA is not an ACME CA" });
@@ -498,20 +504,20 @@ export const AcmeCertificateAuthorityFns = ({
       plainText: Buffer.from(skLeaf)
     });
 
-    await certificateDAL.transaction(async (tx) => {
+    return certificateDAL.transaction(async (tx) => {
       const cert = await certificateDAL.create(
         {
           caId: ca.id,
-          pkiSubscriberId: subscriber.id,
+          pkiSubscriberId: subscriberId,
           status: CertStatus.ACTIVE,
-          friendlyName: subscriber.commonName,
-          commonName: subscriber.commonName,
-          altNames: subscriber.subjectAlternativeNames.join(","),
+          friendlyName: commonName,
+          commonName,
+          altNames: altNames?.join(","),
           serialNumber: certObj.serialNumber,
           notBefore: certObj.notBefore,
           notAfter: certObj.notAfter,
-          keyUsages: subscriber.keyUsages as CertKeyUsage[],
-          extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[],
+          keyUsages: keyUsages,
+          extendedKeyUsages: extendedKeyUsages,
           projectId: ca.projectId
         },
         tx
@@ -533,26 +539,32 @@ export const AcmeCertificateAuthorityFns = ({
         },
         tx
       );
-    });
 
-    await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
+      return cert;
+    });
   };
 
-  const orderCertificateForAcmeProfile = async (profileId: string, commonName: string): Promise<string> => {
-    const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
-    if (!profile) {
-      throw new NotFoundError({ message: "Certificate profile not found" });
+  const orderSubscriberCertificate = async (subscriberId: string) => {
+    const subscriber = await pkiSubscriberDAL.findById(subscriberId);
+    if (!subscriber.caId) {
+      throw new BadRequestError({ message: "Subscriber does not have a CA" });
     }
-    if (profile.enrollmentType !== EnrollmentType.ACME) {
-      throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
-    }
+    await orderCertificate({
+      caId: subscriber.caId,
+      subscriberId: subscriber.id,
+      commonName: subscriber.commonName,
+      altNames: subscriber.subjectAlternativeNames,
+      keyUsages: subscriber.keyUsages as CertKeyUsage[],
+      extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
+    });
+    await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
   };
 
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderSubscriberCertificate,
-    orderCertificateForAcmeProfile
+    orderCertificate,
+    orderSubscriberCertificate
   };
 };
