@@ -109,49 +109,126 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 
     With certificate templates, you can specify, for example, that issued certificates must have a common name (CN) adhering to a specific format like .*.acme.com or perhaps that the max TTL cannot be more than 1 year.
 
-    To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates/create) API endpoint, specifying the issuing CA.
+    To create a certificate template, make an API request to the [Create Certificate Template](/api-reference/endpoints/certificate-templates-v2/create) API endpoint, specifying the issuing CA.
 
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-templates' \
+    curl --request POST \
+      --url https://us.infisical.com/api/v2/certificate-templates \
       --header 'Content-Type: application/json' \
-      --data-raw '{
-          "caId": "<ca-id>",
-          "name": "My Certificate Template",
-          "commonName": ".*.acme.com",
-          "subjectAlternativeName": ".*.acme.com",
-          "ttl": "1y",
-      }'
+      --data '{
+      "projectId": "<string>",
+      "name": "<string>",
+      "description": "<string>",
+      "subject": [
+        {
+          "type": "common_name",
+          "allowed": [
+            "*.infisical.com"
+          ]
+        }
+      ],
+      "sans": [
+        {
+          "type": "dns_name",
+          "allowed": [
+            "*.sample.com"
+          ]
+        }
+      ],
+      "keyUsages": {
+        "allowed": [
+          "digital_signature"
+        ]
+      },
+      "extendedKeyUsages": {
+        "allowed": [
+          "client_auth"
+        ]
+      },
+      "algorithms": {
+        "signature": [
+          "SHA256-RSA"
+        ],
+        "keyAlgorithm": [
+          "RSA-2048"
+        ]
+      },
+      "validity": {
+        "max": "365d"
+      }
+    }'
     ```
 
     ### Sample response
 
     ```bash Response
     {
-      id: "...",
-      caId: "...",
-      name: "...",
-      commonName: "...",
-      subjectAlternativeName: "...",
-      ttl: "...",
+      "certificateTemplate": {
+        "id": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+        "name": "<string>",
+        "description": "<string>",
+          "subject": [
+            {
+              "type": "common_name",
+              "allowed": [
+                "*.infisical.com"
+              ]
+            }
+          ],
+        "sans": [
+          {
+            "type": "dns_name",
+            "allowed": [
+              "*.sample.com"
+            ]
+          }
+        ],
+        "keyUsages": {
+          "allowed": [
+            "digital_signature"
+          ]
+        },
+        "extendedKeyUsages": {
+          "allowed": [
+            "client_auth"
+          ]
+        },
+        "algorithms": {
+          "signature": [
+            "SHA256-RSA"
+          ],
+          "keyAlgorithm": [
+            "RSA-2048"
+          ]
+        },
+        "validity": {
+          "max": "365d"
+        },
+        "createdAt": "2023-11-07T05:31:56Z",
+        "updatedAt": "2023-11-07T05:31:56Z"
+      }
     }
     ```
 
   </Step>
   <Step title="Creating a certificate">
-    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-cert) API endpoint,
+    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint,
     specifying the issuing CA.
     
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/issue-certificate' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "certificateTemplateId": "<certificate-template-id>",
+          "profileId": "<profile-id>",
           "commonName": "service.acme.com",
           "ttl": "1y",
+          "signatureAlgorithm": "RSA-SHA256",
+          "keyAlgorithm": "RSA_2048"
       }'
     ```
 
@@ -221,16 +298,16 @@ In the following steps, we explore how to revoke a X.509 certificate under a CA 
     selecting the **Revoke Certificate** option for it and specifying the reason
     for revocation.
 
-    ![pki revoke certificate](/images/platform/pki/cert-revoke.png)
+    ![pki revoke certificate](/images/platform/pki/certificate/cert-revoke.png)
 
-    ![pki revoke certificate modal](/images/platform/pki/cert-revoke-modal.png)
+    ![pki revoke certificate modal](/images/platform/pki/certificate/cert-revoke-modal.png)
 
   </Step>
   <Step title="Obtaining a CRL">
     In order to check the revocation status of a certificate, you can check it
     against the CRL of a CA by heading to its Issuing CA and downloading the CRL.
 
-    ![pki view crl](/images/platform/pki/ca-crl.png)
+    ![pki view crl](/images/platform/pki/ca/ca-crl.png)
 
     To verify a certificate against the
     downloaded CRL with OpenSSL, you can use the following command:
@@ -254,7 +331,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
   <Tab title="API">
     <Steps>
       <Step title="Revoking a certificate">
-        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificates/revoke) API endpoint,
         specifying the serial number of the certificate and the reason for revocation.
         
         ### Sample request
@@ -280,7 +357,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
       </Step>
       <Step title="Obtaining a CRL">
         In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
-        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
 
         ### Sample request
 
