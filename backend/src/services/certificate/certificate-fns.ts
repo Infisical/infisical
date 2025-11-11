@@ -1,4 +1,5 @@
 import * as x509 from "@peculiar/x509";
+import forge from "node-forge";
 import RE2 from "re2";
 
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -102,5 +103,55 @@ export const getCertificateCredentials = async ({
     };
   } catch (error) {
     throw new BadRequestError({ message: `Failed to process private key for certificate with ID '${certId}'` });
+  }
+};
+
+export const generatePkcs12FromCertificate = async ({
+  certificate,
+  certificateChain,
+  privateKey,
+  password,
+  alias
+}: {
+  certificate: string;
+  certificateChain: string;
+  privateKey: string;
+  password: string;
+  alias: string;
+}): Promise<Buffer> => {
+  try {
+    if (!password || password.trim() === "") {
+      throw new BadRequestError({ message: "Password is required for PKCS12 keystore generation" });
+    }
+
+    const cert = forge.pki.certificateFromPem(certificate);
+    const key = forge.pki.privateKeyFromPem(privateKey);
+
+    const chainCerts = [];
+    if (certificateChain) {
+      const chainPems = splitPemChain(certificateChain);
+      for (const chainPem of chainPems) {
+        try {
+          const chainCert = forge.pki.certificateFromPem(chainPem);
+          chainCerts.push(chainCert);
+        } catch (error) {
+          // Skip invalid certificates in chain
+        }
+      }
+    }
+
+    // Generate PKCS12 file
+    const p12Asn1 = forge.pkcs12.toPkcs12Asn1(key, [cert, ...chainCerts], password, {
+      algorithm: "aes256", // Modern AES-256 encryption
+      friendlyName: alias
+    });
+
+    const p12Der = forge.asn1.toDer(p12Asn1).getBytes();
+
+    return Buffer.from(p12Der, "binary");
+  } catch (error) {
+    throw new BadRequestError({
+      message: `Failed to generate PKCS12 keystore: ${error instanceof Error ? error.message : "Unknown error"}`
+    });
   }
 };

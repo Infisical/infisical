@@ -17,7 +17,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Create PKI alert",
       body: z.object({
@@ -72,7 +71,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Get PKI alert",
       params: z.object({
@@ -114,7 +112,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Update PKI alert",
       params: z.object({
@@ -173,7 +170,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Delete PKI alert",
       params: z.object({
