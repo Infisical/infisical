@@ -5,20 +5,24 @@ import {
   IdentitiesSchema,
   IdentityProjectMembershipsSchema,
   ProjectMembershipRole,
+  ProjectUserMembershipRolesSchema,
   TemporaryPermissionMode
 } from "@app/db/schemas";
-import { ApiDocsTags, PROJECT_IDENTITIES, PROJECT_IDENTITY_MEMBERSHIP } from "@app/lib/api-docs";
+import { ApiDocsTags, ORGANIZATIONS, PROJECT_IDENTITIES } from "@app/lib/api-docs";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-project-types";
 
-export const registerIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
+import { SanitizedProjectSchema } from "../sanitizedSchemas";
+
+export const registerDeprecatedIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
-    url: "/identities/:identityId",
+    url: "/:projectId/identity-memberships/:identityId",
     config: {
       rateLimit: writeLimit
     },
@@ -92,19 +96,6 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         }
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: {
-            identityId: req.params.identityId,
-            roles: req.body.roles
-          }
-        }
-      });
-
       return {
         identityMembership: { ...membership, identityId: req.params.identityId, projectId: req.params.projectId }
       };
@@ -113,7 +104,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
   server.route({
     method: "PATCH",
-    url: "/identities/:identityId",
+    url: "/:projectId/identity-memberships/:identityId",
     config: {
       rateLimit: writeLimit
     },
@@ -164,7 +155,7 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       }),
       response: {
         200: z.object({
-          identityMembership: IdentityProjectMembershipsSchema
+          roles: ProjectUserMembershipRolesSchema.array()
         })
       }
     },
@@ -184,28 +175,15 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         }
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: {
-            identityId: req.params.identityId,
-            roles: req.body.roles
-          }
-        }
-      });
-
       return {
-        identityMembership: { ...membership, identityId: req.params.identityId, projectId: req.params.projectId }
+        roles: membership.roles.map((el) => ({ ...el, projectMembershipId: membership.id }))
       };
     }
   });
 
   server.route({
     method: "DELETE",
-    url: "/identities/:identityId",
+    url: "/:projectId/identity-memberships/:identityId",
     config: {
       rateLimit: writeLimit
     },
@@ -242,18 +220,6 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
         }
       });
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        orgId: req.permission.orgId,
-        projectId: req.params.projectId,
-        event: {
-          type: EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP,
-          metadata: {
-            identityId: req.params.identityId
-          }
-        }
-      });
-
       return {
         identityMembership: { ...membership, identityId: req.params.identityId, projectId: req.params.projectId }
       };
@@ -262,47 +228,48 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
   server.route({
     method: "GET",
-    url: "/identities",
+    url: "/:projectId/identity-memberships",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      tags: [ApiDocsTags.IdentityProjectMembership],
-      description: "List project identity memberships",
+      tags: [ApiDocsTags.ProjectIdentities],
+      description: "Return project identity memberships",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.projectId)
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.projectId)
       }),
       querystring: z.object({
         offset: z.coerce
           .number()
           .min(0)
           .default(0)
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.offset)
+          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.offset)
           .optional(),
         limit: z.coerce
           .number()
           .min(1)
-          .max(100)
-          .default(20)
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.limit)
+          .max(20000) // TODO: temp limit until combobox added to add identity to project modal, reduce once added
+          .default(100)
+          .describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.limit)
           .optional(),
-        identityName: z
-          .string()
-          .trim()
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.identityName)
+        orderBy: z
+          .nativeEnum(ProjectIdentityOrderBy)
+          .default(ProjectIdentityOrderBy.Name)
+          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderBy)
           .optional(),
-        roles: z
-          .string()
-          .transform((val) => val.split(",").map((role) => role.trim()))
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_IDENTITY_MEMBERSHIPS.roles)
-          .optional()
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(ORGANIZATIONS.LIST_IDENTITY_MEMBERSHIPS.orderDirection)
+          .optional(),
+        search: z.string().trim().describe(PROJECT_IDENTITIES.LIST_IDENTITY_MEMBERSHIPS.search).optional()
       }),
       response: {
         200: z.object({
@@ -326,7 +293,10 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true })
+              identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
+                authMethods: z.array(z.string())
+              }),
+              project: SanitizedProjectSchema.pick({ name: true, id: true })
             })
             .array(),
           totalCount: z.number()
@@ -334,19 +304,17 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
       }
     },
     handler: async (req) => {
-      const { data: identityMemberships, totalCount } = await server.services.membershipIdentity.listMemberships({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Project,
-          orgId: req.permission.orgId,
-          projectId: req.params.projectId
-        },
-        data: {
-          offset: req.query.offset,
-          limit: req.query.limit,
-          identityName: req.query.identityName,
-          roles: req.query.roles
-        }
+      const { identityMemberships, totalCount } = await server.services.identityProject.listProjectIdentities({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        limit: req.query.limit,
+        offset: req.query.offset,
+        orderBy: req.query.orderBy,
+        orderDirection: req.query.orderDirection,
+        search: req.query.search
       });
 
       return { identityMemberships, totalCount };
@@ -355,28 +323,29 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
 
   server.route({
     method: "GET",
-    url: "/identities/:identityId",
+    url: "/:projectId/identity-memberships/:identityId",
     config: {
       rateLimit: readLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      tags: [ApiDocsTags.IdentityProjectMembership],
-      description: "Get project identity membership by identity ID",
+      tags: [ApiDocsTags.ProjectIdentities],
+      description: "Return project identity membership",
       security: [
         {
           bearerAuth: []
         }
       ],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_IDENTITY_MEMBERSHIP.GET_IDENTITY_MEMBERSHIP_BY_ID.projectId),
-        identityId: z.string().trim().describe(PROJECT_IDENTITY_MEMBERSHIP.GET_IDENTITY_MEMBERSHIP_BY_ID.identityId)
+        projectId: z.string().trim().describe(PROJECT_IDENTITIES.GET_IDENTITY_MEMBERSHIP_BY_ID.projectId),
+        identityId: z.string().trim().describe(PROJECT_IDENTITIES.GET_IDENTITY_MEMBERSHIP_BY_ID.identityId)
       }),
       response: {
         200: z.object({
           identityMembership: z.object({
             id: z.string(),
+            identityId: z.string(),
             createdAt: z.date(),
             updatedAt: z.date(),
             roles: z.array(
@@ -395,99 +364,78 @@ export const registerIdentityProjectMembershipRouter = async (server: FastifyZod
             ),
             lastLoginAuthMethod: z.string().nullable().optional(),
             lastLoginTime: z.date().nullable().optional(),
-            identity: IdentitiesSchema.pick({ name: true, id: true, orgId: true, projectId: true }).extend({
-              authMethods: z.array(z.string()),
-              metadata: z
-                .object({
-                  id: z.string().trim().min(1),
-                  key: z.string().trim().min(1),
-                  value: z.string().trim().min(1)
-                })
-                .array()
-                .optional()
-            })
+            identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
+              authMethods: z.array(z.string())
+            }),
+            project: SanitizedProjectSchema.pick({ name: true, id: true })
           })
         })
       }
     },
     handler: async (req) => {
-      const identityMembership = await server.services.membershipIdentity.getMembershipByIdentityId({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Project,
-          orgId: req.permission.orgId,
-          projectId: req.params.projectId
-        },
-        selector: {
-          identityId: req.params.identityId
-        }
+      const identityMembership = await server.services.identityProject.getProjectIdentityByIdentityId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.params.projectId,
+        identityId: req.params.identityId
       });
-
       return { identityMembership };
     }
   });
 
   server.route({
     method: "GET",
-    url: "/available-identities",
+    url: "/identity-memberships/:identityMembershipId",
     config: {
       rateLimit: readLimit
     },
-    onRequest: verifyAuth([AuthMode.JWT]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
-      tags: [ApiDocsTags.IdentityProjectMembership],
-      description: "List available identities for project membership",
-      security: [
-        {
-          bearerAuth: []
-        }
-      ],
+      tags: [ApiDocsTags.ProjectIdentities],
       params: z.object({
-        projectId: z.string().trim().describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.projectId)
-      }),
-      querystring: z.object({
-        offset: z.coerce
-          .number()
-          .min(0)
-          .default(0)
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.offset)
-          .optional(),
-        limit: z.coerce
-          .number()
-          .min(1)
-          .max(100)
-          .default(20)
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.limit)
-          .optional(),
-        identityName: z
-          .string()
-          .trim()
-          .describe(PROJECT_IDENTITY_MEMBERSHIP.LIST_AVAILABLE_IDENTITIES.identityName)
-          .optional()
+        identityMembershipId: z.string().trim()
       }),
       response: {
         200: z.object({
-          identities: IdentitiesSchema.pick({ id: true, name: true }).array()
+          identityMembership: z.object({
+            id: z.string(),
+            identityId: z.string(),
+            createdAt: z.date(),
+            updatedAt: z.date(),
+            roles: z.array(
+              z.object({
+                id: z.string(),
+                role: z.string(),
+                customRoleId: z.string().optional().nullable(),
+                customRoleName: z.string().optional().nullable(),
+                customRoleSlug: z.string().optional().nullable(),
+                isTemporary: z.boolean(),
+                temporaryMode: z.string().optional().nullable(),
+                temporaryRange: z.string().nullable().optional(),
+                temporaryAccessStartTime: z.date().nullable().optional(),
+                temporaryAccessEndTime: z.date().nullable().optional()
+              })
+            ),
+            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              authMethods: z.array(z.string())
+            }),
+            project: SanitizedProjectSchema.pick({ name: true, id: true })
+          })
         })
       }
     },
     handler: async (req) => {
-      const { identities } = await server.services.membershipIdentity.listAvailableIdentities({
-        permission: req.permission,
-        scopeData: {
-          scope: AccessScope.Project,
-          orgId: req.permission.orgId,
-          projectId: req.params.projectId
-        },
-        data: {
-          offset: req.query.offset,
-          limit: req.query.limit,
-          identityName: req.query.identityName
-        }
+      const identityMembership = await server.services.identityProject.getProjectIdentityByMembershipId({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        identityMembershipId: req.params.identityMembershipId
       });
-
-      return { identities };
+      return { identityMembership };
     }
   });
 };

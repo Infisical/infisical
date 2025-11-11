@@ -34,7 +34,7 @@ import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
 import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
-import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
+import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -69,6 +69,7 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
+import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -138,10 +139,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
       await projectRouter.register(registerGroupProjectRouter);
-      await projectRouter.register(registerIdentityProjectMembershipRouter);
+      await projectRouter.register(registerDeprecatedIdentityProjectMembershipRouter);
     },
     { prefix: "/projects" }
   );
+
+  await server.register(registerIdentityProjectMembershipRouter, {
+    prefix: "/projects/:projectId/memberships"
+  });
 
   await server.register(
     async (pkiRouter) => {

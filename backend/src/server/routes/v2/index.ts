@@ -5,7 +5,6 @@ import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-p
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
 import { registerIdentityOrgRouter } from "./identity-org-router";
-import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerMfaRouter } from "./mfa-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
@@ -21,13 +20,6 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
   await server.register(registerUserRouter, { prefix: "/users" });
   await server.register(registerServiceTokenRouter, { prefix: "/service-token" });
   await server.register(registerPasswordRouter, { prefix: "/password" });
-
-  await server.register(
-    async (projectRouter) => {
-      await projectRouter.register(registerIdentityProjectMembershipRouter);
-    },
-    { prefix: "/projects" }
-  );
 
   await server.register(registerCertificateTemplatesV2Router, { prefix: "/certificate-templates" });
 
