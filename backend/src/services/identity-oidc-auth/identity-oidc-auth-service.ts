@@ -111,34 +111,88 @@ export const identityOidcAuthServiceFactory = ({
         requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
       });
 
-      const { kid } = decodedToken.header as { kid: string };
+      const { kid } = decodedToken.header as { kid?: string };
 
-      let oidcSigningKey;
-      try {
-        oidcSigningKey = await client.getSigningKey(kid);
-      } catch (error) {
-        if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+      let tokenData: Record<string, string> | undefined;
+
+      // If kid is provided, try to get the specific signing key
+      if (kid) {
+        let oidcSigningKey;
+        try {
+          oidcSigningKey = await client.getSigningKey(kid);
+        } catch (error) {
+          if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+            throw new UnauthorizedError({
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+            });
+          }
           throw new UnauthorizedError({
-            message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+            message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
           });
         }
-        throw new UnauthorizedError({
-          message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
-        });
+
+        try {
+          tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+            issuer: identityOidcAuth.boundIssuer
+          }) as Record<string, string>;
+        } catch (error) {
+          if (error instanceof jwt.JsonWebTokenError) {
+            throw new UnauthorizedError({
+              message: `Access denied: ${error.message}`
+            });
+          }
+          throw error;
+        }
+      } else {
+        // If kid is not provided, try all available signing keys
+        let allSigningKeys;
+        try {
+          allSigningKeys = await client.getSigningKeys();
+        } catch (error) {
+          throw new UnauthorizedError({
+            message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+          });
+        }
+
+        if (!allSigningKeys || allSigningKeys.length === 0) {
+          throw new UnauthorizedError({
+            message: "Access denied: No signing keys available from OIDC provider's JWKS endpoint."
+          });
+        }
+
+        let lastError: Error | null = null;
+        let verified = false;
+
+        // Try each signing key until one works
+        for (const signingKey of allSigningKeys) {
+          try {
+            tokenData = crypto.jwt().verify(oidcJwt, signingKey.getPublicKey(), {
+              issuer: identityOidcAuth.boundIssuer
+            }) as Record<string, string>;
+            verified = true;
+            break;
+          } catch (error) {
+            if (error instanceof jwt.JsonWebTokenError) {
+              lastError = error;
+              // Continue trying other keys
+            } else {
+              throw error;
+            }
+          }
+        }
+
+        if (!verified) {
+          throw new UnauthorizedError({
+            message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`
+          });
+        }
       }
 
-      let tokenData: Record<string, string>;
-      try {
-        tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
-          issuer: identityOidcAuth.boundIssuer
-        }) as Record<string, string>;
-      } catch (error) {
-        if (error instanceof jwt.JsonWebTokenError) {
-          throw new UnauthorizedError({
-            message: `Access denied: ${error.message}`
-          });
-        }
-        throw error;
+      // Ensure tokenData was successfully assigned
+      if (!tokenData) {
+        throw new UnauthorizedError({
+          message: "Access denied: Failed to verify JWT token"
+        });
       }
 
       if (identityOidcAuth.boundSubject) {
