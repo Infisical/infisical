@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -19,7 +19,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { envConfig } from "@app/config/env";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
   TCertificateProfileWithDetails,
@@ -29,6 +29,7 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const createSchema = z
   .object({
@@ -151,12 +152,25 @@ export type FormData = z.infer<typeof createSchema>;
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: {
+      isEnterpriseFeature?: boolean;
+    }
+  ) => void;
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit";
 }
 
-export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
+export const CreateProfileModal = ({
+  isOpen,
+  onClose,
+  handlePopUpOpen,
+  profile,
+  mode = "create"
+}: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const { data: caData } = useListCasByProjectId(currentProject?.id || "");
   const { data: templateData } = useListCertificateTemplatesV2({
@@ -248,6 +262,15 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
   }, [isEdit, profile, reset]);
 
   const onFormSubmit = async (data: FormData) => {
+    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === "acme") {
+      reset();
+      onClose();
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
     if (!currentProject?.id && !isEdit) return;
 
     if (isEdit) {
