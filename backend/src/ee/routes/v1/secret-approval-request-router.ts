@@ -315,6 +315,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 .extend({
                   status: z.string(),
                   comment: z.string().optional(),
+                  createdAt: z.date(),
                   isOrgMembershipActive: z.boolean().nullable().optional()
                 })
                 .array(),

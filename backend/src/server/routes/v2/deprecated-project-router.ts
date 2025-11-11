@@ -110,7 +110,8 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
           .default(InfisicalProjectTemplate.Default)
           .describe(PROJECTS.CREATE.template),
         type: z.nativeEnum(ProjectType).default(ProjectType.SecretManager),
-        shouldCreateDefaultEnvs: z.boolean().optional().default(true)
+        shouldCreateDefaultEnvs: z.boolean().optional().default(true),
+        hasDeleteProtection: z.boolean().optional().default(false)
       }),
       response: {
         200: z.object({
@@ -131,7 +132,8 @@ export const registerDeprecatedProjectRouter = async (server: FastifyZodProvider
         kmsKeyId: req.body.kmsKeyId,
         template: req.body.template,
         type: req.body.type,
-        createDefaultEnvs: req.body.shouldCreateDefaultEnvs
+        createDefaultEnvs: req.body.shouldCreateDefaultEnvs,
+        hasDeleteProtection: req.body.hasDeleteProtection
       });
 
       await server.services.telemetry.sendPostHogEvents({

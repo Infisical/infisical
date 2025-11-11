@@ -160,14 +160,18 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
     secretApprovalRequestDetails.policy.bypassers.some(({ userId }) => userId === userSession.id);
 
   const reviewedUsers = secretApprovalRequestDetails?.reviewers?.reduce<
-    Record<string, { status: ApprovalStatus; comment: string; isOrgMembershipActive: boolean }>
+    Record<
+      string,
+      { status: ApprovalStatus; comment: string; isOrgMembershipActive: boolean; createdAt: Date }
+    >
   >(
     (prev, curr) => ({
       ...prev,
       [curr.userId]: {
         status: curr.status,
         comment: curr.comment,
-        isOrgMembershipActive: curr.isOrgMembershipActive
+        isOrgMembershipActive: curr.isOrgMembershipActive,
+        createdAt: curr.createdAt
       }
     }),
     {}
@@ -488,7 +492,7 @@ export const SecretApprovalRequestChanges = ({ approvalRequestId, onGoBack }: Pr
                     </span>{" "}
                     the request on{" "}
                     {format(
-                      new Date(secretApprovalRequestDetails.createdAt),
+                      new Date(reviewer ? reviewer.createdAt : new Date()),
                       "MM/dd/yyyy h:mm:ss aa"
                     )}
                     .

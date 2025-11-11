@@ -3,17 +3,19 @@ sidebarTitle: "Overview"
 description: "Learn how to sync certificates from Infisical PKI to third-party services."
 ---
 
-Certificate Syncs enable you to sync certificates from Infisical PKI to third-party services using [App Connections](/integrations/app-connections/overview).
+Certificate Syncs enable you to push certificates from Infisical to third-party services using [App Connections](/integrations/app-connections/overview).
 
 <Note>
-    Certificate Syncs are designed to automatically deploy certificates issued by your Certificate Authority to external services, ensuring your certificates are always up-to-date across your infrastructure.
+  Certificate Syncs are designed to automatically deploy certificates issued by
+  your Certificate Authority to external services, ensuring your certificates
+  are always up-to-date across your infrastructure.
 </Note>
 
 ## Concept
 
-Certificate Syncs are a project-level resource used to sync certificates, via an [App Connection](/integrations/app-connections/overview), from a particular PKI subscriber (source)
-to a third-party service (destination). When new certificates are issued or existing certificates are renewed, changes will automatically be propagated to the destination, ensuring
-your certificates are always current.
+Certificate Syncs are a project-level resource used to push certificates, via an [App Connection](/integrations/app-connections/overview), from Infisical
+to a third-party service (destination). When paired with [server-side auto-renewal](/documentation/platform/pki/certificates/certificates#server-driven-certificate-renewal), renewed certificates are automatically synced to the destination,
+ensuring your certificates stay current.
 
 <br />
 
@@ -31,17 +33,15 @@ your certificates are always current.
     G[Certificate 1]
     H[Certificate 2]
     I[Certificate 3]
-    J[PKI Subscriber]
 
     B --> A
-    C --> J
-    D --> J
-    E --> J
+    C --> B
+    D --> B
+    E --> B
     A --> F
     F --> G
     F --> H
     F --> I
-    J --> B
 
     classDef default fill:#ffffff,stroke:#666,stroke-width:2px,rx:10px,color:black
     classDef connection fill:#FFF2B2,stroke:#E6C34A,stroke-width:2px,color:black,rx:15px
@@ -61,39 +61,50 @@ your certificates are always current.
 
 ## Workflow
 
-Configuring a Certificate Sync requires three components: a <strong>source</strong> PKI subscriber to retrieve certificates from,
+Configuring a Certificate Sync requires three components: The certificates that you'd like to push,
 a <strong>destination</strong> endpoint to deploy certificates to, and <strong>configuration options</strong> to determine how your certificates
 should be synced. Follow these steps to start syncing:
 
 <Note>
-    For step-by-step guides on syncing to a particular third-party service, refer to the Certificate Syncs section in the Navigation Bar.
+  For step-by-step guides on syncing to a particular third-party service, refer
+  to the Certificate Syncs section in the Navigation Bar.
 </Note>
 
-1. <strong>Create App Connection:</strong> If you have not already done so, create an [App Connection](/integrations/app-connections/overview)
-via the UI or API for the third-party service you intend to sync certificates to.
+1. <strong>Create App Connection:</strong> If you have not already done so, create
+   an [App Connection](/integrations/app-connections/overview) via the UI or API
+   for the third-party service you intend to sync certificates to.
 
-2. <strong>Create Certificate Sync:</strong> Configure a Certificate Sync in the desired project by specifying the following parameters via the UI or API:
-    - <strong>Source:</strong> The PKI subscriber you wish to retrieve certificates from.
-    - <strong>Destination:</strong> The App Connection to utilize and the destination endpoint to deploy certificates to. These can vary between services.
-    - <strong>Options:</strong> Customize how certificates should be synced, including:
-      - Whether certificates should be removed from the destination when they expire
-      - Certificate naming schema to control how certificate names are generated in the destination
+2. <strong>Create Certificate Sync:</strong> Configure a Certificate Sync in the
+   desired project by specifying the following parameters via the UI or API:
+
+   - <strong>Destination:</strong> The App Connection to utilize and the destination
+     endpoint to deploy certificates to such as [AWS Certificate Manager](/documentation/platform/pki/certificate-syncs/aws-certificate-manager)
+     or [Azure Key Vault](/documentation/platform/pki/certificate-syncs/azure-key-vault).
+   - <strong>Certificates:</strong> The certificates you wish to push to the destination.
+   - <strong>Options:</strong> Customize how certificates should be synced, including:
+     - Whether certificates should be removed from the destination when they expire.
+     - Certificate naming schema to control how certificate names are generated in
+     the destination.
 
 <Note>
-    Only certificates managed by Infisical will be affected during sync operations. Certificates not created or
-    managed by Infisical will remain untouched, and changes made to Infisical-managed certificates directly
-    in the destination service may be overwritten by future syncs.
+  Only certificates managed by Infisical will be affected during sync
+  operations. Certificates not created or managed by Infisical will remain
+  untouched, and changes made to Infisical-managed certificates directly in the
+  destination service may be overwritten by future syncs.
 </Note>
 
 <Info>
-    Some third-party services do not support removing expired certificates automatically.
+  Some third-party services do not support removing expired certificates
+  automatically.
 </Info>
 
-3. <strong>Utilize Sync:</strong> Any new certificates issued or renewals from the source PKI subscriber will now automatically be propagated to the destination endpoint.
+3. <strong>Utilize Sync:</strong> Selected certificates will now be pushed to the
+   destination endpoint and automatically redeployed whenever they are renewed.
 
 <Note>
-    Infisical is continuously expanding its Certificate Sync third-party service support. If the service you need isn't available,
-    contact us at team@infisical.com to make a request.
+  Infisical is continuously expanding its Certificate Sync third-party service
+  support. If the service you need isn't available, contact us at
+  team@infisical.com to make a request.
 </Note>
 
 ## Certificate Naming
@@ -111,32 +122,12 @@ You can customize certificate naming by providing a **Certificate Name Schema** 
 - `{{certificateId}}` - The unique certificate identifier (required)
 
 **Examples:**
+
 - `myapp-{{certificateId}}` → `myapp-abc123def456`
 - `ssl/{{certificateId}}` → `ssl/abc123def456`
 
 **Rules:**
+
 - Must include exactly one `{{certificateId}}` placeholder
-- Only alphanumeric characters, dashes (-), underscores (_), and slashes (/) are allowed
+- Only alphanumeric characters, dashes (-), underscores (\_), and slashes (/) are allowed
 - Certificate names matching your schema will be managed by Infisical during sync operations
-
-## Certificate Management
-
-Certificate Syncs handle the full lifecycle of certificate management:
-
-- **Automatic Deployment**: New certificates are automatically deployed to configured destinations
-- **Renewal Propagation**: Certificate renewals are seamlessly pushed to all connected services
-- **Expiration Handling**: Expired certificates can be automatically removed from destinations (service-dependent)
-- **Certificate Validation**: Certificates are validated before deployment to ensure integrity
-
-<div align="center">
-    ```mermaid
-    graph LR
-      A[Certificate Issued] -->|Deploy| B[Destination Service]
-      C[Certificate Renewed] -->|Update| B
-      D[Certificate Expired] -->|Remove| B
-      style B fill:#F4FFE6,stroke:#96D600,stroke-width:2px,color:black,rx:15px
-      style A fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
-      style C fill:#E6F4FF,stroke:#0096D6,stroke-width:2px,color:black,rx:15px
-      style D fill:#FFE6E6,stroke:#D63F3F,stroke-width:2px,color:black,rx:15px
-    ```
-</div>

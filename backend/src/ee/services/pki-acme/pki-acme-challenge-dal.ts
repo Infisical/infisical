@@ -1,8 +1,10 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
 import { TableName, TPkiAcmeChallenges } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { Knex } from "knex";
+
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeOrderStatus } from "./pki-acme-schemas";
 
 export type TPkiAcmeChallengeDALFactory = ReturnType<typeof pkiAcmeChallengeDALFactory>;

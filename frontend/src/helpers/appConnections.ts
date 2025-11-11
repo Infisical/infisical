@@ -1,6 +1,7 @@
 import { faGithub, IconDefinition } from "@fortawesome/free-brands-svg-icons";
 import {
   faBullseye,
+  faCertificate,
   faKey,
   faLink,
   faLock,
@@ -211,6 +212,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case AzureKeyVaultConnectionMethod.ClientSecret:
     case AzureDevOpsConnectionMethod.ClientSecret:
       return { name: "Client Secret", icon: faKey };
+    case AzureClientSecretsConnectionMethod.Certificate:
+      return { name: "Certificate", icon: faCertificate };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
