@@ -130,7 +130,7 @@ export const pkiAcmeServiceFactory = ({
     if (profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
     }
-    const orgLicensePlan = await licenseService.getPlan(profile.project.orgId);
+    const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
     if (!orgLicensePlan.pkiAcme) {
       throw new AcmeUnauthorizedError({ message: "The organization does not have a valid license to use ACME" });
     }
