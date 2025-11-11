@@ -1,5 +1,5 @@
 /* eslint-disable no-await-in-loop */
-import * as AWS from "aws-sdk";
+import AWS from "aws-sdk";
 import RE2 from "re2";
 import { z } from "zod";
 
