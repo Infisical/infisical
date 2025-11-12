@@ -4,11 +4,7 @@ import re
 import urllib.parse
 
 import acme.client
-import httpx
 import jq
-import requests
-import requests.structures
-import glom
 from faker import Faker
 from acme import client
 from acme import messages
@@ -19,13 +15,17 @@ from behave import given
 from behave import when
 from behave import then
 from josepy.jwk import JWKRSA
-from josepy import JSONObjectWithFields
 from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
+
+from utils import replace_vars
+from utils import eval_var
+from utils import prepare_headers
+
 
 ACC_KEY_BITS = 2048
 ACC_KEY_PUBLIC_EXPONENT = 65537
@@ -38,98 +38,6 @@ class AcmeProfile:
         self.id = id
         self.eab_kid = eab_kid
         self.eab_secret = eab_secret
-
-
-def replace_vars(payload: dict | list | int | float | str, vars: dict):
-    if isinstance(payload, dict):
-        return {
-            replace_vars(key, vars): replace_vars(value, vars)
-            for key, value in payload.items()
-        }
-    elif isinstance(payload, list):
-        return [replace_vars(item, vars) for item in payload]
-    elif isinstance(payload, str):
-        return payload.format(**vars)
-    else:
-        return payload
-
-
-def parse_glom_path(path_str: str) -> glom.Path:
-    """
-    Parse a glom path string with 'attr[index]' syntax into a Path object.
-
-    Examples:
-    >>> parse_glom_path('authorizations[0]') == Path('authorizations', 0)
-    True
-    >>> parse_glom_path('data.items[1].name') == Path('data', 'items', 1, 'name')
-    True
-    >>> parse_glom_path('user.addresses[0].street') == Path('user', 'addresses', 0, 'street')
-    True
-    """
-    parts = []
-
-    # Split by dots, but preserve bracketed content
-    tokens = re.split(r"(?<!\[)\.(?![^\[]*\])", path_str)
-
-    for token in tokens:
-        token = token.strip()
-        if not token:
-            continue
-
-        # Check for attr[index] pattern
-        match = re.match(r"^(.+?)\[([^\]]+)\]$", token)
-        if match:
-            attr_name = match.group(1).strip()
-            index_str = match.group(2).strip()
-
-            # Parse index (support integers, slices, etc.)
-            if index_str.isdigit():
-                index = int(index_str)
-            elif "-" in index_str:
-                # Handle negative indices like [-1]
-                index = int(index_str)
-            elif ":" in index_str:
-                # Handle slices like [0:10]
-                index = slice(
-                    *map(int, [x.strip() for x in index_str.split(":") if x.strip()])
-                )
-            else:
-                # Treat as string key
-                index = index_str
-
-            parts.extend([attr_name, index])
-        else:
-            # Plain attribute/key
-            parts.append(token)
-
-    return glom.Path(*parts)
-
-
-def eval_var(context: Context, var_path: str, as_json: bool = True):
-    parts = var_path.split(".", 1)
-    value = context.vars[parts[0]]
-    if len(parts) == 2:
-        value = glom.glom(value, parse_glom_path(parts[1]))
-    if as_json:
-        if isinstance(value, JSONObjectWithFields):
-            value = value.to_json()
-        elif isinstance(value, requests.Response):
-            value = value.json()
-        elif isinstance(value, requests.structures.CaseInsensitiveDict):
-            value = dict(value.lower_items())
-        elif isinstance(value, httpx.Response):
-            value = value.json()
-    return value
-
-
-def prepare_headers(context: Context) -> dict | None:
-    headers = {}
-    auth_token = getattr(context, "auth_token", None)
-    if auth_token is not None:
-        headers["authorization"] = "Bearer {}".format(auth_token)
-    if not headers:
-        return None
-    return headers
 
 
 @given("I make a random {faker_type} as {var_name}")
@@ -746,3 +654,10 @@ def step_impl(context: Context, var_path: str, finalized_var: str):
     acme_client = context.acme_client
     finalized_order = acme_client.poll_and_finalize(order)
     context.vars[finalized_var] = finalized_order
+
+
+@then("I parse the full-chain certificate from order {order_var_path} as {cert_var}")
+def step_impl(context: Context, order_var_path: str, cert_var: str):
+    order = eval_var(context, order_var_path, as_json=False)
+    cert = x509.load_pem_x509_certificate(order.fullchain_pem.encode())
+    context.vars[cert_var] = cert
