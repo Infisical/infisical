@@ -20,6 +20,8 @@ Feature: Challenge
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
 
+  # TODO: add challenge with SANs
+
   Scenario: Did not finish all challenges
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
@@ -151,6 +153,7 @@ Feature: Challenge
     And I memorize response.headers with jq ".["replay-nonce"]" as nonce
     And I memorize response as order
     And I pass all challenges with type http-01 for order in order
+    And I encode CSR csr_pem as JOSE Base-64 DER as base64_csr_der
     When I send a raw ACME request to "{finalize_url}"
       """
       {
@@ -161,11 +164,11 @@ Feature: Challenge
           "kid": "{acme_account.uri}"
         },
         "payload": {
-          "csr": "{csr_pem}"
+          "csr": "{base64_csr_der}"
         }
       }
       """
     Then the value response.status_code should be equal to 400
     And the value response with jq ".status" should be equal to 400
-    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:malformed"
-    And the value response with jq ".detail" should be equal to "<error_detail>"
+    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:badCSR"
+    And the value response with jq ".detail" should be equal to "Invalid CSR: Common name + SANs mismatch with order identifiers"

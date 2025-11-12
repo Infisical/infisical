@@ -390,6 +390,15 @@ def step_impl(context: Context, url: str):
 
 
 @then(
+    "I encode CSR {pem_var} as JOSE Base-64 DER as {var_name}",
+)
+def step_impl(context: Context, pem_var: str, var_name: str):
+    csr = eval_var(context, pem_var)
+    parsed_csr = x509.load_pem_x509_csr(csr)
+    context.vars[var_name] = json_util.encode_csr(parsed_csr)
+
+
+@then(
     "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server as {order_var}"
 )
 def step_impl(context: Context, pem_var: str, order_var: str):
