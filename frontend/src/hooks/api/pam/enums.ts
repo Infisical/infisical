@@ -3,7 +3,8 @@ export enum PamResourceType {
   MySQL = "mysql",
   RDP = "rdp",
   SSH = "ssh",
-  Kubernetes = "kubernetes"
+  Kubernetes = "kubernetes",
+  MCP = "mcp"
 }
 
 export enum PamSessionStatus {
