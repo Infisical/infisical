@@ -8,6 +8,7 @@ import acme.client
 import httpx
 import jq
 import requests
+import requests.structures
 import glom
 from faker import Faker
 from acme import client
@@ -115,6 +116,8 @@ def eval_var(context: Context, var_path: str, as_json: bool = True):
             value = value.to_json()
         elif isinstance(value, requests.Response):
             value = value.json()
+        elif isinstance(value, requests.structures.CaseInsensitiveDict):
+            value = dict(value.lower_items())
         elif isinstance(value, httpx.Response):
             value = value.json()
     return value
@@ -569,51 +572,58 @@ def step_impl(context: Context, var_path: str):
     print(json.dumps(value.json(), indent=2))
 
 
-@then(
-    "I select challenge with type {challenge_type} for domain {domain} from order at {var_path} as {challenge_var}"
-)
-def step_impl(
+def select_challenge(
     context: Context,
     challenge_type: str,
+    order_var_path: str,
     domain: str,
-    var_path: str,
-    challenge_var: str,
 ):
-    order = eval_var(context, var_path, as_json=False)
+    acme_client = context.acme_client
+    order = eval_var(context, order_var_path, as_json=False)
+    if isinstance(order, dict):
+        order_body = messages.Order.from_json(order)
+        order = messages.OrderResource(
+            body=order_body,
+            authorizations=[
+                acme_client._authzr_from_response(
+                    acme_client._post_as_get(url), uri=url
+                )
+                for url in order_body.authorizations
+            ],
+        )
     if not isinstance(order, messages.OrderResource):
         raise ValueError(
-            f"Expected OrderResource but got {type(order)!r} at {var_path!r}"
+            f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
         )
     auths = list(
         filter(lambda o: o.body.identifier.value == domain, order.authorizations)
     )
     if not auths:
         raise ValueError(
-            f"Authorization for domain {domain!r} not found in {var_path!r}"
+            f"Authorization for domain {domain!r} not found in {order_var_path!r}"
         )
     if len(auths) > 1:
         raise ValueError(
-            f"More than one order for domain {domain!r} found in {var_path!r}"
+            f"More than one order for domain {domain!r} found in {order_var_path!r}"
         )
     auth = auths[0]
 
     challenges = list(filter(lambda a: a.typ == challenge_type, auth.body.challenges))
     if not challenges:
         raise ValueError(
-            f"Authorization type {challenge_type!r} not found in {var_path!r}"
+            f"Authorization type {challenge_type!r} not found in {order_var_path!r}"
         )
     if len(challenges) > 1:
         raise ValueError(
-            f"More than one authorization for type {challenge_type!r} found in {var_path!r}"
+            f"More than one authorization for type {challenge_type!r} found in {order_var_path!r}"
         )
-    context.vars[challenge_var] = challenges[0]
+    return challenges[0]
 
 
-@then("I serve challenge response for {var_path} at {hostname}")
-def step_impl(context: Context, var_path: str, hostname: str):
-    if hostname != "localhost":
-        raise ValueError("Currently only localhost is supported")
-    challenge = eval_var(context, var_path, as_json=False)
+def serve_challenge(
+    context: Context,
+    challenge: messages.ChallengeBody,
+):
     response, validation = challenge.response_and_validation(
         context.acme_client.net.key
     )
@@ -629,12 +639,41 @@ def step_impl(context: Context, var_path: str, hostname: str):
     context.web_server = web_server
 
 
-@then("I tell ACME server that {var_path} is ready to be verified")
-def step_impl(context: Context, var_path: str):
-    challenge = eval_var(context, var_path, as_json=False)
+def notify_challenge_ready(context: Context, challenge: messages.ChallengeBody):
     acme_client = context.acme_client
     response, validation = challenge.response_and_validation(acme_client.net.key)
     acme_client.answer_challenge(challenge, response)
+
+
+@then(
+    "I select challenge with type {challenge_type} for domain {domain} from order in {var_path} as {challenge_var}"
+)
+def step_impl(
+    context: Context,
+    challenge_type: str,
+    domain: str,
+    var_path: str,
+    challenge_var: str,
+):
+    challenge = select_challenge(
+        context=context,
+        challenge_type=challenge_type,
+        domain=domain,
+        order_var_path=var_path,
+    )
+    context.vars[challenge_var] = challenge
+
+
+@then("I serve challenge response for {var_path} at {hostname}")
+def step_impl(context: Context, var_path: str, hostname: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    serve_challenge(context=context, challenge=challenge)
+
+
+@then("I tell ACME server that {var_path} is ready to be verified")
+def step_impl(context: Context, var_path: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    notify_challenge_ready(context=context, challenge=challenge)
 
 
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")
