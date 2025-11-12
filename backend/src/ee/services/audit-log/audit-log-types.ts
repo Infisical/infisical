@@ -173,6 +173,7 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+  GET_TOKEN_IDENTITY_TOKEN_AUTH = "get-token-identity-token-auth",
 
   CREATE_SUB_ORGANIZATION = "create-sub-organization",
   UPDATE_SUB_ORGANIZATION = "update-sub-organization",
@@ -1010,6 +1011,14 @@ interface GetTokensIdentityTokenAuthEvent {
   type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
   metadata: {
     identityId: string;
+  };
+}
+
+interface GetTokenIdentityTokenAuthEvent {
+  type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    tokenId: string;
   };
 }
 
@@ -4128,6 +4137,7 @@ export type Event =
   | CreateTokenIdentityTokenAuthEvent
   | UpdateTokenIdentityTokenAuthEvent
   | GetTokensIdentityTokenAuthEvent
+  | GetTokenIdentityTokenAuthEvent
   | AddIdentityTokenAuthEvent
   | UpdateIdentityTokenAuthEvent
   | GetIdentityTokenAuthEvent
