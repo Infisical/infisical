@@ -43,6 +43,7 @@ import {
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
+  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
