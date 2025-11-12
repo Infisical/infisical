@@ -9,7 +9,6 @@ import { ProjectType } from "@app/hooks/api/projects/types";
 import { CertificateProfilesTab } from "./components/CertificateProfilesTab";
 import { CertificatesTab } from "./components/CertificatesTab";
 import { CertificateTemplatesV2Tab } from "./components/CertificateTemplatesV2Tab";
-import { PkiCollectionsTab } from "./components/PkiCollectionsTab";
 
 enum TabSections {
   CertificateProfiles = "profiles",
@@ -54,9 +53,6 @@ export const PoliciesPage = () => {
             <Tab variant="project" value={TabSections.Certificates}>
               Certificates
             </Tab>
-            <Tab variant="project" value={TabSections.PkiCollections}>
-              Certificate Collections
-            </Tab>
           </TabList>
 
           <TabPanel value={TabSections.CertificateProfiles}>
@@ -69,10 +65,6 @@ export const PoliciesPage = () => {
 
           <TabPanel value={TabSections.Certificates}>
             <CertificatesTab />
-          </TabPanel>
-
-          <TabPanel value={TabSections.PkiCollections}>
-            <PkiCollectionsTab />
           </TabPanel>
         </Tabs>
       </div>

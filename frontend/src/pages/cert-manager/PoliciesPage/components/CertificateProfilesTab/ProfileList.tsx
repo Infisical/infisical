@@ -20,9 +20,14 @@ import { ProfileRow } from "./ProfileRow";
 interface Props {
   onEditProfile: (profile: TCertificateProfileWithDetails) => void;
   onDeleteProfile: (profile: TCertificateProfileWithDetails) => void;
+  onRevealProfileAcmeEabSecret: (profile: TCertificateProfileWithDetails) => void;
 }
 
-export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
+export const ProfileList = ({
+  onEditProfile,
+  onRevealProfileAcmeEabSecret,
+  onDeleteProfile
+}: Props) => {
   const { currentProject } = useProject();
 
   const { data, isLoading } = useListCertificateProfiles({
@@ -88,6 +93,7 @@ export const ProfileList = ({ onEditProfile, onDeleteProfile }: Props) => {
                 key={profile.id}
                 profile={profile}
                 onEditProfile={onEditProfile}
+                onRevealProfileAcmeEabSecret={onRevealProfileAcmeEabSecret}
                 onDeleteProfile={onDeleteProfile}
               />
             ))}

@@ -252,7 +252,8 @@ export const projectServiceFactory = ({
     tx: trx,
     createDefaultEnvs = true,
     template = InfisicalProjectTemplate.Default,
-    type = ProjectType.SecretManager
+    type = ProjectType.SecretManager,
+    hasDeleteProtection
   }: TCreateProjectDTO) => {
     const organization = await orgDAL.findOne({ id: actorOrgId });
     const { permission } = await permissionService.getOrgPermission({
@@ -325,7 +326,8 @@ export const projectServiceFactory = ({
             slug,
             kmsSecretManagerKeyId: kmsKeyId,
             version: ProjectVersion.V3,
-            pitVersionLimit: 10
+            pitVersionLimit: 10,
+            hasDeleteProtection
           },
           tx
         );
@@ -587,6 +589,7 @@ export const projectServiceFactory = ({
       actorOrgId,
       actionProjectType: ActionProjectType.Any
     });
+
     return project;
   };
 
@@ -1605,8 +1608,14 @@ export const projectServiceFactory = ({
     isAccessRequestNotificationEnabled,
     accessRequestChannels,
     isSecretRequestNotificationEnabled,
-    secretRequestChannels
-  }: TUpdateProjectWorkflowIntegration) => {
+    secretRequestChannels,
+    secretSyncErrorChannels,
+    isSecretSyncErrorNotificationEnabled
+  }: TUpdateProjectWorkflowIntegration & {
+    // workaround intersection type while we don't have the microsoft teams integration for failed secret syncs
+    isSecretSyncErrorNotificationEnabled?: boolean;
+    secretSyncErrorChannels?: string;
+  }) => {
     const project = await projectDAL.findById(projectId);
     if (!project) {
       throw new NotFoundError({
@@ -1628,6 +1637,7 @@ export const projectServiceFactory = ({
 
       const sanitizedAccessRequestChannels = validateSlackChannelsField.parse(accessRequestChannels);
       const sanitizedSecretRequestChannels = validateSlackChannelsField.parse(secretRequestChannels);
+      const sanitizedSecretSyncErrorChannels = validateSlackChannelsField.parse(secretSyncErrorChannels);
 
       const slackIntegration = await slackIntegrationDAL.findByIdWithWorkflowIntegrationDetails(integrationId);
 
@@ -1665,7 +1675,9 @@ export const projectServiceFactory = ({
               isAccessRequestNotificationEnabled,
               accessRequestChannels: sanitizedAccessRequestChannels,
               isSecretRequestNotificationEnabled,
-              secretRequestChannels: sanitizedSecretRequestChannels
+              secretRequestChannels: sanitizedSecretRequestChannels,
+              isSecretSyncErrorNotificationEnabled,
+              secretSyncErrorChannels: sanitizedSecretSyncErrorChannels
             },
             tx
           );
@@ -1678,7 +1690,9 @@ export const projectServiceFactory = ({
             isAccessRequestNotificationEnabled,
             accessRequestChannels: sanitizedAccessRequestChannels,
             isSecretRequestNotificationEnabled,
-            secretRequestChannels: sanitizedSecretRequestChannels
+            secretRequestChannels: sanitizedSecretRequestChannels,
+            isSecretSyncErrorNotificationEnabled,
+            secretSyncErrorChannels: sanitizedSecretSyncErrorChannels
           },
           tx
         );
@@ -1688,6 +1702,7 @@ export const projectServiceFactory = ({
         ...updatedWorkflowIntegration,
         accessRequestChannels: sanitizedAccessRequestChannels,
         secretRequestChannels: sanitizedSecretRequestChannels,
+        secretSyncErrorChannels: sanitizedSecretSyncErrorChannels,
         integrationId: slackIntegration.id,
         integration: WorkflowIntegration.SLACK
       } as const;

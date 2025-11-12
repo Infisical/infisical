@@ -8,6 +8,7 @@ import { registerIdentityOrgRouter } from "./identity-org-router";
 import { registerMfaRouter } from "./mfa-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
+import { registerPkiAlertRouter } from "./pki-alert-router";
 import { registerPkiTemplatesRouter } from "./pki-templates-router";
 import { registerSecretFolderRouter } from "./secret-folder-router";
 import { registerSecretImportRouter } from "./secret-import-router";
@@ -26,6 +27,7 @@ export const registerV2Routes = async (server: FastifyZodProvider) => {
     async (pkiRouter) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(registerPkiTemplatesRouter, { prefix: "/certificate-templates" });
+      await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
     },
     { prefix: "/pki" }
   );

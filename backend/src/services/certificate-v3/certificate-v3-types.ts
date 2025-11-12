@@ -6,6 +6,7 @@ import {
   CertKeyUsageType,
   CertSubjectAlternativeNameType
 } from "../certificate-common/certificate-constants";
+import { EnrollmentType } from "../certificate-profile/certificate-profile-types";
 
 export type TIssueCertificateFromProfileDTO = {
   profileId: string;
@@ -35,6 +36,7 @@ export type TSignCertificateFromProfileDTO = {
   };
   notBefore?: Date;
   notAfter?: Date;
+  enrollmentType: EnrollmentType;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {

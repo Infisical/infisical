@@ -51,6 +51,7 @@ export type TCreateProjectDTO = {
   pitVersionLimit?: number;
   tx?: Knex;
   type?: ProjectType;
+  hasDeleteProtection?: boolean;
 };
 
 export type TDeleteProjectBySlugDTO = {
@@ -185,8 +186,10 @@ export type TUpdateProjectWorkflowIntegration = (
       integration: WorkflowIntegration.SLACK;
       isAccessRequestNotificationEnabled: boolean;
       isSecretRequestNotificationEnabled: boolean;
+      isSecretSyncErrorNotificationEnabled: boolean;
       accessRequestChannels?: string;
       secretRequestChannels?: string;
+      secretSyncErrorChannels?: string;
     }
   | {
       integrationId: string;
