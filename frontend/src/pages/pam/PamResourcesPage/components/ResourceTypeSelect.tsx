@@ -28,7 +28,8 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       // We are temporarily showing these resources so that we can gauge interest before committing
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
-      { name: "Kubernetes", resource: PamResourceType.Kubernetes }
+      { name: "Kubernetes", resource: PamResourceType.Kubernetes },
+      { name: "MCP", resource: PamResourceType.MCP }
     ];
   }, [resourceOptions]);
 
@@ -65,7 +66,8 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.SSH ||
-      resource === PamResourceType.Kubernetes
+      resource === PamResourceType.Kubernetes ||
+      resource === PamResourceType.MCP
     ) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to this resource type. To unlock this feature, please upgrade to Infisical Enterprise plan.",
