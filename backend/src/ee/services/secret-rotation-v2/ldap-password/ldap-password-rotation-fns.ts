@@ -80,7 +80,6 @@ export const ldapPasswordRotationFactory: TRotationFactory<
     try {
       await executeWithPotentialGateway(
         { ...connection, credentials: { ...connection.credentials, ...credentials } },
-        gatewayService,
         gatewayV2Service,
         async () => {}
       );
@@ -150,7 +149,6 @@ export const ldapPasswordRotationFactory: TRotationFactory<
             }
           : credentials
       },
-      gatewayService,
       gatewayV2Service,
       async (client) => {
         const userDn = await getDN(dn, client);

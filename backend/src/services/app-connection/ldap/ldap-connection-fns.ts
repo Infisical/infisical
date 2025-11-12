@@ -4,7 +4,7 @@ import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol, withGatewayProxy } from "@app/lib/gateway";
+import { GatewayProxyProtocol } from "@app/lib/gateway";
 import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
@@ -109,7 +109,6 @@ export const getLdapConnectionClient = async ({
 
 export const executeWithPotentialGateway = async <T>(
   config: TLdapConnectionConfig,
-  gatewayService: Pick<TGatewayServiceFactory, "fnGetGatewayClientTlsByGatewayId">,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
   operation: (client: ldap.Client) => Promise<T>
 ): Promise<T> => {
@@ -117,7 +116,7 @@ export const executeWithPotentialGateway = async <T>(
   const { protocol, host, port } = parseLdapUrl(credentials.url);
   const appCfg = getConfig();
 
-  if (gatewayId && gatewayService && gatewayV2Service) {
+  if (gatewayId && gatewayV2Service) {
     await blockLocalAndPrivateIpAddresses(credentials.url, true);
     const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
       gatewayId,
@@ -162,52 +161,6 @@ export const executeWithPotentialGateway = async <T>(
         }
       );
     }
-
-    const relayDetails = await gatewayService.fnGetGatewayClientTlsByGatewayId(gatewayId);
-    const [relayHost, relayPort] = relayDetails.relayAddress.split(":");
-    return withGatewayProxy(
-      async (proxyPort) => {
-        const proxyUrl = constructLdapUrl(protocol, "localhost", proxyPort);
-        const isSSL = protocol === "ldaps";
-
-        const client = ldap.createClient({
-          url: proxyUrl,
-          timeout: LDAP_TIMEOUT,
-          connectTimeout: LDAP_TIMEOUT,
-          tlsOptions: isSSL
-            ? {
-                rejectUnauthorized: config.credentials.sslRejectUnauthorized,
-                ca: config.credentials.sslCertificate ? [config.credentials.sslCertificate] : undefined,
-                servername: host,
-                // bypass hostname verification for development
-                ...(appCfg.isDevelopmentMode ? { checkServerIdentity: () => undefined } : {})
-              }
-            : undefined
-        });
-
-        return setupLdapClientHandlers<T>(client, credentials.dn, credentials.password, async (ldapClient) => {
-          try {
-            return await operation(ldapClient);
-          } finally {
-            ldapClient.destroy();
-          }
-        });
-      },
-      {
-        protocol: GatewayProxyProtocol.Tcp,
-        targetHost: host,
-        targetPort: port,
-        relayHost,
-        relayPort: Number(relayPort),
-        identityId: relayDetails.identityId,
-        orgId: relayDetails.orgId,
-        tlsOptions: {
-          ca: relayDetails.certChain,
-          cert: relayDetails.certificate,
-          key: relayDetails.privateKey.toString()
-        }
-      }
-    );
   }
 
   // Non-gateway path - calls getLdapConnectionClient which has validation
@@ -225,7 +178,7 @@ export const validateLdapConnectionCredentials = async (
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   try {
-    await executeWithPotentialGateway(config, gatewayService, gatewayV2Service, async (client) => {
+    await executeWithPotentialGateway(config, gatewayV2Service, async (client) => {
       // this shouldn't occur as handle connection error events in client but here as fallback
       if (!client.connected) {
         throw new BadRequestError({ message: "Unable to connect to LDAP server" });
