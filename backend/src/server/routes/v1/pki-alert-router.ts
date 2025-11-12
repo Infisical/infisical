@@ -6,6 +6,7 @@ import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
 export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -16,7 +17,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Create PKI alert",
       body: z.object({
@@ -52,7 +52,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             pkiAlertId: alert.id,
             pkiCollectionId: alert.pkiCollectionId,
             name: alert.name,
-            alertBeforeDays: alert.alertBeforeDays,
+            alertBefore: alert.alertBeforeDays.toString(),
+            eventType: PkiAlertEventType.EXPIRATION,
             recipientEmails: alert.recipientEmails
           }
         }
@@ -70,7 +71,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Get PKI alert",
       params: z.object({
@@ -112,7 +112,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Update PKI alert",
       params: z.object({
@@ -152,7 +151,8 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
             pkiAlertId: alert.id,
             pkiCollectionId: alert.pkiCollectionId,
             name: alert.name,
-            alertBeforeDays: alert.alertBeforeDays,
+            alertBefore: alert.alertBeforeDays.toString(),
+            eventType: PkiAlertEventType.EXPIRATION,
             recipientEmails: alert.recipientEmails
           }
         }
@@ -170,7 +170,6 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
       tags: [ApiDocsTags.PkiAlerting],
       description: "Delete PKI alert",
       params: z.object({

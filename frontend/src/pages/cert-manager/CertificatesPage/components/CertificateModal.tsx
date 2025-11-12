@@ -75,6 +75,7 @@ export type FormData = z.infer<typeof schema>;
 type Props = {
   popUp: UsePopUpState<["certificate"]>;
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["certificate"]>, state?: boolean) => void;
+  preselectedTemplate?: { id: string; name: string };
 };
 
 type TCertificateDetails = {
@@ -86,7 +87,7 @@ type TCertificateDetails = {
 
 const CERT_TEMPLATE_NONE_VALUE = "none";
 
-export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate }: Props) => {
   const [certificateDetails, setCertificateDetails] = useState<TCertificateDetails | null>(null);
   const { currentProject } = useProject();
   const { data: cert } = useGetCert(
@@ -147,13 +148,15 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
           (cert.extendedKeyUsages || []).map((name) => [name, true])
         )
       });
-    } else {
+    } else if (popUp?.certificate?.isOpen) {
+      const templateId = preselectedTemplate?.id || CERT_TEMPLATE_NONE_VALUE;
+
       reset({
         caId: "",
         commonName: "",
         subjectAltNames: "",
         ttl: "",
-        certificateTemplateId: CERT_TEMPLATE_NONE_VALUE,
+        certificateTemplateId: templateId,
         keyUsages: {
           [CertKeyUsage.DIGITAL_SIGNATURE]: true,
           [CertKeyUsage.KEY_ENCIPHERMENT]: true
@@ -161,7 +164,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
         extendedKeyUsages: {}
       });
     }
-  }, [cert]);
+  }, [cert, preselectedTemplate, popUp?.certificate?.isOpen]);
 
   useEffect(() => {
     if (!cert && selectedCertTemplate) {
@@ -198,10 +201,14 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
       ttl,
       keyUsages: Object.entries(keyUsages)
         .filter(([, value]) => value)
-        .map(([key]) => key as CertKeyUsage),
+        .map(([key]) =>
+          key === CertKeyUsage.CRL_SIGN
+            ? "cRLSign"
+            : key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())
+        ),
       extendedKeyUsages: Object.entries(extendedKeyUsages)
         .filter(([, value]) => value)
-        .map(([key]) => key as CertExtendedKeyUsage)
+        .map(([key]) => key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()))
     });
 
     reset();
@@ -269,15 +276,25 @@ export const CertificateModal = ({ popUp, handlePopUpToggle }: Props) => {
                   isRequired
                 >
                   <Select
-                    defaultValue={field.value}
-                    {...field}
+                    value={field.value}
                     onValueChange={(e) => onChange(e)}
                     className="w-full"
-                    isDisabled={Boolean(cert)}
+                    isDisabled={Boolean(cert) || Boolean(preselectedTemplate)}
                   >
                     <SelectItem value={CERT_TEMPLATE_NONE_VALUE} key="cert-template-none">
                       None
                     </SelectItem>
+                    {preselectedTemplate &&
+                      !templatesData?.certificateTemplates?.find(
+                        (t) => t.id === preselectedTemplate.id
+                      ) && (
+                        <SelectItem
+                          value={preselectedTemplate.id}
+                          key={`cert-template-preselected-${preselectedTemplate.id}`}
+                        >
+                          {preselectedTemplate.name}
+                        </SelectItem>
+                      )}
                     {(templatesData?.certificateTemplates || []).map(({ id, name }) => (
                       <SelectItem value={id} key={`cert-template-${id}`}>
                         {name}

@@ -1,6 +1,7 @@
 export { CertStatus } from "./enums";
 export {
   useDeleteCert,
+  useDownloadCertPkcs12,
   useImportCertificate,
   useRenewCertificate,
   useRevokeCert,

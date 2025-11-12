@@ -260,5 +260,15 @@ export enum EventType {
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
-  PAM_RESOURCE_DELETE = "pam-resource-delete"
+  PAM_RESOURCE_DELETE = "pam-resource-delete",
+
+  CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
+  UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
+  DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
+  GET_CERTIFICATE_PROFILE = "get-certificate-profile",
+  LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
+  SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
+  ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle"
 }

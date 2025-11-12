@@ -1,0 +1,205 @@
+import RE2 from "re2";
+import { z } from "zod";
+
+import { TGenericPermission } from "@app/lib/types";
+
+const createSecureNameValidator = () => {
+  // Validates name format: lowercase alphanumeric characters with optional hyphens
+  // Pattern: starts and ends with alphanumeric, allows hyphens between segments
+  // Examples: "my-alert", "alert1", "test-alert-2"
+  const nameRegex = new RE2("^[a-z0-9]+(?:-[a-z0-9]+)*$");
+  return (value: string) => nameRegex.test(value);
+};
+
+export const createSecureAlertBeforeValidator = () => {
+  // Validates alertBefore duration format: number followed by time unit
+  // Pattern: one or more digits followed by d(days), w(weeks), m(months), or y(years)
+  // Examples: "30d", "2w", "6m", "1y"
+  const alertBeforeRegex = new RE2("^\\d+[dwmy]$");
+  return (value: string) => {
+    if (value.length > 32) return false;
+    return alertBeforeRegex.test(value);
+  };
+};
+
+export enum PkiAlertEventType {
+  EXPIRATION = "expiration",
+  RENEWAL = "renewal",
+  ISSUANCE = "issuance",
+  REVOCATION = "revocation"
+}
+
+export enum PkiAlertChannelType {
+  EMAIL = "email",
+  WEBHOOK = "webhook",
+  SLACK = "slack"
+}
+
+export enum PkiFilterOperator {
+  EQUALS = "equals",
+  MATCHES = "matches",
+  CONTAINS = "contains",
+  STARTS_WITH = "starts_with",
+  ENDS_WITH = "ends_with"
+}
+
+export enum PkiFilterField {
+  PROFILE_NAME = "profile_name",
+  COMMON_NAME = "common_name",
+  SAN = "san",
+  INCLUDE_CAS = "include_cas"
+}
+
+export enum CertificateOrigin {
+  UNKNOWN = "unknown",
+  PROFILE = "profile",
+  IMPORT = "import",
+  CA = "ca"
+}
+
+export const PkiFilterRuleSchema = z.object({
+  field: z.nativeEnum(PkiFilterField),
+  operator: z.nativeEnum(PkiFilterOperator),
+  value: z.union([z.string(), z.array(z.string()), z.boolean()])
+});
+
+export type TPkiFilterRule = z.infer<typeof PkiFilterRuleSchema>;
+
+export const PkiFiltersSchema = z.array(PkiFilterRuleSchema);
+export type TPkiFilters = z.infer<typeof PkiFiltersSchema>;
+
+export const EmailChannelConfigSchema = z.object({
+  recipients: z.array(z.string().email()).min(1).max(10)
+});
+
+export const WebhookChannelConfigSchema = z.object({
+  url: z.string().url(),
+  method: z.enum(["POST", "PUT"]).default("POST"),
+  headers: z.record(z.string()).optional()
+});
+
+export const SlackChannelConfigSchema = z.object({
+  webhookUrl: z.string().url(),
+  channel: z.string().optional(),
+  mentionUsers: z.array(z.string()).optional()
+});
+
+export const ChannelConfigSchema = z.union([
+  EmailChannelConfigSchema,
+  WebhookChannelConfigSchema,
+  SlackChannelConfigSchema
+]);
+
+export type TEmailChannelConfig = z.infer<typeof EmailChannelConfigSchema>;
+export type TWebhookChannelConfig = z.infer<typeof WebhookChannelConfigSchema>;
+export type TSlackChannelConfig = z.infer<typeof SlackChannelConfigSchema>;
+export type TChannelConfig = z.infer<typeof ChannelConfigSchema>;
+
+export const CreateChannelSchema = z.object({
+  channelType: z.nativeEnum(PkiAlertChannelType),
+  config: ChannelConfigSchema,
+  enabled: z.boolean().default(true)
+});
+
+export type TCreateChannel = z.infer<typeof CreateChannelSchema>;
+
+export const CreatePkiAlertV2Schema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(255)
+    .refine(createSecureNameValidator(), "Must be a valid name (lowercase, numbers, hyphens only)"),
+  description: z.string().max(1000).optional(),
+  eventType: z.nativeEnum(PkiAlertEventType),
+  alertBefore: z.string().refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'"),
+  filters: PkiFiltersSchema,
+  enabled: z.boolean().default(true),
+  channels: z.array(CreateChannelSchema).min(1, "At least one channel is required")
+});
+
+export type TCreatePkiAlertV2 = z.infer<typeof CreatePkiAlertV2Schema>;
+
+export const UpdatePkiAlertV2Schema = CreatePkiAlertV2Schema.partial();
+export type TUpdatePkiAlertV2 = z.infer<typeof UpdatePkiAlertV2Schema>;
+
+export type TCreateAlertV2DTO = TGenericPermission & {
+  projectId: string;
+} & TCreatePkiAlertV2;
+
+export type TUpdateAlertV2DTO = TGenericPermission & {
+  alertId: string;
+} & TUpdatePkiAlertV2;
+
+export type TGetAlertV2DTO = TGenericPermission & {
+  alertId: string;
+};
+
+export type TDeleteAlertV2DTO = TGenericPermission & {
+  alertId: string;
+};
+
+export type TListAlertsV2DTO = TGenericPermission & {
+  projectId: string;
+  search?: string;
+  eventType?: PkiAlertEventType;
+  enabled?: boolean;
+  limit?: number;
+  offset?: number;
+};
+
+export type TListMatchingCertificatesDTO = TGenericPermission & {
+  alertId: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TListCurrentMatchingCertificatesDTO = TGenericPermission & {
+  projectId: string;
+  filters: TPkiFilters;
+  alertBefore: string;
+  limit?: number;
+  offset?: number;
+};
+
+export type TCertificatePreview = {
+  id: string;
+  serialNumber: string;
+  commonName: string;
+  san: string[];
+  profileName: string | null;
+  enrollmentType: CertificateOrigin | null;
+  notBefore: Date;
+  notAfter: Date;
+  status: string;
+};
+
+export type TAlertV2Response = {
+  id: string;
+  name: string;
+  description: string | null;
+  eventType: PkiAlertEventType;
+  alertBefore: string;
+  filters: TPkiFilters;
+  enabled: boolean;
+  projectId: string;
+  channels: Array<{
+    id: string;
+    channelType: PkiAlertChannelType;
+    config: TChannelConfig;
+    enabled: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type TListAlertsV2Response = {
+  alerts: TAlertV2Response[];
+  total: number;
+};
+
+export type TListMatchingCertificatesResponse = {
+  certificates: TCertificatePreview[];
+  total: number;
+};

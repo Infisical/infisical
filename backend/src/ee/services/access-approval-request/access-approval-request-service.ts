@@ -243,7 +243,8 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const approvalPath = `/projects/secret-management/${project.id}/approval`;
+      const projectPath = `/projects/secret-management/${project.id}`;
+      const approvalPath = `${projectPath}/approval`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -252,6 +253,7 @@ export const accessApprovalRequestServiceFactory = ({
             type: TriggerFeature.ACCESS_REQUEST,
             payload: {
               projectName: project.name,
+              projectPath,
               requesterFullName,
               isTemporary,
               requesterEmail: requestedByUser.email as string,
@@ -397,7 +399,8 @@ export const accessApprovalRequestServiceFactory = ({
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
-      const approvalPath = `/projects/secret-management/${project.id}/approval`;
+      const projectPath = `/projects/secret-management/${project.id}`;
+      const approvalPath = `${projectPath}/approval`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
       await triggerWorkflowIntegrationNotification({
@@ -415,7 +418,8 @@ export const accessApprovalRequestServiceFactory = ({
               approvalUrl,
               editNote,
               editorEmail: editedByUser.email as string,
-              editorFullName
+              editorFullName,
+              projectPath
             }
           },
           projectId: project.id

@@ -1,11 +1,12 @@
-import { Heading, Hr, Section, Text } from "@react-email/components";
-import React, { Fragment } from "react";
+import { Heading, Section, Text } from "@react-email/components";
 
+import { BaseButton } from "./BaseButton";
 import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 
 interface PkiExpirationAlertTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   alertName: string;
   alertBeforeDays: number;
+  projectId: string;
   items: { type: string; friendlyName: string; serialNumber: string; expiryDate: string }[];
 }
 
@@ -13,44 +14,56 @@ export const PkiExpirationAlertTemplate = ({
   alertName,
   siteUrl,
   alertBeforeDays,
+  projectId,
   items
 }: PkiExpirationAlertTemplateProps) => {
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const certificateText = items.length === 1 ? "certificate" : "certificates";
+  const daysText = alertBeforeDays === 1 ? "1 day" : `${alertBeforeDays} days`;
+
+  const message = `Alert ${alertName}: You have ${items.length === 1 ? "one" : items.length} ${certificateText} that will expire in ${daysText}.`;
+
   return (
-    <BaseEmailWrapper
-      title="Infisical CA/Certificate Expiration Notice"
-      preview="One or more of your Infisical certificates is about to expire."
-      siteUrl={siteUrl}
-    >
+    <BaseEmailWrapper title="Certificate Expiration Notice" preview={message} siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
-        <strong>CA/Certificate Expiration Notice</strong>
+        <strong>Certificate Expiration Notice</strong>
       </Heading>
-      <Section className="px-[24px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
-        <Text>Hello,</Text>
-        <Text className="text-black text-[14px] leading-[24px]">
-          This is an automated alert for <strong>{alertName}</strong> triggered for CAs/Certificates expiring in{" "}
-          <strong>{alertBeforeDays}</strong> days.
+
+      <Section className="px-[24px] mb-[28px] mt-[36px] pt-[12px] pb-[8px] border border-solid border-gray-200 rounded-md bg-gray-50">
+        <Text className="text-[14px]">
+          Alert <strong className="font-semibold">{alertName}</strong>: You have{" "}
+          {items.length === 1 ? "one" : items.length} {certificateText} that will expire in {daysText}.
         </Text>
-        <Text className="text-[14px] leading-[24px] mb-[4px]">
-          <strong>Expiring Items:</strong>
-        </Text>
+      </Section>
+      <Section className="mb-[28px]">
+        <Text className="text-[14px] font-semibold mb-[12px]">Expiring certificates:</Text>
         {items.map((item) => (
-          <Fragment key={item.serialNumber}>
-            <Hr className="mb-[16px]" />
-            <strong className="text-[14px]">{item.type}:</strong>
-            <Text className="text-[14px] my-[2px] leading-[24px]">{item.friendlyName}</Text>
-            <strong className="text-[14px]">Serial Number:</strong>
-            <Text className="text-[14px] my-[2px] leading-[24px]">{item.serialNumber}</Text>
-            <strong className="text-[14px]">Expires On:</strong>
-            <Text className="text-[14px] mt-[2px] mb-[16px] leading-[24px]">{item.expiryDate}</Text>
-          </Fragment>
+          <Section
+            key={item.serialNumber}
+            className="mb-[16px] p-[16px] border border-solid border-gray-200 rounded-md bg-gray-50"
+          >
+            <Text className="text-[14px] font-semibold m-0 mb-[4px]">{item.friendlyName}</Text>
+            <Text className="text-[12px] text-gray-600 m-0 mb-[4px]">Serial: {item.serialNumber}</Text>
+            <Text className="text-[12px] text-gray-600 m-0">Expires: {formatDate(item.expiryDate)}</Text>
+          </Section>
         ))}
-        <Hr />
-        <Text className="text-[14px] leading-[24px]">
-          Please take the necessary actions to renew these items before they expire.
-        </Text>
-        <Text className="text-[14px] leading-[24px]">
-          For more details, please log in to your Infisical account and check your PKI management section.
-        </Text>
+      </Section>
+
+      <Section className="text-center mt-[32px] mb-[16px]">
+        <BaseButton href={`${siteUrl}/projects/cert-management/${projectId}/policies`}>
+          View Certificate Alerts
+        </BaseButton>
       </Section>
     </BaseEmailWrapper>
   );
@@ -59,11 +72,22 @@ export const PkiExpirationAlertTemplate = ({
 export default PkiExpirationAlertTemplate;
 
 PkiExpirationAlertTemplate.PreviewProps = {
-  alertBeforeDays: 5,
+  alertBeforeDays: 7,
   items: [
-    { type: "CA", friendlyName: "Example CA", serialNumber: "1234567890", expiryDate: "2032-01-01" },
-    { type: "Certificate", friendlyName: "Example Certificate", serialNumber: "2345678901", expiryDate: "2032-01-01" }
+    {
+      type: "Certificate",
+      friendlyName: "api.production.company.com",
+      serialNumber: "4B:3E:2F:A1:D6:7C:89:45:B2:E8:7F:1A:3D:9C:5E:8B",
+      expiryDate: "2025-11-12"
+    },
+    {
+      type: "Certificate",
+      friendlyName: "web.company.com",
+      serialNumber: "8A:7F:1C:E4:92:B5:D3:68:F1:A2:7E:9B:4C:6D:5A:3F",
+      expiryDate: "2025-11-10"
+    }
   ],
-  alertName: "My PKI Alert",
+  alertName: "Production SSL Certificate Expiration Alert",
+  projectId: "c3b0ef29-915b-4cb1-8684-65b91b7fe02d",
   siteUrl: "https://infisical.com"
 } as PkiExpirationAlertTemplateProps;

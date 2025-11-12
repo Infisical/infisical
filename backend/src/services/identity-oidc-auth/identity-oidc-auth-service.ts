@@ -112,7 +112,20 @@ export const identityOidcAuthServiceFactory = ({
       });
 
       const { kid } = decodedToken.header as { kid: string };
-      const oidcSigningKey = await client.getSigningKey(kid);
+
+      let oidcSigningKey;
+      try {
+        oidcSigningKey = await client.getSigningKey(kid);
+      } catch (error) {
+        if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+          throw new UnauthorizedError({
+            message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+          });
+        }
+        throw new UnauthorizedError({
+          message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+        });
+      }
 
       let tokenData: Record<string, string>;
       try {

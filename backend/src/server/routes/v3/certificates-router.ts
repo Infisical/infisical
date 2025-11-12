@@ -20,6 +20,7 @@ import {
 } from "@app/services/certificate-common/certificate-constants";
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
+import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
 interface CertificateRequestForService {
@@ -204,7 +205,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           ttl: req.body.ttl
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
-        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined
+        notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
+        enrollmentType: EnrollmentType.API
       });
 
       await server.services.auditLog.createAuditLog({

@@ -62,6 +62,7 @@ export enum ApiDocsTags {
   PkiCertificateCollections = "PKI Certificate Collections",
   PkiAlerting = "PKI Alerting",
   PkiSubscribers = "PKI Subscribers",
+  PkiAcme = "PKI ACME",
   SshCertificates = "SSH Certificates",
   SshCertificateAuthorities = "SSH Certificate Authorities",
   SshCertificateTemplates = "SSH Certificate Templates",
@@ -2308,7 +2309,10 @@ export const AppConnections = {
       code: "The OAuth code to use to connect with Azure Client Secrets.",
       tenantId: "The Tenant ID to use to connect with Azure Client Secrets.",
       clientId: "The Client ID to use to connect with Azure Client Secrets.",
-      clientSecret: "The Client Secret to use to connect with Azure Client Secrets."
+      clientSecret: "The Client Secret to use to connect with Azure Client Secrets.",
+      certificateBody: "The certificate body in PEM format to use to connect with Azure Client Secrets.",
+      privateKey:
+        "The private key to use to connect with Azure Client Secrets. This is never transmitted to Azure and is only used to sign the Azure client assertion with."
     },
     AZURE_DEVOPS: {
       code: "The OAuth code to use to connect with Azure DevOps.",

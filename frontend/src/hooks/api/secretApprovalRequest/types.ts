@@ -54,6 +54,7 @@ export type TSecretApprovalRequest = {
     lastName: string;
     username: string;
     isOrgMembershipActive: boolean;
+    createdAt: Date;
   }[];
   project: string;
   environment: string;

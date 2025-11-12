@@ -8,5 +8,6 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.MySQL]: { name: "MySQL", image: "MySql.png" },
   [PamResourceType.RDP]: { name: "RDP", image: "RDP.png" },
   [PamResourceType.SSH]: { name: "SSH", image: "SSH.png" },
-  [PamResourceType.Kubernetes]: { name: "Kubernetes", image: "Kubernetes.png" }
+  [PamResourceType.Kubernetes]: { name: "Kubernetes", image: "Kubernetes.png" },
+  [PamResourceType.MCP]: { name: "MCP", image: "MCP.png" }
 };
