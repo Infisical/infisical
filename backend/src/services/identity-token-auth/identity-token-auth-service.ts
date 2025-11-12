@@ -535,10 +535,7 @@ export const identityTokenAuthServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
 
-    const token = await identityAccessTokenDAL.findOne({
-      [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
-      [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH
-    });
+    const token = await identityAccessTokenDAL.findById(tokenId);
 
     if (!token) throw new NotFoundError({ message: `Token with ID ${tokenId} not found` });
 
