@@ -53,7 +53,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 - **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam), and more.
 - **[Dynamic Secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview)**: Generate ephemeral secrets on-demand for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/postgresql), [MySQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/mysql), [RabbitMQ](https://infisical.com/docs/documentation/platform/dynamic-secrets/rabbit-mq), and more.
 - **[Secret Scanning and Leak Prevention](https://infisical.com/docs/cli/scanning-overview)**: Prevent secrets from leaking to git.
-- **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/getting-started/kubernetes)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
+- **[Infisical Kubernetes Operator](https://infisical.com/docs/integrations/platforms/kubernetes/overview)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
 - **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)**: Inject secrets into applications without modifying any code logic.
 
 ### Certificate Management
