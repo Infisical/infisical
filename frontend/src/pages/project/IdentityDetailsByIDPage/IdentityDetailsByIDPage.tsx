@@ -8,7 +8,7 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
-import { ProjectPermissionCan } from "@app/components/permissions";
+import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
 import {
   Alert,
   AlertDescription,
@@ -20,6 +20,8 @@ import {
   Spinner
 } from "@app/components/v2";
 import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
@@ -211,19 +213,28 @@ const Page = () => {
             </div>
           </PageHeader>
           {!isProjectIdentity && (
-            <Alert hideTitle className="mb-4 border-primary/50 bg-primary/10">
+            <Alert hideTitle iconClassName="text-info" className="mb-4 border-info/50 bg-info/10">
               <AlertDescription>
                 This identity is managed by your organization.{" "}
-                <Link
-                  to="/organization/identities/$identityId"
-                  params={{
-                    identityId
-                  }}
+                <OrgPermissionCan
+                  I={OrgPermissionIdentityActions.Read}
+                  an={OrgPermissionSubjects.Identity}
                 >
-                  <span className="cursor-pointer text-primary underline underline-offset-2">
-                    Click here to retrieve credentials.
-                  </span>
-                </Link>
+                  {(isAllowed) =>
+                    isAllowed ? (
+                      <Link
+                        to="/organization/identities/$identityId"
+                        params={{
+                          identityId
+                        }}
+                      >
+                        <span className="cursor-pointer text-info underline underline-offset-2">
+                          Click here to manage identity.
+                        </span>
+                      </Link>
+                    ) : null
+                  }
+                </OrgPermissionCan>
               </AlertDescription>
             </Alert>
           )}
