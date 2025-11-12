@@ -19,6 +19,8 @@ Feature: Challenge
     And I tell ACME server that challenge is ready to be verified
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
+    And I parse the full-chain certificate from order finalized_order as cert
+    And the value cert with jq ".subject.common_name" should be equal to "localhost"
 
   Scenario: Validate challenges for multiple domains
     Given I have an ACME cert profile as "acme_profile"
@@ -44,6 +46,16 @@ Feature: Challenge
     And I pass all challenges with type http-01 for order in order
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
+    And I parse the full-chain certificate from order finalized_order as cert
+    And the value cert with jq ".subject.common_name" should be equal to "localhost"
+    And the value cert with jq "[.extensions.subjectAltName.general_names.[].value] | sort" should be equal to json
+      """
+      [
+        "example.com",
+        "infisical.com"
+      ]
+      """
+
 
   Scenario: Did not finish all challenges
     Given I have an ACME cert profile as "acme_profile"

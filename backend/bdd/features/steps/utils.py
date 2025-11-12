@@ -154,11 +154,14 @@ def x509_cert_to_dict(cert: x509.Certificate) -> dict:
     def name_to_dict(name: x509.Name) -> dict:
         return {oid_to_name(attr.oid): attr.value for attr in name}
 
+    def dns_to_dict(dns: x509.DNSName) -> dict:
+        return dict(value=dns.value)
+
     def extension_to_dict(ext):
         if isinstance(ext.value, x509.SubjectAlternativeName):
             return {
                 "critical": ext.critical,
-                "general_names": [str(gn) for gn in ext.value],
+                "general_names": [dns_to_dict(gn) for gn in ext.value],
             }
         elif isinstance(ext.value, x509.BasicConstraints):
             return {
