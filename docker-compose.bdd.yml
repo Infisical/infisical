@@ -75,6 +75,18 @@ services:
       - ./frontend/public:/app/public
     env_file: .env
 
+  # ACME server for BDD tests
+  pebble:
+    image: ghcr.io/letsencrypt/pebble:2.8.0
+    command: -config /var/data/pebble/pebble-config.json
+    ports:
+      - 14000:14000  # ACME port
+      - 15000:15000  # Management port
+    environment:
+      - PEBBLE_VA_NOSLEEP=1
+    volumes:
+      - ./bdd/config/pebble-config.json:/var/data/pebble/pebble-config.json
+
 volumes:
   postgres-data:
     driver: local
