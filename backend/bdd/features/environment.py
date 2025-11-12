@@ -202,6 +202,6 @@ def before_all(context: Context):
     context.http_client = httpx.Client(base_url=BASE_URL)
 
 
-def after_feature(context: Context, feature: typing.Any):
+def after_scenario(context: Context, scenario: typing.Any):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
