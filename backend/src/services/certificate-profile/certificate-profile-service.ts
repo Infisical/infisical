@@ -14,13 +14,14 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { ActorAuthMethod, ActorType } from "../auth/auth-type";
-import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
-import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
-import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
+import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
+import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
+import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
 import { TAcmeConfigData, TApiConfigData, TEstConfigData } from "../enrollment-config/enrollment-config-types";
@@ -152,6 +153,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
   certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
 };
@@ -174,6 +176,7 @@ export const certificateProfileServiceFactory = ({
   certificateBodyDAL,
   certificateSecretDAL,
   permissionService,
+  licenseService,
   kmsService,
   projectDAL
 }: TCertificateProfileServiceFactoryDep) => {
@@ -204,6 +207,17 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionSub.CertificateProfiles
     );
+
+    const project = await projectDAL.findById(projectId);
+    if (!project) {
+      throw new NotFoundError({ message: "Project not found" });
+    }
+    const plan = await licenseService.getPlan(project.orgId);
+    if (!plan.pkiAcme) {
+      throw new BadRequestError({
+        message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
+      });
+    }
 
     // Validate that certificate template exists and belongs to the same project
     if (data.certificateTemplateId) {
