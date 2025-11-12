@@ -23,6 +23,7 @@ import {
   UnauthorizedError
 } from "@app/lib/errors";
 import { extractIPDetails, isValidIpOrCidr } from "@app/lib/ip";
+import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
 import { getValueByDot } from "@app/lib/template/dot-access";
 
@@ -111,38 +112,106 @@ export const identityOidcAuthServiceFactory = ({
         requestAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
       });
 
-      const { kid } = decodedToken.header as { kid: string };
+      const { kid } = decodedToken.header as { kid?: string };
 
-      let oidcSigningKey;
-      try {
-        oidcSigningKey = await client.getSigningKey(kid);
-      } catch (error) {
-        if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+      let tokenData: Record<string, string> | undefined;
+
+      // If kid is provided, try to get the specific signing key
+      if (kid) {
+        let oidcSigningKey;
+        try {
+          oidcSigningKey = await client.getSigningKey(kid);
+        } catch (error) {
+          if (error instanceof Error && error.name === "SigningKeyNotFoundError") {
+            throw new UnauthorizedError({
+              message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+            });
+          }
           throw new UnauthorizedError({
-            message: `Access denied: Unable to verify JWT signature. The signing key '${kid}' was not found in the OIDC provider's JWKS endpoint. This may indicate an invalid token or misconfigured OIDC provider.`
+            message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
           });
         }
+
+        try {
+          tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
+            issuer: identityOidcAuth.boundIssuer
+          }) as Record<string, string>;
+        } catch (error) {
+          if (error instanceof jwt.JsonWebTokenError) {
+            throw new UnauthorizedError({
+              message: `Access denied: ${error.message}`
+            });
+          }
+          throw error;
+        }
+      } else {
+        // If kid is not provided, try all available signing keys
+        logger.warn(
+          `OIDC login without KID header [identityId=${identityOidcAuth.identityId}] [orgId=${org.id}] [ip=${requestContext.get("ip")}]`
+        );
+
+        let allSigningKeys;
+        try {
+          allSigningKeys = await client.getSigningKeys();
+        } catch (error) {
+          throw new UnauthorizedError({
+            message: `Access denied: Failed to retrieve signing keys from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+          });
+        }
+
+        if (!allSigningKeys || allSigningKeys.length === 0) {
+          throw new UnauthorizedError({
+            message: "Access denied: No signing keys available from OIDC provider's JWKS endpoint."
+          });
+        }
+
+        // Limit the number of keys to try to prevent abuse
+        const MAX_KEYS_TO_TRY = 10;
+        if (allSigningKeys.length > MAX_KEYS_TO_TRY) {
+          throw new UnauthorizedError({
+            message: `Access denied: OIDC provider has ${allSigningKeys.length} signing keys. Tokens must include 'kid' header when provider has more than ${MAX_KEYS_TO_TRY} keys.`
+          });
+        }
+
+        let lastError: Error | null = null;
+        let verified = false;
+
+        // Try each signing key until one works
+        for (const signingKey of allSigningKeys) {
+          try {
+            tokenData = crypto.jwt().verify(oidcJwt, signingKey.getPublicKey(), {
+              issuer: identityOidcAuth.boundIssuer
+            }) as Record<string, string>;
+            verified = true;
+            break;
+          } catch (error) {
+            if (error instanceof jwt.JsonWebTokenError) {
+              lastError = error;
+              // Continue trying other keys
+            } else {
+              throw error;
+            }
+          }
+        }
+
+        if (!verified) {
+          throw new UnauthorizedError({
+            message: `Access denied: Unable to verify JWT signature with any available signing key. ${lastError ? lastError.message : "Invalid token"}`
+          });
+        }
+      }
+
+      // Ensure tokenData was successfully assigned
+      if (!tokenData) {
         throw new UnauthorizedError({
-          message: `Access denied: Failed to retrieve signing key from OIDC provider: ${error instanceof Error ? error.message : String(error)}`
+          message: "Access denied: Failed to verify JWT token"
         });
       }
 
-      let tokenData: Record<string, string>;
-      try {
-        tokenData = crypto.jwt().verify(oidcJwt, oidcSigningKey.getPublicKey(), {
-          issuer: identityOidcAuth.boundIssuer
-        }) as Record<string, string>;
-      } catch (error) {
-        if (error instanceof jwt.JsonWebTokenError) {
-          throw new UnauthorizedError({
-            message: `Access denied: ${error.message}`
-          });
-        }
-        throw error;
-      }
+      const verifiedTokenData: Record<string, string> = tokenData;
 
       if (identityOidcAuth.boundSubject) {
-        if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
+        if (!doesFieldValueMatchOidcPolicy(verifiedTokenData.sub, identityOidcAuth.boundSubject)) {
           throw new ForbiddenRequestError({
             message: "Access denied: OIDC subject not allowed."
           });
@@ -153,7 +222,7 @@ export const identityOidcAuthServiceFactory = ({
         if (
           !identityOidcAuth.boundAudiences
             .split(", ")
-            .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
+            .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
         ) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC audience not allowed."
@@ -164,7 +233,7 @@ export const identityOidcAuthServiceFactory = ({
       if (identityOidcAuth.boundClaims) {
         Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
           const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
-          const value = getValueByDot(tokenData, claimKey);
+          const value = getValueByDot(verifiedTokenData, claimKey);
 
           if (!value) {
             throw new UnauthorizedError({
@@ -185,7 +254,7 @@ export const identityOidcAuthServiceFactory = ({
       if (identityOidcAuth.claimMetadataMapping) {
         Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
           const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
-          const value = getValueByDot(tokenData, claimKey);
+          const value = getValueByDot(verifiedTokenData, claimKey);
           if (!value) {
             throw new UnauthorizedError({
               message: `Access denied: token has no ${claimKey} field`
@@ -249,7 +318,7 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: tokenData };
+      return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: verifiedTokenData };
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
