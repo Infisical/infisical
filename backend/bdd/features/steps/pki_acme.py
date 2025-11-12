@@ -623,6 +623,9 @@ def serve_challenge(
     context: Context,
     challenge: messages.ChallengeBody,
 ):
+    if hasattr(context, "web_server"):
+        context.web_server.shutdown_and_server_close()
+
     response, validation = challenge.response_and_validation(
         context.acme_client.net.key
     )
@@ -658,6 +661,62 @@ def step_impl(
         order_var_path=var_path,
     )
     context.vars[challenge_var] = challenge
+
+
+@then("I pass all challenges with type {challenge_type} for order in {order_var_path}")
+def step_impl(
+    context: Context,
+    challenge_type: str,
+    order_var_path: str,
+):
+    acme_client = context.acme_client
+    order = eval_var(context, order_var_path, as_json=False)
+    if isinstance(order, dict):
+        order_body = messages.Order.from_json(order)
+        order = messages.OrderResource(
+            body=order_body,
+            authorizations=[
+                acme_client._authzr_from_response(
+                    acme_client._post_as_get(url), uri=url
+                )
+                for url in order_body.authorizations
+            ],
+        )
+    if not isinstance(order, messages.OrderResource):
+        raise ValueError(
+            f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
+        )
+
+    for domain in order.body.identifiers:
+        logger.info(
+            "Selecting challenge for domain %s with type %s ...",
+            domain.value,
+            challenge_type,
+        )
+        challenge = select_challenge(
+            context=context,
+            challenge_type=challenge_type,
+            domain=domain.value,
+            order_var_path=order_var_path,
+        )
+        logger.info(
+            "Found challenge for domain %s with type %s, challenge=%s",
+            domain.value,
+            challenge_type,
+            challenge.uri,
+        )
+
+        logger.info(
+            "Serving challenge for domain %s with type %s ...",
+            domain.value,
+            challenge_type,
+        )
+        serve_challenge(context=context, challenge=challenge)
+
+        logger.info(
+            "Notifying challenge for domain %s with type %s ...", domain, challenge_type
+        )
+        notify_challenge_ready(context=context, challenge=challenge)
 
 
 @then("I serve challenge response for {var_path} at {hostname}")

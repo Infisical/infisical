@@ -115,59 +115,57 @@ Feature: Challenge
     Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:orderNotReady"
     Then the value response with jq ".detail" should be equal to "ACME order is not ready"
 
-#  Scenario: CSR names mismatch with order identifier
-#    Given I have an ACME cert profile as "acme_profile"
-#    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
-#    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
-#    When I create certificate signing request as csr
-#    Then I add names to certificate signing request csr
-#      """
-#      {
-#        "COMMON_NAME": "example.com"
-#      }
-#      """
-#    And I create a RSA private key pair as cert_key
-#    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
-#    Then I peak and memorize the next nonce as nonce
-#    When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
-#      """
-#      {
-#        "protected": {
-#          "alg": "RS256",
-#          "nonce": "{nonce}",
-#          "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
-#          "kid": "{acme_account.uri}"
-#        },
-#        "payload": {
-#          "identifiers": [
-#           { "type": "dns", "value": "localhost" },
-#           { "type": "dns", "value": "infisical.com" }
-#          ]
-#        }
-#      }
-#      """
-#    Then the value response.status_code should be equal to 201
-#    And I memorize response with jq ".finalize" as finalize_url
-#    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
-#    And I memorize response as order
-#    And I select challenge with type http-01 for domain localhost from order in order as challenge
-#    And I serve challenge response for challenge at localhost
-#    And I tell ACME server that challenge is ready to be verified
-#    When I send a raw ACME request to "{finalize_url}"
-#      """
-#      {
-#        "protected": {
-#          "alg": "RS256",
-#          "nonce": "{nonce}",
-#          "url": "{finalize_url}",
-#          "kid": "{acme_account.uri}"
-#        },
-#        "payload": {
-#          "csr": "{csr_pem}"
-#        }
-#      }
-#      """
-#    Then the value response.status_code should be equal to 400
-#    Then the value response with jq ".status" should be equal to 400
-#    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:malformed"
-#    Then the value response with jq ".detail" should be equal to "<error_detail>"
+  Scenario: CSR names mismatch with order identifier
+    Given I have an ACME cert profile as "acme_profile"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
+    When I create certificate signing request as csr
+    Then I add names to certificate signing request csr
+      """
+      {
+        "COMMON_NAME": "example.com"
+      }
+      """
+    And I create a RSA private key pair as cert_key
+    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
+    Then I peak and memorize the next nonce as nonce
+    When I send a raw ACME request to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce}",
+          "url": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {
+          "identifiers": [
+           { "type": "dns", "value": "localhost" },
+           { "type": "dns", "value": "infisical.com" }
+          ]
+        }
+      }
+      """
+    Then the value response.status_code should be equal to 201
+    And I memorize response with jq ".finalize" as finalize_url
+    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
+    And I memorize response as order
+    And I pass all challenges with type http-01 for order in order
+    When I send a raw ACME request to "{finalize_url}"
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce}",
+          "url": "{finalize_url}",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {
+          "csr": "{csr_pem}"
+        }
+      }
+      """
+    Then the value response.status_code should be equal to 400
+    And the value response with jq ".status" should be equal to 400
+    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:malformed"
+    And the value response with jq ".detail" should be equal to "<error_detail>"
