@@ -4,7 +4,18 @@ export enum PamResourceType {
   RDP = "rdp",
   SSH = "ssh",
   Kubernetes = "kubernetes",
-  MCP = "mcp"
+  OracleDB = "oracledb",
+  SQLite = "sqlite",
+  MsSQL = "mssql",
+  MCP = "mcp",
+  Redis = "redis",
+  MongoDB = "mongodb",
+  WebApp = "webapp",
+  Cassandra = "cassandra",
+  CockroachDB = "cockroachdb",
+  Elasticsearch = "elasticsearch",
+  Snowflake = "snowflake",
+  DynamoDB = "dynamodb"
 }
 
 export enum PamSessionStatus {
