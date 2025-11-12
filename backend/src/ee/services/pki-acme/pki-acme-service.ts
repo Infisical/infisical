@@ -13,21 +13,22 @@ import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
 import { ActorType } from "@app/services/auth/auth-type";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { getConfig } from "@app/lib/config/env";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -41,10 +42,9 @@ import {
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
-  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
-import { buildUrl, extractAccountIdFromKid } from "./pki-acme-fns";
+import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
 import {
@@ -148,7 +148,7 @@ export const pkiAcmeServiceFactory = ({
     try {
       result = await flattenedVerify(rawJwsPayload, async (protectedHeader: JWSHeaderParameters | undefined) => {
         if (protectedHeader === undefined) {
-          throw new AcmeMalformedError({ detail: "Protected header is required" });
+          throw new AcmeMalformedError({ message: "Protected header is required" });
         }
         const jwk = await getJWK(protectedHeader);
         const key = await importJWK(jwk, protectedHeader.alg);
@@ -159,28 +159,35 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       if (error instanceof ZodError) {
-        throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
+        throw new AcmeMalformedError({ message: `Invalid JWS payload: ${error.message}` });
       }
       if (error instanceof errors.JWSSignatureVerificationFailed) {
-        throw new AcmeBadPublicKeyError({ detail: "Invalid JWS payload" });
+        throw new AcmeBadPublicKeyError({ message: "Invalid JWS payload" });
       }
       logger.error(error, "Unexpected error while verifying JWS payload");
-      throw new AcmeServerInternalError({ detail: "Failed to verify JWS payload" });
+      throw new AcmeMalformedError({ message: "Failed to verify JWS payload" });
     }
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      const parsedUrl = (() => {
+        try {
+          return new URL(protectedHeader.url);
+        } catch (error) {
+          throw new AcmeMalformedError({ message: "Invalid URL in the protected header" });
+        }
+      })();
       // Validate the URL
-      if (new URL(protectedHeader.url).href !== url.href) {
-        throw new AcmeUnauthorizedError({ detail: "URL mismatch in the protected header" });
+      if (parsedUrl.href !== url.href) {
+        throw new AcmeMalformedError({ message: "URL mismatch in the protected header" });
       }
       // Consume the nonce
       if (!protectedHeader.nonce) {
-        throw new AcmeMalformedError({ detail: "Nonce is required in the protected header" });
+        throw new AcmeMalformedError({ message: "Nonce is required in the protected header" });
       }
       const deleted = await keyStore.deleteItem(KeyStorePrefixes.PkiAcmeNonce(protectedHeader.nonce));
       if (deleted !== 1) {
-        throw new AcmeBadNonceError({ detail: "Invalid nonce" });
+        throw new AcmeBadNonceError({ message: "Invalid nonce" });
       }
 
       // Parse the payload
@@ -196,10 +203,10 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       if (error instanceof ZodError) {
-        throw new AcmeMalformedError({ detail: `Invalid JWS payload: ${error.message}` });
+        throw new AcmeMalformedError({ message: `Invalid JWS payload: ${error.message}` });
       }
       logger.error(error, "Unexpected error while parsing JWS payload");
-      throw new AcmeServerInternalError({ detail: "Failed to verify JWS payload" });
+      throw new AcmeMalformedError({ message: "Failed to verify JWS payload" });
     }
   };
 
@@ -215,7 +222,7 @@ export const pkiAcmeServiceFactory = ({
       rawJwsPayload,
       getJWK: async (protectedHeader) => {
         if (!protectedHeader.jwk) {
-          throw new AcmeMalformedError({ detail: "JWK is required in the protected header" });
+          throw new AcmeMalformedError({ message: "JWK is required in the protected header" });
         }
         return protectedHeader.jwk as unknown as JsonWebKey;
       },
@@ -246,18 +253,18 @@ export const pkiAcmeServiceFactory = ({
       rawJwsPayload,
       getJWK: async (protectedHeader) => {
         if (!protectedHeader.kid) {
-          throw new AcmeMalformedError({ detail: "KID is required in the protected header" });
+          throw new AcmeMalformedError({ message: "KID is required in the protected header" });
         }
         const accountId = extractAccountIdFromKid(protectedHeader.kid, profileId);
         if (expectedAccountId && accountId !== expectedAccountId) {
-          throw new NotFoundError({ message: "ACME resource not found" });
+          throw new AcmeAccountDoesNotExistError({ message: "ACME resource not found" });
         }
         const account = await acmeAccountDAL.findByProjectIdAndAccountId(profile.id, accountId);
         if (!account) {
           throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
         }
         if (account.alg !== protectedHeader.alg) {
-          throw new AcmeMalformedError({ detail: "ACME account algorithm mismatch" });
+          throw new AcmeMalformedError({ message: "ACME account algorithm mismatch" });
         }
         return account.publicKey as JsonWebKey;
       },
@@ -344,7 +351,7 @@ export const pkiAcmeServiceFactory = ({
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
     if (!externalAccountBinding) {
-      throw new AcmeExternalAccountRequiredError({ detail: "External account binding is required" });
+      throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
 
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
@@ -363,26 +370,28 @@ export const pkiAcmeServiceFactory = ({
         return { eabPayload: result.payload, eabProtectedHeader: result.protectedHeader };
       } catch (error) {
         if (error instanceof errors.JWSSignatureVerificationFailed) {
-          throw new AcmeMalformedError({ detail: "Invalid external account binding JWS signature" });
+          throw new AcmeExternalAccountRequiredError({ message: "Invalid external account binding JWS signature" });
         }
         logger.error(error, "Unexpected error while verifying EAB JWS signature");
-        throw new AcmeServerInternalError({ detail: "Failed to verify EAB JWS signature" });
+        throw new AcmeServerInternalError({ message: "Failed to verify EAB JWS signature" });
       }
     })();
 
     const { alg: eabAlg, kid: eabKid } = eabProtectedHeader!;
     if (!["HS256", "HS384", "HS512"].includes(eabAlg!)) {
-      throw new AcmeMalformedError({ detail: "Invalid algorithm for external account binding JWS payload" });
+      throw new AcmeExternalAccountRequiredError({
+        message: "Invalid algorithm for external account binding JWS payload"
+      });
     }
     // Make sure the KID in the EAB payload matches the profile ID
     if (eabKid !== profile.id) {
-      throw new UnauthorizedError({ message: "External account binding KID mismatch" });
+      throw new AcmeExternalAccountRequiredError({ message: "External account binding KID mismatch" });
     }
 
     // Make sure the URL matches the expected URL
     const url = eabProtectedHeader!.url!;
     if (url !== buildUrl(profile.id, "/new-account")) {
-      throw new UnauthorizedError({ message: "External account binding URL mismatch" });
+      throw new AcmeExternalAccountRequiredError({ message: "External account binding URL mismatch" });
     }
 
     // Make sure the JWK in the EAB payload matches the one provided in the outer JWS payload
@@ -481,6 +490,21 @@ export const pkiAcmeServiceFactory = ({
     // TODO: check the identifiers and see if are they even allowed for this profile.
     //       if not, we may be able to reject it early with an unsupportedIdentifier error.
 
+    // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
+    if (payload.identifiers.some((identifier) => identifier.type !== AcmeIdentifierType.DNS)) {
+      throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
+    }
+    if (
+      payload.identifiers.some(
+        (identifier) =>
+          !validateDnsIdentifier(identifier.value) ||
+          isPrivateIp(identifier.value) ||
+          (!getConfig().isDevelopmentMode && identifier.value.toLowerCase() === "localhost")
+      )
+    ) {
+      throw new AcmeUnsupportedIdentifierError({ message: "Invalid DNS identifier" });
+    }
+
     const order = await acmeOrderDAL.transaction(async (tx) => {
       const account = (await acmeAccountDAL.findByProjectIdAndAccountId(profileId, accountId))!;
       const createdOrder = await acmeOrderDAL.create(
@@ -497,10 +521,10 @@ export const pkiAcmeServiceFactory = ({
       const authorizations: TPkiAcmeAuths[] = await Promise.all(
         payload.identifiers.map(async (identifier) => {
           if (identifier.type !== AcmeIdentifierType.DNS) {
-            throw new AcmeUnsupportedIdentifierError({ detail: "Only DNS identifiers are supported" });
+            throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
           }
           if (isPrivateIp(identifier.value)) {
-            throw new AcmeUnsupportedIdentifierError({ detail: "Private IP addresses are not allowed" });
+            throw new AcmeUnsupportedIdentifierError({ message: "Private IP addresses are not allowed" });
           }
           const auth = await acmeAuthDAL.create(
             {
@@ -617,11 +641,12 @@ export const pkiAcmeServiceFactory = ({
             notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
             validity: !finalizingOrder.notAfter
               ? {
+                  // 47 days, the default TTL comes with Let's Encrypt
                   // TODO: read config from the profile to get the expiration time instead
-                  ttl: (24 * 60 * 60 * 1000).toString()
+                  ttl: `${47}d`
                 }
               : // ttl is not used if notAfter is provided
-                ({ ttl: "0" } as const),
+                ({ ttl: "0d" } as const),
             enrollmentType: EnrollmentType.ACME
           });
           // TODO: associate the certificate with the order
@@ -647,9 +672,9 @@ export const pkiAcmeServiceFactory = ({
           logger.error(exp, "Failed to sign certificate");
           // TODO: audit log the error
           if (exp instanceof BadRequestError) {
-            errorToReturn = new AcmeBadCSRError({ detail: `Invalid CSR: ${exp.message}` });
+            errorToReturn = new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
           } else {
-            errorToReturn = new AcmeServerInternalError({ detail: "Failed to sign certificate with internal error" });
+            errorToReturn = new AcmeServerInternalError({ message: "Failed to sign certificate with internal error" });
           }
         }
         return {

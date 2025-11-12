@@ -71,5 +71,6 @@ frontend-build
 cli/infisical-merge
 cli/test/infisical-merge
 /backend/binary
+backend/bdd/.bdd-infisical-bootstrap-result.json
 
 /npm/bin
