@@ -208,8 +208,10 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
+      const verifiedTokenData: Record<string, string> = tokenData;
+
       if (identityOidcAuth.boundSubject) {
-        if (!doesFieldValueMatchOidcPolicy(tokenData.sub, identityOidcAuth.boundSubject)) {
+        if (!doesFieldValueMatchOidcPolicy(verifiedTokenData.sub, identityOidcAuth.boundSubject)) {
           throw new ForbiddenRequestError({
             message: "Access denied: OIDC subject not allowed."
           });
@@ -220,7 +222,7 @@ export const identityOidcAuthServiceFactory = ({
         if (
           !identityOidcAuth.boundAudiences
             .split(", ")
-            .some((policyValue) => doesAudValueMatchOidcPolicy(tokenData.aud, policyValue))
+            .some((policyValue) => doesAudValueMatchOidcPolicy(verifiedTokenData.aud, policyValue))
         ) {
           throw new UnauthorizedError({
             message: "Access denied: OIDC audience not allowed."
@@ -231,7 +233,7 @@ export const identityOidcAuthServiceFactory = ({
       if (identityOidcAuth.boundClaims) {
         Object.keys(identityOidcAuth.boundClaims).forEach((claimKey) => {
           const claimValue = (identityOidcAuth.boundClaims as Record<string, string>)[claimKey];
-          const value = getValueByDot(tokenData, claimKey);
+          const value = getValueByDot(verifiedTokenData, claimKey);
 
           if (!value) {
             throw new UnauthorizedError({
@@ -252,7 +254,7 @@ export const identityOidcAuthServiceFactory = ({
       if (identityOidcAuth.claimMetadataMapping) {
         Object.keys(identityOidcAuth.claimMetadataMapping).forEach((permissionKey) => {
           const claimKey = (identityOidcAuth.claimMetadataMapping as Record<string, string>)[permissionKey];
-          const value = getValueByDot(tokenData, claimKey);
+          const value = getValueByDot(verifiedTokenData, claimKey);
           if (!value) {
             throw new UnauthorizedError({
               message: `Access denied: token has no ${claimKey} field`
@@ -316,7 +318,7 @@ export const identityOidcAuthServiceFactory = ({
         });
       }
 
-      return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: tokenData };
+      return { accessToken, identityOidcAuth, identityAccessToken, identity, oidcTokenData: verifiedTokenData };
     } catch (error) {
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
         authAttemptCounter.add(1, {
