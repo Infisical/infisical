@@ -42,6 +42,7 @@ import {
   CertKeyUsage,
   CertSubjectAlternativeNameType
 } from "@app/services/certificate/certificate-types";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -89,7 +90,6 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { TLicenseServiceFactory } from "../license/license-service";
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
@@ -120,7 +120,10 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
+  >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
@@ -730,7 +733,7 @@ export const pkiAcmeServiceFactory = ({
               //       we should queue the certificate issuance to a background job instead
               const cert = await orderCertificate(
                 {
-                  caId: certificateAuthority.id,
+                  caId: certificateAuthority!.id,
                   commonName: certificateRequest.commonName!,
                   altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
                   // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
