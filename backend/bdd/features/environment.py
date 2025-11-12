@@ -2,6 +2,8 @@ import json
 import os
 
 import pathlib
+import typing
+
 import httpx
 from behave.runner import Context
 from dotenv import load_dotenv
@@ -198,3 +200,8 @@ def before_all(context: Context):
             "AUTH_TOKEN": AUTH_TOKEN,
         }
     context.http_client = httpx.Client(base_url=BASE_URL)
+
+
+def after_feature(context: Context, feature: typing.Any):
+    if hasattr(context, "web_server"):
+        context.web_server.shutdown_and_server_close()

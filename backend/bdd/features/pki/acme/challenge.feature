@@ -93,3 +93,24 @@ Feature: Challenge
       """
     Then the value response.status_code should be equal to 200
     And the value response with jq ".status" should be equal to "pending"
+
+    # finalize should not be allowed when all auths are not valid yet
+    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
+    When I send a raw ACME request to "{order.body.finalize}"
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce}",
+          "url": "{order.body.finalize}",
+          "kid": "{acme_account.uri}"
+        },
+        "payload": {
+          "csr": "{csr_pem}"
+        }
+      }
+      """
+    Then the value response.status_code should be equal to 400
+    Then the value response with jq ".status" should be equal to 400
+    Then the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:orderNotReady"
+    Then the value response with jq ".detail" should be equal to "ACME order is not ready"

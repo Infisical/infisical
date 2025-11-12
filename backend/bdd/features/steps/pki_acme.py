@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-import threading
 import urllib.parse
 
 import acme.client
@@ -632,11 +631,8 @@ def serve_challenge(
     )
     # TODO: make port configurable
     servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
-    # Start client standalone web server.
-    web_server = threading.Thread(name="web_server", target=servers.serve_forever)
-    web_server.daemon = True
-    web_server.start()
-    context.web_server = web_server
+    servers.serve_forever()
+    context.web_server = servers
 
 
 def notify_challenge_ready(context: Context, challenge: messages.ChallengeBody):

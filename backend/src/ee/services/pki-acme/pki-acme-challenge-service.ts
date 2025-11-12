@@ -107,6 +107,7 @@ export const pkiAcmeChallengeServiceFactory = ({
             if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
               return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
             }
+            logger.error(exp, "Unknown error validating ACME challenge response");
             return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
           }
         } else if (exp instanceof DOMException) {
