@@ -133,7 +133,9 @@ export const pkiAcmeServiceFactory = ({
     }
     const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
     if (!orgLicensePlan.pkiAcme) {
-      throw new AcmeUnauthorizedError({ message: "The organization does not have a valid license to use ACME" });
+      throw new AcmeUnauthorizedError({
+        message: "Failed to validate ACME profile: Plan restriction. Upgrade plan to continue"
+      });
     }
     return profile;
   };
