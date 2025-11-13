@@ -243,7 +243,7 @@ export const orderCertificate = async (
     challengePriority: ["dns-01"],
     // For ACME development mode, we mock the DNS challenge API calls. So, no real DNS records are created.
     // We need to disable the challenge verification to avoid errors.
-    skipChallengeVerification: getConfig().isAcmeDevelopmentMode,
+    skipChallengeVerification: getConfig().isAcmeDevelopmentMode && getConfig().ACME_SKIP_UPSTREAM_VALIDATION,
     termsOfServiceAgreed: true,
 
     challengeCreateFn: async (authz, challenge, keyAuthorization) => {

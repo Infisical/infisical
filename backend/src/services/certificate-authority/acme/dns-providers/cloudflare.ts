@@ -68,8 +68,6 @@ export const cloudflareDeleteTxtRecord = async (
       },
       params: {
         type: "TXT",
-        // TODO: this is incorrect. The domain seems need to be fqdn, but we are passing just the record name here.
-        //       as a result, we are not deleting the record correctly.
         name: domain,
         content: value
       }
