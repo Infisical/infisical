@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { faClock, faEye } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
@@ -10,21 +9,21 @@ type Props = {
 };
 
 export const SecretShareInfo = ({ secret }: Props) => {
-  const timeRemaining = useMemo(() => {
-    if (!secret.expiresAt) return null;
+  let timeRemaining: string | null = null;
 
+  if (secret.expiresAt) {
     try {
-      return format(new Date(secret.expiresAt), "yyyy-MM-dd 'at' HH:mm a");
+      timeRemaining = format(new Date(secret.expiresAt), "yyyy-MM-dd 'at' HH:mm a");
     } catch {
-      return null;
+      timeRemaining = null;
     }
-  }, [secret.expiresAt]);
+  }
 
-  const viewsRemaining = useMemo(() => {
-    if (!secret.expiresAfterViews) return null;
+  let viewsRemaining: number | null = null;
 
-    return secret.expiresAfterViews - 1;
-  }, [secret.expiresAfterViews]);
+  if (secret.expiresAfterViews) {
+    viewsRemaining = secret.expiresAfterViews - 1;
+  }
 
   if (!timeRemaining && viewsRemaining === null) {
     return null;
