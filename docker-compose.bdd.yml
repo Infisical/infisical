@@ -41,12 +41,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    command:
-    - "/bin/bash"
-    - "-c"
-    - |
-      update-ca-certificates && \
-      npm run dev:docker
     depends_on:
       db:
         condition: service_started
@@ -61,8 +55,11 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      # This is needed to trust the Pebble CA certificate, which is used for the BDD tests
+      - NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/pebble.minica.crt
     volumes:
       - ./backend/src:/app/src
+      # This is needed to trust the Pebble CA certificate, which is used for the BDD tests
       - ./backend/bdd/pebble/pebble.minica.pem:/usr/local/share/ca-certificates/pebble.minica.crt:ro
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
