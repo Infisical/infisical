@@ -110,8 +110,13 @@ export const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
             >
               <TextArea
                 {...field}
+                value={field.value === UNCHANGED_PASSWORD_SENTINEL ? "" : field.value}
                 className="min-h-32 resize-y font-mono text-xs"
-                placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+                placeholder={
+                  isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL
+                    ? "Private key unchanged - click to update"
+                    : "-----BEGIN OPENSSH PRIVATE KEY-----\n...\n-----END OPENSSH PRIVATE KEY-----"
+                }
                 onFocus={() => {
                   if (isUpdate && field.value === UNCHANGED_PASSWORD_SENTINEL) {
                     field.onChange("");
