@@ -894,7 +894,7 @@
                 "pages": ["api-reference/endpoints/events/project-events"]
               },
               {
-                "group": "Identities",
+                "group": "Organization Identities",
                 "pages": [
                   "api-reference/endpoints/identities/create",
                   "api-reference/endpoints/identities/update",
@@ -2822,7 +2822,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "https://app.infisical.com/api/docs/json",
+    "openapi": "http://localhost:8080/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
