@@ -20,7 +20,7 @@ export const AwsConnectionAccessTokenCredentialsSchema = z.object({
   secretAccessKey: z.string().trim().min(1, "Secret Access Key required")
 });
 
-const BaseAwsConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.AWS) }).describe("aws");
+const BaseAwsConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.AWS) });
 
 export const AwsConnectionSchema = z.intersection(
   BaseAwsConnectionSchema,
