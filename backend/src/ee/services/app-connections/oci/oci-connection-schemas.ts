@@ -2,6 +2,7 @@ import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
@@ -34,7 +35,7 @@ export const SanitizedOCIConnectionSchema = z.discriminatedUnion("method", [
       region: true,
       fingerprint: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.OCI]} (Access Key)` }))
 ]);
 
 export const ValidateOCIConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -58,8 +59,10 @@ export const UpdateOCIConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.OCI));
 
-export const OCIConnectionListItemSchema = z.object({
-  name: z.literal("OCI"),
-  app: z.literal(AppConnection.OCI),
-  methods: z.nativeEnum(OCIConnectionMethod).array()
-});
+export const OCIConnectionListItemSchema = z
+  .object({
+    name: z.literal("OCI"),
+    app: z.literal(AppConnection.OCI),
+    methods: z.nativeEnum(OCIConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.OCI] }));

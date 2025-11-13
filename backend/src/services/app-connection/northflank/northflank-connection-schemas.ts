@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { NorthflankConnectionMethod } from "./northflank-connection-enums";
 
 export const NorthflankConnectionApiTokenCredentialsSchema = z.object({
@@ -27,7 +28,7 @@ export const SanitizedNorthflankConnectionSchema = z.discriminatedUnion("method"
   BaseNorthflankConnectionSchema.extend({
     method: z.literal(NorthflankConnectionMethod.ApiToken),
     credentials: NorthflankConnectionApiTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Northflank]} (API Token)` }))
 ]);
 
 export const ValidateNorthflankConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -53,8 +54,10 @@ export const UpdateNorthflankConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Northflank));
 
-export const NorthflankConnectionListItemSchema = z.object({
-  name: z.literal("Northflank"),
-  app: z.literal(AppConnection.Northflank),
-  methods: z.nativeEnum(NorthflankConnectionMethod).array()
-});
+export const NorthflankConnectionListItemSchema = z
+  .object({
+    name: z.literal("Northflank"),
+    app: z.literal(AppConnection.Northflank),
+    methods: z.nativeEnum(NorthflankConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Northflank] }));

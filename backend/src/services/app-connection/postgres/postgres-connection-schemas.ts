@@ -8,6 +8,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { AppConnection } from "../app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { BaseSqlUsernameAndPasswordConnectionSchema } from "../shared/sql";
 import { PostgresConnectionMethod } from "./postgres-connection-enums";
 
@@ -32,7 +33,7 @@ export const SanitizedPostgresConnectionSchema = z.discriminatedUnion("method", 
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Postgres]} (Username and Password)` }))
 ]);
 
 export const ValidatePostgresConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -66,9 +67,11 @@ export const UpdatePostgresConnectionSchema = z
     })
   );
 
-export const PostgresConnectionListItemSchema = z.object({
-  name: z.literal("PostgreSQL"),
-  app: z.literal(AppConnection.Postgres),
-  methods: z.nativeEnum(PostgresConnectionMethod).array(),
-  supportsPlatformManagement: z.literal(true)
-});
+export const PostgresConnectionListItemSchema = z
+  .object({
+    name: z.literal("PostgreSQL"),
+    app: z.literal(AppConnection.Postgres),
+    methods: z.nativeEnum(PostgresConnectionMethod).array(),
+    supportsPlatformManagement: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Postgres] }));
