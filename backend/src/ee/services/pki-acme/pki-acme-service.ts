@@ -729,6 +729,8 @@ export const pkiAcmeServiceFactory = ({
               return { certificateId: result.certificateId };
             } else {
               const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
+              // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
+              //       we should check the CSR against the template here
               // TODO: this is pretty slow, and we are holding the transaction open for a long time,
               //       we should queue the certificate issuance to a background job instead
               const cert = await orderCertificate(
