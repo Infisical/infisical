@@ -177,14 +177,14 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
       {filteredLogs.length > 0 && (
         <Tr>
           <Td colSpan={5} className="py-3 text-xs">
-            {logsToShow.map((log, idx) => {
+            {logsToShow.map((log) => {
               // Handle command logs (database sessions)
               if ("input" in log && "output" in log) {
                 const formattedInput = formatLogContent(log.input);
 
                 return (
                   <div
-                    key={`${id}-log-${log.timestamp}-${idx}`}
+                    key={`${id}-log-${log.timestamp}`}
                     className="mb-4 flex flex-col gap-1 last:mb-0"
                   >
                     <div className="flex items-center gap-1.5 text-bunker-400">
@@ -206,7 +206,7 @@ export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
               if ("data" in log && typeof log.data === "string") {
                 return (
                   <div
-                    key={`${id}-log-${log.timestamp}-${idx}`}
+                    key={`${id}-log-${log.timestamp}`}
                     className="mb-4 flex flex-col gap-1 last:mb-0"
                   >
                     <div className="flex items-center gap-1.5 text-bunker-400">

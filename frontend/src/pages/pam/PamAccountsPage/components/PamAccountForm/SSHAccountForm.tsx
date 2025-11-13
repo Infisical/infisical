@@ -1,5 +1,5 @@
-import { FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
@@ -30,23 +30,32 @@ type FormData = z.infer<typeof formSchema>;
 export const SSHAccountForm = ({ account, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
 
+  const getDefaultCredentials = () => {
+    if (!account) return undefined;
+
+    if (account.credentials.authMethod === SSHAuthMethod.Password) {
+      return {
+        ...account.credentials,
+        password: UNCHANGED_PASSWORD_SENTINEL
+      };
+    }
+
+    if (account.credentials.authMethod === SSHAuthMethod.PublicKey) {
+      return {
+        ...account.credentials,
+        privateKey: UNCHANGED_PASSWORD_SENTINEL
+      };
+    }
+
+    return account.credentials;
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: account
       ? {
           ...account,
-          credentials:
-            account.credentials.authMethod === SSHAuthMethod.Password
-              ? {
-                  ...account.credentials,
-                  password: UNCHANGED_PASSWORD_SENTINEL
-                }
-              : account.credentials.authMethod === SSHAuthMethod.PublicKey
-                ? {
-                    ...account.credentials,
-                    privateKey: UNCHANGED_PASSWORD_SENTINEL
-                  }
-                : account.credentials
+          credentials: getDefaultCredentials()
         }
       : {
           name: "",
