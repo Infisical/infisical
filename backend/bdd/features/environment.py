@@ -16,6 +16,7 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 BASE_URL = os.environ.get("INFISICAL_API_URL", "http://localhost:8080")
+PEBBLE_URL = os.environ.get("PEBBLE_URL", "https://pebble:14000/dir")
 PROJECT_ID = os.environ.get("PROJECT_ID")
 CERT_CA_ID = os.environ.get("CERT_CA_ID")
 CERT_TEMPLATE_ID = os.environ.get("CERT_TEMPLATE_ID")
