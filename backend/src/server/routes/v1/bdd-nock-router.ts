@@ -43,7 +43,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
         } as Definition;
       });
 
-      nock.define(processedDefinitions as Definition[]);
+      nock.define(processedDefinitions);
       // Ensure we are activating the nocks, because we could have called `nock.restore()` before this call.
       if (!nock.isActive()) {
         nock.activate();

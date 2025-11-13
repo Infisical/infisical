@@ -256,7 +256,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({
+      const { profileId, accountId } = await validateExistingAccount({
         req
       });
       return sendAcmeResponse(
@@ -365,7 +365,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({
+      const { profileId, accountId } = await validateExistingAccount({
         req
       });
       res.type("application/pem-certificate-chain");
@@ -398,7 +398,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({ req });
+      const { profileId, accountId } = await validateExistingAccount({ req });
       return sendAcmeResponse(
         res,
         profileId,
