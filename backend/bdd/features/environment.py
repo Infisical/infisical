@@ -189,6 +189,7 @@ def before_all(context: Context):
         details = bootstrap_infisical(context)
         context.vars = {
             "BASE_URL": BASE_URL,
+            "PEBBLE_URL": PEBBLE_URL,
             "PROJECT_ID": details["project"]["id"],
             "CERT_CA_ID": details["ca"]["id"],
             "CERT_TEMPLATE_ID": details["cert_template"]["id"],
@@ -197,6 +198,7 @@ def before_all(context: Context):
     else:
         context.vars = {
             "BASE_URL": BASE_URL,
+            "PEBBLE_URL": PEBBLE_URL,
             "PROJECT_ID": PROJECT_ID,
             "CERT_CA_ID": CERT_CA_ID,
             "CERT_TEMPLATE_ID": CERT_TEMPLATE_ID,
