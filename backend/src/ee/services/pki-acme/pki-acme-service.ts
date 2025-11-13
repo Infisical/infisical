@@ -729,6 +729,8 @@ export const pkiAcmeServiceFactory = ({
               return { certificateId: result.certificateId };
             }
             const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
+            const csrObj = new x509.Pkcs10CertificateRequest(csr);
+            const csrPem = csrObj.toString("pem");
             // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
             //       we should check the CSR against the template here
             // TODO: this is pretty slow, and we are holding the transaction open for a long time,
@@ -738,7 +740,7 @@ export const pkiAcmeServiceFactory = ({
                 caId: certificateAuthority!.id,
                 commonName: certificateRequest.commonName!,
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
-                csr: Buffer.from(csr),
+                csr: Buffer.from(csrPem),
                 // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
                 keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
                 extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
