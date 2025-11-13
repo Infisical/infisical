@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.x509.oid import NameOID
 import logging
 import re
+import contextlib
 
 import httpx
 import requests
@@ -258,3 +259,43 @@ def x509_cert_to_dict(cert: x509.Certificate) -> dict:
     )
 
     return result
+
+
+def define_nock(context: Context, definitions: list[dict]):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    response = context.http_client.post(
+        "/api/v1/bdd-nock/define",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json=dict(definitions=definitions),
+    )
+    response.raise_for_status()
+
+
+def restore_nock(context: Context):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    response = context.http_client.post(
+        "/api/v1/bdd-nock/restore",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json=dict(),
+    )
+    response.raise_for_status()
+
+
+def clear_all_nock(context: Context):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    response = context.http_client.post(
+        "/api/v1/bdd-nock/clear-all",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json=dict(),
+    )
+    response.raise_for_status()
+
+
+@contextlib.contextmanager
+def with_nocks(context: Context, definitions: list[dict]):
+    try:
+        define_nock(context, definitions)
+        yield
+    finally:
+        clear_all_nock(context)
+        restore_nock(context)

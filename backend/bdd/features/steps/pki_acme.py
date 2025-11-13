@@ -22,7 +22,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 
-from utils import replace_vars
+from utils import replace_vars, with_nocks
 from utils import eval_var
 from utils import prepare_headers
 
@@ -46,6 +46,107 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 
 
 @given('I have an ACME cert profile as "{profile_var}"')
+def step_impl(context: Context, profile_var: str):
+    profile_id = context.vars.get("PROFILE_ID")
+    secret = context.vars.get("EAB_SECRET")
+    if profile_id is not None and secret is not None:
+        kid = profile_id
+    else:
+        profile_slug = faker.slug()
+        jwt_token = context.vars["AUTH_TOKEN"]
+        response = context.http_client.post(
+            "/api/v1/pki/certificate-profiles",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "projectId": context.vars["PROJECT_ID"],
+                "slug": profile_slug,
+                "description": "ACME Profile created by BDD test",
+                "enrollmentType": "acme",
+                "caId": context.vars["CERT_CA_ID"],
+                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "acmeConfig": {},
+            },
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        profile_id = resp_json["certificateProfile"]["id"]
+        kid = profile_id
+
+        response = context.http_client.get(
+            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        secret = resp_json["eabSecret"]
+
+    context.vars[profile_var] = AcmeProfile(
+        profile_id,
+        eab_kid=kid,
+        eab_secret=secret,
+    )
+
+
+@given("I create a Cloudflare connection as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    conn_slug = faker.slug()
+    mock_account_id = "MOCK_ACCOUNT_ID"
+    with with_nocks(
+        context,
+        definitions=[
+            {
+                "scope": "https://api.cloudflare.com:443",
+                "method": "GET",
+                "path": f"/client/v4/accounts/{mock_account_id}",
+                "status": 200,
+                "response": {
+                    "result": {
+                        "id": "A2A6347F-88B5-442D-9798-95E408BC7701",
+                        "name": "Mock Account",
+                        "type": "standard",
+                        "settings": {
+                            "enforce_twofactor": True,
+                            "api_access_enabled": None,
+                            "access_approval_expiry": None,
+                            "abuse_contact_email": None,
+                            "user_groups_ui_beta": False,
+                        },
+                        "legacy_flags": {
+                            "enterprise_zone_quota": {
+                                "maximum": 0,
+                                "current": 0,
+                                "available": 0,
+                            }
+                        },
+                        "created_on": "2013-04-18T00:41:02.215243Z",
+                    },
+                    "success": True,
+                    "errors": [],
+                    "messages": [],
+                },
+                "responseIsBinary": False,
+            }
+        ],
+    ):
+        response = context.http_client.post(
+            "/api/v1/app-connections/cloudflare",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "name": conn_slug,
+                "description": "",
+                "method": "api-token",
+                "credentials": {
+                    "apiToken": "MOCK_API_TOKEN",
+                    "accountId": mock_account_id,
+                },
+            },
+        )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
+@given('I have an ACME cert profile with external ACME CA as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile_id = context.vars.get("PROFILE_ID")
     secret = context.vars.get("EAB_SECRET")

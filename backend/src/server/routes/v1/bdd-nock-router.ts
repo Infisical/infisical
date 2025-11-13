@@ -4,6 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { logger } from "@app/lib/logger";
 import nock, { Definition } from "nock";
 
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
@@ -20,7 +21,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
     method: "POST",
     url: "/define",
     schema: {
-      body: z.object({ definition: z.string() }),
+      body: z.object({ definitions: z.unknown().array() }),
       response: {
         200: z.object({ status: z.string() })
       }
@@ -29,8 +30,9 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       checkIfBddNockApiEnabled();
       const { body } = req;
-      const { definition } = body;
-      nock.define(definition as unknown as Definition[]);
+      const { definitions } = body;
+      logger.info(definitions, "Defining nock");
+      nock.define(definitions as Definition[]);
       return { status: "ok" };
     }
   });
@@ -46,6 +48,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       checkIfBddNockApiEnabled();
+      logger.info("Restore network requests from nock");
       nock.restore();
       return { status: "ok" };
     }
@@ -62,6 +65,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
       checkIfBddNockApiEnabled();
+      logger.info("Cleaning all nocks");
       nock.cleanAll();
       return { status: "ok" };
     }
