@@ -186,6 +186,45 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = response
 
 
+@given(
+    'I create an ACME profile with ca {ca_id} and template {template_id} as "{profile_var}"'
+)
+def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
+    profile_slug = faker.slug()
+    jwt_token = context.vars["AUTH_TOKEN"]
+    response = context.http_client.post(
+        "/api/v1/pki/certificate-profiles",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json={
+            "projectId": context.vars["PROJECT_ID"],
+            "slug": profile_slug,
+            "description": "ACME Profile created by BDD test",
+            "enrollmentType": "acme",
+            "caId": replace_vars(ca_id, context.vars),
+            "certificateTemplateId": replace_vars(template_id, context.vars),
+            "acmeConfig": {},
+        },
+    )
+    response.raise_for_status()
+    resp_json = response.json()
+    profile_id = resp_json["certificateProfile"]["id"]
+    kid = profile_id
+
+    response = context.http_client.get(
+        f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+    )
+    response.raise_for_status()
+    resp_json = response.json()
+    secret = resp_json["eabSecret"]
+
+    context.vars[profile_var] = AcmeProfile(
+        profile_id,
+        eab_kid=kid,
+        eab_secret=secret,
+    )
+
+
 @given('I have an ACME cert profile with external ACME CA as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile_id = context.vars.get("PROFILE_ID")
