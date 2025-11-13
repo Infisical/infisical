@@ -183,8 +183,9 @@ def x509_cert_to_dict(cert: x509.Certificate) -> dict:
                         "key_agreement",
                         "key_cert_sign",
                         "crl_sign",
-                        "encipher_only",
-                        "decipher_only",
+                        # TODO: deal with error: "ValueError: encipher_only is undefined unless key_agreement is true"
+                        # "encipher_only",
+                        # "decipher_only",
                     ]
                     if getattr(ext.value, field) is not None
                 },

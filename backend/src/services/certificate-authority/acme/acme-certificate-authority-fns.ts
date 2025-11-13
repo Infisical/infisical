@@ -29,6 +29,7 @@ import { triggerAutoSyncForSubscriber } from "@app/services/pki-sync/pki-sync-ut
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { getConfig } from "@app/lib/config/env";
 import { Knex } from "knex";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority-dal";
 import { CaStatus, CaType } from "../certificate-authority-enums";
@@ -43,7 +44,6 @@ import {
 } from "./acme-certificate-authority-types";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
-import { getConfig } from "@app/lib/config/env";
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
