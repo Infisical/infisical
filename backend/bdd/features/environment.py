@@ -121,7 +121,7 @@ def bootstrap_infisical(context: Context):
                 "name": cert_template_slug,
                 "description": "",
                 "subject": [{"type": "common_name", "allowed": ["*"]}],
-                "sans": [],
+                "sans": [{"type": "dns_name", "allowed": ["*"]}],
                 "keyUsages": {
                     "required": [],
                     "allowed": [
