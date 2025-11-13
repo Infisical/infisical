@@ -14,13 +14,11 @@ import {
   FormLabel,
   IconButton,
   Input,
-  Modal,
-  ModalContent,
   Switch
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { findOrgMembershipRole } from "@app/helpers/roles";
-import { useCreateIdentity, useGetOrgRoles, useUpdateIdentity } from "@app/hooks/api";
+import { useCreateOrgIdentity, useGetOrgRoles, useUpdateOrgIdentity } from "@app/hooks/api";
 import { useAddIdentityUniversalAuth } from "@app/hooks/api/identities";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -47,7 +45,7 @@ type Props = {
   handlePopUpToggle: (popUpName: keyof UsePopUpState<["identity"]>, state?: boolean) => void;
 };
 
-export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
+export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
@@ -55,8 +53,8 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: roles } = useGetOrgRoles(orgId);
   const isOrgIdentity = popUp?.identity?.data ? orgId === popUp?.identity?.data?.orgId : true;
 
-  const { mutateAsync: createMutateAsync } = useCreateIdentity();
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
+  const { mutateAsync: createMutateAsync } = useCreateOrgIdentity();
+  const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
   const { mutateAsync: addMutateAsync } = useAddIdentityUniversalAuth();
 
   const {
@@ -173,75 +171,66 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
   };
 
   return (
-    <Modal
-      isOpen={popUp?.identity?.isOpen}
-      onOpenChange={(isOpen) => {
-        handlePopUpToggle("identity", isOpen);
-        reset();
-      }}
-    >
-      <ModalContent
-        bodyClassName="overflow-visible"
-        title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
-      >
-        <form onSubmit={handleSubmit(onFormSubmit)}>
-          {isOrgIdentity && (
-            <Controller
-              control={control}
-              defaultValue=""
-              name="name"
-              render={({ field, fieldState: { error } }) => (
-                <FormControl
-                  className="mb-4"
-                  label="Name"
-                  isError={Boolean(error)}
-                  errorText={error?.message}
-                >
-                  <Input {...field} placeholder="Machine 1" />
-                </FormControl>
-              )}
-            />
+    <form onSubmit={handleSubmit(onFormSubmit)}>
+      {isOrgIdentity && (
+        <Controller
+          control={control}
+          defaultValue=""
+          name="name"
+          render={({ field, fieldState: { error } }) => (
+            <FormControl
+              className="mb-4"
+              label="Name"
+              isError={Boolean(error)}
+              errorText={error?.message}
+            >
+              <Input {...field} placeholder="Machine 1" />
+            </FormControl>
           )}
-          <Controller
-            control={control}
-            name="role"
-            render={({ field: { onChange, value }, fieldState: { error } }) => (
-              <FormControl
-                label={`${popUp?.identity?.data ? "Update" : ""} Role`}
-                errorText={error?.message}
-                isError={Boolean(error)}
+        />
+      )}
+      <Controller
+        control={control}
+        name="role"
+        render={({ field: { onChange, value }, fieldState: { error } }) => (
+          <FormControl
+            label={`${popUp?.identity?.data ? "Update" : ""} Role`}
+            errorText={error?.message}
+            isError={Boolean(error)}
+          >
+            <FilterableSelect
+              placeholder="Select role..."
+              options={roles}
+              onChange={onChange}
+              value={value}
+              getOptionValue={(option) => option.slug}
+              getOptionLabel={(option) => option.name}
+            />
+          </FormControl>
+        )}
+      />
+      {isOrgIdentity && (
+        <Controller
+          control={control}
+          name="hasDeleteProtection"
+          render={({ field: { onChange, value }, fieldState: { error } }) => (
+            <FormControl errorText={error?.message} isError={Boolean(error)}>
+              <Switch
+                className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                containerClassName="flex-row-reverse w-fit"
+                id="delete-protection-enabled"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
               >
-                <FilterableSelect
-                  placeholder="Select role..."
-                  options={roles}
-                  onChange={onChange}
-                  value={value}
-                  getOptionValue={(option) => option.slug}
-                  getOptionLabel={(option) => option.name}
-                />
-              </FormControl>
-            )}
-          />
-          {isOrgIdentity && (
-            <Controller
-              control={control}
-              name="hasDeleteProtection"
-              render={({ field: { onChange, value }, fieldState: { error } }) => (
-                <FormControl errorText={error?.message} isError={Boolean(error)}>
-                  <Switch
-                    className="mr-2 ml-0 bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
-                    containerClassName="flex-row-reverse w-fit"
-                    id="delete-protection-enabled"
-                    thumbClassName="bg-mineshaft-800"
-                    onCheckedChange={onChange}
-                    isChecked={value}
-                  >
-                    <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
-                  </Switch>
-                </FormControl>
-              )}
-            />
+                <p>Delete Protection {value ? "Enabled" : "Disabled"}</p>
+              </Switch>
+            </FormControl>
           )}
+        />
+      )}
+      {isOrgIdentity && (
+        <>
           <div>
             <FormLabel label="Metadata" />
           </div>
@@ -303,26 +292,26 @@ export const IdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
               </Button>
             </div>
           </div>
-          <div className="flex items-center">
-            <Button
-              className="mr-4"
-              size="sm"
-              type="submit"
-              isLoading={isSubmitting}
-              isDisabled={isSubmitting}
-            >
-              {popUp?.identity?.data ? "Update" : "Create"}
-            </Button>
-            <Button
-              colorSchema="secondary"
-              variant="plain"
-              onClick={() => handlePopUpToggle("identity", false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
-      </ModalContent>
-    </Modal>
+        </>
+      )}
+      <div className="flex items-center">
+        <Button
+          className="mr-4"
+          size="sm"
+          type="submit"
+          isLoading={isSubmitting}
+          isDisabled={isSubmitting}
+        >
+          {popUp?.identity?.data ? "Update" : "Create"}
+        </Button>
+        <Button
+          colorSchema="secondary"
+          variant="plain"
+          onClick={() => handlePopUpToggle("identity", false)}
+        >
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 };

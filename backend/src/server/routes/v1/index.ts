@@ -14,6 +14,7 @@ import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authori
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
 import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
@@ -33,8 +34,8 @@ import { registerIdentityKubernetesRouter } from "./identity-kubernetes-auth-rou
 import { registerIdentityLdapAuthRouter } from "./identity-ldap-auth-router";
 import { registerIdentityOciAuthRouter } from "./identity-oci-auth-router";
 import { registerIdentityOidcAuthRouter } from "./identity-oidc-auth-router";
-import { registerOrgIdentityMembershipRouter } from "./identity-org-membership-router";
-import { registerIdentityProjectRouter } from "./identity-project-router";
+import { registerIdentityOrgMembershipRouter } from "./identity-org-membership-router";
+import { registerIdentityProjectMembershipRouter } from "./identity-project-membership-router";
 import { registerIdentityRouter } from "./identity-router";
 import { registerIdentityTlsCertAuthRouter } from "./identity-tls-cert-auth-router";
 import { registerIdentityTokenAuthRouter } from "./identity-token-auth-router";
@@ -45,6 +46,7 @@ import { registerInviteOrgRouter } from "./invite-org-router";
 import { registerMicrosoftTeamsRouter } from "./microsoft-teams-router";
 import { registerNotificationRouter } from "./notification-router";
 import { registerOrgAdminRouter } from "./org-admin-router";
+import { registerOrgIdentityRouter } from "./org-identity-router";
 import { registerOrgRouter } from "./organization-router";
 import { registerPasswordRouter } from "./password-router";
 import { registerPkiAlertRouter } from "./pki-alert-router";
@@ -52,6 +54,7 @@ import { registerPkiCollectionRouter } from "./pki-collection-router";
 import { registerPkiSubscriberRouter } from "./pki-subscriber-router";
 import { PKI_SYNC_REGISTER_ROUTER_MAP, registerPkiSyncRouter } from "./pki-sync-routers";
 import { registerProjectEnvRouter } from "./project-env-router";
+import { registerProjectIdentityRouter } from "./project-identity-router";
 import { registerProjectKeyRouter } from "./project-key-router";
 import { registerProjectMembershipRouter } from "./project-membership-router";
 import { registerProjectRouter } from "./project-router";
@@ -90,8 +93,14 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     { prefix: "/auth" }
   );
   await server.register(registerPasswordRouter, { prefix: "/password" });
-  await server.register(registerOrgRouter, { prefix: "/organization" });
-  await server.register(registerOrgIdentityMembershipRouter, { prefix: "/organization" });
+  await server.register(
+    async (orgRouter) => {
+      await orgRouter.register(registerOrgRouter);
+      await orgRouter.register(registerOrgIdentityRouter);
+      await orgRouter.register(registerIdentityOrgMembershipRouter);
+    },
+    { prefix: "/organization" }
+  );
   await server.register(registerAdminRouter, { prefix: "/admin" });
   await server.register(registerOrgAdminRouter, { prefix: "/organization-admin" });
   await server.register(registerUserRouter, { prefix: "/user" });
@@ -126,13 +135,18 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
     async (projectRouter) => {
       await projectRouter.register(registerProjectRouter);
       await projectRouter.register(registerProjectMembershipRouter);
+      await projectRouter.register(registerProjectIdentityRouter);
       await projectRouter.register(registerProjectEnvRouter);
       await projectRouter.register(registerSecretTagRouter);
       await projectRouter.register(registerGroupProjectRouter);
-      await projectRouter.register(registerIdentityProjectRouter);
+      await projectRouter.register(registerDeprecatedIdentityProjectMembershipRouter);
     },
     { prefix: "/projects" }
   );
+
+  await server.register(registerIdentityProjectMembershipRouter, {
+    prefix: "/projects/:projectId/memberships"
+  });
 
   await server.register(
     async (pkiRouter) => {

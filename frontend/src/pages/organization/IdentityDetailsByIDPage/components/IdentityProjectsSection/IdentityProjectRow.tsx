@@ -9,7 +9,7 @@ import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
-import { IdentityMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 export enum TabSections {
@@ -20,7 +20,7 @@ export enum TabSections {
 }
 
 type Props = {
-  membership: IdentityMembership;
+  membership: IdentityProjectMembershipV1;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeIdentityFromProject"]>,
     data?: object
