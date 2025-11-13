@@ -1,11 +1,15 @@
 import nock from "nock";
 
-export const mockThirdPartyApiCalls = () => {
+const CLOUDFLARE_ACCOUNT_ID = "A2A6347F-88B5-442D-9798-95E408BC7701";
+
+// We mock the Cloudflare account API calls to let adding app connection much easier in BDD tests.
+// It's mainly for the DNS provider validation in ACME challenge validation.
+const mockCloudflare = () => {
   nock("https://api.cloudflare.com:443")
     .get("/client/v4/accounts/MOCK_ACCOUNT_ID")
     .reply(200, {
       result: {
-        id: "A2A6347F-88B5-442D-9798-95E408BC7701",
+        id: CLOUDFLARE_ACCOUNT_ID,
         name: "Mock Account",
         type: "standard",
         settings: {
@@ -53,7 +57,7 @@ export const mockThirdPartyApiCalls = () => {
           },
           owner: { id: null, type: "user", email: null },
           account: {
-            id: "A2A6347F-88B5-442D-9798-95E408BC7701",
+            id: CLOUDFLARE_ACCOUNT_ID,
             name: "Mock Account"
           },
           tenant: { id: null, name: null },
@@ -84,4 +88,8 @@ export const mockThirdPartyApiCalls = () => {
       errors: [],
       messages: []
     });
+};
+
+export const mockThirdPartyApiCalls = () => {
+  mockCloudflare();
 };
