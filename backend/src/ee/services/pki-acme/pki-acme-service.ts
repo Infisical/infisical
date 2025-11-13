@@ -738,6 +738,7 @@ export const pkiAcmeServiceFactory = ({
                 caId: certificateAuthority!.id,
                 commonName: certificateRequest.commonName!,
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
+                csr: Buffer.from(csr),
                 // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
                 keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
                 extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]

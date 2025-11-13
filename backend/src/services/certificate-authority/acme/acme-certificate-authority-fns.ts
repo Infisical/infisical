@@ -1,5 +1,5 @@
 import * as x509 from "@peculiar/x509";
-import acme from "acme-client";
+import acme, { CsrBuffer } from "acme-client";
 
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -126,6 +126,8 @@ export const orderCertificate = async (
     subscriberId,
     commonName,
     altNames,
+    csr,
+    csrPrivateKey,
     keyUsages,
     extendedKeyUsages
   }: {
@@ -133,6 +135,8 @@ export const orderCertificate = async (
     subscriberId?: string;
     commonName: string;
     altNames?: string[];
+    csr: CsrBuffer;
+    csrPrivateKey?: string;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
   },
@@ -220,25 +224,11 @@ export const orderCertificate = async (
 
   const acmeClient = new acme.Client(acmeClientOptions);
 
-  const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
-
-  const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
-  const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-  const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
-
-  const [, certificateCsr] = await acme.crypto.createCsr(
-    {
-      altNames,
-      commonName
-    },
-    skLeaf
-  );
-
   const appConnection = await appConnectionDAL.findById(acmeCa.configuration.dnsAppConnectionId);
   const connection = await decryptAppConnection(appConnection, kmsService);
 
   const pem = await acmeClient.auto({
-    csr: certificateCsr,
+    csr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
     // For ACME development mode, we mock the DNS challenge API calls. So, no real DNS records are created.
@@ -321,9 +311,11 @@ export const orderCertificate = async (
     plainText: Buffer.from(certificateChainPem)
   });
 
-  const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
-    plainText: Buffer.from(skLeaf)
-  });
+  const { cipherTextBlob: encryptedPrivateKey } = csrPrivateKey
+    ? await kmsEncryptor({
+        plainText: Buffer.from(csrPrivateKey)
+      })
+    : { cipherTextBlob: undefined };
 
   return (tx || certificateDAL).transaction(async (innerTx: Knex) => {
     const cert = await certificateDAL.create(
@@ -353,13 +345,15 @@ export const orderCertificate = async (
       innerTx
     );
 
-    await certificateSecretDAL.create(
-      {
-        certId: cert.id,
-        encryptedPrivateKey
-      },
-      innerTx
-    );
+    if (encryptedPrivateKey !== undefined) {
+      await certificateSecretDAL.create(
+        {
+          certId: cert.id,
+          encryptedPrivateKey
+        },
+        innerTx
+      );
+    }
 
     return cert;
   });
@@ -583,12 +577,26 @@ export const AcmeCertificateAuthorityFns = ({
     if (!subscriber.caId) {
       throw new BadRequestError({ message: "Subscriber does not have a CA" });
     }
+    const alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+    const [, certificateCsr] = await acme.crypto.createCsr({
+      altNames: subscriber.subjectAlternativeNames,
+      commonName: subscriber.commonName,
+      key: skLeaf
+    });
+
     await orderCertificate(
       {
         caId: subscriber.caId,
         subscriberId: subscriber.id,
         commonName: subscriber.commonName,
         altNames: subscriber.subjectAlternativeNames,
+        csr: certificateCsr,
+        csrPrivateKey: skLeaf,
         keyUsages: subscriber.keyUsages as CertKeyUsage[],
         extendedKeyUsages: subscriber.extendedKeyUsages as CertExtendedKeyUsage[]
       },
