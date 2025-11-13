@@ -583,11 +583,13 @@ export const AcmeCertificateAuthorityFns = ({
     const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
     const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
 
-    const [, certificateCsr] = await acme.crypto.createCsr({
-      altNames: subscriber.subjectAlternativeNames,
-      commonName: subscriber.commonName,
-      key: skLeaf
-    });
+    const [, certificateCsr] = await acme.crypto.createCsr(
+      {
+        altNames: subscriber.subjectAlternativeNames,
+        commonName: subscriber.commonName
+      },
+      skLeaf
+    );
 
     await orderCertificate(
       {
