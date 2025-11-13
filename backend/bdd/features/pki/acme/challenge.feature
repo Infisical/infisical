@@ -56,7 +56,6 @@ Feature: Challenge
       ]
       """
 
-
   Scenario: Did not finish all challenges
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"

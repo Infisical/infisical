@@ -41,6 +41,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+    command:
+    - "/bin/bash"
+    - "-c"
+    - |
+      update-ca-certificates && \
+      npm run dev:docker
     depends_on:
       db:
         condition: service_started
@@ -57,6 +63,7 @@ services:
       - TELEMETRY_ENABLED=false
     volumes:
       - ./backend/src:/app/src
+      - ./backend/bdd/pebble/pebble.minica.pem:/usr/local/share/ca-certificates/pebble.minica.crt:ro
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -85,7 +92,7 @@ services:
     environment:
       - PEBBLE_VA_NOSLEEP=1
     volumes:
-      - ./bdd/config/pebble-config.json:/var/data/pebble/pebble-config.json
+      - ./backend/bdd/pebble/:/var/data/pebble:ro
 
 volumes:
   postgres-data:
