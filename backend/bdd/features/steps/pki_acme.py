@@ -22,6 +22,7 @@ from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
 
+from features.steps.utils import define_nock, clean_all_nock, restore_nock
 from utils import replace_vars, with_nocks
 from utils import eval_var
 from utils import prepare_headers
@@ -265,6 +266,18 @@ def step_impl(context: Context, profile_var: str):
         eab_kid=kid,
         eab_secret=secret,
     )
+
+
+@given("I intercept outgoing requests")
+def step_impl(context: Context):
+    definitions = replace_vars(json.loads(context.text), context.vars)
+    define_nock(context, definitions)
+
+
+@then("I reset requests interceptions")
+def step_impl(context: Context):
+    clean_all_nock(context)
+    restore_nock(context)
 
 
 @given("I use {token_var} for authentication")

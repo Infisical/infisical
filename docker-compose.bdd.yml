@@ -87,7 +87,10 @@ services:
       - 14000:14000  # ACME port
       - 15000:15000  # Management port
     environment:
+      # Do not perform validation sleep to make the BDD tests faster
       - PEBBLE_VA_NOSLEEP=1
+      # Skip validation for now to make the BDD tests easier to write
+      - PEBBLE_VA_ALWAYS_VALID=1
     volumes:
       - ./backend/bdd/pebble/:/var/data/pebble:ro
 

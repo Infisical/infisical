@@ -102,7 +102,66 @@ Feature: External CA
     And I select challenge with type http-01 for domain localhost from order in order as challenge
     And I serve challenge response for challenge at localhost
     And I tell ACME server that challenge is ready to be verified
-    And I poll and finalize the ACME order order as finalized_order
+    Given I intercept outgoing requests
+      """
+      [
+        {
+          "scope": "https://api.cloudflare.com:443",
+          "method": "POST",
+          "path": "/client/v4/zones/MOCK_ZONE_ID/dns_records",
+          "status": 200,
+          "response": {
+              "result": {
+                  "id": "A2A6347F-88B5-442D-9798-95E408BC7701",
+                  "name": "Mock Account",
+                  "type": "standard",
+                  "settings": {
+                      "enforce_twofactor": false,
+                      "api_access_enabled": null,
+                      "access_approval_expiry": null,
+                      "abuse_contact_email": null,
+                      "user_groups_ui_beta": false
+                  },
+                  "legacy_flags": {
+                      "enterprise_zone_quota": {
+                          "maximum": 0,
+                          "current": 0,
+                          "available": 0
+                      }
+                  },
+                  "created_on": "2013-04-18T00:41:02.215243Z"
+              },
+              "success": true,
+              "errors": [],
+              "messages": []
+          },
+          "responseIsBinary": false
+        },
+        {
+          "scope": "https://api.cloudflare.com:443",
+          "method": "GET",
+          "path": {
+            "regex": "/client/v4/zones/[^/]+/dns_records\\?"
+          },
+          "status": 200,
+          "response": {
+            "result": [],
+            "success": true,
+            "errors": [],
+            "messages": [],
+            "result_info": {
+              "page": 1,
+              "per_page": 100,
+              "count": 0,
+              "total_count": 0,
+              "total_pages": 1
+            }
+          },
+          "responseIsBinary": false
+        }
+      ]
+      """
+    Then I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
     And I parse the full-chain certificate from order finalized_order as cert
     And the value cert with jq ".subject.common_name" should be equal to "localhost"
