@@ -146,6 +146,27 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = response
 
 
+@given("I create a external ACME CA with the following config as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    ca_slug = faker.slug()
+    config = replace_vars(json.loads(context.text), context.vars)
+    response = context.http_client.post(
+        "/api/v1/pki/ca/acme",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json={
+            "projectId": context.vars["PROJECT_ID"],
+            "name": ca_slug,
+            "type": "acme",
+            "status": "active",
+            "enableDirectIssuance": True,
+            "configuration": config,
+        },
+    )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
 @given('I have an ACME cert profile with external ACME CA as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
     profile_id = context.vars.get("PROFILE_ID")

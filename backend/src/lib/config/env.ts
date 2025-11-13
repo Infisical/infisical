@@ -106,7 +106,7 @@ const envSchema = z
     HTTPS_ENABLED: zodStrBool,
     ROTATION_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     DAILY_RESOURCE_CLEAN_UP_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
-    BDD_MOCK_THIRD_PARTY_API_CALLS: zodStrBool.default("false").optional(),
+    BDD_NOCK_API_ENABLED: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_MODE: zodStrBool.default("false").optional(),
     ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES: zpStr(
       z
@@ -399,7 +399,7 @@ const envSchema = z
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
-    shouldMockThirdPartyApiCalls: data.NODE_ENV === "development" && data.BDD_MOCK_THIRD_PARTY_API_CALLS,
+    isBddNockApiEnabled: data.NODE_ENV === "development" && data.BDD_NOCK_API_ENABLED,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {
