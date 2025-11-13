@@ -43,6 +43,7 @@ import {
 } from "./acme-certificate-authority-types";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
+import { getConfig } from "@app/lib/config/env";
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -240,6 +241,9 @@ export const orderCertificate = async (
     csr: certificateCsr,
     email: acmeCa.configuration.accountEmail,
     challengePriority: ["dns-01"],
+    // For ACME development mode, we mock the DNS challenge API calls. So, no real DNS records are created.
+    // We need to disable the challenge verification to avoid errors.
+    skipChallengeVerification: getConfig().isAcmeDevelopmentMode,
     termsOfServiceAgreed: true,
 
     challengeCreateFn: async (authz, challenge, keyAuthorization) => {
