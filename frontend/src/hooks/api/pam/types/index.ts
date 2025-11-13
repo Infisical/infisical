@@ -21,6 +21,22 @@ export type TPamFolder = {
   updatedAt: string;
 };
 
+// Session log types
+export type TPamCommandLog = {
+  input: string;
+  output: string;
+  timestamp: string;
+};
+
+export type TTerminalEvent = {
+  timestamp: string;
+  eventType: "input" | "output" | "resize" | "error";
+  data: string; // Base64 encoded binary data
+  elapsedTime: number; // Seconds since session start (for replay)
+};
+
+export type TPamSessionLog = TPamCommandLog | TTerminalEvent;
+
 export type TPamSession = {
   id: string;
   projectId: string;
@@ -39,11 +55,7 @@ export type TPamSession = {
   endedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  commandLogs: {
-    input: string;
-    output: string;
-    timestamp: string;
-  }[];
+  logs: TPamSessionLog[];
 };
 
 // Resource DTOs
