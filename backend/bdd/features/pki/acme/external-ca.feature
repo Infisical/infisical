@@ -96,6 +96,13 @@ Feature: External CA
         "COMMON_NAME": "localhost"
       }
       """
+    # Pebble has a strict rule to only takes SANs
+    Then I add subject alternative name to certificate signing request csr
+      """
+      [
+        "localhost"
+      ]
+      """
     And I create a RSA private key pair as cert_key
     And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
