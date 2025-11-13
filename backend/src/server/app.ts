@@ -26,6 +26,7 @@ import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 
 import { globalRateLimiterCfg } from "./config/rateLimiter";
+import { mockThirdPartyApiCalls } from "./mock-third-party-api-calls";
 import { addErrorsToResponseSchemas } from "./plugins/add-errors-to-response-schemas";
 import { apiMetrics } from "./plugins/api-metrics";
 import { fastifyErrHandler } from "./plugins/error-handler";
@@ -65,6 +66,12 @@ export const main = async ({
   kmsRootConfigDAL
 }: TMain) => {
   const appCfg = getConfig();
+
+  if (appCfg.shouldMockThirdPartyApiCalls) {
+    logger?.info("Mocking third party API calls for BDD");
+    // Note: to make BDD tests much easier, we mock some third party API calls here
+    mockThirdPartyApiCalls();
+  }
 
   const server = fastify({
     logger: appCfg.NODE_ENV === "test" ? false : logger,
