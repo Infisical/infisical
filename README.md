@@ -87,7 +87,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 
 ## Getting started
 
-Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/introduction)
+Check out the [Quickstart Guides](https://infisical.com/docs/documentation/getting-started/overview)
 
 | Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
