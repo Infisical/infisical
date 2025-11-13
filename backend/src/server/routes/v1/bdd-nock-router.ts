@@ -39,7 +39,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/clear-all",
+    url: "/clean-all",
     schema: {
       response: {
         200: z.object({ status: z.string() })

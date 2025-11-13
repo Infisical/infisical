@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 from faker import Faker
 import logging
 
-from features.steps.utils import clear_all_nock, restore_nock
+from features.steps.utils import clean_all_nock, restore_nock
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -207,5 +207,5 @@ def before_all(context: Context):
 def after_scenario(context: Context, scenario: typing.Any):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
-    clear_all_nock(context)
+    clean_all_nock(context)
     restore_nock(context)

@@ -281,10 +281,10 @@ def restore_nock(context: Context):
     response.raise_for_status()
 
 
-def clear_all_nock(context: Context):
+def clean_all_nock(context: Context):
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/bdd-nock/clear-all",
+        "/api/v1/bdd-nock/clean-all",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json=dict(),
     )
@@ -297,5 +297,5 @@ def with_nocks(context: Context, definitions: list[dict]):
         define_nock(context, definitions)
         yield
     finally:
-        clear_all_nock(context)
+        clean_all_nock(context)
         restore_nock(context)
