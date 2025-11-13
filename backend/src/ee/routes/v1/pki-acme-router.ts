@@ -261,7 +261,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         req
       });
       if (payload !== "") {
-        throw new AcmeMalformedError({ detail: "Payload should be empty" });
+        throw new AcmeMalformedError({ message: "Payload should be empty" });
       }
       return sendAcmeResponse(
         res,
@@ -373,7 +373,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
         req
       });
       if (payload !== "") {
-        throw new AcmeMalformedError({ detail: "Payload should be empty" });
+        throw new AcmeMalformedError({ message: "Payload should be empty" });
       }
       res.type("application/pem-certificate-chain");
       return sendAcmeResponse(
@@ -407,7 +407,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       const { profileId, accountId, payload } = await validateExistingAccount({ req });
       if (payload !== "") {
-        throw new AcmeMalformedError({ detail: "Payload should be empty" });
+        throw new AcmeMalformedError({ message: "Payload should be empty" });
       }
       return sendAcmeResponse(
         res,

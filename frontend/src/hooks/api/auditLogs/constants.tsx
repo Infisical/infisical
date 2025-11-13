@@ -251,6 +251,17 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
   [EventType.DELETE_ORG_ROLE]: "Delete Org Role",
 
+  [EventType.CREATE_SUB_ORGANIZATION]: "Create Sub Organization",
+  [EventType.UPDATE_SUB_ORGANIZATION]: "Update Sub Organization",
+
+  [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
+  [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",
+  [EventType.DELETE_IDENTITY_ORG_MEMBERSHIP]: "Delete Identity Org Membership",
+
+  [EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP]: "Create Identity Project Membership",
+  [EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP]: "Update Identity Project Membership",
+  [EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP]: "Delete Identity Project Membership",
+
   [EventType.PAM_SESSION_START]: "PAM Session Start",
   [EventType.PAM_SESSION_LOGS_UPDATE]: "PAM Session Logs Update",
   [EventType.PAM_SESSION_END]: "PAM Session End",

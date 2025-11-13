@@ -4,7 +4,7 @@ description: "Learn how to manage secrets in Docker Swarm services."
 ---
 
 In this guide, we'll demonstrate how to use Infisical for managing secrets within Docker Swarm. 
-Specifically, we'll set up a sidecar container using the [Infisical Agent](/infisical-agent/overview), which authenticates with Infisical to retrieve secrets and access tokens. 
+Specifically, we'll set up a sidecar container using the [Infisical Agent](/integrations/platforms/infisical-agent), which authenticates with Infisical to retrieve secrets and access tokens. 
 These secrets are then stored in a shared volume accessible by other services in your Docker Swarm.
 
 ## Prerequisites
@@ -12,7 +12,7 @@ These secrets are then stored in a shared volume accessible by other services in
 - Docker version 20.10.24 or newer
 - Basic knowledge of Docker Swarm
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) installed on your system
-- Familiarity with the [Infisical Agent](/infisical-agent/overview)
+- Familiarity with the [Infisical Agent](/integrations/platforms/infisical-agent)
 
 ## Objective
 Our goal is to deploy an Nginx instance in your Docker Swarm cluster, configured to display Infisical secrets on its landing page. This will provide hands-on experience in fetching and utilizing secrets from Infisical within Docker Swarm. The principles demonstrated here are also applicable to Docker Compose deployments.

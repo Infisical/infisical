@@ -26,9 +26,6 @@ export const envConfig = {
       import.meta.env.VITE_TELEMETRY_CAPTURING_ENABLED === true
     );
   },
-  get ACME_FEATURE_ENABLED() {
-    return window?.__INFISICAL_RUNTIME_ENV__?.ACME_FEATURE_ENABLED ?? false;
-  },
 
   get PLATFORM_VERSION() {
     return import.meta.env.VITE_INFISICAL_PLATFORM_VERSION;

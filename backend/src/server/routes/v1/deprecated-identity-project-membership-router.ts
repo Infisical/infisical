@@ -19,7 +19,7 @@ import { ProjectIdentityOrderBy } from "@app/services/identity-project/identity-
 
 import { SanitizedProjectSchema } from "../sanitizedSchemas";
 
-export const registerIdentityProjectRouter = async (server: FastifyZodProvider) => {
+export const registerDeprecatedIdentityProjectMembershipRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "POST",
     url: "/:projectId/identity-memberships/:identityId",
@@ -293,7 +293,7 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                   temporaryAccessEndTime: z.date().nullable().optional()
                 })
               ),
-              identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+              identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
                 authMethods: z.array(z.string())
               }),
               project: SanitizedProjectSchema.pick({ name: true, id: true })
@@ -362,7 +362,9 @@ export const registerIdentityProjectRouter = async (server: FastifyZodProvider) 
                 temporaryAccessEndTime: z.date().nullable().optional()
               })
             ),
-            identity: IdentitiesSchema.pick({ name: true, id: true }).extend({
+            lastLoginAuthMethod: z.string().nullable().optional(),
+            lastLoginTime: z.date().nullable().optional(),
+            identity: IdentitiesSchema.pick({ name: true, id: true, projectId: true, orgId: true }).extend({
               authMethods: z.array(z.string())
             }),
             project: SanitizedProjectSchema.pick({ name: true, id: true })

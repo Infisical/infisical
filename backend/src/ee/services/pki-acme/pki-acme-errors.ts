@@ -35,7 +35,7 @@ export enum AcmeErrorType {
 
 export interface IAcmeError {
   type: AcmeErrorType;
-  detail: string;
+  message: string;
   status: number;
   subproblems?: Array<{ type: string; detail: string; identifier?: { type: string; value: string } }>;
 }
@@ -43,7 +43,7 @@ export interface IAcmeError {
 export class AcmeError extends Error implements IAcmeError {
   type: AcmeErrorType;
 
-  detail: string;
+  message: string;
 
   status: number;
 
@@ -53,22 +53,20 @@ export class AcmeError extends Error implements IAcmeError {
 
   constructor({
     type,
-    detail,
+    message,
     status,
     subproblems,
-    error,
-    message
+    error
   }: {
     type: AcmeErrorType;
-    detail: string;
+    message: string;
     status: number;
     subproblems?: Array<{ type: string; detail: string; identifier?: { type: string; value: string } }>;
     error?: unknown;
-    message?: string;
   }) {
-    super(message || detail);
+    super(message);
     this.type = type;
-    this.detail = detail;
+    this.message = message;
     this.status = status;
     this.subproblems = subproblems;
     this.error = error;
@@ -78,7 +76,7 @@ export class AcmeError extends Error implements IAcmeError {
   toAcmeResponse(): IAcmeError {
     return {
       type: this.type,
-      detail: this.detail,
+      message: this.message,
       status: this.status,
       subproblems: this.subproblems
     };
@@ -90,20 +88,17 @@ export class AcmeError extends Error implements IAcmeError {
  */
 export class AcmeMalformedError extends AcmeError {
   constructor({
-    detail = "The request message was malformed",
-    error,
-    message
+    message = "The request message was malformed",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.Malformed,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeMalformedError";
   }
@@ -114,20 +109,17 @@ export class AcmeMalformedError extends AcmeError {
  */
 export class AcmeUnauthorizedError extends AcmeError {
   constructor({
-    detail = "The client lacks sufficient authorization",
-    error,
-    message
+    message = "The client lacks sufficient authorization",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.Unauthorized,
-      detail,
+      message,
       status: 403,
-      error,
-      message
+      error
     });
     this.name = "AcmeUnauthorizedError";
   }
@@ -139,20 +131,17 @@ export class AcmeUnauthorizedError extends AcmeError {
  */
 export class AcmeAccountDoesNotExistError extends AcmeError {
   constructor({
-    detail = "The request specified an account that does not exist",
-    error,
-    message
+    message = "The request specified an account that does not exist",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.AccountDoesNotExist,
-      detail,
-      status: 400,
-      error,
-      message
+      message,
+      status: 404,
+      error
     });
     this.name = "AcmeAccountDoesNotExistError";
   }
@@ -163,20 +152,17 @@ export class AcmeAccountDoesNotExistError extends AcmeError {
  */
 export class AcmeBadNonceError extends AcmeError {
   constructor({
-    detail = "The client sent an unacceptable anti-replay nonce",
-    error,
-    message
+    message = "The client sent an unacceptable anti-replay nonce",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadNonce,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadNonceError";
   }
@@ -187,20 +173,17 @@ export class AcmeBadNonceError extends AcmeError {
  */
 export class AcmeBadSignatureAlgorithmError extends AcmeError {
   constructor({
-    detail = "The signature algorithm is invalid",
-    error,
-    message
+    message = "The signature algorithm is invalid",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadSignatureAlgorithm,
-      detail,
+      message,
       status: 401,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadSignatureAlgorithmError";
   }
@@ -211,20 +194,17 @@ export class AcmeBadSignatureAlgorithmError extends AcmeError {
  */
 export class AcmeBadPublicKeyError extends AcmeError {
   constructor({
-    detail = "The public key is not acceptable",
-    error,
-    message
+    message = "The public key is not acceptable",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadPublicKey,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadPublicKeyError";
   }
@@ -235,20 +215,17 @@ export class AcmeBadPublicKeyError extends AcmeError {
  */
 export class AcmeBadCsrError extends AcmeError {
   constructor({
-    detail = "The CSR is unacceptable",
-    error,
-    message
+    message = "The CSR is unacceptable",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadCsr,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadCsrError";
   }
@@ -260,20 +237,17 @@ export class AcmeBadCsrError extends AcmeError {
  */
 export class AcmeBadRevocationReasonError extends AcmeError {
   constructor({
-    detail = "The revocation reason provided is not allowed",
-    error,
-    message
+    message = "The revocation reason provided is not allowed",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadRevocationReason,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadRevocationReasonError";
   }
@@ -284,20 +258,17 @@ export class AcmeBadRevocationReasonError extends AcmeError {
  */
 export class AcmeRateLimitedError extends AcmeError {
   constructor({
-    detail = "The client has exceeded a rate limit",
-    error,
-    message
+    message = "The client has exceeded a rate limit",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.RateLimited,
-      detail,
+      message,
       status: 429,
-      error,
-      message
+      error
     });
     this.name = "AcmeRateLimitedError";
   }
@@ -309,23 +280,20 @@ export class AcmeRateLimitedError extends AcmeError {
  */
 export class AcmeRejectedIdentifierError extends AcmeError {
   constructor({
-    detail = "The server will not issue certificates for the identifier",
+    message = "The server will not issue certificates for the identifier",
     subproblems,
-    error,
-    message
+    error
   }: {
-    detail?: string;
+    message?: string;
     subproblems?: Array<{ type: string; detail: string; identifier?: { type: string; value: string } }>;
     error?: unknown;
-    message?: string;
   } = {}) {
     super({
       type: AcmeErrorType.RejectedIdentifier,
-      detail,
+      message,
       status: 400,
       subproblems,
-      error,
-      message
+      error
     });
     this.name = "AcmeRejectedIdentifierError";
   }
@@ -336,20 +304,17 @@ export class AcmeRejectedIdentifierError extends AcmeError {
  */
 export class AcmeServerInternalError extends AcmeError {
   constructor({
-    detail = "An internal error occurred",
-    error,
-    message
+    message = "An internal error occurred",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.ServerInternal,
-      detail,
+      message,
       status: 500,
-      error,
-      message
+      error
     });
     this.name = "AcmeServerInternalError";
   }
@@ -360,20 +325,17 @@ export class AcmeServerInternalError extends AcmeError {
  */
 export class AcmeUnsupportedContactError extends AcmeError {
   constructor({
-    detail = "A contact URL is of an unsupported type",
-    error,
-    message
+    message = "A contact URL is of an unsupported type",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.UnsupportedContact,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeUnsupportedContactError";
   }
@@ -385,20 +347,17 @@ export class AcmeUnsupportedContactError extends AcmeError {
  */
 export class AcmeUnsupportedIdentifierError extends AcmeError {
   constructor({
-    detail = "An identifier is of an unsupported type",
-    error,
-    message
+    message = "An identifier is of an unsupported type",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.UnsupportedIdentifier,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeUnsupportedIdentifierError";
   }
@@ -412,22 +371,19 @@ export class AcmeUserActionRequiredError extends AcmeError {
   instance?: string;
 
   constructor({
-    detail = "Visit the instance URL and take actions specified there",
+    message = "Visit the instance URL and take actions specified there",
     instance,
-    error,
-    message
+    error
   }: {
-    detail?: string;
+    message?: string;
     instance?: string;
     error?: unknown;
-    message?: string;
   } = {}) {
     super({
       type: AcmeErrorType.UserActionRequired,
-      detail,
+      message,
       status: 403,
-      error,
-      message
+      error
     });
     this.instance = instance;
     this.name = "AcmeUserActionRequiredError";
@@ -446,20 +402,17 @@ export class AcmeUserActionRequiredError extends AcmeError {
  */
 export class AcmeIncorrectResponseError extends AcmeError {
   constructor({
-    detail = "The response is incorrect",
-    error,
-    message
+    message = "The response is incorrect",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.IncorrectResponse,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeIncorrectResponseError";
   }
@@ -470,20 +423,17 @@ export class AcmeIncorrectResponseError extends AcmeError {
  */
 export class AcmeConnectionError extends AcmeError {
   constructor({
-    detail = "A connection error occurred",
-    error,
-    message
+    message = "A connection error occurred",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.Connection,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeConnectionError";
   }
@@ -491,20 +441,17 @@ export class AcmeConnectionError extends AcmeError {
 
 export class AcmeDnsFailureError extends AcmeError {
   constructor({
-    detail = "Hostname could not be resolved (DNS failure)",
-    error,
-    message
+    message = "Hostname could not be resolved (DNS failure)",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.DNS,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeDnsFailureError";
   }
@@ -512,20 +459,17 @@ export class AcmeDnsFailureError extends AcmeError {
 
 export class AcmeOrderNotReadyError extends AcmeError {
   constructor({
-    detail = "The order is not ready",
-    error,
-    message
+    message = "The order is not ready",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.OrderNotReady,
-      detail,
+      message,
       status: 403,
-      error,
-      message
+      error
     });
     this.name = "AcmeOrderNotReadyError";
   }
@@ -533,20 +477,17 @@ export class AcmeOrderNotReadyError extends AcmeError {
 
 export class AcmeBadCSRError extends AcmeError {
   constructor({
-    detail = "The CSR is unacceptable",
-    error,
-    message
+    message = "The CSR is unacceptable",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.BadCsr,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeBadCSRError";
   }
@@ -554,20 +495,17 @@ export class AcmeBadCSRError extends AcmeError {
 
 export class AcmeExternalAccountRequiredError extends AcmeError {
   constructor({
-    detail = "External account binding is required",
-    error,
-    message
+    message = "External account binding is required",
+    error
   }: {
-    detail?: string;
-    error?: unknown;
     message?: string;
+    error?: unknown;
   } = {}) {
     super({
       type: AcmeErrorType.ExternalAccountRequired,
-      detail,
+      message,
       status: 400,
-      error,
-      message
+      error
     });
     this.name = "AcmeExternalAccountRequiredError";
   }

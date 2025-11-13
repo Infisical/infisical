@@ -1,9 +1,10 @@
 import json
 import logging
-import os
 import re
 import threading
+import urllib.parse
 
+import acme.client
 import httpx
 import jq
 import requests
@@ -12,12 +13,14 @@ from faker import Faker
 from acme import client
 from acme import messages
 from acme import standalone
+from acme.jws import Signature
 from behave.runner import Context
 from behave import given
 from behave import when
 from behave import then
 from josepy.jwk import JWKRSA
 from josepy import JSONObjectWithFields
+from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
@@ -134,12 +137,39 @@ def step_impl(context: Context, faker_type: str, var_name: str):
 
 @given('I have an ACME cert profile as "{profile_var}"')
 def step_impl(context: Context, profile_var: str):
-    # TODO: Fixed value for now, just to make test much easier,
-    #       we should call infisical API to create such profile instead
-    #       in the future
-    profile_id = os.getenv("PROFILE_ID")
-    kid = profile_id
-    secret = os.getenv("EAB_SECRET")
+    profile_id = context.vars.get("PROFILE_ID")
+    secret = context.vars.get("EAB_SECRET")
+    if profile_id is not None and secret is not None:
+        kid = profile_id
+    else:
+        profile_slug = faker.slug()
+        jwt_token = context.vars["AUTH_TOKEN"]
+        response = context.http_client.post(
+            "/api/v1/pki/certificate-profiles",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "projectId": context.vars["PROJECT_ID"],
+                "slug": profile_slug,
+                "description": "ACME Profile created by BDD test",
+                "enrollmentType": "acme",
+                "caId": context.vars["CERT_CA_ID"],
+                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "acmeConfig": {},
+            },
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        profile_id = resp_json["certificateProfile"]["id"]
+        kid = profile_id
+
+        response = context.http_client.get(
+            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        secret = resp_json["eabSecret"]
+
     context.vars[profile_var] = AcmeProfile(
         profile_id,
         eab_kid=kid,
@@ -152,7 +182,7 @@ def step_impl(context: Context, token_var: str):
     context.auth_token = eval_var(context, token_var)
 
 
-@when('I send a {method} request to "{url}"')
+@when('I send a "{method}" request to "{url}"')
 def step_impl(context: Context, method: str, url: str):
     logger.debug("Sending %s request to %s", method, url)
     response = context.http_client.request(
@@ -166,7 +196,7 @@ def step_impl(context: Context, method: str, url: str):
         pass
 
 
-@when('I send a {method} request to "{url}" with JSON payload')
+@when('I send a "{method}" request to "{url}" with JSON payload')
 def step_impl(context: Context, method: str, url: str):
     json_payload = json.loads(context.text)
     json_payload = replace_vars(json_payload, context.vars)
@@ -187,21 +217,32 @@ def step_impl(context: Context, method: str, url: str):
     logger.debug("Response JSON payload: %r", response.json())
 
 
-@when("I have an ACME client connecting to {url}")
-def step_impl(context: Context, url: str):
-    private_key = rsa.generate_private_key(
-        public_exponent=ACC_KEY_PUBLIC_EXPONENT, key_size=ACC_KEY_BITS
-    )
-    pem_bytes = private_key.private_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption(),
-    )
-    acc_jwk = JWKRSA.load(pem_bytes)
+def create_acme_client(context: Context, url: str, acc_jwk: JWKRSA | None = None):
+    if acc_jwk is None:
+        private_key = rsa.generate_private_key(
+            public_exponent=ACC_KEY_PUBLIC_EXPONENT, key_size=ACC_KEY_BITS
+        )
+        pem_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        acc_jwk = JWKRSA.load(pem_bytes)
     net = client.ClientNetwork(acc_jwk)
     directory_url = url.format(**context.vars)
     directory = client.ClientV2.get_directory(directory_url, net)
     context.acme_client = client.ClientV2(directory, net=net)
+
+
+@when('I have an ACME client connecting to "{url}"')
+def step_impl(context: Context, url: str):
+    create_acme_client(context, url)
+
+
+@when('I have an ACME client connecting to "{url}" with the key pair from {client_var}')
+def step_impl(context: Context, url: str, client_var: str):
+    another_client = eval_var(context, client_var, as_json=False)
+    create_acme_client(context, url, acc_jwk=another_client.net.key)
 
 
 @then('the response status code should be "{expected_status_code:d}"')
@@ -228,24 +269,122 @@ def step_impl(context: Context):
     assert payload == replaced, f"{payload} != {replaced}"
 
 
-@then(
-    'I register a new ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
-)
-def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+@when('I use a different new-account URL "{url}" for EAB signature')
+def step_impl(context: Context, url: str):
+    context.alt_eab_url = replace_vars(url, context.vars)
+
+
+def register_account_with_eab(
+    context: Context,
+    email: str,
+    kid: str,
+    secret: str,
+    account_var: str,
+    only_return_existing: bool = False,
+):
     acme_client = context.acme_client
     account_public_key = acme_client.net.key.public_key()
+    if hasattr(context, "alt_eab_url"):
+        eab_directory = messages.Directory.from_json(
+            {"newAccount": context.alt_eab_url}
+        )
+    else:
+        eab_directory = acme_client.directory
     eab = messages.ExternalAccountBinding.from_data(
         account_public_key=account_public_key,
         kid=replace_vars(kid, context.vars),
         hmac_key=replace_vars(secret, context.vars),
-        directory=acme_client.directory,
+        directory=eab_directory,
         hmac_alg="HS256",
     )
     registration = messages.NewRegistration.from_data(
         email=email,
         external_account_binding=eab,
+        only_return_existing=only_return_existing,
     )
-    context.vars[account_var] = acme_client.new_account(registration)
+    try:
+        context.vars[account_var] = acme_client.new_account(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
+
+
+@then(
+    'I register a new ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
+)
+def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+    register_account_with_eab(
+        context=context, email=email, kid=kid, secret=secret, account_var=account_var
+    )
+
+
+@then(
+    'I find the existing ACME account with email {email} and EAB key id "{kid}" with secret "{secret}" as {account_var}'
+)
+def step_impl(context: Context, email: str, kid: str, secret: str, account_var: str):
+    register_account_with_eab(
+        context=context,
+        email=email,
+        kid=kid,
+        secret=secret,
+        account_var=account_var,
+        only_return_existing=True,
+    )
+
+
+@then("I register a new ACME account with email {email} without EAB")
+def step_impl(context: Context, email: str):
+    acme_client = context.acme_client
+    registration = messages.NewRegistration.from_data(
+        email=email,
+    )
+    try:
+        context.vars["error"] = acme_client.new_account(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
+
+
+def send_raw_acme_req(context: Context, url: str):
+    acme_client = context.acme_client
+    content = json.loads(context.text)
+    protected = replace_vars(content["protected"], context.vars)
+    alg = acme_client.net.alg
+    if "raw_payload" in content:
+        encoded_payload = content["raw_payload"].encode("utf-8")
+    elif "payload" in content:
+        payload = (
+            replace_vars(content["payload"], context.vars)
+            if "payload" in content
+            else None
+        )
+        encoded_payload = json.dumps(payload).encode() if payload is not None else b""
+    else:
+        encoded_payload = b""
+    protected_headers = json.dumps(protected)
+    signature = alg.sign(
+        key=acme_client.net.key.key,
+        msg=Signature._msg(protected_headers, encoded_payload),
+    )
+    jws = json.dumps(
+        {
+            "protected": json_util.encode_b64jose(protected_headers.encode()),
+            "payload": json_util.encode_b64jose(encoded_payload),
+            "signature": json_util.encode_b64jose(signature),
+        }
+    )
+    base_url = context.vars["BASE_URL"]
+    actual_url = urllib.parse.urljoin(base_url, replace_vars(url, context.vars))
+    response = acme_client.net._send_request(
+        "POST",
+        actual_url,
+        data=jws,
+        headers={"Content-Type": acme.client.ClientNetwork.JOSE_CONTENT_TYPE},
+    )
+    context.vars["response"] = response
+
+
+@when('I send a raw ACME request to "{url}"')
+def step_impl(context: Context, url: str):
+    send_raw_acme_req(context, url)
 
 
 @then(
@@ -384,8 +523,15 @@ def step_impl(context: Context, var_path: str):
 @then("the value {var_path} should be equal to {expected}")
 def step_impl(context: Context, var_path: str, expected: str):
     value = eval_var(context, var_path)
-    expected_value = json.loads(expected)
+    expected_value = replace_vars(json.loads(expected), context.vars)
     assert value == expected_value, f"{value!r} does not match {expected_value!r}"
+
+
+@then("the value {var_path} should not be equal to {expected}")
+def step_impl(context: Context, var_path: str, expected: str):
+    value = eval_var(context, var_path)
+    expected_value = replace_vars(json.loads(expected), context.vars)
+    assert value != expected_value, f"{value!r} does match {expected_value!r}"
 
 
 @then('I memorize {var_path} with jq "{jq_query}" as {var_name}')
@@ -396,6 +542,19 @@ def step_impl(context: Context, var_path: str, jq_query, var_name: str):
         jq_query=jq_query,
     )
     context.vars[var_name] = value
+
+
+@then("I peak and memorize the next nonce as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    context.vars[var_name] = json_util.encode_b64jose(list(acme_client.net._nonces)[0])
+
+
+@then("I put away current ACME client as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    del context.acme_client
+    context.vars[var_name] = acme_client
 
 
 @then("I memorize {var_path} as {var_name}")

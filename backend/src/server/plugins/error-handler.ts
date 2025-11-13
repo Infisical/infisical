@@ -252,8 +252,7 @@ export const fastifyErrHandler = fastifyPlugin(async (server: FastifyZodProvider
           error: error.name,
           status: error.status,
           type: `urn:ietf:params:acme:error:${error.type}`,
-          detail: error.detail,
-          message: error.message
+          detail: error.message
           // TODO: add subproblems if they exist
         });
     } else {

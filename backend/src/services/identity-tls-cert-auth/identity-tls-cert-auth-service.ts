@@ -1,7 +1,7 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import { requestContext } from "@fastify/request-context";
 
-import { AccessScope, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
+import { AccessScope, ActionProjectType, IdentityAuthMethod, OrganizationActionScope } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/ee/services/permission/org-permission";
 import {
@@ -9,6 +9,7 @@ import {
   validatePrivilegeChangeOperation
 } from "@app/ee/services/permission/permission-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -43,7 +44,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   >;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
+  permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
 };
@@ -130,8 +131,22 @@ export const identityTlsCertAuthServiceFactory = ({
       // Generate the token
       const identityAccessToken = await identityTlsCertAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
-          { scope: AccessScope.Organization, scopeOrgId: identity.orgId, actorIdentityId: identity.id },
-          { lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH, lastLoginTime: new Date() },
+          identity.projectId
+            ? {
+                scope: AccessScope.Project,
+                scopeOrgId: identity.orgId,
+                scopeProjectId: identity.projectId,
+                actorIdentityId: identity.id
+              }
+            : {
+                scope: AccessScope.Organization,
+                scopeOrgId: identity.orgId,
+                actorIdentityId: identity.id
+              },
+          {
+            lastLoginAuthMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+            lastLoginTime: new Date()
+          },
           tx
         );
         const newToken = await identityAccessTokenDAL.create(
@@ -223,7 +238,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -237,15 +252,34 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Create, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Create,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(
+        OrgPermissionIdentityActions.Create,
+        OrgPermissionSubjects.Identity
+      );
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps.map((accessTokenTrustedIp) => {
@@ -309,7 +343,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -329,15 +363,31 @@ export const identityTlsCertAuthServiceFactory = ({
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Edit,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+    }
 
     const plan = await licenseService.getPlan(identityMembershipOrg.scopeOrgId);
     const reformattedAccessTokenTrustedIps = accessTokenTrustedIps?.map((accessTokenTrustedIp) => {
@@ -392,7 +442,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
 
@@ -404,15 +454,32 @@ export const identityTlsCertAuthServiceFactory = ({
 
     const identityAuth = await identityTlsCertAuthDAL.findOne({ identityId });
 
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
+
     const { decryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.Organization,
       orgId: identityMembershipOrg.scopeOrgId
@@ -440,7 +507,7 @@ export const identityTlsCertAuthServiceFactory = ({
       identityId
     });
     if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
-    if (identityMembershipOrg.identity.identityOrgId !== actorOrgId) {
+    if (identityMembershipOrg.identity.orgId !== actorOrgId) {
       throw new ForbiddenRequestError({ message: "Sub organization not authorized to access this identity" });
     }
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TLS_CERT_AUTH)) {
@@ -448,43 +515,60 @@ export const identityTlsCertAuthServiceFactory = ({
         message: "The identity does not have TLS Certificate auth"
       });
     }
-    const { permission } = await permissionService.getOrgPermission({
-      scope: OrganizationActionScope.Any,
-      actor,
-      actorId,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId
-    });
-    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
 
-    const { permission: rolePermission, memberships } = await permissionService.getOrgPermission({
-      actor: ActorType.IDENTITY,
-      actorId: identityMembershipOrg.identity.id,
-      orgId: identityMembershipOrg.scopeOrgId,
-      actorAuthMethod,
-      actorOrgId,
-      scope: OrganizationActionScope.Any
-    });
-    const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
-    const permissionBoundary = validatePrivilegeChangeOperation(
-      shouldUseNewPrivilegeSystem,
-      OrgPermissionIdentityActions.RevokeAuth,
-      OrgPermissionSubjects.Identity,
-      permission,
-      rolePermission
-    );
-
-    if (!permissionBoundary.isValid)
-      throw new PermissionBoundaryError({
-        message: constructPermissionErrorMessage(
-          "Failed to revoke TLS Certificate auth of identity with more privileged role",
-          shouldUseNewPrivilegeSystem,
-          OrgPermissionIdentityActions.RevokeAuth,
-          OrgPermissionSubjects.Identity
-        ),
-        details: { missingPermissions: permissionBoundary.missingPermissions }
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
       });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.RevokeAuth,
+        subject(ProjectPermissionSub.Identity, { identityId })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Edit, OrgPermissionSubjects.Identity);
+
+      const { permission: rolePermission, memberships } = await permissionService.getOrgPermission({
+        actor: ActorType.IDENTITY,
+        actorId: identityMembershipOrg.identity.id,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId,
+        scope: OrganizationActionScope.Any
+      });
+      const shouldUseNewPrivilegeSystem = Boolean(memberships?.[0]?.shouldUseNewPrivilegeSystem);
+      const permissionBoundary = validatePrivilegeChangeOperation(
+        shouldUseNewPrivilegeSystem,
+        OrgPermissionIdentityActions.RevokeAuth,
+        OrgPermissionSubjects.Identity,
+        permission,
+        rolePermission
+      );
+
+      if (!permissionBoundary.isValid)
+        throw new PermissionBoundaryError({
+          message: constructPermissionErrorMessage(
+            "Failed to revoke TLS Certificate auth of identity with more privileged role",
+            shouldUseNewPrivilegeSystem,
+            OrgPermissionIdentityActions.RevokeAuth,
+            OrgPermissionSubjects.Identity
+          ),
+          details: { missingPermissions: permissionBoundary.missingPermissions }
+        });
+    }
 
     const revokedIdentityTlsCertAuth = await identityTlsCertAuthDAL.transaction(async (tx) => {
       const deletedTlsCertAuth = await identityTlsCertAuthDAL.delete({ identityId }, tx);

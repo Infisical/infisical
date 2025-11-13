@@ -1,0 +1,102 @@
+name: "Run backend BDD tests"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "backend/**"
+      - "!backend/README.md"
+      - "!backend/.*"
+      - "backend/.eslintrc.js"
+  workflow_call:
+
+jobs:
+  run-backend-bdd-tests:
+    name: Run BDD tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          docker system prune -af
+
+      - name: ☁️ Checkout source
+        uses: actions/checkout@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Install Python
+        run: uv python install
+      - uses: KengoTODA/actions-setup-docker-compose@v1
+        if: ${{ env.ACT }}
+        name: Install `docker compose` for local simulations
+        with:
+          version: "2.14.2"
+      - name: 🔧 Setup Node 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+      - name: Install dependencies
+        run: npm install
+        working-directory: backend
+
+      - name: Output .env file and enable feature flags for BDD tests
+        run: |
+          cp .env.example .env
+          echo "ACME_DEVELOPMENT_MODE=true" >> .env
+          echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
+          # Enable ACME feature in license for BDD tests
+          sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+      - name: Build Infisical backend Docker image with caching
+        uses: docker/bake-action@v5
+        timeout-minutes: 30
+        with:
+          files: docker-compose.bdd.yml
+          targets: backend
+          load: true
+          # Uncomment this to force a rebuild of the image
+          # no-cache: true
+          set: |
+              *.cache-from=type=gha,scope=infisical-backend-bdd-tests
+              *.cache-to=type=gha,mode=max,scope=infisical-backend-bdd-tests
+      - name: Start Infisical
+        run: docker compose -f docker-compose.bdd.yml up -d
+      - name: Wait for API to be ready
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 60
+          max_attempts: 30
+          command: |
+            curl -f -X GET http://localhost:8080/api/v1/admin/config
+      - name: Run bdd tests
+        run: npm run test:bdd
+        working-directory: backend
+        env:
+          INFISICAL_API_URL: http://localhost:8080
+          BOOTSTRAP_INFISICAL: "1"
+      - name: cleanup
+        run: |
+          docker compose -f "docker-compose.bdd.yml" down
+      - name: Dump backend logs
+        if: always()  # Ensures this runs even if previous steps fail
+        run: |
+          mkdir -p logs
+          docker compose -f docker-compose.bdd.yml logs backend > logs/backend.log 2>&1 || true
+      - name: Upload backend logs as artifact
+        if: always()  # Always upload, even on failure/cancellation
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs-${{ github.run_id }}
+          path: logs/backend.log
+          retention-days: 7
+          if-no-files-found: warn
