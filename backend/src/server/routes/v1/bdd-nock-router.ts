@@ -39,23 +39,6 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/restore",
-    schema: {
-      response: {
-        200: z.object({ status: z.string() })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
-      checkIfBddNockApiEnabled();
-      logger.info("Restore network requests from nock");
-      nock.restore();
-      return { status: "ok" };
-    }
-  });
-
-  server.route({
-    method: "POST",
     url: "/clear-all",
     schema: {
       response: {
@@ -67,6 +50,23 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
       checkIfBddNockApiEnabled();
       logger.info("Cleaning all nocks");
       nock.cleanAll();
+      return { status: "ok" };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/restore",
+    schema: {
+      response: {
+        200: z.object({ status: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      checkIfBddNockApiEnabled();
+      logger.info("Restore network requests from nock");
+      nock.restore();
       return { status: "ok" };
     }
   });
