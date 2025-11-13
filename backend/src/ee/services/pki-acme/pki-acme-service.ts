@@ -687,7 +687,7 @@ export const pkiAcmeServiceFactory = ({
         const csrIdentifierValues = new Set(
           (certificateRequest.subjectAlternativeNames ?? [])
             .map((san) => san.value.toLowerCase())
-            .concat([certificateRequest.commonName!.toLowerCase()])
+            .concat([certificateRequest.commonName.toLowerCase()])
         );
         if (
           csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
@@ -727,38 +727,33 @@ export const pkiAcmeServiceFactory = ({
                 enrollmentType: EnrollmentType.ACME
               });
               return { certificateId: result.certificateId };
-            } else {
-              const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
-              // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
-              //       we should check the CSR against the template here
-              // TODO: this is pretty slow, and we are holding the transaction open for a long time,
-              //       we should queue the certificate issuance to a background job instead
-              const cert = await orderCertificate(
-                {
-                  caId: certificateAuthority!.id,
-                  commonName: certificateRequest.commonName!,
-                  altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
-                  // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
-                  keyUsages: [
-                    CertKeyUsage.DIGITAL_SIGNATURE,
-                    CertKeyUsage.KEY_ENCIPHERMENT,
-                    CertKeyUsage.KEY_AGREEMENT
-                  ],
-                  extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
-                },
-                {
-                  appConnectionDAL,
-                  certificateAuthorityDAL,
-                  externalCertificateAuthorityDAL,
-                  certificateDAL,
-                  certificateBodyDAL,
-                  certificateSecretDAL,
-                  kmsService,
-                  projectDAL
-                }
-              );
-              return { certificateId: cert.id };
             }
+            const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
+            // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
+            //       we should check the CSR against the template here
+            // TODO: this is pretty slow, and we are holding the transaction open for a long time,
+            //       we should queue the certificate issuance to a background job instead
+            const cert = await orderCertificate(
+              {
+                caId: certificateAuthority!.id,
+                commonName: certificateRequest.commonName!,
+                altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
+                // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
+                keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
+                extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
+              },
+              {
+                appConnectionDAL,
+                certificateAuthorityDAL,
+                externalCertificateAuthorityDAL,
+                certificateDAL,
+                certificateBodyDAL,
+                certificateSecretDAL,
+                kmsService,
+                projectDAL
+              }
+            );
+            return { certificateId: cert.id };
           })();
           await acmeOrderDAL.updateById(
             orderId,

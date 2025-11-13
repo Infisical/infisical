@@ -61,7 +61,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
+    handler: async () => {
       checkIfBddNockApiEnabled();
       logger.info("Cleaning all nocks");
       nock.cleanAll();
@@ -78,7 +78,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
-    handler: async (req) => {
+    handler: async () => {
       checkIfBddNockApiEnabled();
       logger.info("Restore network requests from nock");
       nock.restore();

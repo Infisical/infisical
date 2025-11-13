@@ -337,8 +337,8 @@ export const orderCertificate = async (
         serialNumber: certObj.serialNumber,
         notBefore: certObj.notBefore,
         notAfter: certObj.notAfter,
-        keyUsages: keyUsages,
-        extendedKeyUsages: extendedKeyUsages,
+        keyUsages,
+        extendedKeyUsages,
         projectId: ca.projectId
       },
       innerTx
