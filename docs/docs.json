@@ -752,7 +752,12 @@
                 "group": "Infrastructure Integrations",
                 "pages": [
                   "documentation/platform/pki/pki-issuer",
-                  "documentation/platform/pki/integration-guides/gloo-mesh"
+                  "documentation/platform/pki/integration-guides/gloo-mesh",
+                  "documentation/platform/pki/integration-guides/windows-server-acme",
+                  "documentation/platform/pki/integration-guides/nginx-certbot",
+                  "documentation/platform/pki/integration-guides/apache-certbot",
+                  "documentation/platform/pki/integration-guides/tomcat-certbot",
+                  "documentation/platform/pki/integration-guides/jboss-certbot"
                 ]
               },
               {
