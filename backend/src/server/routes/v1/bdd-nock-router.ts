@@ -1,11 +1,11 @@
+import nock, { Definition } from "nock";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
 import { ForbiddenRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { logger } from "@app/lib/logger";
-import nock, { Definition } from "nock";
 
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
   const checkIfBddNockApiEnabled = () => {
