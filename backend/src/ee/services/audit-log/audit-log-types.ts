@@ -2664,7 +2664,6 @@ interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
     organizationId?: string;
-    organizationName?: string;
     authProvider?: string;
   };
 }
