@@ -1,0 +1,226 @@
+---
+title: "JBoss/WildFly"
+description: "Learn how to issue SSL/TLS certificates from Infisical using ACME enrollment on JBoss/WildFly with Certbot"
+---
+
+This guide demonstrates how to use Infisical to issue SSL/TLS certificates for your [JBoss](https://www.jboss.org/)/[WildFly](https://wildfly.org/) application server.
+
+It uses [Certbot](https://certbot.eff.org/), an installable [ACME](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) client, to request and renew certificates from Infisical using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). JBoss/WildFly requires certificates in Java keystore format, which this guide addresses through the certificate conversion process.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- A [JBoss](https://www.jboss.org/)/[WildFly](https://wildfly.org/) application server running on a Linux system with administrative access.
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) in Infisical.
+- Network connectivity from your JBoss/WildFly server to Infisical.
+- Port 80 open and reachable for ACME [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) validation.
+- [Java Development Kit (JDK)](https://openjdk.org/) installed for keystore management tools.
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click the **Reveal ACME EAB** option to view the ACME configuration details.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From the ACME configuration, gather the following values:
+
+        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
+        - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install Certbot">
+        Install Certbot on the server where JBoss/WildFly is running by following the official Certbot [installation guide](https://certbot.eff.org/instructions).
+
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version of Certbot.
+
+        After installation, you can verify that Certbot has been installed correctly by running:
+
+        ```bash
+        certbot --version
+        ```
+    </Step>
+
+    <Step title="Request Certificate Using Certbot">
+        Since JBoss/WildFly doesn't have a native Certbot plugin, use the standalone authenticator to obtain certificates. **Important**: You must stop JBoss/WildFly before running this command as Certbot needs to bind to port 80 for the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge.
+
+        Stop your JBoss/WildFly server:
+
+        ```bash
+        sudo systemctl stop wildfly
+        # or for older JBoss versions
+        # sudo systemctl stop jboss
+        ```
+
+        Run the following command to request a certificate from Infisical:
+
+        ```bash
+        sudo certbot certonly \
+          --standalone \
+          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --eab-kid "your-eab-key-identifier" \
+          --eab-hmac-key "your-eab-secret" \
+          -d example.infisical.com \
+          --email admin@example.com \
+          --agree-tos \
+          --non-interactive
+        ```
+
+        For guidance on each parameter:
+
+        - `certonly`: Instructs Certbot to request a certificate without modifying your JBoss/WildFly configuration; this mode is recommended because JBoss/WildFly requires certificates in Java keystore format rather than the PEM format that Certbot provides.
+        - `--standalone`: Uses Certbot's standalone authenticator to solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge by starting a temporary web server on port 80.
+        - `--server`: The Infisical ACME directory URL from Step 1. This instructs Certbot to communicate with Infisical's ACME server instead of Let's Encrypt.
+        - `--eab-kid`: Your External Account Binding (EAB) Key Identifier from Step 1.
+        - `--eab-hmac-key`: The EAB secret associated with the KID from Step 1.
+        - `-d`: Specifies the domain name for which the certificate is being requested.
+        - `--email`: The contact email for expiration notices and account recovery.
+        - `--agree-tos`: Accepts the ACME server's Terms of Service.
+        - `--non-interactive`: Runs Certbot without prompting for user input (recommended for automation).
+
+        The Certbot command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
+
+        Because JBoss/WildFly requires certificates in Java keystore format, you'll need to convert the PEM certificates provided by Certbot in the next step.
+    </Step>
+
+    <Step title="Convert Certificate to Java Keystore">
+        JBoss/WildFly requires certificates in Java keystore format rather than the PEM format provided by Certbot. Convert the PEM certificates to PKCS#12 format, which is supported by modern JBoss/WildFly versions.
+
+        Create a PKCS#12 keystore from the PEM files:
+
+        ```bash
+        sudo openssl pkcs12 -export \
+          -out /opt/wildfly/standalone/configuration/keystore.p12 \
+          -inkey /etc/letsencrypt/live/example.infisical.com/privkey.pem \
+          -in /etc/letsencrypt/live/example.infisical.com/cert.pem \
+          -certfile /etc/letsencrypt/live/example.infisical.com/chain.pem \
+          -passout pass:changeit
+        ```
+
+        Set appropriate file permissions for security:
+
+        ```bash
+        sudo chown wildfly:wildfly /opt/wildfly/standalone/configuration/keystore.p12
+        sudo chmod 600 /opt/wildfly/standalone/configuration/keystore.p12
+        ```
+
+        You will need to configure JBoss/WildFly to use the new keystore. This process varies depending on your JBoss/WildFly version and security configuration (legacy security realms vs. Elytron subsystem). Refer to your [JBoss](https://access.redhat.com/documentation/en-us/red_hat_jboss_enterprise_application_platform)/[WildFly](https://docs.wildfly.org/) administration guide for specific SSL/TLS configuration steps.
+
+        <Note>
+            Replace `changeit` with a strong password and adjust the WildFly installation path based on your environment. Modern WildFly versions support PKCS#12 keystores directly, while older versions may require conversion to JKS format using the [keytool](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html) utility.
+        </Note>
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After configuring JBoss/WildFly SSL, verify that your certificate was issued correctly and the keystore was created properly.
+
+        Check that the certificate files were created by Certbot:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see files like:
+        - `cert.pem` (your certificate)
+        - `chain.pem` (certificate chain)
+        - `fullchain.pem` (certificate + chain)
+        - `privkey.pem` (private key)
+
+        Verify the PKCS#12 keystore was created:
+
+        ```bash
+        sudo ls -la /opt/wildfly/standalone/configuration/keystore.p12
+        ```
+
+        Test the keystore contents (optional):
+
+        ```bash
+        sudo keytool -list -storetype PKCS12 -keystore /opt/wildfly/standalone/configuration/keystore.p12 -storepass changeit
+        ```
+
+        Once you've configured JBoss/WildFly to use the keystore and restarted the service, you can verify HTTPS is working by accessing your application over SSL.
+    </Step>
+
+    <Step title="Renew Your Certificate with Certbot">
+        Unlike standard web servers, JBoss/WildFly certificate renewal requires additional steps because certificates must be converted to Java keystore format and the application server must be restarted to use the new certificates.
+
+        To test the renewal process without affecting your live certificates, run the following command:
+
+        ```bash
+        sudo certbot renew --dry-run
+        ```
+
+        This command simulates the full renewal process without modifying your active certificate. If the dry run succeeds, the renewal mechanism itself will work as expected.
+
+        For actual renewal, since JBoss/WildFly requires the standalone authenticator, you'll need to stop the server, perform the renewal, convert the certificate, and restart:
+
+        ```bash
+        # Stop JBoss/WildFly
+        sudo systemctl stop wildfly
+
+        # Renew the certificate
+        sudo certbot renew --quiet
+
+        # Convert to keystore format
+        sudo openssl pkcs12 -export \
+          -out /opt/wildfly/standalone/configuration/keystore.p12 \
+          -inkey /etc/letsencrypt/live/example.infisical.com/privkey.pem \
+          -in /etc/letsencrypt/live/example.infisical.com/cert.pem \
+          -certfile /etc/letsencrypt/live/example.infisical.com/chain.pem \
+          -passout pass:changeit
+
+        # Set permissions
+        sudo chown wildfly:wildfly /opt/wildfly/standalone/configuration/keystore.p12
+        sudo chmod 600 /opt/wildfly/standalone/configuration/keystore.p12
+
+        # Start JBoss/WildFly
+        sudo systemctl start wildfly
+        ```
+
+        To automate this process, you can create a renewal script. Create `/etc/letsencrypt/renewal-hooks/deploy/jboss-renewal.sh`:
+
+        ```bash
+        #!/bin/bash
+        # JBoss/WildFly certificate renewal hook
+
+        DOMAIN="example.infisical.com"
+        KEYSTORE_PATH="/opt/wildfly/standalone/configuration/keystore.p12"
+        KEYSTORE_PASSWORD="changeit"
+
+        # Convert certificate to keystore format
+        openssl pkcs12 -export \
+          -out "$KEYSTORE_PATH" \
+          -inkey "/etc/letsencrypt/live/$DOMAIN/privkey.pem" \
+          -in "/etc/letsencrypt/live/$DOMAIN/cert.pem" \
+          -certfile "/etc/letsencrypt/live/$DOMAIN/chain.pem" \
+          -passout "pass:$KEYSTORE_PASSWORD"
+
+        # Set permissions
+        chown wildfly:wildfly "$KEYSTORE_PATH"
+        chmod 600 "$KEYSTORE_PATH"
+
+        # Restart WildFly to load new certificate
+        systemctl restart wildfly
+        ```
+
+        Make the hook executable:
+
+        ```bash
+        sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/jboss-renewal.sh
+        ```
+
+        <Note>
+            Certbot automatically renews certificates when they are within 30 days of expiration using its built-in systemd timer. The deploy hook above will run after each successful renewal, handling the keystore conversion and service restart automatically. Because JBoss/WildFly requires the standalone authenticator (which stops the service temporarily), plan for brief service interruptions during renewal.
+        </Note>
+    </Step>
+</Steps>

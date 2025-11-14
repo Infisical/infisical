@@ -251,6 +251,17 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_ORG_ROLE]: "Update Org Role",
   [EventType.DELETE_ORG_ROLE]: "Delete Org Role",
 
+  [EventType.CREATE_SUB_ORGANIZATION]: "Create Sub Organization",
+  [EventType.UPDATE_SUB_ORGANIZATION]: "Update Sub Organization",
+
+  [EventType.CREATE_IDENTITY_ORG_MEMBERSHIP]: "Create Identity Org Membership",
+  [EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP]: "Update Identity Org Membership",
+  [EventType.DELETE_IDENTITY_ORG_MEMBERSHIP]: "Delete Identity Org Membership",
+
+  [EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP]: "Create Identity Project Membership",
+  [EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP]: "Update Identity Project Membership",
+  [EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP]: "Delete Identity Project Membership",
+
   [EventType.PAM_SESSION_START]: "PAM Session Start",
   [EventType.PAM_SESSION_LOGS_UPDATE]: "PAM Session Logs Update",
   [EventType.PAM_SESSION_END]: "PAM Session End",
@@ -268,7 +279,18 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.PAM_RESOURCE_GET]: "PAM Resource Get",
   [EventType.PAM_RESOURCE_CREATE]: "PAM Resource Create",
   [EventType.PAM_RESOURCE_UPDATE]: "PAM Resource Update",
-  [EventType.PAM_RESOURCE_DELETE]: "PAM Resource Delete"
+  [EventType.PAM_RESOURCE_DELETE]: "PAM Resource Delete",
+
+  [EventType.CREATE_CERTIFICATE_PROFILE]: "Create Certificate Profile",
+  [EventType.UPDATE_CERTIFICATE_PROFILE]: "Update Certificate Profile",
+  [EventType.DELETE_CERTIFICATE_PROFILE]: "Delete Certificate Profile",
+  [EventType.GET_CERTIFICATE_PROFILE]: "Get Certificate Profile",
+  [EventType.LIST_CERTIFICATE_PROFILES]: "List Certificate Profiles",
+  [EventType.ISSUE_CERTIFICATE_FROM_PROFILE]: "Issue Certificate From Profile",
+  [EventType.SIGN_CERTIFICATE_FROM_PROFILE]: "Sign Certificate From Profile",
+  [EventType.ORDER_CERTIFICATE_FROM_PROFILE]: "Order Certificate From Profile",
+  [EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE]:
+    "Get Certificate Profile Latest Active Bundle"
 };
 
 export const userAgentTypeToNameMap: { [K in UserAgentType]: string } = {

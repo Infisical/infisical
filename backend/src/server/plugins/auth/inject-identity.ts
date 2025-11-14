@@ -182,8 +182,8 @@ export const injectIdentity = fp(
         case AuthMode.IDENTITY_ACCESS_TOKEN: {
           const identity = await server.services.identityAccessToken.fnValidateIdentityAccessToken(
             token,
-            subOrganizationSelector,
-            req.realIp
+            req.realIp,
+            subOrganizationSelector
           );
           const serverCfg = await getServerCfg();
           requestContext.set("orgId", identity.orgId);

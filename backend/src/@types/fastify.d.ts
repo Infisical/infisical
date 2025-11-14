@@ -32,6 +32,7 @@ import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-re
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { TPitServiceFactory } from "@app/ee/services/pit/pit-service";
+import { TPkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-types";
 import { TProjectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-types";
 import { RateLimitConfiguration, TRateLimitServiceFactory } from "@app/ee/services/rate-limit/rate-limit-types";
 import { TRelayServiceFactory } from "@app/ee/services/relay/relay-service";
@@ -90,6 +91,7 @@ import { TIdentityProjectServiceFactory } from "@app/services/identity-project/i
 import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
@@ -101,6 +103,7 @@ import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-r
 import { TOrgServiceFactory } from "@app/services/org/org-service";
 import { TOrgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { TPkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { TPkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { TPkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
 import { TPkiSubscriberServiceFactory } from "@app/services/pki-subscriber/pki-subscriber-service";
 import { TPkiSyncServiceFactory } from "@app/services/pki-sync/pki-sync-service";
@@ -256,7 +259,8 @@ declare module "fastify" {
       integrationAuth: TIntegrationAuthServiceFactory;
       webhook: TWebhookServiceFactory;
       serviceToken: TServiceTokenServiceFactory;
-      identity: TIdentityServiceFactory;
+      identityV1: TIdentityServiceFactory;
+      identityV2: TScopedIdentityV2ServiceFactory;
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityTokenAuth: TIdentityTokenAuthServiceFactory;
@@ -294,6 +298,7 @@ declare module "fastify" {
       certificateAuthority: TCertificateAuthorityServiceFactory;
       certificateAuthorityCrl: TCertificateAuthorityCrlServiceFactory;
       certificateEst: TCertificateEstServiceFactory;
+      pkiAcme: TPkiAcmeServiceFactory;
       certificateEstV3: TCertificateEstV3ServiceFactory;
       pkiCollection: TPkiCollectionServiceFactory;
       pkiSubscriber: TPkiSubscriberServiceFactory;
@@ -353,6 +358,7 @@ declare module "fastify" {
       role: TRoleServiceFactory;
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
+      pkiAlertV2: TPkiAlertV2ServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

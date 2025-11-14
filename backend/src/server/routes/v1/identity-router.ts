@@ -60,7 +60,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identity = await server.services.identity.createIdentity({
+      const identity = await server.services.identityV1.createIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -136,7 +136,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identity = await server.services.identity.updateIdentity({
+      const identity = await server.services.identityV1.updateIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -189,7 +189,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identity = await server.services.identity.deleteIdentity({
+      const identity = await server.services.identityV1.deleteIdentity({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -258,7 +258,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identity = await server.services.identity.getIdentityById({
+      const identity = await server.services.identityV1.getIdentityById({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -308,7 +308,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityMemberships, totalCount } = await server.services.identity.listOrgIdentities({
+      const { identityMemberships, totalCount } = await server.services.identityV1.listOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -402,7 +402,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identityMemberships, totalCount } = await server.services.identity.searchOrgIdentities({
+      const { identityMemberships, totalCount } = await server.services.identityV1.searchOrgIdentities({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -468,7 +468,7 @@ export const registerIdentityRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const identityMemberships = await server.services.identity.listProjectIdentitiesByIdentityId({
+      const identityMemberships = await server.services.identityV1.listProjectIdentitiesByIdentityId({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

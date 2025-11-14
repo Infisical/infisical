@@ -26,9 +26,21 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     return [
       ...resourceOptions,
       // We are temporarily showing these resources so that we can gauge interest before committing
+      { name: "OracleDB", resource: PamResourceType.OracleDB },
+      { name: "SQLite", resource: PamResourceType.SQLite },
+      { name: "Microsoft SQL Server", resource: PamResourceType.MsSQL },
+      { name: "MongoDB", resource: PamResourceType.MongoDB },
+      { name: "Cassandra", resource: PamResourceType.Cassandra },
+      { name: "CockroachDB", resource: PamResourceType.CockroachDB },
+      { name: "DynamoDB", resource: PamResourceType.DynamoDB },
+      { name: "Snowflake", resource: PamResourceType.Snowflake },
+      { name: "Elasticsearch", resource: PamResourceType.Elasticsearch },
+      { name: "Redis", resource: PamResourceType.Redis },
       { name: "RDP", resource: PamResourceType.RDP },
       { name: "SSH", resource: PamResourceType.SSH },
-      { name: "Kubernetes", resource: PamResourceType.Kubernetes }
+      { name: "Kubernetes", resource: PamResourceType.Kubernetes },
+      { name: "MCP", resource: PamResourceType.MCP },
+      { name: "Web Application", resource: PamResourceType.WebApp }
     ];
   }, [resourceOptions]);
 
@@ -38,11 +50,13 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
 
   const filteredOptions = useMemo(
     () =>
-      appendedResourceOptions?.filter(
-        ({ name, resource }) =>
-          name.toLowerCase().includes(search.trim().toLowerCase()) ||
-          resource.toLowerCase().includes(search.trim().toLowerCase())
-      ) ?? [],
+      appendedResourceOptions
+        ?.filter(
+          ({ name, resource }) =>
+            name.toLowerCase().includes(search.trim().toLowerCase()) ||
+            resource.toLowerCase().includes(search.trim().toLowerCase())
+        )
+        .sort((a, b) => a.name.localeCompare(b.name)) ?? [],
     [appendedResourceOptions, search]
   );
 
@@ -65,7 +79,16 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.SSH ||
-      resource === PamResourceType.Kubernetes
+      resource === PamResourceType.Kubernetes ||
+      resource === PamResourceType.MCP ||
+      resource === PamResourceType.Redis ||
+      resource === PamResourceType.MongoDB ||
+      resource === PamResourceType.WebApp ||
+      resource === PamResourceType.Cassandra ||
+      resource === PamResourceType.CockroachDB ||
+      resource === PamResourceType.Elasticsearch ||
+      resource === PamResourceType.Snowflake ||
+      resource === PamResourceType.DynamoDB
     ) {
       handlePopUpOpen("upgradePlan", {
         text: "Your current plan does not include access to this resource type. To unlock this feature, please upgrade to Infisical Enterprise plan.",
@@ -105,17 +128,16 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
               onClick={() => handleResourceSelect(option.resource)}
               className="group relative flex h-28 cursor-pointer flex-col items-center justify-center rounded-md border border-mineshaft-600 bg-mineshaft-700 p-4 duration-200 hover:bg-mineshaft-600"
             >
-              <div className="relative">
+              <div className="relative my-auto">
                 <img
                   src={`/images/integrations/${image}`}
                   style={{
                     width: `${size}px`
                   }}
-                  className="mt-auto"
                   alt={`${name} logo`}
                 />
               </div>
-              <div className="mt-auto max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
+              <div className="max-w-xs text-center text-xs font-medium text-gray-300 duration-200 group-hover:text-gray-200">
                 {name}
               </div>
             </button>

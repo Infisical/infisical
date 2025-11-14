@@ -30,6 +30,7 @@ import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
 import { registerPITRouter } from "./pit-router";
+import { registerPkiAcmeRouter } from "./pki-acme-router";
 import { registerProjectRoleRouter } from "./project-role-router";
 import { registerProjectRouter } from "./project-router";
 import { registerRateLimitRouter } from "./rate-limit-router";
@@ -107,6 +108,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
+      await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
     { prefix: "/pki" }
   );

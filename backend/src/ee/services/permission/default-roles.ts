@@ -106,7 +106,9 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateProfileActions.Edit,
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionCertificateProfileActions.Delete,
-      ProjectPermissionCertificateProfileActions.IssueCert
+      ProjectPermissionCertificateProfileActions.IssueCert,
+      ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
+      ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret
     ],
     ProjectPermissionSub.CertificateProfiles
   );
@@ -169,7 +171,11 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionIdentityActions.GrantPrivileges,
-      ProjectPermissionIdentityActions.AssumePrivileges
+      ProjectPermissionIdentityActions.AssumePrivileges,
+      ProjectPermissionIdentityActions.GetToken,
+      ProjectPermissionIdentityActions.CreateToken,
+      ProjectPermissionIdentityActions.DeleteToken,
+      ProjectPermissionIdentityActions.RevokeAuth
     ],
     ProjectPermissionSub.Identity
   );

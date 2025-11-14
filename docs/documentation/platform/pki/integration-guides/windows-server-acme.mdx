@@ -1,0 +1,194 @@
+---
+title: "Windows Server"
+description: "Learn how to issue SSL/TLS certificates from Infisical using ACME enrollment on Windows Server with win-acme"
+---
+
+This guide demonstrates how to use Infisical to issue SSL/TLS certificates for your [Windows Server](https://www.microsoft.com/en-us/windows-server) environments.
+
+It uses [win-acme](https://www.win-acme.com/), a feature-rich [ACME](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) client designed specifically for Windows, to request and renew certificates from Infisical using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). Win-acme offers excellent integration with IIS, Windows Certificate Store, and various certificate storage options.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- A [Windows Server](https://www.microsoft.com/en-us/windows-server) instance running with administrative access.
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) in Infisical.
+- Network connectivity from your Windows Server to Infisical.
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click the **Reveal ACME EAB** option to view the ACME configuration details.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From the ACME configuration, gather the following values:
+
+        - ACME Directory URL: The URL that win-acme will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
+        - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install win-acme">
+        Install win-acme on your Windows Server using one of the following methods.
+        <Tabs>
+            <Tab title="Download from GitHub">
+                1. Visit the [win-acme releases page](https://github.com/win-acme/win-acme/releases).
+                2. Download the latest stable release ZIP file.
+                3. Extract the contents to a folder (e.g., `C:\win-acme`).
+                4. Open Command Prompt or PowerShell as Administrator.
+                5. Navigate to the win-acme folder.
+
+                ```powershell
+                cd C:\win-acme
+                ```
+            </Tab>
+            <Tab title=".NET Tool (Global Install)">
+                If you have [.NET Core](https://dotnet.microsoft.com/en-us/download) installed, you can install win-acme as a global tool:
+
+                ```powershell
+                dotnet tool install win-acme --global
+                ```
+
+                This makes the `wacs` command available system-wide.
+            </Tab>
+        </Tabs>
+    </Step>
+
+    <Step title="Request Certificate Using Command Line">
+        Run the following win-acme command to request a certificate from Infisical:
+
+        ```powershell
+        wacs.exe --target manual --host example.infisical.com --baseuri "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" --eab-key-identifier "your-eab-key-identifier" --eab-key "your-eab-secret" --validation selfhosting --store pemfiles --pemfilespath "C:\certificates" --verbose
+        ```
+
+        For guidance on each parameter:
+
+        - `--target manual`: Specifies manual target configuration for domain specification.
+        - `--host`: The domain name for which the certificate is being requested.
+        - `--baseuri`: The Infisical ACME directory URL from Step 1. This instructs win-acme to communicate with Infisical's ACME server instead of other ACME providers.
+        - `--eab-key-identifier`: Your External Account Binding (EAB) Key Identifier from Step 1.
+        - `--eab-key`: The EAB secret associated with the KID from Step 1.
+        - `--validation selfhosting`: Uses self-hosting validation method to solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge.
+        - `--store pemfiles`: Stores certificates as PEM files in a specified directory.
+        - `--pemfilespath`: Directory where certificates will be saved on your Windows Server.
+        - `--verbose`: Enables detailed logging for troubleshooting and monitoring the certificate request process.
+
+        The win-acme command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Win-acme stores the private key and resulting leaf certificate and full certificate chain in the specified directory path.
+
+        <Note>
+            Replace the placeholder values with your actual configuration:
+            - `example.infisical.com`: Your actual domain name
+            - `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`: Your Infisical ACME endpoint from Step 1
+            - `your-eab-key-identifier` and `your-eab-secret`: Your External Account Binding credentials from Step 1
+            - `C:\certificates`: Your desired certificate storage location
+        </Note>
+    </Step>
+
+    <Step title="Alternative Storage Options">
+        Win-acme supports various certificate storage options beyond PEM files. Here are common alternatives for different deployment scenarios:
+
+        <Tabs>
+            <Tab title="Windows Certificate Store">
+                Store certificates directly in the [Windows Certificate Store](https://docs.microsoft.com/en-us/windows-hardware/drivers/install/certificate-stores) for integration with IIS and other Windows services:
+
+                ```powershell
+                wacs.exe --target manual --host example.infisical.com --baseuri "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" --eab-key-identifier "your-eab-key-identifier" --eab-key "your-eab-secret" --validation selfhosting --store certificatestore --verbose
+                ```
+            </Tab>
+            <Tab title="PFX Files">
+                Generate [PFX files](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/certutil) with password protection for easy deployment across Windows environments:
+
+                ```powershell
+                wacs.exe --target manual --host example.infisical.com --baseuri "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" --eab-key-identifier "your-eab-key-identifier" --eab-key "your-eab-secret" --validation selfhosting --store pfxfile --pfxfilepath "C:\certificates" --pfxpassword "your-secure-password" --verbose
+                ```
+            </Tab>
+            <Tab title="IIS Central SSL">
+                For IIS Central SSL store integration in high-scale environments:
+
+                ```powershell
+                wacs.exe --target manual --host example.infisical.com --baseuri "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" --eab-key-identifier "your-eab-key-identifier" --eab-key "your-eab-secret" --validation selfhosting --store centralssl --centralsslstore "C:\CentralSSL" --verbose
+                ```
+            </Tab>
+        </Tabs>
+    </Step>
+
+    <Step title="Configure Automatic Renewal">
+        Win-acme can automatically create a [Windows Scheduled Task](https://docs.microsoft.com/en-us/windows/win32/taskschd/about-the-task-scheduler) for certificate renewal. Because win-acme stores the ACME server URL and EAB credentials from your initial request, renewal will automatically use the same Infisical ACME configuration—no additional settings are required.
+
+        **Option 1: Enable during initial certificate request**
+
+        Include the `--setuptaskscheduler` parameter in your initial command to automatically create the renewal task:
+
+        ```powershell
+        wacs.exe --target manual --host example.infisical.com --baseuri "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" --eab-key-identifier "your-eab-key-identifier" --eab-key "your-eab-secret" --validation selfhosting --store pemfiles --pemfilespath "C:\certificates" --setuptaskscheduler --verbose
+        ```
+
+        **Option 2: Test manual renewal**
+
+        You can test the renewal process manually before setting up automation to ensure the configuration works correctly:
+
+        ```powershell
+        wacs.exe --renew --force --verbose
+        ```
+
+        This command simulates the full renewal process and verifies that win-acme can successfully contact Infisical and renew your certificate using the stored configuration.
+
+        **Option 3: Verify scheduled task creation**
+
+        Check that the scheduled task was created successfully:
+
+        ```powershell
+        Get-ScheduledTask -TaskName "*win-acme*"
+        ```
+
+        The automatic renewal task will:
+        - Run under the SYSTEM account for elevated privileges.
+        - Check certificates daily for renewal eligibility.
+        - Automatically renew certificates that are within the renewal threshold (typically 30 days before expiration).
+        - Log renewal activities to Windows Event Viewer and win-acme log files for monitoring and troubleshooting.
+
+
+        <Note>
+            Win-acme stores renewal configurations automatically in its settings directory, so once a certificate is created, the renewal process will use the same parameters (ACME endpoint, EAB credentials, storage options) for future renewals. The renewal threshold can be adjusted in the win-acme configuration files if needed.
+        </Note>
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After successful certificate issuance, verify that the certificate files have been created correctly based on your chosen storage method.
+        <Tabs>
+            <Tab title="PEM Files">
+                Check your specified PEM files directory to ensure all certificate components are present:
+
+                ```powershell
+                Get-ChildItem "C:\certificates" -Filter "*.pem"
+                ```
+
+                You should see files like:
+                - `example.infisical.com-crt.pem` (certificate)
+                - `example.infisical.com-key.pem` (private key)
+                - `example.infisical.com-chain.pem` (complete certificate chain)
+                - `example.infisical.com-chain-only.pem` (only certificate chain)
+
+                ![Windows Server Generated PEM files](/images/platform/pki/integrations/windows-server/certificates-created.png)
+            </Tab>
+            <Tab title="Windows Certificate Store">
+                If you used the certificate store option, check that the certificate was properly installed using PowerShell:
+
+                ```powershell
+                Get-ChildItem -Path Cert:\LocalMachine\My | Where-Object {$_.Subject -like "*example.infisical.com*"}
+                ```
+
+                The certificate should appear in the [Local Computer Personal certificate store](https://docs.microsoft.com/en-us/dotnet/framework/wcf/feature-details/working-with-certificates#certificate-stores), making it available for use with IIS, other Windows services, and applications that integrate with the Windows Certificate Store.
+            </Tab>
+        </Tabs>
+    </Step>
+</Steps>

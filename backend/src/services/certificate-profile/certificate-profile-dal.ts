@@ -65,9 +65,27 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findByIdWithOwnerOrgId = async (
+    id: string,
+    tx?: Knex
+  ): Promise<(TCertificateProfile & { ownerOrgId: string }) | undefined> => {
+    try {
+      const certificateProfile = (await (tx || db)(TableName.PkiCertificateProfile)
+        .join(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
+        .select(selectAllTableCols(TableName.PkiCertificateProfile))
+        .select(db.ref("orgId").withSchema(TableName.Project).as("ownerOrgId"))
+        .where(`${TableName.PkiCertificateProfile}.id`, id)
+        .first()) as (TCertificateProfile & { ownerOrgId: string }) | undefined;
+      return certificateProfile;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find certificate profile by id with owner org id" });
+    }
+  };
+
   const findByIdWithConfigs = async (id: string, tx?: Knex): Promise<TCertificateProfileWithConfigs | undefined> => {
     try {
       const query = (tx || db)(TableName.PkiCertificateProfile)
+        .leftJoin(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCertificateProfile}.caId`,
@@ -88,8 +106,15 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiAcmeEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.acmeConfigId`,
+          `${TableName.PkiAcmeEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("orgId"),
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
@@ -107,7 +132,9 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estConfigEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigAutoRenew"),
-          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiConfigRenewBeforeDays"),
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigId"),
+          db.ref("encryptedEabSecret").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeConfigEncryptedEabSecret")
         )
         .where(`${TableName.PkiCertificateProfile}.id`, id)
         .first();
@@ -134,15 +161,19 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           } as TCertificateProfileWithConfigs["apiConfig"])
         : undefined;
 
-      const certificateAuthority =
-        result.caId && result.caProjectId && result.caStatus && result.caName
-          ? ({
-              id: result.caId,
-              projectId: result.caProjectId,
-              status: result.caStatus,
-              name: result.caName
-            } as TCertificateProfileWithConfigs["certificateAuthority"])
-          : undefined;
+      const acmeConfig = result.acmeConfigId
+        ? ({
+            id: result.acmeConfigId,
+            encryptedEabSecret: result.acmeConfigEncryptedEabSecret
+          } as TCertificateProfileWithConfigs["acmeConfig"])
+        : undefined;
+
+      const certificateAuthority = {
+        id: result.caId,
+        projectId: result.caProjectId,
+        status: result.caStatus,
+        name: result.caName
+      } as TCertificateProfileWithConfigs["certificateAuthority"];
 
       const certificateTemplate =
         result.templateId && result.templateProjectId && result.templateName
@@ -154,6 +185,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             } as TCertificateProfileWithConfigs["certificateTemplate"])
           : undefined;
 
+      const project = {
+        id: result.projectId,
+        orgId: result.orgId
+      } as TCertificateProfileWithConfigs["project"];
+
       const transformedResult: TCertificateProfileWithConfigs = {
         id: result.id,
         projectId: result.projectId,
@@ -164,10 +200,13 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         enrollmentType: result.enrollmentType as EnrollmentType,
         estConfigId: result.estConfigId,
         apiConfigId: result.apiConfigId,
+        acmeConfigId: result.acmeConfigId,
         createdAt: result.createdAt,
         updatedAt: result.updatedAt,
         estConfig,
         apiConfig,
+        acmeConfig,
+        project,
         certificateAuthority,
         certificateTemplate
       };
@@ -241,6 +280,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           `${TableName.PkiCertificateProfile}.apiConfigId`,
           `${TableName.PkiApiEnrollmentConfig}.id`
         )
+        .leftJoin(
+          TableName.PkiAcmeEnrollmentConfig,
+          `${TableName.PkiCertificateProfile}.acmeConfigId`,
+          `${TableName.PkiAcmeEnrollmentConfig}.id`
+        )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
           db.ref("id").withSchema(TableName.PkiEstEnrollmentConfig).as("estId"),
@@ -252,7 +296,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("encryptedCaChain").withSchema(TableName.PkiEstEnrollmentConfig).as("estEncryptedCaChain"),
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
-          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays")
+          db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
         );
 
       const results = (await query
@@ -279,6 +324,12 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
             }
           : undefined;
 
+        const acmeConfig = result.acmeId
+          ? {
+              id: result.acmeId as string
+            }
+          : undefined;
+
         const baseProfile = {
           id: result.id,
           projectId: result.projectId,
@@ -292,7 +343,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
           estConfig,
-          apiConfig
+          apiConfig,
+          acmeConfig
         };
 
         return baseProfile as TCertificateProfileWithConfigs;
@@ -416,6 +468,24 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     }
   };
 
+  const getLatestActiveCertificateForProfile = async (profileId: string, tx?: Knex) => {
+    try {
+      const now = new Date();
+
+      const certificate = await (tx || db)(TableName.Certificate)
+        .where("profileId", profileId)
+        .where("status", "active")
+        .where("notAfter", ">", now)
+        .whereNull("revokedAt")
+        .orderBy("createdAt", "desc")
+        .first();
+
+      return certificate;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Get latest active certificate by profile" });
+    }
+  };
+
   const isProfileInUse = async (profileId: string, tx?: Knex) => {
     try {
       const doc = await (tx || db)(TableName.Certificate).where("profileId", profileId).count("*").first();
@@ -432,12 +502,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     updateById,
     deleteById,
     findById,
+    findByIdWithOwnerOrgId,
     findByIdWithConfigs,
     findBySlugAndProjectId,
     findByProjectId,
     countByProjectId,
     findByNameAndProjectId,
     getCertificatesByProfile,
+    getLatestActiveCertificateForProfile,
     isProfileInUse
   };
 };

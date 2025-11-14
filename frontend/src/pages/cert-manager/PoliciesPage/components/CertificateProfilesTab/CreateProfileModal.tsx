@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { Controller, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -18,7 +18,7 @@ import {
   TextArea,
   Tooltip
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useProject, useSubscription } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
   TCertificateProfileWithDetails,
@@ -28,6 +28,7 @@ import {
   useUpdateCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
+import { UsePopUpState } from "@app/hooks/usePopUp";
 
 const createSchema = z
   .object({
@@ -45,7 +46,7 @@ const createSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est"]),
+    enrollmentType: z.enum(["api", "est", "acme"]),
     certificateAuthorityId: z.string().min(1, "Certificate Authority is required"),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
     estConfig: z
@@ -72,7 +73,8 @@ const createSchema = z
         autoRenew: z.boolean().optional(),
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -80,6 +82,9 @@ const createSchema = z
         return false;
       }
       if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
       return true;
@@ -105,7 +110,7 @@ const editSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est"]),
+    enrollmentType: z.enum(["api", "est", "acme"]),
     certificateAuthorityId: z.string().optional(),
     certificateTemplateId: z.string().optional(),
     estConfig: z
@@ -120,7 +125,8 @@ const editSchema = z
         autoRenew: z.boolean().optional(),
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -128,6 +134,9 @@ const editSchema = z
         return false;
       }
       if (data.enrollmentType === "api" && !data.apiConfig) {
+        return false;
+      }
+      if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
       return true;
@@ -142,12 +151,25 @@ export type FormData = z.infer<typeof createSchema>;
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  handlePopUpOpen: (
+    popUpName: keyof UsePopUpState<["upgradePlan"]>,
+    data?: {
+      isEnterpriseFeature?: boolean;
+    }
+  ) => void;
   profile?: TCertificateProfileWithDetails;
   mode?: "create" | "edit";
 }
 
-export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }: Props) => {
+export const CreateProfileModal = ({
+  isOpen,
+  onClose,
+  handlePopUpOpen,
+  profile,
+  mode = "create"
+}: Props) => {
   const { currentProject } = useProject();
+  const { subscription } = useSubscription();
 
   const { data: caData } = useListCasByProjectId(currentProject?.id || "");
   const { data: templateData } = useListCertificateTemplatesV2({
@@ -188,7 +210,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   autoRenew: profile.apiConfig?.autoRenew || false,
                   renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
                 }
-              : undefined
+              : undefined,
+          acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
         }
       : {
           slug: "",
@@ -199,7 +222,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
           apiConfig: {
             autoRenew: false,
             renewBeforeDays: 30
-          }
+          },
+          acmeConfig: {}
         }
   });
 
@@ -230,12 +254,22 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 autoRenew: profile.apiConfig?.autoRenew || false,
                 renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
               }
-            : undefined
+            : undefined,
+        acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
       });
     }
   }, [isEdit, profile, reset]);
 
   const onFormSubmit = async (data: FormData) => {
+    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === "acme") {
+      reset();
+      onClose();
+      handlePopUpOpen("upgradePlan", {
+        isEnterpriseFeature: true
+      });
+      return;
+    }
+
     if (!currentProject?.id && !isEdit) return;
 
     if (isEdit) {
@@ -249,6 +283,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         updateData.estConfig = data.estConfig;
       } else if (data.enrollmentType === "api" && data.apiConfig) {
         updateData.apiConfig = data.apiConfig;
+      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+        updateData.acmeConfig = data.acmeConfig;
       }
 
       await updateProfile.mutateAsync(updateData);
@@ -274,6 +310,8 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
         };
       } else if (data.enrollmentType === "api" && data.apiConfig) {
         createData.apiConfig = data.apiConfig;
+      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+        createData.acmeConfig = data.acmeConfig;
       }
 
       await createProfile.mutateAsync(createData);
@@ -376,17 +414,23 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                   {...field}
                   onValueChange={(value) => {
                     if (watchedEnrollmentType === "est") {
+                      setValue("apiConfig", undefined);
                       setValue("estConfig", {
                         disableBootstrapCaValidation: false,
                         passphrase: ""
                       });
-                      setValue("apiConfig", undefined);
-                    } else {
+                      setValue("acmeConfig", undefined);
+                    } else if (watchedEnrollmentType === "api") {
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
                       });
                       setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
+                    } else if (watchedEnrollmentType === "acme") {
+                      setValue("estConfig", undefined);
+                      setValue("apiConfig", undefined);
+                      setValue("acmeConfig", {});
                     }
                     onChange(value);
                   }}
@@ -424,12 +468,18 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                         disableBootstrapCaValidation: false,
                         passphrase: ""
                       });
-                    } else {
-                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
+                    } else if (value === "api") {
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
                       });
+                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
+                    } else if (value === "acme") {
+                      setValue("apiConfig", undefined);
+                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", {});
                     }
                     onChange(value);
                   }}
@@ -439,6 +489,7 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
                 >
                   <SelectItem value="api">API</SelectItem>
                   <SelectItem value="est">EST</SelectItem>
+                  <SelectItem value="acme">ACME</SelectItem>
                 </Select>
               </FormControl>
             )}
@@ -548,6 +599,20 @@ export const CreateProfileModal = ({ isOpen, onClose, profile, mode = "create" }
             </div>
           )}
 
+          {/* ACME Configuration */}
+          {watchedEnrollmentType === "acme" && (
+            <div className="mb-4 space-y-4">
+              <Controller
+                control={control}
+                name="acmeConfig"
+                render={({ fieldState: { error } }) => (
+                  <FormControl isError={Boolean(error)} errorText={error?.message}>
+                    <div className="flex items-center gap-2">{/* FIXME: ACME configuration */}</div>
+                  </FormControl>
+                )}
+              />
+            </div>
+          )}
           {watchedAutoRenew && (
             <div className="mb-4 space-y-4">
               <Controller

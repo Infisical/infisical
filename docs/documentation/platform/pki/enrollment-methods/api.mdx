@@ -1,0 +1,179 @@
+---
+title: "Certificate Enrollment via API"
+sidebarTitle: "API"
+---
+
+## Concept
+
+The API enrollment method allows you to issue certificates against a specific certificate profile over Web UI or by making an API request to Infisical.
+
+## Guide to Certificate Enrollment via API
+
+In the following steps, we explore how to issue a X.509 certificate using the API enrollment method.
+
+<Tabs>
+  <Tab title="Infisical UI">
+
+<Steps>
+  <Step title="Create a certificate profile">
+  Create a [certificate
+    profile](/documentation/platform/pki/certificates/profiles) with **API**
+    selected as the enrollment method.
+
+    Notice that the API enrollment method supports an option called **Enable Auto-Renewal By Default**.
+    If selected, _eligible_ certificates are automatically considered for server-side auto-renewal based
+    on a specified renewal days before expiration threshold at the time of issuance; for more information
+    about server-side auto-renewal, refer to the documentation [here](/documentation/platform/pki/certificates/certificates#guide-to-renewing-certificates).
+
+  </Step>
+  <Step title="Issue a certificate">
+  To create a certificate, head to your Project > Certificates > Certificates and press **Issue**.
+  
+  ![pki certificates](/images/platform/pki/certificate/cert-issue.png)
+
+Here, select the certificate profile from step 1 that will be used to issue the certificate and fill out the rest of the details for the certificate to be issued.
+
+![pki certificate issue modal](/images/platform/pki/certificate/cert-issue-modal.png)
+
+  </Step>
+  <Step title="Download the certificate details">
+  Once you have created the certificate from step 1, you'll be presented with the certificate details including the **Certificate Body**, **Certificate Chain**, and **Private Key**.
+  
+  ![pki certificate body](/images/platform/pki/certificate/cert-body.png)
+
+    <Note>
+      Make sure to download and store the **Private Key** in a secure location as it
+      will only be displayed once at the time of certificate issuance. The
+      **Certificate Body** and **Certificate Chain** will remain accessible and can
+      be copied at any time.
+    </Note>
+
+  </Step>
+</Steps>
+  </Tab>
+  <Tab title="API">
+
+<Steps>
+  <Step title="Create a certificate profile">
+
+    To create a certificate [profile](/documentation/platform/pki/certificates/profiles), make an API request to the [Create Certificate Profile](/api-reference/endpoints/certificate-profiles/create) API endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-profiles' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "projectId": "<project-id>",
+          "caId": "<ca-id>",
+          "certificateTemplateId": "<certificate-template-id>",
+          "slug": "my-api-profile",
+          "description": "Certificate profile for API enrollment",
+          "enrollmentType": "API",
+          "apiConfig": {
+              "autoRenew": true,
+              "renewBeforeDays": 7
+          }
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "certificateProfile": {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "projectId": "65f0a4b0-c123-4567-8901-23456789abcd",
+        "caId": "550e8400-e29b-41d4-a716-446655440000",
+        "certificateTemplateId": "660f1234-e29b-41d4-a716-446655440001",
+        "slug": "my-api-profile",
+        "description": "Certificate profile for API enrollment",
+        "enrollmentType": "API",
+        "apiConfigId": "770g2345-e29b-41d4-a716-446655440002",
+        "createdAt": "2023-01-19T09:44:36.267Z",
+        "updatedAt": "2023-01-19T09:44:36.267Z"
+      }
+    }
+    ```
+
+  </Step>
+  <Step title="Issue a certificate">
+
+    To issue a certificate against the certificate profile, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint.
+
+    ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/issue-certificate' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "profileId": "<certificate-profile-id>",
+          "commonName": "service.acme.com",
+          "ttl": "1y",
+          "signatureAlgorithm": "RSA-SHA256",
+          "keyAlgorithm": "RSA_2048",
+          "keyUsages": ["digital_signature", "key_encipherment"],
+          "extendedKeyUsages": ["server_auth"],
+          "altNames": [
+              {
+                  "type": "DNS",
+                  "value": "service.acme.com"
+              },
+              {
+                  "type": "DNS",
+                  "value": "www.service.acme.com"
+              }
+          ]
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "privateKey": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...\n-----END PRIVATE KEY-----",
+      "serialNumber": "123456789012345678",
+      "certificateId": "880h3456-e29b-41d4-a716-446655440003"
+    }
+    ```
+
+    <Note>
+      Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
+    </Note>
+
+    If you have an external private key, you can also issue a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint.
+
+     ### Sample request
+
+    ```bash Request
+    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/sign-certificate' \
+      --header 'Authorization: Bearer <access-token>' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{
+          "profileId": "<certificate-profile-id>",
+          "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIICvDCCAaQCAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBE9oaW8...\n-----END CERTIFICATE REQUEST-----",
+          "ttl": "1y"
+      }'
+    ```
+
+    ### Sample response
+
+    ```bash Response
+    {
+      "certificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "certificateChain": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "issuingCaCertificate": "-----BEGIN CERTIFICATE-----\nMIIEpDCCAowCCQD...\n-----END CERTIFICATE-----",
+      "serialNumber": "123456789012345679",
+      "certificateId": "990i4567-e29b-41d4-a716-446655440004"
+    }
+    ```
+
+  </Step>
+</Steps>
+  </Tab>
+</Tabs>

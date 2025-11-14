@@ -109,6 +109,7 @@ export type SecretVersions = {
     actorType?: string | null;
     name?: string | null;
     membershipId?: string | null;
+    groupId?: string | null;
   } | null;
 };
 

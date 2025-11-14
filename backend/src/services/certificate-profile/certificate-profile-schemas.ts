@@ -27,7 +27,8 @@ export const createCertificateProfileSchema = z
         autoRenew: z.boolean().default(false),
         renewBeforeDays: z.number().min(1).max(30).optional()
       })
-      .optional()
+      .optional(),
+    acmeConfig: z.object({}).optional()
   })
   .refine(
     (data) => {
@@ -38,12 +39,29 @@ export const createCertificateProfileSchema = z
         if (data.apiConfig) {
           return false;
         }
+        if (data.acmeConfig) {
+          return false;
+        }
       }
       if (data.enrollmentType === EnrollmentType.API) {
         if (!data.apiConfig) {
           return false;
         }
         if (data.estConfig) {
+          return false;
+        }
+        if (data.acmeConfig) {
+          return false;
+        }
+      }
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        if (!data.acmeConfig) {
+          return false;
+        }
+        if (data.estConfig) {
+          return false;
+        }
+        if (data.apiConfig) {
           return false;
         }
       }

@@ -74,6 +74,13 @@ import { pamSessionServiceFactory } from "@app/ee/services/pam-session/pam-sessi
 import { permissionDALFactory } from "@app/ee/services/permission/permission-dal";
 import { permissionServiceFactory } from "@app/ee/services/permission/permission-service";
 import { pitServiceFactory } from "@app/ee/services/pit/pit-service";
+import { pkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-account-dal";
+import { pkiAcmeAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-auth-dal";
+import { pkiAcmeChallengeDALFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-dal";
+import { pkiAcmeChallengeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-service";
+import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
+import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
+import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
 import { rateLimitDALFactory } from "@app/ee/services/rate-limit/rate-limit-dal";
@@ -182,6 +189,7 @@ import { certificateV3QueueServiceFactory } from "@app/services/certificate-v3/c
 import { certificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { cmekServiceFactory } from "@app/services/cmek/cmek-service";
 import { convertorServiceFactory } from "@app/services/convertor/convertor-service";
+import { acmeEnrollmentConfigDALFactory } from "@app/services/enrollment-config/acme-enrollment-config-dal";
 import { apiEnrollmentConfigDALFactory } from "@app/services/enrollment-config/api-enrollment-config-dal";
 import { estEnrollmentConfigDALFactory } from "@app/services/enrollment-config/est-enrollment-config-dal";
 import { externalGroupOrgRoleMappingDALFactory } from "@app/services/external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -233,6 +241,8 @@ import { identityTokenAuthServiceFactory } from "@app/services/identity-token-au
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
+import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
@@ -267,6 +277,11 @@ import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rota
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
+import { pkiAlertChannelDALFactory } from "@app/services/pki-alert-v2/pki-alert-channel-dal";
+import { pkiAlertHistoryDALFactory } from "@app/services/pki-alert-v2/pki-alert-history-dal";
+import { pkiAlertV2DALFactory } from "@app/services/pki-alert-v2/pki-alert-v2-dal";
+import { pkiAlertV2QueueServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-queue";
+import { pkiAlertV2ServiceFactory } from "@app/services/pki-alert-v2/pki-alert-v2-service";
 import { pkiCollectionDALFactory } from "@app/services/pki-collection/pki-collection-dal";
 import { pkiCollectionItemDALFactory } from "@app/services/pki-collection/pki-collection-item-dal";
 import { pkiCollectionServiceFactory } from "@app/services/pki-collection/pki-collection-service";
@@ -432,6 +447,7 @@ export const registerRoutes = async (
   const serviceTokenDAL = serviceTokenDALFactory(db);
 
   const identityDAL = identityDALFactory(db);
+  const identityV2DAL = identityV2DALFactory(db);
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
@@ -547,6 +563,9 @@ export const registerRoutes = async (
   const additionalPrivilegeDAL = additionalPrivilegeDALFactory(db);
   const membershipRoleDAL = membershipRoleDALFactory(db);
   const roleDAL = roleDALFactory(db);
+  const pkiAlertHistoryDAL = pkiAlertHistoryDALFactory(db);
+  const pkiAlertChannelDAL = pkiAlertChannelDALFactory(db);
+  const pkiAlertV2DAL = pkiAlertV2DALFactory(db);
 
   const vaultExternalMigrationConfigDAL = vaultExternalMigrationConfigDALFactory(db);
 
@@ -691,6 +710,7 @@ export const registerRoutes = async (
     secretApprovalPolicyDAL,
     licenseService,
     userDAL,
+    projectMembershipDAL,
     secretApprovalRequestDAL
   });
 
@@ -1061,7 +1081,12 @@ export const registerRoutes = async (
   const certificateProfileDAL = certificateProfileDALFactory(db);
   const apiEnrollmentConfigDAL = apiEnrollmentConfigDALFactory(db);
   const estEnrollmentConfigDAL = estEnrollmentConfigDALFactory(db);
-
+  const acmeEnrollmentConfigDAL = acmeEnrollmentConfigDALFactory(db);
+  const acmeAccountDAL = pkiAcmeAccountDALFactory(db);
+  const acmeOrderDAL = pkiAcmeOrderDALFactory(db);
+  const acmeAuthDAL = pkiAcmeAuthDALFactory(db);
+  const acmeOrderAuthDAL = pkiAcmeOrderAuthDALFactory(db);
+  const acmeChallengeDAL = pkiAcmeChallengeDALFactory(db);
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
@@ -1156,7 +1181,13 @@ export const registerRoutes = async (
     certificateTemplateV2DAL,
     apiEnrollmentConfigDAL,
     estEnrollmentConfigDAL,
+    acmeEnrollmentConfigDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    certificateAuthorityDAL,
+    certificateAuthorityCertDAL,
     permissionService,
+    licenseService,
     kmsService,
     projectDAL
   });
@@ -1251,7 +1282,10 @@ export const registerRoutes = async (
     licenseService,
     gatewayService,
     gatewayV2Service,
-    notificationService
+    notificationService,
+    projectSlackConfigDAL,
+    projectMicrosoftTeamsConfigDAL,
+    microsoftTeamsService
   });
 
   const secretQueueService = secretQueueFactory({
@@ -1510,7 +1544,7 @@ export const registerRoutes = async (
     accessApprovalRequestDAL,
     accessApprovalRequestReviewerDAL,
     additionalPrivilegeDAL,
-    membershipUserDAL
+    projectMembershipDAL
   });
 
   const accessApprovalRequestService = accessApprovalRequestServiceFactory({
@@ -1625,6 +1659,17 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL
   });
+
+  const identityV2Service = identityV2ServiceFactory({
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    identityMetadataDAL,
+    licenseService,
+    permissionService,
+    identityDAL: identityV2DAL,
+    keyStore
+  });
+
   const identityProjectService = identityProjectServiceFactory({
     identityProjectDAL,
     membershipIdentityDAL,
@@ -1799,6 +1844,21 @@ export const registerRoutes = async (
     membershipDAL,
     projectDAL,
     groupDAL
+  });
+
+  const pkiAlertV2Service = pkiAlertV2ServiceFactory({
+    pkiAlertV2DAL,
+    pkiAlertChannelDAL,
+    pkiAlertHistoryDAL,
+    permissionService,
+    smtpService
+  });
+
+  const pkiAlertV2Queue = pkiAlertV2QueueServiceFactory({
+    queueService,
+    pkiAlertV2Service,
+    pkiAlertV2DAL,
+    pkiAlertHistoryDAL
   });
 
   const dynamicSecretProviders = buildDynamicSecretProviders({
@@ -2152,6 +2212,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateProfileDAL,
     certificateTemplateV2Service,
+    acmeAccountDAL,
     internalCaService: internalCertificateAuthorityService,
     permissionService,
     certificateSyncDAL,
@@ -2176,6 +2237,30 @@ export const registerRoutes = async (
     licenseService,
     certificateProfileDAL,
     estEnrollmentConfigDAL
+  });
+
+  const acmeChallengeService = pkiAcmeChallengeServiceFactory({
+    acmeChallengeDAL
+  });
+  const pkiAcmeService = pkiAcmeServiceFactory({
+    projectDAL,
+    appConnectionDAL,
+    certificateDAL,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
+    certificateProfileDAL,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    acmeAccountDAL,
+    acmeOrderDAL,
+    acmeAuthDAL,
+    acmeOrderAuthDAL,
+    acmeChallengeDAL,
+    keyStore,
+    kmsService,
+    licenseService,
+    certificateV3Service,
+    acmeChallengeService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({
@@ -2355,6 +2440,7 @@ export const registerRoutes = async (
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
+  await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
   await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
@@ -2392,7 +2478,8 @@ export const registerRoutes = async (
     integrationAuth: integrationAuthService,
     webhook: webhookService,
     serviceToken: serviceTokenService,
-    identity: identityService,
+    identityV1: identityService,
+    identityV2: identityV2Service,
     identityAuthTemplate: identityAuthTemplateService,
     identityAccessToken: identityAccessTokenService,
     identityTokenAuth: identityTokenAuthService,
@@ -2433,6 +2520,7 @@ export const registerRoutes = async (
     certificateProfile: certificateProfileService,
     certificateAuthorityCrl: certificateAuthorityCrlService,
     certificateEst: certificateEstService,
+    pkiAcme: pkiAcmeService,
     pit: pitService,
     pkiAlert: pkiAlertService,
     pkiCollection: pkiCollectionService,
@@ -2486,7 +2574,8 @@ export const registerRoutes = async (
     role: roleService,
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
-    convertor: convertorService
+    convertor: convertorService,
+    pkiAlertV2: pkiAlertV2Service
   });
 
   const cronJobs: CronJob[] = [];

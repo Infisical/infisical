@@ -550,12 +550,14 @@ export const registerSsoRouter = async (server: FastifyZodProvider) => {
         providerAuthToken: req.body.providerAuthToken
       });
 
-      void res.setCookie("jid", data.token.refresh, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: appCfg.HTTPS_ENABLED
-      });
+      if ([AuthMethod.GOOGLE, AuthMethod.GITHUB, AuthMethod.GITLAB].includes(data.decodedProviderToken.authMethod)) {
+        void res.setCookie("jid", data.token.refresh, {
+          httpOnly: true,
+          path: "/",
+          sameSite: "strict",
+          secure: appCfg.HTTPS_ENABLED
+        });
+      }
 
       addAuthOriginDomainCookie(res);
 

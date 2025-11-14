@@ -64,10 +64,11 @@ type Props = {
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<
       [
-        "certificate",
+        "issueCertificate",
         "deleteCertificate",
         "revokeCertificate",
         "certificateCert",
+        "certificateExport",
         "manageRenewal",
         "renewCertificate",
         "managePkiSyncs"
@@ -275,7 +276,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                 !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                               )}
                               onClick={async () =>
-                                handlePopUpOpen("certificateCert", {
+                                handlePopUpOpen("certificateExport", {
                                   serialNumber: certificate.serialNumber
                                 })
                               }
@@ -297,7 +298,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   !isAllowed && "pointer-events-none cursor-not-allowed opacity-50"
                                 )}
                                 onClick={async () =>
-                                  handlePopUpOpen("certificate", {
+                                  handlePopUpOpen("issueCertificate", {
                                     serialNumber: certificate.serialNumber
                                   })
                                 }

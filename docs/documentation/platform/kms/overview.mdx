@@ -10,7 +10,7 @@ Infisical can be used as a Key Management System (KMS), referred to as Infisical
 
 By default your Infisical data such as projects and the data within them are encrypted at rest using Infisical's own KMS. This ensures that your data is secure and protected from unauthorized access.
 
-If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/docs/documentation/platform/kms/encryption-strategies). 
+If you are on-premise, your KMS root key will be created at random with the `ROOT_ENCRYPTION_KEY` environment variable. You can also use a Hardware Security Module (HSM), to create the root key. Read more about [HSM](/documentation/platform/kms/hsm-integration). 
 
 <Note>
   Keys managed in KMS are not extractable from the platform. Additionally, data
@@ -109,7 +109,7 @@ In the following steps, we explore how to generate a key and use it to encrypt d
             </Step>
             <Step title="Encrypting data with the KMS key">
                 To encrypt data, make an API request to the [Encrypt
-                Data](/api-reference/endpoints/kms/keys/encrypt) API endpoint,
+                Data](/api-reference/endpoints/kms/encryption/encrypt) API endpoint,
                 specifying the key to use.
 
                 <Note>
@@ -168,7 +168,7 @@ In the following steps, we explore how to use decrypt data using an existing key
         <Steps>
             <Step title="Decrypting data">
                 To decrypt data, make an API request to the [Decrypt
-                Data](/api-reference/endpoints/kms/keys/decrypt) API endpoint,
+                Data](/api-reference/endpoints/kms/encryption/decrypt) API endpoint,
                 specifying the key to use.
 
                 ### Sample request

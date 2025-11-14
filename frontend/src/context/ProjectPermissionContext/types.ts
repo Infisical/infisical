@@ -78,7 +78,11 @@ export enum ProjectPermissionIdentityActions {
   Edit = "edit",
   Delete = "delete",
   GrantPrivileges = "grant-privileges",
-  AssumePrivileges = "assume-privileges"
+  AssumePrivileges = "assume-privileges",
+  RevokeAuth = "revoke-auth",
+  CreateToken = "create-token",
+  GetToken = "get-token",
+  DeleteToken = "delete-token"
 }
 
 export enum ProjectPermissionMemberActions {
@@ -129,7 +133,8 @@ export enum ProjectPermissionCertificateProfileActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  IssueCert = "issue-cert"
+  IssueCert = "issue-cert",
+  RevealAcmeEabSecret = "reveal-acme-eab-secret"
 }
 
 export enum ProjectPermissionSecretRotationActions {

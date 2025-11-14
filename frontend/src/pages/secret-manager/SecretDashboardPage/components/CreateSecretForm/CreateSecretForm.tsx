@@ -197,6 +197,21 @@ export const CreateSecretForm = ({
         render={({ field }) => (
           <FormControl
             label="Value"
+            tooltipText={
+              <div>
+                You can add references to other secrets using the format{" "}
+                <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5">
+                  &#36;{"{"}secret_name{"}"}
+                </code>
+                <br />
+                <br />
+                You can go to the referenced secret by holding the{" "}
+                <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5">Cmd</code> (Mac) or{" "}
+                <code className="rounded-sm bg-mineshaft-600 px-1 py-0.5">Ctrl</code>{" "}
+                (Windows/Linux) key and clicking on the secret name.
+              </div>
+            }
+            tooltipClassName="max-w-md"
             isError={Boolean(errors?.value)}
             errorText={errors?.value?.message}
           >

@@ -51,6 +51,7 @@ export enum QueueName {
   AuditLogPrune = "audit-log-prune",
   DailyResourceCleanUp = "daily-resource-cleanup",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiSyncCleanup = "pki-sync-cleanup",
   PkiSubscriber = "pki-subscriber",
   TelemetryInstanceStats = "telemtry-self-hosted-stats",
@@ -90,6 +91,7 @@ export enum QueueJobs {
   AuditLogPrune = "audit-log-prune-job",
   DailyResourceCleanUp = "daily-resource-cleanup-job",
   DailyExpiringPkiItemAlert = "daily-expiring-pki-item-alert",
+  DailyPkiAlertV2Processing = "daily-pki-alert-v2-processing",
   PkiSyncCleanup = "pki-sync-cleanup-job",
   SecWebhook = "secret-webhook-trigger",
   TelemetryInstanceStats = "telemetry-self-hosted-stats",
@@ -157,6 +159,10 @@ export type TQueueJobTypes = {
   };
   [QueueName.DailyExpiringPkiItemAlert]: {
     name: QueueJobs.DailyExpiringPkiItemAlert;
+    payload: undefined;
+  };
+  [QueueName.DailyPkiAlertV2Processing]: {
+    name: QueueJobs.DailyPkiAlertV2Processing;
     payload: undefined;
   };
   [QueueName.PkiSyncCleanup]: {

@@ -243,6 +243,17 @@ export enum EventType {
   UPDATE_ORG_ROLE = "update-org-role",
   DELETE_ORG_ROLE = "delete-org-role",
 
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
+  CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
+  UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
+  DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
+
+  CREATE_IDENTITY_PROJECT_MEMBERSHIP = "create-identity-project-membership",
+  UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
+  DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
+
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
@@ -260,5 +271,15 @@ export enum EventType {
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
-  PAM_RESOURCE_DELETE = "pam-resource-delete"
+  PAM_RESOURCE_DELETE = "pam-resource-delete",
+
+  CREATE_CERTIFICATE_PROFILE = "create-certificate-profile",
+  UPDATE_CERTIFICATE_PROFILE = "update-certificate-profile",
+  DELETE_CERTIFICATE_PROFILE = "delete-certificate-profile",
+  GET_CERTIFICATE_PROFILE = "get-certificate-profile",
+  LIST_CERTIFICATE_PROFILES = "list-certificate-profiles",
+  ISSUE_CERTIFICATE_FROM_PROFILE = "issue-certificate-from-profile",
+  SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
+  ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle"
 }

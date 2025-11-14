@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-floating-promises */
+import RE2 from "re2";
 import { z } from "zod";
 
 import { CertificatesSchema } from "@app/db/schemas";
@@ -614,6 +615,66 @@ export const registerCertRouter = async (server: FastifyZodProvider) => {
         certificateChain,
         serialNumber
       };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/:serialNumber/pkcs12",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    schema: {
+      hide: true,
+      tags: [ApiDocsTags.PkiCertificates],
+      description: "Download certificate in PKCS12 format",
+      params: z.object({
+        serialNumber: z.string().trim().describe(CERTIFICATES.GET.serialNumber)
+      }),
+      body: z.object({
+        password: z
+          .string()
+          .min(6, "Password must be at least 6 characters long")
+          .describe("Password for the keystore (minimum 6 characters)"),
+        alias: z.string().min(1, "Alias is required").describe("Alias for the certificate in the keystore")
+      }),
+      response: {
+        200: z.any().describe("PKCS12 keystore as binary data")
+      }
+    },
+    handler: async (req, reply) => {
+      const { pkcs12Data, cert } = await server.services.certificate.getCertPkcs12({
+        serialNumber: req.params.serialNumber,
+        password: req.body.password,
+        alias: req.body.alias,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: cert.projectId,
+        event: {
+          type: EventType.EXPORT_CERT_PKCS12,
+          metadata: {
+            certId: cert.id,
+            cn: cert.commonName,
+            serialNumber: cert.serialNumber
+          }
+        }
+      });
+
+      addNoCacheHeaders(reply);
+      reply.header("Content-Type", "application/octet-stream");
+      reply.header(
+        "Content-Disposition",
+        `attachment; filename="certificate-${req.params.serialNumber.replace(new RE2("[^\\w.-]", "g"), "_")}.p12"`
+      );
+
+      return pkcs12Data;
     }
   });
 };

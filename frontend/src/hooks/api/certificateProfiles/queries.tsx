@@ -10,7 +10,8 @@ import {
   TGetProfileCertificatesDTO,
   TGetProfileMetricsDTO,
   TListCertificateProfilesDTO,
-  TProfileCertificate
+  TProfileCertificate,
+  TRevealAcmeEabSecretDTO
 } from "./types";
 
 export const certificateProfileKeys = {
@@ -41,6 +42,11 @@ export const certificateProfileKeys = {
     "metrics",
     profileId,
     params
+  ],
+  revealAcmeEabSecret: (profileId: string) => [
+    "certificate-profiles",
+    "reveal-acme-eab-secret",
+    profileId
   ]
 };
 
@@ -109,6 +115,20 @@ export const useGetCertificateProfileBySlug = ({
       return data.certificateProfile;
     },
     enabled: Boolean(projectId && slug)
+  });
+};
+
+export const useRevealAcmeEabSecret = ({ profileId }: TRevealAcmeEabSecretDTO) => {
+  return useQuery({
+    queryKey: certificateProfileKeys.revealAcmeEabSecret(profileId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{
+        eabKid: string;
+        eabSecret: string;
+      }>(`/api/v1/pki/certificate-profiles/${profileId}/acme/eab-secret/reveal`);
+      return data;
+    },
+    enabled: Boolean(profileId)
   });
 };
 

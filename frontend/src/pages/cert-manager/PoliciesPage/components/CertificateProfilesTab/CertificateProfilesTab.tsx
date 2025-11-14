@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
@@ -14,8 +14,11 @@ import {
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { usePopUp } from "@app/hooks";
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
+import { RevealAcmeEabSecretModal } from "./RevealAcmeEabSecretModal";
 
 export const CertificateProfilesTab = () => {
   const { permission } = useProjectPermission();
@@ -23,9 +26,12 @@ export const CertificateProfilesTab = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isRevealProfileAcmeEabSecretModalOpen, setIsRevealProfileAcmeEabSecretModalOpen] =
+    useState(false);
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const deleteProfile = useDeleteCertificateProfile();
 
@@ -41,6 +47,11 @@ export const CertificateProfilesTab = () => {
   const handleEditProfile = (profile: TCertificateProfileWithDetails) => {
     setSelectedProfile(profile);
     setIsEditModalOpen(true);
+  };
+
+  const handleRevealProfileAcmeEabSecret = (profile: TCertificateProfileWithDetails) => {
+    setSelectedProfile(profile);
+    setIsRevealProfileAcmeEabSecretModalOpen(true);
   };
 
   const handleDeleteProfile = (profile: TCertificateProfileWithDetails) => {
@@ -85,9 +96,23 @@ export const CertificateProfilesTab = () => {
         )}
       </div>
 
-      <ProfileList onEditProfile={handleEditProfile} onDeleteProfile={handleDeleteProfile} />
+      <ProfileList
+        onEditProfile={handleEditProfile}
+        onRevealProfileAcmeEabSecret={handleRevealProfileAcmeEabSecret}
+        onDeleteProfile={handleDeleteProfile}
+      />
 
-      <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+      <CreateProfileModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        handlePopUpOpen={handlePopUpOpen}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        text="Your current plan does not include access to managing template enrollment options for ACME. To unlock this feature, please upgrade to Infisical Enterprise plan."
+      />
 
       {selectedProfile && (
         <>
@@ -97,9 +122,21 @@ export const CertificateProfilesTab = () => {
               setIsEditModalOpen(false);
               setSelectedProfile(null);
             }}
+            handlePopUpOpen={handlePopUpOpen}
             profile={selectedProfile}
             mode="edit"
           />
+
+          {selectedProfile.enrollmentType === "acme" && (
+            <RevealAcmeEabSecretModal
+              isOpen={isRevealProfileAcmeEabSecretModalOpen}
+              onClose={() => {
+                setIsRevealProfileAcmeEabSecretModalOpen(false);
+                setSelectedProfile(null);
+              }}
+              profile={selectedProfile}
+            />
+          )}
 
           <DeleteActionModal
             isOpen={isDeleteModalOpen}

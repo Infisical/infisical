@@ -5,82 +5,87 @@ description: "Learn how to configure an AWS Certificate Manager Certificate Sync
 
 **Prerequisites:**
 
-- Set up and configure a [Certificate Authority](/documentation/platform/pki/overview)
 - Create an [AWS Connection](/integrations/app-connections/aws)
 
 <Note>
   The AWS Certificate Manager Certificate Sync requires the following ACM permissions to be set on the IAM user/role
   for Infisical to sync certificates to AWS Certificate Manager: `acm:ListCertificates`, `acm:DescribeCertificate`, `acm:ImportCertificate`, `acm:DeleteCertificate`, and `acm:ListTagsForCertificate`.
 
-  These permissions allow Infisical to list, import, tag, and manage certificates in your AWS Certificate Manager service.
+These permissions allow Infisical to list, import, tag, and manage certificates in your AWS Certificate Manager service.
+
 </Note>
 
 <Note>
-  Certificates synced to AWS Certificate Manager will be stored as imported certificates, preserving both the certificate and private key components.
+  Certificates synced to AWS Certificate Manager will be stored as imported
+  certificates, preserving both the certificate and private key components.
 </Note>
 
 <Tabs>
     <Tab title="Infisical UI">
-        1. Navigate to **Project** > **Integrations** and select the **Certificate Syncs** tab. Click on the **Add Sync** button.
-        ![Certificate Syncs Tab](/images/certificate-syncs/general/certificate-sync-tab.png)
+        1. Navigate to **Project** > **Integrations** > **Certificate Syncs** and press **Add Sync**.
+        ![Certificate Syncs Tab](/images/platform/pki/certificate-syncs/general/create-certificate-sync.png)
 
         2. Select the **AWS Certificate Manager** option.
-        ![Select ACM](/images/certificate-syncs/aws-certificate-manager/select-acm-option.png)
+        ![Select ACM](/images/platform/pki/certificate-syncs/aws-certificate-manager/select-acm-option.png)
 
-        3. Configure the **Source** from where certificates should be retrieved, then click **Next**.
-        ![Configure Source](/images/certificate-syncs/aws-certificate-manager/acm-source.png)
+        3. Configure the **Destination** to where certificates should be deployed, then click **Next**.
+        ![Configure Destination](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-destination.png)
 
-            - **PKI Subscriber**: The PKI subscriber to retrieve certificates from.
+        - **AWS Connection**: The AWS Connection to authenticate with.
+        - **AWS Region**: The AWS region where certificates should be stored.
 
-        4. Configure the **Destination** to where certificates should be deployed, then click **Next**.
-        ![Configure Destination](/images/certificate-syncs/aws-certificate-manager/acm-destination.png)
+        4. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
+        ![Configure Options](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-options.png)
 
-            - **AWS Connection**: The AWS Connection to authenticate with.
-            - **AWS Region**: The AWS region where certificates should be stored.
+        - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
+        - **Preserve ARN on Renewal**: If enabled, Infisical will sync renewed certificates to the destination under the same ARN as the original synced certificate instead of creating a new certificate with a new ARN.
+        - **Certificate Name Schema** (Optional): Customize how certificate tags are generated in AWS Certificate Manager. Must include `{{certificateId}}` as a placeholder for the certificate ID to ensure proper certificate identification and management. If not specified, defaults to `Infisical-{{certificateId}}`.
+        - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
 
-        5. Configure the **Sync Options** to specify how certificates should be synced, then click **Next**.
-        ![Configure Options](/images/certificate-syncs/aws-certificate-manager/acm-options.png)
-
-            - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced from the source PKI subscriber when changes occur. Disable to enforce manual syncing only.
-            - **Enable Certificate Removal**: If enabled, Infisical will remove expired certificates from the destination during sync operations. Disable this option if you intend to manage certificate cleanup manually.
-            - **Certificate Name Schema** (Optional): Customize how certificate tags are generated in AWS Certificate Manager. Must include `{{certificateId}}` as a placeholder for the certificate ID to ensure proper certificate identification and management. If not specified, defaults to `Infisical-{{certificateId}}`.
-
-        <Tip>
-            **AWS Certificate Manager Certificate Limits**: AWS Certificate Manager has limits on the number of certificates per account and region. Refer to AWS documentation for current limits. Deleted certificates count toward your quota until they are permanently purged by AWS (typically after 30 days).
-        </Tip>
-
-        6. Configure the **Details** of your AWS Certificate Manager Certificate Sync, then click **Next**.
-        ![Configure Details](/images/certificate-syncs/aws-certificate-manager/acm-details.png)
+        5. Configure the **Details** of your AWS Certificate Manager Certificate Sync, then click **Next**.
+        ![Configure Details](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-details.png)
 
             - **Name**: The name of your sync. Must be slug-friendly.
             - **Description**: An optional description for your sync.
 
+        6. Select which certificates should be synced to AWS Certificate Manager.
+        ![Select Certificates](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-certificates.png)
+
         7. Review your AWS Certificate Manager Certificate Sync configuration, then click **Create Sync**.
-        ![Confirm Configuration](/images/certificate-syncs/aws-certificate-manager/acm-review.png)
+        ![Confirm Configuration](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-review.png)
 
         8. If enabled, your AWS Certificate Manager Certificate Sync will begin syncing your certificates to the destination endpoint.
-        ![Sync Certificates](/images/certificate-syncs/aws-certificate-manager/acm-synced.png)
-
+        ![Sync Certificates](/images/platform/pki/certificate-syncs/aws-certificate-manager/acm-synced.png)
     </Tab>
     <Tab title="API">
         To create an **AWS Certificate Manager Certificate Sync**, make an API request to the [Create AWS Certificate Manager Certificate Sync](/api-reference/endpoints/pki/syncs/aws-certificate-manager/create) API endpoint.
 
         ### Sample request
 
+        <Note>
+          You can optionally specify `certificateIds` during sync creation to immediately add certificates to the sync.
+          If not provided, you can add certificates later using the certificate management endpoints.
+        </Note>
+
         ```bash Request
         curl --request POST \
         --url https://app.infisical.com/api/v1/pki/syncs/aws-certificate-manager \
+        --header 'Authorization: Bearer <access-token>' \
         --header 'Content-Type: application/json' \
         --data '{
             "name": "my-acm-cert-sync",
             "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "description": "an example certificate sync",
             "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-            "subscriberId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
             "destination": "aws-certificate-manager",
             "isAutoSyncEnabled": true,
+            "certificateIds": [
+                "550e8400-e29b-41d4-a716-446655440000",
+                "660f1234-e29b-41d4-a716-446655440001"
+            ],
             "syncOptions": {
                 "canRemoveCertificates": true,
+                "preserveArnOnRenewal": true,
                 "certificateNameSchema": "myapp-{{certificateId}}"
             },
             "destinationConfig": {
@@ -104,10 +109,10 @@ description: "Learn how to configure an AWS Certificate Manager Certificate Sync
                 },
                 "syncOptions": {
                     "canRemoveCertificates": true,
+                    "preserveArnOnRenewal": true,
                     "certificateNameSchema": "myapp-{{certificateId}}"
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
-                "subscriberId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "createdAt": "2023-01-01T00:00:00.000Z",
                 "updatedAt": "2023-01-01T00:00:00.000Z"
@@ -115,24 +120,27 @@ description: "Learn how to configure an AWS Certificate Manager Certificate Sync
         }
         ```
     </Tab>
+
 </Tabs>
 
 ## Certificate Management
 
 Your AWS Certificate Manager Certificate Sync will:
 
-- **Automatic Deployment**: Deploy new certificates issued by your PKI subscriber to AWS Certificate Manager
-- **Certificate Updates**: Update certificates in AWS Certificate Manager when renewals occur
-- **Expiration Handling**: Optionally remove expired certificates from AWS Certificate Manager (if enabled)
+- **Automatic Deployment**: Deploy certificates in Infisical to AWS Certificate Manager.
+- **Certificate Updates**: Update certificates in AWS Certificate Manager when renewals occur.
+- **Expiration Handling**: Optionally remove expired certificates from AWS Certificate Manager (if enabled).
 - **Tagging**: Automatically tag certificates with an InfisicalCertificate tag for easy identification and management
 
 <Note>
-    AWS Certificate Manager Certificate Syncs support both automatic and manual synchronization modes. When auto-sync is enabled, certificates are automatically deployed as they are issued or renewed.
+  AWS Certificate Manager Certificate Syncs support both automatic and manual
+  synchronization modes. When auto-sync is enabled, certificates are
+  automatically deployed as they are issued or renewed.
 </Note>
 
 ## Manual Certificate Sync
 
-You can manually trigger certificate synchronization from your PKI subscriber to AWS Certificate Manager using the sync certificates functionality. This is useful for:
+You can manually trigger certificate synchronization to AWS Certificate Manager using the sync certificates functionality. This is useful for:
 
 - Initial setup when you have existing certificates to deploy
 - One-time sync of specific certificates
@@ -142,5 +150,8 @@ You can manually trigger certificate synchronization from your PKI subscriber to
 To manually sync certificates, use the [Sync Certificates](/api-reference/endpoints/pki/syncs/aws-certificate-manager/sync-certificates) API endpoint or the manual sync option in the Infisical UI.
 
 <Note>
-AWS Certificate Manager does not support importing certificates back into Infisical due to security limitations where private keys cannot be extracted from AWS Certificate Manager. Only certificates imported into ACM (not AWS-issued certificates) can be managed by the sync.
+  AWS Certificate Manager does not support importing certificates back into
+  Infisical due to security limitations where private keys cannot be extracted
+  from AWS Certificate Manager. Only certificates imported into ACM (not
+  AWS-issued certificates) can be managed by the sync.
 </Note>

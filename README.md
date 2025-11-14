@@ -48,7 +48,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 ### Secrets Management:
 
 - **[Dashboard](https://infisical.com/docs/documentation/platform/project)**: Manage secrets across projects and environments (e.g. development, production, etc.) through a user-friendly interface.
-- **[Native Integrations](https://infisical.com/docs/integrations/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
+- **[Secret Syncs](https://infisical.com/docs/integrations/secret-syncs/overview)**: Sync secrets to platforms like [GitHub](https://infisical.com/docs/integrations/cicd/githubactions), [Vercel](https://infisical.com/docs/integrations/cloud/vercel), [AWS](https://infisical.com/docs/integrations/cloud/aws-secret-manager), and use tools like [Terraform](https://infisical.com/docs/integrations/frameworks/terraform), [Ansible](https://infisical.com/docs/integrations/platforms/ansible), and more.
 - **[Secret versioning](https://infisical.com/docs/documentation/platform/secret-versioning)** and **[Point-in-Time Recovery](https://infisical.com/docs/documentation/platform/pit-recovery)**: Keep track of every secret and project state; roll back when needed.
 - **[Secret Rotation](https://infisical.com/docs/documentation/platform/secret-rotation/overview)**: Rotate secrets at regular intervals for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/secret-rotation/postgres-credentials), [MySQL](https://infisical.com/docs/documentation/platform/secret-rotation/mysql), [AWS IAM](https://infisical.com/docs/documentation/platform/secret-rotation/aws-iam), and more.
 - **[Dynamic Secrets](https://infisical.com/docs/documentation/platform/dynamic-secrets/overview)**: Generate ephemeral secrets on-demand for services like [PostgreSQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/postgresql), [MySQL](https://infisical.com/docs/documentation/platform/dynamic-secrets/mysql), [RabbitMQ](https://infisical.com/docs/documentation/platform/dynamic-secrets/rabbit-mq), and more.
@@ -56,13 +56,15 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 - **[Infisical Kubernetes Operator](https://infisical.com/docs/documentation/getting-started/kubernetes)**: Deliver secrets to your Kubernetes workloads and automatically reload deployments.
 - **[Infisical Agent](https://infisical.com/docs/infisical-agent/overview)**: Inject secrets into applications without modifying any code logic.
 
-### Infisical (Internal) PKI:
+### Certificate Management
 
-- **[Private Certificate Authority](https://infisical.com/docs/documentation/platform/pki/private-ca)**: Create CA hierarchies, configure [certificate templates](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-issuing-certificates) for policy enforcement, and start issuing X.509 certificates.
-- **[Certificate Management](https://infisical.com/docs/documentation/platform/pki/certificates)**: Manage the certificate lifecycle from [issuance](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-issuing-certificates) to [revocation](https://infisical.com/docs/documentation/platform/pki/certificates#guide-to-revoking-certificates) with support for CRL.
+- **[Internal CA](https://infisical.com/docs/documentation/platform/pki/private-ca)**: Create and manage a private
+  CA hierarchy directly within Infisical.
+- **[External CA](https://infisical.com/docs/documentation/platform/pki/ca/external-ca)**: Integrate with third-party certificate authorities such as Let’s Encrypt, DigiCert, Microsoft AD CS, and more to leverage existing PKI infrastructure
+  or issue publicly trusted certificates.
+- **[Certificate Lifecycle Management](https://infisical.com/docs/documentation/platform/pki/certificates/overview)**: Create certificate [profiles](https://infisical.com/docs/documentation/platform/pki/certificates/profiles) and [templates](https://infisical.com/docs/documentation/platform/pki/certificates/templates) to control how certificates are issued, including [enrollment methods](https://infisical.com/docs/documentation/platform/pki/enrollment-methods/overview) such as API, ACME, or EST. Manage the full lifecycle from issuance to renewal and [revocation](https://infisical.com/docs/documentation/platform/pki/certificates/certificates#guide-to-revoking-certificates) with CRL and inventory tracking.
+- **[Certificate Syncs](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/overview)**: Sync certificates to external platforms like [AWS Certificate Manager](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/aws-certificate-manager) and [Azure Key Vault](https://infisical.com/docs/documentation/platform/pki/certificate-syncs/azure-key-vault).
 - **[Alerting](https://infisical.com/docs/documentation/platform/pki/alerting)**: Configure alerting for expiring CA and end-entity certificates.
-- **[Infisical PKI Issuer for Kubernetes](https://infisical.com/docs/documentation/platform/pki/pki-issuer)**: Deliver TLS certificates to your Kubernetes workloads with automatic renewal.
-- **[Enrollment over Secure Transport](https://infisical.com/docs/documentation/platform/pki/est)**: Enroll and manage certificates via EST protocol.
 
 ### Infisical Key Management System (KMS):
 
@@ -85,7 +87,7 @@ We're on a mission to make security tooling more accessible to everyone, not jus
 
 ## Getting started
 
-Check out the [Quickstart Guides](https://infisical.com/docs/getting-started/introduction)
+Check out the [Quickstart Guides](https://infisical.com/docs/documentation/getting-started/overview)
 
 | Use Infisical Cloud                                                                                                                                     | Deploy Infisical on premise                                                          |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |

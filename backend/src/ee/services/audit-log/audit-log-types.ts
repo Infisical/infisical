@@ -36,6 +36,7 @@ import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/servi
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
 import { TAllowedFields } from "@app/services/identity-ldap-auth/identity-ldap-auth-types";
+import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
 import { PkiItemType } from "@app/services/pki-collection/pki-collection-types";
 import { SecretSync, SecretSyncImportBehavior } from "@app/services/secret-sync/secret-sync-enums";
 import {
@@ -158,9 +159,22 @@ export enum EventType {
   DELETE_TRUSTED_IP = "delete-trusted-ip",
   CREATE_SERVICE_TOKEN = "create-service-token", // v2
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
+
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+
+  CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
+  UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
+  DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
+
+  CREATE_IDENTITY_PROJECT_MEMBERSHIP = "create-identity-project-membership",
+  UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
+  DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
+
   MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE = "machine-identity-auth-template-create",
   MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
   MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
@@ -172,9 +186,6 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
-
-  CREATE_SUB_ORGANIZATION = "create-sub-organization",
-  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -322,6 +333,7 @@ export enum EventType {
   GET_CERT_BODY = "get-cert-body",
   GET_CERT_PRIVATE_KEY = "get-cert-private-key",
   GET_CERT_BUNDLE = "get-cert-bundle",
+  EXPORT_CERT_PKCS12 = "export-cert-pkcs12",
   CREATE_PKI_ALERT = "create-pki-alert",
   GET_PKI_ALERT = "get-pki-alert",
   UPDATE_PKI_ALERT = "update-pki-alert",
@@ -370,6 +382,7 @@ export enum EventType {
   SIGN_CERTIFICATE_FROM_PROFILE = "sign-certificate-from-profile",
   ORDER_CERTIFICATE_FROM_PROFILE = "order-certificate-from-profile",
   RENEW_CERTIFICATE = "renew-certificate",
+  GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
@@ -888,6 +901,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -897,6 +911,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -1493,6 +1508,52 @@ interface RevokeIdentityLdapAuthEvent {
 
 interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityOrgMembershipEvent {
+  type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityOrgMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityOrgMembershipEvent {
+  type: EventType.DELETE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityProjectMembershipEvent {
+  type: EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityProjectMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityProjectMembershipEvent {
+  type: EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP;
   metadata: {
     identityId: string;
   };
@@ -2313,15 +2374,24 @@ interface GetCertBundle {
     serialNumber: string;
   };
 }
+interface GetCertPkcs12 {
+  type: EventType.EXPORT_CERT_PKCS12;
+  metadata: {
+    certId: string;
+    cn: string;
+    serialNumber: string;
+  };
+}
 
 interface CreatePkiAlert {
   type: EventType.CREATE_PKI_ALERT;
   metadata: {
     pkiAlertId: string;
-    pkiCollectionId: string;
+    pkiCollectionId?: string;
     name: string;
-    alertBeforeDays: number;
-    recipientEmails: string;
+    alertBefore: string;
+    eventType: PkiAlertEventType;
+    recipientEmails?: string;
   };
 }
 interface GetPkiAlert {
@@ -2337,7 +2407,8 @@ interface UpdatePkiAlert {
     pkiAlertId: string;
     pkiCollectionId?: string;
     name?: string;
-    alertBeforeDays?: number;
+    alertBefore?: string;
+    eventType?: PkiAlertEventType;
     recipientEmails?: string;
   };
 }
@@ -2746,6 +2817,17 @@ interface OrderCertificateFromProfile {
     certificateProfileId: string;
     orderId: string;
     profileName: string;
+  };
+}
+
+interface GetCertificateProfileLatestActiveBundle {
+  type: EventType.GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE;
+  metadata: {
+    certificateProfileId: string;
+    certificateId: string;
+    commonName: string;
+    profileName: string;
+    serialNumber: string;
   };
 }
 
@@ -4173,6 +4255,12 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | CreateIdentityOrgMembershipEvent
+  | UpdateIdentityOrgMembershipEvent
+  | DeleteIdentityOrgMembershipEvent
+  | CreateIdentityProjectMembershipEvent
+  | UpdateIdentityProjectMembershipEvent
+  | DeleteIdentityProjectMembershipEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
@@ -4237,6 +4325,7 @@ export type Event =
   | GetCertBody
   | GetCertPrivateKey
   | GetCertBundle
+  | GetCertPkcs12
   | CreatePkiAlert
   | GetPkiAlert
   | UpdatePkiAlert
@@ -4279,6 +4368,7 @@ export type Event =
   | DeleteCertificateProfile
   | GetCertificateProfile
   | ListCertificateProfiles
+  | GetCertificateProfileLatestActiveBundle
   | IssueCertificateFromProfile
   | SignCertificateFromProfile
   | OrderCertificateFromProfile

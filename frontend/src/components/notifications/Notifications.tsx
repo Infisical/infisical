@@ -67,7 +67,8 @@ export const createNotification = (
     ...toastProps,
     autoClose: toastProps.autoClose || 15000,
     theme: "dark",
-    type: myProps?.type || "info"
+    type: myProps?.type || "info",
+    className: `pointer-events-auto ${toastProps.className}`
   });
 
 export const NotificationContainer = () => (
