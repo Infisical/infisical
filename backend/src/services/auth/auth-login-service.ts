@@ -686,7 +686,7 @@ export const authLoginServiceFactory = ({
         }
       },
       event: {
-        type: EventType.USER_SELECT_ORGANIZATION,
+        type: EventType.SELECT_ORGANIZATION,
         metadata: {
           email: user.email || "",
           userAgent,

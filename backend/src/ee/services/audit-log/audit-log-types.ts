@@ -366,7 +366,7 @@ export enum EventType {
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
-  USER_SELECT_ORGANIZATION = "user-select-organization",
+  SELECT_ORGANIZATION = "select-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -2672,8 +2672,8 @@ interface UserLoginEvent {
   };
 }
 
-interface UserSelectOrganizationEvent {
-  type: EventType.USER_SELECT_ORGANIZATION;
+interface SelectOrganizationEvent {
+  type: EventType.SELECT_ORGANIZATION;
   metadata: {
     email: string;
     userAgent: string;
@@ -4564,4 +4564,4 @@ export type Event =
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
-  | UserSelectOrganizationEvent;
+  | SelectOrganizationEvent;
