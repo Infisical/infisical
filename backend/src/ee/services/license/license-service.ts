@@ -77,7 +77,7 @@ export const licenseServiceFactory = ({
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
   let selfHostedLicense: TOfflineLicense | null = null;
-  const licenseKeyConfig = getLicenseKeyConfig();
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
 
   const licenseServerCloudApi = setupLicenseRequestWithStore(
     envConfig.LICENSE_SERVER_URL || "",

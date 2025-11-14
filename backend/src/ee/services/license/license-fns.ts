@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
@@ -9,17 +9,24 @@ import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
 import { TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
 
-const getOfflineLicenseContents = (licenseKey: string): TOfflineLicenseContents => {
-  return JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
-};
-
 export const isOfflineLicenseKey = (licenseKey: string): boolean => {
-  const contents = getOfflineLicenseContents(licenseKey);
-  return "signature" in contents && "license" in contents;
+  try {
+    const contents = JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
+
+    return "signature" in contents && "license" in contents;
+  } catch (error) {
+    return false;
+  }
 };
 
-export const getLicenseKeyConfig = (): TLicenseKeyConfig => {
-  const cfg = getConfig();
+export const getLicenseKeyConfig = (
+  config?: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
+): TLicenseKeyConfig => {
+  const cfg = config || getConfig();
+
+  if (!cfg) {
+    return { isValid: false };
+  }
 
   const licenseKey = cfg.LICENSE_KEY;
 
