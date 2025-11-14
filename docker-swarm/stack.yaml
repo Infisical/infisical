@@ -247,10 +247,6 @@ volumes:
   postgres_data1:
   postgres_data2:
   postgres_data3:
-  postgres_data4:
-  redis0:
-  redis1:
-  redis2:
 
 configs:
   haproxy-config:
