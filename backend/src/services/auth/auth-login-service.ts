@@ -465,16 +465,14 @@ export const authLoginServiceFactory = ({
             metadata: {
               email: userEnc.email,
               userId: userEnc.userId,
-              username: userEnc.username
+              username: userEnc.username,
+              authMethod
             }
           },
           event: {
             type: EventType.USER_LOGIN,
             metadata: {
-              email,
-              userAgent,
-              ipAddress: ip,
-              authMethod
+              organizationId
             }
           }
         });
@@ -682,18 +680,15 @@ export const authLoginServiceFactory = ({
         metadata: {
           email: user.email,
           userId: user.id,
-          username: user.username
+          username: user.username,
+          authMethod: decodedToken.authMethod
         }
       },
       event: {
         type: EventType.SELECT_ORGANIZATION,
         metadata: {
-          email: user.email || "",
-          userAgent,
-          ipAddress,
           organizationId,
-          organizationName: selectedOrg.name,
-          authMethod: decodedToken.authMethod
+          organizationName: selectedOrg.name
         }
       }
     });
@@ -1102,16 +1097,13 @@ export const authLoginServiceFactory = ({
           metadata: {
             email: userEnc.email,
             userId: userEnc.userId,
-            username: userEnc.username
+            username: userEnc.username,
+            authMethod: decodedProviderToken.authMethod
           }
         },
         event: {
           type: EventType.USER_LOGIN,
           metadata: {
-            email,
-            userAgent,
-            ipAddress: ip,
-            authMethod: decodedProviderToken.authMethod,
             organizationId,
             ...(isAuthMethodSaml(decodedProviderToken.authMethod) && {
               authProvider: decodedProviderToken.authMethod

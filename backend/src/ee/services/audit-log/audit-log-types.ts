@@ -572,6 +572,7 @@ interface UserActorMetadata {
   email?: string | null;
   username: string;
   permission?: Record<string, unknown>;
+  authMethod?: string;
 }
 
 interface ServiceActorMetadata {
@@ -2662,10 +2663,6 @@ interface OrgAdminBypassSSOEvent {
 interface UserLoginEvent {
   type: EventType.USER_LOGIN;
   metadata: {
-    email: string;
-    userAgent: string;
-    ipAddress: string;
-    authMethod: string;
     organizationId?: string;
     organizationName?: string;
     authProvider?: string;
@@ -2675,12 +2672,8 @@ interface UserLoginEvent {
 interface SelectOrganizationEvent {
   type: EventType.SELECT_ORGANIZATION;
   metadata: {
-    email: string;
-    userAgent: string;
-    ipAddress: string;
     organizationId: string;
     organizationName: string;
-    authMethod: string;
   };
 }
 
