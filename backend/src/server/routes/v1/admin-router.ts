@@ -9,6 +9,7 @@ import {
   SuperAdminSchema,
   UsersSchema
 } from "@app/db/schemas";
+import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -65,6 +66,9 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const config = await getServerCfg();
       const serverEnvs = getConfig();
 
+      const licenseKeyConfig = getLicenseKeyConfig();
+      const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === "offline";
+
       return {
         config: {
           ...config,
@@ -73,7 +77,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
           isSecretScanningDisabled: serverEnvs.DISABLE_SECRET_SCANNING,
           kubernetesAutoFetchServiceAccountToken: serverEnvs.KUBERNETES_AUTO_FETCH_SERVICE_ACCOUNT_TOKEN,
           paramsFolderSecretDetectionEnabled: serverEnvs.PARAMS_FOLDER_SECRET_DETECTION_ENABLED,
-          isOfflineUsageReportsEnabled: !!serverEnvs.LICENSE_KEY_OFFLINE
+          isOfflineUsageReportsEnabled: hasOfflineLicense
         }
       };
     }

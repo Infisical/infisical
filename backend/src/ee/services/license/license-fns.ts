@@ -7,7 +7,43 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
-import { TFeatureSet } from "./license-types";
+import { TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
+
+const getOfflineLicenseContents = (licenseKey: string): TOfflineLicenseContents => {
+  return JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
+};
+
+export const isOfflineLicenseKey = (licenseKey: string): boolean => {
+  const contents = getOfflineLicenseContents(licenseKey);
+  return "signature" in contents && "license" in contents;
+};
+
+export const getLicenseKeyConfig = (): TLicenseKeyConfig => {
+  const cfg = getConfig();
+
+  const licenseKey = cfg.LICENSE_KEY;
+
+  if (licenseKey) {
+    if (isOfflineLicenseKey(licenseKey)) {
+      return { isValid: true, licenseKey, type: "offline" };
+    }
+
+    return { isValid: true, licenseKey, type: "online" };
+  }
+
+  const offlineLicenseKey = cfg.LICENSE_KEY_OFFLINE;
+
+  // backwards compatibility
+  if (offlineLicenseKey) {
+    if (isOfflineLicenseKey(offlineLicenseKey)) {
+      return { isValid: true, licenseKey: offlineLicenseKey, type: "offline" };
+    }
+
+    return { isValid: false };
+  }
+
+  return { isValid: false };
+};
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,
