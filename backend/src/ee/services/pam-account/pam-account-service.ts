@@ -369,14 +369,16 @@ export const pamAccountServiceFactory = ({
     if (canReadFolders && accountView === PamAccountView.Nested) {
       const { totalCount } = await pamFolderDAL.findByProjectId({
         projectId,
-        parentId: folderId
+        parentId: folderId,
+        search: params.search
       });
       totalFolderCount = totalCount;
     }
     const { totalCount: totalAccountCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
       projectId,
       folderId,
-      accountView
+      accountView,
+      search: params.search
     });
 
     const totalCount = totalFolderCount + totalAccountCount;

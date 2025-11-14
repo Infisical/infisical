@@ -148,6 +148,7 @@ export const useListPamAccounts = (
 
       return data;
     },
+    placeholderData: (prev) => prev,
     ...options
   });
 };

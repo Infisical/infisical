@@ -228,6 +228,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
               <AccountViewToggle
                 value={accountView}
                 onChange={(e) => {
+                  setPage(1);
                   setAccountView(e);
                   navigate({
                     search: (prev) => ({
