@@ -11,6 +11,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const slugValidator = (val: string) => {
   return new RE2("^[a-z0-9.-]+$").test(val) && !new RE2(".[-]$").test(val);
 };
@@ -38,13 +40,12 @@ const LaravelForgeSyncDestinationConfigSchema = z.object({
 
 const LaravelForgeSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const LaravelForgeSyncSchema = BaseSecretSyncSchema(
-  SecretSync.LaravelForge,
-  LaravelForgeSyncOptionsConfig
-).extend({
-  destination: z.literal(SecretSync.LaravelForge),
-  destinationConfig: LaravelForgeSyncDestinationConfigSchema
-});
+export const LaravelForgeSyncSchema = BaseSecretSyncSchema(SecretSync.LaravelForge, LaravelForgeSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.LaravelForge),
+    destinationConfig: LaravelForgeSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.LaravelForge] }));
 
 export const CreateLaravelForgeSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.LaravelForge,
@@ -60,9 +61,11 @@ export const UpdateLaravelForgeSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: LaravelForgeSyncDestinationConfigSchema.optional()
 });
 
-export const LaravelForgeSyncListItemSchema = z.object({
-  name: z.literal("Laravel Forge"),
-  connection: z.literal(AppConnection.LaravelForge),
-  destination: z.literal(SecretSync.LaravelForge),
-  canImportSecrets: z.literal(true)
-});
+export const LaravelForgeSyncListItemSchema = z
+  .object({
+    name: z.literal("Laravel Forge"),
+    connection: z.literal(AppConnection.LaravelForge),
+    destination: z.literal(SecretSync.LaravelForge),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.LaravelForge] }));

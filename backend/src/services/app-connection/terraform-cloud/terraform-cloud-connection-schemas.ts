@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { TerraformCloudConnectionMethod } from "./terraform-cloud-connection-enums";
 
 export const TerraformCloudConnectionAccessTokenCredentialsSchema = z.object({
@@ -27,7 +28,7 @@ export const SanitizedTerraformCloudConnectionSchema = z.discriminatedUnion("met
   BaseTerraformCloudConnectionSchema.extend({
     method: z.literal(TerraformCloudConnectionMethod.ApiToken),
     credentials: TerraformCloudConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.TerraformCloud]} (API Token)` }))
 ]);
 
 export const ValidateTerraformCloudConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -53,8 +54,10 @@ export const UpdateTerraformCloudConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.TerraformCloud));
 
-export const TerraformCloudConnectionListItemSchema = z.object({
-  name: z.literal("Terraform Cloud"),
-  app: z.literal(AppConnection.TerraformCloud),
-  methods: z.nativeEnum(TerraformCloudConnectionMethod).array()
-});
+export const TerraformCloudConnectionListItemSchema = z
+  .object({
+    name: z.literal("Terraform Cloud"),
+    app: z.literal(AppConnection.TerraformCloud),
+    methods: z.nativeEnum(TerraformCloudConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.TerraformCloud] }));

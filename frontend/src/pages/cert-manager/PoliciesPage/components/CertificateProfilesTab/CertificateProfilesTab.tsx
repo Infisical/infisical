@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState } from "react";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
@@ -9,13 +10,12 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import {
   TCertificateProfileWithDetails,
   useDeleteCertificateProfile
 } from "@app/hooks/api/certificateProfiles";
 
-import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { usePopUp } from "@app/hooks";
 import { CreateProfileModal } from "./CreateProfileModal";
 import { ProfileList } from "./ProfileList";
 import { RevealAcmeEabSecretModal } from "./RevealAcmeEabSecretModal";

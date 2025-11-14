@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureADCSConnectionMethod } from "./azure-adcs-connection-enums";
 
 export const AzureADCSUsernamePasswordCredentialsSchema = z.object({
@@ -55,7 +56,7 @@ export const SanitizedAzureADCSConnectionSchema = z.discriminatedUnion("method",
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureADCS]} (Username and Password)` }))
 ]);
 
 export const ValidateAzureADCSConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -81,8 +82,10 @@ export const UpdateAzureADCSConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.AzureADCS));
 
-export const AzureADCSConnectionListItemSchema = z.object({
-  name: z.literal("Azure ADCS"),
-  app: z.literal(AppConnection.AzureADCS),
-  methods: z.nativeEnum(AzureADCSConnectionMethod).array()
-});
+export const AzureADCSConnectionListItemSchema = z
+  .object({
+    name: z.literal("Azure ADCS"),
+    app: z.literal(AppConnection.AzureADCS),
+    methods: z.nativeEnum(AzureADCSConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.AzureADCS] }));
