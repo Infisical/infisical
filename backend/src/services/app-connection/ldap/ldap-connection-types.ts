@@ -17,6 +17,9 @@ export type TLdapConnectionInput = z.infer<typeof CreateLdapConnectionSchema> & 
 
 export type TValidateLdapConnectionCredentialsSchema = typeof ValidateLdapConnectionCredentialsSchema;
 
-export type TLdapConnectionConfig = DiscriminativePick<TLdapConnection, "method" | "app" | "credentials"> & {
+export type TLdapConnectionConfig = DiscriminativePick<
+  TLdapConnectionInput,
+  "method" | "app" | "credentials" | "gatewayId"
+> & {
   orgId: string;
 };
