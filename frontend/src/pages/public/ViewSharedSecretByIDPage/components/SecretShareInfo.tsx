@@ -43,7 +43,7 @@ export const SecretShareInfo = ({ secret }: Props) => {
           <span>
             {viewsRemaining === 0
               ? "This is the last time you can view this secret"
-              : `${viewsRemaining} more view${viewsRemaining === 1 ? "" : "s"} remaining after this`}
+              : `${viewsRemaining} more view${viewsRemaining === 1 ? "" : "s"} remaining`}
           </span>
         </div>
       )}
