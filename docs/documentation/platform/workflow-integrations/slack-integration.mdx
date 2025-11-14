@@ -169,10 +169,9 @@ This guide will provide step by step instructions on how to configure Slack inte
 
 The Slack integration supports the following events that can be configured for your projects. Each event is triggered when specific actions occur within your Infisical instance.
 
-### Access Request
-
-<AccordionGroup>
-  <Accordion title="Access Request">
+<Tabs>
+  <Tab title="Access Request">
+    ### Access Request
     This event is triggered when a user creates a new access approval request for a project. The notification includes details about the requester, the requested permissions, the secret path and environment, and whether the access is temporary or permanent.
 
     **When it's triggered:**
@@ -189,13 +188,8 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to review the request
 
     ![access request notification](/images/platform/workflow-integrations/slack-integration/access-request-notification.png)
-  </Accordion>
-</AccordionGroup>
 
-### Access Request Updated
-
-<AccordionGroup>
-  <Accordion title="Access Request Updated">
+    ### Access Request Updated
     This event is triggered when an existing access approval request is modified or updated. This helps approvers stay informed about changes to pending requests.
 
     **When it's triggered:**
@@ -212,13 +206,10 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to review the updated request
 
     ![access request updated notification](/images/platform/workflow-integrations/slack-integration/access-request-updated-notification.png)
-  </Accordion>
-</AccordionGroup>
+  </Tab>
 
-### Secret Approval
-
-<AccordionGroup>
-  <Accordion title="Secret Approval">
+  <Tab title="Secret Approval">
+    ### Secret Approval
     This event is triggered when a secret approval request is created. This occurs when a user attempts to create, update, or delete secrets that require approval based on secret approval policies.
 
     **When it's triggered:**
@@ -233,13 +224,10 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to review and approve the secret changes
 
     ![secret approval notification](/images/platform/workflow-integrations/slack-integration/secret-approval-notification.png)
-  </Accordion>
-</AccordionGroup>
+  </Tab>
 
-### Secret Sync Error
-
-<AccordionGroup>
-  <Accordion title="Secret Sync Error">
+  <Tab title="Secret Sync Error">
+    ### Secret Sync Error
     This event is triggered when a secret sync operation fails. Secret syncs allow you to synchronize secrets between Infisical and external systems like GitHub, GitLab, AWS Secrets Manager, and others.
 
     **When it's triggered:**
@@ -258,5 +246,5 @@ The Slack integration supports the following events that can be configured for y
     - Direct link to view and troubleshoot the sync configuration
 
     ![secret sync error notification](/images/platform/workflow-integrations/slack-integration/secret-sync-error-notification.png)
-  </Accordion>
-</AccordionGroup>
+  </Tab>
+</Tabs>
