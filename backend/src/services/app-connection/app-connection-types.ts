@@ -204,6 +204,12 @@ import {
   TValidateRedisConnectionCredentialsSchema
 } from "./redis";
 import {
+  TMongoDBConnection,
+  TMongoDBConnectionConfig,
+  TMongoDBConnectionInput,
+  TValidateMongoDBConnectionCredentialsSchema
+} from "./mongodb";
+import {
   TRenderConnection,
   TRenderConnectionConfig,
   TRenderConnectionInput,
@@ -288,6 +294,7 @@ export type TAppConnection = { id: string } & (
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
+  | TMongoDBConnection
   | TChefConnection
 );
 
@@ -337,6 +344,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TMongoDBConnectionInput
   | TChefConnectionInput
 );
 
@@ -404,6 +412,7 @@ export type TAppConnectionConfig =
   | TNorthflankConnectionConfig
   | TOktaConnectionConfig
   | TRedisConnectionConfig
+  | TMongoDBConnectionConfig
   | TChefConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -448,6 +457,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
   | TValidateRedisConnectionCredentialsSchema
+  | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {

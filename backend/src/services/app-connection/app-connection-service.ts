@@ -106,6 +106,7 @@ import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
+import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";
@@ -177,6 +178,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
+  [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
 };
 
