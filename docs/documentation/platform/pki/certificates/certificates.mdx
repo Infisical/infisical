@@ -206,7 +206,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
   <Tab title="API">
     <Steps>
       <Step title="Revoking a certificate">
-        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificates/revoke) API endpoint,
         specifying the serial number of the certificate and the reason for revocation.
         
         ### Sample request
@@ -232,7 +232,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
       </Step>
       <Step title="Obtaining a CRL">
         In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
-        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
 
         ### Sample request
 

@@ -7,7 +7,7 @@ description: "Learn how to deliver secrets to Amazon Elastic Container Service."
 
 This guide will go over the steps needed to access secrets stored in Infisical from Amazon Elastic Container Service (ECS).
 
-At a high level, the steps involve setting up an ECS task with an [Infisical Agent](/infisical-agent/overview) as a sidecar container. This sidecar container uses [AWS Auth](/documentation/platform/identities/aws-auth) to authenticate with Infisical to fetch secrets/access tokens.
+At a high level, the steps involve setting up an ECS task with an [Infisical Agent](/integrations/platforms/infisical-agent) as a sidecar container. This sidecar container uses [AWS Auth](/documentation/platform/identities/aws-auth) to authenticate with Infisical to fetch secrets/access tokens.
 Once the secrets/access tokens are retrieved, they are then stored in a shared [Amazon Elastic File System](https://aws.amazon.com/efs/) (EFS) volume. This volume is then made accessible to your application and all of its replicas.
 
 This guide primarily focuses on integrating Infisical Cloud with Amazon ECS on AWS Fargate and Amazon EFS.
@@ -21,7 +21,7 @@ This guide requires the following prerequisites:
 - Git installed
 - Terraform v1.0 or later installed
 - Access to AWS credentials
-- Understanding of [Infisical Agent](/infisical-agent/overview)
+- Understanding of [Infisical Agent](/integrations/platforms/infisical-agent)
 
 ## What we will deploy
 

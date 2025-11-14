@@ -377,8 +377,7 @@
                 "pages": [
                   "contributing/getting-started/overview",
                   "contributing/getting-started/code-of-conduct",
-                  "contributing/getting-started/pull-requests",
-                  "contributing/getting-started/faq"
+                  "contributing/getting-started/pull-requests"
                 ]
               },
               {
@@ -753,7 +752,12 @@
                 "group": "Infrastructure Integrations",
                 "pages": [
                   "documentation/platform/pki/pki-issuer",
-                  "documentation/platform/pki/integration-guides/gloo-mesh"
+                  "documentation/platform/pki/integration-guides/gloo-mesh",
+                  "documentation/platform/pki/integration-guides/windows-server-acme",
+                  "documentation/platform/pki/integration-guides/nginx-certbot",
+                  "documentation/platform/pki/integration-guides/apache-certbot",
+                  "documentation/platform/pki/integration-guides/tomcat-certbot",
+                  "documentation/platform/pki/integration-guides/jboss-certbot"
                 ]
               },
               {
@@ -2822,7 +2826,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "http://localhost:8080/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
