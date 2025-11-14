@@ -1,0 +1,132 @@
+---
+title: "Apache Server"
+description: "Learn how to issue SSL/TLS certificates from Infisical PKI using ACME enrollment on Apache Server with Certbot"
+---
+
+This guide will provide a high level overview on how you can use [Infisical PKI](/documentation/platform/pki/overview) and Certbot to issue SSL/TLS certificates for your Apache web server environments using the [ACME protocol](/documentation/platform/pki/enrollment-methods/acme). For more background about the ACME protocol, see the [ACME specification (RFC 8555)](https://tools.ietf.org/html/rfc8555).
+
+## Overview
+
+Certbot is a free, open-source software tool for automatically using Let's Encrypt certificates on manually-administrated websites to enable HTTPS. When configured with [Infisical PKI](/documentation/platform/pki/overview), Certbot can automatically obtain and install certificates from your private PKI infrastructure, providing seamless integration with Apache for automated certificate enrollment and renewal.
+
+## Prerequisites
+
+Before proceeding, ensure you have:
+
+- An Apache web server running on a Linux system with administrative access
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured for [ACME enrollment](/documentation/platform/pki/enrollment-methods/acme) in Infisical
+- Network connectivity from your Apache server to your Infisical instance
+- Port 80 accessible for ACME HTTP-01 validation
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your Infisical PKI project and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured for [ACME enrollment](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click on Reveal ACME EAB option to open the ACME details modal.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From your certificate profile's ACME configuration, you'll need to collect three essential pieces of information:
+
+        1. **ACME Directory URL**: The ACME endpoint URL for your Infisical instance
+           - Format: `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`
+
+        2. **EAB Key Identifier (KID)**: External Account Binding key identifier
+
+        3. **EAB Secret**: External Account Binding secret key
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install Certbot">
+        Install Certbot with the Apache plugin on your server by following the official installation instructions:
+
+        Visit the [Certbot installation guide](https://certbot.eff.org/instructions) and select your web server (Apache) and operating system for detailed installation steps specific to your environment.
+
+        For most Ubuntu/Debian systems, you can use:
+
+        ```bash
+        sudo apt install certbot python3-certbot-apache
+        ```
+
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version and proper Apache plugin integration.
+
+        After installation, verify that Certbot is working correctly:
+
+        ```bash
+        certbot --version
+        ```
+    </Step>
+
+    <Step title="Request Certificate Using Certbot">
+        Use Certbot with your Infisical ACME configuration to request a certificate:
+
+        ```bash
+        sudo certbot certonly \
+          --apache \
+          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --eab-kid "your-eab-key-identifier" \
+          --eab-hmac-key "your-eab-secret" \
+          -d example.infisical.com \
+          --email admin@example.com \
+          --agree-tos \
+          --non-interactive
+        ```
+
+        **Parameter breakdown:**
+        - `certonly`: Obtain certificate without installing it
+        - `--apache`: Use Apache plugin for domain validation
+        - `--server`: Your Infisical ACME directory URL
+        - `--eab-kid`: Your EAB key identifier from Infisical
+        - `--eab-hmac-key`: Your EAB secret from Infisical
+        - `-d`: Domain name for your certificate
+        - `--email`: Contact email for important account notifications
+        - `--agree-tos`: Agree to ACME server's Terms of Service
+        - `--non-interactive`: Run in non-interactive mode
+
+        <Note>
+            Replace the placeholder values with your actual configuration:
+            - `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`: Your Infisical ACME endpoint
+            - `your-eab-key-identifier` and `your-eab-secret`: Your External Account Binding credentials
+            - `example.infisical.com`: Your actual domain name
+            - `admin@example.com`: Your contact email
+        </Note>
+    </Step>
+
+    <Step title="Configure Automatic Renewal">
+        Certbot can automatically renew certificates. Test the renewal process manually:
+
+        ```bash
+        sudo certbot renew --dry-run
+        ```
+
+        Manual renewal process:
+
+        ```bash
+        sudo certbot renew --post-hook "systemctl reload apache2"
+        ```
+
+        <Note>
+            Certbot can be configured for automatic renewal using systemd timers (`sudo systemctl enable certbot.timer`) or cron jobs. Certbot stores all configuration from the initial request, so renewals will automatically use the same Infisical [ACME endpoint](/documentation/platform/pki/enrollment-methods/acme) and EAB credentials.
+        </Note>
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        Check that certificate files were created:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see:
+        - `cert.pem` (leaf certificate)
+        - `chain.pem` (intermediate certificate)
+        - `fullchain.pem` (leaf + intermediate certificates)
+        - `privkey.pem` (private key)
+    </Step>
+</Steps>

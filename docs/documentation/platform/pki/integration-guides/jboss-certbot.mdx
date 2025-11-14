@@ -1,0 +1,170 @@
+---
+title: "JBoss/WildFly"
+description: "Learn how to issue SSL/TLS certificates from Infisical PKI using ACME enrollment on JBoss/WildFly with Certbot"
+---
+
+This guide will provide a high level overview on how you can use [Infisical PKI](/documentation/platform/pki/overview) and Certbot to issue SSL/TLS certificates for your JBoss/WildFly application server environments using the [ACME protocol](/documentation/platform/pki/enrollment-methods/acme). For more background about the ACME protocol, see the [ACME specification (RFC 8555)](https://tools.ietf.org/html/rfc8555).
+
+## Overview
+
+Certbot is a free, open-source software tool for automatically using Let's Encrypt certificates on manually-administrated websites to enable HTTPS. When configured with [Infisical PKI](/documentation/platform/pki/overview), Certbot can automatically obtain certificates from your private PKI infrastructure. JBoss/WildFly requires certificates to be converted to Java keystore format and configured through either the legacy security realms or modern Elytron subsystem.
+
+## Prerequisites
+
+Before proceeding, ensure you have:
+
+- A JBoss/WildFly application server running on a Linux system with administrative access
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured for [ACME enrollment](/documentation/platform/pki/enrollment-methods/acme) in Infisical
+- Network connectivity from your JBoss/WildFly server to your Infisical instance
+- Port 80 accessible for ACME HTTP-01 validation (JBoss/WildFly should be stopped during certificate issuance)
+- Java Development Kit (JDK) installed for keystore management tools
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your Infisical PKI project and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured for [ACME enrollment](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click on Reveal ACME EAB option to open the ACME details modal.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From your certificate profile's ACME configuration, you'll need to collect three essential pieces of information:
+
+        1. **ACME Directory URL**: The ACME endpoint URL for your Infisical instance
+           - Format: `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`
+
+        2. **EAB Key Identifier (KID)**: External Account Binding key identifier
+
+        3. **EAB Secret**: External Account Binding secret key
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install Certbot">
+        Install Certbot on your JBoss/WildFly server by following the official installation instructions:
+
+        Visit the [Certbot installation guide](https://certbot.eff.org/instructions) and select your operating system for detailed installation steps.
+
+        For most Ubuntu/Debian systems, you can use:
+
+        ```bash
+        sudo apt install certbot
+        ```
+
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers.
+
+        After installation, verify that Certbot is working correctly:
+
+        ```bash
+        certbot --version
+        ```
+    </Step>
+
+    <Step title="Request Certificate Using Certbot">
+        Since JBoss/WildFly doesn't have a native Certbot plugin, use the standalone authenticator to obtain certificates. **Important**: Stop JBoss/WildFly before running this command as Certbot needs to bind to port 80.
+
+        ```bash
+        sudo systemctl stop wildfly
+        # or for older JBoss versions
+        # sudo systemctl stop jboss
+        ```
+
+        Then request the certificate:
+
+        ```bash
+        sudo certbot certonly \
+          --standalone \
+          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --eab-kid "your-eab-key-identifier" \
+          --eab-hmac-key "your-eab-secret" \
+          -d example.infisical.com \
+          --email admin@example.com \
+          --agree-tos \
+          --non-interactive
+        ```
+
+        **Parameter breakdown:**
+        - `certonly`: Obtain certificate without installing it
+        - `--standalone`: Use standalone authenticator (requires port 80)
+        - `--server`: Your Infisical ACME directory URL
+        - `--eab-kid`: Your EAB key identifier from Infisical
+        - `--eab-hmac-key`: Your EAB secret from Infisical
+        - `-d`: Domain name for your certificate
+        - `--email`: Contact email for important account notifications
+        - `--agree-tos`: Agree to ACME server's Terms of Service
+        - `--non-interactive`: Run in non-interactive mode
+
+        <Note>
+            Replace the placeholder values with your actual configuration:
+            - `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`: Your Infisical ACME endpoint
+            - `your-eab-key-identifier` and `your-eab-secret`: Your External Account Binding credentials
+            - `example.infisical.com`: Your actual domain name
+            - `admin@example.com`: Your contact email
+        </Note>
+    </Step>
+
+    <Step title="Convert Certificate to Java Keystore">
+        JBoss/WildFly requires certificates in Java keystore format. Convert the PEM certificates obtained from Certbot:
+
+        **Create PKCS#12 keystore from PEM files:**
+
+        ```bash
+        sudo openssl pkcs12 -export \
+          -out /opt/wildfly/standalone/configuration/keystore.p12 \
+          -inkey /etc/letsencrypt/live/example.infisical.com/privkey.pem \
+          -in /etc/letsencrypt/live/example.infisical.com/cert.pem \
+          -certfile /etc/letsencrypt/live/example.infisical.com/chain.pem \
+          -passout pass:changeit
+        ```
+
+        **Set appropriate permissions:**
+
+        ```bash
+        sudo chown wildfly:wildfly /opt/wildfly/standalone/configuration/keystore.p12
+        sudo chmod 600 /opt/wildfly/standalone/configuration/keystore.p12
+        ```
+
+        <Note>
+            Replace `changeit` with a strong password and adjust the WildFly installation path if different. Modern WildFly versions support PKCS#12 keystores directly, while older versions may require conversion to JKS format using keytool.
+        </Note>
+    </Step>
+
+    <Step title="Configure Automatic Renewal">
+        To renew certificates, you can test the renewal process manually:
+
+        ```bash
+        sudo certbot renew --dry-run
+        ```
+
+        Manual renewal process:
+
+        ```bash
+        sudo systemctl stop wildfly
+        sudo certbot renew --quiet
+        # Convert certificates to keystore format and restart WildFly
+        sudo systemctl start wildfly
+        ```
+
+        <Note>
+            Since JBoss/WildFly requires certificate format conversion, automatic renewal requires a custom script. For production environments, consider creating a cron job that stops the server, renews certificates, converts them to keystore format, and restarts the server.
+        </Note>
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After successful certificate installation, check that certificate files were created:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see:
+        - `cert.pem` (leaf certificate)
+        - `chain.pem` (intermediate certificate)
+        - `fullchain.pem` (leaf + intermediate certificates)
+        - `privkey.pem` (private key)
+    </Step>
+</Steps>
