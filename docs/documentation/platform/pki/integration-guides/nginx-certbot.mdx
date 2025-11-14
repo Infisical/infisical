@@ -29,7 +29,7 @@ Before you begin, make sure you have:
 
         From the ACME configuration, gather the following values:
 
-        - ACME Directory URL: The URL that Cerbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
         - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
         - EAB Secret: A secret key that authenticates your ACME client with Infisical.
 
@@ -75,7 +75,7 @@ Before you begin, make sure you have:
         - `-d`: Specifies the domain name for which the certificate is being requested.
         - `--email`: The contact email for expiration notices and account recovery.
         - `--agree-tos`: Accepts the ACME server’s Terms of Service.
-        - `--non-interactive`: Runs Cerbot without prompting for user input (recommended for automation).
+        - `--non-interactive`: Runs Certbot without prompting for user input (recommended for automation).
 
         The Certbot command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
 
@@ -106,6 +106,22 @@ Before you begin, make sure you have:
         If `--certonly` was **not** used: Certbot uses Nginx installer mode, which attempts to automatically configure HTTPS by updating your Nginx server block and reloading the server if needed.
 
         At this point, your Nginx server should be successfully serving HTTPS using the certificate issued by Infisical.
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After configuring Nginx SSL, verify that your certificate was issued correctly and Nginx is serving it properly.
+
+        Check that the certificate files were created by Certbot:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see files like:
+        - `cert.pem` (your certificate)
+        - `chain.pem` (certificate chain)
+        - `fullchain.pem` (certificate + chain)
+        - `privkey.pem` (private key)
     </Step>
 
     <Step title="Renew Your Certificate with Certbot">
