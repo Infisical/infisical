@@ -1,13 +1,15 @@
 import { PamResourceType, PamSessionStatus } from "../enums";
+import { TMcpAccount, TMcpResource } from "./mcp-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 
+export * from "./mcp-resource";
 export * from "./mysql-resource";
 export * from "./postgres-resource";
 
-export type TPamResource = TPostgresResource | TMySQLResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TMcpResource;
 
-export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TMcpAccount;
 
 export type TPamFolder = {
   id: string;

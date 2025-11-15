@@ -9,6 +9,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
+import { McpResourceForm } from "./McpResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 
@@ -51,6 +52,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <PostgresResourceForm onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
       return <MySQLResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.MCP:
+      return <McpResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -79,6 +82,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <PostgresResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.MySQL:
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.MCP:
+      return <McpResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }

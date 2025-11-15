@@ -1,5 +1,11 @@
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
+  TMcpAccount,
+  TMcpAccountCredentials,
+  TMcpResource,
+  TMcpResourceConnectionDetails
+} from "./mcp/mcp-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
@@ -14,13 +20,16 @@ import {
 } from "./postgres/postgres-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource;
-export type TPamResourceConnectionDetails = TPostgresResourceConnectionDetails | TMySQLResourceConnectionDetails;
+export type TPamResource = TPostgresResource | TMySQLResource | TMcpResource;
+export type TPamResourceConnectionDetails =
+  | TPostgresResourceConnectionDetails
+  | TMySQLResourceConnectionDetails
+  | TMcpResourceConnectionDetails;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TMcpAccount;
 // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials;
+export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TMcpAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<
