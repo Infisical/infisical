@@ -18,6 +18,7 @@ const adminRoute = route("/admin", [
 
 const organizationRoutes = route("/organization", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
+  route("/mcp-scope", "organization/McpScopeSelectPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
