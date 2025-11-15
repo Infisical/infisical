@@ -6,9 +6,8 @@ import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TMySQLAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
-import { SqlAccountFields } from "./shared/SqlAccountFields";
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { baseSqlAccountFieldsSchema, SqlAccountFields } from "./shared/SqlAccountFields";
+import { GenericAccountFields } from "./GenericAccountFields";
 
 type Props = {
   account?: TMySQLAccount;
@@ -17,20 +16,13 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const formSchema = genericAccountFieldsSchema.extend({
-  credentials: BaseSqlAccountSchema,
-  // We don't support rotation for now, just feed a false value to
-  // make the schema happy
-  rotationEnabled: z.boolean().default(false)
-});
-
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof baseSqlAccountFieldsSchema>;
 
 export const MySQLAccountForm = ({ account, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(baseSqlAccountFieldsSchema),
     defaultValues: account
       ? {
           ...account,
