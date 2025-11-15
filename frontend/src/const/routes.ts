@@ -29,6 +29,10 @@ export const ROUTE_PATHS = Object.freeze({
         "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
       )
     },
+    SelectMcpScope: setRoute(
+      "/organization/mcp-scope",
+      "/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope"
+    ),
     SecretSharing: setRoute(
       "/organization/secret-sharing",
       "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"

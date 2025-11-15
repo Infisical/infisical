@@ -51,6 +51,7 @@ import { Route as adminAuthenticationPageRouteImport } from './pages/admin/Authe
 import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
 import { Route as organizationNetworkingPageRouteImport } from './pages/organization/NetworkingPage/route'
+import { Route as organizationMcpScopeSelectPageRouteImport } from './pages/organization/McpScopeSelectPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
@@ -649,6 +650,14 @@ const organizationNetworkingPageRouteRoute =
   organizationNetworkingPageRouteImport.update({
     id: '/networking',
     path: '/networking',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationMcpScopeSelectPageRouteRoute =
+  organizationMcpScopeSelectPageRouteImport.update({
+    id: '/mcp-scope',
+    path: '/mcp-scope',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -2456,6 +2465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof organizationBillingPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope'
+      path: '/mcp-scope'
+      fullPath: '/organization/mcp-scope'
+      preLoaderRoute: typeof organizationMcpScopeSelectPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organization/networking': {
       id: '/_authenticate/_inject-org-details/_org-layout/organization/networking'
       path: '/networking'
@@ -4003,6 +4019,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
+  organizationMcpScopeSelectPageRouteRoute: typeof organizationMcpScopeSelectPageRouteRoute
   organizationNetworkingPageRouteRoute: typeof organizationNetworkingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
@@ -4020,6 +4037,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationAccessManagementPageRouteRoute,
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
+    organizationMcpScopeSelectPageRouteRoute:
+      organizationMcpScopeSelectPageRouteRoute,
     organizationNetworkingPageRouteRoute: organizationNetworkingPageRouteRoute,
     organizationProjectsPageRouteRoute: organizationProjectsPageRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute:
@@ -5004,6 +5023,7 @@ export interface FileRoutesByFullPath {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5239,6 +5259,7 @@ export interface FileRoutesByTo {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5473,6 +5494,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/projects': typeof organizationProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5720,6 +5742,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/mcp-scope'
     | '/organization/networking'
     | '/organization/projects'
     | '/admin/access-management'
@@ -5954,6 +5977,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/mcp-scope'
     | '/organization/networking'
     | '/organization/projects'
     | '/admin/access-management'
@@ -6186,6 +6210,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope'
     | '/_authenticate/_inject-org-details/_org-layout/organization/networking'
     | '/_authenticate/_inject-org-details/_org-layout/organization/projects'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
@@ -6640,6 +6665,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
+        "/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope",
         "/_authenticate/_inject-org-details/_org-layout/organization/networking",
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
@@ -6679,6 +6705,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/billing": {
       "filePath": "organization/BillingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope": {
+      "filePath": "organization/McpScopeSelectPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/networking": {

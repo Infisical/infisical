@@ -27,6 +27,7 @@ export * from "./orgAdmin";
 export * from "./organization";
 export * from "./orgIdentity";
 export * from "./orgIdentityMembership";
+export * from "./pamMcp";
 export * from "./pkiAlerts";
 export * from "./pkiCollections";
 export * from "./pkiSubscriber";
