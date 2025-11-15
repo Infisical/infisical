@@ -192,19 +192,18 @@ export const pamResourceServiceFactory = ({
           gatewayV2Service
         );
 
-        // Logic to prevent overwriting unedited censored values
-        const finalCredentials = { ...rotationAccountCredentials };
-        if (
-          resource.encryptedRotationAccountCredentials &&
-          rotationAccountCredentials.password === "__INFISICAL_UNCHANGED__"
-        ) {
+        let finalCredentials = { ...rotationAccountCredentials };
+        if (resource.encryptedRotationAccountCredentials) {
           const decryptedCredentials = await decryptAccountCredentials({
             encryptedCredentials: resource.encryptedRotationAccountCredentials,
             projectId: resource.projectId,
             kmsService
           });
 
-          finalCredentials.password = decryptedCredentials.password;
+          finalCredentials = await factory.handleOverwritePreventionForCensoredValues(
+            rotationAccountCredentials,
+            decryptedCredentials
+          );
         }
 
         try {

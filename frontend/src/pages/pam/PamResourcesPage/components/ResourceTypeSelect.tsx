@@ -78,7 +78,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     // We temporarily show a special license modal for these because we will have to write some code to complete the integration
     if (
       resource === PamResourceType.RDP ||
-      resource === PamResourceType.SSH ||
       resource === PamResourceType.Kubernetes ||
       resource === PamResourceType.MCP ||
       resource === PamResourceType.Redis ||
