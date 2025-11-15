@@ -355,14 +355,19 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
             .join(TableName.SecretFolder, `${TableName.SecretApprovalRequest}.folderId`, `${TableName.SecretFolder}.id`)
             .join(TableName.Environment, `${TableName.SecretFolder}.envId`, `${TableName.Environment}.id`)
             .join(
-              TableName.SecretApprovalPolicyApprover,
-              `${TableName.SecretApprovalRequest}.policyId`,
-              `${TableName.SecretApprovalPolicyApprover}.policyId`
-            )
-            .join(
               TableName.SecretApprovalPolicy,
               `${TableName.SecretApprovalRequest}.policyId`,
               `${TableName.SecretApprovalPolicy}.id`
+            )
+            .leftJoin(
+              TableName.SecretApprovalPolicyApprover,
+              `${TableName.SecretApprovalPolicy}.id`,
+              `${TableName.SecretApprovalPolicyApprover}.policyId`
+            )
+            .leftJoin(
+              TableName.UserGroupMembership,
+              `${TableName.SecretApprovalPolicyApprover}.approverGroupId`,
+              `${TableName.UserGroupMembership}.groupId`
             )
             .where({ projectId })
             .where((qb) => {
@@ -373,10 +378,10 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
                 void bd
                   .where(`${TableName.SecretApprovalPolicyApprover}.approverUserId`, userId)
                   .orWhere(`${TableName.SecretApprovalRequest}.committerUserId`, userId)
+                  .orWhere(`${TableName.UserGroupMembership}.userId`, userId)
             )
             .select("status", `${TableName.SecretApprovalRequest}.id`)
             .groupBy(`${TableName.SecretApprovalRequest}.id`, "status")
-            .count("status")
         )
         .select("status")
         .from("temp")
@@ -499,7 +504,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
 
       const query = (tx || db.replicaNode())
         .select("*")
-        .select(db.raw("count(*) OVER() as total_count"))
         .from(innerQuery)
         .orderBy("createdAt", "desc") as typeof innerQuery;
 
@@ -519,15 +523,20 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         });
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const countResult = await (tx || db.replicaNode())
+        .count({ count: "*" })
+        .from(query.clone().as("count_query"))
+        .first();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      const totalCount = Number(countResult?.count || 0);
+
       const docs = await (tx || db)
         .with("w", query)
         .select("*")
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", offset)
         .andWhere("w.rank", "<", offset + limit);
-
-      // @ts-expect-error knex does not infer
-      const totalCount = Number(docs[0]?.total_count || 0);
 
       const formattedDoc = sqlNestRelationships({
         data: docs,
