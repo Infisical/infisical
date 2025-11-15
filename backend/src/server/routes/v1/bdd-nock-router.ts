@@ -26,31 +26,31 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
     }
   };
 
-//   server.route({
-//     method: "POST",
-//     url: "/define",
-//     schema: {
-//       body: z.object({ definitions: z.unknown().array() }),
-//       response: {
-//         200: z.object({ status: z.string() })
-//       }
-//     },
-//     onRequest: verifyAuth([AuthMode.JWT]),
-//     handler: async (req) => {
-//       checkIfBddNockApiEnabled();
-//       const { body } = req;
-//       const { definitions } = body;
-//       logger.info(definitions, "Defining nock");
-//       const processedDefinitions = definitions.map((definition: unknown) => {
-//         const { path, ...rest } = definition as Definition;
-//         return {
-//           ...rest,
-//           path:
-//             path !== undefined && typeof path === "string"
-//               ? path
-//               : new RegExp((path as unknown as { regex: string }).regex ?? "")
-//         } as Definition;
-//       });
+  server.route({
+    method: "POST",
+    url: "/define",
+    schema: {
+      body: z.object({ definitions: z.unknown().array() }),
+      response: {
+        200: z.object({ status: z.string() })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      checkIfBddNockApiEnabled();
+      const { body } = req;
+      const { definitions } = body;
+      logger.info(definitions, "Defining nock");
+      const processedDefinitions = definitions.map((definition: unknown) => {
+        const { path, ...rest } = definition as Definition;
+        return {
+          ...rest,
+          path:
+            path !== undefined && typeof path === "string"
+              ? path
+              : new RegExp((path as unknown as { regex: string }).regex ?? "")
+        } as Definition;
+      });
 
       const nock = await importNock();
       nock.define(processedDefinitions);
