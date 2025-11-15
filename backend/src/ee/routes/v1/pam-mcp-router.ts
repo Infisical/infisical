@@ -1,10 +1,90 @@
+import { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 import { z } from "zod";
 
+import { getConfig } from "@app/lib/config/env";
+import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+const sendWwwAuthenticate = (reply: FastifyReply, description?: string) => {
+  const appCfg = getConfig();
+  const protectedResourceMetadataUrl = `${appCfg.SITE_URL}/.well-known/oauth-protected-resource`;
+  let header = `Bearer resource_metadata="${protectedResourceMetadataUrl}", scope="openid"`;
+  if (description) header = `${header}, error_description="${description}"`;
+  void reply.header("WWW-Authenticate", header);
+};
+
+// Custom onRequest hook to enforce auth while returning proper WWW-Authenticate hint for MCP clients
+const requireMcpAuthHook = (req: FastifyRequest, reply: FastifyReply, done: HookHandlerDoneFunction) => {
+  const { auth } = req;
+  if (!auth) {
+    sendWwwAuthenticate(reply, "Missing authorization header");
+    void reply.status(401).send();
+    return;
+  }
+
+  const allowed = auth.authMode === AuthMode.JWT;
+  if (!allowed) {
+    void reply.status(403).send();
+    return;
+  }
+
+  if (auth.authMode === AuthMode.JWT && !req.permission.orgId) {
+    void reply.status(401).send({ message: "Unauthorized: organization context required" });
+    return;
+  }
+
+  done();
+};
+
 export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
+  server.route({
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    url: "/",
+    onRequest: requireMcpAuthHook,
+    handler: async (req, res) => {
+      await res.hijack(); // allow manual control of the underlying res
+
+      const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp();
+
+      // Close transport when client disconnects
+      res.raw.on("close", () => {
+        void transport.close().catch((err) => {
+          logger.error(err, "Failed to close transport for pam mcp");
+        });
+      });
+
+      await mcpServer.connect(transport);
+      await transport.handleRequest(req.raw, res.raw, req.body);
+    }
+  });
+
+  server.route({
+    method: ["GET", "DELETE"],
+    config: {
+      rateLimit: writeLimit
+    },
+    url: "/",
+    onRequest: requireMcpAuthHook,
+    handler: async (_req, res) => {
+      void res
+        .status(405)
+        .header("Allow", "POST")
+        .send({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Method not allowed"
+          },
+          id: null
+        });
+    }
+  });
+
   server.route({
     method: "POST",
     url: "/oauth/register",
