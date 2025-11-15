@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { subject } from "@casl/ability";
 import {
   faCheck,
+  faCodeBranch,
   faCopy,
   faEyeSlash,
   faProjectDiagram,
+  faShare,
   faTrash,
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { SecretReferenceTree } from "@app/components/secrets/SecretReferenceDetails";
 import {
@@ -24,6 +24,7 @@ import {
   ModalTrigger,
   Tooltip
 } from "@app/components/v2";
+import { InlineActionIconButton } from "@app/components/v2/IconButton/InlineActionIconButton";
 import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
@@ -33,12 +34,11 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
-import {
-  dashboardKeys,
-  fetchSecretValue,
-  useGetSecretValue
-} from "@app/hooks/api/dashboard/queries";
-import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
+import { ProjectEnv, SecretV3RawSanitized } from "@app/hooks/api/types";
+import { useCopySecretToClipBoard } from "@app/hooks/secret-operations/useCopySecretToClipboard";
+import { useCreatePersonalSecretOverride } from "@app/hooks/secret-operations/useCreatePersonalSecret";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
@@ -47,7 +47,7 @@ type Props = {
   defaultValue?: string | null;
   secretName: string;
   secretId?: string;
-  isOverride?: boolean;
+  hasOverride?: boolean;
   isCreatable?: boolean;
   isVisible?: boolean;
   isImportedSecret: boolean;
@@ -60,7 +60,6 @@ type Props = {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type?: SecretType,
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
@@ -88,7 +87,7 @@ type Props = {
 export const SecretEditRow = ({
   defaultValue,
   isCreatable,
-  isOverride,
+  hasOverride,
   isImportedSecret,
   onSecretUpdate,
   secretName,
@@ -109,8 +108,6 @@ export const SecretEditRow = ({
     "editSecret"
   ] as const);
 
-  const queryClient = useQueryClient();
-
   const { currentProject } = useProject();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
@@ -127,8 +124,7 @@ export const SecretEditRow = ({
           environment,
           secretPath,
           secretKey: secretName,
-          projectId: currentProject.id,
-          isOverride
+          projectId: currentProject.id
         };
 
   // scott: only fetch value if secret exists, has non-empty value and user has permission
@@ -143,7 +139,6 @@ export const SecretEditRow = ({
   });
 
   const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
-  const isSecretValueFetched = Boolean(secretValueData);
 
   const {
     handleSubmit,
@@ -154,15 +149,15 @@ export const SecretEditRow = ({
     formState: { isDirty, isSubmitting }
   } = useForm({
     defaultValues: {
-      value: secretValueData?.valueOverride ?? secretValueData?.value ?? (defaultValue || null)
+      value: secretValueData?.value ?? (defaultValue || null)
     }
   });
 
   useEffect(() => {
     if (secretValueData && !isDirty) {
-      setValue("value", secretValueData.valueOverride ?? secretValueData.value);
+      setValue("value", secretValueData.value || "");
     }
-  }, [secretValueData]);
+  }, [secretValueData, setValue]);
 
   const { permission } = useProjectPermission();
 
@@ -177,37 +172,10 @@ export const SecretEditRow = ({
     reset();
   };
 
-  const handleCopySecretToClipboard = async () => {
-    if (!isSecretValueFetched && !isDirty) {
-      try {
-        const data = await fetchSecretValue(fetchSecretValueParams);
-
-        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
-
-        await window.navigator.clipboard.writeText(data.valueOverride ?? data.value);
-        createNotification({ type: "success", text: "Copied secret to clipboard" });
-        return;
-      } catch (e) {
-        console.error(e);
-        createNotification({
-          type: "error",
-          text: "Failed to fetch secret value."
-        });
-        return;
-      }
-    }
-
-    const { value } = getValues();
-    if (value) {
-      try {
-        await window.navigator.clipboard.writeText(value);
-        createNotification({ type: "success", text: "Copied secret to clipboard" });
-      } catch (error) {
-        console.log(error);
-        createNotification({ type: "error", text: "Failed to copy secret to clipboard" });
-      }
-    }
-  };
+  const { copySecretToClipboard, isSecretValueCopied } = useCopySecretToClipBoard({
+    getFetchedValue: isVisible ? () => getValues("value") || "" : undefined,
+    fetchSecretParams: fetchSecretValueParams
+  });
 
   const handleFormSubmit = async ({ value }: { value?: string | null }) => {
     if ((value || value === "") && secretName) {
@@ -228,17 +196,10 @@ export const SecretEditRow = ({
           handlePopUpOpen("editSecret", { secretValue: value });
           return;
         }
-        await onSecretUpdate(
-          environment,
-          secretName,
-          value,
-          secretValueHidden,
-          isOverride ? SecretType.Personal : SecretType.Shared,
-          secretId
-        );
+        await onSecretUpdate(environment, secretName, value, secretValueHidden, secretId);
       }
     }
-    if (secretValueHidden && !isOverride) {
+    if (secretValueHidden) {
       setTimeout(() => {
         reset({ value: defaultValue || null });
       }, 50);
@@ -248,14 +209,7 @@ export const SecretEditRow = ({
   };
 
   const handleEditSecret = async ({ secretValue }: { secretValue: string }) => {
-    await onSecretUpdate(
-      environment,
-      secretName,
-      secretValue,
-      secretValueHidden,
-      isOverride ? SecretType.Personal : SecretType.Shared,
-      secretId
-    );
+    await onSecretUpdate(environment, secretName, secretValue, secretValueHidden, secretId);
     reset({ value: secretValue });
     handlePopUpClose("editSecret");
   };
@@ -287,8 +241,31 @@ export const SecretEditRow = ({
     }
   }, [onSecretDelete, environment, secretName, secretId, reset, setIsDeleting]);
 
+  const openCreateSharedSecretPopup = useCreateSharedSecretPopup({
+    getFetchedValue: () => getValues("value") || undefined,
+    fetchSecretParams: fetchSecretValueParams
+  });
+
+  const deleteLabel = useMemo(() => {
+    if (isRotatedSecret) return "Cannot Delete Rotated Secret";
+    return "Delete";
+  }, [isRotatedSecret]);
+
+  const createPersonalSecretOverride = useCreatePersonalSecretOverride(currentProject.id);
+
+  const handleAddPersonalOverride = useCallback(async () => {
+    createPersonalSecretOverride(
+      {
+        key: secretName,
+        environment,
+        secretPath
+      },
+      secretValueData?.value
+    );
+  }, [secretName, environment, secretPath, createPersonalSecretOverride, secretValueData?.value]);
+
   return (
-    <div className="group flex w-full cursor-text items-center space-x-2">
+    <div className="flex w-full cursor-text items-center space-x-2">
       <DeleteActionModal
         isOpen={isModalOpen}
         onClose={toggleModal}
@@ -296,14 +273,14 @@ export const SecretEditRow = ({
         deleteKey={secretName}
         onDeleteApproved={handleDeleteSecret}
       />
-      {secretValueHidden && !isOverride && (
+      {secretValueHidden && (
         <Tooltip
           content={`You do not have access to view the current value${canEditSecretValue && !isRotatedSecret ? ", but you can set a new one" : "."}`}
         >
           <FontAwesomeIcon className="pl-2" size="sm" icon={faEyeSlash} />
         </Tooltip>
       )}
-      <div className="grow border-r border-r-mineshaft-600 pr-2 pl-1">
+      <div className="grow pr-2 pl-1">
         <Controller
           control={control}
           name="value"
@@ -312,7 +289,7 @@ export const SecretEditRow = ({
               {...field}
               isReadOnly={
                 isImportedSecret ||
-                (isRotatedSecret && !isOverride) ||
+                isRotatedSecret ||
                 isFetchingSecretValue ||
                 isErrorFetchingSecretValue
               }
@@ -330,7 +307,7 @@ export const SecretEditRow = ({
               environment={environment}
               isImport={isImportedSecret}
               defaultValue={secretValueHidden ? "" : undefined}
-              canEditButNotView={secretValueHidden && !isOverride}
+              canEditButNotView={secretValueHidden}
               onFocus={() => setIsFieldFocused.on()}
               onBlur={() => {
                 field.onBlur();
@@ -343,7 +320,7 @@ export const SecretEditRow = ({
 
       <div
         className={twMerge(
-          "flex w-24 justify-center space-x-3 pl-2 transition-all",
+          "flex justify-center space-x-3 pl-2 transition-all",
           isImportedSecret && "pointer-events-none opacity-0"
         )}
       >
@@ -396,11 +373,11 @@ export const SecretEditRow = ({
                 <IconButton
                   isDisabled={secretValueHidden}
                   ariaLabel="copy-value"
-                  onClick={handleCopySecretToClipboard}
+                  onClick={copySecretToClipboard}
                   variant="plain"
                   className="h-full"
                 >
-                  <FontAwesomeIcon icon={faCopy} />
+                  <FontAwesomeIcon icon={isSecretValueCopied ? faCheck : faCopy} />
                 </IconButton>
               </Tooltip>
             </div>
@@ -436,6 +413,47 @@ export const SecretEditRow = ({
             </div>
 
             <ProjectPermissionCan
+              I={ProjectPermissionActions.Read}
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <InlineActionIconButton
+                  hint="Share Secret"
+                  icon={faShare}
+                  isDisabled={!isAllowed}
+                  onClick={openCreateSharedSecretPopup}
+                  revealOnGroupHover
+                />
+              )}
+            </ProjectPermissionCan>
+
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={subject(ProjectPermissionSub.Secrets, {
+                environment,
+                secretPath,
+                secretName,
+                secretTags: ["*"]
+              })}
+            >
+              {(isAllowed) => (
+                <InlineActionIconButton
+                  hint="Add Override"
+                  isHidden={hasOverride}
+                  icon={faCodeBranch}
+                  isDisabled={!isAllowed}
+                  onClick={handleAddPersonalOverride}
+                  revealOnGroupHover
+                />
+              )}
+            </ProjectPermissionCan>
+
+            <ProjectPermissionCan
               I={ProjectPermissionActions.Delete}
               a={subject(ProjectPermissionSub.Secrets, {
                 environment,
@@ -446,7 +464,7 @@ export const SecretEditRow = ({
             >
               {(isAllowed) => (
                 <div className="opacity-0 group-hover:opacity-100">
-                  <Tooltip content={isRotatedSecret ? "Cannot Delete Rotated Secret" : "Delete"}>
+                  <Tooltip content={deleteLabel}>
                     <IconButton
                       variant="plain"
                       ariaLabel="delete-value"

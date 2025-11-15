@@ -4,9 +4,9 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useDeleteSharedSecret } from "@app/hooks/api";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { usePopUp } from "@app/hooks/usePopUp";
 
-import { AddShareSecretModal } from "./AddShareSecretModal";
 import { ShareSecretsTable } from "./ShareSecretsTable";
 
 type DeleteModalData = { name: string; id: string };
@@ -30,6 +30,7 @@ export const ShareSecretTab = () => {
 
     handlePopUpClose("deleteSharedSecretConfirmation");
   };
+  const openCreateSharedSecretPopup = useCreateSharedSecretPopup({});
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
@@ -38,15 +39,12 @@ export const ShareSecretTab = () => {
         <Button
           colorSchema="primary"
           leftIcon={<FontAwesomeIcon icon={faPlus} />}
-          onClick={() => {
-            handlePopUpOpen("createSharedSecret");
-          }}
+          onClick={openCreateSharedSecretPopup}
         >
           Share Secret
         </Button>
       </div>
       <ShareSecretsTable handlePopUpOpen={handlePopUpOpen} />
-      <AddShareSecretModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.deleteSharedSecretConfirmation.isOpen}
         title={`Delete ${

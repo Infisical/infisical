@@ -3,7 +3,6 @@ import { faCircle } from "@fortawesome/free-regular-svg-icons";
 import {
   faAngleDown,
   faCheck,
-  faCodeBranch,
   faEye,
   faEyeSlash,
   faFileImport,
@@ -15,16 +14,17 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { twMerge } from "tailwind-merge";
 
 import { Button, Checkbox, TableContainer, Td, Tooltip, Tr } from "@app/components/v2";
-import { useProjectPermission } from "@app/context";
+import { useProject, useProjectPermission } from "@app/context";
 import {
   ProjectPermissionSecretActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { SecretType, SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
+import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { ProjectEnv } from "@app/hooks/api/types";
 import { getExpandedRowStyle } from "@app/pages/secret-manager/OverviewPage/components/utils";
 import { HIDDEN_SECRET_VALUE } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/SecretItem";
+import { SecretPersonalOverrideView } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretPersonalOverride/SecretPersonalOverrideView";
 
 import { SecretEditRow } from "./SecretEditRow";
 import SecretRenameRow from "./SecretRenameRow";
@@ -42,7 +42,6 @@ type Props = {
     key: string,
     value: string,
     secretValueHidden: boolean,
-    type?: SecretType,
     secretId?: string
   ) => Promise<void>;
   onSecretDelete: (env: string, key: string, secretId?: string) => Promise<void>;
@@ -89,6 +88,7 @@ export const SecretOverviewTableRow = ({
   const [isSecretVisible, setIsSecretVisible] = useToggle();
 
   const { permission } = useProjectPermission();
+  const { currentProject } = useProject();
 
   const getDefaultValue = (
     secret: SecretV3RawSanitized | undefined,
@@ -240,10 +240,7 @@ export const SecretOverviewTableRow = ({
                           key={`secret-expanded-${slug}-${secretKey}`}
                           className="hover:bg-mineshaft-700"
                         >
-                          <td
-                            className="flex h-full items-center"
-                            style={{ padding: "0.25rem 1rem" }}
-                          >
+                          <td className="px-4 py-1 align-top" style={{ padding: "0.25rem 1rem" }}>
                             <div title={name} className="flex h-8 w-32 items-center space-x-2">
                               <span className="truncate">{name}</span>
                               {isImportedSecret && (
@@ -258,34 +255,43 @@ export const SecretOverviewTableRow = ({
                                   <FontAwesomeIcon icon={faRotate} />
                                 </Tooltip>
                               )}
-                              {secret?.idOverride && (
-                                <Tooltip content="Personal Override">
-                                  <FontAwesomeIcon icon={faCodeBranch} />
-                                </Tooltip>
-                              )}
                             </div>
                           </td>
-                          <td className="col-span-2 h-8 w-full">
-                            <SecretEditRow
-                              secretPath={secretPath}
-                              isVisible={isSecretVisible}
-                              secretName={secretKey}
-                              isEmpty={secret?.isEmpty}
-                              secretValueHidden={secret?.secretValueHidden || false}
-                              defaultValue={getDefaultValue(secret, importedSecret)}
-                              secretId={secret?.id}
-                              isOverride={Boolean(secret?.idOverride)}
-                              isImportedSecret={isImportedSecret}
-                              importedSecret={importedSecret}
-                              isCreatable={isCreatable}
-                              onSecretDelete={onSecretDelete}
-                              onSecretCreate={onSecretCreate}
-                              onSecretUpdate={onSecretUpdate}
-                              environment={slug}
-                              isRotatedSecret={secret?.isRotatedSecret}
-                              importedBy={importedBy}
-                              isSecretPresent={Boolean(secret)}
-                            />
+                          <td className="col-span-2 w-full">
+                            <div className="group flex flex-col gap-0.5 divide-y divide-mineshaft-600">
+                              <div className="flex h-8 items-center">
+                                <SecretEditRow
+                                  secretPath={secretPath}
+                                  isVisible={isSecretVisible}
+                                  secretName={secretKey}
+                                  isEmpty={secret?.isEmpty}
+                                  secretValueHidden={secret?.secretValueHidden || false}
+                                  defaultValue={getDefaultValue(secret, importedSecret)}
+                                  secretId={secret?.id}
+                                  hasOverride={Boolean(secret?.idOverride)}
+                                  isImportedSecret={isImportedSecret}
+                                  importedSecret={importedSecret}
+                                  isCreatable={isCreatable}
+                                  onSecretDelete={onSecretDelete}
+                                  onSecretCreate={onSecretCreate}
+                                  onSecretUpdate={onSecretUpdate}
+                                  environment={slug}
+                                  isRotatedSecret={secret?.isRotatedSecret}
+                                  importedBy={importedBy}
+                                  isSecretPresent={Boolean(secret)}
+                                />
+                              </div>
+                              {Boolean(secret?.idOverride) && (
+                                <SecretPersonalOverrideView
+                                  isVisible={isSecretVisible}
+                                  secretKey={secretKey}
+                                  environment={secret?.env || ""}
+                                  secretPath={secretPath}
+                                  projectId={currentProject.id}
+                                  className="w-full space-x-2"
+                                />
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
