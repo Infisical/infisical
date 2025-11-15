@@ -50,7 +50,6 @@ import { usePagination, usePopUp } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
-  PamAccountFilter,
   PamAccountOrderBy,
   PamAccountView,
   TPamFolder
@@ -68,6 +67,10 @@ import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
+
+type PamAccountFilter = {
+  resourceIds: string[];
+};
 
 type Props = {
   projectId: string;
