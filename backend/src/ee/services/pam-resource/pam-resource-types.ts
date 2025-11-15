@@ -40,6 +40,7 @@ export type TListResourcesDTO = {
   orderDirection?: OrderByDirection;
   limit?: number;
   offset?: number;
+  filterResourceTypes?: string[];
 } & TProjectPermission;
 
 // Resource factory

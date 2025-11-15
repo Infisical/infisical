@@ -1,3 +1,4 @@
+import { getConfig } from "@app/lib/config/env";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
   registerAppConnectionRouter
@@ -6,7 +7,6 @@ import { registerCmekRouter } from "@app/server/routes/v1/cmek-router";
 import { registerDashboardRouter } from "@app/server/routes/v1/dashboard-router";
 import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/server/routes/v1/secret-sync-routers";
 
-import { getConfig } from "@app/lib/config/env";
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
 import { registerBddNockRouter } from "./bdd-nock-router";
