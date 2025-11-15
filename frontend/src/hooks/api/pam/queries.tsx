@@ -92,6 +92,7 @@ export const useListPamResources = (
 
       return data;
     },
+    placeholderData: (prev) => prev,
     ...options
   });
 };

@@ -59,8 +59,8 @@ import { PamDeleteResourceModal } from "./PamDeleteResourceModal";
 import { PamResourceRow } from "./PamResourceRow";
 import { PamUpdateResourceModal } from "./PamUpdateResourceModal";
 
-type Filters = {
-  resourceType: PamResourceType[];
+type PamResourceFilter = {
+  resourceTypes: PamResourceType[];
 };
 
 type Props = {
@@ -80,8 +80,8 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     from: ROUTE_PATHS.Pam.ResourcesPage.id
   });
 
-  const [filters, setFilters] = useState<Filters>({
-    resourceType: []
+  const [filter, setFilter] = useState<PamResourceFilter>({
+    resourceTypes: []
   });
 
   const {
@@ -114,7 +114,8 @@ export const PamResourcesTable = ({ projectId }: Props) => {
     limit: perPage,
     search: debouncedSearch,
     orderBy,
-    orderDirection
+    orderDirection,
+    filterResourceTypes: filter.resourceTypes.length ? filter.resourceTypes.join(",") : undefined
   });
 
   const resources = data?.resources || [];
@@ -125,7 +126,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
       resources.filter((resource) => {
         const { name, resourceType } = resource;
 
-        if (filters.resourceType.length && !filters.resourceType.includes(resourceType)) {
+        if (filter.resourceTypes.length && !filter.resourceTypes.includes(resourceType)) {
           return false;
         }
 
@@ -136,7 +137,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
           resourceType.toLowerCase().includes(searchValue)
         );
       }),
-    [resources, search, filters]
+    [resources, search, filter]
   );
 
   const handleSort = (column: PamResourceOrderBy) => {
@@ -155,7 +156,7 @@ export const PamResourcesTable = ({ projectId }: Props) => {
   const getColSortIcon = (col: PamResourceOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filters.resourceType.length);
+  const isTableFiltered = Boolean(filter.resourceTypes.length);
   const isContentEmpty = !filteredResources.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
 
@@ -192,43 +193,38 @@ export const PamResourcesTable = ({ projectId }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource Type</DropdownMenuLabel>
-            {resources.length ? (
-              [...new Set(resources.map(({ resourceType }) => resourceType))].map((type) => {
-                const { name, image } = PAM_RESOURCE_TYPE_MAP[type];
-
-                return (
-                  <DropdownMenuItem
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setFilters((prev) => ({
-                        ...prev,
-                        resourceType: prev.resourceType.includes(type)
-                          ? prev.resourceType.filter((a) => a !== type)
-                          : [...prev.resourceType, type]
-                      }));
-                    }}
-                    key={type}
-                    icon={
-                      filters.resourceType.includes(type) && (
-                        <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
-                      )
-                    }
-                    iconPos="right"
-                  >
-                    <div className="flex items-center gap-2">
-                      <img
-                        alt={`${name} resource type`}
-                        src={`/images/integrations/${image}`}
-                        className="h-4 w-4"
-                      />
-                      <span>{name}</span>
-                    </div>
-                  </DropdownMenuItem>
-                );
-              })
-            ) : (
-              <DropdownMenuItem isDisabled>No Resources</DropdownMenuItem>
-            )}
+            {Object.entries(PAM_RESOURCE_TYPE_MAP).map(([type, { name, image }]) => {
+              const resourceType = type as PamResourceType;
+              return (
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFilter((prev) => ({
+                      ...prev,
+                      resourceTypes: prev.resourceTypes.includes(resourceType)
+                        ? prev.resourceTypes.filter((a) => a !== resourceType)
+                        : [...prev.resourceTypes, resourceType]
+                    }));
+                  }}
+                  key={resourceType}
+                  icon={
+                    filter.resourceTypes.includes(resourceType) && (
+                      <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                    )
+                  }
+                  iconPos="right"
+                >
+                  <div className="flex items-center gap-2">
+                    <img
+                      alt={`${name} resource type`}
+                      src={`/images/integrations/${image}`}
+                      className="h-4 w-4"
+                    />
+                    <span>{name}</span>
+                  </div>
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
         <OrgPermissionCan

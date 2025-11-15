@@ -59,6 +59,7 @@ export type TListPamResourcesDTO = {
   orderBy?: PamResourceOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  filterResourceTypes?: string;
 };
 
 export type TCreatePamResourceDTO = Pick<

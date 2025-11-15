@@ -59,7 +59,16 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(100),
         orderBy: z.nativeEnum(PamResourceOrderBy).default(PamResourceOrderBy.Name),
         orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
-        search: z.string().trim().optional()
+        search: z.string().trim().optional(),
+        filterResourceTypes: z
+          .string()
+          .transform((val) =>
+            val
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          )
+          .optional()
       }),
       response: {
         200: z.object({
@@ -70,7 +79,7 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, limit, offset, search, orderBy, orderDirection } = req.query;
+      const { projectId, limit, offset, search, orderBy, orderDirection, filterResourceTypes } = req.query;
 
       const { resources, totalCount } = await server.services.pamResource.list({
         actorId: req.permission.id,
@@ -82,7 +91,8 @@ export const registerPamResourceRouter = async (server: FastifyZodProvider) => {
         offset,
         search,
         orderBy,
-        orderDirection
+        orderDirection,
+        filterResourceTypes
       });
 
       await server.services.auditLog.createAuditLog({
