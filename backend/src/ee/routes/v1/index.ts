@@ -26,6 +26,7 @@ import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
+import { registerPamMcpRouter } from "./pam-mcp-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
@@ -168,6 +169,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(registerIdentityTemplateRouter, { prefix: "/identity-templates" });
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
+
+  await server.register(registerPamMcpRouter, { prefix: "/ai/mcp" });
 
   await server.register(
     async (kmipRouter) => {
