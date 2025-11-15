@@ -1,13 +1,9 @@
 import { Button } from "@app/components/v2";
-
-export enum AccountView {
-  Flat = "flat",
-  Nested = "nested"
-}
+import { PamAccountView } from "@app/hooks/api/pam";
 
 type Props = {
-  value: AccountView;
-  onChange: (value: AccountView) => void;
+  value: PamAccountView;
+  onChange: (value: PamAccountView) => void;
 };
 
 export const AccountViewToggle = ({ value, onChange }: Props) => {
@@ -16,11 +12,11 @@ export const AccountViewToggle = ({ value, onChange }: Props) => {
       <Button
         variant="outline_bg"
         onClick={() => {
-          onChange(AccountView.Flat);
+          onChange(PamAccountView.Flat);
         }}
         size="xs"
         className={`${
-          value === AccountView.Flat ? "bg-mineshaft-500" : "bg-transparent"
+          value === PamAccountView.Flat ? "bg-mineshaft-500" : "bg-transparent"
         } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
       >
         Hide Folders
@@ -28,11 +24,11 @@ export const AccountViewToggle = ({ value, onChange }: Props) => {
       <Button
         variant="outline_bg"
         onClick={() => {
-          onChange(AccountView.Nested);
+          onChange(PamAccountView.Nested);
         }}
         size="xs"
         className={`${
-          value === AccountView.Nested ? "bg-mineshaft-500" : "bg-transparent"
+          value === PamAccountView.Nested ? "bg-mineshaft-500" : "bg-transparent"
         } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
       >
         Show Folders

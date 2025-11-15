@@ -2,12 +2,13 @@ import { createFileRoute, linkOptions, stripSearchParams } from "@tanstack/react
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 
-import { AccountView } from "./components/AccountViewToggle";
+import { PamAccountView } from "@app/hooks/api/pam";
+
 import { PamAccountsPage } from "./PamAccountsPage";
 
 const PamAccountsPageQueryParamsSchema = z.object({
   search: z.string().optional(),
-  accountView: z.nativeEnum(AccountView).optional(),
+  accountView: z.nativeEnum(PamAccountView).optional(),
   accountPath: z.string().catch("/")
 });
 
