@@ -2,7 +2,7 @@ import type { Definition } from "nock";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError, InternalServerError } from "@app/lib/errors";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
