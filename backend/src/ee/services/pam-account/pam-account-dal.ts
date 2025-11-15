@@ -50,11 +50,14 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
+        // escape special characters (`%`, `_`) and the escape character itself (`\`)
+        const escapedSearch = search.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+        const pattern = `%${escapedSearch}%`;
         void query.where((q) => {
           void q
-            .whereILike(`${TableName.PamAccount}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.PamResource}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.PamAccount}.description`, `%${search}%`);
+            .whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "name", pattern])
+            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "name", pattern])
+            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "description", pattern]);
         });
       }
 

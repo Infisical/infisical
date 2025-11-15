@@ -47,10 +47,13 @@ export const pamResourceDALFactory = (db: TDbClient) => {
       const query = dbInstance(TableName.PamResource).where(`${TableName.PamResource}.projectId`, projectId);
 
       if (search) {
+        // escape special characters (`%`, `_`) and the escape character itself (`\`)
+        const escapedSearch = search.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+        const pattern = `%${escapedSearch}%`;
         void query.where((q) => {
           void q
-            .whereILike(`${TableName.PamResource}.name`, `%${search}%`)
-            .orWhereILike(`${TableName.PamResource}.resourceType`, `%${search}%`);
+            .whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "name", pattern])
+            .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "resourceType", pattern]);
         });
       }
 

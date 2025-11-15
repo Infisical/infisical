@@ -43,7 +43,9 @@ export const pamFolderDALFactory = (db: TDbClient) => {
       }
 
       if (search) {
-        void query.whereILike(`${TableName.PamFolder}.name`, `%${search}%`);
+        // escape special characters (`%`, `_`) and the escape character itself (`\`)
+        const escapedSearch = search.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+        void query.whereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamFolder, "name", `%${escapedSearch}%`]);
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();
