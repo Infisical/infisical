@@ -40,12 +40,13 @@ export const SecretSharingSection = () => {
       <p className="mb-3 text-xl font-medium">Allow Secret Sharing</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
-          <div className="w-max">
+          <div>
             <Checkbox
               id="secretSharing"
               isDisabled={!isAllowed || isLoading}
               isChecked={currentProject?.secretSharing ?? true}
               onCheckedChange={(state) => handleToggle(state as boolean)}
+              allowMultilineLabel
             >
               This feature enables your project members to securely share secrets.
             </Checkbox>

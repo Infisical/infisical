@@ -106,7 +106,9 @@ export const ProjectSelect = () => {
           </p>
           <Badge variant="project">
             <ProjectIcon />
-            {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
+            <span className="hidden sm:inline-block">
+              {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
+            </span>
           </Badge>
         </Link>
         <DropdownMenuTrigger asChild>

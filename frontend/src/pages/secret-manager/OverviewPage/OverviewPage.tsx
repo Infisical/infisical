@@ -959,9 +959,9 @@ export const OverviewPage = () => {
             }
           />
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <FolderBreadCrumbs secretPath={secretPath} onResetSearch={handleResetSearch} />
-          <div className="flex flex-row items-center justify-center space-x-2">
+          <div className="flex flex-row flex-wrap items-center gap-2">
             {isTableFiltered && (
               <Button
                 variant="plain"

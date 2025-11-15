@@ -690,7 +690,7 @@ export const ActionBar = ({
 
   return (
     <>
-      <div className="mt-4 flex items-center space-x-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <SecretSearchInput
           isSingleEnv
           className="w-2/5"

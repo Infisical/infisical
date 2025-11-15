@@ -294,7 +294,7 @@ export const Navbar = () => {
           </>
         ) : (
           <>
-            <div className="flex items-center overflow-hidden">
+            <div className="flex min-w-12 items-center overflow-hidden">
               <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
                   <Badge
@@ -324,7 +324,7 @@ export const Navbar = () => {
                       <span>{currentOrg?.name}</span>
                     </button>
                   </Badge>
-                  <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
+                  <div className="mr-1 hidden rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline! md:inline-block">
                     {getPlan(subscription)}
                   </div>
                   {subscription.cardDeclined && (
@@ -468,7 +468,7 @@ export const Navbar = () => {
                     className={twMerge(
                       "gap-x-1.5 text-sm",
                       !isOrgScope &&
-                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
+                        "min-w-6 bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
                     )}
                   >
                     <Link to="/organization/projects">
@@ -569,11 +569,11 @@ export const Navbar = () => {
       )}
       {user.superAdmin && !location.pathname.startsWith("/admin") && (
         <Link
-          className="mr-2 flex items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+          className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
           to="/admin"
         >
-          <InstanceIcon className="mr-2 inline-block size-3.5" />
-          Server Console
+          <InstanceIcon className="inline-block size-3.5" />
+          <span className="ml-2 hidden md:inline-block">Server Console</span>
         </Link>
       )}
       <DropdownMenu modal={false}>

@@ -18,7 +18,7 @@ export const SshLayout = () => {
   const location = useLocation();
 
   return (
-    <div className="dark hidden h-full w-full flex-col overflow-x-hidden md:flex">
+    <div className="dark flex h-full w-full flex-col overflow-x-hidden">
       <div className="border-b border-mineshaft-600 bg-mineshaft-900">
         <motion.div
           key="menu-project-items"

@@ -41,7 +41,6 @@
   "common": {
     "head-title": "{{title}} | Infisical",
     "error_project-already-exists": "Bu isimle bir proje zaten mevcut.",
-    "no-mobile": " Infisical'ı kullanmak için, lütfen daha büyük boyutlara sahip bir cihaz üzerinden giriş yapın. ",
     "email": "Email",
     "password": "Şifre",
     "first-name": "Adınız",
