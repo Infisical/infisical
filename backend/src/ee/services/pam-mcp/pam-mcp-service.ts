@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -64,6 +66,57 @@ export type TPamMcpServiceFactory = ReturnType<typeof pamMcpServiceFactory>;
 
 const OAUTH_FLOW_EXPIRY_IN_SECS = 5 * 60;
 export const pamMcpServiceFactory = ({ keyStore, permissionService, authTokenService }: TPamMcpServiceFactoryDep) => {
+  const interactWithMcp = async () => {
+    const appCfg = getConfig();
+    const server = new McpServer({
+      name: "infisical-server",
+      version: appCfg.INFISICAL_PLATFORM_VERSION || "0.0.1"
+    });
+
+    // Add an addition tool
+    server.registerTool(
+      "add",
+      {
+        title: "Addition Tool",
+        description: "Add two numbers",
+        inputSchema: { a: z.number(), b: z.number() },
+        outputSchema: { result: z.number() }
+      },
+      async ({ a, b }) => {
+        const output = { result: a + b };
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output
+        };
+      }
+    );
+
+    // Add a dynamic greeting resource
+    server.registerResource(
+      "greeting",
+      new ResourceTemplate("greeting://{name}", { list: undefined }),
+      {
+        title: "Greeting Resource", // Display name for UI
+        description: "Dynamic greeting generator"
+      },
+      async (uri, { name }) => ({
+        contents: [
+          {
+            uri: uri.href,
+            text: `Hello, ${name}!`
+          }
+        ]
+      })
+    );
+
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true
+    });
+
+    return { server, transport };
+  };
+
   const oauthRegisterClient = async ({
     client_name,
     client_uri,
@@ -271,5 +324,5 @@ export const pamMcpServiceFactory = ({ keyStore, permissionService, authTokenSer
     };
   };
 
-  return { oauthRegisterClient, oauthAuthorizeClient, oauthAuthorizeClientScope, oauthTokenExchange };
+  return { oauthRegisterClient, oauthAuthorizeClient, oauthAuthorizeClientScope, oauthTokenExchange, interactWithMcp };
 };
