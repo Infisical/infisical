@@ -36,7 +36,16 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(100),
         orderBy: z.nativeEnum(PamAccountOrderBy).default(PamAccountOrderBy.Name),
         orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
-        search: z.string().trim().optional()
+        search: z.string().trim().optional(),
+        filterResourceIds: z
+          .string()
+          .transform((val) =>
+            val
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          )
+          .optional()
       }),
       response: {
         200: z.object({
@@ -50,7 +59,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection } = req.query;
+      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } =
+        req.query;
 
       const { accounts, folders, totalCount, folderId, folderPaths } = await server.services.pamAccount.list({
         actorId: req.permission.id,
@@ -64,7 +74,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         offset,
         search,
         orderBy,
-        orderDirection
+        orderDirection,
+        filterResourceIds
       });
 
       await server.services.auditLog.createAuditLog({

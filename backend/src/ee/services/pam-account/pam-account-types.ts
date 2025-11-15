@@ -30,4 +30,5 @@ export type TListAccountsDTO = {
   orderDirection?: OrderByDirection;
   limit?: number;
   offset?: number;
+  filterResourceIds?: string[];
 } & TProjectPermission;

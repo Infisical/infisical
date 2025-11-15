@@ -79,6 +79,10 @@ export type TDeletePamResourceDTO = {
 };
 
 // Account DTOs
+export type PamAccountFilter = {
+  resourceIds: string[];
+};
+
 export type TListPamAccountsDTO = {
   projectId: string;
   accountPath?: string | null;
@@ -88,6 +92,7 @@ export type TListPamAccountsDTO = {
   orderBy?: PamAccountOrderBy;
   orderDirection?: OrderByDirection;
   search?: string;
+  filterResourceIds?: string;
 };
 
 export type TCreatePamAccountDTO = Pick<

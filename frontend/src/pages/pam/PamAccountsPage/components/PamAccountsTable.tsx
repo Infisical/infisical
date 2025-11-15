@@ -50,12 +50,12 @@ import { usePagination, usePopUp } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
+  PamAccountFilter,
   PamAccountOrderBy,
   PamAccountView,
-  TPamAccount,
   TPamFolder
 } from "@app/hooks/api/pam";
-import { useListPamAccounts } from "@app/hooks/api/pam/queries";
+import { useListPamAccounts, useListPamResources } from "@app/hooks/api/pam/queries";
 
 import { AccountViewToggle } from "./AccountViewToggle";
 import { FolderBreadCrumbs } from "./FolderBreadCrumbs";
@@ -68,10 +68,6 @@ import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
-
-type Filters = {
-  resource: string[];
-};
 
 type Props = {
   projectId: string;
@@ -103,8 +99,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     initAccountView ?? PamAccountView.Flat
   );
 
-  const [filters, setFilters] = useState<Filters>({
-    resource: []
+  const [filter, setFilter] = useState<PamAccountFilter>({
+    resourceIds: []
   });
 
   const {
@@ -139,7 +135,8 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     limit: perPage,
     search: debouncedSearch,
     orderBy,
-    orderDirection
+    orderDirection,
+    filterResourceIds: filter.resourceIds.length ? filter.resourceIds.join(",") : undefined
   });
 
   const accounts = data?.accounts || [];
@@ -166,7 +163,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
           resource: { name: resourceName, id: resourceId }
         } = account;
 
-        if (filters.resource.length && !filters.resource.includes(resourceId)) {
+        if (filter.resourceIds.length && !filter.resourceIds.includes(resourceId)) {
           return false;
         }
 
@@ -178,7 +175,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
           (description || "").toLowerCase().includes(searchValue)
         );
       }),
-    [accounts, search, filters]
+    [accounts, search, filter]
   );
 
   const handleSort = (column: PamAccountOrderBy) => {
@@ -197,7 +194,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
   const getColSortIcon = (col: PamAccountOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filters.resource.length);
+  const isTableFiltered = Boolean(filter.resourceIds.length);
 
   const handleFolderClick = (folder: TPamFolder) => {
     if (accountView === PamAccountView.Flat) {
@@ -210,13 +207,13 @@ export const PamAccountsTable = ({ projectId }: Props) => {
   const isContentEmpty = !filteredAccounts.length && !foldersToRender.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
 
-  const uniqueResources = useMemo(() => {
-    const resourceMap = new Map<string, TPamAccount["resource"]>();
-    accounts.forEach((account) => {
-      resourceMap.set(account.resource.id, account.resource);
-    });
-    return Array.from(resourceMap.values());
-  }, [accounts]);
+  const { data: resourcesData } = useListPamResources({
+    projectId,
+    // temporarily returning a large number until we rework table filtering
+    limit: 100
+  });
+
+  const resources = resourcesData?.resources || [];
 
   return (
     <div>
@@ -229,7 +226,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                 value={accountView}
                 onChange={(e) => {
                   setPage(1);
-                  setFilters({ resource: [] });
+                  setFilter({ resourceIds: [] });
                   setAccountView(e);
                   navigate({
                     search: (prev) => ({
@@ -273,25 +270,25 @@ export const PamAccountsTable = ({ projectId }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource</DropdownMenuLabel>
-            {uniqueResources.length ? (
-              uniqueResources.map((resource) => {
+            {resources.length ? (
+              resources.map((resource) => {
                 const { name, image } = PAM_RESOURCE_TYPE_MAP[resource.resourceType];
 
                 return (
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
-                      const newResources = filters.resource.includes(resource.id)
-                        ? filters.resource.filter((a) => a !== resource.id)
-                        : [...filters.resource, resource.id];
-                      setFilters((prev) => ({
+                      const newResources = filter.resourceIds.includes(resource.id)
+                        ? filter.resourceIds.filter((a) => a !== resource.id)
+                        : [...filter.resourceIds, resource.id];
+                      setFilter((prev) => ({
                         ...prev,
-                        resource: newResources
+                        resourceIds: newResources
                       }));
                     }}
                     key={resource.id}
                     icon={
-                      filters.resource.includes(resource.id) && (
+                      filter.resourceIds.includes(resource.id) && (
                         <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
                       )
                     }

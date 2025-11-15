@@ -22,7 +22,8 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       limit,
       offset = 0,
       orderBy = PamAccountOrderBy.Name,
-      orderDirection = OrderByDirection.ASC
+      orderDirection = OrderByDirection.ASC,
+      filterResourceIds
     }: {
       projectId: string;
       folderId?: string | null;
@@ -32,6 +33,7 @@ export const pamAccountDALFactory = (db: TDbClient) => {
       offset?: number;
       orderBy?: PamAccountOrderBy;
       orderDirection?: OrderByDirection;
+      filterResourceIds?: string[];
     },
     tx?: Knex
   ) => {
@@ -59,6 +61,10 @@ export const pamAccountDALFactory = (db: TDbClient) => {
             .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamResource, "name", pattern])
             .orWhereRaw(`??.?? ILIKE ? ESCAPE '\\'`, [TableName.PamAccount, "description", pattern]);
         });
+      }
+
+      if (filterResourceIds && filterResourceIds.length) {
+        void query.whereIn(`${TableName.PamAccount}.resourceId`, filterResourceIds);
       }
 
       const countQuery = query.clone().count("*", { as: "count" }).first();

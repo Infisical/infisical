@@ -374,14 +374,6 @@ export const pamAccountServiceFactory = ({
       });
       totalFolderCount = totalCount;
     }
-    const { totalCount: totalAccountCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
-      projectId,
-      folderId,
-      accountView,
-      search: params.search
-    });
-
-    const totalCount = totalFolderCount + totalAccountCount;
 
     let folders: TPamFolders[] = [];
     if (canReadFolders && accountView === PamAccountView.Nested && offset < totalFolderCount) {
@@ -402,10 +394,12 @@ export const pamAccountServiceFactory = ({
     let accountsWithResourceDetails: Awaited<
       ReturnType<typeof pamAccountDAL.findByProjectIdWithResourceDetails>
     >["accounts"] = [];
+    let totalAccountCount = 0;
+
     const accountsToFetch = limit - folders.length;
     if (accountsToFetch > 0) {
       const accountOffset = Math.max(0, offset - totalFolderCount);
-      const { accounts: accountsResp } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+      const { accounts, totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
         projectId,
         folderId,
         accountView,
@@ -413,10 +407,24 @@ export const pamAccountServiceFactory = ({
         limit: accountsToFetch,
         search: params.search,
         orderBy: params.orderBy,
-        orderDirection: params.orderDirection
+        orderDirection: params.orderDirection,
+        filterResourceIds: params.filterResourceIds
       });
-      accountsWithResourceDetails = accountsResp;
+      accountsWithResourceDetails = accounts;
+      totalAccountCount = totalCount;
+    } else {
+      // if no accounts are to be fetched for the current page, we still need the total count for pagination
+      const { totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+        projectId,
+        folderId,
+        accountView,
+        search: params.search,
+        filterResourceIds: params.filterResourceIds
+      });
+      totalAccountCount = totalCount;
     }
+
+    const totalCount = totalFolderCount + totalAccountCount;
 
     const decryptedAndPermittedAccounts: Array<
       TPamAccounts & {
