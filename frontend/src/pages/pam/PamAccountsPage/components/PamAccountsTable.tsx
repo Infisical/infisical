@@ -229,6 +229,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                 value={accountView}
                 onChange={(e) => {
                   setPage(1);
+                  setFilters({ resource: [] });
                   setAccountView(e);
                   navigate({
                     search: (prev) => ({
