@@ -710,7 +710,6 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
           db.ref("firstName").withSchema("committerUser").as("committerUserFirstName"),
           db.ref("lastName").withSchema("committerUser").as("committerUserLastName")
         )
-        .distinctOn(`${TableName.SecretApprovalRequest}.id`)
         .as("inner");
 
       const query = (tx || db).select("*").from(innerQuery).orderBy("createdAt", "desc") as typeof innerQuery;
@@ -731,13 +730,11 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         });
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const countResult = await (tx || db.replicaNode())
-        .count({ count: "*" })
-        .from(query.clone().as("count_query"))
-        .first();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      const totalCount = Number(countResult?.count || 0);
+      const countQuery = (await (tx || db)
+        .select(db.raw("count(*) OVER() as total_count"))
+        .from(query.clone().as("outer"))) as Array<{
+        total_count: number;
+      }>;
 
       const rankOffset = offset + 1;
       const docs = await (tx || db)
@@ -746,6 +743,8 @@ export const secretApprovalRequestDALFactory = (db: TDbClient) => {
         .from<Awaited<typeof query>[number]>("w")
         .where("w.rank", ">=", rankOffset)
         .andWhere("w.rank", "<", rankOffset + limit);
+
+      const totalCount = Number(countQuery[0]?.total_count || 0);
 
       const formattedDoc = sqlNestRelationships({
         data: docs,
