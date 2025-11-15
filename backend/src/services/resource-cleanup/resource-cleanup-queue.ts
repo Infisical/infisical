@@ -102,12 +102,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
         pollingIntervalSeconds: 1
       }
     );
-    await queueService.schedulePg(
-      QueueJobs.DailyResourceCleanUp,
-      appCfg.isDailyResourceCleanUpDevelopmentMode ? "*/5 * * * *" : "0 0 * * *",
-      undefined,
-      { tz: "UTC" }
-    );
+    await queueService.schedulePg(QueueJobs.DailyResourceCleanUp, "0 0 * * *", undefined, { tz: "UTC" });
   };
 
   return {

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { registerPamMcpMetadataRouter } from "@app/ee/routes/v1/pam-mcp-metadata-router";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import {
   accessApprovalPolicyApproverDALFactory,
@@ -67,6 +68,7 @@ import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-d
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { pamMcpServiceFactory } from "@app/ee/services/pam-mcp/pam-mcp-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -2399,6 +2401,10 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const pamMcpService = pamMcpServiceFactory({
+    keyStore
+  });
+
   // setup the communication with license key server
   await licenseService.init();
 
@@ -2576,7 +2582,9 @@ export const registerRoutes = async (
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
     convertor: convertorService,
-    pkiAlertV2: pkiAlertV2Service
+    pkiAlertV2: pkiAlertV2Service,
+
+    pamMcp: pamMcpService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2679,6 +2687,7 @@ export const registerRoutes = async (
 
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+  await server.register(registerPamMcpMetadataRouter);
 
   // register routes for v1
   await server.register(
