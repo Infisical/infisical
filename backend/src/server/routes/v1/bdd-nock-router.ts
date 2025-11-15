@@ -8,14 +8,10 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
-  const importNock = async () => {
+  const importNock = () => {
     // Notice: it seems like importing nock somehow increase memory usage a lots, let's import it lazily.
     // eslint-disable-next-line import/no-extraneous-dependencies
-    const nock = await import("nock");
-    if (!nock) {
-      throw new InternalServerError({ message: "Failed to import nock" });
-    }
-    return nock;
+    return import("nock");
   };
 
   const checkIfBddNockApiEnabled = () => {
