@@ -44,17 +44,95 @@ Infisical supports connecting to OracleDB using a database user.
         </Tabs>
     </Step>
     <Step title="Get Connection Details">
-        You'll need the following information to create your Oracle Database connection:
-        - `host` - The hostname or IP address of your Oracle Database server
-        - `port` - The port number your Oracle Database server is listening on (default: 1521)
-        - `database` - The Oracle Service Name or SID (System Identifier) for the database you are connecting to. For example: `ORCL`, `FREEPDB1`, `XEPDB1`
-        - `username` - The user name of the login created in the steps above
-        - `password` - The user password of the login created in the steps above
-        - `sslCertificate` (optional) - The SSL certificate required for connection (if configured)
+        <Tabs>
+            <Tab title="Without mTLS">
+                You'll need the following information to create your Oracle Database connection:
+                - `host` - The hostname or IP address of your Oracle Database server
+                - `port` - The port number your Oracle Database server is listening on (default: 1521)
+                - `database` - The Oracle Service Name or SID (System Identifier) for the database you are connecting to. For example: `ORCL`, `FREEPDB1`, `XEPDB1`
+                - `username` - The user name of the login created in the steps above
+                - `password` - The user password of the login created in the steps above
+                - `sslCertificate` (optional) - The SSL certificate required for connection (if configured)
 
-        <Note>
-            If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
-        </Note>
+                <Note>
+                    If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
+                </Note>
+            </Tab>
+            <Tab title="mTLS (Wallet)">
+                <Info>
+                    This configuration can only be done on self-hosted or dedicated instances of Infisical.
+                </Info>
+
+                To connect to an Oracle Database using mTLS with a wallet, you'll need to modify your self-hosted Infisical instance's Docker image.
+
+                1.  Place your Oracle Wallet folder, which must be named `wallet`, inside the `/backend` directory of your Infisical installation source code.
+
+                2.  Add the following instructions to your `Dockerfile`. These instructions install the Oracle Instant Client and configure the environment for the wallet. Choose the tab that matches your server's architecture.
+
+                <Tabs>
+                    <Tab title="AMD64 / x86_64">
+                        ```Dockerfile
+# Install dependencies for Oracle Instant Client
+RUN apt-get update && apt-get install -y \
+    libaio1 \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install Oracle Instant Client for x86_64
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.x64-23.26.0.0.0.zip && \
+    unzip instantclient-basic-linux.x64-23.26.0.0.0.zip -d /opt/oracle && \
+    rm instantclient-basic-linux.x64-23.26.0.0.0.zip && \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig
+
+# Configure environment variables for Oracle Instant Client and the wallet
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:$LD_LIBRARY_PATH
+ENV TNS_ADMIN=/app/wallet
+
+# Update sqlnet.ora to point to the correct wallet directory
+RUN sed -i 's|DIRECTORY="?/network/admin"|DIRECTORY="/app/wallet"|g' /app/wallet/sqlnet.ora
+                        ```
+                    </Tab>
+                    <Tab title="ARM64">
+                        ```Dockerfile
+# Install dependencies for Oracle Instant Client
+RUN apt-get update && apt-get install -y \
+    libaio1t64 \
+    unzip \
+    && ln -s /lib/aarch64-linux-gnu/libaio.so.1t64 /lib/aarch64-linux-gnu/libaio.so.1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and install Oracle Instant Client for ARM64
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/2326000/instantclient-basic-linux.arm64-23.26.0.0.0.zip && \
+    unzip instantclient-basic-linux.arm64-23.26.0.0.0.zip -d /opt/oracle && \
+    rm instantclient-basic-linux.arm64-23.26.0.0.0.zip && \
+    echo /opt/oracle/instantclient_23_26 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig
+
+# Configure environment variables for Oracle Instant Client and the wallet
+ENV LD_LIBRARY_PATH=/opt/oracle/instantclient_23_26:$LD_LIBRARY_PATH
+ENV TNS_ADMIN=/app/wallet
+
+# Update sqlnet.ora to point to the correct wallet directory
+RUN sed -i 's|DIRECTORY="?/network/admin"|DIRECTORY="/app/wallet"|g' /app/wallet/sqlnet.ora
+                        ```
+                    </Tab>
+                </Tabs>
+
+                3.  After rebuilding and deploying your custom Docker image, you'll need the following information to create the connection in Infisical:
+                    - `host` - The hostname or IP address of your Oracle Database server. This is required for the Infisical Gateway to function.
+                    - `port` - The port number your Oracle Database server is listening on. This is required for the Infisical Gateway to function.
+                    - `database` - The connection alias for your Oracle Database from your `tnsnames.ora` file. (e.g. `tyk9ovdixe1dvaj8_high`)
+                    - `username` - The user name of the login created in the steps above.
+                    - `password` - The user password of the login created in the steps above.
+
+                    Note that when a wallet is being used, any configured SSL settings are ignored.
+
+                <Note>
+                    If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
+                </Note>
+            </Tab>
+        </Tabs>
     </Step>
 </Steps>
 
