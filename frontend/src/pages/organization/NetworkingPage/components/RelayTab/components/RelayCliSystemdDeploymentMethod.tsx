@@ -156,15 +156,6 @@ export const RelayCliSystemdDeploymentMethod = () => {
     }
   };
 
-  const handleIdentityChange = (
-    selectedIdentity: SingleValue<{
-      id: string;
-      name: string;
-    }>
-  ) => {
-    setIdentity(selectedIdentity);
-  };
-
   const installCommand = useMemo(() => {
     return `sudo infisical relay systemd install --name=${name} --domain=${siteURL} --host=${host} --token=${identityToken}`;
   }, [name, siteURL, host, identityToken]);
@@ -286,7 +277,7 @@ export const RelayCliSystemdDeploymentMethod = () => {
           <FilterableSelect
             value={identity}
             onChange={(e) =>
-              handleIdentityChange(
+              setIdentity(
                 e as SingleValue<{
                   id: string;
                   name: string;

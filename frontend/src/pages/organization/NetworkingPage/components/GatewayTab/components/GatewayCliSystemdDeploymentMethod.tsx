@@ -323,7 +323,7 @@ export const GatewayCliSystemdDeploymentMethod = () => {
         <>
           <FormLabel
             label="Identity Token"
-            tooltipText="The identity token that your relay will use for authentication."
+            tooltipText="The identity token that your gateway will use for authentication."
             className="mt-4"
           />
           <Input
