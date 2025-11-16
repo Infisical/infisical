@@ -97,3 +97,14 @@ export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description
 export type TDeletePamFolderDTO = {
   folderId: string;
 };
+
+// MCP Server OAuth DTOs
+export type TMcpServerOAuthAuthorizeDTO = {
+  accountId: string;
+};
+
+export type TMcpServerOAuthCallbackDTO = {
+  accountId: string;
+  code: string;
+  projectId?: string; // Optional, for cache invalidation
+};

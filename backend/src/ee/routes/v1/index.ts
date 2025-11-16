@@ -24,6 +24,7 @@ import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
+import { registerPamAccountMcpServerRouter } from "./pam-account-routers/pam-account-mcp-server-router";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
 import { registerPamMcpRouter } from "./pam-mcp-router";
@@ -188,6 +189,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(
         async (pamAccountRouter) => {
           await pamAccountRouter.register(registerPamAccountRouter);
+          await pamAccountRouter.register(registerPamAccountMcpServerRouter, { prefix: "/mcp" });
 
           // Provider-specific endpoints
           await Promise.all(

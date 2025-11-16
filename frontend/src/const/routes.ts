@@ -366,6 +366,14 @@ export const ROUTE_PATHS = Object.freeze({
     PamSessionByIDPage: setRoute(
       "/projects/pam/$projectId/sessions/$sessionId",
       "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+    ),
+    McpServerOauthAuthoizePage: setRoute(
+      "/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize"
+    ),
+    McpServerOauthCallbackPage: setRoute(
+      "/projects/pam/$projectId/mcp-server-oauth/$accountId/callback",
+      "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback"
     )
   },
   Public: {

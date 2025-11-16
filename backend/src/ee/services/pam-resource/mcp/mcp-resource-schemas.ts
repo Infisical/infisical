@@ -15,12 +15,20 @@ export const McpResourceConnectionDetailsSchema = z.object({
   url: z.string().url()
 });
 export const McpAccountCredentialsSchema = z.object({
+  token: z
+    .object({
+      accessToken: z.string(),
+      refreshToken: z.string().optional(),
+      expiresIn: z.number()
+    })
+    .optional(),
   headers: z
     .object({
       key: z.string(),
       value: z.string()
     })
     .array()
+    .optional()
 });
 
 // Resources
@@ -42,13 +50,13 @@ export const McpResourceListItemSchema = z.object({
 });
 
 export const CreateMcpResourceSchema = BaseCreatePamResourceSchema.extend({
-  gatewayId: z.string().optional(),
+  gatewayId: z.string().nullish(),
   connectionDetails: McpResourceConnectionDetailsSchema,
   rotationAccountCredentials: z.null().optional()
 });
 
 export const UpdateMcpResourceSchema = BaseUpdatePamResourceSchema.extend({
-  gatewayId: z.string().optional(),
+  gatewayId: z.string().nullish(),
   connectionDetails: McpResourceConnectionDetailsSchema.optional(),
   rotationAccountCredentials: z.null().optional()
 });
@@ -59,11 +67,11 @@ export const McpAccountSchema = BasePamAccountSchema.extend({
 });
 
 export const CreateMcpAccountSchema = BaseCreatePamAccountSchema.extend({
-  credentials: McpAccountCredentialsSchema
+  credentials: McpAccountCredentialsSchema.omit({ token: true })
 });
 
 export const UpdateMcpAccountSchema = BaseUpdatePamAccountSchema.extend({
-  credentials: McpAccountCredentialsSchema.optional()
+  credentials: McpAccountCredentialsSchema.omit({ token: true }).optional()
 });
 
 export const SanitizedMcpAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -14,7 +13,7 @@ type Props = {
 };
 
 const formSchema = genericResourceFieldsSchema.extend({
-  gatewayId: z.string().optional(),
+  gatewayId: z.string().nullish(),
   resourceType: z.literal(PamResourceType.MCP),
   connectionDetails: z.object({
     url: z.string().url().trim().optional().default("")

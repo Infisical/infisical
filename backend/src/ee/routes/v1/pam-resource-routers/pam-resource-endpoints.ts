@@ -103,7 +103,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
           type: EventType.PAM_RESOURCE_CREATE,
           metadata: {
             resourceType,
-            gatewayId: req.body.gatewayId,
+            gatewayId: req.body.gatewayId || "",
             name: req.body.name
           }
         }
