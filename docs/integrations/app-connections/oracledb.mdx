@@ -45,7 +45,7 @@ Infisical supports connecting to OracleDB using a database user.
     </Step>
     <Step title="Get Connection Details">
         <Tabs>
-            <Tab title="Without mTLS">
+            <Tab title="One-way TLS">
                 You'll need the following information to create your Oracle Database connection:
                 - `host` - The hostname or IP address of your Oracle Database server
                 - `port` - The port number your Oracle Database server is listening on (default: 1521)
@@ -58,7 +58,7 @@ Infisical supports connecting to OracleDB using a database user.
                     If you are self-hosting Infisical and intend to connect to an internal/private IP address, be sure to set the `ALLOW_INTERNAL_IP_CONNECTIONS` environment variable to `true`.
                 </Note>
             </Tab>
-            <Tab title="mTLS (Wallet)">
+            <Tab title="Mutual TLS (Wallet)">
                 <Info>
                     This configuration can only be done on self-hosted or dedicated instances of Infisical.
                 </Info>

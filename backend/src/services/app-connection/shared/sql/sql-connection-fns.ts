@@ -81,28 +81,21 @@ const getConnectionConfig = ({
   }
 };
 
-const ORACLE_WALLET_REGEX = /^[a-z0-9]+_[a-z]+$/i;
-
-const isOracleWalletConnection = (app: AppConnection, database: string): boolean => {
-  return app === AppConnection.OracleDB && ORACLE_WALLET_REGEX.test(database);
+// if TNS_ADMIN is set and the directory exists, we assume it's a wallet connection for OracleDB
+const isOracleWalletConnection = (app: AppConnection): boolean => {
+  return app === AppConnection.OracleDB && !!process.env.TNS_ADMIN && fs.existsSync(process.env.TNS_ADMIN);
 };
 
 const getOracleWalletKnexClient = (
   credentials: Pick<TSqlConnection["credentials"], "username" | "password" | "database">
 ): Knex => {
-  if (!process.env.TNS_ADMIN || !fs.existsSync(process.env.TNS_ADMIN)) {
-    throw new BadRequestError({
-      message:
-        "Oracle wallet is not configured correctly. See documentation for instructions: https://infisical.com/docs/integrations/app-connections/oracledb#mtls-wallet"
-    });
-  }
   if (oracledb.thin) {
     try {
       oracledb.initOracleClient();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       throw new BadRequestError({
-        message: `Failed to initialize Oracle client: ${errorMessage}. See documentation for instructions: https://infisical.com/docs/integrations/app-connections/oracledb#mtls-wallet`
+        message: `Failed to initialize Oracle client: ${errorMessage}. See documentation for instructions: https://infisical.com/docs/integrations/app-connections/oracledb#mutual-tls-wallet`
       });
     }
   }
@@ -122,7 +115,7 @@ export const getSqlConnectionClient = async (appConnection: Pick<TSqlConnection,
     credentials: { host: baseHost, database, port, password, username }
   } = appConnection;
 
-  if (isOracleWalletConnection(app, database)) {
+  if (isOracleWalletConnection(app)) {
     return getOracleWalletKnexClient({ username, password, database });
   }
 
@@ -162,7 +155,7 @@ export const executeWithPotentialGateway = async <T>(
 
     const createClient = (proxyPort: number): Knex => {
       const { database, username, password } = credentials;
-      if (isOracleWalletConnection(app, database)) {
+      if (isOracleWalletConnection(app)) {
         return getOracleWalletKnexClient({ username, password, database });
       }
 
