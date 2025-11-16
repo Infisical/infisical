@@ -150,6 +150,30 @@ export const CreateSecretForm = ({
   };
 
   const getWarningTooltip = (secretKey: string): JSX.Element | undefined => {
+    if (secretKey?.includes(" ")) {
+      return (
+        <Tooltip
+          className="w-full max-w-72"
+          content={
+            <div>
+              Secret key contains whitespaces.
+              <br />
+              <br /> If this is the desired format, you need to provide it as{" "}
+              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
+                {encodeURIComponent(secretKey.trim())}
+              </code>{" "}
+              when making API requests.
+            </div>
+          }
+        >
+          <FontAwesomeIcon
+            icon={faWarning}
+            className="absolute right-0 mr-3 text-yellow-600"
+          />
+        </Tooltip>
+      )
+    }
+
     if (secretKey && !VALID_KEY_REGEX.test(secretKey)) {
       return (
         <Tooltip
@@ -174,29 +198,6 @@ export const CreateSecretForm = ({
       )
     }
 
-    if (secretKey?.includes(" ")) {
-      return (
-        <Tooltip
-          className="w-full max-w-72"
-          content={
-            <div>
-              Secret key contains whitespaces.
-              <br />
-              <br /> If this is the desired format, you need to provide it as{" "}
-              <code className="rounded-md bg-mineshaft-500 px-1 py-0.5">
-                {encodeURIComponent(secretKey.trim())}
-              </code>{" "}
-              when making API requests.
-            </div>
-          }
-        >
-          <FontAwesomeIcon
-            icon={faWarning}
-            className="absolute right-0 mr-3 text-yellow-600"
-          />
-        </Tooltip>
-      )
-    }
     return undefined;
   }
 

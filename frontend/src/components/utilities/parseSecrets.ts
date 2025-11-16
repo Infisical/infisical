@@ -1,7 +1,7 @@
 const LINE =
   /(?:^|^)\s*(?:export\s+)?([\w.:-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/gm;
 
-const VALID_KEY_REGEX = /^[A-Za-z0-9._-]+$/;
+export const VALID_KEY_REGEX = /^[A-Za-z0-9._-]+$/;
 
 /**
  * Return text that is the buffer parsed
@@ -124,6 +124,12 @@ export function parseYaml(src: ArrayBuffer | string) {
       const keyMatch = lines[i].match(/^([\w.-]+)\s*:\s*(.*)$/);
       if (keyMatch) {
         const [, key, rawValue] = keyMatch;
+
+        if (!VALID_KEY_REGEX.test(key)) {
+          i += 1;
+          continue;
+        }
+
         let value = rawValue.trim();
 
         // Multiline string handling
