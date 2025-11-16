@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+
 import { Client as McpClient } from "@modelcontextprotocol/sdk/client/index";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp";
 
@@ -11,8 +13,6 @@ import {
   TPamResourceFactoryValidateAccountCredentials
 } from "../pam-resource-types";
 import { TMcpAccountCredentials, TMcpResourceConnectionDetails } from "./mcp-resource-types";
-
-const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
 
 export interface McpResourceConnection {
   /**
@@ -35,11 +35,8 @@ const makeMcpConnection = (config: {
   resourceType: PamResource;
   resourceName: string;
 }): McpResourceConnection => {
-  const { connectionDetails, resourceType, resourceName } = config;
+  const { connectionDetails } = config;
   const { url } = connectionDetails;
-
-  let client: McpClient | null;
-  let transport: StreamableHTTPClientTransport | null;
 
   return {
     validate: async () => {
@@ -80,6 +77,7 @@ export const mcpResourceFactory: TPamResourceFactory<TMcpResourceConnectionDetai
     credentials
   ) => {
     try {
+      return credentials;
     } catch (error) {
       throw new BadRequestError({
         message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`

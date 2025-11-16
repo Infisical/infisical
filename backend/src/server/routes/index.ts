@@ -66,6 +66,7 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamMcpServerServiceFactory } from "@app/ee/services/pam-account/pam-mcp-server-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { pamMcpServiceFactory } from "@app/ee/services/pam-mcp/pam-mcp-service";
@@ -2376,6 +2377,16 @@ export const registerRoutes = async (
     auditLogService
   });
 
+  const pamMcpServerService = pamMcpServerServiceFactory({
+    pamAccountDAL,
+    kmsService,
+    licenseService,
+    pamFolderDAL,
+    pamResourceDAL,
+    permissionService,
+    keyStore
+  });
+
   const pamAccountRotation = pamAccountRotationServiceFactory({
     queueService,
     pamAccountService
@@ -2574,6 +2585,7 @@ export const registerRoutes = async (
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
+    pamMcpServer: pamMcpServerService,
     pamSession: pamSessionService,
     upgradePath: upgradePathService,
 

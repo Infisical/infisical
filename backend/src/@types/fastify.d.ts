@@ -27,6 +27,7 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamMcpServerServiceFactory } from "@app/ee/services/pam-account/pam-mcp-server-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
 import { TPamMcpServiceFactory } from "@app/ee/services/pam-mcp/pam-mcp-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
@@ -362,6 +363,7 @@ declare module "fastify" {
       pkiAlertV2: TPkiAlertV2ServiceFactory;
 
       pamMcp: TPamMcpServiceFactory;
+      pamMcpServer: TPamMcpServerServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

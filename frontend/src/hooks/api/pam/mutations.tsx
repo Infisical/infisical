@@ -10,6 +10,8 @@ import {
   TDeletePamAccountDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
+  TMcpServerOAuthAuthorizeDTO,
+  TMcpServerOAuthCallbackDTO,
   TPamAccount,
   TPamFolder,
   TPamResource,
@@ -164,6 +166,39 @@ export const useDeletePamFolder = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+    }
+  });
+};
+
+// MCP Server OAuth
+export const useMcpServerOAuthAuthorize = () => {
+  return useMutation({
+    mutationFn: async ({ accountId }: TMcpServerOAuthAuthorizeDTO) => {
+      const { data } = await apiRequest.get<{ authUrl: string }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/oauth/authorize`
+      );
+
+      return data.authUrl;
+    }
+  });
+};
+
+export const useMcpServerOAuthCallback = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, code }: TMcpServerOAuthCallbackDTO) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/oauth/callback`,
+        { code }
+      );
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate the accounts query if projectId is provided
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(variables.projectId) });
+      }
     }
   });
 };

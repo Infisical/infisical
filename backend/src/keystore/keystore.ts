@@ -68,6 +68,7 @@ export const KeyStorePrefixes = {
 
   PamMcpOauthSessionClient: (clientId: string) => `pam-mcp-oauth:${clientId}` as const,
   PamMcpOauthSessionCode: (clientId: string, code: string) => `pam-mcp-oauth:${clientId}:${code}` as const,
+  PamMcpServerOauth: (accountId: string) => `pam-mcp-server-oauth:${accountId}` as const,
 
   ProjectPermission: (
     projectId: string,
