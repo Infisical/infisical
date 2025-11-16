@@ -742,6 +742,7 @@
                     "pages": [
                       "documentation/platform/pki/enrollment-methods/overview",
                       "documentation/platform/pki/enrollment-methods/api",
+                      "documentation/platform/pki/enrollment-methods/acme",
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },

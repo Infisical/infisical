@@ -22,10 +22,7 @@ where you can manage various aspects of its lifecycle including deployment to cl
 To issue a certificate, you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
 
 The [enrollment method](/documentation/platform/pki/enrollment-methods/overview) configured on the certificate profile determines how a certificate is issued for it.
-Refer to the documentation for each enrollment method below to learn more about how to issue certificates using it.
-
-- [API](/documentation/platform/pki/enrollment-methods/api): Issue a certificate over UI or by making an API request to Infisical.
-- [EST](/documentation/platform/pki/enrollment-methods/est): Issue a certificate over the EST protocol.
+Refer to the documentation for each enrollment method to learn more about how to issue certificates using it.
 
 ## Guide to Renewing Certificates
 
@@ -49,9 +46,14 @@ Note that server-driven certificate renewal is only available for certificates i
 A certificate can be considered for auto-renewal at time of issuance if the **Enable Auto-Renewal By Default** option is selected on its [certificate profile](/documentation/platform/pki/certificates/profiles) or after issuance by toggling this option manually.
 
 <Info>
-  For server-driven certificate renewal workflows, you can programmatically fetch the latest active certificate bundle for a certificate profile using the [Get Latest Active Certificate Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) API endpoint. 
-  
-  This ensures you always retrieve the most current valid certificate, including any that have been automatically renewed, making it particularly useful for deployment pipelines and automation workflows where you don't want to track individual serial numbers.
+  For server-driven certificate renewal workflows, you can programmatically
+  fetch the latest active certificate bundle for a certificate profile using the
+  [Get Latest Active Certificate
+  Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle)
+  API endpoint. This ensures you always retrieve the most current valid
+  certificate, including any that have been automatically renewed, making it
+  particularly useful for deployment pipelines and automation workflows where
+  you don't want to track individual serial numbers.
 </Info>
 
 The following examples demonstrate different approaches to certificate renewal:
@@ -108,6 +110,7 @@ To export any certificate, first navigate to your project's certificate inventor
         ```
       </Step>
     </Steps>
+
   </Tab>
   <Tab title="PKCS12 Format">
     <Steps>
@@ -158,6 +161,7 @@ To export any certificate, first navigate to your project's certificate inventor
         </Info>
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
 
