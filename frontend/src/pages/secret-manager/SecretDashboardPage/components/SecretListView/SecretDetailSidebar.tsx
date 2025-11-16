@@ -61,11 +61,12 @@ import {
 } from "@app/hooks/api/dashboard/queries";
 import { useGetSecretAccessList } from "@app/hooks/api/secrets/queries";
 import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
+import { useCreateSharedSecretPopup } from "@app/hooks/secret-operations/useCreateSharedSecret";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { camelCaseToSpaces } from "@app/lib/fn/string";
 
 import { HIDDEN_SECRET_VALUE } from "./SecretItem";
-import { formSchema, SecretActionType, TFormSchema } from "./SecretListView.utils";
+import { formSchema, TFormSchema } from "./SecretListView.utils";
 import { SecretVersionItem } from "./SecretVersionItem";
 
 type Props = {
@@ -83,7 +84,6 @@ type Props = {
   ) => Promise<void>;
   tags: WsTag[];
   onCreateTag: () => void;
-  handleSecretShare: (value: string) => void;
 };
 
 export const SecretDetailSidebar = ({
@@ -95,8 +95,7 @@ export const SecretDetailSidebar = ({
   tags,
   onCreateTag,
   environment,
-  secretPath,
-  handleSecretShare
+  secretPath
 }: Props) => {
   const { currentProject } = useProject();
   const [isFieldFocused, setIsFieldFocused] = useToggle();
@@ -110,7 +109,7 @@ export const SecretDetailSidebar = ({
     secretPath,
     secretKey: originalSecret?.originalKey || originalSecret?.key,
     projectId: currentProject.id,
-    isOverride: Boolean(originalSecret?.idOverride)
+    isOverride: false
   };
 
   const {
@@ -122,12 +121,10 @@ export const SecretDetailSidebar = ({
   });
 
   const isLoadingSecretValue = canFetchSecretValue && isPendingSecretValue;
-  const hasFetchedSecretValue = !canFetchSecretValue || Boolean(secretValueData);
 
   const secret = {
     ...originalSecret,
-    value: originalSecret?.value ?? secretValueData?.value,
-    valueOverride: originalSecret?.valueOverride ?? secretValueData?.valueOverride
+    value: originalSecret?.value ?? secretValueData?.value
   };
 
   const { permission } = useProjectPermission();
@@ -154,18 +151,6 @@ export const SecretDetailSidebar = ({
     return secret.value || "";
   };
 
-  const getOverrideDefaultValue = () => {
-    if (isLoadingSecretValue) return HIDDEN_SECRET_VALUE;
-
-    if (secret.secretValueHidden) {
-      return canEditSecretValue ? HIDDEN_SECRET_VALUE : "";
-    }
-
-    if (isErrorFetchingSecretValue) return "Error loading secret value...";
-
-    return secret.valueOverride || "";
-  };
-
   const {
     control,
     watch,
@@ -179,10 +164,14 @@ export const SecretDetailSidebar = ({
     resolver: zodResolver(formSchema),
     values: {
       ...secret,
-      valueOverride: getOverrideDefaultValue(),
       value: getDefaultValue()
     },
     disabled: !secret
+  });
+
+  const openCreateSharedSecretPopup = useCreateSharedSecretPopup({
+    getFetchedValue: () => getValues("value"),
+    fetchSecretParams: fetchSecretValueParams
   });
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp([
@@ -243,10 +232,6 @@ export const SecretDetailSidebar = ({
     cannotEditSecret &&
     cannotReadSecretValue;
 
-  const overrideAction = watch("overrideAction");
-  const isOverridden =
-    overrideAction === SecretActionType.Created || overrideAction === SecretActionType.Modified;
-
   const { data: secretVersion } = useGetSecretVersion({
     limit: 10,
     offset: 0,
@@ -278,8 +263,7 @@ export const SecretDetailSidebar = ({
       {
         ...secret,
         ...data,
-        value: getFieldState("value").isDirty ? data.value : undefined,
-        valueOverride: getFieldState("valueOverride").isDirty ? data.valueOverride : undefined
+        value: getFieldState("value").isDirty ? data.value : undefined
       },
       () => reset()
     );
@@ -296,14 +280,14 @@ export const SecretDetailSidebar = ({
   }, [secret?.secretReminderRecipients]);
 
   const fetchValue = async () => {
-    if (secretValueData) return secretValueData.valueOverride ?? secretValueData.value;
+    if (secretValueData) return secretValueData.value;
 
     try {
       const data = await fetchSecretValue(fetchSecretValueParams);
 
       queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
 
-      return data?.valueOverride ?? data.value;
+      return data.value;
     } catch (error) {
       console.error(error);
       createNotification({
@@ -409,7 +393,6 @@ export const SecretDetailSidebar = ({
                           environment={environment}
                           secretPath={secretPath}
                           key="secret-value"
-                          isDisabled={isOverridden}
                           containerClassName="text-bunker-300 w-full hover:border-primary-400/50 border border-mineshaft-600 bg-mineshaft-900 px-2 py-1.5"
                           {...field}
                           autoFocus={false}
@@ -432,18 +415,7 @@ export const SecretDetailSidebar = ({
                             className="px-2 py-[0.43rem] font-normal"
                             variant="outline_bg"
                             leftIcon={<FontAwesomeIcon icon={faShare} />}
-                            onClick={async () => {
-                              let value: string | undefined;
-
-                              if (hasFetchedSecretValue) {
-                                const values = getValues(["value", "valueOverride"]);
-                                value = secret.idOverride ? values[1] : values[0];
-                              } else {
-                                value = await fetchValue();
-                              }
-
-                              handleSecretShare(value ?? "");
-                            }}
+                            onClick={openCreateSharedSecretPopup}
                           >
                             Share
                           </Button>

@@ -83,12 +83,9 @@ import {
 } from "@app/hooks";
 import {
   useCreateFolder,
-  useCreateSecretV3,
-  useDeleteSecretV3,
   useGetImportedSecretsAllEnvs,
   useGetOrCreateFolder,
-  useGetWsTags,
-  useUpdateSecretV3
+  useGetWsTags
 } from "@app/hooks/api";
 import { useGetProjectSecretsOverview } from "@app/hooks/api/dashboard/queries";
 import { DashboardSecretsOrderBy, ProjectSecretsImportedBy } from "@app/hooks/api/dashboard/types";
@@ -98,6 +95,7 @@ import { useUpdateFolderBatch } from "@app/hooks/api/secretFolders/queries";
 import { TUpdateFolderBatchDTO } from "@app/hooks/api/secretFolders/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
 import { ProjectEnv, SecretType, SecretV3RawSanitized, TSecretFolder } from "@app/hooks/api/types";
+import { useHandleSecretOperation } from "@app/hooks/secret-operations/useHandleSecretOperation";
 import {
   useDynamicSecretOverview,
   useFolderOverview,
@@ -368,9 +366,6 @@ export const OverviewPage = () => {
     permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags) ? projectId : ""
   );
 
-  const { mutateAsync: createSecretV3 } = useCreateSecretV3();
-  const { mutateAsync: updateSecretV3 } = useUpdateSecretV3();
-  const { mutateAsync: deleteSecretV3 } = useDeleteSecretV3();
   const { mutateAsync: createFolder } = useCreateFolder();
   const { mutateAsync: getOrCreateFolder } = useGetOrCreateFolder();
   const { mutateAsync: updateFolderBatch } = useUpdateFolderBatch();
@@ -487,48 +482,62 @@ export const OverviewPage = () => {
     }
   };
 
+  const handleSecretOperation = useHandleSecretOperation(projectId);
+
   const handleSecretCreate = async (env: string, key: string, value: string) => {
-    // create folder if not existing
-    if (secretPath !== "/") {
-      // /hello/world -> [hello","world"]
-      const pathSegment = secretPath.split("/").filter(Boolean);
-      const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
-      const folderName = pathSegment.at(-1);
-      const canCreateFolder = permission.can(
-        ProjectPermissionActions.Create,
-        subject(ProjectPermissionSub.SecretFolders, {
+    try {
+      // create folder if not existing
+      if (secretPath !== "/") {
+        // /hello/world -> [hello","world"]
+        const pathSegment = secretPath.split("/").filter(Boolean);
+        const parentPath = `/${pathSegment.slice(0, -1).join("/")}`;
+        const folderName = pathSegment.at(-1);
+        const canCreateFolder = permission.can(
+          ProjectPermissionActions.Create,
+          subject(ProjectPermissionSub.SecretFolders, {
+            environment: env,
+            secretPath: parentPath
+          })
+        );
+        if (folderName && parentPath && canCreateFolder) {
+          await getOrCreateFolder({
+            projectId,
+            path: parentPath,
+            environment: env,
+            name: folderName
+          });
+        }
+      }
+      const result = await handleSecretOperation(
+        {
+          operation: "create",
+          type: SecretType.Shared,
           environment: env,
-          secretPath: parentPath
-        })
+          key,
+          secretPath
+        },
+        {
+          value,
+          comment: ""
+        }
       );
-      if (folderName && parentPath && canCreateFolder) {
-        await getOrCreateFolder({
-          projectId,
-          path: parentPath,
-          environment: env,
-          name: folderName
+
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully created secret"
         });
       }
-    }
-    const result = await createSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue: value,
-      secretComment: "",
-      type: SecretType.Shared
-    });
-
-    if ("approval" in result) {
+    } catch (error) {
+      console.log(error);
       createNotification({
-        type: "info",
-        text: "Requested change has been sent for review"
-      });
-    } else {
-      createNotification({
-        type: "success",
-        text: "Successfully created secret"
+        type: "error",
+        text: "Failed to create secret"
       });
     }
   };
@@ -545,8 +554,7 @@ export const OverviewPage = () => {
     env: string,
     key: string,
     value: string,
-    secretValueHidden: boolean,
-    type = SecretType.Shared
+    secretValueHidden: boolean
   ) => {
     let secretValue: string | undefined = value;
 
@@ -557,47 +565,71 @@ export const OverviewPage = () => {
       secretValue = undefined;
     }
 
-    const result = await updateSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretValue,
-      type
-    });
+    try {
+      const result = await handleSecretOperation(
+        {
+          operation: "update",
+          environment: env,
+          key,
+          secretPath,
+          type: SecretType.Shared
+        },
+        {
+          value: secretValue
+        }
+      );
 
-    if ("approval" in result) {
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully updated secret"
+        });
+      }
+    } catch (error) {
+      console.log(error);
       createNotification({
-        type: "info",
-        text: "Requested change has been sent for review"
-      });
-    } else {
-      createNotification({
-        type: "success",
-        text: "Successfully updated secret"
+        type: "error",
+        text: "Failed to update secret"
       });
     }
   };
 
   const handleSecretDelete = async (env: string, key: string, secretId?: string) => {
-    const result = await deleteSecretV3({
-      environment: env,
-      projectId,
-      secretPath,
-      secretKey: key,
-      secretId,
-      type: SecretType.Shared
-    });
+    try {
+      const result = await handleSecretOperation(
+        {
+          operation: "delete",
+          environment: env,
+          key,
+          secretPath,
+          type: SecretType.Shared
+        },
+        {
+          secretId
+        }
+      );
 
-    if ("approval" in result) {
+      if ("approval" in result) {
+        createNotification({
+          type: "info",
+          text: "Requested change has been sent for review"
+        });
+      } else {
+        createNotification({
+          type: "success",
+          text: "Successfully deleted secret"
+        });
+      }
+    } catch (error) {
+      console.log(error);
       createNotification({
-        type: "info",
-        text: "Requested change has been sent for review"
-      });
-    } else {
-      createNotification({
-        type: "success",
-        text: "Successfully deleted secret"
+        type: "error",
+        text: "Failed to delete secret"
       });
     }
   };
@@ -1156,7 +1188,8 @@ export const OverviewPage = () => {
                             }
                             handlePopUpOpen("upgradePlan", {
                               isEnterpriseFeature: true,
-                              text: "Adding dynamic secrets can be unlocked if you upgrade to Infisical Enterprise plan."
+                              description:
+                                "You can add dynamic secrets if you switch to Infisical's Enterprise plan."
                             });
                           }}
                           isDisabled={userAvailableDynamicSecretEnvs.length === 0}
@@ -1181,7 +1214,8 @@ export const OverviewPage = () => {
                               return;
                             }
                             handlePopUpOpen("upgradePlan", {
-                              text: "Adding secret rotations can be unlocked if you upgrade to Infisical Pro plan."
+                              description:
+                                "You can add secret rotations if you switch to Infisical's Pro plan."
                             });
                           }}
                           isDisabled={userAvailableSecretRotationEnvs.length === 0}
@@ -1667,7 +1701,7 @@ export const OverviewPage = () => {
           isOpen={popUp.upgradePlan.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
           isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-          text={popUp.upgradePlan.data?.text}
+          text={popUp.upgradePlan.data?.description}
         />
       )}
       <CreateSecretRotationV2Modal
