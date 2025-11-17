@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { ChecklyConnectionMethod } from "./checkly-connection-constants";
 
 export const ChecklyConnectionMethodSchema = z
@@ -31,7 +32,7 @@ export const SanitizedChecklyConnectionSchema = z.discriminatedUnion("method", [
   BaseChecklyConnectionSchema.extend({
     method: ChecklyConnectionMethodSchema,
     credentials: ChecklyConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Checkly]} (Access Token)` }))
 ]);
 
 export const ValidateChecklyConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -55,8 +56,10 @@ export const UpdateChecklyConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Checkly));
 
-export const ChecklyConnectionListItemSchema = z.object({
-  name: z.literal("Checkly"),
-  app: z.literal(AppConnection.Checkly),
-  methods: z.nativeEnum(ChecklyConnectionMethod).array()
-});
+export const ChecklyConnectionListItemSchema = z
+  .object({
+    name: z.literal("Checkly"),
+    app: z.literal(AppConnection.Checkly),
+    methods: z.nativeEnum(ChecklyConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Checkly] }));

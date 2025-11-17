@@ -8,6 +8,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { AppConnection } from "../app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { RedisConnectionMethod } from "./redis-connection-enums";
 
 export const BaseRedisUsernameAndPasswordConnectionSchema = z.object({
@@ -45,7 +46,7 @@ export const SanitizedRedisConnectionSchema = z.discriminatedUnion("method", [
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Redis]} (Username and Password)` }))
 ]);
 
 export const ValidateRedisConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -79,9 +80,11 @@ export const UpdateRedisConnectionSchema = z
     })
   );
 
-export const RedisConnectionListItemSchema = z.object({
-  name: z.literal("Redis"),
-  app: z.literal(AppConnection.Redis),
-  methods: z.nativeEnum(RedisConnectionMethod).array(),
-  supportsPlatformManagement: z.literal(false)
-});
+export const RedisConnectionListItemSchema = z
+  .object({
+    name: z.literal("Redis"),
+    app: z.literal(AppConnection.Redis),
+    methods: z.nativeEnum(RedisConnectionMethod).array(),
+    supportsPlatformManagement: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Redis] }));

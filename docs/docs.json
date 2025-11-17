@@ -2826,7 +2826,7 @@
     "href": "https://infisical.com"
   },
   "api": {
-    "openapi": "http://localhost:8080/api/docs/json",
+    "openapi": "https://app.infisical.com/api/docs/json",
     "mdx": {
       "server": ["https://app.infisical.com"]
     }
