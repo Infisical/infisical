@@ -2,8 +2,8 @@
 import path from "node:path";
 
 import fs from "fs/promises";
-import {replaceTscAliasPaths} from "tsc-alias";
-import {defineConfig} from "tsup";
+import { replaceTscAliasPaths } from "tsc-alias";
+import { defineConfig } from "tsup";
 
 // Instead of using tsx or tsc for building, consider using tsup.
 // TSX serves as an alternative to Node.js, allowing you to build directly on the Node.js runtime.
@@ -45,22 +45,26 @@ export default defineConfig({
               const isRelativePath = args.path.startsWith(".");
               const absPath = isRelativePath
                 ? path.join(args.resolveDir, args.path)
-                : path.join(args.path.replace("@app", "./src"));
+                : path.join(
+                    args.path
+                      .replace("@app", "./src")
+                      .replace("@bdd_routes/bdd-nock-router", "./src/server/routes/bdd/bdd-nock-router.ts")
+                  );
 
               const isFile = await fs
                 .stat(`${absPath}.ts`)
                 .then((el) => el.isFile)
-                  .catch(async (err) => {
-                    if (err.code === "ENOTDIR") {
-                      return true;
-                    }
+                .catch(async (err) => {
+                  if (err.code === "ENOTDIR") {
+                    return true;
+                  }
 
-                    // If .ts file doesn't exist, try checking for .tsx file
-                    return fs
-                        .stat(`${absPath}.tsx`)
-                        .then((el) => el.isFile)
-                        .catch((err) => err.code === "ENOTDIR");
-                  });
+                  // If .ts file doesn't exist, try checking for .tsx file
+                  return fs
+                    .stat(`${absPath}.tsx`)
+                    .then((el) => el.isFile)
+                    .catch((err) => err.code === "ENOTDIR");
+                });
 
               return {
                 path: isFile ? `${args.path}.mjs` : `${args.path}/index.mjs`,
