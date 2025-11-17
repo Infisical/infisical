@@ -17,6 +17,7 @@ if (process.env.NODE_ENV === "production") {
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
   const importNock = async () => {
+    // eslint-disable-next-line import/no-extraneous-dependencies
     const { default: nock } = await import("nock");
     return nock;
   };
