@@ -44,7 +44,6 @@ export const CertificatesSection = () => {
 
     await deleteCert({
       serialNumber,
-      projectSlug: currentProject.slug,
       projectId: currentProject.id
     });
 
