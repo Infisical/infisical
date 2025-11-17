@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureAppConfigurationConnectionMethod } from "./azure-app-configuration-connection-enums";
 
 export const AzureAppConfigurationConnectionOAuthInputCredentialsSchema = z.object({
@@ -104,19 +105,23 @@ export const SanitizedAzureAppConfigurationConnectionSchema = z.discriminatedUni
     credentials: AzureAppConfigurationConnectionOAuthOutputCredentialsSchema.pick({
       tenantId: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureAppConfiguration]} (OAuth)` })),
   BaseAzureAppConfigurationConnectionSchema.extend({
     method: z.literal(AzureAppConfigurationConnectionMethod.ClientSecret),
     credentials: AzureAppConfigurationConnectionClientSecretOutputCredentialsSchema.pick({
       clientId: true,
       tenantId: true
     })
-  })
+  }).describe(
+    JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureAppConfiguration]} (Client Secret)` })
+  )
 ]);
 
-export const AzureAppConfigurationConnectionListItemSchema = z.object({
-  name: z.literal("Azure App Configuration"),
-  app: z.literal(AppConnection.AzureAppConfiguration),
-  methods: z.nativeEnum(AzureAppConfigurationConnectionMethod).array(),
-  oauthClientId: z.string().optional()
-});
+export const AzureAppConfigurationConnectionListItemSchema = z
+  .object({
+    name: z.literal("Azure App Configuration"),
+    app: z.literal(AppConnection.AzureAppConfiguration),
+    methods: z.nativeEnum(AzureAppConfigurationConnectionMethod).array(),
+    oauthClientId: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.AzureAppConfiguration] }));

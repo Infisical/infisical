@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { FlyioConnectionMethod } from "./flyio-connection-enums";
 
 export const FlyioConnectionAccessTokenCredentialsSchema = z.object({
@@ -31,7 +32,7 @@ export const SanitizedFlyioConnectionSchema = z.discriminatedUnion("method", [
   BaseFlyioConnectionSchema.extend({
     method: z.literal(FlyioConnectionMethod.AccessToken),
     credentials: FlyioConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Flyio]} (Access Token)` }))
 ]);
 
 export const ValidateFlyioConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -55,8 +56,10 @@ export const UpdateFlyioConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Flyio));
 
-export const FlyioConnectionListItemSchema = z.object({
-  name: z.literal("Fly.io"),
-  app: z.literal(AppConnection.Flyio),
-  methods: z.nativeEnum(FlyioConnectionMethod).array()
-});
+export const FlyioConnectionListItemSchema = z
+  .object({
+    name: z.literal("Fly.io"),
+    app: z.literal(AppConnection.Flyio),
+    methods: z.nativeEnum(FlyioConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Flyio] }));

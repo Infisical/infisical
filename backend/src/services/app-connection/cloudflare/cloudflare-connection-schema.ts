@@ -9,6 +9,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { CloudflareConnectionMethod } from "./cloudflare-connection-enum";
 
 const accountIdCharacterValidator = characterValidator([
@@ -41,7 +42,7 @@ export const SanitizedCloudflareConnectionSchema = z.discriminatedUnion("method"
   BaseCloudflareConnectionSchema.extend({
     method: z.literal(CloudflareConnectionMethod.APIToken),
     credentials: CloudflareConnectionApiTokenCredentialsSchema.pick({ accountId: true })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Cloudflare]} (API Token)` }))
 ]);
 
 export const ValidateCloudflareConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -67,8 +68,10 @@ export const UpdateCloudflareConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Cloudflare));
 
-export const CloudflareConnectionListItemSchema = z.object({
-  name: z.literal("Cloudflare"),
-  app: z.literal(AppConnection.Cloudflare),
-  methods: z.nativeEnum(CloudflareConnectionMethod).array()
-});
+export const CloudflareConnectionListItemSchema = z
+  .object({
+    name: z.literal("Cloudflare"),
+    app: z.literal(AppConnection.Cloudflare),
+    methods: z.nativeEnum(CloudflareConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Cloudflare] }));

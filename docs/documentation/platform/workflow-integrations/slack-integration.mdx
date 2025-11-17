@@ -17,13 +17,13 @@ This guide will provide step by step instructions on how to configure Slack inte
         ![org-slack-overview](/images/platform/workflow-integrations/slack-integration/org-slack-integration-overview.png)
       </Step>
       <Step title="Install Slack app to workspace">
-        Press "Add" and select "Slack" as the platform.
+        Press **Add** and select **Slack** as the platform.
         ![org-slack-initial-add](/images/platform/workflow-integrations/slack-integration/org-slack-integration-initial-add.png)
 
         Give your Slack integration a descriptive alias. You will use this to select the Slack integration for your project.
         ![org-slack-add-form](/images/platform/workflow-integrations/slack-integration/org-slack-integration-add-form.png)
 
-        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Allow**.
+        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Install Infisical**.
         ![org-slack-authenticate](/images/platform/workflow-integrations/slack-integration/cloud-org-slack-integration-authenticate.png)
 
         This completes the workflow integration creation flow. The projects in your organization can now use this Slack integration to send real-time updates to your Slack workspace.
@@ -38,6 +38,7 @@ This guide will provide step by step instructions on how to configure Slack inte
 
     <Steps>
       <Step title="Navigate to the Workflow Integrations tab in the project settings">
+        Press **Add** and select **Slack** as the platform.
         ![project-slack-overview](/images/platform/workflow-integrations/slack-integration/project-slack-integration-overview.png)
       </Step>
       <Step title="Select the Slack integration to use for the project">
@@ -66,13 +67,13 @@ This guide will provide step by step instructions on how to configure Slack inte
         Before anything else, you need to setup the Slack app to be used by
         your Infisical instance. Because you're self-hosting, you will need to
         create this Slack application as demonstrated in the preceding step.
+
+        Click the **Create Slack app** button. This will open up a new window with the
+        custom app creation flow on Slack.
+
         ![admin-settings-slack-overview](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-overview.png)
       </Step>
       <Step title="Create Slack app">
-        Click the "Create Slack app" button. This will open up a new window with the
-        custom app creation flow on Slack.
-        ![admin-slack-create-app](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-create-app.png)
-
         Select the Slack workspace you want to integrate with Infisical.
 
         ![admin-slack-app-workspace-select](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-workspace-select.png)
@@ -87,7 +88,7 @@ This guide will provide step by step instructions on how to configure Slack inte
         Copy the Client ID and Client Secret values from your newly created custom Slack app and add them to Infisical.
         ![admin-slack-app-credentials](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-credentials.png)
         ![admin-slack-app-credentials-form](/images/platform/workflow-integrations/slack-integration/admin-slack-integration-app-credential-form.png)
-        Complete the admin setup by pressing Save.
+        Complete the admin setup by pressing **Save**.
       </Step>
 
     </Steps>
@@ -101,13 +102,13 @@ This guide will provide step by step instructions on how to configure Slack inte
         ![org-slack-overview](/images/platform/workflow-integrations/slack-integration/org-slack-integration-overview.png)
       </Step>
       <Step title="Install Slack app to workspace">
-        Press "Add" and select "Slack" as the platform.
+        Press **Add** and select **Slack** as the platform.
         ![org-slack-initial-add](/images/platform/workflow-integrations/slack-integration/org-slack-integration-initial-add.png)
 
         Give your Slack integration a descriptive alias. You will use this to select the Slack integration for your project.
         ![org-slack-add-form](/images/platform/workflow-integrations/slack-integration/org-slack-integration-add-form.png)
 
-        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Allow**.
+        Press **Connect Slack**. This opens up the Slack app installation flow. Select the Slack workspace you want to install the custom Slack app to and press **Install Infisical**.
         ![org-slack-authenticate](/images/platform/workflow-integrations/slack-integration/org-slack-integration-authenticate.png)
 
         Your Slack bot will then be added to your selected Slack workspace. This completes the workflow integration creation flow. Your projects in the organization can now use this Slack integration to send real-time updates to your Slack workspace.
@@ -122,6 +123,7 @@ This guide will provide step by step instructions on how to configure Slack inte
 
     <Steps>
       <Step title="Navigate to the Workflow Integrations tab in the project settings">
+        Press **Add** and select **Slack** as the platform.
         ![project-slack-overview](/images/platform/workflow-integrations/slack-integration/project-slack-integration-overview.png)
       </Step>
       <Step title="Select the Slack integration to use for the project">
@@ -162,3 +164,87 @@ This guide will provide step by step instructions on how to configure Slack inte
     channels](/images/platform/workflow-integrations/slack-integration/private-slack-setup-channel-field.png)
   </Step>
 </Steps>
+
+## Slack Events
+
+The Slack integration supports the following events that can be configured for your projects. Each event is triggered when specific actions occur within your Infisical instance.
+
+<Tabs>
+  <Tab title="Access Request">
+    ### Access Request
+    This event is triggered when a user creates a new access approval request for a project. The notification includes details about the requester, the requested permissions, the secret path and environment, and whether the access is temporary or permanent.
+
+    **When it's triggered:**
+    - A user submits a new access approval request through the Infisical UI
+    - The request requires approval based on configured access approval policies
+    - The notification is sent to the configured access request channels
+
+    **Notification includes:**
+    - Requester's full name and email
+    - Requested permissions (read, write, etc.)
+    - Secret path and environment
+    - Access type (temporary or permanent)
+    - Optional user note
+    - Direct link to review the request
+
+    ![access request notification](/images/platform/workflow-integrations/slack-integration/access-request-notification.png)
+
+    ### Access Request Updated
+    This event is triggered when an existing access approval request is modified or updated. This helps approvers stay informed about changes to pending requests.
+
+    **When it's triggered:**
+    - An access approval request is edited by the requester or another authorized user
+    - Changes are made to permissions, temporary range, or notes
+    - The notification is sent to the configured access request channels
+
+    **Notification includes:**
+    - Original requester's information
+    - Editor's full name and email (who made the update)
+    - Updated permissions
+    - Updated secret path and environment
+    - Editor's note explaining the changes
+    - Direct link to review the updated request
+
+    ![access request updated notification](/images/platform/workflow-integrations/slack-integration/access-request-updated-notification.png)
+  </Tab>
+
+  <Tab title="Secret Approval">
+    ### Secret Approval
+    This event is triggered when a secret approval request is created. This occurs when a user attempts to create, update, or delete secrets that require approval based on secret approval policies.
+
+    **When it's triggered:**
+    - A user creates, updates, or deletes secrets in a path protected by a secret approval policy
+    - The changes require approval before being applied
+    - The notification is sent to the configured secret request channels
+
+    **Notification includes:**
+    - User's email who initiated the change
+    - Environment and secret path
+    - List of secret keys affected
+    - Direct link to review and approve the secret changes
+
+    ![secret approval notification](/images/platform/workflow-integrations/slack-integration/secret-approval-notification.png)
+  </Tab>
+
+  <Tab title="Secret Sync Error">
+    ### Secret Sync Error
+    This event is triggered when a secret sync operation fails. Secret syncs allow you to synchronize secrets between Infisical and external systems like GitHub, GitLab, AWS Secrets Manager, and others.
+
+    **When it's triggered:**
+    - A secret sync fails to push secrets to the destination
+    - A secret sync fails to pull secrets from the source
+    - A secret sync fails to import secrets
+    - A secret sync fails to remove secrets
+    - Any other error occurs during the sync process
+
+    **Notification includes:**
+    - Sync name and destination
+    - The action that failed
+    - Environment and secret path
+    - Project name
+    - Detailed error message explaining the failure
+    - Direct link to view and troubleshoot the sync configuration
+
+    ![secret sync error notification](/images/platform/workflow-integrations/slack-integration/secret-sync-error-notification.png)
+  </Tab>
+</Tabs>

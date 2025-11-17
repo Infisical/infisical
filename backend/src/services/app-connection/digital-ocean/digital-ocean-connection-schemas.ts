@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { DigitalOceanConnectionMethod } from "./digital-ocean-connection-constants";
 
 export const DigitalOceanConnectionMethodSchema = z
@@ -36,7 +37,7 @@ export const SanitizedDigitalOceanConnectionSchema = z.discriminatedUnion("metho
   BaseDigitalOceanConnectionSchema.extend({
     method: DigitalOceanConnectionMethodSchema,
     credentials: DigitalOceanConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.DigitalOcean]} (Access Token)` }))
 ]);
 
 export const ValidateDigitalOceanConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -60,8 +61,10 @@ export const UpdateDigitalOceanConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.DigitalOcean));
 
-export const DigitalOceanConnectionListItemSchema = z.object({
-  name: z.literal("Digital Ocean"),
-  app: z.literal(AppConnection.DigitalOcean),
-  methods: z.nativeEnum(DigitalOceanConnectionMethod).array()
-});
+export const DigitalOceanConnectionListItemSchema = z
+  .object({
+    name: z.literal("Digital Ocean"),
+    app: z.literal(AppConnection.DigitalOcean),
+    methods: z.nativeEnum(DigitalOceanConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.DigitalOcean] }));
