@@ -17,11 +17,19 @@ export const getMongoDBConnectionListItem = () => {
 };
 
 export const validateMongoDBConnectionCredentials = async (config: TMongoDBConnectionConfig) => {
-  const [hostIp] = await verifyHostInputValidity(config.credentials.host);
+  let normalizedHost = config.credentials.host.trim();
+  const isSrvFromHost = normalizedHost.startsWith("mongodb+srv://");
+  if (isSrvFromHost) {
+    normalizedHost = normalizedHost.replace(/^mongodb\+srv:\/\//, "");
+  } else if (normalizedHost.startsWith("mongodb://")) {
+    normalizedHost = normalizedHost.replace(/^mongodb:\/\//, "");
+  }
+
+  const [hostIp] = await verifyHostInputValidity(normalizedHost);
 
   let client: MongoClient | null = null;
   try {
-    const isSrv = !config.credentials.port;
+    const isSrv = !config.credentials.port || isSrvFromHost;
     const uri = isSrv ? `mongodb+srv://${hostIp}` : `mongodb://${hostIp}:${config.credentials.port}`;
 
     const clientOptions: {

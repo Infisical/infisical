@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -84,18 +84,10 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
     handleSubmit,
     watch,
     control,
-    setValue,
     formState: { isSubmitting, isDirty }
   } = form;
 
-  const host = watch("credentials.host");
   const sslEnabled = watch("credentials.sslEnabled");
-
-  useEffect(() => {
-    if (host && host.includes("+srv") && !sslEnabled) {
-      setValue("credentials.sslEnabled", true, { shouldDirty: true });
-    }
-  }, [host, sslEnabled, setValue]);
 
   return (
     <FormProvider {...form}>

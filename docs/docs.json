@@ -129,6 +129,7 @@
                       "integrations/app-connections/laravel-forge",
                       "integrations/app-connections/ldap",
                       "integrations/app-connections/mssql",
+                      "integrations/app-connections/mongodb",
                       "integrations/app-connections/mysql",
                       "integrations/app-connections/netlify",
                       "integrations/app-connections/northflank",
@@ -1887,6 +1888,18 @@
                       "api-reference/endpoints/app-connections/mssql/create",
                       "api-reference/endpoints/app-connections/mssql/update",
                       "api-reference/endpoints/app-connections/mssql/delete"
+                    ]
+                  },
+                  {
+                    "group": "MongoDB",
+                    "pages": [
+                      "api-reference/endpoints/app-connections/mongodb/list",
+                      "api-reference/endpoints/app-connections/mongodb/available",
+                      "api-reference/endpoints/app-connections/mongodb/get-by-id",
+                      "api-reference/endpoints/app-connections/mongodb/get-by-name",
+                      "api-reference/endpoints/app-connections/mongodb/create",
+                      "api-reference/endpoints/app-connections/mongodb/update",
+                      "api-reference/endpoints/app-connections/mongodb/delete"
                     ]
                   },
                   {
