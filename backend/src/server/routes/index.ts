@@ -2415,7 +2415,11 @@ export const registerRoutes = async (
   const pamMcpService = pamMcpServiceFactory({
     keyStore,
     permissionService,
-    authTokenService: tokenService
+    authTokenService: tokenService,
+    pamAccountDAL,
+    pamFolderDAL,
+    pamResourceDAL,
+    kmsService
   });
 
   // setup the communication with license key server

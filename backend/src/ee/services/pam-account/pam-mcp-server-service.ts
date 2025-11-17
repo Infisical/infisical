@@ -90,11 +90,12 @@ export const pamMcpServerServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: account.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -187,11 +188,12 @@ export const pamMcpServerServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: account.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -292,11 +294,12 @@ export const pamMcpServerServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: account.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -369,11 +372,12 @@ export const pamMcpServerServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: account.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -418,11 +422,12 @@ export const pamMcpServerServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: account.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,

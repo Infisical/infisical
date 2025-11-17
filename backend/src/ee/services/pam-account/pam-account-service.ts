@@ -109,11 +109,12 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: "Rotation credentials are not configured for this account's resource" });
     }
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId,
-      projectId: resource.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Create,
@@ -202,11 +203,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -307,11 +309,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Delete,
@@ -359,12 +362,12 @@ export const pamAccountServiceFactory = ({
       }
     > = [];
 
+    const accountPathFn = await getFullPamFolderPath({
+      pamFolderDAL,
+      projectId
+    });
     for await (const account of accountsWithResourceDetails) {
-      const accountPath = await getFullPamFolderPath({
-        pamFolderDAL,
-        folderId: account.folderId,
-        projectId: account.projectId
-      });
+      const accountPath = accountPathFn({ folderId: account.folderId });
 
       // Check permission for each individual account
       if (
@@ -424,11 +427,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Access,
