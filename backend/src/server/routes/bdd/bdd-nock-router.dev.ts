@@ -16,10 +16,9 @@ if (process.env.NODE_ENV !== "development") {
 
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
   const appCfg = getConfig();
-  const importNock = () => {
-    // Notice: it seems like importing nock somehow increase memory usage a lots, let's import it lazily.
-    // eslint-disable-next-line import/no-extraneous-dependencies
-    return import("nock");
+  const importNock = async () => {
+    const { default: nock } = await import("nock");
+    return nock;
   };
 
   const checkIfBddNockApiEnabled = () => {
