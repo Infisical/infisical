@@ -108,3 +108,30 @@ export type TMcpServerOAuthCallbackDTO = {
   code: string;
   projectId?: string; // Optional, for cache invalidation
 };
+
+// MCP Server Configuration Types
+export type TMcpServerConfiguration = {
+  version: number;
+  statement: {
+    toolsAllowed: string[];
+  };
+};
+
+export type TMcpServerTool = {
+  name: string;
+  description?: string;
+};
+
+// MCP Server Configuration DTOs
+export type TGetMcpServerConfigDTO = {
+  accountId: string;
+};
+
+export type TUpdateMcpServerConfigDTO = {
+  accountId: string;
+  config: TMcpServerConfiguration;
+};
+
+export type TGetMcpServerToolsDTO = {
+  accountId: string;
+};
