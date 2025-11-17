@@ -293,9 +293,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
   }
 
   const handleCommit = async () => {
-    if (!commitMessage.trim()) {
-      return;
-    }
     await onCommit(pendingChanges, commitMessage);
     clearAllPendingChanges({
       projectId,
@@ -432,7 +429,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
             {/* Commit Message */}
             <div>
               <label className="mb-2 block text-sm font-medium text-mineshaft-200">
-                Commit Message <span className="text-red-400">*</span>
+                Commit Message
               </label>
               <Input
                 value={commitMessage}
@@ -440,7 +437,6 @@ export const CommitForm: React.FC<CommitFormProps> = ({
                 placeholder="Describe your changes..."
                 className="w-full"
                 autoFocus
-                required
               />
             </div>
 
@@ -457,7 +453,7 @@ export const CommitForm: React.FC<CommitFormProps> = ({
               <Button
                 onClick={handleCommit}
                 isLoading={isCommitting}
-                isDisabled={isCommitting || !commitMessage.trim()}
+                isDisabled={isCommitting}
                 leftIcon={<FontAwesomeIcon icon={faCodeCommit} />}
                 colorSchema="primary"
                 variant="outline_bg"

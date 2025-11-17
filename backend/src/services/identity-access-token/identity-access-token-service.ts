@@ -186,8 +186,8 @@ export const identityAccessTokenServiceFactory = ({
 
   const fnValidateIdentityAccessToken = async (
     token: TIdentityAccessTokenJwtPayload,
-    subOrganizationSelector?: string,
-    ipAddress?: string
+    ipAddress?: string,
+    subOrganizationSelector?: string
   ) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
@@ -227,27 +227,25 @@ export const identityAccessTokenServiceFactory = ({
       });
 
       if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+        throw new BadRequestError({ message: "Identity does not belong to this organization" });
       }
       orgId = subOrganization.id;
       orgName = subOrganization.name;
 
       parentOrgId = subOrganization.parentOrgId as string;
     } else {
-      const organization = await orgDAL.findOne({ id: rootOrgId });
-
       const identityOrgMembership = await membershipIdentityDAL.findOne({
         scope: AccessScope.Organization,
         actorIdentityId: identityAccessToken.identityId,
-        scopeOrgId: rootOrgId
+        scopeOrgId: identityOrgDetails.id
       });
 
       if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to any organization" });
+        throw new BadRequestError({ message: "Identity does not belong to this organization" });
       }
 
-      orgId = rootOrgId;
-      orgName = organization.name;
+      orgId = identityOrgDetails.id;
+      orgName = identityOrgDetails.name;
       parentOrgId = rootOrgId;
     }
 

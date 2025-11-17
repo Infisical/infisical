@@ -9,10 +9,11 @@ import {
   ProjectPermissionSub,
   useProject
 } from "@app/context";
-import { useDeleteCert } from "@app/hooks/api";
+import { useDeleteCert, useDownloadCertPkcs12 } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { CertificateCertModal } from "./CertificateCertModal";
+import { CertificateExportModal, ExportOptions } from "./CertificateExportModal";
 import { CertificateImportModal } from "./CertificateImportModal";
 import { CertificateIssuanceModal } from "./CertificateIssuanceModal";
 import { CertificateManagePkiSyncsModal } from "./CertificateManagePkiSyncsModal";
@@ -24,11 +25,13 @@ import { CertificatesTable } from "./CertificatesTable";
 export const CertificatesSection = () => {
   const { currentProject } = useProject();
   const { mutateAsync: deleteCert } = useDeleteCert();
+  const { mutateAsync: downloadCertPkcs12 } = useDownloadCertPkcs12();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "issueCertificate",
     "certificateImport",
     "certificateCert",
+    "certificateExport",
     "deleteCertificate",
     "revokeCertificate",
     "manageRenewal",
@@ -47,6 +50,45 @@ export const CertificatesSection = () => {
     });
 
     handlePopUpClose("deleteCertificate");
+  };
+
+  const handleCertificateExport = async (
+    format: "pem" | "pkcs12",
+    serialNumber: string,
+    options?: ExportOptions
+  ) => {
+    if (format === "pem") {
+      handlePopUpOpen("certificateCert", { serialNumber });
+    } else if (format === "pkcs12") {
+      if (!currentProject?.slug) return;
+
+      if (!options?.pkcs12?.password || !options?.pkcs12?.alias) {
+        createNotification({
+          text: "Password and alias are required for PKCS12 export",
+          type: "error"
+        });
+        return;
+      }
+
+      try {
+        await downloadCertPkcs12({
+          serialNumber,
+          projectSlug: currentProject.slug,
+          password: options.pkcs12.password,
+          alias: options.pkcs12.alias
+        });
+
+        createNotification({
+          text: "PKCS12 certificate downloaded successfully",
+          type: "success"
+        });
+      } catch (error: any) {
+        createNotification({
+          text: error?.message || "Failed to download PKCS12 certificate",
+          type: "error"
+        });
+      }
+    }
   };
 
   return (
@@ -84,6 +126,11 @@ export const CertificatesSection = () => {
       <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateImportModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateCertModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <CertificateExportModal
+        popUp={popUp}
+        handlePopUpToggle={handlePopUpToggle}
+        onFormatSelected={handleCertificateExport}
+      />
       <CertificateManageRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRenewalModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <CertificateRevocationModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

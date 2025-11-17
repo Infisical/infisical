@@ -106,13 +106,14 @@ In the following steps, we'll explore how to use a project template when creatin
         Your project will be provisioned with the configured template roles and environments.
     </Tab>
     <Tab title="API">
-        To use a project template, make an API request to the [Create Project](/api-reference/endpoints/workspaces/create-workspace) API endpoint with the specified template name included.
+        To use a project template, make an API request to the [Create Project](/api-reference/endpoints/projects/create-project) API endpoint with the specified template name included.
 
         ### Sample request
 
         ```bash Request
         curl --request POST \
-        --url https://app.infisical.com/api/v2/workspace \
+        --url https://app.infisical.com/api/v1/projects \
+        --header 'Authorization: Bearer <token>' \
         --header 'Content-Type: application/json' \
         --data '{
             "projectName": "My Project",

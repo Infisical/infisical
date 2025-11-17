@@ -10,6 +10,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const AzureAppConfigurationSyncDestinationConfigSchema = z.object({
   configurationUrl: z
     .string()
@@ -23,10 +25,12 @@ const AzureAppConfigurationSyncOptionsConfig: TSyncOptionsConfig = { canImportSe
 export const AzureAppConfigurationSyncSchema = BaseSecretSyncSchema(
   SecretSync.AzureAppConfiguration,
   AzureAppConfigurationSyncOptionsConfig
-).extend({
-  destination: z.literal(SecretSync.AzureAppConfiguration),
-  destinationConfig: AzureAppConfigurationSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destination: z.literal(SecretSync.AzureAppConfiguration),
+    destinationConfig: AzureAppConfigurationSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureAppConfiguration] }));
 
 export const CreateAzureAppConfigurationSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AzureAppConfiguration,
@@ -42,9 +46,11 @@ export const UpdateAzureAppConfigurationSyncSchema = GenericUpdateSecretSyncFiel
   destinationConfig: AzureAppConfigurationSyncDestinationConfigSchema.optional()
 });
 
-export const AzureAppConfigurationSyncListItemSchema = z.object({
-  name: z.literal("Azure App Configuration"),
-  connection: z.literal(AppConnection.AzureAppConfiguration),
-  destination: z.literal(SecretSync.AzureAppConfiguration),
-  canImportSecrets: z.literal(true)
-});
+export const AzureAppConfigurationSyncListItemSchema = z
+  .object({
+    name: z.literal("Azure App Configuration"),
+    connection: z.literal(AppConnection.AzureAppConfiguration),
+    destination: z.literal(SecretSync.AzureAppConfiguration),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureAppConfiguration] }));

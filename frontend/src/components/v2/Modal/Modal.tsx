@@ -15,6 +15,7 @@ export type ModalContentProps = Omit<DialogPrimitive.DialogContentProps, "title"
   onClose?: () => void;
   overlayClassName?: string;
   showCloseButton?: boolean;
+  closeOnOutsideClick?: boolean;
 };
 
 export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
@@ -29,6 +30,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
       bodyClassName,
       onClose,
       showCloseButton = true,
+      closeOnOutsideClick = true,
       ...props
     },
     forwardedRef
@@ -38,7 +40,23 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
         className={twMerge("animate-fade-in fixed inset-0 z-30 h-full w-full", overlayClassName)}
         style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
       />
-      <DialogPrimitive.Content {...props} ref={forwardedRef}>
+      <DialogPrimitive.Content
+        {...props}
+        ref={forwardedRef}
+        onPointerDownOutside={(e) => {
+          const target = e.target as HTMLElement;
+          const toastElement = target.closest('[class*="Toastify"]');
+          if (toastElement) {
+            e.preventDefault();
+            return;
+          }
+
+          if (closeOnOutsideClick && onClose) {
+            onClose();
+          }
+          props.onPointerDownOutside?.(e);
+        }}
+      >
         <Card
           isRounded
           className={twMerge(

@@ -2,10 +2,15 @@ import { forwardRef, TextareaHTMLAttributes, useCallback, useMemo, useRef, useSt
 import { faFolder, faKey, faLayerGroup, faSearch } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import * as Popover from "@radix-ui/react-popover";
+import { useNavigate } from "@tanstack/react-router";
 
-import { useProject } from "@app/context";
+import { createNotification } from "@app/components/notifications";
+import { ROUTE_PATHS } from "@app/const/routes";
+import { useProject, useProjectPermission } from "@app/context";
+import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { useDebounce, useToggle } from "@app/hooks";
 import { useGetProjectFolders, useGetProjectSecrets } from "@app/hooks/api";
+import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 
 import { SecretInput } from "../SecretInput";
 
@@ -80,6 +85,8 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
   ) => {
     const { currentProject } = useProject();
     const projectId = currentProject?.id || "";
+    const navigate = useNavigate({ from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path });
+    const { permission } = useProjectPermission();
 
     const [debouncedValue] = useDebounce(value, 100);
 
@@ -307,6 +314,120 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
       }
     }, []);
 
+    const handleClickSegment = useCallback(
+      (segment: string, allSegments: string[]) => {
+        if (!projectId) {
+          createNotification({
+            text: "Project ID is not set",
+            type: "error"
+          });
+          return;
+        }
+
+        if (allSegments.length === 0) {
+          createNotification({
+            text: "Invalid secret reference",
+            type: "error"
+          });
+          return;
+        }
+
+        if (allSegments.length === 1) {
+          const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: propEnvironment ?? "*",
+              secretPath: propSecretPath ?? "/",
+              secretName: segment,
+              secretTags: ["*"]
+            }
+          );
+
+          if (!canReadSecretValue) {
+            createNotification({
+              text: "You do not have permission to access this secret",
+              type: "error"
+            });
+            return;
+          }
+
+          navigate({
+            search: (prev) => ({
+              ...prev,
+              search: segment,
+              filterBy: "secret",
+              tags: ""
+            })
+          });
+          return;
+        }
+
+        const environmentSlug = allSegments[0];
+        const secretName = allSegments[allSegments.length - 1];
+        let folderPath = "/";
+
+        if (allSegments.length > 2) {
+          const pathSegments = allSegments.slice(1, -1);
+          for (let i = 0; i < pathSegments.length; i += 1) {
+            if (!pathSegments[i]) {
+              createNotification({
+                text: "Invalid secret reference",
+                type: "error"
+              });
+              return;
+            }
+
+            const pathSegment = pathSegments[i];
+            folderPath += `${pathSegment}`;
+            if (pathSegment === segment) {
+              folderPath += "/";
+              break;
+            }
+            folderPath += "/";
+          }
+        }
+
+        // Only validate secret permission, users can always view environments and folders
+        if (segment === secretName) {
+          const canReadSecretValue = hasSecretReadValueOrDescribePermission(
+            permission,
+            ProjectPermissionSecretActions.ReadValue,
+            {
+              environment: environmentSlug,
+              secretPath: folderPath,
+              secretName,
+              secretTags: ["*"]
+            }
+          );
+
+          if (!canReadSecretValue) {
+            createNotification({
+              text: "You do not have permission to access this secret",
+              type: "error"
+            });
+            return;
+          }
+        }
+
+        navigate({
+          to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
+          params: {
+            projectId,
+            envSlug: environmentSlug
+          },
+          search: (prev) => ({
+            ...prev,
+            secretPath: segment === environmentSlug ? "/" : folderPath,
+            search: segment === secretName ? secretName : prev.search,
+            filterBy: segment === secretName ? "secret" : prev.filterBy,
+            tags: ""
+          })
+        });
+      },
+      [navigate, projectId, permission, propEnvironment, propSecretPath]
+    );
+
     return (
       <Popover.Root open={isPopupOpen} onOpenChange={handlePopUpOpen}>
         <Popover.Trigger asChild>
@@ -329,6 +450,7 @@ export const InfisicalSecretInput = forwardRef<HTMLTextAreaElement, Props>(
             }}
             onChange={(e) => onChange?.(e.target.value)}
             containerClassName={containerClassName}
+            onClickSegment={handleClickSegment}
           />
         </Popover.Trigger>
         <Popover.Content

@@ -1,15 +1,12 @@
-import { useMutation, useQuery, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
-import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { CaStatus } from "../ca/enums";
 import { TCertificateAuthority } from "../ca/types";
 import { TCertificate } from "../certificates/types";
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { TGroupMembership } from "../groups/types";
-import { identitiesKeys } from "../identities/queries";
-import { IdentityMembership, TProjectIdentitiesList } from "../identities/types";
 import { IntegrationAuth } from "../integrationAuth/types";
 import { TIntegration } from "../integrations/types";
 import { TPkiAlert } from "../pkiAlerts/types";
@@ -33,13 +30,10 @@ import {
   DeleteWorkspaceDTO,
   Project,
   ProjectEnv,
-  ProjectIdentityOrderBy,
   ProjectType,
   TGetUpgradeProjectStatusDTO,
-  TListProjectIdentitiesDTO,
   TProjectSshConfig,
   TSearchProjectsDTO,
-  TUpdateWorkspaceIdentityRoleDTO,
   TUpdateWorkspaceUserRoleDTO,
   UpdateAuditLogsRetentionDTO,
   UpdateEnvironmentDTO,
@@ -448,154 +442,6 @@ export const useUpdateUserWorkspaceRole = () => {
       queryClient.invalidateQueries({
         queryKey: projectKeys.getProjectUserDetails(projectId, membershipId)
       });
-    }
-  });
-};
-
-export const useAddIdentityToWorkspace = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      identityId,
-      projectId,
-      role
-    }: {
-      identityId: string;
-      projectId: string;
-      role?: string;
-    }) => {
-      const {
-        data: { identityMembership }
-      } = await apiRequest.post(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
-        {
-          role
-        }
-      );
-
-      return identityMembership;
-    },
-    onSuccess: (_, { identityId, projectId }) => {
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
-      });
-    }
-  });
-};
-
-export const useUpdateIdentityWorkspaceRole = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ identityId, projectId, roles }: TUpdateWorkspaceIdentityRoleDTO) => {
-      const {
-        data: { identityMembership }
-      } = await apiRequest.patch(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`,
-        {
-          roles
-        }
-      );
-
-      return identityMembership;
-    },
-    onSuccess: (_, { identityId, projectId }) => {
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId)
-      });
-    }
-  });
-};
-
-export const useDeleteIdentityFromWorkspace = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ identityId, projectId }: { identityId: string; projectId: string }) => {
-      const {
-        data: { identityMembership }
-      } = await apiRequest.delete(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
-      );
-      return identityMembership;
-    },
-    onSuccess: (_, { identityId, projectId }) => {
-      queryClient.invalidateQueries({
-        queryKey: projectKeys.getProjectIdentityMemberships(projectId)
-      });
-      queryClient.invalidateQueries({
-        queryKey: identitiesKeys.getIdentityProjectMemberships(identityId)
-      });
-    }
-  });
-};
-
-export const useGetWorkspaceIdentityMemberships = (
-  {
-    projectId,
-    offset = 0,
-    limit = 100,
-    orderBy = ProjectIdentityOrderBy.Name,
-    orderDirection = OrderByDirection.ASC,
-    search = ""
-  }: TListProjectIdentitiesDTO,
-  options?: Omit<
-    UseQueryOptions<
-      TProjectIdentitiesList,
-      unknown,
-      TProjectIdentitiesList,
-      ReturnType<typeof projectKeys.getProjectIdentityMembershipsWithParams>
-    >,
-    "queryKey" | "queryFn"
-  >
-) => {
-  return useQuery({
-    queryKey: projectKeys.getProjectIdentityMembershipsWithParams({
-      projectId,
-      offset,
-      limit,
-      orderBy,
-      orderDirection,
-      search
-    }),
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        offset: String(offset),
-        limit: String(limit),
-        orderBy: String(orderBy),
-        orderDirection: String(orderDirection),
-        search: String(search)
-      });
-
-      const { data } = await apiRequest.get<TProjectIdentitiesList>(
-        `/api/v1/projects/${projectId}/identity-memberships`,
-        { params }
-      );
-      return data;
-    },
-    enabled: true,
-    ...options
-  });
-};
-
-export const useGetWorkspaceIdentityMembershipDetails = (projectId: string, identityId: string) => {
-  return useQuery({
-    enabled: Boolean(projectId && identityId),
-    queryKey: projectKeys.getProjectIdentityMembershipDetails(projectId, identityId),
-    queryFn: async () => {
-      const {
-        data: { identityMembership }
-      } = await apiRequest.get<{ identityMembership: IdentityMembership }>(
-        `/api/v1/projects/${projectId}/identity-memberships/${identityId}`
-      );
-      return identityMembership;
     }
   });
 };

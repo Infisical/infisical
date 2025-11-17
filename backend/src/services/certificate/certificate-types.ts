@@ -119,6 +119,12 @@ export type TGetCertBundleDTO = {
   serialNumber: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetCertPkcs12DTO = {
+  serialNumber: string;
+  password: string;
+  alias: string;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCertificateCredentialsDTO = {
   certId: string;
   projectId: string;

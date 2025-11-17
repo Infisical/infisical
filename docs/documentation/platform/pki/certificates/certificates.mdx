@@ -60,6 +60,107 @@ The following examples demonstrate different approaches to certificate renewal:
 - Using the ACME enrollment method, you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
 - Using the API enrollment method, you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
 
+## Guide to Exporting Certificates
+
+In the following steps, we explore how to export certificates from Infisical in different formats for use in your applications and infrastructure.
+
+### Accessing the Export Certificate Modal
+
+To export any certificate, first navigate to your project's certificate inventory and locate the certificate you want to export. Click on the **Export Certificate** option from the certificate's action menu.
+
+![pki export certificate option](/images/platform/pki/certificate/cert-export-option.png)
+
+<Tabs>
+  <Tab title="PEM Format">
+    <Steps>
+      <Step title="Exporting in PEM Format">
+        In the export modal, choose **PEM** as the format and click **Export**.
+
+        ![pki export certificate pem](/images/platform/pki/certificate/cert-export-pem.png)
+
+        The PEM export modal will display the certificate details including:
+        - **Serial Number**: The unique identifier for the certificate
+        - **Certificate Body**: The X.509 certificate in PEM format
+        - **Certificate Chain**: The intermediate and root CA certificates
+        - **Private Key**: The private key associated with the certificate (if available)
+
+        ![pki export certificate pem modal](/images/platform/pki/certificate/cert-export-pem-modal.png)
+
+        You can copy each component individually or use the **Copy All** button to copy the complete certificate bundle.
+      </Step>
+      <Step title="Using PEM Certificates">
+        PEM format certificates can be used directly with most web servers and applications:
+
+        - **Apache HTTP Server**: Configure SSL certificates in your virtual host
+        - **Nginx**: Use the certificate and private key files in your server configuration
+        - **Docker containers**: Mount certificate files for TLS-enabled applications
+        - **Load balancers**: Upload PEM certificates to AWS ALB, Azure Application Gateway, etc.
+
+        Example Nginx configuration:
+        ```nginx
+        server {
+            listen 443 ssl;
+            server_name example.com;
+
+            ssl_certificate /path/to/certificate.pem;
+            ssl_certificate_key /path/to/private-key.pem;
+        }
+        ```
+      </Step>
+    </Steps>
+  </Tab>
+  <Tab title="PKCS12 Format">
+    <Steps>
+      <Step title="Exporting in PKCS12 Format">
+        In the export modal, choose **PKCS12** as the format and provide the required configuration:
+
+        ![pki export certificate pkcs12](/images/platform/pki/certificate/cert-export-pkcs12.png)
+
+        - **Password**: A secure password to protect the PKCS12 keystore
+        - **Alias**: A friendly name for the certificate within the keystore
+
+        Click **Export** to generate and download the `.p12` file containing the certificate, certificate chain, and private key.
+      </Step>
+      <Step title="Using PKCS12 Certificates">
+        PKCS12 files (`.p12` extension) are binary keystore files that contain the certificate, certificate chain, and private key in a single encrypted file:
+
+        - **Java applications**: Import directly into Java KeyStore (JKS) or use with SSL/TLS
+        - **Windows IIS**: Import the PKCS12 file for web server SSL configuration
+        - **Browser certificates**: Install client certificates for authentication
+        - **Mobile applications**: Deploy certificates to iOS and Android applications
+
+        To verify the contents of a PKCS12 file:
+        ```bash
+        openssl pkcs12 -in certificate.p12 -nokeys -clcerts
+        ```
+
+        To extract the private key:
+        ```bash
+        openssl pkcs12 -in certificate.p12 -nocerts -out private-key.pem
+        ```
+
+        <Info>
+          If you need to convert the PKCS12 file to Java KeyStore (JKS) format for applications running on Java 8 or earlier, use the following keytool command:
+
+          ```bash
+          keytool -importkeystore \
+              -srckeystore certificate.p12 \
+              -srcstoretype PKCS12 \
+              -srcstorepass <p12-password> \
+              -destkeystore certificate.jks \
+              -deststoretype JKS \
+              -deststorepass <jks-password>
+          ```
+
+          Replace `<p12-password>` with the password you used when exporting the PKCS12 file, and `<jks-password>` with your desired JKS keystore password.
+
+          The resulting `.jks` file can then be used with Java applications that require JKS format keystores.
+        </Info>
+      </Step>
+    </Steps>
+  </Tab>
+</Tabs>
+
 ## Guide to Revoking Certificates
 
 In the following steps, we explore how to revoke a X.509 certificate and obtain a Certificate Revocation List (CRL) for a CA.
@@ -105,7 +206,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
   <Tab title="API">
     <Steps>
       <Step title="Revoking a certificate">
-        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificates/revoke) API endpoint,
         specifying the serial number of the certificate and the reason for revocation.
         
         ### Sample request
@@ -131,7 +232,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
       </Step>
       <Step title="Obtaining a CRL">
         In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
-        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
 
         ### Sample request
 

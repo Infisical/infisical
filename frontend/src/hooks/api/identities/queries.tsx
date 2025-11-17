@@ -13,10 +13,10 @@ import {
   IdentityJwtAuth,
   IdentityKubernetesAuth,
   IdentityLdapAuth,
-  IdentityMembership,
   IdentityMembershipOrg,
   IdentityOciAuth,
   IdentityOidcAuth,
+  IdentityProjectMembershipV1,
   IdentityTlsCertAuth,
   IdentityTokenAuth,
   IdentityUniversalAuth,
@@ -52,7 +52,7 @@ export const identitiesKeys = {
     [{ identityId }, "identity-project-memberships"] as const
 };
 
-export const useGetIdentityById = (identityId: string) => {
+export const useGetOrgIdentityMembershipById = (identityId: string) => {
   return useQuery({
     enabled: Boolean(identityId),
     queryKey: identitiesKeys.getIdentityById(identityId),
@@ -67,7 +67,7 @@ export const useGetIdentityById = (identityId: string) => {
   });
 };
 
-export const useSearchIdentities = (dto: TSearchIdentitiesDTO) => {
+export const useSearchOrgIdentityMemberships = (dto: TSearchIdentitiesDTO) => {
   const { limit, search, offset, orderBy, orderDirection } = dto;
   return useQuery({
     queryKey: identitiesKeys.searchIdentities(dto),
@@ -95,7 +95,7 @@ export const useGetIdentityProjectMemberships = (identityId: string) => {
     queryFn: async () => {
       const {
         data: { identityMemberships }
-      } = await apiRequest.get<{ identityMemberships: IdentityMembership[] }>(
+      } = await apiRequest.get<{ identityMemberships: IdentityProjectMembershipV1[] }>(
         `/api/v1/identities/${identityId}/identity-memberships`
       );
       return identityMemberships;

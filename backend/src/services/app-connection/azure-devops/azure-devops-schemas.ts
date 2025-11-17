@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureDevOpsConnectionMethod } from "./azure-devops-enums";
 
 export const AzureDevOpsConnectionOAuthInputCredentialsSchema = z.object({
@@ -147,13 +148,13 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
       tenantId: true,
       orgName: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (OAuth)` })),
   BaseAzureDevOpsConnectionSchema.extend({
     method: z.literal(AzureDevOpsConnectionMethod.AccessToken),
     credentials: AzureDevOpsConnectionAccessTokenOutputCredentialsSchema.pick({
       orgName: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (Access Token)` })),
   BaseAzureDevOpsConnectionSchema.extend({
     method: z.literal(AzureDevOpsConnectionMethod.ClientSecret),
     credentials: AzureDevOpsConnectionClientSecretOutputCredentialsSchema.pick({
@@ -161,12 +162,14 @@ export const SanitizedAzureDevOpsConnectionSchema = z.discriminatedUnion("method
       tenantId: true,
       orgName: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps]} (Client Secret)` }))
 ]);
 
-export const AzureDevOpsConnectionListItemSchema = z.object({
-  name: z.literal("Azure DevOps"),
-  app: z.literal(AppConnection.AzureDevOps),
-  methods: z.nativeEnum(AzureDevOpsConnectionMethod).array(),
-  oauthClientId: z.string().optional()
-});
+export const AzureDevOpsConnectionListItemSchema = z
+  .object({
+    name: z.literal("Azure DevOps"),
+    app: z.literal(AppConnection.AzureDevOps),
+    methods: z.nativeEnum(AzureDevOpsConnectionMethod).array(),
+    oauthClientId: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.AzureDevOps] }));

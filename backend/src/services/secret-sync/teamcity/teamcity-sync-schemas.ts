@@ -10,6 +10,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const TeamCitySyncDestinationConfigSchema = z.object({
   project: z.string().trim().min(1, "Project required").describe(SecretSyncs.DESTINATION_CONFIG.TEAMCITY.project),
   buildConfig: z.string().trim().optional().describe(SecretSyncs.DESTINATION_CONFIG.TEAMCITY.buildConfig)
@@ -17,10 +19,12 @@ const TeamCitySyncDestinationConfigSchema = z.object({
 
 const TeamCitySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const TeamCitySyncSchema = BaseSecretSyncSchema(SecretSync.TeamCity, TeamCitySyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.TeamCity),
-  destinationConfig: TeamCitySyncDestinationConfigSchema
-});
+export const TeamCitySyncSchema = BaseSecretSyncSchema(SecretSync.TeamCity, TeamCitySyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.TeamCity),
+    destinationConfig: TeamCitySyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TeamCity] }));
 
 export const CreateTeamCitySyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.TeamCity,
@@ -36,9 +40,11 @@ export const UpdateTeamCitySyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: TeamCitySyncDestinationConfigSchema.optional()
 });
 
-export const TeamCitySyncListItemSchema = z.object({
-  name: z.literal("TeamCity"),
-  connection: z.literal(AppConnection.TeamCity),
-  destination: z.literal(SecretSync.TeamCity),
-  canImportSecrets: z.literal(true)
-});
+export const TeamCitySyncListItemSchema = z
+  .object({
+    name: z.literal("TeamCity"),
+    connection: z.literal(AppConnection.TeamCity),
+    destination: z.literal(SecretSync.TeamCity),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TeamCity] }));

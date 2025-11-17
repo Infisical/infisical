@@ -23,7 +23,7 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useTimedReset } from "@app/hooks";
-import { identityAuthToNameMap, useGetIdentityById } from "@app/hooks/api";
+import { identityAuthToNameMap, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -41,7 +41,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
   });
   const { isSubOrganization } = useOrganization();
 
-  const { data } = useGetIdentityById(identityId);
+  const { data } = useGetOrgIdentityMembershipById(identityId);
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
@@ -86,7 +86,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   }}
                   disabled={!isAllowed}
                 >
-                  Edit Identity
+                  {isOrgIdentity ? "Edit Identity" : "Edit Identity Role"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
@@ -110,7 +110,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   icon={<FontAwesomeIcon icon={faTrash} />}
                   disabled={!isAllowed}
                 >
-                  Delete Identity
+                  {!isOrgIdentity ? "Remove From Sub-Organization" : "Delete Identity"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
