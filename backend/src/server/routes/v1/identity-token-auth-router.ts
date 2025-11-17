@@ -312,6 +312,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
       response: {
         200: z.object({
           accessToken: z.string(),
+          expiresIn: z.coerce.number(),
+          accessTokenMaxTTL: z.coerce.number(),
+          tokenType: z.literal("Bearer"),
           tokenData: IdentityAccessTokensSchema
         })
       }
@@ -342,6 +345,9 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
       return {
         accessToken,
+        tokenType: "Bearer" as const,
+        expiresIn: identityTokenAuth.accessTokenTTL,
+        accessTokenMaxTTL: identityTokenAuth.accessTokenMaxTTL,
         tokenData: identityAccessToken
       };
     }
@@ -446,6 +452,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {
             identityId: token.identityId,
+            identityName: identityMembershipOrg.identity.name,
             tokenId: token.id
           }
         }

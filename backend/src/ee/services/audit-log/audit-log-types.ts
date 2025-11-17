@@ -1034,6 +1034,7 @@ interface GetTokenIdentityTokenAuthEvent {
   type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH;
   metadata: {
     identityId: string;
+    identityName: string;
     tokenId: string;
   };
 }
