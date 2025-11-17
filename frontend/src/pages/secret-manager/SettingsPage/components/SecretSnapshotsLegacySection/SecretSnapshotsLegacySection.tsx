@@ -40,12 +40,13 @@ export const SecretSnapshotsLegacySection = () => {
       <p className="mb-3 text-xl font-medium">Show Secret Snapshots ( legacy )</p>
       <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Settings}>
         {(isAllowed) => (
-          <div className="w-max">
+          <div>
             <Checkbox
               id="showSnapshotsLegacy"
               isDisabled={!isAllowed || isLoading}
               isChecked={currentProject?.showSnapshotsLegacy ?? false}
               onCheckedChange={(state) => handleToggle(state as boolean)}
+              allowMultilineLabel
             >
               This feature enables your project members to view secret snapshots in the legacy
               format.
