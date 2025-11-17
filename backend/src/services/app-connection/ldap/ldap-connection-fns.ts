@@ -124,43 +124,45 @@ export const executeWithPotentialGateway = async <T>(
       targetPort: port
     });
 
-    if (platformConnectionDetails) {
-      return withGatewayV2Proxy(
-        async (proxyPort) => {
-          const proxyUrl = constructLdapUrl(protocol, "localhost", proxyPort);
-          const isSSL = protocol === "ldaps";
-
-          const client = ldap.createClient({
-            url: proxyUrl,
-            timeout: LDAP_TIMEOUT,
-            connectTimeout: LDAP_TIMEOUT,
-            tlsOptions: isSSL
-              ? {
-                  rejectUnauthorized: config.credentials.sslRejectUnauthorized,
-                  ca: config.credentials.sslCertificate ? [config.credentials.sslCertificate] : undefined,
-                  servername: host,
-                  // bypass hostname verification for development
-                  ...(appCfg.isDevelopmentMode ? { checkServerIdentity: () => undefined } : {})
-                }
-              : undefined
-          });
-
-          return setupLdapClientHandlers<T>(client, credentials.dn, credentials.password, async (ldapClient) => {
-            try {
-              return await operation(ldapClient);
-            } finally {
-              ldapClient.destroy();
-            }
-          });
-        },
-        {
-          protocol: GatewayProxyProtocol.Tcp,
-          relayHost: platformConnectionDetails.relayHost,
-          gateway: platformConnectionDetails.gateway,
-          relay: platformConnectionDetails.relay
-        }
-      );
+    if (!platformConnectionDetails) {
+      throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
     }
+
+    return withGatewayV2Proxy(
+      async (proxyPort) => {
+        const proxyUrl = constructLdapUrl(protocol, "localhost", proxyPort);
+        const isSSL = protocol === "ldaps";
+
+        const client = ldap.createClient({
+          url: proxyUrl,
+          timeout: LDAP_TIMEOUT,
+          connectTimeout: LDAP_TIMEOUT,
+          tlsOptions: isSSL
+            ? {
+                rejectUnauthorized: config.credentials.sslRejectUnauthorized,
+                ca: config.credentials.sslCertificate ? [config.credentials.sslCertificate] : undefined,
+                servername: host,
+                // bypass hostname verification for development
+                ...(appCfg.isDevelopmentMode ? { checkServerIdentity: () => undefined } : {})
+              }
+            : undefined
+        });
+
+        return setupLdapClientHandlers<T>(client, credentials.dn, credentials.password, async (ldapClient) => {
+          try {
+            return await operation(ldapClient);
+          } finally {
+            ldapClient.destroy();
+          }
+        });
+      },
+      {
+        protocol: GatewayProxyProtocol.Tcp,
+        relayHost: platformConnectionDetails.relayHost,
+        gateway: platformConnectionDetails.gateway,
+        relay: platformConnectionDetails.relay
+      }
+    );
   }
 
   // Non-gateway path - calls getLdapConnectionClient which has validation
