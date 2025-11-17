@@ -241,6 +241,8 @@ import { identityTokenAuthServiceFactory } from "@app/services/identity-token-au
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
+import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
@@ -445,6 +447,7 @@ export const registerRoutes = async (
   const serviceTokenDAL = serviceTokenDALFactory(db);
 
   const identityDAL = identityDALFactory(db);
+  const identityV2DAL = identityV2DALFactory(db);
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
@@ -640,7 +643,8 @@ export const registerRoutes = async (
     projectDAL,
     identityDAL,
     userDAL,
-    externalGroupOrgRoleMappingDAL
+    externalGroupOrgRoleMappingDAL,
+    membershipRoleDAL
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1184,6 +1188,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     permissionService,
+    licenseService,
     kmsService,
     projectDAL
   });
@@ -1655,6 +1660,17 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL
   });
+
+  const identityV2Service = identityV2ServiceFactory({
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    identityMetadataDAL,
+    licenseService,
+    permissionService,
+    identityDAL: identityV2DAL,
+    keyStore
+  });
+
   const identityProjectService = identityProjectServiceFactory({
     identityProjectDAL,
     membershipIdentityDAL,
@@ -2229,8 +2245,13 @@ export const registerRoutes = async (
   });
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
+    appConnectionDAL,
+    certificateDAL,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
@@ -2238,6 +2259,7 @@ export const registerRoutes = async (
     acmeChallengeDAL,
     keyStore,
     kmsService,
+    licenseService,
     certificateV3Service,
     acmeChallengeService
   });
@@ -2457,7 +2479,8 @@ export const registerRoutes = async (
     integrationAuth: integrationAuthService,
     webhook: webhookService,
     serviceToken: serviceTokenService,
-    identity: identityService,
+    identityV1: identityService,
+    identityV2: identityV2Service,
     identityAuthTemplate: identityAuthTemplateService,
     identityAccessToken: identityAccessTokenService,
     identityTokenAuth: identityTokenAuthService,

@@ -1,3 +1,5 @@
+import { useParams } from "@tanstack/react-router";
+
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
@@ -46,8 +48,7 @@ type Props = {
 
 type TRevokeOptions = {
   identityId: string;
-  organizationId: string;
-};
+} & ({ projectId: string } | { organizationId: string });
 
 export const Content = ({
   identityId,
@@ -61,7 +62,9 @@ export const Content = ({
 >) => {
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "revokeAuthMethod",
     "upgradePlan",
@@ -142,7 +145,11 @@ export const Content = ({
   const handleDeleteAuthMethod = async () => {
     await revokeMethod({
       identityId,
-      organizationId: orgId
+      ...(projectId
+        ? { projectId }
+        : {
+            organizationId: orgId
+          })
     });
 
     createNotification({

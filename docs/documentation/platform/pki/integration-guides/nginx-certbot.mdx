@@ -1,0 +1,175 @@
+---
+title: "Nginx"
+description: "Learn how to issue SSL/TLS certificates from Infisical using ACME enrollment on Nginx with Certbot"
+---
+
+This guide demonstrates how to use Infisical to issue SSL/TLS certificates for your [Nginx](https://nginx.org/) server.
+
+It uses [Certbot](https://certbot.eff.org/), an installable [ACME](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) client, to request and renew certificates from Infisical using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles).
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- An [Nginx](https://nginx.org/) web server running on a Linux system with administrative access.
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) in Infisical.
+- Network connectivity from your Nginx server to Infisical.
+- Port 80 open and reachable for ACME [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) validation.
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click the **Reveal ACME EAB** option to view the ACME configuration details.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From the ACME configuration, gather the following values:
+
+        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
+        - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install Certbot">
+        Install Certbot on the server where Nginx is running by following the official Certbot [installation guide](https://certbot.eff.org/instructions).
+
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version and proper Nginx plugin integration.
+
+        After installation, you can verify that Certbot has been installed correctly by running:
+
+        ```bash
+        certbot --version
+        ```
+    </Step>
+
+    <Step title="Request Certificate Using Certbot">
+        Run the following command to request a certificate from Infisical:
+
+        ```bash
+        sudo certbot certonly \
+          --nginx \
+          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --eab-kid "your-eab-key-identifier" \
+          --eab-hmac-key "your-eab-secret" \
+          -d example.infisical.com \
+          --email admin@example.com \
+          --agree-tos \
+          --non-interactive
+        ```
+
+        For guidance on each parameter:
+
+        - `certonly`: Instructs Certbot to request a certificate without modifying and reloading your Nginx configuration file(s); this mode is recommended if you prefer to manage your Nginx TLS configuration manually, use automation tools, or integrate certificates into an existing deployment workflow.
+        - `--nginx`: Specifies the Nginx plugin so Certbot can solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge by creating temporary files served by Nginx.
+        - `--server`: The Infisical ACME directory URL from Step 1. This instructs Certbot to communicate with Infisical's ACME server instead of Let's Encrypt.
+        - `--eab-kid`: Your External Account Binding (EAB) Key Identifier from Step 1.
+        - `--eab-hmac-key`: The EAB secret associated with the KID from Step 1.
+        - `-d`: Specifies the domain name for which the certificate is being requested.
+        - `--email`: The contact email for expiration notices and account recovery.
+        - `--agree-tos`: Accepts the ACME server’s Terms of Service.
+        - `--non-interactive`: Runs Certbot without prompting for user input (recommended for automation).
+
+        The Certbot command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
+
+        If `--certonly` is used: Certbot does **not** modify your Nginx configuration, so you must manually update your Nginx server block to reference the new certificate files and reload the server to apply the changes.
+
+        Here's how you can configure your server block:
+
+        ```nginx
+        server {
+            listen 443 ssl;
+            server_name example.infisical.com;
+
+            ssl_certificate     /etc/letsencrypt/live/example.infisical.com/fullchain.pem;
+            ssl_certificate_key /etc/letsencrypt/live/example.infisical.com/privkey.pem;
+
+            # ...your existing configuration...
+        }
+
+        ```
+
+        After updating the server block, you should test and reload Nginx to apply the changes:
+
+        ```bash
+        sudo nginx -t
+        sudo systemctl reload nginx
+        ```
+
+        If `--certonly` was **not** used: Certbot uses Nginx installer mode, which attempts to automatically configure HTTPS by updating your Nginx server block and reloading the server if needed.
+
+        At this point, your Nginx server should be successfully serving HTTPS using the certificate issued by Infisical.
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After configuring Nginx SSL, verify that your certificate was issued correctly and Nginx is serving it properly.
+
+        Check that the certificate files were created by Certbot:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see files like:
+        - `cert.pem` (your certificate)
+        - `chain.pem` (certificate chain)
+        - `fullchain.pem` (certificate + chain)
+        - `privkey.pem` (private key)
+    </Step>
+
+    <Step title="Renew Your Certificate with Certbot">
+        Certbot automatically installs a `systemd` timer during installation. This timer runs twice per day and checks whether any certificates are due for renewal. Because Certbot stores the ACME server URL and EAB credentials from your initial request, renewal will automatically use the same Infisical ACME configuration—no additional settings are required.
+
+        Note that Certbot automatically renews certificates when they are within 30 days of expiration; renewal settings can be adjusted in `/etc/letsencrypt/renewal/{domain-name}.conf`.
+
+        ```ini
+        # ... your existing configuration ...
+
+        renew_before_expiry = 30 days
+        ```
+
+        To test the renewal process, run the following command:
+
+        ```bash
+        sudo certbot renew --dry-run
+        ```
+
+        This command simulates the full renewal process without modifying your active certificate. If the dry run succeeds, automatic renewal will work as expected.
+
+        To trigger an actual renewal immediately, run the following command:
+
+        ```bash
+        sudo certbot renew --force-renewal
+        ```
+
+        Note that after a certificate is renewed, Nginx must be reloaded so it can begin using the new certificate. To do this, run the following command:
+
+        ```bash
+        systemctl reload nginx
+        ```
+
+        To automate the process of renewing a certificate and reloading Nginx, you can create a simple deploy hook that Certbot will run after every successful renewal.
+
+        Inside `/etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh`, add the following:
+
+        ```bash
+        #!/bin/sh
+        systemctl reload nginx
+        ```
+
+        Then make the hook executable:
+
+        ```bash
+        sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+        ```
+
+    </Step>
+
+</Steps>

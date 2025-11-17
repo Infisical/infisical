@@ -11,6 +11,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const HCVaultSyncDestinationConfigSchema = z.object({
   mount: z
     .string()
@@ -33,10 +35,12 @@ const HCVaultSyncDestinationConfigSchema = z.object({
 
 const HCVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const HCVaultSyncSchema = BaseSecretSyncSchema(SecretSync.HCVault, HCVaultSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.HCVault),
-  destinationConfig: HCVaultSyncDestinationConfigSchema
-});
+export const HCVaultSyncSchema = BaseSecretSyncSchema(SecretSync.HCVault, HCVaultSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.HCVault),
+    destinationConfig: HCVaultSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.HCVault] }));
 
 export const CreateHCVaultSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.HCVault,
@@ -52,9 +56,11 @@ export const UpdateHCVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: HCVaultSyncDestinationConfigSchema.optional()
 });
 
-export const HCVaultSyncListItemSchema = z.object({
-  name: z.literal("Hashicorp Vault"),
-  connection: z.literal(AppConnection.HCVault),
-  destination: z.literal(SecretSync.HCVault),
-  canImportSecrets: z.literal(true)
-});
+export const HCVaultSyncListItemSchema = z
+  .object({
+    name: z.literal("Hashicorp Vault"),
+    connection: z.literal(AppConnection.HCVault),
+    destination: z.literal(SecretSync.HCVault),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.HCVault] }));

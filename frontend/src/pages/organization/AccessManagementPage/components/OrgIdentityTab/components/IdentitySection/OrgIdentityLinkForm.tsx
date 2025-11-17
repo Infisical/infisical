@@ -1,13 +1,15 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FilterableSelect, FormControl } from "@app/components/v2";
 import { useOrganization } from "@app/context";
-import { useGetAvailableOrgIdentities, useGetOrgRoles } from "@app/hooks/api";
+import { useGetOrgRoles } from "@app/hooks/api";
 import { useCreateOrgIdentityMembership } from "@app/hooks/api/orgIdentityMembership";
+import { orgIdentityMembershipQuery } from "@app/hooks/api/orgIdentityMembership/queries";
 
 const schema = z
   .object({
@@ -22,15 +24,26 @@ type Props = {
   onClose: () => void;
 };
 
-export const IdentityLinkForm = ({ onClose }: Props) => {
+export const OrgIdentityLinkForm = ({ onClose }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
 
   const { data: roles } = useGetOrgRoles(orgId);
 
+  // const [searchValue, setSearchValue] = useState("");
+  //
+  // const [debouncedSearchValue] = useDebounce(searchValue);
+
   const { mutateAsync: createMutateAsync } = useCreateOrgIdentityMembership();
-  const { data: rootOrgIdentities, isPending: isRootOrgLoading } = useGetAvailableOrgIdentities();
+
+  // TODO: name filter needs to be implemented on backend
+  const { data: rootOrgIdentities, isPending: isRootOrgLoading } = useQuery({
+    ...orgIdentityMembershipQuery.listAvailable({
+      // identityName: debouncedSearchValue
+    }),
+    placeholderData: (prev) => prev
+  });
 
   const {
     control,
@@ -69,6 +82,7 @@ export const IdentityLinkForm = ({ onClose }: Props) => {
               value={value}
               onChange={onChange}
               placeholder="Select identity..."
+              // onInputChange={setSearchValue}
               options={rootOrgIdentities}
               getOptionValue={(option) => option.id}
               getOptionLabel={(option) => option.name}
@@ -94,7 +108,6 @@ export const IdentityLinkForm = ({ onClose }: Props) => {
               placeholder="Select role..."
               getOptionValue={(option) => option.slug}
               getOptionLabel={(option) => option.name}
-              // menuPortalTarget={document.body}
             />
           </FormControl>
         )}

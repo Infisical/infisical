@@ -9,7 +9,7 @@ import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 const alertVariants = cva(
-  "w-full bg-mineshaft-800 rounded-lg border border-bunker-400 px-4 py-3 text-sm flex items-center gap-x-4",
+  "w-full bg-mineshaft-800 rounded-lg border border-bunker-400 px-4 py-3 text-sm flex items-center gap-x-3",
   {
     variants: {
       variant: {
@@ -28,6 +28,7 @@ type AlertProps = {
   title?: string;
   hideTitle?: boolean;
   icon?: React.ReactNode;
+  iconClassName?: string;
 };
 
 const variantTitleMap = {
@@ -45,36 +46,41 @@ const variantIconMap = {
 const Alert = forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof alertVariants> & AlertProps
->(({ className, variant, title, icon, hideTitle = false, children, ...props }, ref) => {
-  const defaultTitle = title ?? variantTitleMap[variant ?? "default"];
-  return (
-    <div
-      ref={ref}
-      role="alert"
-      className={twMerge(alertVariants({ variant }), className)}
-      {...props}
-    >
-      <div>
-        {typeof icon !== "undefined" ? (
-          <>{icon} </>
-        ) : (
-          <FontAwesomeIcon
-            className="text-lg text-primary"
-            icon={variantIconMap[variant ?? "default"]}
-          />
-        )}
+>(
+  (
+    { className, variant, title, icon, hideTitle = false, children, iconClassName, ...props },
+    ref
+  ) => {
+    const defaultTitle = title ?? variantTitleMap[variant ?? "default"];
+    return (
+      <div
+        ref={ref}
+        role="alert"
+        className={twMerge(alertVariants({ variant }), className)}
+        {...props}
+      >
+        <div>
+          {typeof icon !== "undefined" ? (
+            <>{icon} </>
+          ) : (
+            <FontAwesomeIcon
+              className={twMerge("text-lg text-primary", iconClassName)}
+              icon={variantIconMap[variant ?? "default"]}
+            />
+          )}
+        </div>
+        <div className="flex flex-col gap-y-1">
+          {hideTitle ? null : (
+            <h5 className="leading-6 font-medium tracking-tight" {...props}>
+              {defaultTitle}
+            </h5>
+          )}
+          {children}
+        </div>
       </div>
-      <div className="flex flex-col gap-y-1">
-        {hideTitle ? null : (
-          <h5 className="leading-6 font-medium tracking-tight" {...props}>
-            {defaultTitle}
-          </h5>
-        )}
-        {children}
-      </div>
-    </div>
-  );
-});
+    );
+  }
+);
 Alert.displayName = "Alert";
 
 const AlertDescription = forwardRef<
