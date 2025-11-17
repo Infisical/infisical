@@ -1,7 +1,8 @@
 import crypto from "node:crypto";
 
 import { ForbiddenError, subject } from "@casl/ability";
-import { isAxiosError } from "axios";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -44,6 +45,15 @@ type TPamMcpServerServiceFactoryDep = {
 };
 
 export type TPamMcpServerServiceFactory = ReturnType<typeof pamMcpServerServiceFactory>;
+
+export const PamMcpServerConfigurationSchema = z.object({
+  version: z.number().default(1),
+  statement: z.object({
+    toolsAllowed: z.string().array().optional()
+  })
+});
+
+export type TPamMcpServerConfiguration = z.infer<typeof PamMcpServerConfigurationSchema>;
 
 export const pamMcpServerServiceFactory = ({
   pamAccountDAL,
@@ -256,8 +266,182 @@ export const pamMcpServerServiceFactory = ({
     return { projectId: account.projectId };
   };
 
+  const listMcpTools = async (actor: ProjectServiceActor, accountId: string) => {
+    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
+    if (!orgLicensePlan.pam) {
+      throw new BadRequestError({
+        message: "PAM operation failed due to organization plan restrictions."
+      });
+    }
+
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const resource = await pamResourceDAL.findOne({
+      id: account.resourceId,
+      resourceType: PamResource.Mcp
+    });
+    if (!resource) throw new NotFoundError({ message: `MCP Resource with ID '${account.resourceId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: account.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const accountPath = await getFullPamFolderPath({
+      pamFolderDAL,
+      folderId: account.folderId,
+      projectId: account.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.Edit,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountPath
+      })
+    );
+
+    const connectionDetails = (await decryptResourceConnectionDetails({
+      projectId: resource.projectId,
+      encryptedConnectionDetails: resource.encryptedConnectionDetails,
+      kmsService
+    })) as TMcpResourceConnectionDetails;
+
+    const decryptedCredentials = (await decryptAccountCredentials({
+      encryptedCredentials: account.encryptedCredentials,
+      projectId: account.projectId,
+      kmsService
+    })) as TMcpAccountCredentials;
+
+    let client: Client | undefined;
+    try {
+      client = new Client({
+        name: `infisical-pam-client-${account.name}`,
+        version: "1.0.0"
+      });
+      const headers = Object.fromEntries((decryptedCredentials?.headers || []).map((el) => [el.key, el.value]));
+      if (decryptedCredentials.token?.accessToken) {
+        headers.Authorization = `Bearer ${decryptedCredentials.token?.accessToken}`;
+      }
+      const transport = new StreamableHTTPClientTransport(new URL(connectionDetails.url), {
+        requestInit: {
+          headers
+        }
+      });
+      await client.connect(transport);
+      // handle pagination later
+      const { tools } = await client.listTools();
+      return tools.map((el) => ({ name: el.name, description: el.description }));
+    } finally {
+      if (client) await client.close();
+    }
+  };
+
+  const listMcpAccountConfiguredRules = async (actor: ProjectServiceActor, accountId: string) => {
+    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
+    if (!orgLicensePlan.pam) {
+      throw new BadRequestError({
+        message: "PAM operation failed due to organization plan restrictions."
+      });
+    }
+
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const resource = await pamResourceDAL.findOne({
+      id: account.resourceId,
+      resourceType: PamResource.Mcp
+    });
+    if (!resource) throw new NotFoundError({ message: `MCP Resource with ID '${account.resourceId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: account.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const accountPath = await getFullPamFolderPath({
+      pamFolderDAL,
+      folderId: account.folderId,
+      projectId: account.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.Edit,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountPath
+      })
+    );
+
+    const rules = await PamMcpServerConfigurationSchema.parseAsync(account.config || { version: 1, statement: {} });
+    return rules;
+  };
+
+  const updateMcpAccountConfiguredRules = async (
+    actor: ProjectServiceActor,
+    accountId: string,
+    rules: TPamMcpServerConfiguration
+  ) => {
+    const orgLicensePlan = await licenseService.getPlan(actor.orgId);
+    if (!orgLicensePlan.pam) {
+      throw new BadRequestError({
+        message: "PAM operation failed due to organization plan restrictions."
+      });
+    }
+
+    const account = await pamAccountDAL.findById(accountId);
+    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+
+    const resource = await pamResourceDAL.findOne({
+      id: account.resourceId,
+      resourceType: PamResource.Mcp
+    });
+    if (!resource) throw new NotFoundError({ message: `MCP Resource with ID '${account.resourceId}' not found` });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: account.projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const accountPath = await getFullPamFolderPath({
+      pamFolderDAL,
+      folderId: account.folderId,
+      projectId: account.projectId
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPamAccountActions.Edit,
+      subject(ProjectPermissionSub.PamAccounts, {
+        resourceName: resource.name,
+        accountName: account.name,
+        accountPath
+      })
+    );
+
+    await pamAccountDAL.updateById(accountId, { config: rules });
+    return rules;
+  };
+
   return {
     handleMcpServerOauthAuthorize,
-    handleMcpServerOauthCallback
+    handleMcpServerOauthCallback,
+    listMcpAccountConfiguredRules,
+    updateMcpAccountConfiguredRules,
+    listMcpTools
   };
 };

@@ -10,11 +10,13 @@ import {
   TDeletePamAccountDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
+  TMcpServerConfiguration,
   TMcpServerOAuthAuthorizeDTO,
   TMcpServerOAuthCallbackDTO,
   TPamAccount,
   TPamFolder,
   TPamResource,
+  TUpdateMcpServerConfigDTO,
   TUpdatePamAccountDTO,
   TUpdatePamFolderDTO,
   TUpdatePamResourceDTO
@@ -199,6 +201,23 @@ export const useMcpServerOAuthCallback = () => {
       if (variables.projectId) {
         queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(variables.projectId) });
       }
+    }
+  });
+};
+
+export const useUpdateMcpServerConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, config }: TUpdateMcpServerConfigDTO) => {
+      const { data } = await apiRequest.post<{ config: TMcpServerConfiguration }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/config`,
+        { config }
+      );
+
+      return data.config;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.getMcpConfig(variables.accountId) });
     }
   });
 };
