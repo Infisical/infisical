@@ -46,7 +46,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -147,6 +147,12 @@ export const PamAccountsTable = ({ projectId }: Props) => {
   const totalCount = data?.totalCount || 0;
   const folderPaths = data?.folderPaths || {};
   const currentFolderId = data?.folderId ?? null;
+
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const foldersToRender = useMemo(() => {
     if (accountView === PamAccountView.Flat) {

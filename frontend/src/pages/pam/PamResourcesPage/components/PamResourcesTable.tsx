@@ -45,7 +45,7 @@ import {
   PreferenceKey,
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
-import { usePagination, usePopUp } from "@app/hooks";
+import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import {
   PAM_RESOURCE_TYPE_MAP,
@@ -120,6 +120,12 @@ export const PamResourcesTable = ({ projectId }: Props) => {
 
   const resources = data?.resources || [];
   const totalCount = data?.totalCount || 0;
+
+  useResetPageHelper({
+    totalCount,
+    offset,
+    setPage
+  });
 
   const filteredResources = useMemo(
     () =>
