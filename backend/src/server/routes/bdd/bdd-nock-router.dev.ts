@@ -10,8 +10,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 // When running in production, we don't want to even import nock, because it's not needed and it increases memory usage a lots.
 // It once caused an outage in the production environment.
 // This is why we would rather to crash the app if it's not in development mode (in that case, Kubernetes should stop it from rolling out).
-if (process.env.NODE_ENV !== "development") {
-  throw new Error("BDD Nock API is not enabled");
+if (process.env.NODE_ENV === "production") {
+  throw new Error("BDD Nock API can only be enabled in development or test mode");
 }
 
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
@@ -24,7 +24,7 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
   const checkIfBddNockApiEnabled = () => {
     // Note: Please note that this API is only available in development mode and only for BDD tests.
     // This endpoint should NEVER BE ENABLED IN PRODUCTION!
-    if (appCfg.NODE_ENV !== "development" || !appCfg.isBddNockApiEnabled) {
+    if (appCfg.NODE_ENV === "production" || !appCfg.isBddNockApiEnabled) {
       throw new ForbiddenRequestError({ message: "BDD Nock API is not enabled" });
     }
   };
