@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { GitHubRadarConnectionMethod } from "./github-radar-connection-enums";
 
 export const GitHubRadarConnectionInputCredentialsSchema = z.object({
@@ -53,14 +54,16 @@ export const SanitizedGitHubRadarConnectionSchema = z.discriminatedUnion("method
   BaseGitHubRadarConnectionSchema.extend({
     method: z.literal(GitHubRadarConnectionMethod.App),
     credentials: GitHubRadarConnectionOutputCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHubRadar]} (GitHub App)` }))
 ]);
 
-export const GitHubRadarConnectionListItemSchema = z.object({
-  name: z.literal("GitHub Radar"),
-  app: z.literal(AppConnection.GitHubRadar),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
-  methods: z.nativeEnum(GitHubRadarConnectionMethod).array(),
-  appClientSlug: z.string().optional()
-});
+export const GitHubRadarConnectionListItemSchema = z
+  .object({
+    name: z.literal("GitHub Radar"),
+    app: z.literal(AppConnection.GitHubRadar),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
+    methods: z.nativeEnum(GitHubRadarConnectionMethod).array(),
+    appClientSlug: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.GitHubRadar] }));

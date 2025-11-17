@@ -9,7 +9,7 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
-import { registerBddNockRouter } from "./bdd-nock-router";
+// import { registerBddNockRouter } from "./bdd-nock-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
@@ -242,7 +242,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
   // This route should NEVER BE ENABLED IN PRODUCTION!
-  if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/bdd-nock" });
-  }
+  // if (getConfig().isBddNockApiEnabled) {
+  //   await server.register(registerBddNockRouter, { prefix: "/bdd-nock" });
+  // }
 };

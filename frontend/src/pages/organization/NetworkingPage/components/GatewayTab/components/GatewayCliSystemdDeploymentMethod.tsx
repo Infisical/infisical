@@ -65,7 +65,7 @@ const formSchemaWithToken = baseFormSchema.extend({
   identityToken: z.string().min(1, "Token is required")
 });
 
-export const GatewayCliDeploymentMethod = () => {
+export const GatewayCliSystemdDeploymentMethod = () => {
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
@@ -182,25 +182,47 @@ export const GatewayCliDeploymentMethod = () => {
     }
   };
 
-  const command = useMemo(() => {
+  const installCommand = useMemo(() => {
     const relayPart = relay?.id !== "_auto" ? ` --relay=${relay?.name || ""}` : "";
-    return `sudo infisical gateway start --name=${name}${relayPart} --domain=${siteURL} --token=${identityToken}`;
+    return `sudo infisical gateway systemd install --name=${name}${relayPart} --domain=${siteURL} --token=${identityToken}`;
   }, [name, relay, identityToken, siteURL]);
+
+  const startServiceCommand = "sudo systemctl start infisical-gateway";
 
   if (step === "command") {
     return (
       <>
-        <FormLabel label="CLI Command" />
+        <FormLabel label="Installation Command" />
         <div className="flex gap-2">
-          <Input value={command} isDisabled />
+          <Input value={installCommand} isDisabled />
           <IconButton
-            ariaLabel="copy"
+            ariaLabel="copy install command"
             variant="outline_bg"
             colorSchema="secondary"
             onClick={() => {
-              navigator.clipboard.writeText(command);
+              navigator.clipboard.writeText(installCommand);
               createNotification({
-                text: "Command copied to clipboard",
+                text: "Installation command copied to clipboard",
+                type: "info"
+              });
+            }}
+            className="w-10"
+          >
+            <FontAwesomeIcon icon={faCopy} />
+          </IconButton>
+        </div>
+
+        <FormLabel label="Start the Gateway Service" className="mt-4" />
+        <div className="mb-2 flex gap-2">
+          <Input value={startServiceCommand} isDisabled />
+          <IconButton
+            ariaLabel="copy start service command"
+            variant="outline_bg"
+            colorSchema="secondary"
+            onClick={() => {
+              navigator.clipboard.writeText(startServiceCommand);
+              createNotification({
+                text: "Start service command copied to clipboard",
                 type: "info"
               });
             }}

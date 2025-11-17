@@ -14,6 +14,8 @@ import {
   TerraformCloudSyncScope
 } from "@app/services/secret-sync/terraform-cloud/terraform-cloud-sync-enums";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const TerraformCloudSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
   z.object({
     scope: z
@@ -47,13 +49,12 @@ const TerraformCloudSyncDestinationConfigSchema = z.discriminatedUnion("scope", 
 
 const TerraformCloudSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
-export const TerraformCloudSyncSchema = BaseSecretSyncSchema(
-  SecretSync.TerraformCloud,
-  TerraformCloudSyncOptionsConfig
-).extend({
-  destination: z.literal(SecretSync.TerraformCloud),
-  destinationConfig: TerraformCloudSyncDestinationConfigSchema
-});
+export const TerraformCloudSyncSchema = BaseSecretSyncSchema(SecretSync.TerraformCloud, TerraformCloudSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.TerraformCloud),
+    destinationConfig: TerraformCloudSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TerraformCloud] }));
 
 export const CreateTerraformCloudSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.TerraformCloud,
@@ -69,9 +70,11 @@ export const UpdateTerraformCloudSyncSchema = GenericUpdateSecretSyncFieldsSchem
   destinationConfig: TerraformCloudSyncDestinationConfigSchema.optional()
 });
 
-export const TerraformCloudSyncListItemSchema = z.object({
-  name: z.literal("Terraform Cloud"),
-  connection: z.literal(AppConnection.TerraformCloud),
-  destination: z.literal(SecretSync.TerraformCloud),
-  canImportSecrets: z.literal(false)
-});
+export const TerraformCloudSyncListItemSchema = z
+  .object({
+    name: z.literal("Terraform Cloud"),
+    connection: z.literal(AppConnection.TerraformCloud),
+    destination: z.literal(SecretSync.TerraformCloud),
+    canImportSecrets: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.TerraformCloud] }));

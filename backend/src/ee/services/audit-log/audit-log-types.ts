@@ -365,6 +365,8 @@ export enum EventType {
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
+  USER_LOGIN = "user-login",
+  SELECT_ORGANIZATION = "select-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -570,6 +572,7 @@ interface UserActorMetadata {
   email?: string | null;
   username: string;
   permission?: Record<string, unknown>;
+  authMethod?: string;
 }
 
 interface ServiceActorMetadata {
@@ -2657,6 +2660,22 @@ interface OrgAdminBypassSSOEvent {
   metadata: Record<string, string>; // no metadata yet
 }
 
+interface UserLoginEvent {
+  type: EventType.USER_LOGIN;
+  metadata: {
+    organizationId?: string;
+    authProvider?: string;
+  };
+}
+
+interface SelectOrganizationEvent {
+  type: EventType.SELECT_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+  };
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -4535,4 +4554,6 @@ export type Event =
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
   | AutomatedRenewCertificate
-  | AutomatedRenewCertificateFailed;
+  | AutomatedRenewCertificateFailed
+  | UserLoginEvent
+  | SelectOrganizationEvent;
