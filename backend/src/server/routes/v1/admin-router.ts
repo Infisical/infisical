@@ -10,6 +10,7 @@ import {
   UsersSchema
 } from "@app/db/schemas";
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { getConfig, overridableKeys } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
@@ -67,7 +68,7 @@ export const registerAdminRouter = async (server: FastifyZodProvider) => {
       const serverEnvs = getConfig();
 
       const licenseKeyConfig = getLicenseKeyConfig();
-      const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === "offline";
+      const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
       return {
         config: {

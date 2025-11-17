@@ -137,6 +137,11 @@ export type TOrgInvoiceDTO = TOrgPermission;
 
 export type TOrgLicensesDTO = TOrgPermission;
 
+export enum LicenseType {
+  Offline = "offline",
+  Online = "online"
+}
+
 export type TLicenseKeyConfig =
   | {
       isValid: false;
@@ -144,5 +149,5 @@ export type TLicenseKeyConfig =
   | {
       isValid: true;
       licenseKey: string;
-      type: "offline" | "online";
+      type: LicenseType;
     };

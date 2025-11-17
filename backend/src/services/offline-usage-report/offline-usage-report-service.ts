@@ -35,7 +35,8 @@ export const offlineUsageReportServiceFactory = ({
 
     if (!hasOfflineLicense) {
       throw new BadRequestError({
-        message: "Offline usage reports are not enabled. An offline license must be configured in LICENSE_KEY."
+        message:
+          "Offline usage reports are not enabled. Usage reports are only available for self-hosted offline instances"
       });
     }
 

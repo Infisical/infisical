@@ -7,7 +7,7 @@ import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
-import { TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
+import { LicenseType, TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
 
 export const isOfflineLicenseKey = (licenseKey: string): boolean => {
   try {
@@ -32,10 +32,10 @@ export const getLicenseKeyConfig = (
 
   if (licenseKey) {
     if (isOfflineLicenseKey(licenseKey)) {
-      return { isValid: true, licenseKey, type: "offline" };
+      return { isValid: true, licenseKey, type: LicenseType.Offline };
     }
 
-    return { isValid: true, licenseKey, type: "online" };
+    return { isValid: true, licenseKey, type: LicenseType.Online };
   }
 
   const offlineLicenseKey = cfg.LICENSE_KEY_OFFLINE;
@@ -43,7 +43,7 @@ export const getLicenseKeyConfig = (
   // backwards compatibility
   if (offlineLicenseKey) {
     if (isOfflineLicenseKey(offlineLicenseKey)) {
-      return { isValid: true, licenseKey: offlineLicenseKey, type: "offline" };
+      return { isValid: true, licenseKey: offlineLicenseKey, type: LicenseType.Offline };
     }
 
     return { isValid: false };

@@ -14,7 +14,7 @@ This guide walks through how you can use these paid features on a self-hosted in
         Once purchased, you will be issued a license key.
     </Step>
     <Step title="Activate the license">
-        Assign the issued license key to the `LICENSE_KEY` environment variable in your Infisical instance. The system will automatically detect whether the license is online or offline.
+        Set your license key as the value of the **LICENSE_KEY** environment variable within your Infisical instance.
 
         <Tabs>
             <Tab title="Regular License">
@@ -33,7 +33,7 @@ This guide walks through how you can use these paid features on a self-hosted in
             - The system will automatically detect that it's an offline license based on the key format.
 
             <Note>
-                <b>Backwards Compatibility:</b> The `LICENSE_KEY_OFFLINE` environment variable is still supported for backwards compatibility, but we recommend using `LICENSE_KEY` for all license types going forward.
+                While the LICENSE_KEY_OFFLINE environment variable continues to be supported for compatibility with existing configurations, we recommend transitioning to LICENSE_KEY for all license types going forward.
             </Note>
             </Tab>
         </Tabs>
