@@ -1,0 +1,16 @@
+---
+title: "Let's Encrypt"
+description: "Learn how to connect Infisical to Let's Encrypt to issue certificates."
+---
+
+## Concept
+
+Infisical can connect to [Let's Encrypt](https://letsencrypt.org/) using the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) to issue certificates back to your end-entities.
+
+## Guide to Connecting Infisical to Let's Encrypt CA
+
+To connect Infisical to Let's Encrypt, follow the steps in the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide but use the Let's Encrypt **ACME Directory URL**: `https://acme-v02.api.letsencrypt.org/directory`.
+
+Note that Let’s Encrypt issues 90-day certificates and enforces a limit of 50 certificates per registered domain per week.
+
+We strongly recommend testing your setup against the Let's Encrypt staging environment first at the **ACME Directory URL** `https://acme-staging-v02.api.letsencrypt.org/directory` prior to switching to the production environment. This allows you to verify your DNS configuration and certificate issuance process without consuming production rate limits.
