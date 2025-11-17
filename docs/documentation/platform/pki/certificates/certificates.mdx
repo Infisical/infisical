@@ -22,10 +22,7 @@ where you can manage various aspects of its lifecycle including deployment to cl
 To issue a certificate, you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
 
 The [enrollment method](/documentation/platform/pki/enrollment-methods/overview) configured on the certificate profile determines how a certificate is issued for it.
-Refer to the documentation for each enrollment method below to learn more about how to issue certificates using it.
-
-- [API](/documentation/platform/pki/enrollment-methods/api): Issue a certificate over UI or by making an API request to Infisical.
-- [EST](/documentation/platform/pki/enrollment-methods/est): Issue a certificate over the EST protocol.
+Refer to the documentation for each enrollment method to learn more about how to issue certificates using it.
 
 ## Guide to Renewing Certificates
 
@@ -61,9 +58,9 @@ A certificate can be considered for auto-renewal at time of issuance if the **En
 
 The following examples demonstrate different approaches to certificate renewal:
 
-- Using the ACME enrollment method, you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for Apache, Nginx, or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.
-- Using the ACME enrollment method, you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
-- Using the API enrollment method, you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
+- Using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme), you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for [Apache](/documentation/platform/pki/integration-guides/apache-certbot), [Nginx](/documentation/platform/pki/integration-guides/nginx-certbot), or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.
+- Using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme), you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
+- Using the [API enrollment method](/documentation/platform/pki/enrollment-methods/api), you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
 
 ## Guide to Downloading Certificates
 
