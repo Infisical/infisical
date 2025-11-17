@@ -2702,7 +2702,7 @@ export const registerRoutes = async (
   // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
   // This route should NEVER BE ENABLED IN PRODUCTION!
   if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/bdd-nock" });
+    await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
   }
 
   server.addHook("onClose", async () => {
