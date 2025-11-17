@@ -24,7 +24,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"]
+      "@app/*": ["./src/*"],
+      "@bdd_routes/bdd-nock-router": ["./src/server/routes/bdd/bdd-nock-router.ts"]
     },
     "jsx": "react-jsx"
   },

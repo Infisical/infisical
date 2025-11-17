@@ -8,7 +8,6 @@ import { registerSecretSyncRouter, SECRET_SYNC_REGISTER_ROUTER_MAP } from "@app/
 
 import { registerAdminRouter } from "./admin-router";
 import { registerAuthRoutes } from "./auth-router";
-import { registerBddNockRouter } from "./bdd-nock-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
@@ -71,7 +70,6 @@ import { registerUserEngagementRouter } from "./user-engagement-router";
 import { registerUserRouter } from "./user-router";
 import { registerWebhookRouter } from "./webhook-router";
 import { registerWorkflowIntegrationRouter } from "./workflow-integration-router";
-import { getConfig } from "@app/lib/config/env";
 
 export const registerV1Routes = async (server: FastifyZodProvider) => {
   await server.register(registerSsoRouter, { prefix: "/sso" });
@@ -239,10 +237,4 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(registerEventRouter, { prefix: "/events" });
   await server.register(registerUpgradePathRouter, { prefix: "/upgrade-path" });
-
-  // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
-  // This route should NEVER BE ENABLED IN PRODUCTION!
-  if (getConfig().isBddNockApiEnabled) {
-    await server.register(registerBddNockRouter, { prefix: "/bdd-nock" });
-  }
 };

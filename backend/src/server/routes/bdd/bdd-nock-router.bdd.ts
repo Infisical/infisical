@@ -7,7 +7,15 @@ import { logger } from "@app/lib/logger";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
+// When running in production, we don't want to even import nock, because it's not needed and it increases memory usage a lots.
+// It once caused an outage in the production environment.
+// This is why we would rather to crash the app if it's not in development mode (in that case, Kubernetes should stop it from rolling out).
+if (process.env.NODE_ENV !== "development") {
+  throw new Error("BDD Nock API is not enabled");
+}
+
 export const registerBddNockRouter = async (server: FastifyZodProvider) => {
+  const appCfg = getConfig();
   const importNock = () => {
     // Notice: it seems like importing nock somehow increase memory usage a lots, let's import it lazily.
     // eslint-disable-next-line import/no-extraneous-dependencies
@@ -15,7 +23,6 @@ export const registerBddNockRouter = async (server: FastifyZodProvider) => {
   };
 
   const checkIfBddNockApiEnabled = () => {
-    const appCfg = getConfig();
     // Note: Please note that this API is only available in development mode and only for BDD tests.
     // This endpoint should NEVER BE ENABLED IN PRODUCTION!
     if (appCfg.NODE_ENV !== "development" || !appCfg.isBddNockApiEnabled) {
