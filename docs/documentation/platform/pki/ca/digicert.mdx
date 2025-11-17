@@ -1,0 +1,16 @@
+---
+title: "DigiCert"
+description: "Learn how to connect Infisical to DigiCert to issue certificates."
+---
+
+## Concept
+
+Infisical can connect to [DigiCert](https://www.digicert.com/) using the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) to issue certificates back to your end-entities.
+
+## Guide to Connecting Infisical to DigiCert CA
+
+To connect Infisical to DigiCert, follow the steps in the [ACME-compatible CA integration](/documentation/platform/pki/ca/acme-ca) guide but use the DigiCert **ACME Directory URL**: `https://acme.digicert.com/v2/acme/directory`.
+
+DigiCert requires **External Account Binding (EAB)** for all ACME registrations. You will need to obtain both a Key Identifier (KID) and an HMAC Key from your DigiCert account before registering the ACME CA in Infisical.
+
+DigiCert typically issues certificates with a 90-day validity period.
