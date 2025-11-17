@@ -8,7 +8,8 @@ export enum SecretRotation {
   AwsIamUserSecret = "aws-iam-user-secret",
   LdapPassword = "ldap-password",
   OktaClientSecret = "okta-client-secret",
-  RedisCredentials = "redis-credentials"
+  RedisCredentials = "redis-credentials",
+  MongoDBCredentials = "mongodb-credentials"
 }
 
 export enum SecretRotationStatus {
