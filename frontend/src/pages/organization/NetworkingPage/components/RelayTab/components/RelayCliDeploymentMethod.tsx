@@ -156,15 +156,6 @@ export const RelayCliDeploymentMethod = () => {
     }
   };
 
-  const handleIdentityChange = (
-    selectedIdentity: SingleValue<{
-      id: string;
-      name: string;
-    }>
-  ) => {
-    setIdentity(selectedIdentity);
-  };
-
   const command = useMemo(() => {
     return `infisical relay start --name=${name} --domain=${siteURL} --host=${host} --token=${identityToken}`;
   }, [name, siteURL, host, identityToken]);
@@ -245,7 +236,7 @@ export const RelayCliDeploymentMethod = () => {
           <FilterableSelect
             value={identity}
             onChange={(e) =>
-              handleIdentityChange(
+              setIdentity(
                 e as SingleValue<{
                   id: string;
                   name: string;
