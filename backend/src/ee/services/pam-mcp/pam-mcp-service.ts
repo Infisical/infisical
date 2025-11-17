@@ -1,7 +1,11 @@
 import crypto from "node:crypto";
 
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { subject } from "@casl/ability";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Server as RawMcpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -10,10 +14,21 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
 import { BadRequestError, UnauthorizedError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
+import { ProjectServiceActor } from "@app/lib/types";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TKmsServiceFactory } from "@app/services/kms/kms-service";
+import { KmsDataKey } from "@app/services/kms/kms-types";
 
+import { TPamAccountDALFactory } from "../pam-account/pam-account-dal";
+import { TPamMcpServerConfiguration } from "../pam-account/pam-mcp-server-service";
+import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
+import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
+import { TMcpAccountCredentials, TMcpResourceConnectionDetails } from "../pam-resource/mcp/mcp-resource-types";
+import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
+import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
+import { ProjectPermissionPamAccountActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
   TOauthAuthorizeClient,
   TOauthAuthorizeClientScope,
@@ -60,54 +75,164 @@ type TPamMcpServiceFactoryDep = {
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById" | "validateRefreshToken">;
+  kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+  pamResourceDAL: TPamResourceDALFactory;
+  pamAccountDAL: TPamAccountDALFactory;
+  pamFolderDAL: TPamFolderDALFactory;
 };
 
 export type TPamMcpServiceFactory = ReturnType<typeof pamMcpServiceFactory>;
 
 const OAUTH_FLOW_EXPIRY_IN_SECS = 5 * 60;
-export const pamMcpServiceFactory = ({ keyStore, permissionService, authTokenService }: TPamMcpServiceFactoryDep) => {
-  const interactWithMcp = async () => {
+export const pamMcpServiceFactory = ({
+  keyStore,
+  permissionService,
+  authTokenService,
+  pamAccountDAL,
+  pamResourceDAL,
+  pamFolderDAL,
+  kmsService
+}: TPamMcpServiceFactoryDep) => {
+  const interactWithMcp = async (actor: ProjectServiceActor, projectId: string) => {
     const appCfg = getConfig();
-    const server = new McpServer({
-      name: "infisical-server",
-      version: appCfg.INFISICAL_PLATFORM_VERSION || "0.0.1"
+
+    const mcpResources = await pamResourceDAL.find({
+      resourceType: PamResource.Mcp,
+      projectId
     });
 
-    // Add an addition tool
-    server.registerTool(
-      "add",
-      {
-        title: "Addition Tool",
-        description: "Add two numbers",
-        inputSchema: { a: z.number(), b: z.number() },
-        outputSchema: { result: z.number() }
-      },
-      async ({ a, b }) => {
-        const output = { result: a + b };
-        return {
-          content: [{ type: "text", text: JSON.stringify(output) }],
-          structuredContent: output
-        };
+    const mcpAccounts = await pamAccountDAL.find({
+      projectId,
+      $in: {
+        resourceId: mcpResources.map((el) => el.id)
       }
-    );
+    });
 
-    // Add a dynamic greeting resource
-    server.registerResource(
-      "greeting",
-      new ResourceTemplate("greeting://{name}", { list: undefined }),
-      {
-        title: "Greeting Resource", // Display name for UI
-        description: "Dynamic greeting generator"
-      },
-      async (uri, { name }) => ({
-        contents: [
-          {
-            uri: uri.href,
-            text: `Hello, ${name}!`
+    const accountPathFn = await getFullPamFolderPath({
+      pamFolderDAL,
+      projectId
+    });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.PAM
+    });
+
+    const allowedMcpAccounts = mcpAccounts.filter((account) => {
+      const resource = mcpResources.find((el) => el.id === account.resourceId);
+      const accountPath = accountPathFn({ folderId: account.folderId });
+      if (!resource) return false;
+      return permission.can(
+        ProjectPermissionPamAccountActions.Access,
+        subject(ProjectPermissionSub.PamAccounts, {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath
+        })
+      );
+    });
+
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId
+    });
+
+    const mcpClientTools = await Promise.all(
+      allowedMcpAccounts.map(async (mcpAccount) => {
+        const resource = mcpResources.find((el) => el.id === mcpAccount.resourceId)!;
+        const connectionDetails = JSON.parse(
+          decryptor({
+            cipherTextBlob: resource.encryptedConnectionDetails
+          }).toString()
+        ) as TMcpResourceConnectionDetails;
+
+        const decryptedCredentials = JSON.parse(
+          decryptor({
+            cipherTextBlob: mcpAccount.encryptedCredentials
+          }).toString()
+        ) as TMcpAccountCredentials;
+
+        const accountConfiguration = mcpAccount.config as TPamMcpServerConfiguration;
+
+        const client = new Client({
+          name: `infisical-pam-client-${mcpAccount.name}`,
+          version: "1.0.0"
+        });
+        const headers = Object.fromEntries((decryptedCredentials?.headers || []).map((el) => [el.key, el.value]));
+        if (decryptedCredentials.token?.accessToken) {
+          headers.Authorization = `Bearer ${decryptedCredentials.token?.accessToken}`;
+        }
+        const transport = new StreamableHTTPClientTransport(new URL(connectionDetails.url), {
+          requestInit: {
+            headers
           }
-        ]
+        });
+        await client.connect(transport);
+        // handle pagination later
+        const { tools } = await client.listTools();
+        return {
+          client,
+          tools: tools.filter((el) => accountConfiguration?.statement?.toolsAllowed?.includes(el.name))
+        };
       })
     );
+
+    const server = new RawMcpServer(
+      {
+        name: "infisical-server",
+        version: appCfg.INFISICAL_PLATFORM_VERSION || "0.0.1"
+      },
+      {
+        capabilities: {
+          tools: {}
+        }
+      }
+    );
+    // Handle ListTools request
+    server.setRequestHandler(ListToolsRequestSchema, () => ({
+      tools: mcpClientTools.flatMap((el) => el.tools)
+    }));
+
+    // Handle CallTool request
+    server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      const { name, arguments: args } = request.params;
+
+      // Find the tool in our loaded tools
+      const selectMcpClient = mcpClientTools.find((el) => el.tools.find((t) => t.name === name));
+      if (!selectMcpClient) {
+        throw new Error(`Unknown tool: ${name}`);
+      }
+
+      try {
+        const result = await selectMcpClient.client.callTool({
+          name,
+          arguments: args
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2)
+            }
+          ]
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: ${error instanceof Error ? error.message : "Unknown error"}`
+            }
+          ],
+          isError: true
+        };
+      }
+    });
 
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,

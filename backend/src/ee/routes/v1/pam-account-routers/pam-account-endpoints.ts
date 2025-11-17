@@ -41,7 +41,6 @@ export const registerPamResourceEndpoints = <C extends TPamAccount>({
       rateLimit: writeLimit
     },
     schema: {
-      hide: false,
       description: "Create PAM account",
       body: createAccountSchema,
       response: {

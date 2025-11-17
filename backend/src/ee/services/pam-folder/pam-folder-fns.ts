@@ -2,32 +2,32 @@ import { TPamFolderDALFactory } from "./pam-folder-dal";
 
 type GetFullFolderPath = {
   pamFolderDAL: Pick<TPamFolderDALFactory, "find">;
-  folderId?: string | null;
   projectId: string;
 };
 
 export const getFullPamFolderPath = async ({
   pamFolderDAL,
-  folderId,
   projectId
-}: GetFullFolderPath): Promise<string> => {
-  if (!folderId) return "/";
-
+}: GetFullFolderPath): Promise<(arg: { folderId?: string | null }) => string> => {
   const folders = await pamFolderDAL.find({ projectId });
   const folderMap = new Map(folders.map((folder) => [folder.id, folder]));
 
-  if (!folderMap.has(folderId)) return "";
+  return ({ folderId }) => {
+    if (!folderId) return "/";
 
-  const path: string[] = [];
-  let currentFolderId: string | null | undefined = folderId;
+    if (!folderMap.has(folderId)) return "";
 
-  while (currentFolderId) {
-    const folder = folderMap.get(currentFolderId);
-    if (!folder) break;
+    const path: string[] = [];
+    let currentFolderId: string | null | undefined = folderId;
 
-    path.unshift(folder.name);
-    currentFolderId = folder.parentId;
-  }
+    while (currentFolderId) {
+      const folder = folderMap.get(currentFolderId);
+      if (!folder) break;
 
-  return `/${path.join("/")}`;
+      path.unshift(folder.name);
+      currentFolderId = folder.parentId;
+    }
+
+    return `/${path.join("/")}`;
+  };
 };

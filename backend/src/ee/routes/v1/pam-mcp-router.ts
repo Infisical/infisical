@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -49,7 +50,10 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       await res.hijack(); // allow manual control of the underlying res
 
-      const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp();
+      const projectId = req.auth.authMode === AuthMode.JWT ? req.auth.token?.mcp?.projectId : "";
+      if (!projectId)
+        throw new ForbiddenRequestError({ message: "Invalid token provided. Please do a re-auth with MCP" });
+      const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp(req.permission, projectId);
 
       // Close transport when client disconnects
       res.raw.on("close", () => {
