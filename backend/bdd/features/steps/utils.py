@@ -266,7 +266,7 @@ def x509_cert_to_dict(cert: x509.Certificate) -> dict:
 def define_nock(context: Context, definitions: list[dict]):
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        f"/{NOCK_API_PREFIX}/define",
+        f"{NOCK_API_PREFIX}/define",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json=dict(definitions=definitions),
     )
