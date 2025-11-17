@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "@bdd_routes/bdd-nock-router": ["./src/server/routes/bdd/bdd-nock-router.bdd.ts"]
+      "@bdd_routes/bdd-nock-router": ["./src/server/routes/bdd/bdd-nock-router.dev.ts"]
     }
   }
 }
