@@ -2431,22 +2431,25 @@ export const registerRoutes = async (
     }
   }
 
-  await telemetryQueue.startTelemetryCheck();
-  await telemetryQueue.startAggregatedEventsJob();
-  await dailyResourceCleanUp.init();
-  await healthAlert.init();
-  await pkiSyncCleanup.init();
-  await pamAccountRotation.init();
-  await dailyReminderQueueService.startDailyRemindersJob();
-  await dailyReminderQueueService.startSecretReminderMigrationJob();
-  await dailyExpiringPkiItemAlert.startSendingAlerts();
-  await pkiSubscriberQueue.startDailyAutoRenewalJob();
-  await pkiAlertV2Queue.init();
-  await certificateV3Queue.init();
+  if (!appCfg.isTestMode) {
+    await telemetryQueue.startTelemetryCheck();
+    await telemetryQueue.startAggregatedEventsJob();
+    await dailyResourceCleanUp.init();
+    await healthAlert.init();
+    await pkiSyncCleanup.init();
+    await pamAccountRotation.init();
+    await dailyReminderQueueService.startDailyRemindersJob();
+    await dailyReminderQueueService.startSecretReminderMigrationJob();
+    await dailyExpiringPkiItemAlert.startSendingAlerts();
+    await pkiSubscriberQueue.startDailyAutoRenewalJob();
+    await pkiAlertV2Queue.init();
+    await certificateV3Queue.init();
+    await microsoftTeamsService.start();
+    await dynamicSecretQueueService.init();
+    await eventBusService.init();
+  }
+
   await kmsService.startService(hsmStatus);
-  await microsoftTeamsService.start();
-  await dynamicSecretQueueService.init();
-  await eventBusService.init();
 
   // inject all services
   server.decorate<FastifyZodProvider["services"]>("services", {
