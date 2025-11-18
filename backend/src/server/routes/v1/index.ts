@@ -1,4 +1,3 @@
-import { getConfig } from "@app/lib/config/env";
 import {
   APP_CONNECTION_REGISTER_ROUTER_MAP,
   registerAppConnectionRouter
