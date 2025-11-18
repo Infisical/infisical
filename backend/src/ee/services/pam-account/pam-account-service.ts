@@ -27,6 +27,7 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
+import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -251,17 +252,17 @@ export const pamAccountServiceFactory = ({
         gatewayV2Service
       );
 
-      // Logic to prevent overwriting unedited censored values
-      const finalCredentials = { ...credentials };
-      if (credentials.password === "__INFISICAL_UNCHANGED__") {
-        const decryptedCredentials = await decryptAccountCredentials({
-          encryptedCredentials: account.encryptedCredentials,
-          projectId: account.projectId,
-          kmsService
-        });
+      const decryptedCredentials = await decryptAccountCredentials({
+        encryptedCredentials: account.encryptedCredentials,
+        projectId: account.projectId,
+        kmsService
+      });
 
-        finalCredentials.password = decryptedCredentials.password;
-      }
+      // Logic to prevent overwriting unedited censored values
+      const finalCredentials = await factory.handleOverwritePreventionForCensoredValues(
+        credentials,
+        decryptedCredentials
+      );
 
       const validatedCredentials = await factory.validateAccountCredentials(finalCredentials);
       const encryptedCredentials = await encryptAccountCredentials({
@@ -486,11 +487,11 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
         {
-          const connectionCredentials = await decryptResourceConnectionDetails({
+          const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
             kmsService,
             projectId: account.projectId
-          });
+          })) as TSqlResourceConnectionDetails;
 
           const credentials = await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
@@ -503,6 +504,19 @@ export const pamAccountServiceFactory = ({
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath
+          };
+        }
+        break;
+      case PamResource.SSH:
+        {
+          const credentials = await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId: account.projectId
+          });
+
+          metadata = {
+            username: credentials.username
           };
         }
         break;

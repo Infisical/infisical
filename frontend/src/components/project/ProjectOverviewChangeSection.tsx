@@ -76,8 +76,8 @@ export const ProjectOverviewChangeSection = ({ showSlugField = false }: Props) =
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="justify-betweens flex">
-        <h2 className="mb-8 flex-1 text-xl font-medium text-mineshaft-100">Project Overview</h2>
+      <div className="justify-betweens mb-8 flex flex-wrap gap-2">
+        <h2 className="flex-1 text-xl font-medium text-mineshaft-100">Project Overview</h2>
         <div className="space-x-2">
           <Button
             variant="outline_bg"

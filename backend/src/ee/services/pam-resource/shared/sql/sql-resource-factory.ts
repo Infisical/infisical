@@ -337,9 +337,24 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
     }
   };
 
+  const handleOverwritePreventionForCensoredValues = async (
+    updatedAccountCredentials: TSqlAccountCredentials,
+    currentCredentials: TSqlAccountCredentials
+  ) => {
+    if (updatedAccountCredentials.password === "__INFISICAL_UNCHANGED__") {
+      return {
+        ...updatedAccountCredentials,
+        password: currentCredentials.password
+      };
+    }
+
+    return updatedAccountCredentials;
+  };
+
   return {
     validateConnection,
     validateAccountCredentials,
-    rotateAccountCredentials
+    rotateAccountCredentials,
+    handleOverwritePreventionForCensoredValues
   };
 };
