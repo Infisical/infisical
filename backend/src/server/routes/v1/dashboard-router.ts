@@ -881,7 +881,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               secret
                 ? {
                     ...secret,
-                    isEmpty: secret.secretValue,
+                    isEmpty: !secret.secretValue,
                     reminder: rotationReminders[secret.id] ?? null
                   }
                 : secret
