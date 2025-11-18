@@ -37,7 +37,7 @@ export const ExternalMigrationsTab = () => {
           </p>
         </div>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <div className="flex items-center gap-2">
               <p className="text-base font-medium text-mineshaft-100">
