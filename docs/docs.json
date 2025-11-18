@@ -1479,77 +1479,6 @@
                 ]
               },
               {
-                "group": "Secret Scanning",
-                "pages": [
-                  {
-                    "group": "Data Sources",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/data-sources/list",
-                      "api-reference/endpoints/secret-scanning/data-sources/options",
-                      {
-                        "group": "Bitbucket",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan-resource"
-                        ]
-                      },
-                      {
-                        "group": "GitHub",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
-                        ]
-                      },
-                      {
-                        "group": "GitLab",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "Findings",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/findings/list",
-                      "api-reference/endpoints/secret-scanning/findings/update"
-                    ]
-                  },
-                  {
-                    "group": "Configuration",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/config/get-by-project-id",
-                      "api-reference/endpoints/secret-scanning/config/update"
-                    ]
-                  }
-                ]
-              },
-              {
                 "group": "Identity Specific Privilege",
                 "pages": [
                   {
@@ -2689,6 +2618,77 @@
                       "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
                     ]
                   }
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secret Scanning",
+            "pages": [
+              {
+                "group": "Data Sources",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/data-sources/list",
+                  "api-reference/endpoints/secret-scanning/data-sources/options",
+                  {
+                    "group": "Bitbucket",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan-resource"
+                    ]
+                  },
+                  {
+                    "group": "GitHub",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                    ]
+                  },
+                  {
+                    "group": "GitLab",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Findings",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/findings/list",
+                  "api-reference/endpoints/secret-scanning/findings/update"
+                ]
+              },
+              {
+                "group": "Configuration",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                  "api-reference/endpoints/secret-scanning/config/update"
                 ]
               }
             ]
