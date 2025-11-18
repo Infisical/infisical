@@ -4,13 +4,21 @@ import { apiRequest } from "@app/config/request";
 
 import { TPamResourceOption } from "./types/resource-options";
 import { PamResourceType } from "./enums";
-import { TPamAccount, TPamFolder, TPamResource, TPamSession } from "./types";
+import {
+  TMcpServerConfiguration,
+  TMcpServerTool,
+  TPamAccount,
+  TPamFolder,
+  TPamResource,
+  TPamSession
+} from "./types";
 
 export const pamKeys = {
   all: ["pam"] as const,
   resource: () => [...pamKeys.all, "resource"] as const,
   account: () => [...pamKeys.all, "account"] as const,
   session: () => [...pamKeys.all, "session"] as const,
+  mcp: () => [...pamKeys.all, "mcp"] as const,
   listResourceOptions: () => [...pamKeys.resource(), "options"] as const,
   listResources: (projectId: string) => [...pamKeys.resource(), "list", projectId],
   getResource: (resourceType: string, resourceId: string) => [
@@ -21,7 +29,10 @@ export const pamKeys = {
   ],
   listAccounts: (projectId: string) => [...pamKeys.account(), "list", projectId],
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
-  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId]
+  listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
+  getMcpConfig: (accountId: string) => [...pamKeys.mcp(), "config", accountId],
+  getMcpTools: (accountId: string) => [...pamKeys.mcp(), "tools", accountId],
+  mcpOauthAuthorize: (accountId: string) => [...pamKeys.account(), "oauth-authorize", accountId]
 };
 
 // Resources
@@ -163,5 +174,71 @@ export const useListPamSessions = (
       return data.sessions;
     },
     ...options
+  });
+};
+
+// MCP Server
+export const useGetMcpServerConfig = (
+  accountId?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TMcpServerConfiguration,
+      unknown,
+      TMcpServerConfiguration,
+      ReturnType<typeof pamKeys.getMcpConfig>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getMcpConfig(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ config: TMcpServerConfiguration }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/config`
+      );
+
+      return data.config;
+    },
+    enabled: !!accountId && (options?.enabled ?? true),
+    ...options
+  });
+};
+
+export const useGetMcpServerTools = (
+  accountId?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TMcpServerTool[],
+      unknown,
+      TMcpServerTool[],
+      ReturnType<typeof pamKeys.getMcpTools>
+    >,
+    "queryKey" | "queryFn"
+  >
+) => {
+  return useQuery({
+    queryKey: pamKeys.getMcpTools(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ tools: TMcpServerTool[] }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/tools`
+      );
+
+      return data.tools;
+    },
+    enabled: !!accountId && (options?.enabled ?? true),
+    ...options
+  });
+};
+
+export const useMcpServerOAuthAuthorize = (accountId: string) => {
+  return useQuery({
+    queryKey: pamKeys.mcpOauthAuthorize(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authUrl: string }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/oauth/authorize`
+      );
+
+      window.location.assign(data.authUrl);
+    }
   });
 };

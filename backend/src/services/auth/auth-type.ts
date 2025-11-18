@@ -27,6 +27,7 @@ export enum AuthTokenType {
 
 export enum AuthMode {
   JWT = "jwt",
+  MCP_JWT = "mcp-jwt", // used by users for mcp sessions
   SERVICE_TOKEN = "serviceToken",
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",
@@ -57,6 +58,11 @@ export type AuthModeJwtTokenPayload = {
   organizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  mcp?: {
+    projectId: string;
+    sessionId: string;
+    path?: string;
+  };
 };
 
 export type AuthModeMfaJwtTokenPayload = {
@@ -76,6 +82,10 @@ export type AuthModeRefreshJwtTokenPayload = {
   organizationId?: string;
   isMfaVerified?: boolean;
   mfaMethod?: MfaMethod;
+  mcp?: {
+    projectId: string;
+    path?: string;
+  };
 };
 
 export type AuthModeProviderJwtTokenPayload = {

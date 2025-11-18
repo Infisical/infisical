@@ -4,6 +4,7 @@ import {
   faCopy,
   faEdit,
   faEllipsisV,
+  faGavel,
   faRightToBracket,
   faRotate,
   faTrash
@@ -31,13 +32,14 @@ import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPamAccountActions } from "@app/context/ProjectPermissionContext/types";
 import { useToggle } from "@app/hooks";
-import { PAM_RESOURCE_TYPE_MAP, TPamAccount } from "@app/hooks/api/pam";
+import { PAM_RESOURCE_TYPE_MAP, PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
   account: TPamAccount;
   onAccess: (resource: TPamAccount) => void;
   onUpdate: (resource: TPamAccount) => void;
   onDelete: (resource: TPamAccount) => void;
+  onUpdateMcpResourceRule: (account: TPamAccount) => void;
   search: string;
   isFlatView: boolean;
   accountPath?: string;
@@ -49,6 +51,7 @@ export const PamAccountRow = ({
   onAccess,
   onUpdate,
   onDelete,
+  onUpdateMcpResourceRule,
   isFlatView,
   accountPath
 }: Props) => {
@@ -167,6 +170,14 @@ export const PamAccountRow = ({
                     </DropdownMenuItem>
                   )}
                 </ProjectPermissionCan>
+                {account.resource.resourceType === PamResourceType.MCP && (
+                  <DropdownMenuItem
+                    icon={<FontAwesomeIcon icon={faGavel} />}
+                    onClick={() => onUpdateMcpResourceRule(account)}
+                  >
+                    Resource Rules
+                  </DropdownMenuItem>
+                )}
                 <ProjectPermissionCan
                   I={ProjectPermissionPamAccountActions.Delete}
                   a={ProjectPermissionSub.PamAccounts}

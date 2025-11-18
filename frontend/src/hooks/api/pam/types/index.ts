@@ -1,13 +1,15 @@
 import { PamResourceType, PamSessionStatus } from "../enums";
+import { TMcpAccount, TMcpResource } from "./mcp-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 
+export * from "./mcp-resource";
 export * from "./mysql-resource";
 export * from "./postgres-resource";
 
-export type TPamResource = TPostgresResource | TMySQLResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TMcpResource;
 
-export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TMcpAccount;
 
 export type TPamFolder = {
   id: string;
@@ -94,4 +96,42 @@ export type TUpdatePamFolderDTO = Partial<Pick<TPamFolder, "name" | "description
 
 export type TDeletePamFolderDTO = {
   folderId: string;
+};
+
+// MCP Server OAuth DTOs
+export type TMcpServerOAuthAuthorizeDTO = {
+  accountId: string;
+};
+
+export type TMcpServerOAuthCallbackDTO = {
+  accountId: string;
+  code: string;
+  projectId?: string; // Optional, for cache invalidation
+};
+
+// MCP Server Configuration Types
+export type TMcpServerConfiguration = {
+  version: number;
+  statement: {
+    toolsAllowed: string[];
+  };
+};
+
+export type TMcpServerTool = {
+  name: string;
+  description?: string;
+};
+
+// MCP Server Configuration DTOs
+export type TGetMcpServerConfigDTO = {
+  accountId: string;
+};
+
+export type TUpdateMcpServerConfigDTO = {
+  accountId: string;
+  config: TMcpServerConfiguration;
+};
+
+export type TGetMcpServerToolsDTO = {
+  accountId: string;
 };

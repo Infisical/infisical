@@ -232,6 +232,11 @@ export const sqlResourceFactory: TPamResourceFactory<TSqlResourceConnectionDetai
   gatewayId,
   gatewayV2Service
 ) => {
+  if (!gatewayId)
+    throw new BadRequestError({
+      message: "Gateway is required"
+    });
+
   const validateConnection = async () => {
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (client) => {

@@ -10,9 +10,12 @@ import {
   TDeletePamAccountDTO,
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
+  TMcpServerConfiguration,
+  TMcpServerOAuthCallbackDTO,
   TPamAccount,
   TPamFolder,
   TPamResource,
+  TUpdateMcpServerConfigDTO,
   TUpdatePamAccountDTO,
   TUpdatePamFolderDTO,
   TUpdatePamResourceDTO
@@ -164,6 +167,45 @@ export const useDeletePamFolder = () => {
     },
     onSuccess: ({ projectId }) => {
       queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(projectId) });
+    }
+  });
+};
+
+// MCP Server OAuth
+
+export const useMcpServerOAuthCallback = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, code }: TMcpServerOAuthCallbackDTO) => {
+      const { data } = await apiRequest.post<{ message: string }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/oauth/callback`,
+        { code }
+      );
+
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate the accounts query if projectId is provided
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: pamKeys.listAccounts(variables.projectId) });
+      }
+    }
+  });
+};
+
+export const useUpdateMcpServerConfig = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ accountId, config }: TUpdateMcpServerConfigDTO) => {
+      const { data } = await apiRequest.post<{ config: TMcpServerConfiguration }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/config`,
+        { config }
+      );
+
+      return data.config;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: pamKeys.getMcpConfig(variables.accountId) });
     }
   });
 };

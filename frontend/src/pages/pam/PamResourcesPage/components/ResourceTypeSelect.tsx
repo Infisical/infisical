@@ -80,7 +80,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
       resource === PamResourceType.RDP ||
       resource === PamResourceType.SSH ||
       resource === PamResourceType.Kubernetes ||
-      resource === PamResourceType.MCP ||
       resource === PamResourceType.Redis ||
       resource === PamResourceType.MongoDB ||
       resource === PamResourceType.WebApp ||

@@ -104,17 +104,26 @@ export const main = async ({
     await server.register(fastifyEtag);
 
     await server.register<FastifyCorsOptions>(cors, {
-      credentials: true,
-      ...(appCfg.CORS_ALLOWED_ORIGINS?.length
-        ? {
-            origin: [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
-          }
-        : {
-            origin: appCfg.SITE_URL || true
-          }),
-      ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
-        allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
-      })
+      delegator: (req, callback) => {
+        const options: FastifyCorsOptions = {
+          credentials: true,
+          ...(appCfg.CORS_ALLOWED_ORIGINS?.length
+            ? {
+                origin: [...appCfg.CORS_ALLOWED_ORIGINS, ...(appCfg.SITE_URL ? [appCfg.SITE_URL] : [])]
+              }
+            : {
+                origin: appCfg.SITE_URL || true
+              }),
+          ...(appCfg.CORS_ALLOWED_HEADERS?.length && {
+            allowedHeaders: appCfg.CORS_ALLOWED_HEADERS
+          })
+        };
+        if (req.url.includes("/api/v1/ai/mcp") || req.url.includes("/.well-known")) {
+          options.origin = "*";
+        }
+
+        callback(null, options);
+      }
     });
 
     await server.register(addErrorsToResponseSchemas);

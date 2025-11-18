@@ -10,5 +10,6 @@ export type TMySQLResource = TBasePamResource & { resourceType: PamResourceType.
 
 // Accounts
 export type TMySQLAccount = TBasePamAccount & {
+  gatewayId?: string;
   credentials: TBaseSqlCredentials;
 };

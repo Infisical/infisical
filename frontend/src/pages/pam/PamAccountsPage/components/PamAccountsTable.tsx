@@ -53,6 +53,7 @@ import { PamAddFolderModal } from "./PamAddFolderModal";
 import { PamDeleteAccountModal } from "./PamDeleteAccountModal";
 import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
+import { PamMcpConfigurationModal } from "./PamMcpConfigurationModal";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
 
@@ -81,7 +82,8 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
     "addAccount",
     "accessAccount",
     "updateAccount",
-    "deleteAccount"
+    "deleteAccount",
+    "updateMcpRules"
   ] as const);
 
   const {
@@ -451,6 +453,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                 }}
                 onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
                 onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
+                onUpdateMcpResourceRule={(e) => handlePopUpOpen("updateMcpRules", e)}
               />
             ))}
           </TBody>
@@ -507,6 +510,11 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
         onOpenChange={(isOpen) => handlePopUpToggle("addAccount", isOpen)}
         projectId={projectId}
         currentFolderId={effectiveFolderIdForFiltering}
+      />
+      <PamMcpConfigurationModal
+        isOpen={popUp.updateMcpRules.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("updateMcpRules", isOpen)}
+        accountId={popUp.updateMcpRules.data?.id || ""}
       />
     </div>
   );

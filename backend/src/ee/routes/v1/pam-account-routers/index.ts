@@ -1,4 +1,9 @@
 import {
+  CreateMcpAccountSchema,
+  SanitizedMcpAccountWithResourceSchema,
+  UpdateMcpAccountSchema
+} from "@app/ee/services/pam-resource/mcp/mcp-resource-schemas";
+import {
   CreateMySQLAccountSchema,
   SanitizedMySQLAccountWithResourceSchema,
   UpdateMySQLAccountSchema
@@ -29,6 +34,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedMySQLAccountWithResourceSchema,
       createAccountSchema: CreateMySQLAccountSchema,
       updateAccountSchema: UpdateMySQLAccountSchema
+    });
+  },
+  [PamResource.Mcp]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Mcp,
+      accountResponseSchema: SanitizedMcpAccountWithResourceSchema,
+      createAccountSchema: CreateMcpAccountSchema,
+      updateAccountSchema: UpdateMcpAccountSchema
     });
   }
 };
