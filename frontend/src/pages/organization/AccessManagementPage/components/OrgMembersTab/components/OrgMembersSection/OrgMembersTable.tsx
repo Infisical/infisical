@@ -505,7 +505,7 @@ export const OrgMembersTable = ({
                       <Td
                         className={twMerge("group max-w-0", isActive ? "" : "text-mineshaft-400")}
                       >
-                        <div className="flex items-center gap-x-2">
+                        <div className="flex w-full items-center">
                           <p className="truncate">
                             {name ?? <span className="text-mineshaft-400">Not Set</span>}
                           </p>
