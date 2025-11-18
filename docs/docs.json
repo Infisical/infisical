@@ -949,12 +949,6 @@
                   "api-reference/endpoints/organizations/saml-sso/update-saml-config",
                   "api-reference/endpoints/organizations/saml-sso/create-saml-config"
                 ]
-              },
-              {
-                "group": "Legacy",
-                "pages": [
-                  "api-reference/endpoints/deprecated/organizations/projects"
-                ]
               }
             ]
           },
@@ -978,6 +972,7 @@
                       "api-reference/endpoints/deprecated/projects/create-project",
                       "api-reference/endpoints/deprecated/projects/delete-project",
                       "api-reference/endpoints/deprecated/projects/get-project",
+                      "api-reference/endpoints/deprecated/organizations/projects",
                       "api-reference/endpoints/deprecated/projects/update-project",
                       "api-reference/endpoints/deprecated/projects/secret-snapshots"
                     ]
