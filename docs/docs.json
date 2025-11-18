@@ -446,6 +446,7 @@
                       "documentation/platform/secret-rotation/ldap-password",
                       "documentation/platform/secret-rotation/mssql-credentials",
                       "documentation/platform/secret-rotation/mysql-credentials",
+                      "documentation/platform/secret-rotation/mongodb-credentials",
                       "documentation/platform/secret-rotation/okta-client-secret",
                       "documentation/platform/secret-rotation/oracledb-credentials",
                       "documentation/platform/secret-rotation/postgres-credentials",
@@ -1407,6 +1408,19 @@
                       "api-reference/endpoints/secret-rotations/mssql-credentials/list",
                       "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
                       "api-reference/endpoints/secret-rotations/mssql-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "MongoDB Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/create",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/list",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/mongodb-credentials/update"
                     ]
                   },
                   {

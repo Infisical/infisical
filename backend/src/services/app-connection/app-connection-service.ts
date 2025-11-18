@@ -94,6 +94,7 @@ import { humanitecConnectionService } from "./humanitec/humanitec-connection-ser
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
@@ -106,7 +107,6 @@ import { ValidatePostgresConnectionCredentialsSchema } from "./postgres";
 import { ValidateRailwayConnectionCredentialsSchema } from "./railway";
 import { railwayConnectionService } from "./railway/railway-connection-service";
 import { ValidateRedisConnectionCredentialsSchema } from "./redis";
-import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateRenderConnectionCredentialsSchema } from "./render/render-connection-schema";
 import { renderConnectionService } from "./render/render-connection-service";
 import { ValidateSupabaseConnectionCredentialsSchema } from "./supabase";

@@ -25,4 +25,3 @@ db.createUser({
     }
   }
 };
-

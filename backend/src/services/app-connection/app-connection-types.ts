@@ -166,6 +166,12 @@ import {
   TLdapConnectionInput,
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
+import {
+  TMongoDBConnection,
+  TMongoDBConnectionConfig,
+  TMongoDBConnectionInput,
+  TValidateMongoDBConnectionCredentialsSchema
+} from "./mongodb";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
@@ -203,12 +209,6 @@ import {
   TRedisConnectionInput,
   TValidateRedisConnectionCredentialsSchema
 } from "./redis";
-import {
-  TMongoDBConnection,
-  TMongoDBConnectionConfig,
-  TMongoDBConnectionInput,
-  TValidateMongoDBConnectionCredentialsSchema
-} from "./mongodb";
 import {
   TRenderConnection,
   TRenderConnectionConfig,
