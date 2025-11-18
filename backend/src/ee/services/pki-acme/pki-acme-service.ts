@@ -353,7 +353,10 @@ export const pkiAcmeServiceFactory = ({
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
       newAccount: buildUrl(profile.id, "/new-account"),
-      newOrder: buildUrl(profile.id, "/new-order")
+      newOrder: buildUrl(profile.id, "/new-order"),
+      meta: {
+        externalAccountRequired: true
+      }
     };
   };
 
