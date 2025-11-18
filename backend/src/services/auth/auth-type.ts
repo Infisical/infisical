@@ -59,6 +59,7 @@ export type AuthModeJwtTokenPayload = {
   mfaMethod?: MfaMethod;
   mcp?: {
     projectId: string;
+    sessionId: string;
     path?: string;
   };
 };

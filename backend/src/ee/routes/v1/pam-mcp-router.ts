@@ -53,7 +53,16 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
       const projectId = req.auth.authMode === AuthMode.JWT ? req.auth.token?.mcp?.projectId : "";
       if (!projectId)
         throw new ForbiddenRequestError({ message: "Invalid token provided. Please do a re-auth with MCP" });
-      const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp(req.permission, projectId);
+
+      const sessionId = req.auth.authMode === AuthMode.JWT ? req.auth.token?.mcp?.sessionId : "";
+      if (!sessionId)
+        throw new ForbiddenRequestError({ message: "Invalid token provided. Please do a re-auth with MCP" });
+
+      const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp(
+        req.permission,
+        projectId,
+        sessionId
+      );
 
       // Close transport when client disconnects
       res.raw.on("close", () => {

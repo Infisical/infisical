@@ -27,6 +27,9 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TMcpAccountCredentials, TMcpResourceConnectionDetails } from "../pam-resource/mcp/mcp-resource-types";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
+import { TPamSessionCommandLog } from "../pam-session/pam-session.types";
+import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
+import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionPamAccountActions, ProjectPermissionSub } from "../permission/project-permission";
 import {
@@ -79,6 +82,7 @@ type TPamMcpServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
   pamFolderDAL: TPamFolderDALFactory;
+  pamSessionDAL: TPamSessionDALFactory;
 };
 
 export type TPamMcpServiceFactory = ReturnType<typeof pamMcpServiceFactory>;
@@ -91,9 +95,10 @@ export const pamMcpServiceFactory = ({
   pamAccountDAL,
   pamResourceDAL,
   pamFolderDAL,
-  kmsService
+  kmsService,
+  pamSessionDAL
 }: TPamMcpServiceFactoryDep) => {
-  const interactWithMcp = async (actor: ProjectServiceActor, projectId: string) => {
+  const interactWithMcp = async (actor: ProjectServiceActor, projectId: string, sessionId: string) => {
     const appCfg = getConfig();
 
     const mcpResources = await pamResourceDAL.find({
@@ -136,7 +141,7 @@ export const pamMcpServiceFactory = ({
       );
     });
 
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+    const { decryptor, encryptor } = await kmsService.createCipherPairWithDataKey({
       type: KmsDataKey.SecretManager,
       projectId
     });
@@ -176,6 +181,7 @@ export const pamMcpServiceFactory = ({
         const { tools } = await client.listTools();
         return {
           client,
+          account: mcpAccount,
           tools: tools.filter((el) => accountConfiguration?.statement?.toolsAllowed?.includes(el.name))
         };
       })
@@ -213,14 +219,27 @@ export const pamMcpServiceFactory = ({
           arguments: args
         });
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(result, null, 2)
-            }
-          ]
-        };
+        const session = await pamSessionDAL.findById(sessionId);
+        // TODO(pam-mcp): make it concurrent
+        const decryptedBlob = session?.encryptedLogsBlob
+          ? (JSON.parse(
+              decryptor({
+                cipherTextBlob: session?.encryptedLogsBlob
+              }).toString()
+            ) as TPamSessionCommandLog[])
+          : [];
+
+        decryptedBlob.push({
+          timestamp: new Date(),
+          output: JSON.stringify(result, null, 2),
+          input: JSON.stringify({ accountName: selectMcpClient.account.name, name, args }, null, 2)
+        });
+
+        const encryptedLogsBlob = encryptor({
+          plainText: Buffer.from(JSON.stringify(decryptedBlob))
+        }).cipherTextBlob;
+        await pamSessionDAL.updateById(sessionId, { encryptedLogsBlob, status: PamSessionStatus.Active });
+        return result;
       } catch (error) {
         return {
           content: [
@@ -347,7 +366,7 @@ export const pamMcpServiceFactory = ({
         throw new UnauthorizedError({ message: `Mcp oauth client with id ${dto.client_id} not found` });
       }
 
-      // const oauthClient = await DynamicClientInfoSchema.parseAsync(JSON.parse(oauthClientCache));
+      const oauthClient = await DynamicClientInfoSchema.parseAsync(JSON.parse(oauthClientCache));
 
       const oauthAuthorizeSessionCache = await keyStore.getItem(
         KeyStorePrefixes.PamMcpOauthSessionCode(dto.client_id, dto.code)
@@ -370,6 +389,23 @@ export const pamMcpServiceFactory = ({
         oauthAuthorizeInfo.userId
       );
       if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
+      const mcpSession = await pamSessionDAL.create({
+        accountName: oauthClient.client_id,
+        // actorEmail: oauthAuthorizeInfo.userInfo.actorEmail,
+        // actorIp: oauthAuthorizeInfo.userInfo.actorIp,
+        // actorName: oauthAuthorizeInfo.userInfo.actorIp,
+        // actorUserAgent: oauthAuthorizeInfo.userInfo.actorIp,
+        actorEmail: "test@localhost.local",
+        actorIp: "192.0.0.1",
+        actorName: "tester",
+        actorUserAgent: "firefox/blade",
+        projectId: oauthAuthorizeInfo.projectId,
+        resourceName: "MCP",
+        resourceType: PamResource.Mcp,
+        status: PamSessionStatus.Starting,
+        userId: oauthAuthorizeInfo.userId,
+        expiresAt: new Date(Date.now() + ms("4hr"))
+      });
 
       const accessToken = cryptoModule.jwt().sign(
         {
@@ -382,7 +418,8 @@ export const pamMcpServiceFactory = ({
           isMfaVerified: true,
           mcp: {
             projectId: oauthAuthorizeInfo.projectId,
-            path: oauthAuthorizeInfo.path
+            path: oauthAuthorizeInfo.path,
+            sessionId: mcpSession.id
           }
         },
         appCfg.AUTH_SECRET,

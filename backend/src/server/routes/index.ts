@@ -2419,6 +2419,7 @@ export const registerRoutes = async (
     pamAccountDAL,
     pamFolderDAL,
     pamResourceDAL,
+    pamSessionDAL,
     kmsService
   });
 
