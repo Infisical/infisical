@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   BaseSecretSyncSchema,
   GenericCreateSecretSyncFieldsSchema,
@@ -43,10 +44,12 @@ const OCIVaultSyncDestinationConfigSchema = z.object({
 
 const OCIVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const OCIVaultSyncSchema = BaseSecretSyncSchema(SecretSync.OCIVault, OCIVaultSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.OCIVault),
-  destinationConfig: OCIVaultSyncDestinationConfigSchema
-});
+export const OCIVaultSyncSchema = BaseSecretSyncSchema(SecretSync.OCIVault, OCIVaultSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.OCIVault),
+    destinationConfig: OCIVaultSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OCIVault] }));
 
 export const CreateOCIVaultSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.OCIVault,
@@ -62,10 +65,12 @@ export const UpdateOCIVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: OCIVaultSyncDestinationConfigSchema.optional()
 });
 
-export const OCIVaultSyncListItemSchema = z.object({
-  name: z.literal("OCI Vault"),
-  connection: z.literal(AppConnection.OCI),
-  destination: z.literal(SecretSync.OCIVault),
-  canImportSecrets: z.literal(true),
-  enterprise: z.boolean()
-});
+export const OCIVaultSyncListItemSchema = z
+  .object({
+    name: z.literal("OCI Vault"),
+    connection: z.literal(AppConnection.OCI),
+    destination: z.literal(SecretSync.OCIVault),
+    canImportSecrets: z.literal(true),
+    enterprise: z.boolean()
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.OCIVault] }));

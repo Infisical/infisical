@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { WindmillConnectionMethod } from "./windmill-connection-enums";
 
 export const WindmillConnectionAccessTokenCredentialsSchema = z.object({
@@ -37,7 +38,7 @@ export const SanitizedWindmillConnectionSchema = z.discriminatedUnion("method", 
     credentials: WindmillConnectionAccessTokenCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Windmill]} (Access Token)` }))
 ]);
 
 export const ValidateWindmillConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -63,8 +64,10 @@ export const UpdateWindmillConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Windmill));
 
-export const WindmillConnectionListItemSchema = z.object({
-  name: z.literal("Windmill"),
-  app: z.literal(AppConnection.Windmill),
-  methods: z.nativeEnum(WindmillConnectionMethod).array()
-});
+export const WindmillConnectionListItemSchema = z
+  .object({
+    name: z.literal("Windmill"),
+    app: z.literal(AppConnection.Windmill),
+    methods: z.nativeEnum(WindmillConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Windmill] }));

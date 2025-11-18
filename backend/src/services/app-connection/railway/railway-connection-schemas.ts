@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { RailwayConnectionMethod } from "./railway-connection-constants";
 
 export const RailwayConnectionMethodSchema = z
@@ -36,7 +37,7 @@ export const SanitizedRailwayConnectionSchema = z.discriminatedUnion("method", [
   BaseRailwayConnectionSchema.extend({
     method: RailwayConnectionMethodSchema,
     credentials: RailwayConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Railway]} (Access Token)` }))
 ]);
 
 export const ValidateRailwayConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -60,11 +61,13 @@ export const UpdateRailwayConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Railway));
 
-export const RailwayConnectionListItemSchema = z.object({
-  name: z.literal("Railway"),
-  app: z.literal(AppConnection.Railway),
-  methods: z.nativeEnum(RailwayConnectionMethod).array()
-});
+export const RailwayConnectionListItemSchema = z
+  .object({
+    name: z.literal("Railway"),
+    app: z.literal(AppConnection.Railway),
+    methods: z.nativeEnum(RailwayConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Railway] }));
 
 export const RailwayResourceSchema = z.object({
   node: z.object({

@@ -744,6 +744,7 @@
                     "pages": [
                       "documentation/platform/pki/enrollment-methods/overview",
                       "documentation/platform/pki/enrollment-methods/api",
+                      "documentation/platform/pki/enrollment-methods/acme",
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
@@ -774,6 +775,8 @@
                 "group": "External CA Integrations",
                 "pages": [
                   "documentation/platform/pki/ca/acme-ca",
+                  "documentation/platform/pki/ca/lets-encrypt",
+                  "documentation/platform/pki/ca/digicert",
                   "documentation/platform/pki/ca/azure-adcs"
                 ]
               }

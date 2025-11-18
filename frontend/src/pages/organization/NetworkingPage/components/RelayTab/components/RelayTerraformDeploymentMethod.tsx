@@ -190,15 +190,6 @@ export const RelayTerraformDeploymentMethod = () => {
     }
   };
 
-  const handleIdentityChange = (
-    selectedIdentity: SingleValue<{
-      id: string;
-      name: string;
-    }>
-  ) => {
-    setIdentity(selectedIdentity);
-  };
-
   const terraformCommand = useMemo(() => {
     return `terraform {
   required_providers {
@@ -365,7 +356,7 @@ resource "aws_eip_association" "eip_assoc" {
           <FilterableSelect
             value={identity}
             onChange={(e) =>
-              handleIdentityChange(
+              setIdentity(
                 e as SingleValue<{
                   id: string;
                   name: string;

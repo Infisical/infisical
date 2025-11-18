@@ -30,7 +30,6 @@
   "common": {
     "head-title": "{{title}} | Infisical",
     "error_project-already-exists": "동일한 이름을 가진 프로젝트가 이미 존재해요.",
-    "no-mobile": " Infisical을 사용하려면, 큰 화면을 가진 디바이스로 로그인하여 주세요.",
     "email": "메일",
     "password": "비밀번호",
     "first-name": "이름",
