@@ -12,10 +12,10 @@ import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { ProjectPermissionPamSessionActions, ProjectPermissionSub } from "../permission/project-permission";
-import { TUpdateSessionLogsDTO } from "./pam-session.types";
 import { TPamSessionDALFactory } from "./pam-session-dal";
 import { PamSessionStatus } from "./pam-session-enums";
 import { decryptSession } from "./pam-session-fns";
+import { TUpdateSessionLogsDTO } from "./pam-session-types";
 
 type TPamSessionServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;

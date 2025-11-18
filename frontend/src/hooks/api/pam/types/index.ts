@@ -8,13 +8,15 @@ import {
 } from "../enums";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
+import { TSSHAccount, TSSHResource } from "./ssh-resource";
 
 export * from "./mysql-resource";
 export * from "./postgres-resource";
+export * from "./ssh-resource";
 
-export type TPamResource = TPostgresResource | TMySQLResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource;
 
-export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount;
 
 export type TPamFolder = {
   id: string;
@@ -25,6 +27,22 @@ export type TPamFolder = {
   createdAt: string;
   updatedAt: string;
 };
+
+// Session log types
+export type TPamCommandLog = {
+  input: string;
+  output: string;
+  timestamp: string;
+};
+
+export type TTerminalEvent = {
+  timestamp: string;
+  eventType: "input" | "output" | "resize" | "error";
+  data: string; // Base64 encoded binary data
+  elapsedTime: number; // Seconds since session start (for replay)
+};
+
+export type TPamSessionLog = TPamCommandLog | TTerminalEvent;
 
 export type TPamSession = {
   id: string;
@@ -44,11 +62,7 @@ export type TPamSession = {
   endedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  commandLogs: {
-    input: string;
-    output: string;
-    timestamp: string;
-  }[];
+  logs: TPamSessionLog[];
 };
 
 // Resource DTOs

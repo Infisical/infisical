@@ -6,6 +6,7 @@ import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
@@ -15,6 +16,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedAccountSchema = z.union([
+  SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema
 ]);
@@ -132,7 +134,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           gatewayClientPrivateKey: z.string(),
           gatewayServerCertificateChain: z.string(),
           relayHost: z.string(),
-          metadata: z.record(z.string(), z.string()).optional()
+          metadata: z.record(z.string(), z.string().optional()).optional()
         })
       }
     },

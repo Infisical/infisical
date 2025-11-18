@@ -14,15 +14,24 @@ import {
   TPostgresResource,
   TPostgresResourceConnectionDetails
 } from "./postgres/postgres-resource-types";
+import {
+  TSSHAccount,
+  TSSHAccountCredentials,
+  TSSHResource,
+  TSSHResourceConnectionDetails
+} from "./ssh/ssh-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource;
-export type TPamResourceConnectionDetails = TPostgresResourceConnectionDetails | TMySQLResourceConnectionDetails;
+export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource;
+export type TPamResourceConnectionDetails =
+  | TPostgresResourceConnectionDetails
+  | TMySQLResourceConnectionDetails
+  | TSSHResourceConnectionDetails;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount;
 // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials;
+export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TSSHAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<
@@ -62,4 +71,5 @@ export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C exten
   validateConnection: TPamResourceFactoryValidateConnection<T>;
   validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<C>;
   rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<C>;
+  handleOverwritePreventionForCensoredValues: (updatedAccountCredentials: C, currentCredentials: C) => Promise<C>;
 };
