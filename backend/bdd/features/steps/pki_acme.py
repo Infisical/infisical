@@ -437,13 +437,10 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
 @then("I find the existing ACME account without EAB as {account_var}")
 def step_impl(context: Context, account_var: str):
     acme_client = context.acme_client
-    registration = messages.NewRegistration.from_data(
-        only_return_existing=True,
-    )
-    # Reset account so that it will send JWK instead of KID
-    acme_client.net.account = None
+    # registration = messages.RegistrationResource.from_json(dict(uri=""))
+    registration = acme_client.net.account
     try:
-        context.vars[account_var] = acme_client.new_account(registration)
+        context.vars[account_var] = acme_client.query_registration(registration)
     except Exception as exp:
         context.vars["error"] = exp
 
