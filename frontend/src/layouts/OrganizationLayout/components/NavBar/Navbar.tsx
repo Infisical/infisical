@@ -16,6 +16,8 @@ import {
   faSignOut,
   faToolbox,
   faUser,
+  faUserCog,
+  faUserPlus,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -26,6 +28,7 @@ import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   BreadcrumbContainer,
@@ -45,7 +48,13 @@ import {
 } from "@app/components/v2";
 import { Badge, InstanceIcon, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
-import { useOrganization, useSubscription, useUser } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser
+} from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -579,17 +588,23 @@ export const Navbar = () => {
             <span className="ml-2 hidden md:inline-block">Server Console</span>
           </Link>
         ) : (
-          <Link
-            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-            to="/organization/access-management"
-            search={{
-              selectedTab: "members",
-              action: "invite-members"
-            }}
-          >
-            <UserPlusIcon className="inline-block size-3.5" />
-            <span className="ml-2 hidden md:inline-block">Invite Members</span>
-          </Link>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+                  to="/organization/access-management"
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <UserPlusIcon className="inline-block size-3.5" />
+                  <span className="ml-2 hidden md:inline-block">Invite Members</span>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
         )
       ) : null}
       <DropdownMenu modal={false}>
@@ -673,8 +688,27 @@ export const Navbar = () => {
             </div>
           </div>
           <Link to="/personal-settings">
-            <DropdownMenuItem>Personal Settings</DropdownMenuItem>
+            <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserCog} />}>
+              Personal Settings
+            </DropdownMenuItem>
           </Link>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  to="/organization/access-management"
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
+                    Invite Members
+                  </DropdownMenuItem>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
           <a
             href="https://infisical.com/docs/documentation/getting-started/introduction"
             target="_blank"
