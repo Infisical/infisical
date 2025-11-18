@@ -21,6 +21,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -567,15 +568,30 @@ export const Navbar = () => {
           </Button>
         </Tooltip>
       )}
-      {user.superAdmin && !location.pathname.startsWith("/admin") && (
-        <Link
-          className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-          to="/admin"
-        >
-          <InstanceIcon className="inline-block size-3.5" />
-          <span className="ml-2 hidden md:inline-block">Server Console</span>
-        </Link>
-      )}
+      {/* eslint-disable-next-line no-nested-ternary */}
+      {!location.pathname.startsWith("/admin") ? (
+        user.superAdmin ? (
+          <Link
+            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+            to="/admin"
+          >
+            <InstanceIcon className="inline-block size-3.5" />
+            <span className="ml-2 hidden md:inline-block">Server Console</span>
+          </Link>
+        ) : (
+          <Link
+            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+            to="/organization/access-management"
+            search={{
+              selectedTab: "members",
+              action: "invite-members"
+            }}
+          >
+            <UserPlusIcon className="inline-block size-3.5" />
+            <span className="ml-2 hidden md:inline-block">Invite Members</span>
+          </Link>
+        )
+      ) : null}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
