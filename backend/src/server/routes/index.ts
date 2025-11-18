@@ -351,6 +351,8 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { upgradePathServiceFactory } from "@app/services/upgrade-path/upgrade-path-service";
+import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
+import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
@@ -532,6 +534,7 @@ export const registerRoutes = async (
   const projectSlackConfigDAL = projectSlackConfigDALFactory(db);
   const workflowIntegrationDAL = workflowIntegrationDALFactory(db);
   const totpConfigDAL = totpConfigDALFactory(db);
+  const webAuthnCredentialDAL = webAuthnCredentialDALFactory(db);
 
   const externalGroupOrgRoleMappingDAL = externalGroupOrgRoleMappingDALFactory(db);
 
@@ -870,6 +873,12 @@ export const registerRoutes = async (
     totpConfigDAL,
     userDAL,
     kmsService
+  });
+
+  const webAuthnService = webAuthnServiceFactory({
+    webAuthnCredentialDAL,
+    userDAL,
+    tokenService
   });
 
   const loginService = authLoginServiceFactory({
@@ -2523,6 +2532,7 @@ export const registerRoutes = async (
     externalGroupOrgRoleMapping: externalGroupOrgRoleMappingService,
     projectTemplate: projectTemplateService,
     totp: totpService,
+    webAuthn: webAuthnService,
     appConnection: appConnectionService,
     secretSync: secretSyncService,
     kmip: kmipService,

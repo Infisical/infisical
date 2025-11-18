@@ -194,3 +194,4 @@ export * from "./users";
 export * from "./vault-external-migration-configs";
 export * from "./webhooks";
 export * from "./workflow-integrations";
+export * from "./webauthn-credentials";

@@ -130,6 +130,7 @@ import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
+import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
@@ -321,6 +322,7 @@ declare module "fastify" {
       externalGroupOrgRoleMapping: TExternalGroupOrgRoleMappingServiceFactory;
       projectTemplate: TProjectTemplateServiceFactory;
       totp: TTotpServiceFactory;
+      webAuthn: TWebAuthnServiceFactory;
       appConnection: TAppConnectionServiceFactory;
       secretSync: TSecretSyncServiceFactory;
       kmip: TKmipServiceFactory;
