@@ -434,6 +434,20 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
     )
 
 
+@then("I find the existing ACME account without EAB as {account_var}")
+def step_impl(context: Context, account_var: str):
+    acme_client = context.acme_client
+    registration = messages.NewRegistration.from_data(
+        only_return_existing=True,
+    )
+    # Reset account so that it will send JWK instead of KID
+    acme_client.net.account = None
+    try:
+        context.vars[account_var] = acme_client.new_account(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
+
+
 @then("I register a new ACME account with email {email} without EAB")
 def step_impl(context: Context, email: str):
     acme_client = context.acme_client
@@ -597,6 +611,19 @@ def step_impl(context: Context, var_path: str, jq_query: str):
     )
     assert result, (
         f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} is not present"
+    )
+
+
+@then("the value {var_path} with should be absent")
+def step_impl(context: Context, var_path: str):
+    try:
+        value = eval_var(context, var_path)
+    except Exception as exp:
+        if isinstance(exp, KeyError):
+            return
+        raise
+    assert False, (
+        f"value at {var_path!r} should be absent, but we got this instead: {value!r}"
     )
 
 
