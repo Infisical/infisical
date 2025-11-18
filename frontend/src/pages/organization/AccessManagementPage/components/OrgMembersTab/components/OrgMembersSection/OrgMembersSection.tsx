@@ -72,7 +72,7 @@ export const OrgMembersSection = () => {
         search: ({ action, ...search }) => search
       });
     }
-  }, []);
+  }, [urlAction]);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
