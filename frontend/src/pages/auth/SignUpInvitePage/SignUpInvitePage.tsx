@@ -51,14 +51,12 @@ export const SignupInvitePage = () => {
   const email = (parsedUrl.to as string)?.replace(" ", "+").trim();
 
   const queryParams = new URLSearchParams(window.location.search);
-
   const metadata = queryParams.get("metadata") || undefined;
 
   const { mutateAsync: selectOrganization } = useSelectOrganization();
-
   const loggedIn = isLoggedIn();
 
-  // Verifies if the information that the users entered (name, workspace) is there, and if the password matched the criteria.
+  // Validation logic for signup
   const signupErrorCheck = async () => {
     setIsLoading(true);
 
@@ -90,12 +88,10 @@ export const SignupInvitePage = () => {
           tokenMetadata: metadata
         });
 
-        // unset temporary signup JWT token and set JWT token
         SecurityClient.setSignupToken("");
         SecurityClient.setToken(jwtToken);
 
         const userOrgs = await fetchOrganizations();
-
         const orgId = userOrgs[0].id;
 
         if (!orgId) throw new Error("You are not part of any organization");
@@ -111,19 +107,14 @@ export const SignupInvitePage = () => {
 
           if (isMfaEnabled) {
             SecurityClient.setMfaToken(mfaToken);
-            if (mfaMethod) {
-              setRequiredMfaMethod(mfaMethod);
-            }
+            if (mfaMethod) setRequiredMfaMethod(mfaMethod);
             toggleShowMfa.on();
             setMfaSuccessCallback(() => completeSignupFlow);
             return;
           }
 
           localStorage.setItem("orgData.id", orgId);
-
-          navigate({
-            to: "/organization/projects"
-          });
+          navigate({ to: "/organization/projects" });
         };
 
         await completeSignupFlow();
@@ -136,7 +127,7 @@ export const SignupInvitePage = () => {
     }
   };
 
-  // Step 4 of the sign up process (download the emergency kit pdf)
+  // Step 4 - Confirm Email
   const stepConfirmEmail = (
     <div className="mx-1 mt-14 mb-36 flex w-full max-w-xs flex-col items-center rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-4 py-8 drop-shadow-xl md:mb-16 md:max-w-lg md:px-6">
       <p className="mb-2 flex justify-center text-center text-4xl font-medium text-primary-100">
@@ -153,8 +144,6 @@ export const SignupInvitePage = () => {
               });
 
               if (response) {
-                // user will have temp token if doesn't have an account
-                // then continue with account setup workflow
                 if (response?.token) {
                   SecurityClient.setSignupToken(response.token);
                   setStep(2);
@@ -177,7 +166,7 @@ export const SignupInvitePage = () => {
     </div>
   );
 
-  // Because this is the invite signup - we directly go to the last step of signup (email is already verified)
+  // Step 5 - Main signup form
   const main = (
     <div className="mx-auto mt-14 mb-32 w-max rounded-xl border border-mineshaft-600 bg-mineshaft-800 px-8 py-10 drop-shadow-xl md:mb-16">
       <p className="mx-8 mb-6 flex justify-center bg-linear-to-tr from-mineshaft-300 to-white bg-clip-text text-4xl font-bold text-transparent md:mx-16">
@@ -212,10 +201,7 @@ export const SignupInvitePage = () => {
           label="Password"
           onChangeHandler={(pass) => {
             setPassword(pass);
-            checkPassword({
-              password: pass,
-              setErrors
-            });
+            checkPassword({ password: pass, setErrors });
           }}
           type="password"
           value={password}
@@ -238,7 +224,6 @@ export const SignupInvitePage = () => {
                   </div>
                 );
               }
-
               return null;
             })}
           </div>
@@ -246,9 +231,7 @@ export const SignupInvitePage = () => {
       </div>
       <div className="mx-auto mt-2 flex max-h-24 max-w-max flex-col items-center justify-center px-2 py-3 text-lg md:px-4 md:py-5">
         <Button
-          onClick={() => {
-            signupErrorCheck();
-          }}
+          onClick={() => signupErrorCheck()}
           isLoading={isLoading}
           size="lg"
         >
@@ -259,7 +242,7 @@ export const SignupInvitePage = () => {
   );
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
+    <div className="flex min-h-[100svh] overflow-y-auto flex-col items-center justify-center bg-linear-to-tr from-mineshaft-600 via-mineshaft-800 to-bunker-700">
       <Helmet>
         <title>Sign Up</title>
         <link rel="icon" href="/infisical.ico" />
