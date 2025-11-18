@@ -338,7 +338,7 @@ export const clearSession = (keepQueryClient?: boolean) => {
   sessionStorage.removeItem(SessionStorageKeys.CLI_TERMINAL_TOKEN);
 
   if (!keepQueryClient) {
-    qc.clear(); // Clear React Query cache
+    qc.invalidateQueries();
   }
 };
 
