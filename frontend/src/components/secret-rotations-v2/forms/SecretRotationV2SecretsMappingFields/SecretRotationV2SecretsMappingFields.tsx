@@ -21,7 +21,8 @@ const COMPONENT_MAP: Record<SecretRotation, React.FC> = {
   [SecretRotation.LdapPassword]: LdapPasswordRotationSecretsMappingFields,
   [SecretRotation.AwsIamUserSecret]: AwsIamUserSecretRotationSecretsMappingFields,
   [SecretRotation.OktaClientSecret]: OktaClientSecretRotationSecretsMappingFields,
-  [SecretRotation.RedisCredentials]: RedisCredentialsRotationSecretsMappingFields
+  [SecretRotation.RedisCredentials]: RedisCredentialsRotationSecretsMappingFields,
+  [SecretRotation.MongoDBCredentials]: SqlCredentialsRotationSecretsMappingFields
 };
 
 export const SecretRotationV2SecretsMappingFields = () => {

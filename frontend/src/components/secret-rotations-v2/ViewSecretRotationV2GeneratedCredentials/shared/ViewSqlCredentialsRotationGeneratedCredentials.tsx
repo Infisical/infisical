@@ -1,5 +1,6 @@
 import { CredentialDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/CredentialDisplay";
 import { ViewRotationGeneratedCredentialsDisplay } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials/shared/ViewRotationGeneratedCredentialsDisplay";
+import { TMongoDBCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/mongodb-credentials-rotation";
 import { TMsSqlCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/mssql-credentials-rotation";
 import { TMySqlCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/mysql-credentials-rotation";
 import { TOracleDBCredentialsRotationGeneratedCredentialsResponse } from "@app/hooks/api/secretRotationsV2/types/oracledb-credentials-rotation";
@@ -10,7 +11,8 @@ type Props = {
     | TMsSqlCredentialsRotationGeneratedCredentialsResponse
     | TMySqlCredentialsRotationGeneratedCredentialsResponse
     | TOracleDBCredentialsRotationGeneratedCredentialsResponse
-    | TPostgresCredentialsRotationGeneratedCredentialsResponse;
+    | TPostgresCredentialsRotationGeneratedCredentialsResponse
+    | TMongoDBCredentialsRotationGeneratedCredentialsResponse;
 };
 
 export const ViewSqlCredentialsRotationGeneratedCredentials = ({

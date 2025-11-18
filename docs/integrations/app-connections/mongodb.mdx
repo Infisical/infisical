@@ -11,8 +11,8 @@ Infisical supports the use of Username & Password authentication to connect with
     <Step title="Create a MongoDB user">
         Infisical recommends creating a designated user in your MongoDB database for your connection.
 
-        ```javascript
-        use admin
+        ```bash
+        use [TARGET-DATABASE]
         db.createUser({
           user: "infisical_manager",
           pwd: "[ENTER-YOUR-USER-PASSWORD]",
@@ -32,7 +32,7 @@ Infisical supports the use of Username & Password authentication to connect with
             <Tab title="Secret Rotation">
                 For Secret Rotations, your Infisical user will require the ability to create, update, and delete users in the target database:
 
-                ```javascript
+                ```bash
                 use [TARGET-DATABASE]
                 db.grantRolesToUser("infisical_manager", [
                   { role: "userAdmin", db: "[TARGET-DATABASE]" }
@@ -40,7 +40,7 @@ Infisical supports the use of Username & Password authentication to connect with
                 ```
 
                 <Note>
-                    The `userAdmin` role allows managing users (create, update passwords, delete) within the specified database. If you need to rotate users across multiple databases, grant `userAdminAnyDatabase` on the `admin` database instead.
+                    The `userAdmin` role allows managing users (create, update passwords, delete) within the specified database.
                 </Note>
             </Tab>
         </Tabs>

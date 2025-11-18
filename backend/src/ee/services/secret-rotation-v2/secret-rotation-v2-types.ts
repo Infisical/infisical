@@ -36,6 +36,12 @@ import {
   TLdapPasswordRotationWithConnection
 } from "./ldap-password";
 import {
+  TMongoDBCredentialsRotation,
+  TMongoDBCredentialsRotationInput,
+  TMongoDBCredentialsRotationListItem,
+  TMongoDBCredentialsRotationWithConnection
+} from "./mongodb-credentials";
+import {
   TMsSqlCredentialsRotation,
   TMsSqlCredentialsRotationInput,
   TMsSqlCredentialsRotationListItem,
@@ -86,7 +92,8 @@ export type TSecretRotationV2 =
   | TLdapPasswordRotation
   | TAwsIamUserSecretRotation
   | TOktaClientSecretRotation
-  | TRedisCredentialsRotation;
+  | TRedisCredentialsRotation
+  | TMongoDBCredentialsRotation;
 
 export type TSecretRotationV2WithConnection =
   | TPostgresCredentialsRotationWithConnection
@@ -98,7 +105,8 @@ export type TSecretRotationV2WithConnection =
   | TLdapPasswordRotationWithConnection
   | TAwsIamUserSecretRotationWithConnection
   | TOktaClientSecretRotationWithConnection
-  | TRedisCredentialsRotationWithConnection;
+  | TRedisCredentialsRotationWithConnection
+  | TMongoDBCredentialsRotationWithConnection;
 
 export type TSecretRotationV2GeneratedCredentials =
   | TSqlCredentialsRotationGeneratedCredentials
@@ -119,7 +127,8 @@ export type TSecretRotationV2Input =
   | TLdapPasswordRotationInput
   | TAwsIamUserSecretRotationInput
   | TOktaClientSecretRotationInput
-  | TRedisCredentialsRotationInput;
+  | TRedisCredentialsRotationInput
+  | TMongoDBCredentialsRotationInput;
 
 export type TSecretRotationV2ListItem =
   | TPostgresCredentialsRotationListItem
@@ -131,7 +140,8 @@ export type TSecretRotationV2ListItem =
   | TLdapPasswordRotationListItem
   | TAwsIamUserSecretRotationListItem
   | TOktaClientSecretRotationListItem
-  | TRedisCredentialsRotationListItem;
+  | TRedisCredentialsRotationListItem
+  | TMongoDBCredentialsRotationListItem;
 
 export type TSecretRotationV2TemporaryParameters = TLdapPasswordRotationInput["temporaryParameters"] | undefined;
 

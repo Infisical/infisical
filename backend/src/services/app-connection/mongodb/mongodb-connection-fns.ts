@@ -34,6 +34,7 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
 
     const clientOptions: {
       auth?: { username: string; password?: string };
+      authSource?: string;
       tls?: boolean;
       tlsInsecure?: boolean;
       ca?: string;
@@ -43,10 +44,11 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
         username: config.credentials.username,
         password: config.credentials.password
       },
+      authSource: config.credentials.database,
       directConnection: !isSrv
     };
 
-    if (config.credentials.sslEnabled || isSrv) {
+    if (config.credentials.sslEnabled) {
       clientOptions.tls = true;
       clientOptions.tlsInsecure = !config.credentials.sslRejectUnauthorized;
       if (config.credentials.sslCertificate) {
@@ -56,7 +58,6 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
 
     client = new MongoClient(uri, clientOptions);
 
-    // Validate connection by running ping command
     await client
       .db(config.credentials.database)
       .command({ ping: 1 })
