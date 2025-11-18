@@ -2,6 +2,7 @@ import crypto from "crypto";
 
 import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
@@ -31,7 +32,7 @@ export const offlineUsageReportServiceFactory = ({
 
   const generateUsageReportCSV = async () => {
     const licenseKeyConfig = getLicenseKeyConfig();
-    const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === "offline";
+    const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
 
     if (!hasOfflineLicense) {
       throw new BadRequestError({
