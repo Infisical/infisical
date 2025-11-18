@@ -1118,16 +1118,8 @@
             ]
           },
           {
-            "group": "Platform",
+            "group": "Shared",
             "pages": [
-              {
-                "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
-              },
-              {
-                "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
-              },
               {
                 "group": "App Connections",
                 "pages": [
@@ -1641,6 +1633,10 @@
               {
                 "group": "Audit Logs",
                 "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+              },
+              {
+                "group": "Events",
+                "pages": ["api-reference/endpoints/events/project-events"]
               }
             ]
           },
@@ -2804,6 +2800,15 @@
                   "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              }
+            ]
+          },
+          {
+            "group": "Other",
+            "pages": [
+              {
+                "group": "Admin",
+                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
               }
             ]
           }
