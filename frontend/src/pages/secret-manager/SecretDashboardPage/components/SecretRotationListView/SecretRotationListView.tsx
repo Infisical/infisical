@@ -3,15 +3,44 @@ import { EditSecretRotationV2Modal } from "@app/components/secret-rotations-v2/E
 import { RotateSecretRotationV2Modal } from "@app/components/secret-rotations-v2/RotateSecretRotationV2Modal";
 import { ViewSecretRotationV2GeneratedCredentialsModal } from "@app/components/secret-rotations-v2/ViewSecretRotationV2GeneratedCredentials";
 import { usePopUp } from "@app/hooks";
+import { UsedBySecretSyncs } from "@app/hooks/api/dashboard/types";
 import { TSecretRotationV2 } from "@app/hooks/api/secretRotationsV2";
+import { SecretV3RawSanitized, WsTag } from "@app/hooks/api/types";
 
 import { SecretRotationItem } from "./SecretRotationItem";
 
 type Props = {
   secretRotations?: TSecretRotationV2[];
+  projectId: string;
+  secretPath?: string;
+  tags?: WsTag[];
+  isProtectedBranch?: boolean;
+  usedBySecretSyncs?: UsedBySecretSyncs[];
+  importedBy?: {
+    environment: { name: string; slug: string };
+    folders: {
+      name: string;
+      secrets?: { secretId: string; referencedSecretKey: string; referencedSecretEnv: string }[];
+      isImported: boolean;
+    }[];
+  }[];
+  colWidth: number;
+  getMergedSecretsWithPending: (
+    secretParams?: (SecretV3RawSanitized | null)[]
+  ) => SecretV3RawSanitized[];
 };
 
-export const SecretRotationListView = ({ secretRotations }: Props) => {
+export const SecretRotationListView = ({
+  secretRotations,
+  projectId,
+  secretPath = "/",
+  tags = [],
+  isProtectedBranch = false,
+  usedBySecretSyncs,
+  importedBy,
+  colWidth,
+  getMergedSecretsWithPending
+}: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
     "editSecretRotation",
     "rotateSecretRotation",
@@ -31,6 +60,14 @@ export const SecretRotationListView = ({ secretRotations }: Props) => {
             handlePopUpOpen("viewSecretRotationGeneratedCredentials", secretRotation)
           }
           onDelete={() => handlePopUpOpen("deleteSecretRotation", secretRotation)}
+          colWidth={colWidth}
+          tags={tags}
+          projectId={projectId}
+          secretPath={secretPath}
+          isProtectedBranch={isProtectedBranch}
+          importedBy={importedBy}
+          usedBySecretSyncs={usedBySecretSyncs}
+          getMergedSecretsWithPending={getMergedSecretsWithPending}
         />
       ))}
       <EditSecretRotationV2Modal

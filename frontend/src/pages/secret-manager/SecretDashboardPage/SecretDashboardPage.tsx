@@ -656,12 +656,17 @@ const Page = () => {
     setDebouncedSearchFilter("");
   };
 
-  const getMergedSecretsWithPending = () => {
+  const getMergedSecretsWithPending = (
+    paramSecrets?: (SecretV3RawSanitized | null)[]
+  ): SecretV3RawSanitized[] => {
+    const sanitizedParamSecrets = paramSecrets?.filter(Boolean) as
+      | SecretV3RawSanitized[]
+      | undefined;
     if (!isBatchMode || pendingChanges.secrets.length === 0) {
-      return secrets;
+      return sanitizedParamSecrets || secrets || [];
     }
 
-    const mergedSecrets = [...(secrets || [])] as (SecretV3RawSanitized & {
+    const mergedSecrets = [...(sanitizedParamSecrets || secrets || [])] as (SecretV3RawSanitized & {
       originalKey?: string;
     })[];
 
@@ -1041,7 +1046,17 @@ const Page = () => {
                 />
               )}
               {canReadSecretRotations && Boolean(secretRotations?.length) && (
-                <SecretRotationListView secretRotations={secretRotations} />
+                <SecretRotationListView
+                  secretRotations={secretRotations}
+                  colWidth={colWidth}
+                  tags={tags}
+                  projectId={projectId}
+                  secretPath={secretPath}
+                  isProtectedBranch={isProtectedBranch}
+                  importedBy={importedBy}
+                  usedBySecretSyncs={usedBySecretSyncs}
+                  getMergedSecretsWithPending={getMergedSecretsWithPending}
+                />
               )}
               {canReadSecret && Boolean(mergedSecrets?.length) && (
                 <SecretListView

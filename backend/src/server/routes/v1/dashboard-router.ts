@@ -624,7 +624,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
                     secretMetadata: ResourceMetadataSchema.optional(),
-                    tags: SanitizedTagSchema.array().optional()
+                    tags: SanitizedTagSchema.array().optional(),
+                    reminder: RemindersSchema.extend({
+                      recipients: z.string().array()
+                    }).nullable()
                   })
                   .nullable()
                   .array()
@@ -743,6 +746,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>
               >[number]["secrets"][number] & {
                 isEmpty: boolean;
+                reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
               }
             > | null)[];
           })[]
@@ -847,27 +851,38 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         );
 
         if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
-          secretRotations = (
-            await server.services.secretRotationV2.getDashboardSecretRotations(
-              {
-                projectId,
-                search,
-                orderBy,
-                orderDirection,
-                environments: [environment],
-                secretPath,
-                limit: remainingLimit,
-                offset: adjustedOffset
-              },
-              req.permission
-            )
-          ).map((rotation) => ({
+          const rawSecretRotations = await server.services.secretRotationV2.getDashboardSecretRotations(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments: [environment],
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          const allRotationSecretIds = rawSecretRotations
+            .flatMap((rotation) => rotation.secrets)
+            .filter((secret) => Boolean(secret))
+            .map((secret) => secret.id);
+
+          const rotationReminders =
+            allRotationSecretIds.length > 0
+              ? await server.services.reminder.getRemindersForDashboard(allRotationSecretIds)
+              : {};
+
+          secretRotations = rawSecretRotations.map((rotation) => ({
             ...rotation,
             secrets: rotation.secrets.map((secret) =>
               secret
                 ? {
                     ...secret,
-                    isEmpty: !secret.secretValue
+                    isEmpty: secret.secretValueHidden,
+                    reminder: rotationReminders[secret.id] ?? null
                   }
                 : secret
             )
@@ -978,11 +993,26 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               rawSecrets.map((secret) => secret.id)
             );
 
-            secrets = rawSecrets.map((secret) => ({
+            const rotationSecretIds =
+              includeSecretRotations && secretRotations?.length
+                ? new Set(
+                    secretRotations.flatMap((rotation) => rotation.secrets.filter(Boolean).map((secret) => secret.id))
+                  )
+                : new Set<string>();
+
+            const filteredSecrets = rawSecrets.filter((secret) => !rotationSecretIds.has(secret.id));
+
+            secrets = filteredSecrets.map((secret) => ({
               ...secret,
               isEmpty: !secret.secretValue,
               reminder: reminders[secret.id] ?? null
             }));
+
+            if (includeSecretRotations && secretRotations?.length && totalSecretCount && rotationSecretIds.size > 0) {
+              const filteredCount = rawSecrets.filter((secret) => !rotationSecretIds.has(secret.id)).length;
+              const originalCount = rawSecrets.length;
+              totalSecretCount = Math.max(0, totalSecretCount - (originalCount - filteredCount));
+            }
           }
         }
       } catch (error) {
