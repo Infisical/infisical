@@ -10,7 +10,7 @@ import { AuthMode } from "@app/services/auth/auth-type";
 // When running in production, we don't want to even import nock, because it's not needed and it increases memory usage a lots.
 // It once caused an outage in the production environment.
 // This is why we would rather to crash the app if it's not in development mode (in that case, Kubernetes should stop it from rolling out).
-if (process.env.NODE_ENV === "production") {
+if (getConfig().NODE_ENV === "production") {
   throw new Error("BDD Nock API can only be enabled in development or test mode");
 }
 
