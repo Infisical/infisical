@@ -12,31 +12,31 @@ Replace `{version}` with the version of the SDK you wish to use. This documentat
 
 <AccordionGroup>
 
-  <Accordion title="Maven">
+<Accordion title="Maven">
 
-    ```xml
-    <dependency>
-        <groupId>com.infisical</groupId>
-        <artifactId>sdk</artifactId>
-        <version>{version}</version>
-    </dependency>
-    ```
+```xml
+<dependency>
+    <groupId>com.infisical</groupId>
+    <artifactId>sdk</artifactId>
+    <version>{version}</version>
+</dependency>
+```
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="Gradle">
+<Accordion title="Gradle">
 
-    ```gradle
-      implementation group: 'com.infisical', name: 'sdk', version: '{version}'
-    ```
+```gradle
+  implementation group: 'com.infisical', name: 'sdk', version: '{version}'
+```
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="Others">
+<Accordion title="Others">
 
-    For other build tools, please check our [package snippets](https://central.sonatype.com/artifact/com.infisical/sdk), and select the build tool you're using for your project.
+For other build tools, please check our [package snippets](https://central.sonatype.com/artifact/com.infisical/sdk), and select the build tool you're using for your project.
 
-  </Accordion>
+</Accordion>
 
 </AccordionGroup>
 
@@ -92,93 +92,93 @@ The `Auth` component provides methods for authentication:
 
 <AccordionGroup>
 
-  <Accordion title="Universal Auth">
+<Accordion title="Universal Auth">
 
-    ```java
-    public void UniversalAuthLogin(
-      String clientId,
-      String clientSecret
-    )
-    throws InfisicalException
-    ```
+```java
+public void UniversalAuthLogin(
+  String clientId,
+  String clientSecret
+)
+throws InfisicalException
+```
 
-    ```java
-    sdk.Auth().UniversalAuthLogin(
-      "CLIENT_ID",
-      "CLIENT_SECRET"
-    );
-    ```
+```java
+sdk.Auth().UniversalAuthLogin(
+  "CLIENT_ID",
+  "CLIENT_SECRET"
+);
+```
 
 
-    **Parameters:**
-    - `clientId` (string): The client ID of your Machine Identity.
-    - `clientSecret` (string): The client secret of your Machine Identity.
+**Parameters:**
+- `clientId` (string): The client ID of your Machine Identity.
+- `clientSecret` (string): The client secret of your Machine Identity.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="AWS Auth">
+<Accordion title="AWS Auth">
 
-    ```java
-    public void AwsAuthLogin(
-      String identityId
-    )
-    throws InfisicalException
-    ```
+```java
+public void AwsAuthLogin(
+  String identityId
+)
+throws InfisicalException
+```
 
-    ```java
-    sdk.Auth().AwsAuthLogin("<machine-identity-id>");
-    ```
+```java
+sdk.Auth().AwsAuthLogin("<machine-identity-id>");
+```
 
-    **Parameters:**
-    - `identityId` (String): The ID of the machine identity to authenticate with.
+**Parameters:**
+- `identityId` (String): The ID of the machine identity to authenticate with.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="LDAP Auth">
+<Accordion title="LDAP Auth">
 
-    ```java
-    public void LdapAuthLogin(
-      LdapAuthLoginInput input
-    )
-    throws InfisicalException
-    ```
+```java
+public void LdapAuthLogin(
+  LdapAuthLoginInput input
+)
+throws InfisicalException
+```
 
-    ```java
-    var input = LdapAuthLoginInput
-      .builder()
-      .identityId("<machine-identity-id>")
-      .username("<ldap-username>")
-      .password("<ldap-password>")
-      .build();
+```java
+var input = LdapAuthLoginInput
+  .builder()
+  .identityId("<machine-identity-id>")
+  .username("<ldap-username>")
+  .password("<ldap-password>")
+  .build();
 
-    sdk.Auth().LdapAuthLogin(input);
-    ```
+sdk.Auth().LdapAuthLogin(input);
+```
 
-    **Parameters:**
-    - `input` (LdapAuthLoginInput): The input for authenticating with LDAP.
-      - `identityId` (String): The ID of the machine identity to authenticate with.
-      - `username` (String): The LDAP username.
-      - `password` (String): The LDAP password.
+**Parameters:**
+- `input` (LdapAuthLoginInput): The input for authenticating with LDAP.
+  - `identityId` (String): The ID of the machine identity to authenticate with.
+  - `username` (String): The LDAP username.
+  - `password` (String): The LDAP password.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="Access Token Auth">
+<Accordion title="Access Token Auth">
 
-    ```java
-    public void SetAccessToken(
-      String accessToken
-    )
-    throws InfisicalException
-    ```
+```java
+public void SetAccessToken(
+  String accessToken
+)
+throws InfisicalException
+```
 
-    ```java
-    sdk.Auth().SetAccessToken("ACCESS_TOKEN");
-    ```
+```java
+sdk.Auth().SetAccessToken("ACCESS_TOKEN");
+```
 
-    **Parameters:**
-    - `accessToken` (string): The access token you want to use for authentication.
+**Parameters:**
+- `accessToken` (string): The access token you want to use for authentication.
 
-  </Accordion>
+</Accordion>
 
 </AccordionGroup>
 
@@ -188,197 +188,197 @@ This sub-class handles operations related to secrets:
 
 <AccordionGroup>
 
-  <Accordion title="List Secrets">
+<Accordion title="List Secrets">
 
-    ```java
-    public List<Secret> ListSecrets(
-        String projectId,
-        String environmentSlug,
-        String secretPath,
-        Boolean expandSecretReferences,
-        Boolean recursive,
-        Boolean includeImports,
-        Boolean setSecretsOnSystemProperties
-    )
+```java
+public List<Secret> ListSecrets(
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    Boolean expandSecretReferences,
+    Boolean recursive,
+    Boolean includeImports,
+    Boolean setSecretsOnSystemProperties
+)
 
-    throws InfisicalException
-    ```
+throws InfisicalException
+```
 
-    ```java
-    List<Secret> secrets = sdk.Secrets().ListSecrets(
-      "<project-id>",
-      "<env-slug>", // dev, prod, staging, etc.
-      "/secret/path", // `/` is the root folder
-      false, // Should expand secret references
-      false, // Should get secrets recursively from sub folders
-      false, // Should include imports
-      false // Should set the fetched secrets as key/value pairs on the system properties. Makes the secrets accessible as System.getProperty("<secret-key>")
-    );
-    ```
+```java
+List<Secret> secrets = sdk.Secrets().ListSecrets(
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  false, // Should expand secret references
+  false, // Should get secrets recursively from sub folders
+  false, // Should include imports
+  false // Should set the fetched secrets as key/value pairs on the system properties. Makes the secrets accessible as System.getProperty("<secret-key>")
+);
+```
 
-    **Parameters:**
-    - `projectId` (string): The ID of your project.
-    - `environmentSlug` (string): The environment in which to list secrets (e.g., "dev").
-    - `secretPath` (string): The path to the secrets.
-    - `expandSecretReferences` (boolean): Whether to expand secret references.
-    - `recursive` (boolean): Whether to list secrets recursively.
-    - `includeImports` (boolean): Whether to include imported secrets.
-    - `setSecretsOnSystemProperties` (boolean): Set the retrieved secrets as key/value pairs on the system properties, making them accessible through `System.getProperty("<secret-key>")`
+**Parameters:**
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to list secrets (e.g., "dev").
+- `secretPath` (string): The path to the secrets.
+- `expandSecretReferences` (boolean): Whether to expand secret references.
+- `recursive` (boolean): Whether to list secrets recursively.
+- `includeImports` (boolean): Whether to include imported secrets.
+- `setSecretsOnSystemProperties` (boolean): Set the retrieved secrets as key/value pairs on the system properties, making them accessible through `System.getProperty("<secret-key>")`
 
-    **Returns:**
-    - `List<Secret>`: The response containing the list of secrets.
+**Returns:**
+- `List<Secret>`: The response containing the list of secrets.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="Create Secret">
+<Accordion title="Create Secret">
 
-    ```java
-    public Secret CreateSecret(
-        String secretName,
-        String secretValue,
-        String projectId,
-        String environmentSlug,
-        String secretPath
-    )
-    throws InfisicalException
-    ```
+```java
+public Secret CreateSecret(
+    String secretName,
+    String secretValue,
+    String projectId,
+    String environmentSlug,
+    String secretPath
+)
+throws InfisicalException
+```
 
-    ```java
-    Secret newSecret = sdk.Secrets().CreateSecret(
-      "NEW_SECRET_NAME",
-      "secret-value",
-      "<project-id>",
-      "<env-slug>", // dev, prod, staging, etc.
-      "/secret/path", // `/` is the root folder
-    );
-    ```
+```java
+Secret newSecret = sdk.Secrets().CreateSecret(
+  "NEW_SECRET_NAME",
+  "secret-value",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+);
+```
 
-    **Parameters:**
-    - `secretName` (string): The name of the secret to create
-    - `secretValue` (string): The value of the secret.
-    - `projectId` (string): The ID of your project.
-    - `environmentSlug` (string): The environment in which to create the secret.
-    - `secretPath` (string, optional): The path to the secret.
+**Parameters:**
+- `secretName` (string): The name of the secret to create
+- `secretValue` (string): The value of the secret.
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to create the secret.
+- `secretPath` (string, optional): The path to the secret.
 
-    **Returns:**
-    - `Secret`: The created secret.
+**Returns:**
+- `Secret`: The created secret.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="Update Secret">
+<Accordion title="Update Secret">
 
-    ```java
-    public Secret UpdateSecret(
-        String secretName,
-        String projectId,
-        String environmentSlug,
-        String secretPath,
-        String newSecretValue,
-        String newSecretName
-      )
-        
-    throws InfisicalException
-    ```
-
-
-    ```java
-    Secret updatedSecret = sdk.Secrets().UpdateSecret(
-      "SECRET_NAME",
-      "<project-id>",
-      "<env-slug>", // dev, prod, staging, etc.
-      "/secret/path", // `/` is the root folder
-      "NEW_SECRET_VALUE", // nullable
-      "NEW_SECRET_NAME" // nullable
-    );
-    ```
-
-    **Parameters:**
-    - `secretName` (string): The name of the secret to update.
-    - `projectId` (string): The ID of your project.
-    - `environmentSlug` (string): The environment in which to update the secret.
-    - `secretPath` (string): The path to the secret.
-    - `newSecretValue` (string, nullable): The new value of the secret.
-    - `newSecretName` (string, nullable): A new name for the secret.
-
-    **Returns:**
-    - `Secret`: The updated secret.
-
-  </Accordion>
-
-  <Accordion title="Get Secret by Name">
-
-    ```java
-    public Secret GetSecret(
-        String secretName,
-        String projectId,
-        String environmentSlug,
-        String secretPath,
-        Boolean expandSecretReferences,
-        Boolean includeImports,
-        String secretType
-      )
-    throws InfisicalException
-    ```
-
-    ```java
-    Secret secret = sdk.Secrets().GetSecret(
-      "SECRET_NAME",
-      "<project-id>",
-      "<env-slug>", // dev, prod, staging, etc.
-      "/secret/path", // `/` is the root folder
-      false, // Should expand secret references
-      false, // Should get secrets recursively from sub folders
-      false, // Should include imports
-      "shared" // Optional Secret Type (defaults to "shared")
-    );
-    ```
-
-    **Parameters:**
-    - `secretName` (string): The name of the secret to get`
-    - `projectId` (string): The ID of your project.
-    - `environmentSlug` (string): The environment in which to retrieve the secret.
-    - `secretPath` (string): The path to the secret.
-    - `expandSecretReferences` (boolean, optional): Whether to expand secret references.
-    - `includeImports` (boolean, optional): Whether to include imported secrets.
-    - `secretType` (personal | shared, optional): The type of secret to fetch.
+```java
+public Secret UpdateSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    String newSecretValue,
+    String newSecretName
+  )
+    
+throws InfisicalException
+```
 
 
-    **Returns:**
-    - `Secret`: The fetched secret.
+```java
+Secret updatedSecret = sdk.Secrets().UpdateSecret(
+  "SECRET_NAME",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  "NEW_SECRET_VALUE", // nullable
+  "NEW_SECRET_NAME" // nullable
+);
+```
 
-  </Accordion>
+**Parameters:**
+- `secretName` (string): The name of the secret to update.
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to update the secret.
+- `secretPath` (string): The path to the secret.
+- `newSecretValue` (string, nullable): The new value of the secret.
+- `newSecretName` (string, nullable): A new name for the secret.
 
-  <Accordion title="Delete Secret by Name">
+**Returns:**
+- `Secret`: The updated secret.
 
-    ```java
-    public Secret DeleteSecret(
-        String secretName,
-        String projectId,
-        String environmentSlug,
-        String secretPath
-      )
-    throws InfisicalException
-    ```
+</Accordion>
 
-    ```java
-    Secret deletedSecret = sdk.Secrets().DeleteSecret(
-      "SECRET_NAME", 
-      "<project-id>",
-      "<env-slug>", // dev, prod, staging, etc.
-      "/secret/path", // `/` is the root folder
-    );
-    ```
+<Accordion title="Get Secret by Name">
 
-    **Parameters:**
-    - `secretName` (string): The name of the secret to delete.
-    - `projectId` (string): The ID of your project.
-    - `environmentSlug` (string): The environment in which to delete the secret.
-    - `secretPath` (string, optional): The path to the secret.
+```java
+public Secret GetSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath,
+    Boolean expandSecretReferences,
+    Boolean includeImports,
+    String secretType
+  )
+throws InfisicalException
+```
 
-    **Returns:**
-    - `Secret`: The deleted secret.
+```java
+Secret secret = sdk.Secrets().GetSecret(
+  "SECRET_NAME",
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+  false, // Should expand secret references
+  false, // Should get secrets recursively from sub folders
+  false, // Should include imports
+  "shared" // Optional Secret Type (defaults to "shared")
+);
+```
 
-  </Accordion>
+**Parameters:**
+- `secretName` (string): The name of the secret to get`
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to retrieve the secret.
+- `secretPath` (string): The path to the secret.
+- `expandSecretReferences` (boolean, optional): Whether to expand secret references.
+- `includeImports` (boolean, optional): Whether to include imported secrets.
+- `secretType` (personal | shared, optional): The type of secret to fetch.
+
+
+**Returns:**
+- `Secret`: The fetched secret.
+
+</Accordion>
+
+<Accordion title="Delete Secret by Name">
+
+```java
+public Secret DeleteSecret(
+    String secretName,
+    String projectId,
+    String environmentSlug,
+    String secretPath
+  )
+throws InfisicalException
+```
+
+```java
+Secret deletedSecret = sdk.Secrets().DeleteSecret(
+  "SECRET_NAME", 
+  "<project-id>",
+  "<env-slug>", // dev, prod, staging, etc.
+  "/secret/path", // `/` is the root folder
+);
+```
+
+**Parameters:**
+- `secretName` (string): The name of the secret to delete.
+- `projectId` (string): The ID of your project.
+- `environmentSlug` (string): The environment in which to delete the secret.
+- `secretPath` (string, optional): The path to the secret.
+
+**Returns:**
+- `Secret`: The deleted secret.
+
+</Accordion>
 
 </AccordionGroup>
 
@@ -386,161 +386,161 @@ This sub-class handles operations related to secrets:
 
 <AccordionGroup>
 
-  <Accordion title="Get Folder By Name">
+<Accordion title="Get Folder By Name">
 
-    ```java
-    public Folder Get(
-      String folderId
-    );
-    throws InfisicalException
-    ```
+```java
+public Folder Get(
+  String folderId
+);
+throws InfisicalException
+```
 
-    ```java
-    Folder folder = sdk.Folders().Get("<folder-id>");
-    ```
+```java
+Folder folder = sdk.Folders().Get("<folder-id>");
+```
 
-    **Parameters:**
-    - `folderId` (String): The ID of the folder to retrieve.
+**Parameters:**
+- `folderId` (String): The ID of the folder to retrieve.
 
-    **Returns:**
-    - `Folder`: The retrieved folder.
+**Returns:**
+- `Folder`: The retrieved folder.
 
-  </Accordion>
+</Accordion>
 
-  <Accordion title="List Folders">
+<Accordion title="List Folders">
 
-    ```java
-    public List<Folder> List(
-      ListFoldersInput input
-    )
-    throws InfisicalException
-    ```
+```java
+public List<Folder> List(
+  ListFoldersInput input
+)
+throws InfisicalException
+```
 
-    ```java
-    ListFoldersInput input = ListFoldersInput
-      .builder()
-      .projectId("<your-project-id>")
-      .environmentSlug("<env-slug>")
-      .folderPath("/")
-      .recursive(false)
-      .build();
+```java
+ListFoldersInput input = ListFoldersInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderPath("/")
+  .recursive(false)
+  .build();
 
-    List<Folder> folders = sdk.Folders().List(input);
-    ```
-
-
-    **Parameters:**
-    - `input` (ListFoldersInput): The input for listing folders.
-      - `projectId` (String): The ID of the project to list folders from.
-      - `environmentSlug` (String): The slug of the environment to list folders from.
-      - `folderPath` (String): The path to list folders from. Defaults to `/`.
-      - `recursive` (Boolean): Whether or not to list sub-folders recursively from the specified folder path and downwards. Defaults to `false`.
-
-    **Returns:**
-    - `List<Folder>`: The retrieved folders.
-
-  </Accordion>
-
-  <Accordion title="Create Folder">
-
-    ```java
-    public Folder Create(
-      CreateFolderInput input
-    )
-    throws InfisicalException
-    ```
-
-    ```java
-    var input = CreateFolderInput
-      .builder()
-      .projectId("<your-project-id>")
-      .environmentSlug("<env-slug>")
-      .folderName("<folder-name>")
-      .folderPath("/")
-      .description("Optional folder description")
-      .build();
-
-    Folder createdFolder = sdk.Folders().Create(input);
-    ```
-
-    **Parameters:**
-    - `input` (CreateFolderInput): The input for creating a folder.
-      - `projectId` (String): The ID of the project to create the folder in.
-      - `environmentSlug` (String): The slug of the environment to create the folder in.
-      - `folderPath` (String): The path to create the folder in. Defaults to `/`.
-      - `folderName` (String): The name of the folder to create.
-      - `description` (String): The description of the folder to create. This is optional.
-
-    **Returns:**
-    - `Folder`: The created folder.
-
-  </Accordion>
-
-  <Accordion title="Update Folder">
-
-    ```java
-    public Folder Update(
-      UpdateFolderInput input
-    )
-    throws InfisicalException
-    ```
-
-    ```java
-    var input = UpdateFolderInput
-      .builder()
-      .projectId("<your-project-id>")
-      .environmentSlug("<env-slug>")
-      .folderId("<id-of-folder-to-update>")
-      .newFolderName("<the-new-folder-name>")
-      .folderPath("/")
-      .build();
-
-    Folder updatedFolder = sdk.Folders().Update(input);
-    ```
-
-    **Parameters:**
-    - `input` (UpdateFolderInput): The input for updating a folder.
-      - `projectId` (String): The ID of the project where the folder exists.
-      - `environmentSlug` (String): The slug of the environment where the folder exists.
-      - `folderPath` (String): The path of the folder to update.
-      - `folderId` (String): The ID of the folder to update.
-      - `newFolderName` (String): The new folder name.
-
-    **Returns:**
-    - `Folder`: The updated folder.
-
-  </Accordion>
-
-  <Accordion title="Delete Folder">
-
-    ```java
-    public Folder Delete(
-      DeleteFolderInput input
-    )
-    throws InfisicalException
-    ```
-
-    ```java
-    var input = DeleteFolderInput
-      .builder()
-      .folderId("<the-folder-id>")
-      .environmentSlug("<env-slug>")
-      .projectId("<your-project-id>")
-      .build();
-
-    Folder deletedFolder = sdk.Folders().Delete(input);
-    ```
+List<Folder> folders = sdk.Folders().List(input);
+```
 
 
-    **Parameters:**
-    - `input` (DeleteFolderInput): The input for deleting a folder.
-      - `projectId` (String): The ID of the project where the folder exists.
-      - `environmentSlug` (String): The slug of the environment where the folder exists.
-      - `folderId` (String): The ID of the folder to delete.
+**Parameters:**
+- `input` (ListFoldersInput): The input for listing folders.
+  - `projectId` (String): The ID of the project to list folders from.
+  - `environmentSlug` (String): The slug of the environment to list folders from.
+  - `folderPath` (String): The path to list folders from. Defaults to `/`.
+  - `recursive` (Boolean): Whether or not to list sub-folders recursively from the specified folder path and downwards. Defaults to `false`.
 
-    **Returns:**
-    - `Folder`: The deleted folder.
+**Returns:**
+- `List<Folder>`: The retrieved folders.
 
-  </Accordion>
+</Accordion>
+
+<Accordion title="Create Folder">
+
+```java
+public Folder Create(
+  CreateFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = CreateFolderInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderName("<folder-name>")
+  .folderPath("/")
+  .description("Optional folder description")
+  .build();
+
+Folder createdFolder = sdk.Folders().Create(input);
+```
+
+**Parameters:**
+- `input` (CreateFolderInput): The input for creating a folder.
+  - `projectId` (String): The ID of the project to create the folder in.
+  - `environmentSlug` (String): The slug of the environment to create the folder in.
+  - `folderPath` (String): The path to create the folder in. Defaults to `/`.
+  - `folderName` (String): The name of the folder to create.
+  - `description` (String): The description of the folder to create. This is optional.
+
+**Returns:**
+- `Folder`: The created folder.
+
+</Accordion>
+
+<Accordion title="Update Folder">
+
+```java
+public Folder Update(
+  UpdateFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = UpdateFolderInput
+  .builder()
+  .projectId("<your-project-id>")
+  .environmentSlug("<env-slug>")
+  .folderId("<id-of-folder-to-update>")
+  .newFolderName("<the-new-folder-name>")
+  .folderPath("/")
+  .build();
+
+Folder updatedFolder = sdk.Folders().Update(input);
+```
+
+**Parameters:**
+- `input` (UpdateFolderInput): The input for updating a folder.
+  - `projectId` (String): The ID of the project where the folder exists.
+  - `environmentSlug` (String): The slug of the environment where the folder exists.
+  - `folderPath` (String): The path of the folder to update.
+  - `folderId` (String): The ID of the folder to update.
+  - `newFolderName` (String): The new folder name.
+
+**Returns:**
+- `Folder`: The updated folder.
+
+</Accordion>
+
+<Accordion title="Delete Folder">
+
+```java
+public Folder Delete(
+  DeleteFolderInput input
+)
+throws InfisicalException
+```
+
+```java
+var input = DeleteFolderInput
+  .builder()
+  .folderId("<the-folder-id>")
+  .environmentSlug("<env-slug>")
+  .projectId("<your-project-id>")
+  .build();
+
+Folder deletedFolder = sdk.Folders().Delete(input);
+```
+
+
+**Parameters:**
+- `input` (DeleteFolderInput): The input for deleting a folder.
+  - `projectId` (String): The ID of the project where the folder exists.
+  - `environmentSlug` (String): The slug of the environment where the folder exists.
+  - `folderId` (String): The ID of the folder to delete.
+
+**Returns:**
+- `Folder`: The deleted folder.
+
+</Accordion>
 
 </AccordionGroup>
