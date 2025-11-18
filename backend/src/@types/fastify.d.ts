@@ -130,8 +130,8 @@ import { TTotpServiceFactory } from "@app/services/totp/totp-service";
 import { TUpgradePathService } from "@app/services/upgrade-path/upgrade-path-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 import { TUserServiceFactory } from "@app/services/user/user-service";
-import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TUserEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { TWebAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { TWebhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { TWorkflowIntegrationServiceFactory } from "@app/services/workflow-integration/workflow-integration-service";
 
