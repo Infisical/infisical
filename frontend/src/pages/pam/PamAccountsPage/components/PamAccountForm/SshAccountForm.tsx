@@ -1,11 +1,63 @@
 import { useEffect, useState } from "react";
-import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Controller, FormProvider, useForm, useFormContext, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
-import { FormControl, Input, Select, SelectItem, TextArea } from "@app/components/v2";
+import {
+  Button,
+  FormControl,
+  Input,
+  ModalClose,
+  Select,
+  SelectItem,
+  TextArea
+} from "@app/components/v2";
+import { PamResourceType, TSSHAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { SSHAuthMethod } from "@app/hooks/api/pam/types/ssh-resource";
 
-export const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
+import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+
+type Props = {
+  account?: TSSHAccount;
+  resourceId?: string;
+  resourceType?: PamResourceType;
+  onSubmit: (formData: FormData) => Promise<void>;
+};
+
+export const SSHPasswordCredentialsSchema = z.object({
+  authMethod: z.literal(SSHAuthMethod.Password),
+  username: z.string().trim().min(1, "Username is required"),
+  password: z.string().trim().min(1, "Password is required")
+});
+
+export const SSHPublicKeyCredentialsSchema = z.object({
+  authMethod: z.literal(SSHAuthMethod.PublicKey),
+  username: z.string().trim().min(1, "Username is required"),
+  privateKey: z.string().trim().min(1, "Private key is required")
+});
+
+export const SSHCertificateCredentialsSchema = z.object({
+  authMethod: z.literal(SSHAuthMethod.Certificate),
+  username: z.string().trim().min(1, "Username is required")
+});
+
+export const BaseSshAccountSchema = z.discriminatedUnion("authMethod", [
+  SSHPasswordCredentialsSchema,
+  SSHPublicKeyCredentialsSchema,
+  SSHCertificateCredentialsSchema
+]);
+
+const formSchema = genericAccountFieldsSchema.extend({
+  credentials: BaseSshAccountSchema,
+  // We don't support rotation for now, just feed a false value to
+  // make the schema happy
+  rotationEnabled: z.boolean().default(false)
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
   const { control, setValue } = useFormContext();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -139,5 +191,82 @@ export const SshAccountFields = ({ isUpdate }: { isUpdate: boolean }) => {
         </p>
       )}
     </div>
+  );
+};
+
+export const SshAccountForm = ({ account, onSubmit }: Props) => {
+  const isUpdate = Boolean(account);
+
+  const getDefaultCredentials = () => {
+    if (!account) return undefined;
+
+    if (account.credentials.authMethod === SSHAuthMethod.Password) {
+      return {
+        ...account.credentials,
+        password: UNCHANGED_PASSWORD_SENTINEL
+      };
+    }
+
+    if (account.credentials.authMethod === SSHAuthMethod.PublicKey) {
+      return {
+        ...account.credentials,
+        privateKey: UNCHANGED_PASSWORD_SENTINEL
+      };
+    }
+
+    return account.credentials;
+  };
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: account
+      ? {
+          ...account,
+          credentials: getDefaultCredentials()
+        }
+      : {
+          name: "",
+          description: "",
+          credentials: {
+            authMethod: SSHAuthMethod.Password,
+            username: "",
+            password: ""
+          }
+        }
+  });
+
+  const {
+    handleSubmit,
+    formState: { isSubmitting, isDirty }
+  } = form;
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={(e) => {
+          handleSubmit(onSubmit)(e);
+        }}
+      >
+        <GenericAccountFields />
+        <SshAccountFields isUpdate={isUpdate} />
+        <div className="mt-6 flex items-center">
+          <Button
+            className="mr-4"
+            size="sm"
+            type="submit"
+            colorSchema="secondary"
+            isLoading={isSubmitting}
+            isDisabled={isSubmitting || !isDirty}
+          >
+            {isUpdate ? "Update Account" : "Create Account"}
+          </Button>
+          <ModalClose asChild>
+            <Button colorSchema="secondary" variant="plain">
+              Cancel
+            </Button>
+          </ModalClose>
+        </div>
+      </form>
+    </FormProvider>
   );
 };

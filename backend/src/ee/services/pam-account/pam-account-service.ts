@@ -24,11 +24,10 @@ import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPamFolderDALFactory } from "../pam-folder/pam-folder-dal";
 import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
-import { TMySQLResourceConnectionDetails } from "../pam-resource/mysql/mysql-resource-types";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
-import { TPostgresResourceConnectionDetails } from "../pam-resource/postgres/postgres-resource-types";
+import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -492,7 +491,7 @@ export const pamAccountServiceFactory = ({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
             kmsService,
             projectId: account.projectId
-          })) as TMySQLResourceConnectionDetails | TPostgresResourceConnectionDetails;
+          })) as TSqlResourceConnectionDetails;
 
           const credentials = await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
@@ -517,9 +516,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username,
-            accountName: account.name,
-            accountPath
+            username: credentials.username
           };
         }
         break;
