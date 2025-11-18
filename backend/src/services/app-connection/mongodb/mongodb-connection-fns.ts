@@ -1,4 +1,5 @@
 import { MongoClient } from "mongodb";
+import RE2 from "re2";
 
 import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import { BadRequestError } from "@app/lib/errors";
@@ -17,12 +18,15 @@ export const getMongoDBConnectionListItem = () => {
 };
 
 export const validateMongoDBConnectionCredentials = async (config: TMongoDBConnectionConfig) => {
+  const srvRegex = new RE2("^mongodb\\+srv:\\/\\/");
+  const protocolRegex = new RE2("^mongodb:\\/\\/");
+
   let normalizedHost = config.credentials.host.trim();
-  const isSrvFromHost = normalizedHost.startsWith("mongodb+srv://");
+  const isSrvFromHost = srvRegex.test(normalizedHost);
   if (isSrvFromHost) {
-    normalizedHost = normalizedHost.replace(/^mongodb\+srv:\/\//, "");
-  } else if (normalizedHost.startsWith("mongodb://")) {
-    normalizedHost = normalizedHost.replace(/^mongodb:\/\//, "");
+    normalizedHost = normalizedHost.replace(srvRegex, "");
+  } else if (protocolRegex.test(normalizedHost)) {
+    normalizedHost = normalizedHost.replace(protocolRegex, "");
   }
 
   const [hostIp] = await verifyHostInputValidity(normalizedHost);
