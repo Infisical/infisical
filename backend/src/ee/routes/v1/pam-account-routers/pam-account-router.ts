@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
+import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -12,6 +13,7 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const SanitizedAccountSchema = z.union([
+  SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
   SanitizedMySQLAccountWithResourceSchema
 ]);
@@ -93,7 +95,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           gatewayClientPrivateKey: z.string(),
           gatewayServerCertificateChain: z.string(),
           relayHost: z.string(),
-          metadata: z.record(z.string(), z.string()).optional()
+          metadata: z.record(z.string(), z.string().optional()).optional()
         })
       }
     },
