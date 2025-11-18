@@ -2,12 +2,15 @@ import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { SanitizedSSHAccountWithResourceSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import { BadRequestError } from "@app/lib/errors";
+import { removeTrailingSlash } from "@app/lib/fn";
 import { ms } from "@app/lib/ms";
+import { OrderByDirection } from "@app/lib/types";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -28,33 +31,69 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "List PAM accounts",
       querystring: z.object({
-        projectId: z.string().uuid()
+        projectId: z.string().uuid(),
+        accountPath: z.string().trim().default("/").transform(removeTrailingSlash),
+        accountView: z.nativeEnum(PamAccountView).default(PamAccountView.Flat),
+        offset: z.coerce.number().min(0).default(0),
+        limit: z.coerce.number().min(1).max(100).default(100),
+        orderBy: z.nativeEnum(PamAccountOrderBy).default(PamAccountOrderBy.Name),
+        orderDirection: z.nativeEnum(OrderByDirection).default(OrderByDirection.ASC),
+        search: z.string().trim().optional(),
+        filterResourceIds: z
+          .string()
+          .transform((val) =>
+            val
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
+          )
+          .optional()
       }),
       response: {
         200: z.object({
           accounts: SanitizedAccountSchema.array(),
-          folders: PamFoldersSchema.array()
+          folders: PamFoldersSchema.array(),
+          totalCount: z.number().default(0),
+          folderId: z.string().optional(),
+          folderPaths: z.record(z.string(), z.string())
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const response = await server.services.pamAccount.list(req.query.projectId, req.permission);
+      const { projectId, accountPath, accountView, limit, offset, search, orderBy, orderDirection, filterResourceIds } =
+        req.query;
+
+      const { accounts, folders, totalCount, folderId, folderPaths } = await server.services.pamAccount.list({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        accountPath,
+        accountView,
+        limit,
+        offset,
+        search,
+        orderBy,
+        orderDirection,
+        filterResourceIds
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
-        projectId: req.query.projectId,
+        projectId,
         event: {
           type: EventType.PAM_ACCOUNT_LIST,
           metadata: {
-            accountCount: response.accounts.length,
-            folderCount: response.folders.length
+            accountCount: accounts.length,
+            folderCount: folders.length
           }
         }
       });
 
-      return response;
+      return { accounts, folders, totalCount, folderId, folderPaths };
     }
   });
 

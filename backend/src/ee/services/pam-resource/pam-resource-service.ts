@@ -20,7 +20,7 @@ import {
   encryptResourceConnectionDetails,
   listResourceOptions
 } from "./pam-resource-fns";
-import { TCreateResourceDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TCreateResourceDTO, TListResourcesDTO, TUpdateResourceDTO } from "./pam-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -267,22 +267,23 @@ export const pamResourceServiceFactory = ({
     }
   };
 
-  const list = async (projectId: string, actor: OrgServiceActor) => {
+  const list = async ({ projectId, actor, actorId, actorAuthMethod, actorOrgId, ...params }: TListResourcesDTO) => {
     const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
+      actor,
+      actorId,
+      actorAuthMethod,
+      actorOrgId,
       projectId,
       actionProjectType: ActionProjectType.PAM
     });
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionActions.Read, ProjectPermissionSub.PamResources);
 
-    const resources = await pamResourceDAL.find({ projectId });
+    const { resources, totalCount } = await pamResourceDAL.findByProjectId({ projectId, ...params });
 
     return {
-      resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService)))
+      resources: await Promise.all(resources.map((resource) => decryptResource(resource, projectId, kmsService))),
+      totalCount
     };
   };
 

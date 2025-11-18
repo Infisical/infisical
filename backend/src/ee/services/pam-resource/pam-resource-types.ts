@@ -1,3 +1,5 @@
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
   TMySQLAccount,
@@ -5,7 +7,7 @@ import {
   TMySQLResource,
   TMySQLResourceConnectionDetails
 } from "./mysql/mysql-resource-types";
-import { PamResource } from "./pam-resource-enums";
+import { PamResource, PamResourceOrderBy } from "./pam-resource-enums";
 import {
   TPostgresAccount,
   TPostgresAccountCredentials,
@@ -40,6 +42,15 @@ export type TCreateResourceDTO = Pick<
 export type TUpdateResourceDTO = Partial<Omit<TCreateResourceDTO, "resourceType" | "projectId">> & {
   resourceId: string;
 };
+
+export type TListResourcesDTO = {
+  search?: string;
+  orderBy?: PamResourceOrderBy;
+  orderDirection?: OrderByDirection;
+  limit?: number;
+  offset?: number;
+  filterResourceTypes?: string[];
+} & TProjectPermission;
 
 // Resource factory
 export type TPamResourceFactoryValidateConnection<T extends TPamResourceConnectionDetails> = () => Promise<T>;

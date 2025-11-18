@@ -3,3 +3,7 @@ export enum PamResource {
   MySQL = "mysql",
   SSH = "ssh"
 }
+
+export enum PamResourceOrderBy {
+  Name = "name"
+}
