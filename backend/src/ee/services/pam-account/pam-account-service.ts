@@ -443,6 +443,8 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    if (resource.resourceType === PamResource.Mcp) throw new BadRequestError({ message: "Invalid account provided" });
+
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -463,6 +465,9 @@ export const pamAccountServiceFactory = ({
       account.projectId,
       kmsService
     );
+
+    // for ts
+    if (!gatewayId) throw new BadRequestError({ message: "Missing gateway" });
 
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });

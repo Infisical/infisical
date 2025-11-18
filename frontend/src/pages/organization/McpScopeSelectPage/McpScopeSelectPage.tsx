@@ -1,19 +1,21 @@
 import { Helmet } from "react-helmet";
-
-import { Button, FilterableSelect, FormControl } from "@app/components/v2";
-import { useGetUserProjects, useSelectMcpScope } from "@app/hooks/api";
-import { Link, useSearch } from "@tanstack/react-router";
 import { Controller, useForm } from "react-hook-form";
-import { ProjectType } from "@app/hooks/api/projects/types";
-import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Link, useSearch } from "@tanstack/react-router";
+import { z } from "zod";
+
+import { Button, FilterableSelect, FormControl, Input } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
+import { useGetUserProjects, useSelectMcpScope } from "@app/hooks/api";
+import { ProjectType } from "@app/hooks/api/projects/types";
 
 const SelectMcpScopeSchema = z.object({
   project: z.object({
     id: z.string(),
     name: z.string()
-  })
+  }),
+  path: z.string().optional(),
+  expireIn: z.string()
 });
 
 type FormData = z.infer<typeof SelectMcpScopeSchema>;
@@ -34,9 +36,11 @@ export const McpScopeSelectPage = () => {
 
   const { mutateAsync: selectMcpScope } = useSelectMcpScope();
 
-  const onSubmit = async ({ project }: FormData) => {
+  const onSubmit = async ({ project, expireIn, path }: FormData) => {
     const { callbackUrl } = await selectMcpScope({
       ...search,
+      path,
+      expireIn,
       projectId: project.id
     });
 
@@ -97,6 +101,37 @@ export const McpScopeSelectPage = () => {
             )}
             control={control}
             name="project"
+          />
+          <Controller
+            control={control}
+            defaultValue=""
+            name="path"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Account Path"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                className="w-full"
+              >
+                <Input {...field} placeholder="*" />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            defaultValue="30d"
+            name="expireIn"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl
+                label="Expires In"
+                isError={Boolean(error)}
+                errorText={error?.message}
+                isRequired
+                className="w-full"
+              >
+                <Input {...field} placeholder="2 days, 1d, 2h, 1y, ..." />
+              </FormControl>
+            )}
           />
           <div className="flex w-full items-center gap-4 pt-4">
             <Button type="submit" isLoading={isSubmitting} isDisabled={isSubmitting}>

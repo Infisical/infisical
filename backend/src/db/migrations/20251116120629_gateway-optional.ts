@@ -13,7 +13,6 @@ export async function up(knex: Knex): Promise<void> {
 
   const hasPamAccountTable = await knex.schema.hasTable(TableName.PamAccount);
   const hasConfigField = await knex.schema.hasColumn(TableName.PamAccount, "config");
-  console.log(hasPamAccountTable, hasConfigField);
   if (hasPamAccountTable && !hasConfigField) {
     await knex.schema.alterTable(TableName.PamAccount, (t) => {
       t.jsonb("config").nullable();

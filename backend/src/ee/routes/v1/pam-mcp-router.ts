@@ -2,8 +2,9 @@ import { FastifyReply, FastifyRequest, HookHandlerDoneFunction } from "fastify";
 import { z } from "zod";
 
 import { getConfig } from "@app/lib/config/env";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -25,13 +26,13 @@ const requireMcpAuthHook = (req: FastifyRequest, reply: FastifyReply, done: Hook
     return;
   }
 
-  const allowed = auth.authMode === AuthMode.JWT;
+  const allowed = auth.authMode === AuthMode.MCP_JWT;
   if (!allowed) {
     void reply.status(403).send();
     return;
   }
 
-  if (auth.authMode === AuthMode.JWT && !req.permission.orgId) {
+  if (auth.authMode === AuthMode.MCP_JWT && !req.permission.orgId) {
     void reply.status(401).send({ message: "Unauthorized: organization context required" });
     return;
   }
@@ -50,17 +51,20 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
     handler: async (req, res) => {
       await res.hijack(); // allow manual control of the underlying res
 
-      const projectId = req.auth.authMode === AuthMode.JWT ? req.auth.token?.mcp?.projectId : "";
+      const projectId = req.auth.authMode === AuthMode.MCP_JWT ? req.auth.token?.mcp?.projectId : "";
       if (!projectId)
         throw new ForbiddenRequestError({ message: "Invalid token provided. Please do a re-auth with MCP" });
 
-      const sessionId = req.auth.authMode === AuthMode.JWT ? req.auth.token?.mcp?.sessionId : "";
+      const sessionId = req.auth.authMode === AuthMode.MCP_JWT ? req.auth.token?.mcp?.sessionId : "";
       if (!sessionId)
         throw new ForbiddenRequestError({ message: "Invalid token provided. Please do a re-auth with MCP" });
+
+      const path = req.auth.authMode === AuthMode.MCP_JWT ? req.auth.token?.mcp?.path : null;
 
       const { server: mcpServer, transport } = await server.services.pamMcp.interactWithMcp(
         req.permission,
         projectId,
+        path || null,
         sessionId
       );
 
@@ -146,12 +150,12 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        scope: z.string(),
-        resource: z.string()
+        resource: z.string(),
+        state: z.string().optional()
       })
     },
     handler: async (req, res) => {
-      await server.services.pamMcp.oauthAuthorizeClient({ clientId: req.query.client_id });
+      await server.services.pamMcp.oauthAuthorizeClient({ clientId: req.query.client_id, state: req.query.state });
       const query = new URLSearchParams(req.query).toString();
       void res.redirect(`/organization/mcp-scope?${query}`);
     }
@@ -170,10 +174,10 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
         code_challenge: z.string(),
         code_challenge_method: z.enum(["S256"]),
         redirect_uri: z.string(),
-        scope: z.string(),
         resource: z.string(),
         projectId: z.string(),
-        state: z.string().optional()
+        path: z.string().optional(),
+        expireIn: z.string().refine((val) => ms(val) > 0, "Max TTL must be a positive number")
       }),
       response: {
         200: z.object({
@@ -183,6 +187,9 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
+      const userInfo = req.auth.authMode === AuthMode.JWT ? req.auth.user : null;
+      if (!userInfo) throw new BadRequestError({ message: "User info not found" });
+
       const redirectUri = await server.services.pamMcp.oauthAuthorizeClientScope({
         clientId: req.body.client_id,
         codeChallenge: req.body.code_challenge,
@@ -192,9 +199,12 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
         redirectUri: req.body.redirect_uri,
         resource: req.body.resource,
         responseType: req.body.response_type,
-        scope: req.body.scope,
-        state: req.body.state,
-        tokenId: req.auth.authMode === AuthMode.JWT ? req.auth.tokenVersionId : ""
+        tokenId: req.auth.authMode === AuthMode.JWT ? req.auth.tokenVersionId : "",
+        userInfo,
+        expiry: req.body.expireIn,
+        path: req.body.path,
+        userAgent: req.auditLogInfo.userAgent || "",
+        userIp: req.auditLogInfo.ipAddress || ""
       });
       return { callbackUrl: redirectUri.toString() };
     }
@@ -207,26 +217,19 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
       rateLimit: writeLimit
     },
     schema: {
-      body: z.union([
-        z.object({
-          grant_type: z.literal("authorization_code"),
-          code: z.string(),
-          redirect_uri: z.string().url(),
-          code_verifier: z.string(),
-          client_id: z.string()
-        }),
-        z.object({
-          grant_type: z.literal("refresh_token"),
-          refresh_token: z.string(),
-          client_id: z.string()
-        })
-      ]),
+      body: z.object({
+        grant_type: z.literal("authorization_code"),
+        code: z.string(),
+        redirect_uri: z.string().url(),
+        code_verifier: z.string(),
+        client_id: z.string()
+      }),
       response: {
         200: z.object({
           access_token: z.string(),
           token_type: z.string(),
           expires_in: z.number(),
-          refresh_token: z.string(),
+          // refresh_token: z.string(),
           scope: z.string()
         })
       }
