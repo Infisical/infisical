@@ -25,7 +25,7 @@
     "baseUrl": ".",
     "paths": {
       "@app/*": ["./src/*"],
-      "@bdd_routes/bdd-nock-router": ["./src/server/routes/bdd/bdd-nock-router.ts"]
+      "@bdd_routes/*": ["./src/server/routes/bdd/*"]
     },
     "jsx": "react-jsx"
   },
