@@ -206,6 +206,9 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      if (protectedHeader.jwk && protectedHeader.kid) {
+        throw new AcmeMalformedError({ message: "Both JWK and KID are provided in the protected header" });
+      }
       const parsedUrl = (() => {
         try {
           return new URL(protectedHeader.url);
