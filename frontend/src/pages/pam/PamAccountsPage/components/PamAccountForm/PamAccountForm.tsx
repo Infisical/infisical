@@ -57,6 +57,14 @@ const CreateForm = ({
       type: "success"
     });
     if (resourceType === PamResourceType.MCP) {
+      if (
+        "headers" in formData.credentials &&
+        formData.credentials.headers?.find((el) => el.key === "Authorization")
+      ) {
+        onComplete(account);
+        return;
+      }
+
       navigate({
         to: "/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize",
         params: {
@@ -93,6 +101,7 @@ const CreateForm = ({
 
 const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
+  const navigate = useNavigate();
 
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
@@ -102,6 +111,26 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       resourceType: account.resource.resourceType,
       ...formData
     });
+
+    if (account.resource.resourceType === PamResourceType.MCP) {
+      if (
+        "headers" in formData.credentials &&
+        formData.credentials.headers?.find((el) => el.key === "Authorization")
+      ) {
+        onComplete(account);
+        return;
+      }
+
+      navigate({
+        to: "/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize",
+        params: {
+          projectId: account.projectId,
+          accountId: account.id
+        }
+      });
+    } else {
+      onComplete(account);
+    }
     createNotification({
       text: "Successfully updated account",
       type: "success"

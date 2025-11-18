@@ -204,7 +204,9 @@ export const pamResourceServiceFactory = ({
             kmsService
           });
 
-          finalCredentials.password = decryptedCredentials.password;
+          if ("password" in decryptedCredentials) {
+            finalCredentials.password = decryptedCredentials.password;
+          }
         }
 
         try {

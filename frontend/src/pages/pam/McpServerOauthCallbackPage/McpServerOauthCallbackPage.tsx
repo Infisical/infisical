@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Helmet } from "react-helmet";
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 
+import { Spinner } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import { useMcpServerOAuthCallback } from "@app/hooks/api/pam";
 
@@ -51,7 +52,10 @@ export const McpServerOauthCallbackPage = () => {
           }}
           alt="Infisical logo"
         />
-        <div className="text-bunker-300">Initiating MCP Oauth</div>
+        <div className="flex items-center gap-1 text-bunker-300">
+          Completing OAuth flow and requesting access token.
+          {mcpServerCallback.isPending && <Spinner size="xs" />}
+        </div>
       </div>
       <div className="pb-28" />
     </div>

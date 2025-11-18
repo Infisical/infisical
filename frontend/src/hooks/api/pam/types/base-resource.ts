@@ -2,7 +2,7 @@ export interface TBasePamResource {
   id: string;
   projectId: string;
   name: string;
-  gatewayId?: string | null;
+  gatewayId: string;
   createdAt: string;
   updatedAt: string;
 }

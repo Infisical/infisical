@@ -11,7 +11,6 @@ import {
   TDeletePamFolderDTO,
   TDeletePamResourceDTO,
   TMcpServerConfiguration,
-  TMcpServerOAuthAuthorizeDTO,
   TMcpServerOAuthCallbackDTO,
   TPamAccount,
   TPamFolder,
@@ -173,17 +172,6 @@ export const useDeletePamFolder = () => {
 };
 
 // MCP Server OAuth
-export const useMcpServerOAuthAuthorize = () => {
-  return useMutation({
-    mutationFn: async ({ accountId }: TMcpServerOAuthAuthorizeDTO) => {
-      const { data } = await apiRequest.get<{ authUrl: string }>(
-        `/api/v1/pam/accounts/mcp/${accountId}/oauth/authorize`
-      );
-
-      return data.authUrl;
-    }
-  });
-};
 
 export const useMcpServerOAuthCallback = () => {
   const queryClient = useQueryClient();

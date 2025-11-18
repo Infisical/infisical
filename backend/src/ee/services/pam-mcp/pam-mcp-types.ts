@@ -1,3 +1,4 @@
+import { TUsers } from "@app/db/schemas";
 import { OrgServiceActor } from "@app/lib/types";
 
 export type TOauthRegisterClient = {
@@ -11,6 +12,7 @@ export type TOauthRegisterClient = {
 
 export type TOauthAuthorizeClient = {
   clientId: string;
+  state?: string;
 };
 
 export type TOauthAuthorizeClientScope = {
@@ -20,12 +22,14 @@ export type TOauthAuthorizeClientScope = {
   codeChallenge: string;
   codeChallengeMethod: "S256";
   redirectUri: string;
-  scope: string;
   resource: string;
   projectId: string;
   tokenId: string;
   path?: string;
-  state?: string;
+  expiry: string;
+  userInfo: TUsers;
+  userIp: string;
+  userAgent: string;
 };
 
 export type TOauthTokenExchangeDTO =

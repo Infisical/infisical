@@ -7,6 +7,8 @@ export type TSelectMcpScopeDTO = {
   scope: string;
   resource: string;
   projectId: string;
+  path?: string;
+  expireIn: string;
   state?: string;
 };
 

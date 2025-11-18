@@ -12,7 +12,7 @@ const QueryParams = z.object({
   redirect_uri: z.string().catch(""),
   scope: z.string().catch(""),
   resource: z.string().catch(""),
-  state: z.string().catch("").optional()
+  state: z.string().optional().catch("")
 });
 
 export const Route = createFileRoute(

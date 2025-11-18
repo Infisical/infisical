@@ -70,6 +70,45 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
 
   if (!account) return null;
 
+  if (account.resource.resourceType === PamResourceType.MCP) {
+    const MCP_URL = `${window.location.origin}/api/v1/ai/mcp`;
+    return (
+      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+        <ModalContent
+          className="max-w-2xl pb-2"
+          title="Access Account"
+          subTitle={`Access ${account.name} using a URL.`}
+        >
+          <FormLabel label="Infisical MCP URL" />
+          <div className="flex gap-2">
+            <Input value={MCP_URL} isDisabled />
+            <IconButton
+              ariaLabel="copy"
+              variant="outline_bg"
+              colorSchema="secondary"
+              onClick={() => {
+                navigator.clipboard.writeText(MCP_URL);
+
+                createNotification({
+                  text: "URL copied to clipboard",
+                  type: "info"
+                });
+
+                onOpenChange(false);
+              }}
+              className="w-10"
+            >
+              <FontAwesomeIcon icon={faCopy} />
+            </IconButton>
+          </div>
+          <p className="mt-2 text-sm text-mineshaft-400">
+            Use the MCP URL in your client application to connect.
+          </p>
+        </ModalContent>
+      </Modal>
+    );
+  }
+
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent

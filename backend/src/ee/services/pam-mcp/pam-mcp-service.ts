@@ -6,6 +6,8 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { Server as RawMcpServer } from "@modelcontextprotocol/sdk/server/index.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import slugify from "@sindresorhus/slugify";
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -47,22 +49,26 @@ const DynamicClientInfoSchema = z.object({
   grant_types: z.array(z.string()),
   response_types: z.array(z.string()),
   token_endpoint_auth_method: z.string(),
-  client_id_issued_at: z.number()
+  client_id_issued_at: z.number(),
+  state: z.string().optional()
 });
 
 const OauthChallengeCodeSchema = z.object({
   codeChallenge: z.string(),
   codeChallengeMethod: z.string(),
   userId: z.string(),
-  scope: z.string(),
-  state: z.string().optional(),
   projectId: z.string(),
+  expiry: z.string(),
   path: z.string().optional(),
   redirectUri: z.string(),
   userInfo: z.object({
     tokenId: z.string(),
     orgId: z.string(),
-    authMethod: z.string()
+    authMethod: z.string(),
+    email: z.string(),
+    actorIp: z.string(),
+    actorName: z.string(),
+    actorUserAgent: z.string()
   })
 });
 
@@ -98,7 +104,12 @@ export const pamMcpServiceFactory = ({
   kmsService,
   pamSessionDAL
 }: TPamMcpServiceFactoryDep) => {
-  const interactWithMcp = async (actor: ProjectServiceActor, projectId: string, sessionId: string) => {
+  const interactWithMcp = async (
+    actor: ProjectServiceActor,
+    projectId: string,
+    path: string | null,
+    sessionId: string
+  ) => {
     const appCfg = getConfig();
 
     const mcpResources = await pamResourceDAL.find({
@@ -131,6 +142,11 @@ export const pamMcpServiceFactory = ({
       const resource = mcpResources.find((el) => el.id === account.resourceId);
       const accountPath = accountPathFn({ folderId: account.folderId });
       if (!resource) return false;
+
+      if (path && path !== "*" && !picomatch.isMatch(accountPath, path, { strictSlashes: false })) {
+        return false;
+      }
+
       return permission.can(
         ProjectPermissionPamAccountActions.Access,
         subject(ProjectPermissionSub.PamAccounts, {
@@ -182,6 +198,7 @@ export const pamMcpServiceFactory = ({
         return {
           client,
           account: mcpAccount,
+          resource,
           tools: tools.filter((el) => accountConfiguration?.statement?.toolsAllowed?.includes(el.name))
         };
       })
@@ -232,7 +249,17 @@ export const pamMcpServiceFactory = ({
         decryptedBlob.push({
           timestamp: new Date(),
           output: JSON.stringify(result, null, 2),
-          input: JSON.stringify({ accountName: selectMcpClient.account.name, name, args }, null, 2)
+          input: JSON.stringify(
+            {
+              accountName: selectMcpClient.account.name,
+              accountPath: accountPathFn({ folderId: selectMcpClient.account.folderId }) || "/",
+              resourceType: selectMcpClient.resource.resourceType,
+              name,
+              args
+            },
+            null,
+            2
+          )
         });
 
         const encryptedLogsBlob = encryptor({
@@ -292,11 +319,17 @@ export const pamMcpServiceFactory = ({
     return payload;
   };
 
-  const oauthAuthorizeClient = async ({ clientId }: TOauthAuthorizeClient) => {
+  const oauthAuthorizeClient = async ({ clientId, state }: TOauthAuthorizeClient) => {
     const oauthClientCache = await keyStore.getItem(KeyStorePrefixes.PamMcpOauthSessionClient(clientId));
     if (!oauthClientCache) {
       throw new UnauthorizedError({ message: `Mcp oauth client with id ${clientId} not found` });
     }
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.PamMcpOauthSessionClient(clientId),
+      OAUTH_FLOW_EXPIRY_IN_SECS,
+      JSON.stringify({ ...JSON.parse(oauthClientCache), state })
+    );
   };
 
   const oauthAuthorizeClientScope = async ({
@@ -306,10 +339,12 @@ export const pamMcpServiceFactory = ({
     codeChallengeMethod,
     redirectUri,
     projectId,
-    path = "/",
-    scope,
-    state,
-    tokenId
+    path,
+    expiry,
+    tokenId,
+    userInfo,
+    userAgent,
+    userIp
   }: TOauthAuthorizeClientScope) => {
     const oauthClientCache = await keyStore.getItem(KeyStorePrefixes.PamMcpOauthSessionClient(clientId));
     if (!oauthClientCache) {
@@ -337,151 +372,101 @@ export const pamMcpServiceFactory = ({
         codeChallenge,
         codeChallengeMethod,
         userId: permission.id,
-        state,
         projectId,
-        scope,
         path,
+        expiry,
         redirectUri,
         userInfo: {
           tokenId,
           orgId: permission.orgId,
-          authMethod: permission.authMethod
+          authMethod: permission.authMethod,
+          email: userInfo.email || "",
+          actorIp: userIp,
+          actorName: `${userInfo.firstName} ${userInfo.lastName}`,
+          actorUserAgent: userAgent
         }
       })
     );
 
     const url = new URL(redirectUri);
     url.searchParams.set("code", code);
-    if (!state) url.searchParams.set("state", String(state));
+    if (!oauthClient.state) url.searchParams.set("state", String(oauthClient.state));
     return url;
   };
 
-  // TODO(pam-mcp): think about it as a seperate token
   const oauthTokenExchange = async (dto: TOauthTokenExchangeDTO) => {
     const appCfg = getConfig();
 
-    if (dto.grant_type === "authorization_code") {
-      const oauthClientCache = await keyStore.getItem(KeyStorePrefixes.PamMcpOauthSessionClient(dto.client_id));
-      if (!oauthClientCache) {
-        throw new UnauthorizedError({ message: `Mcp oauth client with id ${dto.client_id} not found` });
-      }
+    if (dto.grant_type === "refresh_token")
+      throw new BadRequestError({ message: "Refresh token response type is not support" });
 
-      const oauthClient = await DynamicClientInfoSchema.parseAsync(JSON.parse(oauthClientCache));
-
-      const oauthAuthorizeSessionCache = await keyStore.getItem(
-        KeyStorePrefixes.PamMcpOauthSessionCode(dto.client_id, dto.code)
-      );
-      if (!oauthAuthorizeSessionCache) {
-        throw new UnauthorizedError({ message: `Mcp oauth session not found` });
-      }
-      const oauthAuthorizeInfo = await OauthChallengeCodeSchema.parseAsync(JSON.parse(oauthAuthorizeSessionCache));
-      const isInvalidRedirectUri = dto.redirect_uri !== oauthAuthorizeInfo.redirectUri;
-      if (isInvalidRedirectUri) throw new BadRequestError({ message: "Redirect URI mismatch" });
-
-      // One-time use code
-      await keyStore.deleteItem(KeyStorePrefixes.PamMcpOauthSessionCode(dto.client_id, dto.code));
-
-      const challenge = computePkceChallenge(dto.code_verifier);
-      if (challenge !== oauthAuthorizeInfo.codeChallenge) throw new BadRequestError({ message: "Challenge mismatch" });
-
-      const tokenSession = await authTokenService.getUserTokenSessionById(
-        oauthAuthorizeInfo.userInfo.tokenId,
-        oauthAuthorizeInfo.userId
-      );
-      if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
-      const mcpSession = await pamSessionDAL.create({
-        accountName: oauthClient.client_id,
-        // actorEmail: oauthAuthorizeInfo.userInfo.actorEmail,
-        // actorIp: oauthAuthorizeInfo.userInfo.actorIp,
-        // actorName: oauthAuthorizeInfo.userInfo.actorIp,
-        // actorUserAgent: oauthAuthorizeInfo.userInfo.actorIp,
-        actorEmail: "test@localhost.local",
-        actorIp: "192.0.0.1",
-        actorName: "tester",
-        actorUserAgent: "firefox/blade",
-        projectId: oauthAuthorizeInfo.projectId,
-        resourceName: "MCP",
-        resourceType: PamResource.Mcp,
-        status: PamSessionStatus.Starting,
-        userId: oauthAuthorizeInfo.userId,
-        expiresAt: new Date(Date.now() + ms("4hr"))
-      });
-
-      const accessToken = cryptoModule.jwt().sign(
-        {
-          authMethod: oauthAuthorizeInfo.userInfo.authMethod,
-          authTokenType: AuthTokenType.ACCESS_TOKEN,
-          userId: oauthAuthorizeInfo.userId,
-          tokenVersionId: tokenSession.id,
-          accessVersion: tokenSession.accessVersion,
-          organizationId: oauthAuthorizeInfo.userInfo.orgId,
-          isMfaVerified: true,
-          mcp: {
-            projectId: oauthAuthorizeInfo.projectId,
-            path: oauthAuthorizeInfo.path,
-            sessionId: mcpSession.id
-          }
-        },
-        appCfg.AUTH_SECRET,
-        { expiresIn: appCfg.JWT_AUTH_LIFETIME }
-      );
-
-      // TODO(pam-mcp): expires in can be org set one as well
-      const refreshToken = cryptoModule.jwt().sign(
-        {
-          authMethod: oauthAuthorizeInfo.userInfo.authMethod,
-          authTokenType: AuthTokenType.REFRESH_TOKEN,
-          userId: oauthAuthorizeInfo.userId,
-          tokenVersionId: tokenSession.id,
-          refreshVersion: tokenSession.refreshVersion,
-          organizationId: oauthAuthorizeInfo.userInfo.orgId,
-          isMfaVerified: true,
-          mcp: {
-            projectId: oauthAuthorizeInfo.projectId,
-            path: oauthAuthorizeInfo.path
-          }
-        },
-        appCfg.AUTH_SECRET,
-        { expiresIn: appCfg.JWT_REFRESH_LIFETIME }
-      );
-
-      return {
-        access_token: accessToken,
-        token_type: "Bearer",
-        expires_in: Math.floor(ms(appCfg.JWT_AUTH_LIFETIME) / 1000),
-        refresh_token: refreshToken,
-        scope: "openid"
-      };
+    const oauthClientCache = await keyStore.getItem(KeyStorePrefixes.PamMcpOauthSessionClient(dto.client_id));
+    if (!oauthClientCache) {
+      throw new UnauthorizedError({ message: `Mcp oauth client with id ${dto.client_id} not found` });
     }
 
-    const { decodedToken, tokenVersion } = await authTokenService.validateRefreshToken(dto.refresh_token);
-    if (!decodedToken?.mcp)
-      throw new BadRequestError({ message: "Invalid refresh token. Re-login to use mcp refresh token" });
+    const oauthClient = await DynamicClientInfoSchema.parseAsync(JSON.parse(oauthClientCache));
+
+    const oauthAuthorizeSessionCache = await keyStore.getItem(
+      KeyStorePrefixes.PamMcpOauthSessionCode(dto.client_id, dto.code)
+    );
+    if (!oauthAuthorizeSessionCache) {
+      throw new UnauthorizedError({ message: `Mcp oauth session not found` });
+    }
+    const oauthAuthorizeInfo = await OauthChallengeCodeSchema.parseAsync(JSON.parse(oauthAuthorizeSessionCache));
+    const isInvalidRedirectUri = dto.redirect_uri !== oauthAuthorizeInfo.redirectUri;
+    if (isInvalidRedirectUri) throw new BadRequestError({ message: "Redirect URI mismatch" });
+
+    await keyStore.deleteItem(KeyStorePrefixes.PamMcpOauthSessionCode(dto.client_id, dto.code));
+
+    // One-time use code
+
+    const challenge = computePkceChallenge(dto.code_verifier);
+    if (challenge !== oauthAuthorizeInfo.codeChallenge) throw new BadRequestError({ message: "Challenge mismatch" });
+
+    const tokenSession = await authTokenService.getUserTokenSessionById(
+      oauthAuthorizeInfo.userInfo.tokenId,
+      oauthAuthorizeInfo.userId
+    );
+    if (!tokenSession) throw new UnauthorizedError({ message: "User session not found" });
+
+    const mcpSession = await pamSessionDAL.create({
+      accountName: slugify(oauthClient.client_name),
+      actorEmail: oauthAuthorizeInfo.userInfo.email,
+      actorIp: oauthAuthorizeInfo.userInfo.actorIp,
+      actorName: oauthAuthorizeInfo.userInfo.actorIp,
+      actorUserAgent: oauthAuthorizeInfo.userInfo.actorIp,
+      projectId: oauthAuthorizeInfo.projectId,
+      resourceName: "MCP",
+      resourceType: PamResource.Mcp,
+      status: PamSessionStatus.Starting,
+      userId: oauthAuthorizeInfo.userId,
+      expiresAt: new Date(Date.now() + ms(oauthAuthorizeInfo.expiry))
+    });
 
     const accessToken = cryptoModule.jwt().sign(
       {
-        authMethod: decodedToken.authMethod,
+        authMethod: oauthAuthorizeInfo.userInfo.authMethod,
         authTokenType: AuthTokenType.ACCESS_TOKEN,
-        userId: decodedToken.userId,
-        tokenVersionId: tokenVersion.id,
-        accessVersion: tokenVersion.accessVersion,
-        organizationId: decodedToken.organizationId,
-        isMfaVerified: decodedToken.isMfaVerified,
-        mfaMethod: decodedToken.mfaMethod,
+        userId: oauthAuthorizeInfo.userId,
+        tokenVersionId: tokenSession.id,
+        accessVersion: tokenSession.accessVersion,
+        organizationId: oauthAuthorizeInfo.userInfo.orgId,
+        isMfaVerified: true,
         mcp: {
-          projectId: decodedToken?.mcp?.projectId,
-          path: decodedToken?.mcp?.path
+          projectId: oauthAuthorizeInfo.projectId,
+          path: oauthAuthorizeInfo.path,
+          sessionId: mcpSession.id
         }
       },
       appCfg.AUTH_SECRET,
-      { expiresIn: appCfg.JWT_AUTH_LIFETIME }
+      { expiresIn: oauthAuthorizeInfo.expiry }
     );
 
     return {
       access_token: accessToken,
       token_type: "Bearer",
-      expires_in: Math.floor(ms(appCfg.JWT_AUTH_LIFETIME) / 1000),
-      refresh_token: dto.refresh_token,
+      expires_in: Math.floor(ms(oauthAuthorizeInfo.expiry) / 1000),
       scope: "openid"
     };
   };

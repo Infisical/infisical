@@ -27,6 +27,7 @@ export enum AuthTokenType {
 
 export enum AuthMode {
   JWT = "jwt",
+  MCP_JWT = "mcp-jwt", // used by users for mcp sessions
   SERVICE_TOKEN = "serviceToken",
   API_KEY = "apiKey",
   IDENTITY_ACCESS_TOKEN = "identityAccessToken",

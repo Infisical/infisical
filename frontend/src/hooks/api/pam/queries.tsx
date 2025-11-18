@@ -31,7 +31,8 @@ export const pamKeys = {
   getSession: (sessionId: string) => [...pamKeys.session(), "get", sessionId],
   listSessions: (projectId: string) => [...pamKeys.session(), "list", projectId],
   getMcpConfig: (accountId: string) => [...pamKeys.mcp(), "config", accountId],
-  getMcpTools: (accountId: string) => [...pamKeys.mcp(), "tools", accountId]
+  getMcpTools: (accountId: string) => [...pamKeys.mcp(), "tools", accountId],
+  mcpOauthAuthorize: (accountId: string) => [...pamKeys.account(), "oauth-authorize", accountId]
 };
 
 // Resources
@@ -226,5 +227,18 @@ export const useGetMcpServerTools = (
     },
     enabled: !!accountId && (options?.enabled ?? true),
     ...options
+  });
+};
+
+export const useMcpServerOAuthAuthorize = (accountId: string) => {
+  return useQuery({
+    queryKey: pamKeys.mcpOauthAuthorize(accountId || ""),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ authUrl: string }>(
+        `/api/v1/pam/accounts/mcp/${accountId}/oauth/authorize`
+      );
+
+      window.location.assign(data.authUrl);
+    }
   });
 };

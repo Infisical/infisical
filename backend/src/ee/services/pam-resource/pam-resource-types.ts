@@ -54,7 +54,7 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
 export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
   resourceType: PamResource,
   connectionDetails: T,
-  gatewayId: string,
+  gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;
