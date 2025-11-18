@@ -15,15 +15,6 @@ Feature: Account
     And the value retrieved_account.uri should be equal to "{account_uri}"
 
   # Note: This is a very special case for cert-manager.
-  # There's a bug in their ACME client implementation, they don't take the account KID value they have
-  # and relying on a '{"onlyReturnExisting": true}' new-account request to find out their KID value.
-  # But the problem is, that new-account request doesn't come with EAB. And while the get existing account operation
-  # fails, they just discard the error and proceed to request a new order. Since no KID provided, their ACME
-  # client will send JWK instead. As a result, we are seeing KID not provide in header error for the new-order
-  # endpoint.
-  #
-  # To solve the problem, we lose the check for EAB a bit for the onlyReturnExisting new account request
-  # ref: https://github.com/cert-manager/cert-manager/issues/7388#issuecomment-3535630925
   Scenario: Create a new account with EAB then retrieve it without EAB
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"

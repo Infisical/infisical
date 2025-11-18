@@ -389,11 +389,48 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
+    const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
+
+    if (onlyReturnExisting) {
+      const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
+        profileId,
+        alg,
+        publicKeyThumbprint
+      );
+      if (!existingAccount) {
+        throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
+      }
+      // With the same public key, we found an existing account, just return it
+      return {
+        status: 200,
+        body: {
+          status: "valid",
+          contact: existingAccount.emails,
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+        },
+        headers: {
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+        }
+      };
+    }
+
+    // Note: We only check EAB for the new account request. This is a very special case for cert-manager.
+    // There's a bug in their ACME client implementation, they don't take the account KID value they have
+    // and relying on a '{"onlyReturnExisting": true}' new-account request to find out their KID value.
+    // But the problem is, that new-account request doesn't come with EAB. And while the get existing account operation
+    // fails, they just discard the error and proceed to request a new order. Since no KID provided, their ACME
+    // client will send JWK instead. As a result, we are seeing KID not provide in header error for the new-order
+    // endpoint.
+    //
+    // To solve the problem, we lose the check for EAB a bit for the onlyReturnExisting new account request.
+    // It should be fine as we've already checked EAB when they created the account.
+    // And the private key ownership indicating they are the same user.
+    // ref: https://github.com/cert-manager/cert-manager/issues/7388#issuecomment-3535630925
     if (!externalAccountBinding) {
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
 
-    const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: profile.projectId,
       projectDAL,
@@ -442,30 +479,6 @@ export const pkiAcmeServiceFactory = ({
       throw new AcmeBadPublicKeyError({
         message: "External account binding public key thumbprint or algorithm mismatch"
       });
-    }
-
-    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
-      profileId,
-      alg,
-      publicKeyThumbprint
-    );
-    if (onlyReturnExisting && !existingAccount) {
-      throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
-    }
-    if (existingAccount) {
-      // With the same public key, we found an existing account, just return it
-      return {
-        status: 200,
-        body: {
-          status: "valid",
-          contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
-        },
-        headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
-          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
-        }
-      };
     }
 
     const newAccount = await acmeAccountDAL.create({
