@@ -1,6 +1,3 @@
-import { useTranslation } from "react-i18next";
-import { faMobile } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Outlet, useParams } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
@@ -27,8 +24,6 @@ export const OrganizationLayout = () => {
 
   const { popUp, handlePopUpToggle } = usePopUp(["createOrg"] as const);
 
-  const { t } = useTranslation();
-
   const containerHeight = config.pageFrameContent ? "h-[94vh]" : "h-screen";
 
   const { data: serverDetails, isLoading } = useFetchServerStatus();
@@ -38,7 +33,7 @@ export const OrganizationLayout = () => {
     <>
       <Banner />
       <div
-        className={`dark hidden ${containerHeight} w-full flex-col overflow-x-hidden bg-bunker-800 transition-all md:flex`}
+        className={`dark ${containerHeight} flex w-full flex-col overflow-x-hidden bg-bunker-800 transition-all`}
       >
         <Navbar />
         <div className="flex grow flex-col overflow-y-hidden">
@@ -61,12 +56,6 @@ export const OrganizationLayout = () => {
         isOpen={popUp?.createOrg?.isOpen}
         onClose={() => handlePopUpToggle("createOrg", false)}
       />
-      <div className="z-200 flex h-screen w-screen flex-col items-center justify-center bg-bunker-800 md:hidden">
-        <FontAwesomeIcon icon={faMobile} className="mb-8 text-7xl text-gray-300" />
-        <p className="max-w-sm px-6 text-center text-lg text-gray-200">
-          {` ${t("common.no-mobile")} `}
-        </p>
-      </div>
       <Banner />
     </>
   );

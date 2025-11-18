@@ -5,7 +5,7 @@ sidebarTitle: "EST"
 
 ## Concept
 
-The API enrollment method allows you to issue and manage certificates against a specific certificate profile using the [EST protocol](https://en.wikipedia.org/wiki/Enrollment_over_Secure_Transport).
+The EST enrollment method allows you to issue and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [EST protocol](https://en.wikipedia.org/wiki/Enrollment_over_Secure_Transport).
 This method is suitable for environments requiring strong authentication and encrypted communication, such as in IoT, enterprise networks, and secure web services.
 
 Infisical's EST service is based on [RFC 7030](https://datatracker.ietf.org/doc/html/rfc7030) and implements the following endpoints:
@@ -32,7 +32,7 @@ and structured under `https://app.infisical.com:8443/.well-known/est/{profile_id
 In the following steps, we explore how to issue a X.509 certificate using the EST enrollment method.
 
 <Steps>
-  <Step title="Set up up a certificate profile">
+  <Step title="Create a certificate profile in Infisical">
     Create a [certificate
     profile](/documentation/platform/pki/certificates/profiles) with **EST**
     selected as the enrollment method and fill in EST-specific configuration.
