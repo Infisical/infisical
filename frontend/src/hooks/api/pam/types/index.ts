@@ -81,13 +81,29 @@ export type TDeletePamResourceDTO = {
 // Account DTOs
 export type TCreatePamAccountDTO = Pick<
   TPamAccount,
-  "name" | "description" | "credentials" | "projectId" | "resourceId" | "folderId"
+  | "name"
+  | "description"
+  | "credentials"
+  | "projectId"
+  | "resourceId"
+  | "folderId"
+  | "rotationEnabled"
+  | "rotationIntervalSeconds"
+  | "requireMfa"
 > & {
   resourceType: PamResourceType;
 };
 
 export type TUpdatePamAccountDTO = Partial<
-  Pick<TPamAccount, "name" | "description" | "credentials">
+  Pick<
+    TPamAccount,
+    | "name"
+    | "description"
+    | "credentials"
+    | "rotationEnabled"
+    | "rotationIntervalSeconds"
+    | "requireMfa"
+  >
 > & {
   accountId: string;
   resourceType: PamResourceType;

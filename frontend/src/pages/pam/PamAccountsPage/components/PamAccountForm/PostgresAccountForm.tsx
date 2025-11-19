@@ -15,6 +15,7 @@ import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
 import { SqlAccountFields } from "./shared/SqlAccountFields";
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
+import { RequireMfaField } from "./RequireMfaField";
 import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
 
 type Props = {
@@ -25,7 +26,8 @@ type Props = {
 };
 
 const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.shape).extend({
-  credentials: BaseSqlAccountSchema
+  credentials: BaseSqlAccountSchema,
+  requireMfa: z.boolean().nullable().optional()
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -69,14 +71,11 @@ export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmi
 
   return (
     <FormProvider {...form}>
-      <form
-        onSubmit={(e) => {
-          handleSubmit(onSubmit)(e);
-        }}
-      >
+      <form onSubmit={handleSubmit(onSubmit)}>
         <GenericAccountFields />
         <SqlAccountFields isUpdate={isUpdate} />
-        <RotateAccountFields rotationCredentialsConfigured={rotationCredentialsConfigured} />
+        {rotationCredentialsConfigured && <RotateAccountFields />}
+        <RequireMfaField />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"

@@ -37,7 +37,8 @@ export const DefaultResponseErrorsSchema = {
     reqId: z.string(),
     statusCode: z.literal(400),
     message: z.string(),
-    error: z.string()
+    error: z.string(),
+    details: z.any().optional()
   }),
   404: z.object({
     reqId: z.string(),

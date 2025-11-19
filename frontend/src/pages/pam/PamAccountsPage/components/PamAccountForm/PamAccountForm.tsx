@@ -4,9 +4,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   PamResourceType,
   TMcpAccount,
-  TMySQLAccount,
   TPamAccount,
-  TPostgresAccount,
   useCreatePamAccount,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
@@ -44,7 +42,15 @@ const CreateForm = ({
   const navigate = useNavigate();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      | "name"
+      | "description"
+      | "credentials"
+      | "rotationEnabled"
+      | "rotationIntervalSeconds"
+      | "requireMfa"
+    >
   ) => {
     const account = await createPamAccount.mutateAsync({
       ...formData,
@@ -109,7 +115,15 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const navigate = useNavigate();
 
   const onSubmit = async (
-    formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
+    formData: DiscriminativePick<
+      TPamAccount,
+      | "name"
+      | "description"
+      | "credentials"
+      | "rotationEnabled"
+      | "rotationIntervalSeconds"
+      | "requireMfa"
+    >
   ) => {
     const updatedAccount = await updatePamAccount.mutateAsync({
       accountId: account.id,
