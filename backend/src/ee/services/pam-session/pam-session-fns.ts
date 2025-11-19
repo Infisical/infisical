@@ -2,7 +2,7 @@ import { TPamSessions } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TPamSanitizedSession, TPamSessionCommandLog } from "./pam-session.types";
+import { TPamSanitizedSession, TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
 
 export const decryptSessionCommandLogs = async ({
   projectId,
@@ -22,7 +22,7 @@ export const decryptSessionCommandLogs = async ({
     cipherTextBlob: encryptedLogs
   });
 
-  return JSON.parse(decryptedPlainTextBlob.toString()) as TPamSessionCommandLog;
+  return JSON.parse(decryptedPlainTextBlob.toString()) as (TPamSessionCommandLog | TTerminalEvent)[];
 };
 
 export const decryptSession = async (
@@ -32,7 +32,7 @@ export const decryptSession = async (
 ) => {
   return {
     ...session,
-    commandLogs: session.encryptedLogsBlob
+    logs: session.encryptedLogsBlob
       ? await decryptSessionCommandLogs({
           projectId,
           encryptedLogs: session.encryptedLogsBlob,
