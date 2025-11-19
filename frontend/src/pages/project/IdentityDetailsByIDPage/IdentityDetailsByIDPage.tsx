@@ -114,7 +114,8 @@ const Page = () => {
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
-        projectId
+        projectId,
+        orgId: currentOrg.id
       },
       search: {
         selectedTab: "identities"
@@ -137,7 +138,8 @@ const Page = () => {
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
-              projectId
+              projectId,
+              orgId: currentOrg.id
             }}
             search={{
               selectedTab: ProjectAccessControlTabs.Identities
@@ -223,9 +225,10 @@ const Page = () => {
                   {(isAllowed) =>
                     isAllowed ? (
                       <Link
-                        to="/organization/identities/$identityId"
+                        to="/organizations/$orgId/identities/$identityId"
                         params={{
-                          identityId
+                          identityId,
+                          orgId: currentOrg.id
                         }}
                       >
                         <span className="cursor-pointer text-info underline underline-offset-2">

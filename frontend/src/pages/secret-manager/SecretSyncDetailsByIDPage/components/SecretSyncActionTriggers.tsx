@@ -36,7 +36,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { usePopUp, useToggle } from "@app/hooks";
@@ -65,6 +65,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
   const updateSync = useUpdateSecretSync();
 
   const { destination, environment, folder } = secretSync;
+  const { currentOrg } = useOrganization();
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
   const { syncOption } = useSecretSyncOption(destination);
@@ -291,6 +292,7 @@ export const SecretSyncActionTriggers = ({ secretSync }: Props) => {
           navigate({
             to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
             params: {
+              orgId: currentOrg.id,
               projectId: secretSync.projectId
             },
             search: {

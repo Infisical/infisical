@@ -40,7 +40,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
 import { useToggle } from "@app/hooks";
@@ -81,6 +81,7 @@ export const SecretSyncRow = ({
     projectId
   } = secretSync;
 
+  const { currentOrg } = useOrganization();
   const { syncOption } = useSecretSyncOption(destination);
 
   const destinationName = SECRET_SYNC_MAP[destination].name;
@@ -134,7 +135,8 @@ export const SecretSyncRow = ({
           params: {
             syncId: id,
             destination,
-            projectId
+            projectId,
+            orgId: currentOrg.id
           }
         })
       }

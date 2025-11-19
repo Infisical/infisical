@@ -46,7 +46,7 @@ export const CommitsPage = () => {
         environment: envSlug,
         commitId
       },
-      search: (query: Record<string, string>) => ({
+      search: (query) => ({
         ...query,
         secretPath
       })

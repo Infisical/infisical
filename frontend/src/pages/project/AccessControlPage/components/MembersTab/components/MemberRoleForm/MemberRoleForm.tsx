@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { Alert, AlertDescription } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { TWorkspaceUser } from "@app/hooks/api/types";
 
@@ -12,6 +12,7 @@ type Props = {
   onOpenUpgradeModal: (title: string) => void;
 };
 export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   return (
     <div>
@@ -24,6 +25,7 @@ export const MemberRoleForm = ({ projectMember, onOpenUpgradeModal }: Props) => 
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/members/$membershipId` as const}
             params={{
+              orgId: currentOrg.id,
               projectId: currentProject.id,
               membershipId: projectMember.id
             }}

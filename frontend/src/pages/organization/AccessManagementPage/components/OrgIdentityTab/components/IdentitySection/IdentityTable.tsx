@@ -301,9 +301,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       key={`identity-${id}`}
                       onClick={() =>
                         navigate({
-                          to: "/organization/identities/$identityId",
+                          to: "/organizations/$orgId/identities/$identityId",
                           params: {
-                            identityId: id
+                            identityId: id,
+                            orgId
                           }
                         })
                       }
@@ -397,9 +398,10 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate({
-                                      to: "/organization/identities/$identityId",
+                                      to: "/organizations/$orgId/identities/$identityId",
                                       params: {
-                                        identityId: id
+                                        identityId: id,
+                                        orgId
                                       }
                                     });
                                   }}

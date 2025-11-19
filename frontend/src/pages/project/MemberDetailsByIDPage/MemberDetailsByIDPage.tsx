@@ -95,7 +95,8 @@ export const Page = () => {
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        orgId: currentOrg.id
       }
     });
     handlePopUpClose("removeMember");
@@ -116,7 +117,8 @@ export const Page = () => {
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
-              projectId: currentProject.id
+              projectId: currentProject.id,
+              orgId: currentOrg.id
             }}
             search={{
               selectedTab: ProjectAccessControlTabs.Member

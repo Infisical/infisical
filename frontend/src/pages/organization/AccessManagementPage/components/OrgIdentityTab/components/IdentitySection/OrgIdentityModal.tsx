@@ -155,9 +155,10 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       handlePopUpToggle("identity", false);
       navigate({
-        to: "/organization/identities/$identityId",
+        to: "/organizations/$orgId/identities/$identityId",
         params: {
-          identityId: createdId
+          identityId: createdId,
+          orgId
         }
       });
     }

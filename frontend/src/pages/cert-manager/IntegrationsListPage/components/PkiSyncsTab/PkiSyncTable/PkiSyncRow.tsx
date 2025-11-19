@@ -39,7 +39,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useToggle } from "@app/hooks";
@@ -82,6 +82,7 @@ export const PkiSyncRow = ({
 
   const { syncOption } = usePkiSyncOption(destination);
 
+  const { currentOrg } = useOrganization();
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const handleCopyId = useCallback(() => {
@@ -127,7 +128,8 @@ export const PkiSyncRow = ({
           to: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.path,
           params: {
             syncId: id,
-            projectId
+            projectId,
+            orgId: currentOrg.id
           }
         });
       }}

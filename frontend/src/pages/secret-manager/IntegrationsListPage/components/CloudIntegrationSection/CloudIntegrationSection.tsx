@@ -24,6 +24,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -60,6 +61,7 @@ export const CloudIntegrationSection = ({
     "deleteConfirmation"
   ] as const);
   const { permission } = useProjectPermission();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
 
@@ -138,6 +140,7 @@ export const CloudIntegrationSection = ({
                     navigate({
                       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
                       params: {
+                        orgId: currentOrg.id,
                         projectId: currentProject.id
                       },
                       search: {

@@ -45,7 +45,7 @@ export const CommitDetailsPage = () => {
         folderId,
         environment: envSlug
       },
-      search: (query: Record<string, string>) => ({
+      search: (query) => ({
         ...query,
         secretPath
       })
@@ -62,7 +62,7 @@ export const CommitDetailsPage = () => {
         environment: envSlug,
         commitId: selectedCommitId
       },
-      search: (query: Record<string, string>) => ({
+      search: (query) => ({
         ...query,
         secretPath
       })

@@ -97,7 +97,8 @@ export const ProjectSelect = () => {
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
           params={{
-            projectId: currentWorkspace.id
+            projectId: currentWorkspace.id,
+            orgId: currentWorkspace.orgId
           }}
           className="group flex cursor-pointer items-center gap-x-1.5 overflow-hidden hover:text-white"
         >
@@ -154,7 +155,8 @@ export const ProjectSelect = () => {
                       const url = linkOptions({
                         to: getProjectHomePage(workspace.type, workspace.environments),
                         params: {
-                          projectId: workspace.id
+                          projectId: workspace.id,
+                          orgId: workspace.orgId
                         },
                         search: {
                           subOrganization: currentOrg?.subOrganization?.name

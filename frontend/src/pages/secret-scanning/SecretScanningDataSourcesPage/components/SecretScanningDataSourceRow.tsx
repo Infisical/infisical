@@ -102,6 +102,7 @@ export const SecretScanningDataSourceRow = ({
         navigate({
           to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
           params: {
+            orgId: currentOrg.id,
             dataSourceId: id,
             type,
             projectId

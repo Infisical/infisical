@@ -26,7 +26,7 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { destination, syncId, projectId } = useParams({
+  const { destination, syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.SecretManager.SecretSyncDetailsByIDPage.id,
     select: (params) => ({
       ...params,
@@ -82,6 +82,7 @@ const PageContent = () => {
               navigate({
                 to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
                 params: {
+                  orgId,
                   projectId
                 },
                 search: {

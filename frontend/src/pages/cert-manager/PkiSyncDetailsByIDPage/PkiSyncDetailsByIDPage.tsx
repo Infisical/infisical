@@ -26,7 +26,7 @@ import {
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { syncId, projectId } = useParams({
+  const { syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
   });
 
@@ -77,7 +77,8 @@ const PageContent = () => {
               navigate({
                 to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
                 params: {
-                  projectId
+                  projectId,
+                  orgId
                 },
                 search: {
                   selectedTab: IntegrationsListPageTabs.PkiSyncs

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateAppConnection, useUpdateAppConnection } from "@app/hooks/api/appConnections";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 
@@ -14,7 +14,7 @@ export const HerokuOAuthCallbackPage = () => {
   const { code, state } = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.HerokuOauthCallbackPage.id
   });
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   useEffect(() => {
@@ -25,7 +25,8 @@ export const HerokuOAuthCallbackPage = () => {
         if (state !== storedState) {
           console.error("CSRF token mismatch");
           navigate({
-            to: "/organization/app-connections",
+            to: "/organizations/$orgId/app-connections",
+            params: { orgId: currentOrg.id },
             search: { error: "invalid_state" }
           });
           return;
@@ -39,7 +40,8 @@ export const HerokuOAuthCallbackPage = () => {
         if (!storedFormData) {
           console.error("No stored form data found");
           navigate({
-            to: "/organization/app-connections",
+            to: "/organizations/$orgId/app-connections",
+            params: { orgId: currentOrg.id },
             search: { error: "missing_form_data" }
           });
           return;
@@ -74,7 +76,8 @@ export const HerokuOAuthCallbackPage = () => {
 
         // Navigate to success page or app connections list
         navigate({
-          to: "/organization/app-connections",
+          to: "/organizations/$orgId/app-connections",
+          params: { orgId: currentOrg.id },
           search: {
             success: formData.isUpdate ? "connection_updated" : "connection_created",
             connectionId: appConnection.id
@@ -83,7 +86,8 @@ export const HerokuOAuthCallbackPage = () => {
       } catch (err) {
         console.error("Error handling Heroku OAuth callback:", err);
         navigate({
-          to: "/organization/app-connections",
+          to: "/organizations/$orgId/app-connections",
+          params: { orgId: currentOrg.id },
           search: { error: "connection_failed" }
         });
       }

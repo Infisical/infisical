@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent, Spinner } from "@app/components/v2";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useCreateProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
@@ -45,6 +45,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     resolver: zodResolver(schema)
   });
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const createRole = useCreateProjectRole();
@@ -83,6 +84,7 @@ const Content = ({ role, onClose }: ContentProps) => {
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
       params: {
+        orgId: currentOrg.id,
         roleSlug: newRole.slug,
         projectId: currentProject.id
       }

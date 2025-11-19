@@ -157,7 +157,7 @@ const NewProjectForm = ({ onOpenChange }: NewProjectFormProps) => {
     onOpenChange(false);
     navigate({
       to: getProjectHomePage(project.type, project.environments),
-      params: { projectId: project.id }
+      params: { projectId: project.id, orgId: currentOrg.id }
     });
   };
   const onSubmit = handleSubmit((data) => {

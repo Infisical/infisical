@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useProject, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TSecretSync } from "@app/hooks/api/secretSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -19,6 +19,7 @@ type Props = {
 
 export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
@@ -53,7 +54,12 @@ export const SecretSyncAuditLogsSection = ({ secretSync }: Props) => {
             <p>
               Please{" "}
               {subscription && subscription.slug !== null ? (
-                <Link to="/organization/billing" target="_blank" rel="noopener noreferrer">
+                <Link
+                  to="/organizations/$orgId/billing"
+                  params={{ orgId: currentOrg.id }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <a
                     className="cursor-pointer underline transition-all hover:text-white"
                     target="_blank"

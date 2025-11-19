@@ -56,7 +56,8 @@ export const Page = () => {
 
     handlePopUpClose("deleteOrgRole");
     navigate({
-      to: "/organization/access-management" as const,
+      to: "/organizations/$orgId/access-management" as const,
+      params: { orgId },
       search: {
         selectedTab: OrgAccessControlTabSections.Roles
       }
@@ -70,7 +71,8 @@ export const Page = () => {
       {data && (
         <div className="mx-auto w-full max-w-8xl">
           <Link
-            to="/organization/access-management"
+            to="/organizations/$orgId/access-management"
+            params={{ orgId }}
             search={{
               selectedTab: OrgAccessControlTabSections.Roles
             }}

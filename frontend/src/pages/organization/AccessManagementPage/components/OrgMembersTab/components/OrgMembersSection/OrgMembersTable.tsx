@@ -481,9 +481,10 @@ export const OrgMembersTable = ({
                       className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       onClick={() =>
                         navigate({
-                          to: "/organization/members/$membershipId" as const,
+                          to: "/organizations/$orgId/members/$membershipId" as const,
                           params: {
-                            membershipId: orgMembershipId
+                            membershipId: orgMembershipId,
+                            orgId
                           }
                         })
                       }
@@ -619,9 +620,10 @@ export const OrgMembersTable = ({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate({
-                                        to: "/organization/members/$membershipId" as const,
+                                        to: "/organizations/$orgId/members/$membershipId" as const,
                                         params: {
-                                          membershipId: orgMembershipId
+                                          membershipId: orgMembershipId,
+                                          orgId
                                         }
                                       });
                                     }}

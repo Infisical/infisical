@@ -280,9 +280,10 @@ export const OrgRoleTable = () => {
                   className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                   onClick={() =>
                     navigate({
-                      to: "/organization/roles/$roleId",
+                      to: "/organizations/$orgId/roles/$roleId",
                       params: {
-                        roleId: id
+                        roleId: id,
+                        orgId
                       }
                     })
                   }
@@ -339,9 +340,10 @@ export const OrgRoleTable = () => {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate({
-                                  to: "/organization/roles/$roleId",
+                                  to: "/organizations/$orgId/roles/$roleId",
                                   params: {
-                                    roleId: id
+                                    roleId: id,
+                                    orgId
                                   }
                                 });
                               }}

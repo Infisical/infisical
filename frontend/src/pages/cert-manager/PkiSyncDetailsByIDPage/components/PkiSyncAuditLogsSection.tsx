@@ -2,7 +2,7 @@ import { faFingerprint } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link } from "@tanstack/react-router";
 
-import { useProject, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -20,7 +20,7 @@ type Props = {
 export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
   const { subscription } = useSubscription();
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
 
   return (
@@ -53,7 +53,12 @@ export const PkiSyncAuditLogsSection = ({ pkiSync }: Props) => {
             <p>
               Please{" "}
               {subscription && subscription.slug !== null ? (
-                <Link to="/organization/billing" target="_blank" rel="noopener noreferrer">
+                <Link
+                  to="/organizations/$orgId/billing"
+                  params={{ orgId: currentOrg.id }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <span className="cursor-pointer underline transition-all hover:text-white">
                     upgrade your subscription
                   </span>

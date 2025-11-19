@@ -64,9 +64,10 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
       type: "success"
     });
     navigate({
-      to: "/organization/identities/$identityId",
+      to: "/organizations/$orgId/identities/$identityId",
       params: {
-        identityId: identity.id
+        identityId: identity.id,
+        orgId: currentOrg.id
       }
     });
   };

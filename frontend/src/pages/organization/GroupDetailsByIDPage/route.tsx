@@ -6,11 +6,14 @@ export const Route = createFileRoute(
   "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/groups/$groupId"
 )({
   component: GroupDetailsByIDPage,
-  context: () => ({
+  context: ({ params }) => ({
     breadcrumbs: [
       {
         label: "Access Control",
-        link: linkOptions({ to: "/organization/access-management" })
+        link: linkOptions({
+          to: "/organizations/$orgId/access-management" as const,
+          params
+        })
       },
       {
         label: "groups"
