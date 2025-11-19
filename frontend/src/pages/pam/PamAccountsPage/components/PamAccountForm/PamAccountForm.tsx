@@ -1,13 +1,19 @@
+import { useNavigate } from "@tanstack/react-router";
+
 import { createNotification } from "@app/components/notifications";
 import {
   PamResourceType,
+  TMcpAccount,
+  TMySQLAccount,
   TPamAccount,
+  TPostgresAccount,
   useCreatePamAccount,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { McpAccountForm } from "./McpAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
@@ -35,6 +41,7 @@ const CreateForm = ({
   folderId
 }: CreateFormProps) => {
   const createPamAccount = useCreatePamAccount();
+  const navigate = useNavigate();
 
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
@@ -50,7 +57,25 @@ const CreateForm = ({
       text: "Successfully created account",
       type: "success"
     });
-    onComplete(account);
+    if (resourceType === PamResourceType.MCP) {
+      if (
+        "headers" in formData.credentials &&
+        formData.credentials.headers?.find((el) => el.key === "Authorization")
+      ) {
+        onComplete(account);
+        return;
+      }
+
+      navigate({
+        to: "/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize",
+        params: {
+          projectId,
+          accountId: account.id
+        }
+      });
+    } else {
+      onComplete(account);
+    }
   };
 
   switch (resourceType) {
@@ -70,6 +95,10 @@ const CreateForm = ({
       return (
         <SshAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
       );
+    case PamResourceType.MCP:
+      return (
+        <McpAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -77,6 +106,7 @@ const CreateForm = ({
 
 const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
   const updatePamAccount = useUpdatePamAccount();
+  const navigate = useNavigate();
 
   const onSubmit = async (
     formData: DiscriminativePick<TPamAccount, "name" | "description" | "credentials">
@@ -86,6 +116,26 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       resourceType: account.resource.resourceType,
       ...formData
     });
+
+    if (account.resource.resourceType === PamResourceType.MCP) {
+      if (
+        "headers" in formData.credentials &&
+        formData.credentials.headers?.find((el) => el.key === "Authorization")
+      ) {
+        onComplete(account);
+        return;
+      }
+
+      navigate({
+        to: "/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize",
+        params: {
+          projectId: account.projectId,
+          accountId: account.id
+        }
+      });
+    } else {
+      onComplete(account);
+    }
     createNotification({
       text: "Successfully updated account",
       type: "success"
@@ -100,6 +150,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.MCP:
+      return <McpAccountForm account={account as TMcpAccount} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

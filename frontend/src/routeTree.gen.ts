@@ -51,6 +51,7 @@ import { Route as adminAuthenticationPageRouteImport } from './pages/admin/Authe
 import { Route as adminAccessManagementPageRouteImport } from './pages/admin/AccessManagementPage/route'
 import { Route as organizationProjectsPageRouteImport } from './pages/organization/ProjectsPage/route'
 import { Route as organizationNetworkingPageRouteImport } from './pages/organization/NetworkingPage/route'
+import { Route as organizationMcpScopeSelectPageRouteImport } from './pages/organization/McpScopeSelectPage/route'
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
@@ -223,6 +224,8 @@ import { Route as secretManagerIntegrationsAwsSecretManagerConfigurePageRouteImp
 import { Route as secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsSecretManagerAuthorizePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreConfigurePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreConfigurePage/route'
 import { Route as secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteImport } from './pages/secret-manager/integrations/AwsParameterStoreAuthorizePage/route'
+import { Route as pamMcpServerOauthCallbackPageRouteImport } from './pages/pam/McpServerOauthCallbackPage/route'
+import { Route as pamMcpServerOauthAuthorizePageRouteImport } from './pages/pam/McpServerOauthAuthorizePage/route'
 import { Route as secretManagerIntegrationsVercelOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/VercelOauthCallbackPage/route'
 import { Route as secretManagerSecretSyncDetailsByIDPageRouteImport } from './pages/secret-manager/SecretSyncDetailsByIDPage/route'
 import { Route as secretManagerIntegrationsNetlifyOauthCallbackPageRouteImport } from './pages/secret-manager/integrations/NetlifyOauthCallbackPage/route'
@@ -649,6 +652,14 @@ const organizationNetworkingPageRouteRoute =
   organizationNetworkingPageRouteImport.update({
     id: '/networking',
     path: '/networking',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
+  } as any)
+
+const organizationMcpScopeSelectPageRouteRoute =
+  organizationMcpScopeSelectPageRouteImport.update({
+    id: '/mcp-scope',
+    path: '/mcp-scope',
     getParentRoute: () =>
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationRoute,
   } as any)
@@ -2056,6 +2067,20 @@ const secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute =
       AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutIntegrationsRoute,
   } as any)
 
+const pamMcpServerOauthCallbackPageRouteRoute =
+  pamMcpServerOauthCallbackPageRouteImport.update({
+    id: '/mcp-server-oauth/$accountId/callback',
+    path: '/mcp-server-oauth/$accountId/callback',
+    getParentRoute: () => pamLayoutRoute,
+  } as any)
+
+const pamMcpServerOauthAuthorizePageRouteRoute =
+  pamMcpServerOauthAuthorizePageRouteImport.update({
+    id: '/mcp-server-oauth/$accountId/authorize',
+    path: '/mcp-server-oauth/$accountId/authorize',
+    getParentRoute: () => pamLayoutRoute,
+  } as any)
+
 const AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdRoute =
   AuthenticateInjectOrgDetailsOrgLayoutProjectsSecretManagementProjectIdSecretManagerLayoutCommitsEnvironmentFolderIdCommitIdImport.update(
     {
@@ -2454,6 +2479,13 @@ declare module '@tanstack/react-router' {
       path: '/billing'
       fullPath: '/organization/billing'
       preLoaderRoute: typeof organizationBillingPageRouteImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope'
+      path: '/mcp-scope'
+      fullPath: '/organization/mcp-scope'
+      preLoaderRoute: typeof organizationMcpScopeSelectPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organization/networking': {
@@ -3338,6 +3370,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof projectRoleDetailsBySlugPageRouteSshImport
       parentRoute: typeof sshLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize': {
+      id: '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize'
+      path: '/mcp-server-oauth/$accountId/authorize'
+      fullPath: '/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize'
+      preLoaderRoute: typeof pamMcpServerOauthAuthorizePageRouteImport
+      parentRoute: typeof pamLayoutImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback'
+      path: '/mcp-server-oauth/$accountId/callback'
+      fullPath: '/projects/pam/$projectId/mcp-server-oauth/$accountId/callback'
+      preLoaderRoute: typeof pamMcpServerOauthCallbackPageRouteImport
+      parentRoute: typeof pamLayoutImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': {
       id: '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
       path: '/aws-parameter-store/authorize'
@@ -4003,6 +4049,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren {
   organizationAccessManagementPageRouteRoute: typeof organizationAccessManagementPageRouteRoute
   organizationAuditLogsPageRouteRoute: typeof organizationAuditLogsPageRouteRoute
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
+  organizationMcpScopeSelectPageRouteRoute: typeof organizationMcpScopeSelectPageRouteRoute
   organizationNetworkingPageRouteRoute: typeof organizationNetworkingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRouteWithChildren
@@ -4020,6 +4067,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationRouteChildren: Authentica
       organizationAccessManagementPageRouteRoute,
     organizationAuditLogsPageRouteRoute: organizationAuditLogsPageRouteRoute,
     organizationBillingPageRouteRoute: organizationBillingPageRouteRoute,
+    organizationMcpScopeSelectPageRouteRoute:
+      organizationMcpScopeSelectPageRouteRoute,
     organizationNetworkingPageRouteRoute: organizationNetworkingPageRouteRoute,
     organizationProjectsPageRouteRoute: organizationProjectsPageRouteRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationAppConnectionsRoute:
@@ -4249,6 +4298,8 @@ interface pamLayoutRouteChildren {
   projectIdentityDetailsByIDPageRoutePamRoute: typeof projectIdentityDetailsByIDPageRoutePamRoute
   projectMemberDetailsByIDPageRoutePamRoute: typeof projectMemberDetailsByIDPageRoutePamRoute
   projectRoleDetailsBySlugPageRoutePamRoute: typeof projectRoleDetailsBySlugPageRoutePamRoute
+  pamMcpServerOauthAuthorizePageRouteRoute: typeof pamMcpServerOauthAuthorizePageRouteRoute
+  pamMcpServerOauthCallbackPageRouteRoute: typeof pamMcpServerOauthCallbackPageRouteRoute
 }
 
 const pamLayoutRouteChildren: pamLayoutRouteChildren = {
@@ -4267,6 +4318,10 @@ const pamLayoutRouteChildren: pamLayoutRouteChildren = {
     projectMemberDetailsByIDPageRoutePamRoute,
   projectRoleDetailsBySlugPageRoutePamRoute:
     projectRoleDetailsBySlugPageRoutePamRoute,
+  pamMcpServerOauthAuthorizePageRouteRoute:
+    pamMcpServerOauthAuthorizePageRouteRoute,
+  pamMcpServerOauthCallbackPageRouteRoute:
+    pamMcpServerOauthCallbackPageRouteRoute,
 }
 
 const pamLayoutRouteWithChildren = pamLayoutRoute._addFileChildren(
@@ -5004,6 +5059,7 @@ export interface FileRoutesByFullPath {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5124,6 +5180,8 @@ export interface FileRoutesByFullPath {
   '/projects/ssh/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSshRoute
   '/projects/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/projects/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
+  '/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize': typeof pamMcpServerOauthAuthorizePageRouteRoute
+  '/projects/pam/$projectId/mcp-server-oauth/$accountId/callback': typeof pamMcpServerOauthCallbackPageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -5239,6 +5297,7 @@ export interface FileRoutesByTo {
   '/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/organization/billing': typeof organizationBillingPageRouteRoute
+  '/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/organization/projects': typeof organizationProjectsPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5350,6 +5409,8 @@ export interface FileRoutesByTo {
   '/projects/ssh/$projectId/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSshRoute
   '/projects/ssh/$projectId/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/projects/ssh/$projectId/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
+  '/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize': typeof pamMcpServerOauthAuthorizePageRouteRoute
+  '/projects/pam/$projectId/mcp-server-oauth/$accountId/callback': typeof pamMcpServerOauthCallbackPageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -5473,6 +5534,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organization/access-management': typeof organizationAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs': typeof organizationAuditLogsPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/billing': typeof organizationBillingPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope': typeof organizationMcpScopeSelectPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/networking': typeof organizationNetworkingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organization/projects': typeof organizationProjectsPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
@@ -5599,6 +5661,8 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/identities/$identityId': typeof projectIdentityDetailsByIDPageRouteSshRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/members/$membershipId': typeof projectMemberDetailsByIDPageRouteSshRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug': typeof projectRoleDetailsBySlugPageRouteSshRoute
+  '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize': typeof pamMcpServerOauthAuthorizePageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback': typeof pamMcpServerOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize': typeof secretManagerIntegrationsAwsParameterStoreAuthorizePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create': typeof secretManagerIntegrationsAwsParameterStoreConfigurePageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize': typeof secretManagerIntegrationsAwsSecretManagerAuthorizePageRouteRoute
@@ -5720,6 +5784,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/mcp-scope'
     | '/organization/networking'
     | '/organization/projects'
     | '/admin/access-management'
@@ -5840,6 +5905,8 @@ export interface FileRouteTypes {
     | '/projects/ssh/$projectId/identities/$identityId'
     | '/projects/ssh/$projectId/members/$membershipId'
     | '/projects/ssh/$projectId/roles/$roleSlug'
+    | '/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize'
+    | '/projects/pam/$projectId/mcp-server-oauth/$accountId/callback'
     | '/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize'
     | '/projects/secret-management/$projectId/integrations/aws-parameter-store/create'
     | '/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize'
@@ -5954,6 +6021,7 @@ export interface FileRouteTypes {
     | '/organization/access-management'
     | '/organization/audit-logs'
     | '/organization/billing'
+    | '/organization/mcp-scope'
     | '/organization/networking'
     | '/organization/projects'
     | '/admin/access-management'
@@ -6065,6 +6133,8 @@ export interface FileRouteTypes {
     | '/projects/ssh/$projectId/identities/$identityId'
     | '/projects/ssh/$projectId/members/$membershipId'
     | '/projects/ssh/$projectId/roles/$roleSlug'
+    | '/projects/pam/$projectId/mcp-server-oauth/$accountId/authorize'
+    | '/projects/pam/$projectId/mcp-server-oauth/$accountId/callback'
     | '/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize'
     | '/projects/secret-management/$projectId/integrations/aws-parameter-store/create'
     | '/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize'
@@ -6186,6 +6256,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organization/access-management'
     | '/_authenticate/_inject-org-details/_org-layout/organization/audit-logs'
     | '/_authenticate/_inject-org-details/_org-layout/organization/billing'
+    | '/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope'
     | '/_authenticate/_inject-org-details/_org-layout/organization/networking'
     | '/_authenticate/_inject-org-details/_org-layout/organization/projects'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
@@ -6312,6 +6383,8 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug'
+    | '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize'
+    | '/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/create'
     | '/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-secret-manager/authorize'
@@ -6640,6 +6713,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organization/access-management",
         "/_authenticate/_inject-org-details/_org-layout/organization/audit-logs",
         "/_authenticate/_inject-org-details/_org-layout/organization/billing",
+        "/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope",
         "/_authenticate/_inject-org-details/_org-layout/organization/networking",
         "/_authenticate/_inject-org-details/_org-layout/organization/projects",
         "/_authenticate/_inject-org-details/_org-layout/organization/app-connections",
@@ -6679,6 +6753,10 @@ export const routeTree = rootRoute
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/billing": {
       "filePath": "organization/BillingPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organization/mcp-scope": {
+      "filePath": "organization/McpScopeSelectPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organization"
     },
     "/_authenticate/_inject-org-details/_org-layout/organization/networking": {
@@ -6911,7 +6989,9 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/groups/$groupId",
         "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/identities/$identityId",
         "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/members/$membershipId",
-        "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/roles/$roleSlug"
+        "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/roles/$roleSlug",
+        "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize",
+        "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback"
       ]
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout": {
@@ -7399,6 +7479,14 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout/roles/$roleSlug": {
       "filePath": "project/RoleDetailsBySlugPage/route-ssh.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/authorize": {
+      "filePath": "pam/McpServerOauthAuthorizePage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/mcp-server-oauth/$accountId/callback": {
+      "filePath": "pam/McpServerOauthCallbackPage/route.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout"
     },
     "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/aws-parameter-store/authorize": {
       "filePath": "secret-manager/integrations/AwsParameterStoreAuthorizePage/route.tsx",

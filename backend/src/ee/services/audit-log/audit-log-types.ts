@@ -4136,7 +4136,7 @@ interface PamResourceCreateEvent {
   type: EventType.PAM_RESOURCE_CREATE;
   metadata: {
     resourceType: string;
-    gatewayId: string;
+    gatewayId?: string | null;
     name: string;
   };
 }
@@ -4146,7 +4146,7 @@ interface PamResourceUpdateEvent {
   metadata: {
     resourceId: string;
     resourceType: string;
-    gatewayId?: string;
+    gatewayId?: string | null;
     name?: string;
   };
 }

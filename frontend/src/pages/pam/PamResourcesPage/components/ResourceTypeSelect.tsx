@@ -79,7 +79,6 @@ export const ResourceTypeSelect = ({ onSelect }: Props) => {
     if (
       resource === PamResourceType.RDP ||
       resource === PamResourceType.Kubernetes ||
-      resource === PamResourceType.MCP ||
       resource === PamResourceType.Redis ||
       resource === PamResourceType.MongoDB ||
       resource === PamResourceType.WebApp ||

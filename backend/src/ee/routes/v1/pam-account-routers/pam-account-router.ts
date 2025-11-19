@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
+import { SanitizedMcpAccountWithResourceSchema } from "@app/ee/services/pam-resource/mcp/mcp-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
@@ -15,7 +16,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAccountSchema = z.union([
   SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
-  SanitizedMySQLAccountWithResourceSchema
+  SanitizedMySQLAccountWithResourceSchema,
+  SanitizedMcpAccountWithResourceSchema
 ]);
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {

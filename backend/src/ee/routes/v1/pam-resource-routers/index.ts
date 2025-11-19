@@ -1,4 +1,9 @@
 import {
+  CreateMcpResourceSchema,
+  McpResourceSchema,
+  UpdateMcpResourceSchema
+} from "@app/ee/services/pam-resource/mcp/mcp-resource-schemas";
+import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
@@ -43,6 +48,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedSSHResourceSchema,
       createResourceSchema: CreateSSHResourceSchema,
       updateResourceSchema: UpdateSSHResourceSchema
+    });
+  },
+  [PamResource.Mcp]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Mcp,
+      resourceResponseSchema: McpResourceSchema,
+      createResourceSchema: CreateMcpResourceSchema,
+      updateResourceSchema: UpdateMcpResourceSchema
     });
   }
 };

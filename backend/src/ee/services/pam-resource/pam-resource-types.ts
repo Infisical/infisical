@@ -1,5 +1,11 @@
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
+  TMcpAccount,
+  TMcpAccountCredentials,
+  TMcpResource,
+  TMcpResourceConnectionDetails
+} from "./mcp/mcp-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
@@ -20,16 +26,17 @@ import {
 } from "./ssh/ssh-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource | TMcpResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
-  | TSSHResourceConnectionDetails;
+  | TSSHResourceConnectionDetails
+  | TMcpResourceConnectionDetails;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TMcpAccount;
 // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TSSHAccountCredentials;
+export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TSSHAccountCredentials | TMcpAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<
@@ -54,7 +61,7 @@ export type TPamResourceFactoryRotateAccountCredentials<C extends TPamAccountCre
 export type TPamResourceFactory<T extends TPamResourceConnectionDetails, C extends TPamAccountCredentials> = (
   resourceType: PamResource,
   connectionDetails: T,
-  gatewayId: string,
+  gatewayId: string | null | undefined,
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">
 ) => {
   validateConnection: TPamResourceFactoryValidateConnection<T>;

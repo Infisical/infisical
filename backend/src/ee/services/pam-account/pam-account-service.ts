@@ -109,11 +109,12 @@ export const pamAccountServiceFactory = ({
       throw new NotFoundError({ message: "Rotation credentials are not configured for this account's resource" });
     }
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId,
-      projectId: resource.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Create,
@@ -202,11 +203,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Edit,
@@ -307,11 +309,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Delete,
@@ -359,12 +362,12 @@ export const pamAccountServiceFactory = ({
       }
     > = [];
 
+    const accountPathFn = await getFullPamFolderPath({
+      pamFolderDAL,
+      projectId
+    });
     for await (const account of accountsWithResourceDetails) {
-      const accountPath = await getFullPamFolderPath({
-        pamFolderDAL,
-        folderId: account.folderId,
-        projectId: account.projectId
-      });
+      const accountPath = accountPathFn({ folderId: account.folderId });
 
       // Check permission for each individual account
       if (
@@ -424,11 +427,12 @@ export const pamAccountServiceFactory = ({
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const accountPath = (
+      await getFullPamFolderPath({
+        pamFolderDAL,
+        projectId: resource.projectId
+      })
+    )({ folderId: account.folderId });
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPamAccountActions.Access,
@@ -438,6 +442,8 @@ export const pamAccountServiceFactory = ({
         accountPath
       })
     );
+
+    if (resource.resourceType === PamResource.Mcp) throw new BadRequestError({ message: "Invalid account provided" });
 
     const session = await pamSessionDAL.create({
       accountName: account.name,
@@ -460,8 +466,13 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
+    // for ts
+    if (!gatewayId) throw new BadRequestError({ message: "Missing gateway" });
+
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
+
+    if (!("host" in connectionDetails)) throw new BadRequestError({ message: "Host is missing in connection details" });
 
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
@@ -500,7 +511,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username,
+            username: (credentials as { username: string }).username,
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath
@@ -516,7 +527,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username
+            username: (credentials as { username: string }).username
           };
         }
         break;
