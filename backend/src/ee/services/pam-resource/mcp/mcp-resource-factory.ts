@@ -85,9 +85,14 @@ export const mcpResourceFactory: TPamResourceFactory<TMcpResourceConnectionDetai
     currentCredentials
   ) => currentCredentials;
 
+  const handleOverwritePreventionForCensoredValues = async (updatedAccountCredentials: TMcpAccountCredentials) => {
+    return updatedAccountCredentials;
+  };
+
   return {
     validateConnection,
     validateAccountCredentials,
-    rotateAccountCredentials
+    rotateAccountCredentials,
+    handleOverwritePreventionForCensoredValues
   };
 };

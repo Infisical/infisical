@@ -29,9 +29,9 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TMcpAccountCredentials, TMcpResourceConnectionDetails } from "../pam-resource/mcp/mcp-resource-types";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
-import { TPamSessionCommandLog } from "../pam-session/pam-session.types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
+import { TPamSessionCommandLog } from "../pam-session/pam-session-types";
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { ProjectPermissionPamAccountActions, ProjectPermissionSub } from "../permission/project-permission";
 import {

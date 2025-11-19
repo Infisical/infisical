@@ -19,7 +19,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
   createResourceSchema: z.ZodType<{
     projectId: T["projectId"];
     connectionDetails: T["connectionDetails"];
-    gatewayId: T["gatewayId"];
+    gatewayId?: T["gatewayId"];
     name: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
   }>;

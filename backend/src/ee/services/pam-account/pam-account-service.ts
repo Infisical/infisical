@@ -472,6 +472,8 @@ export const pamAccountServiceFactory = ({
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
+    if (!("host" in connectionDetails)) throw new BadRequestError({ message: "Host is missing in connection details" });
+
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
@@ -509,7 +511,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username,
+            username: (credentials as { username: string }).username,
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath
@@ -525,7 +527,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username
+            username: (credentials as { username: string }).username
           };
         }
         break;
