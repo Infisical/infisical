@@ -387,8 +387,9 @@ def register_account_with_eab(
 ):
     acme_client = context.acme_client
     account_public_key = acme_client.net.key.public_key()
-    # clear the account in case if we want to register twice
-    acme_client.net.account = None
+    if not only_return_existing:
+        # clear the account in case if we want to register twice
+        acme_client.net.account = None
     if hasattr(context, "alt_eab_url"):
         eab_directory = messages.Directory.from_json(
             {"newAccount": context.alt_eab_url}
@@ -408,8 +409,14 @@ def register_account_with_eab(
         only_return_existing=only_return_existing,
     )
     try:
-        context.vars[account_var] = acme_client.new_account(registration)
+        if not only_return_existing:
+            context.vars[account_var] = acme_client.new_account(registration)
+        else:
+            context.vars[account_var] = acme_client.query_registration(
+                acme_client.net.account
+            )
     except Exception as exp:
+        logger.error(f"Failed to register: {exp}", exc_info=True)
         context.vars["error"] = exp
 
 

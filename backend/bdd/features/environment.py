@@ -185,26 +185,31 @@ def bootstrap_infisical(context: Context):
 
 
 def before_all(context: Context):
+    base_vars = {
+        "BASE_URL": BASE_URL,
+        "PEBBLE_URL": PEBBLE_URL,
+    }
     if BOOTSTRAP_INFISICAL:
         details = bootstrap_infisical(context)
-        context.vars = {
-            "BASE_URL": BASE_URL,
-            "PEBBLE_URL": PEBBLE_URL,
+        vars = base_vars | {
             "PROJECT_ID": details["project"]["id"],
             "CERT_CA_ID": details["ca"]["id"],
             "CERT_TEMPLATE_ID": details["cert_template"]["id"],
             "AUTH_TOKEN": details["auth_token"],
         }
     else:
-        context.vars = {
-            "BASE_URL": BASE_URL,
-            "PEBBLE_URL": PEBBLE_URL,
+        vars = base_vars | {
             "PROJECT_ID": PROJECT_ID,
             "CERT_CA_ID": CERT_CA_ID,
             "CERT_TEMPLATE_ID": CERT_TEMPLATE_ID,
             "AUTH_TOKEN": AUTH_TOKEN,
         }
+    context._initial_vars = vars
     context.http_client = httpx.Client(base_url=BASE_URL)
+
+
+def before_scenario(context: Context, scenario: typing.Any):
+    context.vars = deepcopy(context._initial_vars)
 
 
 def after_scenario(context: Context, scenario: typing.Any):
