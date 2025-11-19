@@ -24,7 +24,7 @@ import { TProjectBotServiceFactory } from "../project-bot/project-bot-service";
 import { TProjectEnvDALFactory } from "../project-env/project-env-dal";
 import { TSecretDALFactory } from "../secret/secret-dal";
 import { decryptSecretRaw } from "../secret/secret-fns";
-import { TSecretQueueFactory } from "../secret/secret-queue";
+import { TSecretQueueFactory } from "../secret/secret-types";
 import { TSecretFolderDALFactory } from "../secret-folder/secret-folder-dal";
 import { TSecretV2BridgeDALFactory } from "../secret-v2-bridge/secret-v2-bridge-dal";
 import { recursivelyGetSecretPaths } from "../secret-v2-bridge/secret-v2-bridge-fns";
