@@ -255,6 +255,37 @@ export const getChefDataBagItem = async ({
   }
 };
 
+export const createChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  data
+}: Omit<TUpdateChefDataBagItem, "dataBagItemName">): Promise<void> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}`;
+    const body = JSON.stringify(data);
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("POST", path, body, userName, privateKey);
+
+    await request.post(`${hostServerUrl}${path}`, data, {
+      headers
+    });
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to create Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to create Chef data bag item"
+    });
+  }
+};
+
 export const updateChefDataBagItem = async ({
   serverUrl,
   userName,
@@ -283,6 +314,37 @@ export const updateChefDataBagItem = async ({
     }
     throw new BadRequestError({
       message: "Unable to update Chef data bag item"
+    });
+  }
+};
+
+export const removeChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  dataBagItemName
+}: Omit<TUpdateChefDataBagItem, "data">): Promise<void> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
+    const body = "";
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("DELETE", path, body, userName, privateKey);
+
+    await request.delete(`${hostServerUrl}${path}`, {
+      headers
+    });
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to remove Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to remove Chef data bag item"
     });
   }
 };

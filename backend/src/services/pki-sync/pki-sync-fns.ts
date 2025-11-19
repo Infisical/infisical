@@ -12,6 +12,8 @@ import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-
 import { awsCertificateManagerPkiSyncFactory } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
 import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-constants";
 import { azureKeyVaultPkiSyncFactory } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
+import { chefPkiSyncFactory } from "./chef/chef-pki-sync-fns";
+import { CHEF_PKI_SYNC_LIST_OPTION } from "./chef/chef-pki-sync-list-constants";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -19,7 +21,8 @@ const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
 
 const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
-  [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION
+  [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -175,6 +178,11 @@ export const PkiSyncFns = {
           "AWS Certificate Manager does not support importing certificates into Infisical (private keys cannot be extracted)"
         );
       }
+      case PkiSync.Chef: {
+        throw new Error(
+          "Chef does not support importing certificates into Infisical (private keys cannot be extracted securely)"
+        );
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -222,6 +230,14 @@ export const PkiSyncFns = {
         });
         return awsCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
       }
+      case PkiSync.Chef: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Chef);
+        const chefPkiSync = chefPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return chefPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
     }
@@ -262,6 +278,18 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.Chef: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Chef);
+        const chefPkiSync = chefPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await chefPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });

@@ -180,11 +180,16 @@ export const pkiSyncQueueFactory = ({
         (cert, index, self) => self.findIndex((c) => c.id === cert.id) === index
       );
 
-      if (uniqueCertificates.length === 0) {
+      const activeCertificates = uniqueCertificates.filter((cert) => {
+        const typedCert = cert as TCertificates;
+        return !typedCert.renewedByCertificateId;
+      });
+
+      if (activeCertificates.length === 0) {
         return { certificateMap, certificateMetadata };
       }
 
-      certificates = uniqueCertificates;
+      certificates = activeCertificates;
 
       for (const certificate of certificates) {
         const cert = certificate as TCertificates;

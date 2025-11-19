@@ -7,6 +7,10 @@ export type RootPkiSyncOptions = {
   canRemoveCertificates: boolean;
   certificateNamePrefix?: string;
   certificateNameSchema?: string;
+  preserveArn?: boolean;
+  enableVersioning?: boolean;
+  preserveItemOnRenewal?: boolean;
+  updateExistingCertificates?: boolean;
 };
 
 export type TRootPkiSync = {

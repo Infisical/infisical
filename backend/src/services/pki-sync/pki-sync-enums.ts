@@ -1,6 +1,7 @@
 export enum PkiSync {
   AzureKeyVault = "azure-key-vault",
-  AwsCertificateManager = "aws-certificate-manager"
+  AwsCertificateManager = "aws-certificate-manager",
+  Chef = "chef"
 }
 
 export enum PkiSyncStatus {
