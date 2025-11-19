@@ -27,9 +27,18 @@ export const useDeleteCert = () => {
       );
       return certificate;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: ["certificate-profiles", "list"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectId)
       });
     }
   });
@@ -49,16 +58,18 @@ export const useRevokeCert = () => {
       );
       return certificate;
     },
-    onSuccess: (_, { projectSlug }) => {
+    onSuccess: (_, { projectId }) => {
       queryClient.invalidateQueries({
-        queryKey: projectKeys.forProjectCertificates(projectSlug)
+        queryKey: ["certificate-profiles", "list"]
       });
       queryClient.invalidateQueries({
         queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
       });
-
       queryClient.invalidateQueries({
-        queryKey: ["certificate-profiles", "list"]
+        queryKey: projectKeys.allProjectCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectId)
       });
     }
   });
