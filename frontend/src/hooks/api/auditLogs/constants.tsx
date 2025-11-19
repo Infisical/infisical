@@ -262,6 +262,7 @@ export const eventToNameMap: { [K in EventType]: string } = {
   [EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP]: "Update Identity Project Membership",
   [EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP]: "Delete Identity Project Membership",
 
+  [EventType.PAM_SESSION_CREDENTIALS_GET]: "PAM Session Credentials Get",
   [EventType.PAM_SESSION_START]: "PAM Session Start",
   [EventType.PAM_SESSION_LOGS_UPDATE]: "PAM Session Logs Update",
   [EventType.PAM_SESSION_END]: "PAM Session End",
@@ -314,6 +315,7 @@ const sharedProjectEvents = [
 export const projectToEventsMap: Partial<Record<ProjectType, EventType[]>> = {
   [ProjectType.PAM]: [
     ...sharedProjectEvents,
+    EventType.PAM_SESSION_CREDENTIALS_GET,
     EventType.PAM_SESSION_START,
     EventType.PAM_SESSION_LOGS_UPDATE,
     EventType.PAM_SESSION_END,

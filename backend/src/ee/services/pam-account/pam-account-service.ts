@@ -684,12 +684,15 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
 
+    let sessionStarted = false;
+
     // Mark session as started
     if (session.status === PamSessionStatus.Starting) {
       await pamSessionDAL.updateById(sessionId, {
         status: PamSessionStatus.Active,
         startedAt: new Date()
       });
+      sessionStarted = true;
     }
 
     return {
@@ -698,7 +701,8 @@ export const pamAccountServiceFactory = ({
         ...decryptedAccount.credentials
       },
       projectId: project.id,
-      account
+      account,
+      sessionStarted
     };
   };
 

@@ -254,6 +254,7 @@ export enum EventType {
   UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
   DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
 
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
