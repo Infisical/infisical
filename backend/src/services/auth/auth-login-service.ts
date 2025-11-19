@@ -663,7 +663,8 @@ export const authLoginServiceFactory = ({
             timestamp: new Date().toISOString(),
             ip: ipAddress,
             userAgent,
-            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com")
+            siteUrl: removeTrailingSlash(cfg.SITE_URL || "https://app.infisical.com"),
+            orgId: organizationId
           },
           template: SmtpTemplates.OrgAdminBreakglassAccess
         });
