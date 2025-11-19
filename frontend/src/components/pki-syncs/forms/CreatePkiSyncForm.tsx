@@ -112,10 +112,11 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
       });
 
       createNotification({
-        text: `Successfully created ${destinationName} Certificate Sync${certificateIds && certificateIds.length > 0
+        text: `Successfully created ${destinationName} Certificate Sync${
+          certificateIds && certificateIds.length > 0
             ? ` with ${certificateIds.length} certificate(s)`
             : ""
-          }`,
+        }`,
         type: "success"
       });
       onComplete(pkiSync);
@@ -212,9 +213,10 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
                   setSelectedTabIndex((prev) => (isEnabled ? index : prev));
                 }}
                 className={({ selected }) =>
-                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${selected
-                    ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
-                    : "text-bunker-300"
+                  `-mb-[0.14rem] whitespace-nowrap ${index > selectedTabIndex ? "opacity-30" : ""} px-4 py-2 text-sm font-medium outline-hidden disabled:opacity-60 ${
+                    selected
+                      ? "border-b-2 border-mineshaft-300 text-mineshaft-200"
+                      : "text-bunker-300"
                   }`
                 }
                 key={tab.key}
