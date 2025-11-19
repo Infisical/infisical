@@ -291,6 +291,7 @@ export const pkiAcmeServiceFactory = ({
       url,
       rawJwsPayload,
       getJWK: async (protectedHeader) => {
+        // get jwk instead of kid
         if (!protectedHeader.kid) {
           throw new AcmeMalformedError({ message: "KID is required in the protected header" });
         }
@@ -394,16 +395,15 @@ export const pkiAcmeServiceFactory = ({
     const profile = await validateAcmeProfile(profileId);
     const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
 
+    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
+      profileId,
+      alg,
+      publicKeyThumbprint
+    );
     if (onlyReturnExisting) {
-      const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
-        profileId,
-        alg,
-        publicKeyThumbprint
-      );
       if (!existingAccount) {
         throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
       }
-      // With the same public key, we found an existing account, just return it
       return {
         status: 200,
         body: {
@@ -432,6 +432,20 @@ export const pkiAcmeServiceFactory = ({
     // ref: https://github.com/cert-manager/cert-manager/issues/7388#issuecomment-3535630925
     if (!externalAccountBinding) {
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
+    }
+    if (existingAccount) {
+      return {
+        status: 200,
+        body: {
+          status: "valid",
+          contact: existingAccount.emails,
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+        },
+        headers: {
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+        }
+      };
     }
 
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
