@@ -323,8 +323,7 @@ export const Navbar = () => {
                       onClick={async () => {
                         navigate({
                           to: "/organizations/$orgId/projects",
-                          params: { orgId: currentOrg.id },
-                          search: (search) => ({ ...search, subOrganization: undefined })
+                          params: { orgId: currentOrg.id }
                         });
                         if (isSubOrganization) {
                           await router.invalidate({ sync: true }).catch(() => null);
@@ -409,8 +408,7 @@ export const Navbar = () => {
                                 onClick={async () => {
                                   navigate({
                                     to: "/organizations/$orgId/projects",
-                                    params: { orgId: currentOrg.id },
-                                    search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                                    params: { orgId: subOrg.id }
                                   });
                                   await router.invalidate({ sync: true }).catch(() => null);
                                 }}
@@ -514,8 +512,7 @@ export const Navbar = () => {
                         onClick={async () => {
                           navigate({
                             to: "/organizations/$orgId/projects",
-                            params: { orgId: currentOrg.id },
-                            search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                            params: { orgId: subOrg.id }
                           });
                           await router.invalidate({ sync: true }).catch(() => null);
                         }}
