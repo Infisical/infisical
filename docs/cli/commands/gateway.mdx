@@ -40,12 +40,12 @@ sudo infisical gateway start --name=<name> --auth-method=<auth-method>
 ```
 
 <Info>
-    By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--relay=<relay-name>` flag.
+    By default, the gateway automatically connects to the relay with the lowest latency. To target a specific relay, use the `--target-relay-name=<relay-name>` flag.
 </Info>
 
 Once started, the gateway component will:
 
-- Automatically connect to a healthy relay with the lowest latency (unless the `--relay` flag is specified)
+- Automatically connect to a healthy relay with the lowest latency (unless the `--target-relay-name` flag is specified)
 - Establish outbound SSH reverse tunnel to relay server (no inbound firewall rules needed)
 - Authenticate using SSH certificates issued by Infisical
 - Automatically reconnect if the connection is lost
@@ -252,14 +252,14 @@ The Gateway supports multiple authentication methods. Below are the available au
 ### Other Flags
 
   <AccordionGroup>
-  <Accordion title="--relay">
+  <Accordion title="--target-relay-name">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
     If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
 
     ```bash
     # Example
-    sudo infisical gateway start --relay=my-relay --name=my-gateway --token=<token>
+    sudo infisical gateway start --target-relay-name=my-relay --name=my-gateway --token=<token>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
@@ -336,14 +336,14 @@ sudo infisical gateway systemd install --token=<token> --domain=<domain> --name=
 
   </Accordion>
 
-  <Accordion title="--relay">
+  <Accordion title="--target-relay-name">
     The name of the relay that this gateway should connect to. The relay must be running and registered before starting the gateway.
 
     If this flag is omitted, the gateway will automatically connect to a healthy relay with the lowest latency.
 
     ```bash
     # Example
-    sudo infisical gateway systemd install --relay=my-relay --token=<token> --name=<name>
+    sudo infisical gateway systemd install --target-relay-name=my-relay --token=<token> --name=<name>
     ```
 
     **Note:** For Infisical Cloud users using instance relays, the relay infrastructure is already running and managed by Infisical. If using organization relays or self-hosted instance relays, you must first start a relay server. For more information on deploying relays, refer to the [Relay Deployment Guide](/documentation/platform/gateways/relay-deployment).
@@ -687,7 +687,7 @@ sudo systemctl disable infisical-gateway  # Disable auto-start on boot
 
 <AccordionGroup>
   <Accordion title="How are relays auto-selected?">
-      If the `--relay` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
+      If the `--target-relay-name` flag is omitted, the gateway automatically selects the optimal relay. It first checks for healthy organization relays and connects to the one with the lowest latency. If no organization relays are available, it then performs the same latency-based selection among the available managed relays.
   </Accordion>
   <Accordion title="When restarting the gateway without a relay flag, does it select a new relay every time?">
       No. The first time the gateway starts, it selects the optimal relay (based on latency) and caches that selection. On subsequent restarts, it will prioritize connecting to the cached relay. If it's unable to connect, it will then re-evaluate and connect to the next most optimal relay available.
