@@ -14,7 +14,8 @@ export const IdentitiesSchema = z.object({
   createdAt: z.date(),
   updatedAt: z.date(),
   hasDeleteProtection: z.boolean().default(false),
-  orgId: z.string().uuid()
+  orgId: z.string().uuid(),
+  projectId: z.string().nullable().optional()
 });
 
 export type TIdentities = z.infer<typeof IdentitiesSchema>;

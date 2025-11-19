@@ -27,7 +27,9 @@ import { TLdapConfigServiceFactory } from "@app/ee/services/ldap-config/ldap-con
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TOidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { TPamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { TPamMcpServerServiceFactory } from "@app/ee/services/pam-account/pam-mcp-server-service";
 import { TPamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { TPamMcpServiceFactory } from "@app/ee/services/pam-mcp/pam-mcp-service";
 import { TPamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { TPamSessionServiceFactory } from "@app/ee/services/pam-session/pam-session-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -91,6 +93,7 @@ import { TIdentityProjectServiceFactory } from "@app/services/identity-project/i
 import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
@@ -260,7 +263,8 @@ declare module "fastify" {
       integrationAuth: TIntegrationAuthServiceFactory;
       webhook: TWebhookServiceFactory;
       serviceToken: TServiceTokenServiceFactory;
-      identity: TIdentityServiceFactory;
+      identityV1: TIdentityServiceFactory;
+      identityV2: TScopedIdentityV2ServiceFactory;
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityTokenAuth: TIdentityTokenAuthServiceFactory;
@@ -361,6 +365,9 @@ declare module "fastify" {
       convertor: TConvertorServiceFactory;
       subOrganization: TSubOrgServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
+
+      pamMcp: TPamMcpServiceFactory;
+      pamMcpServer: TPamMcpServerServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

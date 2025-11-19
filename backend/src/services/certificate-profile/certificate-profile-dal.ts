@@ -85,6 +85,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
   const findByIdWithConfigs = async (id: string, tx?: Knex): Promise<TCertificateProfileWithConfigs | undefined> => {
     try {
       const query = (tx || db)(TableName.PkiCertificateProfile)
+        .leftJoin(TableName.Project, `${TableName.PkiCertificateProfile}.projectId`, `${TableName.Project}.id`)
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCertificateProfile}.caId`,
@@ -112,6 +113,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         )
         .select(selectAllTableCols(TableName.PkiCertificateProfile))
         .select(
+          db.ref("id").withSchema(TableName.Project).as("projectId"),
+          db.ref("orgId").withSchema(TableName.Project).as("orgId"),
           db.ref("id").withSchema(TableName.CertificateAuthority).as("caId"),
           db.ref("projectId").withSchema(TableName.CertificateAuthority).as("caProjectId"),
           db.ref("status").withSchema(TableName.CertificateAuthority).as("caStatus"),
@@ -165,15 +168,12 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
-      const certificateAuthority =
-        result.caId && result.caProjectId && result.caStatus && result.caName
-          ? ({
-              id: result.caId,
-              projectId: result.caProjectId,
-              status: result.caStatus,
-              name: result.caName
-            } as TCertificateProfileWithConfigs["certificateAuthority"])
-          : undefined;
+      const certificateAuthority = {
+        id: result.caId,
+        projectId: result.caProjectId,
+        status: result.caStatus,
+        name: result.caName
+      } as TCertificateProfileWithConfigs["certificateAuthority"];
 
       const certificateTemplate =
         result.templateId && result.templateProjectId && result.templateName
@@ -184,6 +184,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
               description: result.templateDescription || undefined
             } as TCertificateProfileWithConfigs["certificateTemplate"])
           : undefined;
+
+      const project = {
+        id: result.projectId,
+        orgId: result.orgId
+      } as TCertificateProfileWithConfigs["project"];
 
       const transformedResult: TCertificateProfileWithConfigs = {
         id: result.id,
@@ -201,6 +206,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         estConfig,
         apiConfig,
         acmeConfig,
+        project,
         certificateAuthority,
         certificateTemplate
       };

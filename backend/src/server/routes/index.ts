@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
+import { registerPamMcpMetadataRouter } from "@app/ee/routes/v1/pam-mcp-metadata-router";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
 import {
   accessApprovalPolicyApproverDALFactory,
@@ -65,8 +66,10 @@ import { oidcConfigDALFactory } from "@app/ee/services/oidc/oidc-config-dal";
 import { oidcConfigServiceFactory } from "@app/ee/services/oidc/oidc-config-service";
 import { pamAccountDALFactory } from "@app/ee/services/pam-account/pam-account-dal";
 import { pamAccountServiceFactory } from "@app/ee/services/pam-account/pam-account-service";
+import { pamMcpServerServiceFactory } from "@app/ee/services/pam-account/pam-mcp-server-service";
 import { pamFolderDALFactory } from "@app/ee/services/pam-folder/pam-folder-dal";
 import { pamFolderServiceFactory } from "@app/ee/services/pam-folder/pam-folder-service";
+import { pamMcpServiceFactory } from "@app/ee/services/pam-mcp/pam-mcp-service";
 import { pamResourceDALFactory } from "@app/ee/services/pam-resource/pam-resource-dal";
 import { pamResourceServiceFactory } from "@app/ee/services/pam-resource/pam-resource-service";
 import { pamSessionDALFactory } from "@app/ee/services/pam-session/pam-session-dal";
@@ -241,6 +244,8 @@ import { identityTokenAuthServiceFactory } from "@app/services/identity-token-au
 import { identityUaClientSecretDALFactory } from "@app/services/identity-ua/identity-ua-client-secret-dal";
 import { identityUaDALFactory } from "@app/services/identity-ua/identity-ua-dal";
 import { identityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { identityV2DALFactory } from "@app/services/identity-v2/identity-dal";
+import { identityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { integrationDALFactory } from "@app/services/integration/integration-dal";
 import { integrationServiceFactory } from "@app/services/integration/integration-service";
 import { integrationAuthDALFactory } from "@app/services/integration-auth/integration-auth-dal";
@@ -448,6 +453,7 @@ export const registerRoutes = async (
   const serviceTokenDAL = serviceTokenDALFactory(db);
 
   const identityDAL = identityDALFactory(db);
+  const identityV2DAL = identityV2DALFactory(db);
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
@@ -644,7 +650,8 @@ export const registerRoutes = async (
     projectDAL,
     identityDAL,
     userDAL,
-    externalGroupOrgRoleMappingDAL
+    externalGroupOrgRoleMappingDAL,
+    membershipRoleDAL
   });
   const additionalPrivilegeService = additionalPrivilegeServiceFactory({
     additionalPrivilegeDAL,
@@ -1195,6 +1202,7 @@ export const registerRoutes = async (
     certificateAuthorityDAL,
     certificateAuthorityCertDAL,
     permissionService,
+    licenseService,
     kmsService,
     projectDAL
   });
@@ -1666,6 +1674,17 @@ export const registerRoutes = async (
     membershipIdentityDAL,
     membershipRoleDAL
   });
+
+  const identityV2Service = identityV2ServiceFactory({
+    membershipIdentityDAL,
+    membershipRoleDAL,
+    identityMetadataDAL,
+    licenseService,
+    permissionService,
+    identityDAL: identityV2DAL,
+    keyStore
+  });
+
   const identityProjectService = identityProjectServiceFactory({
     identityProjectDAL,
     membershipIdentityDAL,
@@ -2240,8 +2259,13 @@ export const registerRoutes = async (
   });
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
+    appConnectionDAL,
+    certificateDAL,
+    certificateAuthorityDAL,
+    externalCertificateAuthorityDAL,
     certificateProfileDAL,
     certificateBodyDAL,
+    certificateSecretDAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
@@ -2249,6 +2273,7 @@ export const registerRoutes = async (
     acmeChallengeDAL,
     keyStore,
     kmsService,
+    licenseService,
     certificateV3Service,
     acmeChallengeService
   });
@@ -2374,6 +2399,16 @@ export const registerRoutes = async (
     smtpService
   });
 
+  const pamMcpServerService = pamMcpServerServiceFactory({
+    pamAccountDAL,
+    kmsService,
+    licenseService,
+    pamFolderDAL,
+    pamResourceDAL,
+    permissionService,
+    keyStore
+  });
+
   const pamAccountRotation = pamAccountRotationServiceFactory({
     queueService,
     pamAccountService
@@ -2397,6 +2432,17 @@ export const registerRoutes = async (
     vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
+  });
+
+  const pamMcpService = pamMcpServiceFactory({
+    keyStore,
+    permissionService,
+    authTokenService: tokenService,
+    pamAccountDAL,
+    pamFolderDAL,
+    pamResourceDAL,
+    pamSessionDAL,
+    kmsService
   });
 
   // setup the communication with license key server
@@ -2479,7 +2525,8 @@ export const registerRoutes = async (
     integrationAuth: integrationAuthService,
     webhook: webhookService,
     serviceToken: serviceTokenService,
-    identity: identityService,
+    identityV1: identityService,
+    identityV2: identityV2Service,
     identityAuthTemplate: identityAuthTemplateService,
     identityAccessToken: identityAccessTokenService,
     identityTokenAuth: identityTokenAuthService,
@@ -2566,6 +2613,7 @@ export const registerRoutes = async (
     pamFolder: pamFolderService,
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
+    pamMcpServer: pamMcpServerService,
     pamSession: pamSessionService,
     mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
@@ -2577,7 +2625,9 @@ export const registerRoutes = async (
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
     convertor: convertorService,
-    pkiAlertV2: pkiAlertV2Service
+    pkiAlertV2: pkiAlertV2Service,
+
+    pamMcp: pamMcpService
   });
 
   const cronJobs: CronJob[] = [];
@@ -2680,6 +2730,7 @@ export const registerRoutes = async (
 
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+  await server.register(registerPamMcpMetadataRouter);
 
   // register routes for v1
   await server.register(

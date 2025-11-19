@@ -60,8 +60,14 @@ export const identityProjectServiceFactory = ({
     });
 
     const totalCount = await identityProjectDAL.getCountByProjectId(projectId, { search });
+    const filteredMemberships = identityMemberships.filter((el) =>
+      permission.can(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: el.identity.id })
+      )
+    );
 
-    return { identityMemberships, totalCount };
+    return { identityMemberships: filteredMemberships, totalCount };
   };
 
   const getProjectIdentityByIdentityId = async ({

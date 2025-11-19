@@ -58,6 +58,8 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
   gatewayId,
   gatewayV2Service
 ) => {
+  if (!gatewayId) throw new BadRequestError({ message: "Gateway is required" });
+
   const validateConnection = async () => {
     try {
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
@@ -198,7 +200,7 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
           error.message.includes("publickey")
         ) {
           throw new BadRequestError({
-            message: "Account credentials invalid: Username or credentials incorrect"
+            message: "Account credentials invalid."
           });
         }
 

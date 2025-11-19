@@ -579,19 +579,6 @@ export const useGetOrgIntegrationAuths = <TData = IntegrationAuth[],>(
   });
 };
 
-export const useGetAvailableOrgIdentities = (enabled = true) =>
-  useQuery({
-    queryKey: organizationKeys.getAvailableIdentities(),
-    queryFn: async () => {
-      const { data } = await apiRequest.get<{ identities: { name: string; id: string }[] }>(
-        "/api/v1/organization/identities/available"
-      );
-
-      return data.identities;
-    },
-    enabled
-  });
-
 export const useGetAvailableOrgUsers = (enabled = true) =>
   useQuery({
     queryKey: organizationKeys.getAvailableUsers(),

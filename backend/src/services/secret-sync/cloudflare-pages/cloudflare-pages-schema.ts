@@ -10,6 +10,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const CloudflarePagesSyncDestinationConfigSchema = z.object({
   projectName: z
     .string()
@@ -26,10 +28,12 @@ const CloudflarePagesSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets:
 export const CloudflarePagesSyncSchema = BaseSecretSyncSchema(
   SecretSync.CloudflarePages,
   CloudflarePagesSyncOptionsConfig
-).extend({
-  destination: z.literal(SecretSync.CloudflarePages),
-  destinationConfig: CloudflarePagesSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destination: z.literal(SecretSync.CloudflarePages),
+    destinationConfig: CloudflarePagesSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.CloudflarePages] }));
 
 export const CreateCloudflarePagesSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.CloudflarePages,
@@ -45,9 +49,11 @@ export const UpdateCloudflarePagesSyncSchema = GenericUpdateSecretSyncFieldsSche
   destinationConfig: CloudflarePagesSyncDestinationConfigSchema.optional()
 });
 
-export const CloudflarePagesSyncListItemSchema = z.object({
-  name: z.literal("Cloudflare Pages"),
-  connection: z.literal(AppConnection.Cloudflare),
-  destination: z.literal(SecretSync.CloudflarePages),
-  canImportSecrets: z.literal(false)
-});
+export const CloudflarePagesSyncListItemSchema = z
+  .object({
+    name: z.literal("Cloudflare Pages"),
+    connection: z.literal(AppConnection.Cloudflare),
+    destination: z.literal(SecretSync.CloudflarePages),
+    canImportSecrets: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.CloudflarePages] }));

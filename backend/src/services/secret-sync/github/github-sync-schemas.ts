@@ -11,6 +11,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const GitHubSyncDestinationConfigSchema = z
   .discriminatedUnion("scope", [
     z.object({
@@ -55,10 +57,12 @@ const GitHubSyncDestinationConfigSchema = z
 
 const GitHubSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
-export const GitHubSyncSchema = BaseSecretSyncSchema(SecretSync.GitHub, GitHubSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.GitHub),
-  destinationConfig: GitHubSyncDestinationConfigSchema
-});
+export const GitHubSyncSchema = BaseSecretSyncSchema(SecretSync.GitHub, GitHubSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.GitHub),
+    destinationConfig: GitHubSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitHub] }));
 
 export const CreateGitHubSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.GitHub,
@@ -74,9 +78,11 @@ export const UpdateGitHubSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: GitHubSyncDestinationConfigSchema.optional()
 });
 
-export const GitHubSyncListItemSchema = z.object({
-  name: z.literal("GitHub"),
-  connection: z.literal(AppConnection.GitHub),
-  destination: z.literal(SecretSync.GitHub),
-  canImportSecrets: z.literal(false)
-});
+export const GitHubSyncListItemSchema = z
+  .object({
+    name: z.literal("GitHub"),
+    connection: z.literal(AppConnection.GitHub),
+    destination: z.literal(SecretSync.GitHub),
+    canImportSecrets: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitHub] }));

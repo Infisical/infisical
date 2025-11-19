@@ -6,7 +6,7 @@ description: "Learn how to connect External Certificate Authorities with Infisic
 
 ## Concept
 
-Infisical lets you integrate with External Certificate Authorities (CAs), allowing you to use existing PKI infrastructure or connect to public CAs to issue digital certificates for your end-entities.
+Infisical lets you integrate with External Certificate Authorities (CAs), allowing you to use existing PKI infrastructure or connect to public CAs to issue certificates for your end-entities.
 
 <div align="center">
 
@@ -23,7 +23,7 @@ As shown above, these CAs commonly fall under two categories:
 - External Private CAs: CAs like AWS Private CA, HashiCorp Vault PKI, Azure ADCS, etc. that are privately owned and are used to issue certificates for internal services; these are often either cloud-hosted private CAs or on-prem / enterprise CAs.
 - External Public CAs: CAs like Let's Encrypt, DigiCert, GlobalSign, etc. that are publicly trusted and are used to issue certificates for public-facing services.
 
-Note that Infisical can also act as an _ACME client_, allowing you to integrate upstream with any ACME-compatible CA to automate certificate issuance and renewal.
+Note that Infisical can act as an _ACME client_, allowing you to integrate upstream with any [ACME-compatible CA](/documentation/platform/pki/ca/acme-ca) to automate certificate issuance and renewal.
 
 ## Workflow
 

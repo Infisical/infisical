@@ -454,6 +454,30 @@ export const authLoginServiceFactory = ({
         });
       }
 
+      if (organizationId) {
+        await auditLogService.createAuditLog({
+          orgId: organizationId,
+          ipAddress: ip,
+          userAgent,
+          userAgentType: getUserAgentType(userAgent),
+          actor: {
+            type: ActorType.USER,
+            metadata: {
+              email: userEnc.email,
+              userId: userEnc.userId,
+              username: userEnc.username,
+              authMethod
+            }
+          },
+          event: {
+            type: EventType.USER_LOGIN,
+            metadata: {
+              organizationId
+            }
+          }
+        });
+      }
+
       return {
         tokens: {
           accessToken: token.access,
@@ -645,6 +669,29 @@ export const authLoginServiceFactory = ({
         });
       }
     }
+
+    await auditLogService.createAuditLog({
+      orgId: organizationId,
+      ipAddress,
+      userAgent,
+      userAgentType: getUserAgentType(userAgent),
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          email: user.email,
+          userId: user.id,
+          username: user.username,
+          authMethod: decodedToken.authMethod
+        }
+      },
+      event: {
+        type: EventType.SELECT_ORGANIZATION,
+        metadata: {
+          organizationId,
+          organizationName: selectedOrg.name
+        }
+      }
+    });
 
     return {
       ...tokens,
@@ -1050,6 +1097,33 @@ export const authLoginServiceFactory = ({
       authMethod,
       organizationId
     });
+
+    if (organizationId) {
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress: ip,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: userEnc.email,
+            userId: userEnc.userId,
+            username: userEnc.username,
+            authMethod: decodedProviderToken.authMethod
+          }
+        },
+        event: {
+          type: EventType.USER_LOGIN,
+          metadata: {
+            organizationId,
+            ...(isAuthMethodSaml(decodedProviderToken.authMethod) && {
+              authProvider: decodedProviderToken.authMethod
+            })
+          }
+        }
+      });
+    }
 
     return { token, isMfaEnabled: false, user: userEnc, decodedProviderToken } as const;
   };

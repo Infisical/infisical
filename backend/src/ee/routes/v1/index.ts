@@ -1,5 +1,4 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
-import { getConfig } from "@app/lib/config/env";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
@@ -25,8 +24,10 @@ import { registerLicenseRouter } from "./license-router";
 import { registerOidcRouter } from "./oidc-router";
 import { registerOrgRoleRouter } from "./org-role-router";
 import { PAM_ACCOUNT_REGISTER_ROUTER_MAP } from "./pam-account-routers";
+import { registerPamAccountMcpServerRouter } from "./pam-account-routers/pam-account-mcp-server-router";
 import { registerPamAccountRouter } from "./pam-account-routers/pam-account-router";
 import { registerPamFolderRouter } from "./pam-folder-router";
+import { registerPamMcpRouter } from "./pam-mcp-router";
 import { PAM_RESOURCE_REGISTER_ROUTER_MAP } from "./pam-resource-routers";
 import { registerPamResourceRouter } from "./pam-resource-routers/pam-resource-router";
 import { registerPamSessionRouter } from "./pam-session-router";
@@ -109,10 +110,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
-      // Notice: current this feature is still in development and is not yet ready for production.
-      if (getConfig().isAcmeFeatureEnabled === true) {
-        await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
-      }
+      await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
     { prefix: "/pki" }
   );
@@ -173,6 +171,8 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
 
   await server.register(registerProjectTemplateRouter, { prefix: "/project-templates" });
 
+  await server.register(registerPamMcpRouter, { prefix: "/ai/mcp" });
+
   await server.register(
     async (kmipRouter) => {
       await kmipRouter.register(registerKmipRouter);
@@ -189,6 +189,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pamRouter.register(
         async (pamAccountRouter) => {
           await pamAccountRouter.register(registerPamAccountRouter);
+          await pamAccountRouter.register(registerPamAccountMcpServerRouter, { prefix: "/mcp" });
 
           // Provider-specific endpoints
           await Promise.all(

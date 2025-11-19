@@ -35,7 +35,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          credentials: z.any() // UNION DOES NOT WORK WITH ZOD SCHEMA
+          credentials: SessionCredentialsSchema
         })
       }
     },

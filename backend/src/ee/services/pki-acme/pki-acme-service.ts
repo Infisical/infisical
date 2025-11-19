@@ -12,23 +12,37 @@ import { z, ZodError } from "zod";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
+import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
+import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
+import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
+import {
+  CertExtendedKeyUsage,
+  CertKeyUsage,
+  CertSubjectAlternativeNameType
+} from "@app/services/certificate/certificate-types";
+import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
+import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
+import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
+import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
-import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
-import { getConfig } from "@app/lib/config/env";
+import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
 import { TPkiAcmeChallengeDALFactory } from "./pki-acme-challenge-dal";
@@ -42,6 +56,7 @@ import {
   AcmeMalformedError,
   AcmeOrderNotReadyError,
   AcmeServerInternalError,
+  AcmeUnauthorizedError,
   AcmeUnsupportedIdentifierError
 } from "./pki-acme-errors";
 import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
@@ -77,9 +92,14 @@ import {
 } from "./pki-acme-types";
 
 type TPkiAcmeServiceFactoryDep = {
-  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction">;
+  projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
+  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
-  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
+  certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
+  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -100,15 +120,24 @@ type TPkiAcmeServiceFactoryDep = {
     "create" | "transaction" | "updateById" | "findByAccountAuthAndChallengeId" | "findByIdForChallengeValidation"
   >;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
-  kmsService: Pick<TKmsServiceFactory, "decryptWithKmsKey" | "generateKmsKey">;
+  kmsService: Pick<
+    TKmsServiceFactory,
+    "decryptWithKmsKey" | "generateKmsKey" | "encryptWithKmsKey" | "createCipherPairWithDataKey"
+  >;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
 
 export const pkiAcmeServiceFactory = ({
   projectDAL,
+  appConnectionDAL,
+  certificateDAL,
+  certificateAuthorityDAL,
+  externalCertificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
+  certificateSecretDAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -116,6 +145,7 @@ export const pkiAcmeServiceFactory = ({
   acmeChallengeDAL,
   keyStore,
   kmsService,
+  licenseService,
   certificateV3Service,
   acmeChallengeService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
@@ -126,6 +156,12 @@ export const pkiAcmeServiceFactory = ({
     }
     if (profile.enrollmentType !== EnrollmentType.ACME) {
       throw new NotFoundError({ message: "Certificate profile is not configured for ACME enrollment" });
+    }
+    const orgLicensePlan = await licenseService.getPlan(profile.project!.orgId);
+    if (!orgLicensePlan.pkiAcme) {
+      throw new AcmeUnauthorizedError({
+        message: "Failed to validate ACME profile: Plan restriction. Upgrade plan to continue"
+      });
     }
     return profile;
   };
@@ -612,6 +648,7 @@ export const pkiAcmeServiceFactory = ({
     orderId: string;
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
+    const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
     let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -627,29 +664,100 @@ export const pkiAcmeServiceFactory = ({
         if (finalizingOrder.expiresAt < new Date()) {
           throw new AcmeOrderNotReadyError({ message: "ACME order has expired" });
         }
+
         const { csr } = payload;
+
+        // Check and validate the CSR
+        const certificateRequest = extractCertificateRequestFromCSR(csr);
+        if (!certificateRequest.commonName) {
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name is required" });
+        }
+        if (
+          certificateRequest.subjectAlternativeNames?.some(
+            (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
+          )
+        ) {
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Only DNS subject alternative names are supported" });
+        }
+        const orderWithAuthorizations = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(
+          accountId,
+          orderId,
+          tx
+        ))!;
+        const csrIdentifierValues = new Set(
+          (certificateRequest.subjectAlternativeNames ?? [])
+            .map((san) => san.value.toLowerCase())
+            .concat([certificateRequest.commonName.toLowerCase()])
+        );
+        if (
+          csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
+          !orderWithAuthorizations.authorizations.every((auth) =>
+            csrIdentifierValues.has(auth.identifierValue.toLowerCase())
+          )
+        ) {
+          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
+        }
+
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+        if (!ca) {
+          throw new NotFoundError({ message: "Certificate Authority not found" });
+        }
+        const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
         let errorToReturn: Error | undefined;
         try {
-          const { certificateId } = await certificateV3Service.signCertificateFromProfile({
-            actor: ActorType.ACME_ACCOUNT,
-            actorId: accountId,
-            actorAuthMethod: null,
-            actorOrgId,
-            profileId,
-            csr,
-            notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
-            notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
-            validity: !finalizingOrder.notAfter
-              ? {
-                  // 47 days, the default TTL comes with Let's Encrypt
-                  // TODO: read config from the profile to get the expiration time instead
-                  ttl: `${47}d`
-                }
-              : // ttl is not used if notAfter is provided
-                ({ ttl: "0d" } as const),
-            enrollmentType: EnrollmentType.ACME
-          });
-          // TODO: associate the certificate with the order
+          const { certificateId } = await (async () => {
+            if (caType === CaType.INTERNAL) {
+              const result = await certificateV3Service.signCertificateFromProfile({
+                actor: ActorType.ACME_ACCOUNT,
+                actorId: accountId,
+                actorAuthMethod: null,
+                actorOrgId,
+                profileId,
+                csr,
+                notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
+                notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
+                validity: !finalizingOrder.notAfter
+                  ? {
+                      // 47 days, the default TTL comes with Let's Encrypt
+                      // TODO: read config from the profile to get the expiration time instead
+                      ttl: `${47}d`
+                    }
+                  : // ttl is not used if notAfter is provided
+                    ({ ttl: "0d" } as const),
+                enrollmentType: EnrollmentType.ACME
+              });
+              return { certificateId: result.certificateId };
+            }
+            const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
+            const csrObj = new x509.Pkcs10CertificateRequest(csr);
+            const csrPem = csrObj.toString("pem");
+            // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
+            //       we should check the CSR against the template here
+            // TODO: this is pretty slow, and we are holding the transaction open for a long time,
+            //       we should queue the certificate issuance to a background job instead
+            const cert = await orderCertificate(
+              {
+                caId: certificateAuthority!.id,
+                commonName: certificateRequest.commonName!,
+                altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
+                csr: Buffer.from(csrPem),
+                // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
+                keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
+                extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
+              },
+              {
+                appConnectionDAL,
+                certificateAuthorityDAL,
+                externalCertificateAuthorityDAL,
+                certificateDAL,
+                certificateBodyDAL,
+                certificateSecretDAL,
+                kmsService,
+                projectDAL
+              }
+            );
+            return { certificateId: cert.id };
+          })();
           await acmeOrderDAL.updateById(
             orderId,
             {

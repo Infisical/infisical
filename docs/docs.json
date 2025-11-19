@@ -377,8 +377,7 @@
                 "pages": [
                   "contributing/getting-started/overview",
                   "contributing/getting-started/code-of-conduct",
-                  "contributing/getting-started/pull-requests",
-                  "contributing/getting-started/faq"
+                  "contributing/getting-started/pull-requests"
                 ]
               },
               {
@@ -743,6 +742,7 @@
                     "pages": [
                       "documentation/platform/pki/enrollment-methods/overview",
                       "documentation/platform/pki/enrollment-methods/api",
+                      "documentation/platform/pki/enrollment-methods/acme",
                       "documentation/platform/pki/enrollment-methods/est"
                     ]
                   },
@@ -753,7 +753,12 @@
                 "group": "Infrastructure Integrations",
                 "pages": [
                   "documentation/platform/pki/pki-issuer",
-                  "documentation/platform/pki/integration-guides/gloo-mesh"
+                  "documentation/platform/pki/integration-guides/gloo-mesh",
+                  "documentation/platform/pki/integration-guides/windows-server-acme",
+                  "documentation/platform/pki/integration-guides/nginx-certbot",
+                  "documentation/platform/pki/integration-guides/apache-certbot",
+                  "documentation/platform/pki/integration-guides/tomcat-certbot",
+                  "documentation/platform/pki/integration-guides/jboss-certbot"
                 ]
               },
               {
@@ -768,6 +773,8 @@
                 "group": "External CA Integrations",
                 "pages": [
                   "documentation/platform/pki/ca/acme-ca",
+                  "documentation/platform/pki/ca/lets-encrypt",
+                  "documentation/platform/pki/ca/digicert",
                   "documentation/platform/pki/ca/azure-adcs"
                 ]
               }
@@ -894,7 +901,7 @@
                 "pages": ["api-reference/endpoints/events/project-events"]
               },
               {
-                "group": "Identities",
+                "group": "Organization Identities",
                 "pages": [
                   "api-reference/endpoints/identities/create",
                   "api-reference/endpoints/identities/update",
@@ -1150,21 +1157,31 @@
                 ]
               },
               {
-                "group": "Project Identities",
+                "group": "Project Managed Identities",
                 "pages": [
-                  "api-reference/endpoints/project-identities/add-identity-membership",
-                  "api-reference/endpoints/project-identities/list-identity-memberships",
+                  "api-reference/endpoints/project-identities/add-identity",
+                  "api-reference/endpoints/project-identities/list-identity",
                   "api-reference/endpoints/project-identities/get-by-id",
-                  "api-reference/endpoints/project-identities/update-identity-membership",
-                  "api-reference/endpoints/project-identities/delete-identity-membership",
+                  "api-reference/endpoints/project-identities/update-identity",
+                  "api-reference/endpoints/project-identities/delete-identity"
+                ]
+              },
+              {
+                "group": "Project Identity Memberships",
+                "pages": [
+                  "api-reference/endpoints/project-identities-membership/add-identity-membership",
+                  "api-reference/endpoints/project-identities-membership/list-identity-memberships",
+                  "api-reference/endpoints/project-identities-membership/get-by-id",
+                  "api-reference/endpoints/project-identities-membership/update-identity-membership",
+                  "api-reference/endpoints/project-identities-membership/delete-identity-membership",
                   {
                     "group": "Legacy",
                     "pages": [
-                      "api-reference/endpoints/deprecated/project-identities/add-identity-membership",
-                      "api-reference/endpoints/deprecated/project-identities/list-identity-memberships",
-                      "api-reference/endpoints/deprecated/project-identities/get-by-id",
-                      "api-reference/endpoints/deprecated/project-identities/update-identity-membership",
-                      "api-reference/endpoints/deprecated/project-identities/delete-identity-membership"
+                      "api-reference/endpoints/deprecated/project-identities-v2/add-identity-membership",
+                      "api-reference/endpoints/deprecated/project-identities-v2/list-identity-memberships",
+                      "api-reference/endpoints/deprecated/project-identities-v2/get-by-id",
+                      "api-reference/endpoints/deprecated/project-identities-v2/update-identity-membership",
+                      "api-reference/endpoints/deprecated/project-identities-v2/delete-identity-membership"
                     ]
                   }
                 ]

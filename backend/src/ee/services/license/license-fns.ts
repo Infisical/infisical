@@ -56,6 +56,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     secretsLimit: 40
   },
   pkiEst: false,
+  pkiAcme: false,
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,
@@ -69,7 +70,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   eventSubscriptions: false,
   machineIdentityAuthTemplates: false,
   pkiLegacyTemplates: false,
-  pam: false
+  pam: true
 });
 
 export const setupLicenseRequestWithStore = (

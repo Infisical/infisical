@@ -5,8 +5,9 @@
 import { ForbiddenError } from "@casl/ability";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import type { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
@@ -166,6 +167,10 @@ describe("CertificateProfileService", () => {
     })
   } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission">;
 
+  const mockLicenseService = {
+    getPlan: vi.fn()
+  } as unknown as Pick<TLicenseServiceFactory, "getPlan">;
+
   const mockKmsService = {
     encryptWithKmsKey: vi
       .fn()
@@ -252,6 +257,7 @@ describe("CertificateProfileService", () => {
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
       certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
       permissionService: mockPermissionService,
+      licenseService: mockLicenseService,
       kmsService: mockKmsService,
       projectDAL: mockProjectDAL
     });
@@ -275,6 +281,13 @@ describe("CertificateProfileService", () => {
     };
 
     beforeEach(() => {
+      (mockProjectDAL.findById as any).mockResolvedValue({
+        id: "project-123",
+        orgId: "org-123"
+      });
+      (mockLicenseService.getPlan as any).mockResolvedValue({
+        pkiAcme: true
+      });
       (mockCertificateTemplateV2DAL.findById as any).mockResolvedValue(sampleTemplate);
       (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
       (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);
@@ -404,6 +417,24 @@ describe("CertificateProfileService", () => {
 
       expect(result).toEqual(sampleProfile);
       expect(mockCertificateTemplateV2DAL.findById).toHaveBeenCalledWith("template-123");
+    });
+
+    it("should throw BadRequestError when plan does not support ACME", async () => {
+      (mockLicenseService.getPlan as any).mockResolvedValue({
+        pkiAcme: false
+      });
+
+      await expect(
+        service.createProfile({
+          ...mockActor,
+          projectId: "project-123",
+          data: validProfileData
+        })
+      ).rejects.toThrowError(
+        new BadRequestError({
+          message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
+        })
+      );
     });
   });
 
@@ -699,6 +730,13 @@ describe("CertificateProfileService", () => {
           }
         };
 
+        (mockProjectDAL.findById as any).mockResolvedValue({
+          id: "project-123",
+          orgId: "org-123"
+        });
+        (mockLicenseService.getPlan as any).mockResolvedValue({
+          pkiAcme: true
+        });
         (mockCertificateTemplateV2DAL.findById as any).mockResolvedValue(sampleTemplate);
         (mockCertificateProfileDAL.findByNameAndProjectId as any).mockResolvedValue(null);
         (mockCertificateProfileDAL.findBySlugAndProjectId as any).mockResolvedValue(null);

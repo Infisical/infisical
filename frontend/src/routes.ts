@@ -18,6 +18,7 @@ const adminRoute = route("/admin", [
 
 const organizationRoutes = route("/organization", [
   route("/projects", "organization/ProjectsPage/route.tsx"),
+  route("/mcp-scope", "organization/McpScopeSelectPage/route.tsx"),
   route("/access-management", "organization/AccessManagementPage/route.tsx"),
   route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
   route("/billing", "organization/BillingPage/route.tsx"),
@@ -382,6 +383,8 @@ const pamRoutes = route("/projects/pam/$projectId", [
     route("/resources", "pam/PamResourcesPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-pam.tsx"),
     route("/settings", "pam/SettingsPage/route.tsx"),
+    route("/mcp-server-oauth/$accountId/authorize", "pam/McpServerOauthAuthorizePage/route.tsx"),
+    route("/mcp-server-oauth/$accountId/callback", "pam/McpServerOauthCallbackPage/route.tsx"),
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),

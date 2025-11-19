@@ -1,11 +1,18 @@
 import { useState } from "react";
+import { subject } from "@casl/ability";
 import { UseMutationResult } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import ms from "ms";
 
 import { createNotification } from "@app/components/notifications";
-import { OrgPermissionCan } from "@app/components/permissions";
+import { VariablePermissionCan } from "@app/components/permissions";
 import { Button } from "@app/components/v2";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub
+} from "@app/context";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 
@@ -31,7 +38,11 @@ export const LockoutFields = ({
 
   const [lockedOutState, setLockedOutState] = useState(lockedOut);
 
-  const clearLockouts = async () => {
+  const { projectId } = useParams({
+    strict: false
+  });
+
+  async function clearLockouts() {
     const deleted = await mutateAsync({ identityId });
     createNotification({
       text: `Successfully cleared ${deleted} lockout${deleted === 1 ? "" : "s"}`,
@@ -39,13 +50,23 @@ export const LockoutFields = ({
     });
     setLockedOutState(false);
     onResetAllLockouts();
-  };
+  }
 
   return (
     <>
       <div className="col-span-2 mt-3 flex justify-between border-b border-mineshaft-500 pb-2">
         <span className="text-bunker-300">Lockout Options</span>
-        <OrgPermissionCan I={OrgPermissionIdentityActions.Edit} a={OrgPermissionSubjects.Identity}>
+        <VariablePermissionCan
+          type={projectId ? "project" : "org"}
+          I={projectId ? ProjectPermissionIdentityActions.Edit : OrgPermissionIdentityActions.Edit}
+          a={
+            projectId
+              ? subject(ProjectPermissionSub.Identity, {
+                  identityId
+                })
+              : OrgPermissionSubjects.Identity
+          }
+        >
           {(isAllowed) => (
             <Button
               isDisabled={!isAllowed || !lockedOutState || isPending}
@@ -57,7 +78,7 @@ export const LockoutFields = ({
               Reset All Lockouts
             </Button>
           )}
-        </OrgPermissionCan>
+        </VariablePermissionCan>
       </div>
       <IdentityAuthFieldDisplay label="Lockout Threshold">
         {data.lockoutThreshold}

@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureClientSecretsConnectionMethod } from "./azure-client-secrets-connection-enums";
 
 export const AzureClientSecretsConnectionOAuthInputCredentialsSchema = z.object({
@@ -162,26 +163,30 @@ export const SanitizedAzureClientSecretsConnectionSchema = z.discriminatedUnion(
     credentials: AzureClientSecretsConnectionOAuthOutputCredentialsSchema.pick({
       tenantId: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (OAuth)` })),
   BaseAzureClientSecretsConnectionSchema.extend({
     method: z.literal(AzureClientSecretsConnectionMethod.ClientSecret),
     credentials: AzureClientSecretsConnectionClientSecretOutputCredentialsSchema.pick({
       clientId: true,
       tenantId: true
     })
-  }),
+  }).describe(
+    JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Client Secret)` })
+  ),
   BaseAzureClientSecretsConnectionSchema.extend({
     method: z.literal(AzureClientSecretsConnectionMethod.Certificate),
     credentials: AzureClientSecretsConnectionCertificateOutputCredentialsSchema.pick({
       tenantId: true,
       clientId: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets]} (Certificate)` }))
 ]);
 
-export const AzureClientSecretsConnectionListItemSchema = z.object({
-  name: z.literal("Azure Client Secrets"),
-  app: z.literal(AppConnection.AzureClientSecrets),
-  methods: z.nativeEnum(AzureClientSecretsConnectionMethod).array(),
-  oauthClientId: z.string().optional()
-});
+export const AzureClientSecretsConnectionListItemSchema = z
+  .object({
+    name: z.literal("Azure Client Secrets"),
+    app: z.literal(AppConnection.AzureClientSecrets),
+    methods: z.nativeEnum(AzureClientSecretsConnectionMethod).array(),
+    oauthClientId: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.AzureClientSecrets] }));

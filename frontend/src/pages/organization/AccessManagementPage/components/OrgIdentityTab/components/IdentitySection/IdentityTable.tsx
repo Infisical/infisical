@@ -2,7 +2,6 @@ import { useCallback, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
-  faBuilding,
   faCheckCircle,
   faChevronRight,
   faEdit,
@@ -46,6 +45,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import {
   getUserTablePreference,
@@ -56,8 +56,8 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import {
   identityAuthToNameMap,
   useGetOrgRoles,
-  useSearchIdentities,
-  useUpdateIdentity
+  useSearchOrgIdentityMemberships,
+  useUpdateOrgIdentity
 } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { OrgIdentityOrderBy } from "@app/hooks/api/organization/types";
@@ -110,9 +110,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
 
   const organizationId = currentOrg?.id || "";
 
-  const { mutateAsync: updateMutateAsync } = useUpdateIdentity();
+  const { mutateAsync: updateMutateAsync } = useUpdateOrgIdentity();
 
-  const { data, isPending, isFetching } = useSearchIdentities({
+  const { data, isPending, isFetching } = useSearchOrgIdentityMemberships({
     offset,
     limit,
     orderDirection,
@@ -293,6 +293,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                   lastLoginAuthMethod,
                   lastLoginTime
                 }) => {
+                  const isSubOrgIdentity = currentOrg.id === orgId;
+
                   return (
                     <Tr
                       className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
@@ -357,10 +359,19 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                       </Td>
                       {isSubOrganization && (
                         <Td>
-                          <p className="truncate">
-                            <FontAwesomeIcon size="sm" className="mr-1.5" icon={faBuilding} />
-                            {currentOrg.id === orgId ? "Sub Organization" : "Root Organization"}
-                          </p>
+                          <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                            {isSubOrgIdentity ? (
+                              <>
+                                <SubOrgIcon />
+                                Sub-Organization
+                              </>
+                            ) : (
+                              <>
+                                <OrgIcon />
+                                Root Organization
+                              </>
+                            )}
+                          </Badge>
                         </Td>
                       )}
                       <Td>
@@ -394,7 +405,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   }}
                                   isDisabled={!isAllowed}
                                 >
-                                  Edit Identity
+                                  Edit Identity {isSubOrgIdentity ? "" : "Membership"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -414,7 +425,9 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   isDisabled={!isAllowed}
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                 >
-                                  Delete Identity
+                                  {isSubOrgIdentity
+                                    ? "Delete Identity"
+                                    : "Remove From Sub-Organization"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>

@@ -11,6 +11,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { decryptAccountCredentials, encryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { TMcpAccountCredentials } from "./mcp/mcp-resource-types";
 import { TPamResourceDALFactory } from "./pam-resource-dal";
 import { PamResource } from "./pam-resource-enums";
 import { PAM_RESOURCE_FACTORY_MAP } from "./pam-resource-factory";
@@ -20,7 +21,7 @@ import {
   encryptResourceConnectionDetails,
   listResourceOptions
 } from "./pam-resource-fns";
-import { TCreateResourceDTO, TUpdateResourceDTO } from "./pam-resource-types";
+import { TCreateResourceDTO, TPamAccountCredentials, TUpdateResourceDTO } from "./pam-resource-types";
 
 type TPamResourceServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -200,10 +201,10 @@ export const pamResourceServiceFactory = ({
             kmsService
           });
 
-          finalCredentials = await factory.handleOverwritePreventionForCensoredValues(
+          finalCredentials = (await factory.handleOverwritePreventionForCensoredValues(
             rotationAccountCredentials,
             decryptedCredentials
-          );
+          )) as Exclude<TPamAccountCredentials, TMcpAccountCredentials>;
         }
 
         try {

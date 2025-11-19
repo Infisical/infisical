@@ -32,10 +32,10 @@ import {
   useProject,
   useProjectPermission
 } from "@app/context";
-import { useGetProjectRoles, useUpdateIdentityWorkspaceRole } from "@app/hooks/api";
-import { IdentityMembership } from "@app/hooks/api/identities/types";
-import { ProjectUserMembershipTemporaryMode } from "@app/hooks/api/projects/types";
+import { useGetProjectRoles, useUpdateProjectIdentityMembership } from "@app/hooks/api";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
+import { TemporaryPermissionMode } from "@app/hooks/api/shared";
 
 const roleFormSchema = z.object({
   roles: z
@@ -58,7 +58,7 @@ const roleFormSchema = z.object({
 type TRoleForm = z.infer<typeof roleFormSchema>;
 
 type Props = {
-  identityProjectMembership: IdentityMembership;
+  identityProjectMembership: IdentityProjectMembershipV1;
 };
 
 export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
@@ -95,10 +95,10 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
 
   const formRoleField = roleForm.watch("roles");
 
-  const updateIdentityWorkspaceRole = useUpdateIdentityWorkspaceRole();
+  const updateProjectIdentityMembership = useUpdateProjectIdentityMembership();
 
   const handleRoleUpdate = async (data: TRoleForm) => {
-    if (updateIdentityWorkspaceRole.isPending) return;
+    if (updateProjectIdentityMembership.isPending) return;
 
     const sanitizedRoles = data.roles.map((el) => {
       const { isTemporary } = el.temporaryAccess;
@@ -108,13 +108,13 @@ export const IdentityRoleModify = ({ identityProjectMembership }: Props) => {
       return {
         role: el.slug,
         isTemporary: true as const,
-        temporaryMode: ProjectUserMembershipTemporaryMode.Relative,
+        temporaryMode: TemporaryPermissionMode.Relative,
         temporaryRange: el.temporaryAccess.temporaryRange,
         temporaryAccessStartTime: el.temporaryAccess.temporaryAccessStartTime
       };
     });
 
-    await updateIdentityWorkspaceRole.mutateAsync({
+    await updateProjectIdentityMembership.mutateAsync({
       projectId,
       identityId: identityProjectMembership.identity.id,
       roles: sanitizedRoles
