@@ -71,7 +71,7 @@ export default function NavHeader({
       </div>
       <Link
         to="/organizations/$orgId/projects"
-        params={{ orgId: currentOrg?.id || "" }}
+        params={{ orgId: currentOrg.id }}
         className="truncate pl-0.5 text-sm font-medium text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}
