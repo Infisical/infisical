@@ -498,6 +498,7 @@ export const pkiAcmeServiceFactory = ({
       });
     }
 
+    // TODO: handle unique constraint violation error, should be very very rare
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
       alg,
