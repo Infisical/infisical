@@ -56,7 +56,7 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
     case PamResourceType.SSH:
       return <SSHResourceForm onSubmit={onSubmit} />;
     case PamResourceType.MCP:
-      return <McpResourceForm onSubmit={onSubmit} />;
+      return <McpResourceForm onSubmit={onSubmit as any} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }

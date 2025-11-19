@@ -82,7 +82,7 @@ export type TFeatureSet = {
   enforceMfa: boolean;
   projectTemplates: false;
   kmip: false;
-  gateway: false;
+  gateway: true;
   sshHostGroups: false;
   secretScanning: false;
   enterpriseSecretSyncs: false;
@@ -92,7 +92,7 @@ export type TFeatureSet = {
   pkiLegacyTemplates: false;
   fips: false;
   eventSubscriptions: false;
-  pam: false;
+  pam: true;
 };
 
 export type TOrgPlansTableDTO = {
