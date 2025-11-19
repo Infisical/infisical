@@ -42,7 +42,10 @@ export const CertificatesSection = () => {
   const onRemoveCertificateSubmit = async (serialNumber: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCert({ serialNumber, projectSlug: currentProject.slug });
+    await deleteCert({
+      serialNumber,
+      projectId: currentProject.id
+    });
 
     createNotification({
       text: "Successfully deleted certificate",

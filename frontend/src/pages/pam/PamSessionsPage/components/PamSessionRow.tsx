@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faBoxOpen,
   faChevronDown,
@@ -25,18 +25,19 @@ import {
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { PAM_RESOURCE_TYPE_MAP, TPamSession } from "@app/hooks/api/pam";
+import { PAM_RESOURCE_TYPE_MAP, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
 
 import { formatLogContent } from "../../PamSessionsByIDPage/components/PamSessionLogsSection.utils";
+import { aggregateTerminalEvents } from "../../PamSessionsByIDPage/components/terminal-utils";
 import { PamSessionStatusBadge } from "./PamSessionStatusBadge";
 
 type Props = {
   session: TPamSession;
   search: string;
-  filteredCommandLogs: TPamSession["commandLogs"];
+  filteredLogs: TPamSession["logs"];
 };
 
-export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) => {
+export const PamSessionRow = ({ session, search, filteredLogs }: Props) => {
   const router = useRouter();
   const [showAllLogs, setShowAllLogs] = useState(false);
 
@@ -55,8 +56,24 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
 
   const { image, name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
 
+  // Check if logs are terminal events and aggregate them
+  const processedLogs = useMemo(() => {
+    if (filteredLogs.length === 0) return [];
+
+    // Check if first log is a terminal event
+    const isTerminalEvents = "data" in filteredLogs[0];
+
+    if (isTerminalEvents) {
+      // Aggregate terminal events for better display
+      return aggregateTerminalEvents(filteredLogs as TTerminalEvent[]);
+    }
+
+    // Return command logs as-is
+    return filteredLogs;
+  }, [filteredLogs]);
+
   const LOGS_TO_SHOW = 5;
-  const logsToShow = showAllLogs ? filteredCommandLogs : filteredCommandLogs.slice(0, LOGS_TO_SHOW);
+  const logsToShow = showAllLogs ? processedLogs : processedLogs.slice(0, LOGS_TO_SHOW);
 
   return (
     <>
@@ -135,8 +152,8 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                 </DropdownMenuTrigger>
                 <DropdownMenuContent sideOffset={2} align="end">
                   <ProjectPermissionCan
-                    I={ProjectPermissionActions.Edit}
-                    a={ProjectPermissionSub.PamResources}
+                    I={ProjectPermissionActions.Read}
+                    a={ProjectPermissionSub.PamSessions}
                   >
                     {(isAllowed: boolean) => (
                       <DropdownMenuItem
@@ -157,32 +174,56 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
         </Td>
       </Tr>
 
-      {filteredCommandLogs.length > 0 && (
+      {filteredLogs.length > 0 && (
         <Tr>
           <Td colSpan={5} className="py-3 text-xs">
             {logsToShow.map((log) => {
-              const formattedInput = formatLogContent(log.input);
+              // Handle command logs (database sessions)
+              if ("input" in log && "output" in log) {
+                const formattedInput = formatLogContent(log.input);
 
-              return (
-                <div
-                  key={`${id}-log-${log.timestamp}`}
-                  className="mb-4 flex flex-col gap-1 last:mb-0"
-                >
-                  <div className="flex items-center gap-1.5 text-bunker-400">
-                    <FontAwesomeIcon icon={faTerminal} className="size-3" />
-                    <span>{new Date(log.timestamp).toLocaleString()}</span>
-                  </div>
+                return (
+                  <div
+                    key={`${id}-log-${log.timestamp}`}
+                    className="mb-4 flex flex-col gap-1 last:mb-0"
+                  >
+                    <div className="flex items-center gap-1.5 text-bunker-400">
+                      <FontAwesomeIcon icon={faTerminal} className="size-3" />
+                      <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
 
-                  <div className="font-mono break-all whitespace-pre-wrap">
-                    <HighlightText text={formattedInput} highlight={search} />
+                    <div className="font-mono break-all whitespace-pre-wrap">
+                      <HighlightText text={formattedInput} highlight={search} />
+                    </div>
+                    <div className="font-mono text-bunker-300">
+                      <HighlightText text={log.output.trim()} highlight={search} />
+                    </div>
                   </div>
-                  <div className="font-mono text-bunker-300">
-                    <HighlightText text={log.output.trim()} highlight={search} />
+                );
+              }
+
+              // Handle aggregated terminal events (SSH sessions)
+              if ("data" in log && typeof log.data === "string") {
+                return (
+                  <div
+                    key={`${id}-log-${log.timestamp}`}
+                    className="mb-4 flex flex-col gap-1 last:mb-0"
+                  >
+                    <div className="flex items-center gap-1.5 text-bunker-400">
+                      <FontAwesomeIcon icon={faTerminal} className="size-3" />
+                      <span>{new Date(log.timestamp).toLocaleString()}</span>
+                    </div>
+
+                    <div className="font-mono break-all whitespace-pre-wrap text-bunker-300">
+                      <HighlightText text={log.data.trim()} highlight={search} />
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              }
+
+              return null;
             })}
-            {filteredCommandLogs.length > LOGS_TO_SHOW && (
+            {filteredLogs.length > LOGS_TO_SHOW && (
               <div className="mt-2">
                 <Button
                   variant="link"
@@ -193,7 +234,7 @@ export const PamSessionRow = ({ session, search, filteredCommandLogs }: Props) =
                 >
                   {showAllLogs
                     ? "Show less"
-                    : `Show ${filteredCommandLogs.length - LOGS_TO_SHOW} more log${filteredCommandLogs.length - LOGS_TO_SHOW === 1 ? "" : "s"}`}
+                    : `Show ${filteredLogs.length - LOGS_TO_SHOW} more log${filteredLogs.length - LOGS_TO_SHOW === 1 ? "" : "s"}`}
                 </Button>
               </div>
             )}
