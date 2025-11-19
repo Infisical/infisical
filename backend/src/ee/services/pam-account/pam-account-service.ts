@@ -128,7 +128,8 @@ export const pamAccountServiceFactory = ({
       description,
       folderId,
       rotationEnabled,
-      rotationIntervalSeconds
+      rotationIntervalSeconds,
+      requireMfa
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -205,7 +206,8 @@ export const pamAccountServiceFactory = ({
         description,
         folderId,
         rotationEnabled,
-        rotationIntervalSeconds
+        rotationIntervalSeconds,
+        requireMfa
       });
 
       return {
@@ -229,7 +231,15 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name, rotationEnabled, rotationIntervalSeconds }: TUpdateAccountDTO,
+    {
+      accountId,
+      credentials,
+      description,
+      name,
+      rotationEnabled,
+      rotationIntervalSeconds,
+      requireMfa
+    }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -273,6 +283,10 @@ export const pamAccountServiceFactory = ({
 
     if (name !== undefined) {
       updateDoc.name = name;
+    }
+
+    if (requireMfa !== undefined) {
+      updateDoc.requireMfa = requireMfa;
     }
 
     if (description !== undefined) {
@@ -500,7 +514,7 @@ export const pamAccountServiceFactory = ({
     if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
     // If no mfaSessionId is provided, create a new MFA session
-    if (!mfaSessionId) {
+    if (!mfaSessionId && account.requireMfa) {
       // Get organization to check if MFA is enforced at org level
       const org = await orgDAL.findOrgById(project.orgId);
       if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
@@ -534,41 +548,43 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    // If mfaSessionId is provided, verify it
-    const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSessionId);
-    const mfaSessionData = await keyStore.getItem(mfaSessionKey);
+    if (mfaSessionId && account.requireMfa) {
+      // If mfaSessionId is provided, verify it
+      const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSessionId);
+      const mfaSessionData = await keyStore.getItem(mfaSessionKey);
 
-    if (!mfaSessionData) {
-      throw new BadRequestError({
-        message: "MFA session not found or expired"
-      });
+      if (!mfaSessionData) {
+        throw new BadRequestError({
+          message: "MFA session not found or expired"
+        });
+      }
+
+      const mfaSession = JSON.parse(mfaSessionData) as TMfaSession;
+
+      // Verify the session belongs to the current user
+      if (mfaSession.userId !== actor.id) {
+        throw new ForbiddenRequestError({
+          message: "MFA session does not belong to current user"
+        });
+      }
+
+      // Verify the session is for the same account
+      if (mfaSession.resourceId !== accountId) {
+        throw new BadRequestError({
+          message: "MFA session is for a different resource"
+        });
+      }
+
+      // Check if MFA session is active
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({
+          message: "MFA session is not active. Please complete MFA verification first."
+        });
+      }
+
+      // MFA verified successfully, delete the session and proceed with access
+      await keyStore.deleteItem(mfaSessionKey);
     }
-
-    const mfaSession = JSON.parse(mfaSessionData) as TMfaSession;
-
-    // Verify the session belongs to the current user
-    if (mfaSession.userId !== actor.id) {
-      throw new ForbiddenRequestError({
-        message: "MFA session does not belong to current user"
-      });
-    }
-
-    // Verify the session is for the same account
-    if (mfaSession.resourceId !== accountId) {
-      throw new BadRequestError({
-        message: "MFA session is for a different resource"
-      });
-    }
-
-    // Check if MFA session is active
-    if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
-      throw new BadRequestError({
-        message: "MFA session is not active. Please complete MFA verification first."
-      });
-    }
-
-    // MFA verified successfully, delete the session and proceed with access
-    await keyStore.deleteItem(mfaSessionKey);
 
     const session = await pamSessionDAL.create({
       accountName: account.name,
