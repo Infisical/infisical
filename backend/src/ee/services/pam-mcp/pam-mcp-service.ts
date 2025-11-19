@@ -45,7 +45,7 @@ const DynamicClientInfoSchema = z.object({
   client_id: z.string(),
   redirect_uris: z.array(z.string()),
   client_name: z.string(),
-  client_uri: z.string(),
+  client_uri: z.string().optional(),
   grant_types: z.array(z.string()),
   response_types: z.array(z.string()),
   token_endpoint_auth_method: z.string(),
@@ -390,7 +390,7 @@ export const pamMcpServiceFactory = ({
 
     const url = new URL(redirectUri);
     url.searchParams.set("code", code);
-    if (!oauthClient.state) url.searchParams.set("state", String(oauthClient.state));
+    if (oauthClient.state) url.searchParams.set("state", String(oauthClient.state));
     return url;
   };
 

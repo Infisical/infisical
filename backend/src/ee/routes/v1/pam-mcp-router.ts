@@ -115,14 +115,14 @@ export const registerPamMcpRouter = async (server: FastifyZodProvider) => {
         grant_types: z.array(z.string()),
         response_types: z.array(z.string()),
         client_name: z.string(),
-        client_uri: z.string()
+        client_uri: z.string().optional()
       }),
       response: {
         200: z.object({
           client_id: z.string(),
           redirect_uris: z.array(z.string()),
           client_name: z.string(),
-          client_uri: z.string(),
+          client_uri: z.string().optional(),
           grant_types: z.array(z.string()),
           response_types: z.array(z.string()),
           token_endpoint_auth_method: z.string(),
