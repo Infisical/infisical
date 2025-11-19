@@ -73,7 +73,7 @@ export const SecretDashboardPathBreadcrumb = ({
         <Link
           to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
           params={{
-            orgId: currentOrg?.id || "",
+            orgId: currentOrg.id,
             projectId,
             envSlug: environmentSlug
           }}
