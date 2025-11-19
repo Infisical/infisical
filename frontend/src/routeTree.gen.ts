@@ -37,6 +37,7 @@ import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPag
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
+import { Route as MfaSessionPageRouteImport } from './pages/MfaSessionPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as adminLayoutImport } from './pages/admin/layout'
@@ -512,6 +513,12 @@ const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any,
 )
+
+const MfaSessionPageRouteRoute = MfaSessionPageRouteImport.update({
+  id: '/mfa-session/$mfaSessionId',
+  path: '/mfa-session/$mfaSessionId',
+  getParentRoute: () => middlewaresAuthenticateRoute,
+} as any)
 
 const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
   id: '/',
@@ -2301,6 +2308,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/'
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
+    }
+    '/_authenticate/mfa-session/$mfaSessionId': {
+      id: '/_authenticate/mfa-session/$mfaSessionId'
+      path: '/mfa-session/$mfaSessionId'
+      fullPath: '/mfa-session/$mfaSessionId'
+      preLoaderRoute: typeof MfaSessionPageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_authenticate/organization/none': {
       id: '/_authenticate/organization/none'
@@ -4880,6 +4894,7 @@ interface middlewaresAuthenticateRouteChildren {
   authPasswordSetupPageRouteRoute: typeof authPasswordSetupPageRouteRoute
   middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
+  MfaSessionPageRouteRoute: typeof MfaSessionPageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
 }
 
@@ -4890,6 +4905,7 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
       middlewaresInjectOrgDetailsRouteWithChildren,
     AuthenticatePersonalSettingsRoute:
       AuthenticatePersonalSettingsRouteWithChildren,
+    MfaSessionPageRouteRoute: MfaSessionPageRouteRoute,
     organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
   }
 
@@ -4985,6 +5001,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
+  '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -5222,6 +5239,7 @@ export interface FileRoutesByTo {
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
+  '/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/organization/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -5451,6 +5469,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/_authenticate/mfa-session/$mfaSessionId': typeof MfaSessionPageRouteRoute
   '/_authenticate/organization/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
@@ -5701,6 +5720,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/login/'
     | '/signup/'
+    | '/mfa-session/$mfaSessionId'
     | '/organization/none'
     | '/admin/signup'
     | '/login/admin'
@@ -5937,6 +5957,7 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
+    | '/mfa-session/$mfaSessionId'
     | '/organization/none'
     | '/admin/signup'
     | '/login/admin'
@@ -6164,6 +6185,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
+    | '/_authenticate/mfa-session/$mfaSessionId'
     | '/_authenticate/organization/none'
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
@@ -6459,6 +6481,7 @@ export const routeTree = rootRoute
         "/_authenticate/password-setup",
         "/_authenticate/_inject-org-details",
         "/_authenticate/personal-settings",
+        "/_authenticate/mfa-session/$mfaSessionId",
         "/_authenticate/organization/none"
       ]
     },
@@ -6542,6 +6565,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signup/": {
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
+    },
+    "/_authenticate/mfa-session/$mfaSessionId": {
+      "filePath": "MfaSessionPage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_authenticate/organization/none": {
       "filePath": "organization/NoOrgPage/route.tsx",

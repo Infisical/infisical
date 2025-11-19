@@ -9,14 +9,21 @@ import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
+import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { MfaSessionStatus, TMfaSession } from "@app/services/mfa-session/mfa-session-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
@@ -42,6 +49,7 @@ type TPamAccountServiceFactoryDep = {
   pamAccountDAL: TPamAccountDALFactory;
   pamFolderDAL: TPamFolderDALFactory;
   projectDAL: TProjectDALFactory;
+  orgDAL: TOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -51,6 +59,9 @@ type TPamAccountServiceFactoryDep = {
   >;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
@@ -62,13 +73,53 @@ export const pamAccountServiceFactory = ({
   pamAccountDAL,
   pamFolderDAL,
   projectDAL,
+  orgDAL,
   userDAL,
   permissionService,
   licenseService,
   kmsService,
   gatewayV2Service,
-  auditLogService
+  auditLogService,
+  keyStore,
+  tokenService,
+  smtpService
 }: TPamAccountServiceFactoryDep) => {
+  const createMfaSession = async (userId: string, accountId: string, mfaMethod: MfaMethod): Promise<string> => {
+    const mfaSessionId = crypto.randomBytes(32).toString("hex");
+    const mfaSession: TMfaSession = {
+      sessionId: mfaSessionId,
+      userId,
+      resourceId: accountId,
+      status: MfaSessionStatus.PENDING,
+      mfaMethod
+    };
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.MfaSession(mfaSessionId),
+      KeyStoreTtls.MfaSessionInSeconds,
+      JSON.stringify(mfaSession)
+    );
+
+    return mfaSessionId;
+  };
+
+  // Helper function to send MFA code via email
+  const sendMfaCode = async (userId: string, email: string) => {
+    const code = await tokenService.createTokenForUser({
+      type: TokenType.TOKEN_EMAIL_MFA,
+      userId
+    });
+
+    await smtpService.sendMail({
+      template: SmtpTemplates.EmailMfa,
+      subjectLine: "Infisical PAM Access MFA code",
+      recipients: [email],
+      substitutions: {
+        code
+      }
+    });
+  };
+
   const create = async (
     {
       credentials,
@@ -400,7 +451,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const access = async (
-    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
+    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration, mfaSessionId }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -415,6 +466,9 @@ export const pamAccountServiceFactory = ({
 
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+
+    const project = await projectDAL.findById(account.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -440,6 +494,82 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    // MFA is required for all PAM account access (as per user requirement)
+    // Get user to check MFA configuration
+    const actorUser = await userDAL.findById(actor.id);
+    if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
+
+    // If no mfaSessionId is provided, create a new MFA session
+    if (!mfaSessionId) {
+      // Get organization to check if MFA is enforced at org level
+      const org = await orgDAL.findOrgById(project.orgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
+      // Determine which MFA method to use
+      // Priority: org-enforced > user-selected > email as fallback
+      const orgMfaMethod = org.enforceMfa
+        ? ((org.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
+        : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled
+        ? ((actorUser.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
+        : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      // Create MFA session
+      const newMfaSessionId = await createMfaSession(actorUser.id, accountId, mfaMethod);
+
+      // If MFA method is email, send the code immediately
+      if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
+        await sendMfaCode(actorUser.id, actorUser.email);
+      }
+
+      // Throw an error with the mfaSessionId to signal that MFA is required
+      throw new BadRequestError({
+        message: "MFA verification required to access PAM account",
+        name: "SESSION_MFA_REQUIRED",
+        details: {
+          mfaSessionId: newMfaSessionId,
+          mfaMethod
+        }
+      });
+    }
+
+    // If mfaSessionId is provided, verify it
+    const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSessionId);
+    const mfaSessionData = await keyStore.getItem(mfaSessionKey);
+
+    if (!mfaSessionData) {
+      throw new BadRequestError({
+        message: "MFA session not found or expired"
+      });
+    }
+
+    const mfaSession = JSON.parse(mfaSessionData) as TMfaSession;
+
+    // Verify the session belongs to the current user
+    if (mfaSession.userId !== actor.id) {
+      throw new ForbiddenRequestError({
+        message: "MFA session does not belong to current user"
+      });
+    }
+
+    // Verify the session is for the same account
+    if (mfaSession.resourceId !== accountId) {
+      throw new BadRequestError({
+        message: "MFA session is for a different resource"
+      });
+    }
+
+    // Check if MFA session is active
+    if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+      throw new BadRequestError({
+        message: "MFA session is not active. Please complete MFA verification first."
+      });
+    }
+
+    // MFA verified successfully, delete the session and proceed with access
+    await keyStore.deleteItem(mfaSessionKey);
+
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -461,9 +591,6 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
-    const user = await userDAL.findById(actor.id);
-    if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
-
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
@@ -474,7 +601,7 @@ export const pamAccountServiceFactory = ({
       actorMetadata: {
         id: actor.id,
         type: actor.type,
-        name: user.email ?? ""
+        name: actorUser.email ?? ""
       }
     });
 

@@ -96,6 +96,7 @@ import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/i
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
 import { TMembershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { TMembershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { TMicrosoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { TOfflineUsageReportServiceFactory } from "@app/services/offline-usage-report/offline-usage-report-service";
@@ -349,6 +350,7 @@ declare module "fastify" {
       pamResource: TPamResourceServiceFactory;
       pamAccount: TPamAccountServiceFactory;
       pamSession: TPamSessionServiceFactory;
+      mfaSession: TMfaSessionServiceFactory;
       upgradePath: TUpgradePathService;
 
       membershipUser: TMembershipUserServiceFactory;

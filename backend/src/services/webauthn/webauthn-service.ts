@@ -8,6 +8,7 @@ import {
   verifyRegistrationResponse
 } from "@simplewebauthn/server";
 
+import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 
@@ -30,48 +31,32 @@ type TWebAuthnServiceFactoryDep = {
   userDAL: TUserDALFactory;
   webAuthnCredentialDAL: TWebAuthnCredentialDALFactory;
   tokenService: TAuthTokenServiceFactory;
+  keyStore: TKeyStoreFactory;
 };
 
 export type TWebAuthnServiceFactory = ReturnType<typeof webAuthnServiceFactory>;
 
-// In-memory challenge storage (for development)
-// TODO: In production, use Redis or database with TTL
-const challengeStore = new Map<string, { challenge: string; timestamp: number }>();
-const CHALLENGE_TTL = 5 * 60 * 1000; // 5 minutes
-
-const storeChallenge = (userId: string, challenge: string) => {
-  challengeStore.set(userId, { challenge, timestamp: Date.now() });
-
-  // Cleanup expired challenges
-  for (const [key, value] of challengeStore.entries()) {
-    if (Date.now() - value.timestamp > CHALLENGE_TTL) {
-      challengeStore.delete(key);
-    }
-  }
-};
-
-const getChallenge = (userId: string): string | null => {
-  const stored = challengeStore.get(userId);
-  if (!stored) return null;
-
-  // Check if expired
-  if (Date.now() - stored.timestamp > CHALLENGE_TTL) {
-    challengeStore.delete(userId);
-    return null;
-  }
-
-  return stored.challenge;
-};
-
-const clearChallenge = (userId: string) => {
-  challengeStore.delete(userId);
-};
-
 export const webAuthnServiceFactory = ({
   userDAL,
   webAuthnCredentialDAL,
-  tokenService
+  tokenService,
+  keyStore
 }: TWebAuthnServiceFactoryDep) => {
+  const storeChallenge = async (userId: string, challenge: string) => {
+    const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
+    await keyStore.setItemWithExpiry(challengeKey, KeyStoreTtls.WebAuthnChallengeInSeconds, challenge);
+  };
+
+  const getChallenge = async (userId: string): Promise<string | null> => {
+    const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
+    return keyStore.getItem(challengeKey);
+  };
+
+  const clearChallenge = async (userId: string) => {
+    const challengeKey = KeyStorePrefixes.WebAuthnChallenge(userId);
+    await keyStore.deleteItem(challengeKey);
+  };
+
   const appCfg = getConfig();
 
   // Relying Party (RP) information - extracted from SITE_URL
@@ -114,7 +99,7 @@ export const webAuthnServiceFactory = ({
     });
 
     // Store challenge for verification
-    storeChallenge(userId, options.challenge);
+    await storeChallenge(userId, options.challenge);
 
     return options;
   };
@@ -137,7 +122,7 @@ export const webAuthnServiceFactory = ({
     }
 
     // Retrieve the stored challenge
-    const expectedChallenge = getChallenge(userId);
+    const expectedChallenge = await getChallenge(userId);
     if (!expectedChallenge) {
       throw new BadRequestError({
         message: "Challenge not found or expired. Please try registering again."
@@ -154,14 +139,14 @@ export const webAuthnServiceFactory = ({
         requireUserVerification: true
       });
     } catch (error: unknown) {
-      clearChallenge(userId);
+      await clearChallenge(userId);
       throw new BadRequestError({
         message: `Registration verification failed: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
 
     if (!verification.verified || !verification.registrationInfo) {
-      clearChallenge(userId);
+      await clearChallenge(userId);
       throw new BadRequestError({
         message: "Registration verification failed"
       });
@@ -176,7 +161,7 @@ export const webAuthnServiceFactory = ({
     });
 
     if (existingCredential) {
-      clearChallenge(userId);
+      await clearChallenge(userId);
       throw new BadRequestError({
         message: "This credential has already been registered"
       });
@@ -193,7 +178,7 @@ export const webAuthnServiceFactory = ({
     });
 
     // Clear the challenge
-    clearChallenge(userId);
+    await clearChallenge(userId);
 
     return {
       credentialId: credential.credentialId,
@@ -224,7 +209,7 @@ export const webAuthnServiceFactory = ({
     });
 
     // Store challenge for verification
-    storeChallenge(userId, options.challenge);
+    await storeChallenge(userId, options.challenge);
 
     return options;
   };
@@ -262,7 +247,7 @@ export const webAuthnServiceFactory = ({
     }
 
     // Retrieve the stored challenge
-    const expectedChallenge = getChallenge(userId);
+    const expectedChallenge = await getChallenge(userId);
     if (!expectedChallenge) {
       throw new BadRequestError({
         message: "Challenge not found or expired. Please try authenticating again."
@@ -284,14 +269,14 @@ export const webAuthnServiceFactory = ({
         requireUserVerification: true
       });
     } catch (error: unknown) {
-      clearChallenge(userId);
+      await clearChallenge(userId);
       throw new BadRequestError({
         message: `Authentication verification failed: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
 
     if (!verification.verified) {
-      clearChallenge(userId);
+      await clearChallenge(userId);
       throw new BadRequestError({
         message: "Authentication verification failed"
       });
@@ -304,7 +289,7 @@ export const webAuthnServiceFactory = ({
     });
 
     // Clear the challenge
-    clearChallenge(userId);
+    await clearChallenge(userId);
 
     // Generate one-time WebAuthn session token with 60-second expiration
     const sessionToken = await tokenService.createTokenForUser({

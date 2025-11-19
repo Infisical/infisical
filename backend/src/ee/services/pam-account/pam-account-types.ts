@@ -17,4 +17,5 @@ export type TAccessAccountDTO = {
   actorName: string;
   actorUserAgent: string;
   duration: number;
+  mfaSessionId?: string;
 };

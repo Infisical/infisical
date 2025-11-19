@@ -258,6 +258,7 @@ import { membershipIdentityDALFactory } from "@app/services/membership-identity/
 import { membershipIdentityServiceFactory } from "@app/services/membership-identity/membership-identity-service";
 import { membershipUserDALFactory } from "@app/services/membership-user/membership-user-dal";
 import { membershipUserServiceFactory } from "@app/services/membership-user/membership-user-service";
+import { mfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
 import { microsoftTeamsIntegrationDALFactory } from "@app/services/microsoft-teams/microsoft-teams-integration-dal";
 import { microsoftTeamsServiceFactory } from "@app/services/microsoft-teams/microsoft-teams-service";
 import { projectMicrosoftTeamsConfigDALFactory } from "@app/services/microsoft-teams/project-microsoft-teams-config-dal";
@@ -351,12 +352,12 @@ import { telemetryServiceFactory } from "@app/services/telemetry/telemetry-servi
 import { totpConfigDALFactory } from "@app/services/totp/totp-config-dal";
 import { totpServiceFactory } from "@app/services/totp/totp-service";
 import { upgradePathServiceFactory } from "@app/services/upgrade-path/upgrade-path-service";
-import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
-import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { userDALFactory } from "@app/services/user/user-dal";
 import { userServiceFactory } from "@app/services/user/user-service";
 import { userAliasDALFactory } from "@app/services/user-alias/user-alias-dal";
 import { userEngagementServiceFactory } from "@app/services/user-engagement/user-engagement-service";
+import { webAuthnCredentialDALFactory } from "@app/services/webauthn/webauthn-credential-dal";
+import { webAuthnServiceFactory } from "@app/services/webauthn/webauthn-service";
 import { webhookDALFactory } from "@app/services/webhook/webhook-dal";
 import { webhookServiceFactory } from "@app/services/webhook/webhook-service";
 import { workflowIntegrationDALFactory } from "@app/services/workflow-integration/workflow-integration-dal";
@@ -878,7 +879,8 @@ export const registerRoutes = async (
   const webAuthnService = webAuthnServiceFactory({
     webAuthnCredentialDAL,
     userDAL,
-    tokenService
+    tokenService,
+    keyStore
   });
 
   const loginService = authLoginServiceFactory({
@@ -2347,6 +2349,13 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const mfaSessionService = mfaSessionServiceFactory({
+    keyStore,
+    tokenService,
+    smtpService,
+    totpService
+  });
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     gatewayV2Service,
@@ -2357,8 +2366,12 @@ export const registerRoutes = async (
     pamSessionDAL,
     permissionService,
     projectDAL,
+    orgDAL,
     userDAL,
-    auditLogService
+    auditLogService,
+    keyStore,
+    tokenService,
+    smtpService
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2554,6 +2567,7 @@ export const registerRoutes = async (
     pamResource: pamResourceService,
     pamAccount: pamAccountService,
     pamSession: pamSessionService,
+    mfaSession: mfaSessionService,
     upgradePath: upgradePathService,
 
     membershipUser: membershipUserService,
