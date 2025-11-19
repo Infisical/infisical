@@ -16,6 +16,10 @@ export const PKI_SYNC_MAP: Record<
     name: "AWS Certificate Manager",
     image: "Amazon Web Services.png"
   },
+  [PkiSync.AwsSecretsManager]: {
+    name: "AWS Secrets Manager",
+    image: "Amazon Web Services.png"
+  },
   [PkiSync.Chef]: {
     name: "Chef",
     image: "Chef.png"
@@ -25,5 +29,6 @@ export const PKI_SYNC_MAP: Record<
 export const PKI_SYNC_CONNECTION_MAP: Record<PkiSync, AppConnection> = {
   [PkiSync.AzureKeyVault]: AppConnection.AzureKeyVault,
   [PkiSync.AwsCertificateManager]: AppConnection.AWS,
+  [PkiSync.AwsSecretsManager]: AppConnection.AWS,
   [PkiSync.Chef]: AppConnection.Chef
 };

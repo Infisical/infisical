@@ -30,8 +30,7 @@ type Props = {
 };
 
 export const PkiSyncFieldMappingsSection = ({ pkiSync, onEditMappings }: Props) => {
-  // Only show for Chef PKI syncs
-  if (pkiSync.destination !== PkiSync.Chef) {
+  if (pkiSync.destination !== PkiSync.Chef && pkiSync.destination !== PkiSync.AwsSecretsManager) {
     return null;
   }
 

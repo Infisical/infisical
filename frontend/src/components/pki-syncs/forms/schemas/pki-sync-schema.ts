@@ -5,6 +5,10 @@ import {
   UpdateAwsCertificateManagerPkiSyncDestinationSchema
 } from "./aws-certificate-manager-pki-sync-destination-schema";
 import {
+  AwsSecretsManagerPkiSyncDestinationSchema,
+  UpdateAwsSecretsManagerPkiSyncDestinationSchema
+} from "./aws-secrets-manager-pki-sync-destination-schema";
+import {
   AzureKeyVaultPkiSyncDestinationSchema,
   UpdateAzureKeyVaultPkiSyncDestinationSchema
 } from "./azure-key-vault-pki-sync-destination-schema";
@@ -16,12 +20,14 @@ import {
 const PkiSyncUnionSchema = z.discriminatedUnion("destination", [
   AzureKeyVaultPkiSyncDestinationSchema,
   AwsCertificateManagerPkiSyncDestinationSchema,
+  AwsSecretsManagerPkiSyncDestinationSchema,
   ChefPkiSyncDestinationSchema
 ]);
 
 const UpdatePkiSyncUnionSchema = z.discriminatedUnion("destination", [
   UpdateAzureKeyVaultPkiSyncDestinationSchema,
   UpdateAwsCertificateManagerPkiSyncDestinationSchema,
+  UpdateAwsSecretsManagerPkiSyncDestinationSchema,
   UpdateChefPkiSyncDestinationSchema
 ]);
 

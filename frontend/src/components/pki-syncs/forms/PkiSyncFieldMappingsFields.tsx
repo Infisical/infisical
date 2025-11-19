@@ -13,15 +13,15 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
   const { control, watch } = useFormContext<TPkiSyncForm>();
   const currentDestination = destination || watch("destination");
 
-  // Only show field mappings for Chef
-  if (currentDestination !== PkiSync.Chef) {
+  if (currentDestination !== PkiSync.Chef && currentDestination !== PkiSync.AwsSecretsManager) {
     return null;
   }
 
   return (
     <>
       <p className="mb-4 text-sm text-bunker-300">
-        Configure how certificate fields are mapped to your Chef data bag items.
+        Configure how certificate fields are mapped to your{" "}
+        {currentDestination === PkiSync.Chef ? "Chef data bag items" : "AWS secrets"}.
       </p>
 
       <div className="grid grid-cols-2 gap-4">
@@ -33,7 +33,7 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="Certificate Field"
-              tooltipText="The field name used to store the certificate content in the Chef data bag item."
+              tooltipText={`The field name used to store the certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
             >
               <Input {...field} placeholder="certificate" />
             </FormControl>
@@ -48,7 +48,7 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="Private Key Field"
-              tooltipText="The field name used to store the private key content in the Chef data bag item."
+              tooltipText={`The field name used to store the private key content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
             >
               <Input {...field} placeholder="private_key" />
             </FormControl>
@@ -63,7 +63,7 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="Certificate Chain Field"
-              tooltipText="The field name used to store the certificate chain content in the Chef data bag item."
+              tooltipText={`The field name used to store the certificate chain content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
             >
               <Input {...field} placeholder="certificate_chain" />
             </FormControl>
@@ -78,7 +78,7 @@ export const PkiSyncFieldMappingsFields = ({ destination }: Props) => {
               isError={Boolean(error)}
               errorText={error?.message}
               label="CA Certificate Field"
-              tooltipText="The field name used to store the CA certificate content in the Chef data bag item."
+              tooltipText={`The field name used to store the CA certificate content in the ${currentDestination === PkiSync.Chef ? "Chef data bag item" : "AWS secret"}.`}
             >
               <Input {...field} placeholder="ca_certificate" />
             </FormControl>

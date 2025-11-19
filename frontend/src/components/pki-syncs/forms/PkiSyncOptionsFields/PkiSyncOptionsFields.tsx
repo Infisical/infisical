@@ -183,6 +183,51 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         />
       )}
 
+      {currentDestination === PkiSync.AwsSecretsManager && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveSecretOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-secret-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Secret on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> When a certificate
+                          is renewed in Infisical, this option controls how the renewed certificate
+                          is handled in AWS Secrets Manager.
+                        </p>
+                        <p className="mt-4">
+                          When enabled, the renewed certificate will update the existing secret,
+                          preserving the same secret name and ARN. This allows consuming services to
+                          continue using the same secret reference without requiring updates.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, the renewed certificate will be created as a new secret
+                          with a new name, and the old secret will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
       {currentDestination === PkiSync.Chef && (
         <Controller
           control={control}
