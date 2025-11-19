@@ -1,5 +1,7 @@
+import RE2 from "re2";
+
 export const CHEF_PKI_SYNC_CERTIFICATE_NAMING = {
-  NAME_PATTERN: /^[a-zA-Z0-9_-]+$/,
+  NAME_PATTERN: new RE2("^[a-zA-Z0-9_-]+$"),
   FORBIDDEN_CHARACTERS: "[]{}()<>|\\:;\"'=+*&^%$#@!~`?/",
   MIN_LENGTH: 1,
   MAX_LENGTH: 255,
@@ -7,7 +9,7 @@ export const CHEF_PKI_SYNC_CERTIFICATE_NAMING = {
 };
 
 export const CHEF_PKI_SYNC_DATA_BAG_NAMING = {
-  NAME_PATTERN: /^[a-zA-Z0-9_-]+$/,
+  NAME_PATTERN: new RE2("^[a-zA-Z0-9_-]+$"),
   FORBIDDEN_CHARACTERS: "[]{}()<>|\\:;\"'=+*&^%$#@!~`?/.",
   MIN_LENGTH: 1,
   MAX_LENGTH: 255
