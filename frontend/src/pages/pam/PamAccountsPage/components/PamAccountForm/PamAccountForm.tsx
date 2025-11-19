@@ -4,9 +4,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   PamResourceType,
   TMcpAccount,
-  TMySQLAccount,
   TPamAccount,
-  TPostgresAccount,
   useCreatePamAccount,
   useUpdatePamAccount
 } from "@app/hooks/api/pam";
