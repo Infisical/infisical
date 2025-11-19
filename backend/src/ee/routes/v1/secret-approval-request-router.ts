@@ -305,8 +305,7 @@ export const registerSecretApprovalRequestRouter = async (server: FastifyZodProv
                 secretPath: z.string().optional().nullable(),
                 enforcementLevel: z.string(),
                 deletedAt: z.date().nullish(),
-                allowedSelfApprovals: z.boolean(),
-                shouldCheckSecretPermission: z.boolean().nullable().optional()
+                allowedSelfApprovals: z.boolean()
               }),
               environment: z.string(),
               statusChangedByUser: approvalRequestUser.optional(),
