@@ -101,7 +101,8 @@ export const AllProjectView = ({
   const handleAccessProject = async (
     type: ProjectType,
     projectId: string,
-    environments: ProjectEnv[]
+    environments: ProjectEnv[],
+    orgId: string
   ) => {
     await orgAdminAccessProject.mutateAsync({
       projectId
@@ -109,6 +110,7 @@ export const AllProjectView = ({
     await navigate({
       to: getProjectHomePage(type, environments),
       params: {
+        orgId,
         projectId
       }
     });
@@ -320,7 +322,12 @@ export const AllProjectView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          handleAccessProject(workspace.type, workspace.id, workspace.environments);
+                          handleAccessProject(
+                            workspace.type,
+                            workspace.id,
+                            workspace.environments,
+                            workspace.orgId
+                          );
                         }}
                         disabled={
                           orgAdminAccessProject.variables?.projectId === workspace.id &&

@@ -22,7 +22,7 @@ export default function TeamInviteStep(): JSX.Element {
 
   // Redirect user to the getting started page
   const redirectToHome = async () => {
-    navigate({ to: "/organization/projects" as const });
+    navigate({ to: "/" as const });
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {

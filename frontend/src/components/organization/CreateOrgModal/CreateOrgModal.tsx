@@ -57,7 +57,8 @@ export const CreateOrgModal: FC<CreateOrgModalProps> = ({ isOpen, onClose }) => 
     });
 
     navigate({
-      to: "/organization/projects"
+      to: "/organizations/$orgId/projects",
+      params: { orgId: organization.id }
     });
 
     localStorage.setItem("orgData.id", organization.id);

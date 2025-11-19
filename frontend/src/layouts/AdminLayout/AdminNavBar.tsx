@@ -14,6 +14,7 @@ import { Link, useMatchRoute } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Tab, TabList, Tabs, Tooltip } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 
 const generalTabs = [
   {
@@ -60,6 +61,7 @@ const generalTabs = [
 
 export const AdminNavBar = () => {
   const matchRoute = useMatchRoute();
+  const { currentOrg } = useOrganization();
 
   return (
     <div className="border-b border-mineshaft-600 bg-mineshaft-900">
@@ -74,7 +76,7 @@ export const AdminNavBar = () => {
           <Tabs value="selected">
             <TabList className="border-b-0">
               <Tooltip position="bottom" content="Back to organization">
-                <Link to="/organization/projects">
+                <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
                   <Tab value="back">
                     <FontAwesomeIcon icon={faArrowLeft} />
                   </Tab>

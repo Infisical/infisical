@@ -47,8 +47,8 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     onClose();
 
     navigate({
-      to: "/organization/projects",
-      search: (prev) => ({ ...prev, subOrganization: organization.name })
+      to: "/organizations/$orgId/projects",
+      params: { orgId: organization.id }
     });
     await router.invalidate({ sync: true }).catch(() => null);
   };

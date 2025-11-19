@@ -129,7 +129,8 @@ export const UserInfoSSOStep = ({
 
             localStorage.setItem("orgData.id", orgId);
             navigate({
-              to: "/organization/projects"
+              to: "/organizations/$orgId/projects",
+              params: { orgId }
             });
           } catch (error) {
             setIsLoading(false);

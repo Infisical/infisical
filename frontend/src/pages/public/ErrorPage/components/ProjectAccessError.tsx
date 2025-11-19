@@ -49,7 +49,7 @@ export const ProjectAccessError = () => {
           <>
             You are not currently a member of this project. Request access to join project.
             <div className="mt-4 flex w-full justify-center gap-2">
-              <Link to="/organization/projects">
+              <Link to="/">
                 <Button variant="outline_bg">
                   <FontAwesomeIcon icon={faHome} className="mr-2" />
                   Back To Home
@@ -89,7 +89,7 @@ export const ProjectAccessError = () => {
               project={project}
               onComplete={() => {
                 navigate({
-                  to: "/organization/projects"
+                  to: "/"
                 });
               }}
             />

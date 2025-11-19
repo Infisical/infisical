@@ -20,10 +20,7 @@ export const PersonalSettingsPage = () => {
       </Helmet>
       <div className="flex w-full justify-center px-6 text-white">
         <div className="w-full max-w-8xl">
-          <Link
-            to="/organization/projects"
-            className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
-          >
+          <Link to="/" className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400">
             <FontAwesomeIcon icon={faChevronLeft} />
             Back to Organization
           </Link>

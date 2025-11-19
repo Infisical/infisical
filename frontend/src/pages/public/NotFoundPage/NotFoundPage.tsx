@@ -16,7 +16,7 @@ export const NotFoundPage = () => {
           </a>{" "}
           and we`ll fix it!{" "}
         </p>
-        <Link to="/organization/projects">
+        <Link to="/">
           <div className="diration-200 mt-8 cursor-default rounded-md bg-mineshaft-500 px-4 py-2 font-medium hover:bg-primary hover:text-black">
             Go to Dashboard
           </div>
