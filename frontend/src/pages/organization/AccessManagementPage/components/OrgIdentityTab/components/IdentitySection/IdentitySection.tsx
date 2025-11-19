@@ -97,7 +97,7 @@ export const IdentitySection = withPermission(
     return (
       <div>
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex w-full items-center gap-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
@@ -139,7 +139,7 @@ export const IdentitySection = withPermission(
         </div>
         {/* Identity Auth Templates Section */}
         <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identity Auth Templates</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
