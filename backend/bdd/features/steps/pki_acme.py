@@ -387,6 +387,8 @@ def register_account_with_eab(
 ):
     acme_client = context.acme_client
     account_public_key = acme_client.net.key.public_key()
+    # clear the account in case if we want to register twice
+    acme_client.net.account = None
     if hasattr(context, "alt_eab_url"):
         eab_directory = messages.Directory.from_json(
             {"newAccount": context.alt_eab_url}
