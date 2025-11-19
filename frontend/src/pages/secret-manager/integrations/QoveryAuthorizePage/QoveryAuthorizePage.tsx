@@ -5,14 +5,14 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const QoveryAuthorizePage = () => {
   const navigate = useNavigate();
   const { currentProject } = useProject();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-
+  const { currentOrg } = useOrganization();
   const [accessToken, setAccessToken] = useState("");
   const [accessTokenErrorText, setAccessTokenErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -36,8 +36,9 @@ export const QoveryAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/qovery/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/qovery/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

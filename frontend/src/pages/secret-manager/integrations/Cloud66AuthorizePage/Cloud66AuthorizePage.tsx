@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const Cloud66AuthorizePage = () => {
@@ -10,7 +10,7 @@ export const Cloud66AuthorizePage = () => {
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +34,9 @@ export const Cloud66AuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/cloud-66/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloud-66/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

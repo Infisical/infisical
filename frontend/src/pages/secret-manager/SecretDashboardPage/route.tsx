@@ -16,12 +16,19 @@ const SecretDashboardPageQueryParamsSchema = z.object({
   connectionName: z.string().optional()
 });
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/secrets/$envSlug"
 )({
   component: SecretDashboardPage,
   validateSearch: zodValidator(SecretDashboardPageQueryParamsSchema),
   search: {
-    middlewares: [stripSearchParams({ secretPath: "/", search: "", tags: "", filterBy: "" })]
+    middlewares: [
+      stripSearchParams({
+        secretPath: "/",
+        search: "",
+        tags: "",
+        filterBy: ""
+      })
+    ]
   },
   beforeLoad: ({ context, params, search }) => {
     const secretPathSegments = search.secretPath.split("/").filter(Boolean);
@@ -31,7 +38,7 @@ export const Route = createFileRoute(
         {
           label: "Secrets",
           link: linkOptions({
-            to: "/projects/secret-management/$projectId/overview",
+            to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
             params
           })
         },
@@ -42,8 +49,9 @@ export const Route = createFileRoute(
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/projects/secret-management/$projectId/secrets/$envSlug",
+              to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
               params: {
+                orgId: params.orgId,
                 projectId: params.projectId,
                 envSlug: el.slug
               }

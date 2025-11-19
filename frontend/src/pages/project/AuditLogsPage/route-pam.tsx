@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuditLogsPage } from "./AuditLogsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/audit-logs"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/audit-logs"
 )({
   component: AuditLogsPage,
   beforeLoad: ({ context }) => {

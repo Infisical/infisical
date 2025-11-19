@@ -8,7 +8,7 @@ import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSele
 import { SecretScanningLayout } from "@app/layouts/SecretScanningLayout";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-scanning/$projectId/_secret-scanning-layout"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-scanning/$projectId/_secret-scanning-layout"
 )({
   component: SecretScanningLayout,
   beforeLoad: async ({ params, context }) => {

@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { IdentityDetailsByIDPage } from "./IdentityDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/identities/$identityId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/identities/$identityId"
 )({
   component: IdentityDetailsByIDPage,
   context: () => ({

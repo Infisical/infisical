@@ -13,7 +13,7 @@ type Props = {
 
 export const QuickSearchSecretRotationItem = ({ secretRotationGroup, onClose }: Props) => {
   const navigate = useNavigate({
-    from: "/projects/secret-management/$projectId/overview"
+    from: "/organizations/$orgId/projects/secret-management/$projectId/overview"
   });
 
   const [groupSecretRotation] = secretRotationGroup;

@@ -19,7 +19,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useToggle } from "@app/hooks";
 import {
   SecretScanningScanStatus,
@@ -42,6 +42,7 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
     resolvedFindings,
     type
   } = scan;
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const totalFindings = resolvedFindings + unresolvedFindings;
   const navigate = useNavigate();
@@ -98,8 +99,9 @@ export const SecretScanningScanRow = ({ scan }: Props) => {
                   type="button"
                   onClick={() =>
                     navigate({
-                      to: "/projects/secret-scanning/$projectId/findings",
+                      to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
                       params: {
+                        orgId: currentOrg.id,
                         projectId: currentProject.id
                       },
                       search: {

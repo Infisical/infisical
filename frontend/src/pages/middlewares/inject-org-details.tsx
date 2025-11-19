@@ -6,8 +6,15 @@ import { fetchOrgSubscription, subscriptionQueryKeys } from "@app/hooks/api/subs
 
 // Route context to fill in organization's data like details, subscription etc
 export const Route = createFileRoute("/_authenticate/_inject-org-details")({
-  beforeLoad: async ({ context }) => {
-    const organizationId = context.organizationId!;
+  beforeLoad: async ({ context, params }) => {
+    let organizationId: string;
+
+    if ((params as { orgId?: string })?.orgId) {
+      organizationId = (params as { orgId: string }).orgId;
+    } else {
+      organizationId = context.organizationId!;
+    }
+
     await context.queryClient.ensureQueryData({
       queryKey: organizationKeys.getOrgById(organizationId),
       queryFn: () => fetchOrganizationById(organizationId)

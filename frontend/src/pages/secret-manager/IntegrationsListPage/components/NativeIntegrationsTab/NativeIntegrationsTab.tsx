@@ -5,7 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Checkbox, DeleteActionModal, Spinner } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { usePopUp, useToggle } from "@app/hooks";
 import {
   useDeleteIntegration,
@@ -27,6 +27,7 @@ enum IntegrationView {
 }
 
 export const NativeIntegrationsTab = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { environments, id: workspaceId } = currentProject;
   const navigate = useNavigate();
@@ -91,7 +92,7 @@ export const NativeIntegrationsTab = () => {
     if (!selectedCloudIntegration) return;
 
     try {
-      redirectForProviderAuth(currentProject.id, navigate, selectedCloudIntegration);
+      redirectForProviderAuth(currentOrg.id, currentProject.id, navigate, selectedCloudIntegration);
     } catch (error) {
       console.error(error);
     }

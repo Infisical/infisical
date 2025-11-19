@@ -7,7 +7,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardBody, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const formSchema = z.object({
@@ -22,7 +22,7 @@ type TForm = z.infer<typeof formSchema>;
 export const HashicorpVaultAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const {
     control,
@@ -48,8 +48,9 @@ export const HashicorpVaultAuthorizePage = () => {
       namespace: formData.vaultNamespace
     });
     navigate({
-      to: "/projects/secret-management/$projectId/integrations/hashicorp-vault/create",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/hashicorp-vault/create",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

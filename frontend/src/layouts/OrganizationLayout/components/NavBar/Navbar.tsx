@@ -282,7 +282,7 @@ export const Navbar = () => {
     <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4 pt-1">
       <div className="mr-auto flex items-center overflow-hidden">
         <div className="shrink-0">
-          <Link to="/organization/projects">
+          <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
             <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
           </Link>
         </div>
@@ -322,7 +322,8 @@ export const Navbar = () => {
                       type="button"
                       onClick={async () => {
                         navigate({
-                          to: "/organization/projects",
+                          to: "/organizations/$orgId/projects",
+                          params: { orgId: currentOrg.id },
                           search: (search) => ({ ...search, subOrganization: undefined })
                         });
                         if (isSubOrganization) {
@@ -407,7 +408,8 @@ export const Navbar = () => {
                               <DropdownMenuItem
                                 onClick={async () => {
                                   navigate({
-                                    to: "/organization/projects",
+                                    to: "/organizations/$orgId/projects",
+                                    params: { orgId: currentOrg.id },
                                     search: (prev) => ({ ...prev, subOrganization: subOrg.name })
                                   });
                                   await router.invalidate({ sync: true }).catch(() => null);
@@ -481,7 +483,7 @@ export const Navbar = () => {
                         "min-w-6 bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
                     )}
                   >
-                    <Link to="/organization/projects">
+                    <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
                       <SubOrgIcon className="size-[12px]" />
                       <span>{currentOrg.subOrganization.name}</span>
                     </Link>
@@ -511,7 +513,8 @@ export const Navbar = () => {
                       <DropdownMenuItem
                         onClick={async () => {
                           navigate({
-                            to: "/organization/projects",
+                            to: "/organizations/$orgId/projects",
+                            params: { orgId: currentOrg.id },
                             search: (prev) => ({ ...prev, subOrganization: subOrg.name })
                           });
                           await router.invalidate({ sync: true }).catch(() => null);
@@ -593,7 +596,8 @@ export const Navbar = () => {
               isAllowed ? (
                 <Link
                   className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-                  to="/organization/access-management"
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
                   search={{
                     selectedTab: "members",
                     action: "invite-members"
@@ -696,7 +700,8 @@ export const Navbar = () => {
             {(isAllowed) =>
               isAllowed ? (
                 <Link
-                  to="/organization/access-management"
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
                   search={{
                     selectedTab: "members",
                     action: "invite-members"
@@ -778,7 +783,11 @@ export const Navbar = () => {
               </div>
               <div className="mt-4">
                 <div className="flex space-x-3">
-                  <Link to="/organization/billing" className="inline-flex">
+                  <Link
+                    to="/organizations/$orgId/billing"
+                    params={{ orgId: currentOrg.id }}
+                    className="inline-flex"
+                  >
                     <Button
                       colorSchema="primary"
                       variant="solid"

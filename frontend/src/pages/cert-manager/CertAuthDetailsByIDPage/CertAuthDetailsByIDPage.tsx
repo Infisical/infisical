@@ -17,7 +17,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -34,6 +39,7 @@ import {
 
 const Page = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
@@ -72,8 +78,9 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/projects/cert-management/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities",
       params: {
+        orgId: currentOrg.id,
         projectId
       }
     });
@@ -84,8 +91,9 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/certificate-authorities"
+            to="/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities"
             params={{
+              orgId: currentOrg.id,
               projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

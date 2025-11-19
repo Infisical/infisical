@@ -8,7 +8,7 @@ import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSele
 import { SshLayout } from "@app/layouts/SshLayout";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/ssh/$projectId/_ssh-layout"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId/_ssh-layout"
 )({
   component: SshLayout,
   beforeLoad: async ({ params, context }) => {

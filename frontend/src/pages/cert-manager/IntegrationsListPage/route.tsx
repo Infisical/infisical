@@ -15,7 +15,7 @@ const IntegrationsListPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/cert-management/$projectId/_cert-manager-layout/integrations/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/integrations/"
 )({
   component: IntegrationsListPage,
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),

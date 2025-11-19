@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 enum AwsAuthType {
@@ -42,7 +42,7 @@ export const AWSSecretManagerAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const { control, handleSubmit, formState, watch } = useForm<TForm>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -66,8 +66,9 @@ export const AWSSecretManagerAuthorizePage = () => {
             })
       });
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/aws-secret-manager/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

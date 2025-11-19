@@ -29,7 +29,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionSubjects, ProjectPermissionSub } from "@app/context";
+import { OrgPermissionSubjects, ProjectPermissionSub, useOrganization } from "@app/context";
 import { OrgPermissionAppConnectionActions } from "@app/context/OrgPermissionContext/types";
 import { ProjectPermissionAppConnectionActions } from "@app/context/ProjectPermissionContext/types";
 import { APP_CONNECTION_MAP, getAppConnectionMethodDetails } from "@app/helpers/appConnections";
@@ -52,6 +52,7 @@ export const AppConnectionRow = ({
   onEditDetails,
   isProjectView
 }: Props) => {
+  const { currentOrg } = useOrganization();
   const { id, name, method, app, description, isPlatformManagedCredentials, project } =
     appConnection;
 
@@ -127,6 +128,7 @@ export const AppConnectionRow = ({
               // @ts-expect-error app-connections aren't in kms/ssh
               to={`${getProjectBaseURL(project.type)}/app-connections`}
               params={{
+                orgId: currentOrg?.id || "",
                 projectId: project.id
               }}
               className="underline"

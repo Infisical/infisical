@@ -29,6 +29,7 @@ export const createIntegrationMissingEnvVarsNotification = (
   });
 
 export const redirectForProviderAuth = (
+  orgId: string,
   projectId: string,
   navigate: NavigateFn,
   integrationOption: TCloudIntegration
@@ -42,8 +43,9 @@ export const redirectForProviderAuth = (
     switch (integrationOption.slug) {
       case "gcp-secret-manager":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/gcp-secret-manager/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/gcp-secret-manager/authorize",
           params: {
+            orgId,
             projectId
           }
         });
@@ -54,8 +56,9 @@ export const redirectForProviderAuth = (
           return;
         }
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/azure-key-vault/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-key-vault/authorize",
           params: {
+            orgId,
             projectId
           },
           search: {
@@ -76,16 +79,18 @@ export const redirectForProviderAuth = (
       }
       case "aws-parameter-store":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "aws-secret-manager":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-secret-manager/authorize",
           params: {
+            orgId,
             projectId
           }
         });
@@ -120,128 +125,144 @@ export const redirectForProviderAuth = (
       }
       case "github":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/github/auth-mode-selection",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/github/auth-mode-selection",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "gitlab":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/gitlab/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/gitlab/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "render":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/render/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/render/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "flyio":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/flyio/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/flyio/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "circleci":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/circleci/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/circleci/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "databricks":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/databricks/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/databricks/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "laravel-forge":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/laravel-forge/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/laravel-forge/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "travisci":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/travisci/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/travisci/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "supabase":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/supabase/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/supabase/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "checkly":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/checkly/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/checkly/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "qovery":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/qovery/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/qovery/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "railway":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/railway/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/railway/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "terraform-cloud":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/terraform-cloud/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/terraform-cloud/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "hashicorp-vault":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/hashicorp-vault/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/hashicorp-vault/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "cloudflare-pages":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/cloudflare-pages/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloudflare-pages/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "cloudflare-workers":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/cloudflare-workers/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloudflare-workers/authorize",
           params: {
+            orgId,
             projectId
           }
         });
@@ -257,80 +278,90 @@ export const redirectForProviderAuth = (
       }
       case "codefresh":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/codefresh/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/codefresh/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "digital-ocean-app-platform":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/digital-ocean-app-platform/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/digital-ocean-app-platform/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "cloud-66":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/cloud-66/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/cloud-66/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "northflank":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/northflank/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/northflank/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "windmill":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/windmill/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/windmill/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "teamcity":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/teamcity/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/teamcity/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "hasura-cloud":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/hasura-cloud/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/hasura-cloud/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "rundeck":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/rundeck/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/rundeck/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "azure-devops":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/azure-devops/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-devops/authorize",
           params: {
+            orgId,
             projectId
           }
         });
         break;
       case "octopus-deploy":
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/octopus-deploy/authorize",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/octopus-deploy/authorize",
           params: {
+            orgId,
             projectId
           }
         });

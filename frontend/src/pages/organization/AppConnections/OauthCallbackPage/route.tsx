@@ -11,7 +11,7 @@ const GitHubOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/$appConnection/oauth/callback"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
 )({
   component: OAuthCallbackPage,
   validateSearch: zodValidator(GitHubOAuthCallbackPageQueryParamsSchema),

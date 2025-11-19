@@ -16,31 +16,7 @@ const adminRoute = route("/admin", [
   ])
 ]);
 
-const organizationRoutes = route("/organization", [
-  route("/projects", "organization/ProjectsPage/route.tsx"),
-  route("/access-management", "organization/AccessManagementPage/route.tsx"),
-  route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
-  route("/billing", "organization/BillingPage/route.tsx"),
-  route("/secret-sharing", [index("organization/SecretSharingPage/route.tsx")]),
-  route("/settings", [
-    index("organization/SettingsPage/route.tsx"),
-    route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
-  ]),
-  route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
-  route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
-  route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
-  route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
-  route("/app-connections", [
-    index("organization/AppConnections/AppConnectionsPage/route.tsx"),
-    route(
-      "/$appConnection/oauth/callback",
-      "organization/AppConnections/OauthCallbackPage/route.tsx"
-    )
-  ]),
-  route("/networking", "organization/NetworkingPage/route.tsx")
-]);
-
-const secretManagerRoutes = route("/projects/secret-management/$projectId", [
+const secretManagerRoutes = route("/organizations/$orgId/projects/secret-management/$projectId", [
   layout("secret-manager-layout", "secret-manager/layout.tsx", [
     route("/overview", "secret-manager/OverviewPage/route.tsx"),
     route("/secrets/$envSlug", "secret-manager/SecretDashboardPage/route.tsx"),
@@ -272,7 +248,7 @@ const secretManagerRoutes = route("/projects/secret-management/$projectId", [
   ])
 ]);
 
-const secretManagerIntegrationsRedirect = route("/integrations", [
+const secretManagerIntegrationsRedirect = route("/organizations/$orgId/integrations", [
   route("/heroku/oauth2/callback", "secret-manager/integrations/route-heroku-oauth-redirect.tsx"),
   route(
     "/gcp-secret-manager/oauth2/callback",
@@ -296,7 +272,7 @@ const secretManagerIntegrationsRedirect = route("/integrations", [
   )
 ]);
 
-const certManagerRoutes = route("/projects/cert-management/$projectId", [
+const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/$projectId", [
   layout("cert-manager-layout", "cert-manager/layout.tsx", [
     route("/policies", "cert-manager/PoliciesPage/route.tsx"),
     route("/subscribers", [
@@ -323,7 +299,7 @@ const certManagerRoutes = route("/projects/cert-management/$projectId", [
   ])
 ]);
 
-const kmsRoutes = route("/projects/kms/$projectId", [
+const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
     route("/kmip", "kms/KmipPage/route.tsx"),
@@ -337,7 +313,7 @@ const kmsRoutes = route("/projects/kms/$projectId", [
   ])
 ]);
 
-const sshRoutes = route("/projects/ssh/$projectId", [
+const sshRoutes = route("/organizations/$orgId/projects/ssh/$projectId", [
   layout("ssh-layout", "ssh/layout.tsx", [
     route("/overview", "ssh/SshHostsPage/route.tsx"),
     route("/certificates", "ssh/SshCertsPage/route.tsx"),
@@ -354,7 +330,7 @@ const sshRoutes = route("/projects/ssh/$projectId", [
   ])
 ]);
 
-const secretScanningRoutes = route("/projects/secret-scanning/$projectId", [
+const secretScanningRoutes = route("/organizations/$orgId/projects/secret-scanning/$projectId", [
   layout("secret-scanning-layout", "secret-scanning/layout.tsx", [
     route("/data-sources", [
       index("secret-scanning/SecretScanningDataSourcesPage/route.tsx"),
@@ -372,7 +348,7 @@ const secretScanningRoutes = route("/projects/secret-scanning/$projectId", [
   ])
 ]);
 
-const pamRoutes = route("/projects/pam/$projectId", [
+const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
   layout("pam-layout", "pam/layout.tsx", [
     route("/accounts", "pam/PamAccountsPage/route.tsx"),
     route("/sessions", [
@@ -390,6 +366,30 @@ const pamRoutes = route("/projects/pam/$projectId", [
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
     route("/groups/$groupId", "project/GroupDetailsByIDPage/route-pam.tsx")
   ])
+]);
+
+const organizationRoutes = route("/organizations/$orgId", [
+  route("/projects", "organization/ProjectsPage/route.tsx"),
+  route("/access-management", "organization/AccessManagementPage/route.tsx"),
+  route("/audit-logs", "organization/AuditLogsPage/route.tsx"),
+  route("/billing", "organization/BillingPage/route.tsx"),
+  route("/secret-sharing", [index("organization/SecretSharingPage/route.tsx")]),
+  route("/settings", [
+    index("organization/SettingsPage/route.tsx"),
+    route("/oauth/callback", "organization/SettingsPage/OauthCallbackPage/route.tsx")
+  ]),
+  route("/groups/$groupId", "organization/GroupDetailsByIDPage/route.tsx"),
+  route("/members/$membershipId", "organization/UserDetailsByIDPage/route.tsx"),
+  route("/roles/$roleId", "organization/RoleByIDPage/route.tsx"),
+  route("/identities/$identityId", "organization/IdentityDetailsByIDPage/route.tsx"),
+  route("/app-connections", [
+    index("organization/AppConnections/AppConnectionsPage/route.tsx"),
+    route(
+      "/$appConnection/oauth/callback",
+      "organization/AppConnections/OauthCallbackPage/route.tsx"
+    )
+  ]),
+  route("/networking", "organization/NetworkingPage/route.tsx")
 ]);
 
 export const routes = rootRoute("root.tsx", [
@@ -430,7 +430,7 @@ export const routes = rootRoute("root.tsx", [
       adminRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,
-        route("/secret-manager/$projectId", [
+        route("/organizations/$orgId/secret-manager/$projectId", [
           route("/approval", "secret-manager/redirects/redirect-approval-page.tsx")
         ]),
         secretManagerRoutes,

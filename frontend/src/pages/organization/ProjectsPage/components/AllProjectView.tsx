@@ -30,7 +30,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
@@ -62,6 +62,7 @@ export const AllProjectView = ({
   onProjectListViewChange
 }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
@@ -263,6 +264,7 @@ export const AllProjectView = ({
                   navigate({
                     to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
+                      orgId: currentOrg?.id || "",
                       projectId: workspace.id
                     }
                   });
@@ -273,6 +275,7 @@ export const AllProjectView = ({
                   navigate({
                     to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
+                      orgId: currentOrg?.id || "",
                       projectId: workspace.id
                     }
                   });

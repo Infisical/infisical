@@ -180,6 +180,7 @@ export const MyProjectView = ({
         navigate({
           to: getProjectHomePage(workspace.type, workspace.environments),
           params: {
+            orgId: currentOrg?.id || "",
             projectId: workspace.id
           }
         });
@@ -231,6 +232,7 @@ export const MyProjectView = ({
         navigate({
           to: getProjectHomePage(workspace.type, workspace.environments),
           params: {
+            orgId: currentOrg?.id || "",
             projectId: workspace.id
           }
         });

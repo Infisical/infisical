@@ -23,11 +23,11 @@ const IntegrationsListPageQuerySchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/"
 )({
   component: IntegrationsListPage,
   validateSearch: zodValidator(IntegrationsListPageQuerySchema),
-  beforeLoad: async ({ context, search, params: { projectId } }) => {
+  beforeLoad: async ({ context, search, params: { projectId, orgId } }) => {
     if (!search.selectedTab) {
       let secretSyncs: TSecretSync[];
 
@@ -38,20 +38,16 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/projects/secret-management/$projectId/integrations",
-          params: {
-            projectId
-          },
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: { orgId, projectId },
           search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
         });
       }
 
       if (secretSyncs.length) {
         throw redirect({
-          to: "/projects/secret-management/$projectId/integrations",
-          params: {
-            projectId
-          },
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
+          params: { orgId, projectId },
           search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
         });
       }
@@ -64,8 +60,9 @@ export const Route = createFileRoute(
         });
       } catch {
         throw redirect({
-          to: "/projects/secret-management/$projectId/integrations",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
           params: {
+            orgId,
             projectId
           },
           search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }
@@ -74,8 +71,9 @@ export const Route = createFileRoute(
 
       if (integrations.length) {
         throw redirect({
-          to: "/projects/secret-management/$projectId/integrations",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
           params: {
+            orgId,
             projectId
           },
           search: { selectedTab: IntegrationsListPageTabs.NativeIntegrations }
@@ -83,8 +81,9 @@ export const Route = createFileRoute(
       }
 
       throw redirect({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId,
           projectId
         },
         search: { selectedTab: IntegrationsListPageTabs.SecretSyncs }

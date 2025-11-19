@@ -17,7 +17,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { useDeleteSshCa, useGetSshCaById } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -26,7 +31,9 @@ import { SshCaModal } from "../SshCasPage/components/SshCaModal";
 import { SshCaDetailsSection, SshCertificateTemplatesSection } from "./components";
 
 const Page = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+
   const navigate = useNavigate();
   const projectId = currentProject?.id || "";
   const caId = useParams({
@@ -54,8 +61,9 @@ const Page = () => {
 
     handlePopUpClose("deleteSshCa");
     navigate({
-      to: "/projects/ssh/$projectId/overview",
+      to: "/organizations/$orgId/projects/ssh/$projectId/overview",
       params: {
+        orgId: currentOrg.id,
         projectId
       }
     });
@@ -66,8 +74,9 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/ssh/$projectId/cas"
+            to="/organizations/$orgId/projects/ssh/$projectId/cas"
             params={{
+              orgId: currentOrg.id,
               projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

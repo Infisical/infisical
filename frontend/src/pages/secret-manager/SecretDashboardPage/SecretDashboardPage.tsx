@@ -30,6 +30,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -101,6 +102,7 @@ const LOADER_TEXT = [
 ];
 
 const Page = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path
@@ -267,8 +269,9 @@ const Page = () => {
         type: "error"
       });
       navigate({
-        to: "/projects/secret-management/$projectId/overview",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
         params: {
+          orgId: currentOrg.id,
           projectId
         }
       });
@@ -444,8 +447,9 @@ const Page = () => {
   const handleOnClickRollbackMode = () => {
     if (isPITEnabled) {
       navigate({
-        to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
+          orgId: currentOrg.id,
           projectId,
           folderId,
           environment
@@ -807,8 +811,9 @@ const Page = () => {
   return (
     <div className="mx-auto flex max-w-8xl flex-col text-mineshaft-50 dark:scheme-dark">
       <Link
-        to="/projects/secret-management/$projectId/overview"
+        to="/organizations/$orgId/projects/secret-management/$projectId/overview"
         params={{
+          orgId: currentOrg.id,
           projectId
         }}
         className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

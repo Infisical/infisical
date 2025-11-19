@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const AzureDevopsAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useSaveIntegrationAccessToken();
-
+  const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [devopsOrgName, setDevopsOrgName] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
@@ -39,8 +39,9 @@ export const AzureDevopsAuthorizePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/azure-devops/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/azure-devops/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

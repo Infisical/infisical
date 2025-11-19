@@ -118,7 +118,8 @@ export const Route = createFileRoute("/_restrict-login-signup")({
       throw redirect({ to: "/login/select-organization" });
     }
     throw redirect({
-      to: "/organization/projects"
+      to: "/organizations/$orgId/projects",
+      params: { orgId: data.organizationId }
     });
   },
   component: AuthConsentWrapper

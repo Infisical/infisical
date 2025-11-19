@@ -8,7 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const schema = z.object({
@@ -22,7 +22,7 @@ export const HasuraCloudAuthorizePage = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const { mutateAsync } = useSaveIntegrationAccessToken();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -43,8 +43,9 @@ export const HasuraCloudAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/hasura-cloud/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/hasura-cloud/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

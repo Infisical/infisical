@@ -12,7 +12,7 @@ const PamAccountsPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/accounts"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/accounts"
 )({
   validateSearch: zodValidator(PamAccountsPageQueryParamsSchema),
   search: {
@@ -26,7 +26,7 @@ export const Route = createFileRoute(
         {
           label: "Accounts",
           link: linkOptions({
-            to: "/projects/pam/$projectId/accounts",
+            to: "/organizations/$orgId/projects/pam/$projectId/accounts",
             params: () => params as never,
             search: (prev) => ({ ...prev, accountPath: "/" })
           })
@@ -36,7 +36,7 @@ export const Route = createFileRoute(
           return {
             label: segment,
             link: linkOptions({
-              to: "/projects/pam/$projectId/accounts",
+              to: "/organizations/$orgId/projects/pam/$projectId/accounts",
               params: () => params as never,
               search: (prev) => ({ ...prev, accountPath: newPath })
             })

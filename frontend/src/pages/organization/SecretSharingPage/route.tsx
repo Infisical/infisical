@@ -9,7 +9,7 @@ const SecretSharingQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/secret-sharing/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing/"
 )({
   component: SecretSharingPage,
 

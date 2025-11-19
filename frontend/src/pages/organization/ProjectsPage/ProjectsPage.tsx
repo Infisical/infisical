@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
@@ -27,6 +28,17 @@ import { ProjectListView } from "./components/ProjectListToggle";
 
 export const ProjectsPage = () => {
   const { t } = useTranslation();
+  const matches = useMatches();
+
+  const hasChildRoute = matches.some(
+    (match) =>
+      match.pathname.includes("/secret-management/") ||
+      match.pathname.includes("/cert-management/") ||
+      match.pathname.includes("/kms/") ||
+      match.pathname.includes("/pam/") ||
+      match.pathname.includes("/ssh/") ||
+      match.pathname.includes("/secret-scanning/")
+  );
 
   const [projectListView, setProjectListView] = useState<ProjectListView>(() => {
     const storedView = localStorage.getItem("projectListView");
@@ -56,6 +68,10 @@ export const ProjectsPage = () => {
   const isAddingProjectsAllowed = subscription?.workspaceLimit
     ? subscription.workspacesUsed < subscription.workspaceLimit
     : true;
+
+  if (hasChildRoute) {
+    return <Outlet />;
+  }
 
   return (
     <div className="mx-auto flex max-w-8xl flex-col justify-start bg-bunker-800">

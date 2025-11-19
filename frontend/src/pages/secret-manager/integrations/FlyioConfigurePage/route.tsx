@@ -11,7 +11,7 @@ const FlyioConfigurePageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/flyio/create"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/flyio/create"
 )({
   component: FlyioConfigurePage,
   validateSearch: zodValidator(FlyioConfigurePageQueryParamsSchema),
@@ -22,7 +22,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/secret-management/$projectId/integrations",
+            to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

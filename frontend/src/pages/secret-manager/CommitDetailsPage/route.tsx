@@ -12,7 +12,7 @@ const CommitDetailsPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/commits/$environment/$folderId/$commitId/"
 )({
   component: CommitDetailsPage,
   validateSearch: zodValidator(CommitDetailsPageQueryParamsSchema),
@@ -33,8 +33,9 @@ export const Route = createFileRoute(
           links: context.project.environments.map((el) => ({
             label: el.name,
             link: linkOptions({
-              to: "/projects/secret-management/$projectId/secrets/$envSlug",
+              to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
               params: {
+                orgId: params.orgId,
                 projectId: params.projectId,
                 envSlug: el.slug
               }
@@ -56,8 +57,9 @@ export const Route = createFileRoute(
         {
           label: "Commits",
           link: linkOptions({
-            to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
+            to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
             params: {
+              orgId: params.orgId,
               projectId: params.projectId,
               environment: params.environment,
               folderId: params.folderId
