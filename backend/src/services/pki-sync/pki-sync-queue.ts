@@ -236,13 +236,15 @@ export const pkiSyncQueueFactory = ({
             }
 
             let certificateChain: string | undefined;
+            let caCertificate: string | undefined;
             try {
               if (certBody.encryptedCertificateChain) {
                 const decryptedCertChain = await kmsDecryptor({
                   cipherTextBlob: certBody.encryptedCertificateChain
                 });
                 certificateChain = decryptedCertChain.toString();
-              } else if (certificate.caCertId) {
+              }
+              if (certificate.caCertId) {
                 const { caCert, caCertChain } = await getCaCertChain({
                   caCertId: certificate.caCertId,
                   certificateAuthorityDAL,
@@ -250,7 +252,10 @@ export const pkiSyncQueueFactory = ({
                   projectDAL,
                   kmsService
                 });
-                certificateChain = `${caCert}\n${caCertChain}`.trim();
+                if (!certBody.encryptedCertificateChain) {
+                  certificateChain = `${caCert}\n${caCertChain}`.trim();
+                }
+                caCertificate = caCert;
               }
             } catch (chainError) {
               logger.warn(
@@ -259,6 +264,7 @@ export const pkiSyncQueueFactory = ({
               );
               // Continue without certificate chain
               certificateChain = undefined;
+              caCertificate = undefined;
             }
 
             let certificateName: string;
@@ -298,6 +304,7 @@ export const pkiSyncQueueFactory = ({
               cert: certificatePem,
               privateKey: certPrivateKey || "",
               certificateChain,
+              caCertificate,
               alternativeNames,
               certificateId: certificate.id
             };

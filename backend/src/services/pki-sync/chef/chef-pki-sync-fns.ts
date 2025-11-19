@@ -139,6 +139,7 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       cert: string;
       privateKey: string;
       certificateChain?: string;
+      caCertificate?: string;
       certificateId: string;
       isUpdate: boolean;
       targetItemName: string;
@@ -150,15 +151,32 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
     const validationErrors: Array<{ name: string; error: string }> = [];
 
     const syncOptions = pkiSync.syncOptions as
-      | { canRemoveCertificates?: boolean; preserveItemOnRenewal?: boolean }
+      | {
+          canRemoveCertificates?: boolean;
+          preserveItemOnRenewal?: boolean;
+          fieldMappings?: {
+            certificate?: string;
+            privateKey?: string;
+            certificateChain?: string;
+            caCertificate?: string;
+            metadata?: string;
+          };
+        }
       | undefined;
     const canRemoveCertificates = syncOptions?.canRemoveCertificates ?? true;
     const preserveItemOnRenewal = syncOptions?.preserveItemOnRenewal ?? true;
 
+    const fieldMappings = {
+      certificate: syncOptions?.fieldMappings?.certificate ?? "certificate",
+      privateKey: syncOptions?.fieldMappings?.privateKey ?? "private_key",
+      certificateChain: syncOptions?.fieldMappings?.certificateChain ?? "certificate_chain",
+      caCertificate: syncOptions?.fieldMappings?.caCertificate ?? "ca_certificate"
+    };
+
     const activeExternalIdentifiers = new Set<string>();
 
     for (const [certName, certData] of Object.entries(certificateMap)) {
-      const { cert, privateKey: certPrivateKey, certificateChain, certificateId } = certData;
+      const { cert, privateKey: certPrivateKey, certificateChain, caCertificate, certificateId } = certData;
 
       if (!cert || cert.trim().length === 0) {
         validationErrors.push({
@@ -218,6 +236,7 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
         cert,
         privateKey: certPrivateKey,
         certificateChain,
+        caCertificate,
         certificateId,
         isUpdate,
         targetItemName,
@@ -240,18 +259,17 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
         cert,
         privateKey: certPrivateKey,
         certificateChain,
-        certificateId,
-        isUpdate
+        caCertificate,
+        certificateId
       } = certificateData;
 
       try {
         const chefDataBagItem: ChefCertificateDataBagItem = {
           id: targetItemName,
-          certificate: cert,
-          private_key: certPrivateKey,
-          ...(certificateChain && { certificate_chain: certificateChain }),
-          ...(isUpdate ? {} : { created_at: new Date().toISOString() }),
-          updated_at: new Date().toISOString()
+          [fieldMappings.certificate]: cert,
+          [fieldMappings.privateKey]: certPrivateKey,
+          ...(certificateChain && { [fieldMappings.certificateChain]: certificateChain }),
+          ...(caCertificate && { [fieldMappings.caCertificate]: caCertificate })
         };
 
         const itemExists = chefDataBagItems[targetItemName] === true;

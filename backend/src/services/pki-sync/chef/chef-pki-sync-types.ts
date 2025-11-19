@@ -3,6 +3,7 @@ import { z } from "zod";
 import { TChefConnection } from "@app/ee/services/app-connections/chef/chef-connection-types";
 
 import {
+  ChefFieldMappingsSchema,
   ChefPkiSyncConfigSchema,
   ChefPkiSyncSchema,
   CreateChefPkiSyncSchema,
@@ -10,6 +11,8 @@ import {
 } from "./chef-pki-sync-schemas";
 
 export type TChefPkiSyncConfig = z.infer<typeof ChefPkiSyncConfigSchema>;
+
+export type TChefFieldMappings = z.infer<typeof ChefFieldMappingsSchema>;
 
 export type TChefPkiSync = z.infer<typeof ChefPkiSyncSchema>;
 
@@ -23,16 +26,7 @@ export type TChefPkiSyncWithCredentials = TChefPkiSync & {
 
 export interface ChefCertificateDataBagItem {
   id: string;
-  certificate: string;
-  private_key: string;
-  certificate_chain?: string;
-  common_name?: string;
-  alternative_names?: string;
-  serial_number?: string;
-  not_before?: string;
-  not_after?: string;
-  created_at?: string;
-  updated_at?: string;
+  [key: string]: string;
 }
 
 export interface SyncCertificatesResult {

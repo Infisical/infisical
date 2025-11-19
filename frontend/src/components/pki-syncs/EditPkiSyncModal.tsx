@@ -15,11 +15,13 @@ type Props = {
 export const EditPkiSyncModal = ({ pkiSync, onOpenChange, fields, ...props }: Props) => {
   if (!pkiSync) return null;
 
+  const modalClassName = fields === PkiSyncEditFields.Mappings ? "max-w-4xl" : "max-w-2xl";
+
   return (
     <Modal {...props} onOpenChange={onOpenChange}>
       <ModalContent
         title={<PkiSyncModalHeader isConfigured destination={pkiSync.destination} />}
-        className="max-w-2xl"
+        className={modalClassName}
         bodyClassName="overflow-visible"
       >
         <EditPkiSyncForm onComplete={() => onOpenChange(false)} fields={fields} pkiSync={pkiSync} />

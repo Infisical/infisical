@@ -19,6 +19,13 @@ export const ChefPkiSyncConfigSchema = z.object({
     )
 });
 
+const ChefFieldMappingsSchema = z.object({
+  certificate: z.string().min(1, "Certificate field name is required").default("certificate"),
+  privateKey: z.string().min(1, "Private key field name is required").default("private_key"),
+  certificateChain: z.string().min(1, "Certificate chain field name is required").default("certificate_chain"),
+  caCertificate: z.string().min(1, "CA certificate field name is required").default("ca_certificate")
+});
+
 const ChefPkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
@@ -57,7 +64,13 @@ const ChefPkiSyncOptionsSchema = z.object({
         message:
           "Certificate item name schema must include {{certificateId}} placeholder and result in names that contain only alphanumeric characters, underscores, and hyphens and be 1-255 characters long for Chef data bag items."
       }
-    )
+    ),
+  fieldMappings: ChefFieldMappingsSchema.optional().default({
+    certificate: "certificate",
+    privateKey: "private_key",
+    certificateChain: "certificate_chain",
+    caCertificate: "ca_certificate"
+  })
 });
 
 export const ChefPkiSyncSchema = PkiSyncSchema.extend({
@@ -95,3 +108,5 @@ export const ChefPkiSyncListItemSchema = z.object({
   canImportCertificates: z.literal(false),
   canRemoveCertificates: z.literal(true)
 });
+
+export { ChefFieldMappingsSchema };

@@ -4,6 +4,19 @@ import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 
+const ChefFieldMappingsSchema = z.object({
+  certificate: z.string().min(1, "Certificate field name is required").default("certificate"),
+  privateKey: z.string().min(1, "Private key field name is required").default("private_key"),
+  certificateChain: z
+    .string()
+    .min(1, "Certificate chain field name is required")
+    .default("certificate_chain"),
+  caCertificate: z
+    .string()
+    .min(1, "CA certificate field name is required")
+    .default("ca_certificate")
+});
+
 const ChefSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
@@ -44,7 +57,13 @@ const ChefSyncOptionsSchema = z.object({
         message:
           "Certificate item name schema must include exactly one {{certificateId}} placeholder. It can also include {{environment}}, {{profileId}}, {{commonName}}, or {{friendlyName}} placeholders. Only alphanumeric characters (a-z, A-Z, 0-9), hyphens (-), and underscores (_) are allowed besides the placeholders."
       }
-    )
+    ),
+  fieldMappings: ChefFieldMappingsSchema.optional().default({
+    certificate: "certificate",
+    privateKey: "private_key",
+    certificateChain: "certificate_chain",
+    caCertificate: "ca_certificate"
+  })
 });
 
 export const ChefPkiSyncDestinationSchema = BasePkiSyncSchema(ChefSyncOptionsSchema).merge(

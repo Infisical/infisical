@@ -41,40 +41,54 @@ Any role with these permissions would work such as a custom role with **Data Bag
             - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
             - **Preserve Data Bag Item on Renewal**: Only applies to certificate renewals. When a certificate is renewed in Infisical, this option controls how the renewed certificate is handled. If enabled, the renewed certificate will update the existing data bag item, preserving the same item name. If disabled, the renewed certificate will be created as a new data bag item with a new name.
             - **Update Existing Certificates**: If enabled, Infisical will update existing data bag items when certificate content changes.
-            - **Certificate Name Schema** (Optional): Customize how certificate item names are generated in Chef data bags. Use `{{certificateId}}` as a placeholder for the certificate ID. Available placeholders: `{{certificateId}}`, `{{profileId}}`, `{{commonName}}`, `{{friendlyName}}`, `{{environment}}`. If not specified, defaults to `{{certificateId}}`.
+            - **Certificate Name Schema** (Optional): Customize how certificate item names are generated in Chef data bags. Use `{{certificateId}}` as a placeholder for the certificate ID.
             - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
 
+        5. Configure the **Field Mappings** to customize how certificate data is stored in Chef data bag items, then click **Next**.
+        ![Configure Field Mappings](/images/platform/pki/certificate-syncs/chef/chef-field-mappings.png)
+
+            - **Certificate Field**: The field name where the certificate will be stored in the data bag item (default: `certificate`)
+            - **Private Key Field**: The field name where the private key will be stored in the data bag item (default: `private_key`)
+            - **Certificate Chain Field**: The field name where the full certificate chain will be stored in the data bag item (default: `certificate_chain`)
+            - **CA Certificate Field**: The field name where the CA certificate will be stored in the data bag item (default: `ca_certificate`)
+
         <Tip>
-            **Chef Data Bag Item Structure**: Certificates are stored in Chef data bags as items with the following structure:
+            **Chef Data Bag Item Structure**: Certificates are stored in Chef data bags as items with the following structure (field names can be customized via field mappings):
             ```json
             {
               "id": "certificate-item-name",
               "certificate": "-----BEGIN CERTIFICATE-----\n...",
               "private_key": "-----BEGIN PRIVATE KEY-----\n...",
               "certificate_chain": "-----BEGIN CERTIFICATE-----\n...",
-              "metadata": {
-                "common_name": "example.com",
-                "serial_number": "1234567890",
-                "not_before": "2023-01-01T00:00:00Z",
-                "not_after": "2024-01-01T00:00:00Z"
-              }
+              "ca_certificate": "-----BEGIN CERTIFICATE-----\n..."
+            }
+            ```
+
+            **Example with Custom Field Mappings**:
+            ```json
+            {
+              "id": "certificate-item-name",
+              "ssl_cert": "-----BEGIN CERTIFICATE-----\n...",
+              "ssl_key": "-----BEGIN PRIVATE KEY-----\n...",
+              "ssl_chain": "-----BEGIN CERTIFICATE-----\n...",
+              "ssl_ca": "-----BEGIN CERTIFICATE-----\n..."
             }
             ```
         </Tip>
 
-        5. Configure the **Details** of your Chef Certificate Sync, then click **Next**.
+        6. Configure the **Details** of your Chef Certificate Sync, then click **Next**.
         ![Configure Details](/images/platform/pki/certificate-syncs/chef/chef-details.png)
 
             - **Name**: The name of your sync. Must be slug-friendly.
             - **Description**: An optional description for your sync.
 
-        6. Select which certificates should be synced to Chef.
+        7. Select which certificates should be synced to Chef.
         ![Select Certificates](/images/platform/pki/certificate-syncs/chef/chef-certificates.png)
 
-        7. Review your Chef Certificate Sync configuration, then click **Create Sync**.
+        8. Review your Chef Certificate Sync configuration, then click **Create Sync**.
         ![Confirm Configuration](/images/platform/pki/certificate-syncs/chef/chef-review.png)
 
-        8. If enabled, your Chef Certificate Sync will begin syncing your certificates to the destination endpoint.
+        9. If enabled, your Chef Certificate Sync will begin syncing your certificates to the destination endpoint.
         ![Sync Certificates](/images/platform/pki/certificate-syncs/chef/chef-synced.png)
     </Tab>
     <Tab title="API">
@@ -105,14 +119,50 @@ Any role with these permissions would work such as a custom role with **Data Bag
             ],
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "preserveItemOnRenewal": true,
-                "updateExistingCertificates": true,
+                "preserveArn": true,
+                "canImportCertificates": false,
                 "certificateNameSchema": "myapp-{{certificateId}}",
-                "includeMetadata": true,
-                "encryptDataBag": true
+                "fieldMappings": {
+                    "certificate": "ssl_cert",
+                    "privateKey": "ssl_key",
+                    "certificateChain": "ssl_chain",
+                    "caCertificate": "ssl_ca"
+                }
             },
             "destinationConfig": {
                 "dataBagName": "ssl_certificates"
+            }
+        }'
+        ```
+
+        ### Example with Default Field Mappings
+
+        ```bash Request
+        curl --request POST \
+        --url https://app.infisical.com/api/v1/pki/syncs/chef \
+        --header 'Authorization: Bearer <access-token>' \
+        --header 'Content-Type: application/json' \
+        --data '{
+            "name": "my-chef-cert-sync-default",
+            "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "description": "Chef sync with default field mappings",
+            "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
+            "destination": "chef",
+            "isAutoSyncEnabled": true,
+            "syncOptions": {
+                "canRemoveCertificates": true,
+                "preserveArn": true,
+                "canImportCertificates": false,
+                "certificateNameSchema": "{{commonName}}-{{certificateId}}",
+                "fieldMappings": {
+                    "certificate": "certificate",
+                    "privateKey": "private_key",
+                    "certificateChain": "certificate_chain",
+                    "caCertificate": "ca_certificate"
+                }
+            },
+            "destinationConfig": {
+                "dataBagName": "certificates"
             }
         }'
         ```
@@ -132,11 +182,15 @@ Any role with these permissions would work such as a custom role with **Data Bag
                 },
                 "syncOptions": {
                     "canRemoveCertificates": true,
-                    "preserveItemOnRenewal": true,
-                    "updateExistingCertificates": true,
+                    "preserveArn": true,
+                    "canImportCertificates": false,
                     "certificateNameSchema": "myapp-{{certificateId}}",
-                    "includeMetadata": true,
-                    "encryptDataBag": true
+                    "fieldMappings": {
+                        "certificate": "ssl_cert",
+                        "privateKey": "ssl_key",
+                        "certificateChain": "ssl_chain",
+                        "caCertificate": "ssl_ca"
+                    }
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
                 "connectionId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",
@@ -153,11 +207,12 @@ Any role with these permissions would work such as a custom role with **Data Bag
 
 Your Chef Certificate Sync will:
 
-- **Automatic Deployment**: Deploy certificates in Infisical to Chef data bags.
+- **Automatic Deployment**: Deploy certificates in Infisical to Chef data bags with customizable field names
 - **Certificate Updates**: Update certificates in Chef data bags when renewals occur
 - **Expiration Handling**: Optionally remove expired certificates from Chef data bags (if enabled)
-- **Format Preservation**: Maintain certificate format and metadata during sync operations
-- **Data Bag Encryption**: Support Chef's encrypted data bag functionality for secure storage
+- **Format Preservation**: Maintain certificate format during sync operations
+- **Field Customization**: Map certificate data to custom field names that match your Chef cookbook requirements
+- **CA Certificate Support**: Include CA certificates in data bag items for complete certificate chain management
 
 <Note>
   Chef Certificate Syncs support both automatic and manual
