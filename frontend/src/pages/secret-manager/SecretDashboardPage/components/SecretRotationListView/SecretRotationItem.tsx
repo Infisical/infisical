@@ -253,6 +253,7 @@ export const SecretRotationItem = ({
           isProtectedBranch={isProtectedBranch}
           importedBy={importedBy}
           usedBySecretSyncs={usedBySecretSyncs}
+          excludePendingCreates
         />
       )}
       <Modal onOpenChange={setShowSecrets} isOpen={showSecrets}>
