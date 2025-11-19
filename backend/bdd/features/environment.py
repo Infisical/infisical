@@ -3,6 +3,7 @@ import os
 
 import pathlib
 import typing
+from copy import deepcopy
 
 import httpx
 from behave.runner import Context
