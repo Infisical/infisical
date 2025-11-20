@@ -39,6 +39,8 @@ import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/ro
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
+import { Route as redirectsProjectRedirectImport } from './pages/redirects/project-redirect'
+import { Route as redirectsOrganizationRedirectImport } from './pages/redirects/organization-redirect'
 import { Route as adminLayoutImport } from './pages/admin/layout'
 import { Route as authProviderSuccessPageRouteImport } from './pages/auth/ProviderSuccessPage/route'
 import { Route as authProviderErrorPageRouteImport } from './pages/auth/ProviderErrorPage/route'
@@ -56,6 +58,15 @@ import { Route as organizationNetworkingPageRouteImport } from './pages/organiza
 import { Route as organizationBillingPageRouteImport } from './pages/organization/BillingPage/route'
 import { Route as organizationAuditLogsPageRouteImport } from './pages/organization/AuditLogsPage/route'
 import { Route as organizationAccessManagementPageRouteImport } from './pages/organization/AccessManagementPage/route'
+import { Route as secretManagerIntegrationsRouteVercelOauthRedirectImport } from './pages/secret-manager/integrations/route-vercel-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteNetlifyOauthRedirectImport } from './pages/secret-manager/integrations/route-netlify-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteHerokuOauthRedirectImport } from './pages/secret-manager/integrations/route-heroku-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGitlabOauthRedirectImport } from './pages/secret-manager/integrations/route-gitlab-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGithubOauthRedirectImport } from './pages/secret-manager/integrations/route-github-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from './pages/secret-manager/integrations/route-gcp-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
+import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
 import { Route as organizationRoleByIDPageRouteImport } from './pages/organization/RoleByIDPage/route'
 import { Route as organizationUserDetailsByIDPageRouteImport } from './pages/organization/UserDetailsByIDPage/route'
 import { Route as organizationIdentityDetailsByIDPageRouteImport } from './pages/organization/IdentityDetailsByIDPage/route'
@@ -71,15 +82,6 @@ import { Route as secretManagerLayoutImport } from './pages/secret-manager/layou
 import { Route as pamLayoutImport } from './pages/pam/layout'
 import { Route as kmsLayoutImport } from './pages/kms/layout'
 import { Route as certManagerLayoutImport } from './pages/cert-manager/layout'
-import { Route as secretManagerIntegrationsRouteVercelOauthRedirectImport } from './pages/secret-manager/integrations/route-vercel-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteNetlifyOauthRedirectImport } from './pages/secret-manager/integrations/route-netlify-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteHerokuOauthRedirectImport } from './pages/secret-manager/integrations/route-heroku-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteGitlabOauthRedirectImport } from './pages/secret-manager/integrations/route-gitlab-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteGithubOauthRedirectImport } from './pages/secret-manager/integrations/route-github-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteGcpOauthRedirectImport } from './pages/secret-manager/integrations/route-gcp-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteBitbucketOauthRedirectImport } from './pages/secret-manager/integrations/route-bitbucket-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-key-vault-oauth-redirect'
-import { Route as secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport } from './pages/secret-manager/integrations/route-azure-app-configurations-oauth-redirect'
 import { Route as organizationAppConnectionsOauthCallbackPageRouteImport } from './pages/organization/AppConnections/OauthCallbackPage/route'
 import { Route as projectAuditLogsPageRouteSshImport } from './pages/project/AuditLogsPage/route-ssh'
 import { Route as projectAccessControlPageRouteSshImport } from './pages/project/AccessControlPage/route-ssh'
@@ -251,6 +253,9 @@ const AuthenticatePersonalSettingsImport = createFileRoute(
 const AuthenticateInjectOrgDetailsAdminImport = createFileRoute(
   '/_authenticate/_inject-org-details/admin',
 )()
+const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport = createFileRoute(
+  '/_authenticate/_inject-org-details/_org-layout/integrations',
+)()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId',
@@ -262,10 +267,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsImport =
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing',
-  )()
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport =
-  createFileRoute(
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport =
   createFileRoute(
@@ -509,8 +510,8 @@ const adminSignUpPageRouteRoute = adminSignUpPageRouteImport.update({
 
 const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
   {
-    id: '/organization/none',
-    path: '/organization/none',
+    id: '/organizations/none',
+    path: '/organizations/none',
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any,
 )
@@ -527,10 +528,30 @@ const authLoginPageRouteRoute = authLoginPageRouteImport.update({
   getParentRoute: () => RestrictLoginSignupLoginRoute,
 } as any)
 
+const redirectsProjectRedirectRoute = redirectsProjectRedirectImport.update({
+  id: '/projects/$',
+  path: '/projects/$',
+  getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+} as any)
+
+const redirectsOrganizationRedirectRoute =
+  redirectsOrganizationRedirectImport.update({
+    id: '/organization/$',
+    path: '/organization/$',
+    getParentRoute: () => middlewaresInjectOrgDetailsRoute,
+  } as any)
+
 const adminLayoutRoute = adminLayoutImport.update({
   id: '/_admin-layout',
   getParentRoute: () => AuthenticateInjectOrgDetailsAdminRoute,
 } as any)
+
+const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => organizationLayoutRoute,
+  } as any)
 
 const authProviderSuccessPageRouteRoute =
   authProviderSuccessPageRouteImport.update({
@@ -625,16 +646,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRoute 
     } as any,
   )
 
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport.update(
-    {
-      id: '/integrations',
-      path: '/integrations',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
-    } as any,
-  )
-
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute =
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport.update(
     {
@@ -699,6 +710,80 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjec
       path: '/secret-manager/$projectId',
       getParentRoute: () =>
         AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
+    } as any,
+  )
+
+const secretManagerIntegrationsRouteVercelOauthRedirectRoute =
+  secretManagerIntegrationsRouteVercelOauthRedirectImport.update({
+    id: '/vercel/oauth2/callback',
+    path: '/vercel/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteNetlifyOauthRedirectRoute =
+  secretManagerIntegrationsRouteNetlifyOauthRedirectImport.update({
+    id: '/netlify/oauth2/callback',
+    path: '/netlify/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteHerokuOauthRedirectRoute =
+  secretManagerIntegrationsRouteHerokuOauthRedirectImport.update({
+    id: '/heroku/oauth2/callback',
+    path: '/heroku/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGitlabOauthRedirectRoute =
+  secretManagerIntegrationsRouteGitlabOauthRedirectImport.update({
+    id: '/gitlab/oauth2/callback',
+    path: '/gitlab/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGithubOauthRedirectRoute =
+  secretManagerIntegrationsRouteGithubOauthRedirectImport.update({
+    id: '/github/oauth2/callback',
+    path: '/github/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteGcpOauthRedirectRoute =
+  secretManagerIntegrationsRouteGcpOauthRedirectImport.update({
+    id: '/gcp-secret-manager/oauth2/callback',
+    path: '/gcp-secret-manager/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteBitbucketOauthRedirectRoute =
+  secretManagerIntegrationsRouteBitbucketOauthRedirectImport.update({
+    id: '/bitbucket/oauth2/callback',
+    path: '/bitbucket/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute =
+  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport.update({
+    id: '/azure-key-vault/oauth2/callback',
+    path: '/azure-key-vault/oauth2/callback',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
+  } as any)
+
+const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
+  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport.update(
+    {
+      id: '/azure-app-configuration/oauth2/callback',
+      path: '/azure-app-configuration/oauth2/callback',
+      getParentRoute: () =>
+        AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute,
     } as any,
   )
 
@@ -863,80 +948,6 @@ const certManagerLayoutRoute = certManagerLayoutImport.update({
   getParentRoute: () =>
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRoute,
 } as any)
-
-const secretManagerIntegrationsRouteVercelOauthRedirectRoute =
-  secretManagerIntegrationsRouteVercelOauthRedirectImport.update({
-    id: '/vercel/oauth2/callback',
-    path: '/vercel/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteNetlifyOauthRedirectRoute =
-  secretManagerIntegrationsRouteNetlifyOauthRedirectImport.update({
-    id: '/netlify/oauth2/callback',
-    path: '/netlify/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteHerokuOauthRedirectRoute =
-  secretManagerIntegrationsRouteHerokuOauthRedirectImport.update({
-    id: '/heroku/oauth2/callback',
-    path: '/heroku/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteGitlabOauthRedirectRoute =
-  secretManagerIntegrationsRouteGitlabOauthRedirectImport.update({
-    id: '/gitlab/oauth2/callback',
-    path: '/gitlab/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteGithubOauthRedirectRoute =
-  secretManagerIntegrationsRouteGithubOauthRedirectImport.update({
-    id: '/github/oauth2/callback',
-    path: '/github/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteGcpOauthRedirectRoute =
-  secretManagerIntegrationsRouteGcpOauthRedirectImport.update({
-    id: '/gcp-secret-manager/oauth2/callback',
-    path: '/gcp-secret-manager/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteBitbucketOauthRedirectRoute =
-  secretManagerIntegrationsRouteBitbucketOauthRedirectImport.update({
-    id: '/bitbucket/oauth2/callback',
-    path: '/bitbucket/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute =
-  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport.update({
-    id: '/azure-key-vault/oauth2/callback',
-    path: '/azure-key-vault/oauth2/callback',
-    getParentRoute: () =>
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-  } as any)
-
-const secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute =
-  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport.update(
-    {
-      id: '/azure-app-configuration/oauth2/callback',
-      path: '/azure-app-configuration/oauth2/callback',
-      getParentRoute: () =>
-        AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute,
-    } as any,
-  )
 
 const organizationAppConnectionsOauthCallbackPageRouteRoute =
   organizationAppConnectionsOauthCallbackPageRouteImport.update({
@@ -2320,10 +2331,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
     }
-    '/_authenticate/organization/none': {
-      id: '/_authenticate/organization/none'
-      path: '/organization/none'
-      fullPath: '/organization/none'
+    '/_authenticate/organizations/none': {
+      id: '/_authenticate/organizations/none'
+      path: '/organizations/none'
+      fullPath: '/organizations/none'
       preLoaderRoute: typeof organizationNoOrgPageRouteImport
       parentRoute: typeof middlewaresAuthenticateImport
     }
@@ -2425,12 +2436,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authProviderSuccessPageRouteImport
       parentRoute: typeof RestrictLoginSignupLoginImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/integrations': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+      parentRoute: typeof organizationLayoutImport
+    }
     '/_authenticate/_inject-org-details/admin/_admin-layout': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout'
       path: ''
       fullPath: '/admin'
       preLoaderRoute: typeof adminLayoutImport
       parentRoute: typeof AuthenticateInjectOrgDetailsAdminImport
+    }
+    '/_authenticate/_inject-org-details/organization/$': {
+      id: '/_authenticate/_inject-org-details/organization/$'
+      path: '/organization/$'
+      fullPath: '/organization/$'
+      preLoaderRoute: typeof redirectsOrganizationRedirectImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
+    }
+    '/_authenticate/_inject-org-details/projects/$': {
+      id: '/_authenticate/_inject-org-details/projects/$'
+      path: '/projects/$'
+      fullPath: '/projects/$'
+      preLoaderRoute: typeof redirectsProjectRedirectImport
+      parentRoute: typeof middlewaresInjectOrgDetailsImport
     }
     '/_authenticate/_inject-org-details/admin/_admin-layout/': {
       id: '/_authenticate/_inject-org-details/admin/_admin-layout/'
@@ -2537,13 +2569,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
     }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations'
-      path: '/integrations'
-      fullPath: '/organizations/$orgId/integrations'
-      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
-    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing'
       path: '/secret-sharing'
@@ -2606,6 +2631,69 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/roles/$roleId'
       preLoaderRoute: typeof organizationRoleByIDPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
+      path: '/azure-app-configuration/oauth2/callback'
+      fullPath: '/integrations/azure-app-configuration/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
+      path: '/azure-key-vault/oauth2/callback'
+      fullPath: '/integrations/azure-key-vault/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
+      path: '/bitbucket/oauth2/callback'
+      fullPath: '/integrations/bitbucket/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback'
+      path: '/gcp-secret-manager/oauth2/callback'
+      fullPath: '/integrations/gcp-secret-manager/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback'
+      path: '/github/oauth2/callback'
+      fullPath: '/integrations/github/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback'
+      path: '/gitlab/oauth2/callback'
+      fullPath: '/integrations/gitlab/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback'
+      path: '/heroku/oauth2/callback'
+      fullPath: '/integrations/heroku/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback'
+      path: '/netlify/oauth2/callback'
+      fullPath: '/integrations/netlify/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback': {
+      id: '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback'
+      path: '/vercel/oauth2/callback'
+      fullPath: '/integrations/vercel/oauth2/callback'
+      preLoaderRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId'
@@ -2676,69 +2764,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
       preLoaderRoute: typeof organizationAppConnectionsOauthCallbackPageRouteImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback'
-      path: '/azure-app-configuration/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback'
-      path: '/azure-key-vault/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/azure-key-vault/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback'
-      path: '/bitbucket/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/bitbucket/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback'
-      path: '/gcp-secret-manager/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback'
-      path: '/github/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/github/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback'
-      path: '/gitlab/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/gitlab/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback'
-      path: '/heroku/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/heroku/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback'
-      path: '/netlify/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/netlify/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
-    }
-    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback': {
-      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback'
-      path: '/vercel/oauth2/callback'
-      fullPath: '/organizations/$orgId/integrations/vercel/oauth2/callback'
-      preLoaderRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectImport
-      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout'
@@ -3928,6 +3953,45 @@ declare module '@tanstack/react-router' {
 
 // Create and export the route tree
 
+interface AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren {
+  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  secretManagerIntegrationsRouteBitbucketOauthRedirectRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  secretManagerIntegrationsRouteGcpOauthRedirectRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  secretManagerIntegrationsRouteGithubOauthRedirectRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  secretManagerIntegrationsRouteGitlabOauthRedirectRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  secretManagerIntegrationsRouteHerokuOauthRedirectRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  secretManagerIntegrationsRouteNetlifyOauthRedirectRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  secretManagerIntegrationsRouteVercelOauthRedirectRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+}
+
+const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren =
+  {
+    secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute:
+      secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute,
+    secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute:
+      secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute,
+    secretManagerIntegrationsRouteBitbucketOauthRedirectRoute:
+      secretManagerIntegrationsRouteBitbucketOauthRedirectRoute,
+    secretManagerIntegrationsRouteGcpOauthRedirectRoute:
+      secretManagerIntegrationsRouteGcpOauthRedirectRoute,
+    secretManagerIntegrationsRouteGithubOauthRedirectRoute:
+      secretManagerIntegrationsRouteGithubOauthRedirectRoute,
+    secretManagerIntegrationsRouteGitlabOauthRedirectRoute:
+      secretManagerIntegrationsRouteGitlabOauthRedirectRoute,
+    secretManagerIntegrationsRouteHerokuOauthRedirectRoute:
+      secretManagerIntegrationsRouteHerokuOauthRedirectRoute,
+    secretManagerIntegrationsRouteNetlifyOauthRedirectRoute:
+      secretManagerIntegrationsRouteNetlifyOauthRedirectRoute,
+    secretManagerIntegrationsRouteVercelOauthRedirectRoute:
+      secretManagerIntegrationsRouteVercelOauthRedirectRoute,
+  }
+
+const AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren =
+  AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute._addFileChildren(
+    AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteChildren,
+  )
+
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdCertManagerLayoutCertificateTemplatesRouteChildren {
   certManagerPkiTemplateListPageRouteRoute: typeof certManagerPkiTemplateListPageRouteRoute
 }
@@ -4676,45 +4740,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteChildren,
   )
 
-interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteChildren {
-  secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
-  secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute: typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
-  secretManagerIntegrationsRouteBitbucketOauthRedirectRoute: typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
-  secretManagerIntegrationsRouteGcpOauthRedirectRoute: typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
-  secretManagerIntegrationsRouteGithubOauthRedirectRoute: typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
-  secretManagerIntegrationsRouteGitlabOauthRedirectRoute: typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
-  secretManagerIntegrationsRouteHerokuOauthRedirectRoute: typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
-  secretManagerIntegrationsRouteNetlifyOauthRedirectRoute: typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
-  secretManagerIntegrationsRouteVercelOauthRedirectRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
-}
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteChildren: AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteChildren =
-  {
-    secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute:
-      secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute,
-    secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute:
-      secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute,
-    secretManagerIntegrationsRouteBitbucketOauthRedirectRoute:
-      secretManagerIntegrationsRouteBitbucketOauthRedirectRoute,
-    secretManagerIntegrationsRouteGcpOauthRedirectRoute:
-      secretManagerIntegrationsRouteGcpOauthRedirectRoute,
-    secretManagerIntegrationsRouteGithubOauthRedirectRoute:
-      secretManagerIntegrationsRouteGithubOauthRedirectRoute,
-    secretManagerIntegrationsRouteGitlabOauthRedirectRoute:
-      secretManagerIntegrationsRouteGitlabOauthRedirectRoute,
-    secretManagerIntegrationsRouteHerokuOauthRedirectRoute:
-      secretManagerIntegrationsRouteHerokuOauthRedirectRoute,
-    secretManagerIntegrationsRouteNetlifyOauthRedirectRoute:
-      secretManagerIntegrationsRouteNetlifyOauthRedirectRoute,
-    secretManagerIntegrationsRouteVercelOauthRedirectRoute:
-      secretManagerIntegrationsRouteVercelOauthRedirectRoute,
-  }
-
-const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren =
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute._addFileChildren(
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteChildren,
-  )
-
 interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteChildren {
   organizationSecretSharingPageRouteRoute: typeof organizationSecretSharingPageRouteRoute
 }
@@ -4769,7 +4794,6 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren {
   organizationNetworkingPageRouteRoute: typeof organizationNetworkingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
-  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
   organizationGroupDetailsByIDPageRouteRoute: typeof organizationGroupDetailsByIDPageRouteRoute
@@ -4790,8 +4814,6 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren: Auth
       organizationProjectsPageRouteRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren,
-    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRoute:
-      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute:
@@ -4813,10 +4835,13 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren =
   )
 
 interface organizationLayoutRouteChildren {
+  AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren
 }
 
 const organizationLayoutRouteChildren: organizationLayoutRouteChildren = {
+  AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRoute:
+    AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren,
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute:
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteWithChildren,
 }
@@ -4867,6 +4892,8 @@ const AuthenticateInjectOrgDetailsAdminRouteWithChildren =
 interface middlewaresInjectOrgDetailsRouteChildren {
   organizationLayoutRoute: typeof organizationLayoutRouteWithChildren
   AuthenticateInjectOrgDetailsAdminRoute: typeof AuthenticateInjectOrgDetailsAdminRouteWithChildren
+  redirectsOrganizationRedirectRoute: typeof redirectsOrganizationRedirectRoute
+  redirectsProjectRedirectRoute: typeof redirectsProjectRedirectRoute
 }
 
 const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRouteChildren =
@@ -4874,6 +4901,8 @@ const middlewaresInjectOrgDetailsRouteChildren: middlewaresInjectOrgDetailsRoute
     organizationLayoutRoute: organizationLayoutRouteWithChildren,
     AuthenticateInjectOrgDetailsAdminRoute:
       AuthenticateInjectOrgDetailsAdminRouteWithChildren,
+    redirectsOrganizationRedirectRoute: redirectsOrganizationRedirectRoute,
+    redirectsProjectRedirectRoute: redirectsProjectRedirectRoute,
   }
 
 const middlewaresInjectOrgDetailsRouteWithChildren =
@@ -5016,7 +5045,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
-  '/organization/none': typeof organizationNoOrgPageRouteRoute
+  '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
@@ -5029,6 +5058,9 @@ export interface FileRoutesByFullPath {
   '/personal-settings/': typeof userPersonalSettingsPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
+  '/organization/$': typeof redirectsOrganizationRedirectRoute
+  '/projects/$': typeof redirectsProjectRedirectRoute
   '/admin/': typeof adminGeneralPageRouteRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
@@ -5044,7 +5076,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
   '/organizations/$orgId/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
-  '/organizations/$orgId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren
   '/organizations/$orgId/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   '/organizations/$orgId/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
   '/organizations/$orgId/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
@@ -5054,6 +5085,15 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
@@ -5064,15 +5104,6 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
-  '/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
-  '/organizations/$orgId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
-  '/organizations/$orgId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
-  '/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
-  '/organizations/$orgId/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
-  '/organizations/$orgId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
-  '/organizations/$orgId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
-  '/organizations/$orgId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
-  '/organizations/$orgId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organizations/$orgId/projects/cert-management/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId/policies': typeof certManagerPoliciesPageRouteRoute
@@ -5253,7 +5284,7 @@ export interface FileRoutesByTo {
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
-  '/organization/none': typeof organizationNoOrgPageRouteRoute
+  '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
   '/login/ldap': typeof authLoginLdapPageRouteRoute
@@ -5265,6 +5296,9 @@ export interface FileRoutesByTo {
   '/admin': typeof adminGeneralPageRouteRoute
   '/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
+  '/organization/$': typeof redirectsOrganizationRedirectRoute
+  '/projects/$': typeof redirectsProjectRedirectRoute
   '/admin/access-management': typeof adminAccessManagementPageRouteRoute
   '/admin/authentication': typeof adminAuthenticationPageRouteRoute
   '/admin/caching': typeof adminCachingPageRouteRoute
@@ -5278,7 +5312,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/networking': typeof organizationNetworkingPageRouteRoute
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
-  '/organizations/$orgId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren
   '/organizations/$orgId/app-connections': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organizations/$orgId/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/settings': typeof organizationSettingsPageRouteRoute
@@ -5286,6 +5319,15 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
@@ -5296,15 +5338,6 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/projects/ssh/$projectId': typeof sshLayoutRouteWithChildren
   '/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
-  '/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
-  '/organizations/$orgId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
-  '/organizations/$orgId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
-  '/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
-  '/organizations/$orgId/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
-  '/organizations/$orgId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
-  '/organizations/$orgId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
-  '/organizations/$orgId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
-  '/organizations/$orgId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/organizations/$orgId/projects/cert-management/$projectId/alerting': typeof certManagerAlertingPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities': typeof certManagerCertificateAuthoritiesPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId/policies': typeof certManagerPoliciesPageRouteRoute
@@ -5482,7 +5515,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
-  '/_authenticate/organization/none': typeof organizationNoOrgPageRouteRoute
+  '/_authenticate/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
   '/_restrict-login-signup/login/ldap': typeof authLoginLdapPageRouteRoute
@@ -5497,7 +5530,10 @@ export interface FileRoutesById {
   '/_authenticate/personal-settings/_layout/': typeof userPersonalSettingsPageRouteRoute
   '/_restrict-login-signup/login/provider/error': typeof authProviderErrorPageRouteRoute
   '/_restrict-login-signup/login/provider/success': typeof authProviderSuccessPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout': typeof adminLayoutRouteWithChildren
+  '/_authenticate/_inject-org-details/organization/$': typeof redirectsOrganizationRedirectRoute
+  '/_authenticate/_inject-org-details/projects/$': typeof redirectsProjectRedirectRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/': typeof adminGeneralPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/access-management': typeof adminAccessManagementPageRouteRoute
   '/_authenticate/_inject-org-details/admin/_admin-layout/authentication': typeof adminAuthenticationPageRouteRoute
@@ -5513,7 +5549,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdIntegrationsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
@@ -5523,6 +5558,15 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/identities/$identityId': typeof organizationIdentityDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/members/$membershipId': typeof organizationUserDetailsByIDPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId': typeof organizationRoleByIDPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRouteWithChildren
@@ -5533,15 +5577,6 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval': typeof secretManagerRedirectsRedirectApprovalPageRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback': typeof organizationAppConnectionsOauthCallbackPageRouteRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback': typeof secretManagerIntegrationsRouteAzureAppConfigurationsOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback': typeof secretManagerIntegrationsRouteAzureKeyVaultOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback': typeof secretManagerIntegrationsRouteBitbucketOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback': typeof secretManagerIntegrationsRouteGcpOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback': typeof secretManagerIntegrationsRouteGithubOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback': typeof secretManagerIntegrationsRouteGitlabOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
-  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout': typeof certManagerLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout': typeof kmsLayoutRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout': typeof pamLayoutRouteWithChildren
@@ -5732,7 +5767,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/login/'
     | '/signup/'
-    | '/organization/none'
+    | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
@@ -5745,6 +5780,9 @@ export interface FileRouteTypes {
     | '/personal-settings/'
     | '/login/provider/error'
     | '/login/provider/success'
+    | '/integrations'
+    | '/organization/$'
+    | '/projects/$'
     | '/admin/'
     | '/admin/access-management'
     | '/admin/authentication'
@@ -5760,7 +5798,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects'
     | '/admin/resources/overview'
     | '/organizations/$orgId/app-connections'
-    | '/organizations/$orgId/integrations'
     | '/organizations/$orgId/secret-sharing'
     | '/organizations/$orgId/settings'
     | '/organizations/$orgId/app-connections/'
@@ -5770,6 +5807,15 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/identities/$identityId'
     | '/organizations/$orgId/members/$membershipId'
     | '/organizations/$orgId/roles/$roleId'
+    | '/integrations/azure-app-configuration/oauth2/callback'
+    | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/bitbucket/oauth2/callback'
+    | '/integrations/gcp-secret-manager/oauth2/callback'
+    | '/integrations/github/oauth2/callback'
+    | '/integrations/gitlab/oauth2/callback'
+    | '/integrations/heroku/oauth2/callback'
+    | '/integrations/netlify/oauth2/callback'
+    | '/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId'
@@ -5780,15 +5826,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
-    | '/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback'
-    | '/organizations/$orgId/integrations/azure-key-vault/oauth2/callback'
-    | '/organizations/$orgId/integrations/bitbucket/oauth2/callback'
-    | '/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback'
-    | '/organizations/$orgId/integrations/github/oauth2/callback'
-    | '/organizations/$orgId/integrations/gitlab/oauth2/callback'
-    | '/organizations/$orgId/integrations/heroku/oauth2/callback'
-    | '/organizations/$orgId/integrations/netlify/oauth2/callback'
-    | '/organizations/$orgId/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId/alerting'
     | '/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-management/$projectId/policies'
@@ -5968,7 +6005,7 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
-    | '/organization/none'
+    | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
     | '/login/ldap'
@@ -5980,6 +6017,9 @@ export interface FileRouteTypes {
     | '/admin'
     | '/login/provider/error'
     | '/login/provider/success'
+    | '/integrations'
+    | '/organization/$'
+    | '/projects/$'
     | '/admin/access-management'
     | '/admin/authentication'
     | '/admin/caching'
@@ -5993,7 +6033,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/networking'
     | '/organizations/$orgId/projects'
     | '/admin/resources/overview'
-    | '/organizations/$orgId/integrations'
     | '/organizations/$orgId/app-connections'
     | '/organizations/$orgId/secret-sharing'
     | '/organizations/$orgId/settings'
@@ -6001,6 +6040,15 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/identities/$identityId'
     | '/organizations/$orgId/members/$membershipId'
     | '/organizations/$orgId/roles/$roleId'
+    | '/integrations/azure-app-configuration/oauth2/callback'
+    | '/integrations/azure-key-vault/oauth2/callback'
+    | '/integrations/bitbucket/oauth2/callback'
+    | '/integrations/gcp-secret-manager/oauth2/callback'
+    | '/integrations/github/oauth2/callback'
+    | '/integrations/gitlab/oauth2/callback'
+    | '/integrations/heroku/oauth2/callback'
+    | '/integrations/netlify/oauth2/callback'
+    | '/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId'
@@ -6011,15 +6059,6 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/projects/ssh/$projectId'
     | '/organizations/$orgId/secret-manager/$projectId/approval'
     | '/organizations/$orgId/app-connections/$appConnection/oauth/callback'
-    | '/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback'
-    | '/organizations/$orgId/integrations/azure-key-vault/oauth2/callback'
-    | '/organizations/$orgId/integrations/bitbucket/oauth2/callback'
-    | '/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback'
-    | '/organizations/$orgId/integrations/github/oauth2/callback'
-    | '/organizations/$orgId/integrations/gitlab/oauth2/callback'
-    | '/organizations/$orgId/integrations/heroku/oauth2/callback'
-    | '/organizations/$orgId/integrations/netlify/oauth2/callback'
-    | '/organizations/$orgId/integrations/vercel/oauth2/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId/alerting'
     | '/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities'
     | '/organizations/$orgId/projects/cert-management/$projectId/policies'
@@ -6195,7 +6234,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
-    | '/_authenticate/organization/none'
+    | '/_authenticate/organizations/none'
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
     | '/_restrict-login-signup/login/ldap'
@@ -6210,7 +6249,10 @@ export interface FileRouteTypes {
     | '/_authenticate/personal-settings/_layout/'
     | '/_restrict-login-signup/login/provider/error'
     | '/_restrict-login-signup/login/provider/success'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations'
     | '/_authenticate/_inject-org-details/admin/_admin-layout'
+    | '/_authenticate/_inject-org-details/organization/$'
+    | '/_authenticate/_inject-org-details/projects/$'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/access-management'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/authentication'
@@ -6226,7 +6268,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/'
@@ -6236,6 +6277,15 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/identities/$identityId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/members/$membershipId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId'
@@ -6246,15 +6296,6 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/ssh/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId/approval'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback'
-    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout'
@@ -6490,7 +6531,7 @@ export const routeTree = rootRoute
         "/_authenticate/password-setup",
         "/_authenticate/_inject-org-details",
         "/_authenticate/personal-settings",
-        "/_authenticate/organization/none"
+        "/_authenticate/organizations/none"
       ]
     },
     "/_restrict-login-signup": {
@@ -6535,7 +6576,9 @@ export const routeTree = rootRoute
       "parent": "/_authenticate",
       "children": [
         "/_authenticate/_inject-org-details/_org-layout",
-        "/_authenticate/_inject-org-details/admin"
+        "/_authenticate/_inject-org-details/admin",
+        "/_authenticate/_inject-org-details/organization/$",
+        "/_authenticate/_inject-org-details/projects/$"
       ]
     },
     "/_authenticate/personal-settings": {
@@ -6574,7 +6617,7 @@ export const routeTree = rootRoute
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
     },
-    "/_authenticate/organization/none": {
+    "/_authenticate/organizations/none": {
       "filePath": "organization/NoOrgPage/route.tsx",
       "parent": "/_authenticate"
     },
@@ -6612,6 +6655,7 @@ export const routeTree = rootRoute
       "filePath": "organization/layout.tsx",
       "parent": "/_authenticate/_inject-org-details",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/integrations",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
       ]
     },
@@ -6641,6 +6685,21 @@ export const routeTree = rootRoute
       "filePath": "auth/ProviderSuccessPage/route.tsx",
       "parent": "/_restrict-login-signup/login"
     },
+    "/_authenticate/_inject-org-details/_org-layout/integrations": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout",
+      "children": [
+        "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback",
+        "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback"
+      ]
+    },
     "/_authenticate/_inject-org-details/admin/_admin-layout": {
       "filePath": "admin/layout.tsx",
       "parent": "/_authenticate/_inject-org-details/admin",
@@ -6654,6 +6713,14 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/admin/_admin-layout/integrations",
         "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview"
       ]
+    },
+    "/_authenticate/_inject-org-details/organization/$": {
+      "filePath": "redirects/organization-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details"
+    },
+    "/_authenticate/_inject-org-details/projects/$": {
+      "filePath": "redirects/project-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details"
     },
     "/_authenticate/_inject-org-details/admin/_admin-layout/": {
       "filePath": "admin/GeneralPage/route.tsx",
@@ -6693,7 +6760,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/groups/$groupId",
@@ -6743,21 +6809,6 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback"
       ]
     },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations": {
-      "filePath": "",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId",
-      "children": [
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback",
-        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback"
-      ]
-    },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing": {
       "filePath": "",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId",
@@ -6800,6 +6851,42 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId": {
       "filePath": "organization/RoleByIDPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/azure-app-configuration/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-azure-app-configurations-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/azure-key-vault/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-azure-key-vault-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/bitbucket/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-bitbucket-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/gcp-secret-manager/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-gcp-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/github/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-github-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/gitlab/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-gitlab-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-heroku-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-netlify-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback": {
+      "filePath": "secret-manager/integrations/route-vercel-oauth-redirect.tsx",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId": {
       "filePath": "",
@@ -6861,42 +6948,6 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/$appConnection/oauth/callback": {
       "filePath": "organization/AppConnections/OauthCallbackPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-app-configuration/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-azure-app-configurations-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/azure-key-vault/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-azure-key-vault-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/bitbucket/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-bitbucket-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gcp-secret-manager/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-gcp-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/github/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-github-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/gitlab/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-gitlab-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/heroku/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-heroku-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/netlify/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-netlify-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
-    },
-    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback": {
-      "filePath": "secret-manager/integrations/route-vercel-oauth-redirect.tsx",
-      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout": {
       "filePath": "cert-manager/layout.tsx",

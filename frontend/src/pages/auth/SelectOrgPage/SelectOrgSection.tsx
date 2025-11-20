@@ -222,7 +222,7 @@ export const SelectOrganizationSection = () => {
     // Case: User has no organizations.
     // This can happen if the user was previously a member, but the organization was deleted or the user was removed.
     if (organizations.data.length === 0) {
-      navigate({ to: "/organization/none" });
+      navigate({ to: "/organizations/none" });
     } else if (organizations.data.length === 1) {
       if (callbackPort) {
         handleCliRedirect();

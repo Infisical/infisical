@@ -248,7 +248,7 @@ const secretManagerRoutes = route("/organizations/$orgId/projects/secret-managem
   ])
 ]);
 
-const secretManagerIntegrationsRedirect = route("/organizations/$orgId/integrations", [
+const secretManagerIntegrationsRedirect = route("/integrations", [
   route("/heroku/oauth2/callback", "secret-manager/integrations/route-heroku-oauth-redirect.tsx"),
   route(
     "/gcp-secret-manager/oauth2/callback",
@@ -425,8 +425,10 @@ export const routes = rootRoute("root.tsx", [
     route("/personal-settings", [
       layout("user/layout.tsx", [index("user/PersonalSettingsPage/route.tsx")])
     ]),
-    route("/organization/none", "organization/NoOrgPage/route.tsx"),
+    route("/organizations/none", "organization/NoOrgPage/route.tsx"),
     middleware("inject-org-details.tsx", [
+      route("/organization/$", "redirects/organization-redirect.tsx"),
+      route("/projects/$", "redirects/project-redirect.tsx"),
       adminRoute,
       layout("org-layout", "organization/layout.tsx", [
         organizationRoutes,

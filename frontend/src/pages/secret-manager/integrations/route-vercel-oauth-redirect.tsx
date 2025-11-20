@@ -7,10 +7,11 @@ import { localStorageService } from "@app/helpers/localStorage";
 import { VercelOAuthCallbackPageQueryParamsSchema } from "./VercelOauthCallbackPage/route";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/integrations/vercel/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback"
 )({
   validateSearch: zodValidator(VercelOAuthCallbackPageQueryParamsSchema),
-  beforeLoad: ({ search, params }) => {
+  beforeLoad: ({ context, search }) => {
+    const orgId = context.organizationId;
     const projectId = localStorageService.getIintegrationProjectId();
     if (!projectId) {
       createNotification({
@@ -20,12 +21,12 @@ export const Route = createFileRoute(
       });
       throw redirect({
         to: "/organizations/$orgId/projects",
-        params: { orgId: params.orgId }
+        params: { orgId }
       });
     }
     throw redirect({
       to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/vercel/oauth2/callback",
-      params: { orgId: params.orgId, projectId },
+      params: { orgId, projectId },
       search
     });
   }
