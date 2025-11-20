@@ -40,6 +40,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
 
             - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
             - **Preserve Data Bag Item on Renewal**: Only applies to certificate renewals. When a certificate is renewed in Infisical, this option controls how the renewed certificate is handled. If enabled, the renewed certificate will update the existing data bag item, preserving the same item name. If disabled, the renewed certificate will be created as a new data bag item with a new name.
+            - **Include Root CA**: If enabled, the Root CA certificate will be included in the certificate chain when syncing to Chef data bags. If disabled, only intermediate certificates will be included.
             - **Certificate Name Schema** (Optional): Customize how certificate item names are generated in Chef data bags. Use `{{certificateId}}` as a placeholder for the certificate ID.
             - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
 
@@ -120,6 +121,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
                 "canRemoveCertificates": true,
                 "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
+                "includeRootCa": false,
                 "certificateNameSchema": "myapp-{{certificateId}}",
                 "fieldMappings": {
                     "certificate": "ssl_cert",
@@ -152,6 +154,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
                 "canRemoveCertificates": true,
                 "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
+                "includeRootCa": false,
                 "certificateNameSchema": "{{commonName}}-{{certificateId}}",
                 "fieldMappings": {
                     "certificate": "certificate",
@@ -183,6 +186,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
                     "canRemoveCertificates": true,
                     "preserveSecretOnRenewal": true,
                     "canImportCertificates": false,
+                    "includeRootCa": false,
                     "certificateNameSchema": "myapp-{{certificateId}}",
                     "fieldMappings": {
                         "certificate": "ssl_cert",
