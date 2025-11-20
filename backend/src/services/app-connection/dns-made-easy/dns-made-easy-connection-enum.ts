@@ -1,3 +1,3 @@
 export enum DNSMadeEasyConnectionMethod {
-  APIKey = "api-key"
+  APIKeySecret = "api-key-secret"
 }

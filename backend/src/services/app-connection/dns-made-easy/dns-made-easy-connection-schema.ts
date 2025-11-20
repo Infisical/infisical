@@ -21,13 +21,13 @@ const BaseDNSMadeEasyConnectionSchema = BaseAppConnectionSchema.extend({
 });
 
 export const DNSMadeEasyConnectionSchema = BaseDNSMadeEasyConnectionSchema.extend({
-  method: z.literal(DNSMadeEasyConnectionMethod.APIKey),
+  method: z.literal(DNSMadeEasyConnectionMethod.APIKeySecret),
   credentials: DNSMadeEasyConnectionApiKeyCredentialsSchema
 });
 
 export const SanitizedDNSMadeEasyConnectionSchema = z.discriminatedUnion("method", [
   BaseDNSMadeEasyConnectionSchema.extend({
-    method: z.literal(DNSMadeEasyConnectionMethod.APIKey),
+    method: z.literal(DNSMadeEasyConnectionMethod.APIKeySecret),
     credentials: DNSMadeEasyConnectionApiKeyCredentialsSchema.pick({ apiKey: true })
   }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.DNSMadeEasy]} (API Key)` }))
 ]);
@@ -35,7 +35,7 @@ export const SanitizedDNSMadeEasyConnectionSchema = z.discriminatedUnion("method
 export const ValidateDNSMadeEasyConnectionCredentialsSchema = z.discriminatedUnion("method", [
   z.object({
     method: z
-      .literal(DNSMadeEasyConnectionMethod.APIKey)
+      .literal(DNSMadeEasyConnectionMethod.APIKeySecret)
       .describe(AppConnections.CREATE(AppConnection.DNSMadeEasy).method),
     credentials: DNSMadeEasyConnectionApiKeyCredentialsSchema.describe(
       AppConnections.CREATE(AppConnection.DNSMadeEasy).credentials
