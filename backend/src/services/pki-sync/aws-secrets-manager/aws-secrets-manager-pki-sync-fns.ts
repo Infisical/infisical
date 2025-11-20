@@ -3,7 +3,6 @@
 import {
   CreateSecretCommand,
   DeleteSecretCommand,
-  GetSecretValueCommand,
   ListSecretsCommand,
   SecretsManagerClient,
   UpdateSecretCommand
@@ -553,82 +552,9 @@ export const awsSecretsManagerPkiSyncFactory = ({
     return { removed, failed };
   };
 
-  const importCertificates = async (pkiSync: TPkiSyncWithCredentials): Promise<TCertificateMap> => {
-    const awsPkiSync = pkiSync as unknown as TAwsSecretsManagerPkiSyncWithCredentials;
-    const client = await getSecretsManagerClient(awsPkiSync);
-
-    const existingSecrets = await $getSecretsManagerSecrets(awsPkiSync, pkiSync.id);
-    const certificateMap: TCertificateMap = {};
-
-    const syncOptions = pkiSync.syncOptions as
-      | {
-          fieldMappings?: {
-            certificate?: string;
-            privateKey?: string;
-            certificateChain?: string;
-            caCertificate?: string;
-          };
-        }
-      | undefined;
-    const fieldMappings = {
-      certificate: syncOptions?.fieldMappings?.certificate ?? "certificate",
-      privateKey: syncOptions?.fieldMappings?.privateKey ?? "private_key",
-      certificateChain: syncOptions?.fieldMappings?.certificateChain ?? "certificate_chain",
-      caCertificate: syncOptions?.fieldMappings?.caCertificate ?? "ca_certificate"
-    };
-
-    for (const [secretName] of Object.entries(existingSecrets)) {
-      try {
-        const secretValueResult = await withRateLimitRetry(
-          () =>
-            client.send(
-              new GetSecretValueCommand({
-                SecretId: secretName
-              })
-            ),
-          {
-            operation: "get-secret-value",
-            syncId: pkiSync.id
-          }
-        );
-
-        if (secretValueResult.SecretString) {
-          const secretData = JSON.parse(secretValueResult.SecretString) as AwsSecretsManagerCertificateSecret;
-
-          const cert = secretData[fieldMappings.certificate];
-          const privateKey = secretData[fieldMappings.privateKey];
-          const certificateChain = secretData[fieldMappings.certificateChain];
-          const caCertificate = secretData[fieldMappings.caCertificate];
-
-          if (typeof cert === "string" && typeof privateKey === "string") {
-            certificateMap[secretName] = {
-              cert,
-              privateKey,
-              certificateChain: typeof certificateChain === "string" ? certificateChain : undefined,
-              caCertificate: typeof caCertificate === "string" ? caCertificate : undefined,
-              certificateId: secretName
-            };
-          }
-        }
-      } catch (error) {
-        logger.error(
-          {
-            secretName,
-            error: parseErrorMessage(error),
-            pkiSyncId: pkiSync.id
-          },
-          "Failed to import certificate from secret"
-        );
-      }
-    }
-
-    return certificateMap;
-  };
-
   return {
     syncCertificates,
-    removeCertificates,
-    importCertificates
+    removeCertificates
   };
 };
 

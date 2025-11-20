@@ -184,12 +184,7 @@ export const PkiSyncFns = {
         );
       }
       case PkiSync.AwsSecretsManager: {
-        checkPkiSyncDestination(pkiSync, PkiSync.AwsSecretsManager as PkiSync);
-        const awsSecretsManagerPkiSync = awsSecretsManagerPkiSyncFactory({
-          certificateDAL: dependencies.certificateDAL,
-          certificateSyncDAL: dependencies.certificateSyncDAL
-        });
-        return awsSecretsManagerPkiSync.importCertificates(pkiSync);
+        throw new Error("AWS Secrets Manager does not support importing certificates into Infisical");
       }
       case PkiSync.Chef: {
         throw new Error(
