@@ -14,14 +14,13 @@ This guide walks through how you can use these paid features on a self-hosted in
         Once purchased, you will be issued a license key.
     </Step>
     <Step title="Activate the license">
-        Depending on whether or not the environment where Infisical is deployed has internet access, you may be issued a regular license or an offline license.
+        Set your license key as the value of the **LICENSE_KEY** environment variable within your Infisical instance.
 
-        
         <Tabs>
             <Tab title="Regular License">
             - Assign the issued license key to the `LICENSE_KEY` environment variable in your Infisical instance.
 
-            - Your Infisical instance will need to communicate with the Infisical license server to validate the license key. 
+            - Your Infisical instance will need to communicate with the Infisical license server to validate the license key.
             If you want to limit outgoing connections only to the Infisical license server, you can use the following IP addresses: `13.248.249.247` and `35.71.190.59`
 
             <Note>
@@ -29,16 +28,18 @@ This guide walks through how you can use these paid features on a self-hosted in
             </Note>
             </Tab>
             <Tab title="Offline License">
-            - Assign the issued license key to the `LICENSE_KEY_OFFLINE` environment variable in your Infisical instance.
+            - Assign the issued offline license key to the `LICENSE_KEY` environment variable in your Infisical instance.
+
+            - The system will automatically detect that it's an offline license based on the key format.
 
             <Note>
-                How you set the environment variable will depend on the deployment method you used. Please refer to the documentation of your deployment method for specific instructions.
+                While the LICENSE_KEY_OFFLINE environment variable continues to be supported for compatibility with existing configurations, we recommend transitioning to LICENSE_KEY for all license types going forward.
             </Note>
             </Tab>
         </Tabs>
 
-        Once your instance starts up, the license key will be validated and you’ll be able to use the paid features. 
+        Once your instance starts up, the license key will be validated and you'll be able to use the paid features.
         However, when the license expires, Infisical will continue to run, but EE features will be disabled until the license is renewed or a new one is purchased.
     </Step>
-</Steps>
 
+</Steps>

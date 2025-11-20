@@ -24,7 +24,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@app/*": ["./src/*"]
+      "@app/*": ["./src/*"],
+      "@bdd_routes/*": ["./src/server/routes/bdd/*"]
     },
     "jsx": "react-jsx"
   },

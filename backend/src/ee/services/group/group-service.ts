@@ -24,6 +24,7 @@ import {
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
+  TListGroupProjectsDTO,
   TListGroupUsersDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
@@ -34,7 +35,14 @@ type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
   groupDAL: Pick<
     TGroupDALFactory,
-    "create" | "findOne" | "update" | "delete" | "findAllGroupPossibleMembers" | "findById" | "transaction"
+    | "create"
+    | "findOne"
+    | "update"
+    | "delete"
+    | "findAllGroupPossibleMembers"
+    | "findById"
+    | "transaction"
+    | "findAllGroupProjects"
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find" | "findOne" | "create">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create" | "delete">;
@@ -367,6 +375,55 @@ export const groupServiceFactory = ({
     return { users: members, totalCount };
   };
 
+  const listGroupProjects = async ({
+    id,
+    offset,
+    limit,
+    search,
+    filter,
+    orderBy,
+    orderDirection,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListGroupProjectsDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { projects, totalCount } = await groupDAL.findAllGroupProjects({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      filter,
+      orderBy,
+      orderDirection
+    });
+
+    return { projects, totalCount };
+  };
+
   const addUserToGroup = async ({ id, username, actor, actorId, actorAuthMethod, actorOrgId }: TAddUserToGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
@@ -535,6 +592,7 @@ export const groupServiceFactory = ({
     updateGroup,
     deleteGroup,
     listGroupUsers,
+    listGroupProjects,
     addUserToGroup,
     removeUserFromGroup,
     getGroupById

@@ -768,7 +768,9 @@
                 "pages": [
                   "documentation/platform/pki/certificate-syncs/overview",
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                  "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                  "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
+                  "documentation/platform/pki/certificate-syncs/azure-key-vault",
+                  "documentation/platform/pki/certificate-syncs/chef"
                 ]
               },
               {
@@ -2645,6 +2647,18 @@
                     ]
                   },
                   {
+                    "group": "AWS Secrets Manager",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/list",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/create",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/update",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/delete",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/remove-certificates"
+                    ]
+                  },
+                  {
                     "group": "Azure Key Vault",
                     "pages": [
                       "api-reference/endpoints/pki/syncs/azure-key-vault/list",
@@ -2654,6 +2668,18 @@
                       "api-reference/endpoints/pki/syncs/azure-key-vault/delete",
                       "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
                       "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
+                    ]
+                  },
+                  {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/chef/list",
+                      "api-reference/endpoints/pki/syncs/chef/get-by-id",
+                      "api-reference/endpoints/pki/syncs/chef/create",
+                      "api-reference/endpoints/pki/syncs/chef/update",
+                      "api-reference/endpoints/pki/syncs/chef/delete",
+                      "api-reference/endpoints/pki/syncs/chef/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/chef/remove-certificates"
                     ]
                   }
                 ]

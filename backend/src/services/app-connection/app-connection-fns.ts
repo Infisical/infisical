@@ -171,7 +171,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.AWS,
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
-  AppConnection.AzureKeyVault
+  AppConnection.AzureKeyVault,
+  AppConnection.Chef
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
