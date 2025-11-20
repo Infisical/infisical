@@ -26,6 +26,7 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
+import { extractRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -255,7 +256,7 @@ export const pkiSyncQueueFactory = ({
                 if (!certBody.encryptedCertificateChain) {
                   certificateChain = `${caCert}\n${caCertChain}`.trim();
                 }
-                caCertificate = caCert;
+                caCertificate = certificateChain ? extractRootCaFromChain(certificateChain) : caCert;
               }
             } catch (chainError) {
               logger.warn(

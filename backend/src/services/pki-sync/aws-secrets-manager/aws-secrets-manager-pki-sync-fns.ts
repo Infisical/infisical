@@ -17,6 +17,7 @@ import { AWSRegion } from "@app/services/app-connection/app-connection-enums";
 import { getAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-fns";
 import { TAwsConnectionConfig } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { removeRootCaFromChain } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
@@ -262,7 +263,10 @@ export const awsSecretsManagerPkiSyncFactory = ({
       };
 
       if (certificateChain && certificateChain.trim().length > 0) {
-        certificateData[fieldMappings.certificateChain] = certificateChain;
+        const processedCertificateChain = removeRootCaFromChain(certificateChain);
+        if (processedCertificateChain.trim().length > 0) {
+          certificateData[fieldMappings.certificateChain] = processedCertificateChain;
+        }
       }
 
       if (caCertificate && typeof caCertificate === "string" && caCertificate.trim().length > 0) {

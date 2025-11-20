@@ -10,6 +10,7 @@ import {
 import { TChefDataBagItemContent } from "@app/ee/services/secret-sync/chef";
 import { logger } from "@app/lib/logger";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
+import { removeRootCaFromChain } from "@app/services/certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "@app/services/certificate-sync/certificate-sync-enums";
 import { createConnectionQueue, RateLimitConfig } from "@app/services/connection-queue";
@@ -264,11 +265,13 @@ export const chefPkiSyncFactory = ({ certificateDAL, certificateSyncDAL }: TChef
       } = certificateData;
 
       try {
+        const processedCertificateChain = certificateChain ? removeRootCaFromChain(certificateChain) : undefined;
+
         const chefDataBagItem: ChefCertificateDataBagItem = {
           id: targetItemName,
           [fieldMappings.certificate]: cert,
           [fieldMappings.privateKey]: certPrivateKey,
-          ...(certificateChain && { [fieldMappings.certificateChain]: certificateChain }),
+          ...(processedCertificateChain && { [fieldMappings.certificateChain]: processedCertificateChain }),
           ...(caCertificate && { [fieldMappings.caCertificate]: caCertificate })
         };
 
