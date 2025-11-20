@@ -1,6 +1,8 @@
 {
-  "watch": ["src"],
+  "watch": [
+    "src"
+  ],
   "ext": ".ts,.js",
   "ignore": [],
-  "exec": "tsx ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine"
+  "exec": "tsx --tsconfig=./tsconfig.dev.json --inspect=0.0.0.0:9229 ./src/main.ts | pino-pretty --colorize --colorizeObjects --singleLine"
 }

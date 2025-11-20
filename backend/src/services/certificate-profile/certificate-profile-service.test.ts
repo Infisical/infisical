@@ -430,7 +430,10 @@ describe("CertificateProfileService", () => {
           projectId: "project-123",
           data: {
             ...validProfileData,
-            enrollmentType: EnrollmentType.ACME
+            enrollmentType: EnrollmentType.ACME,
+            acmeConfig: {},
+            apiConfig: undefined,
+            estConfig: undefined
           }
         })
       ).rejects.toThrowError(

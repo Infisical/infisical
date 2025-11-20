@@ -4,6 +4,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { RelayDeploymentMethodSelect } from "@app/pages/organization/NetworkingPage/components/RelayTab/components/RelayDeploymentMethodSelect";
 
 import { RelayCliDeploymentMethod } from "./RelayCliDeploymentMethod";
+import { RelayCliSystemdDeploymentMethod } from "./RelayCliSystemdDeploymentMethod";
 import { RelayTerraformDeploymentMethod } from "./RelayTerraformDeploymentMethod";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 
 export const RelayDeploymentInfoMap = {
   cli: { name: "CLI", image: "SSH.png", component: RelayCliDeploymentMethod },
+  systemd: { name: "CLI (systemd)", image: "SSH.png", component: RelayCliSystemdDeploymentMethod },
   terraform: {
     name: "Terraform",
     image: "Terraform.png",

@@ -242,8 +242,8 @@ const Page = withPermission(
                 )}
               </div>
             </PageHeader>
-            <div className="flex">
-              <div className="mr-4 w-96">
+            <div className="flex flex-col gap-4 md:flex-row">
+              <div className="w-full md:w-96">
                 <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               </div>
               <div className="w-full space-y-2">

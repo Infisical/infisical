@@ -387,6 +387,9 @@ def register_account_with_eab(
 ):
     acme_client = context.acme_client
     account_public_key = acme_client.net.key.public_key()
+    if not only_return_existing:
+        # clear the account in case if we want to register twice
+        acme_client.net.account = None
     if hasattr(context, "alt_eab_url"):
         eab_directory = messages.Directory.from_json(
             {"newAccount": context.alt_eab_url}
@@ -406,8 +409,14 @@ def register_account_with_eab(
         only_return_existing=only_return_existing,
     )
     try:
-        context.vars[account_var] = acme_client.new_account(registration)
+        if not only_return_existing:
+            context.vars[account_var] = acme_client.new_account(registration)
+        else:
+            context.vars[account_var] = acme_client.query_registration(
+                acme_client.net.account
+            )
     except Exception as exp:
+        logger.error(f"Failed to register: {exp}", exc_info=True)
         context.vars["error"] = exp
 
 
@@ -432,6 +441,17 @@ def step_impl(context: Context, email: str, kid: str, secret: str, account_var: 
         account_var=account_var,
         only_return_existing=True,
     )
+
+
+@then("I find the existing ACME account without EAB as {account_var}")
+def step_impl(context: Context, account_var: str):
+    acme_client = context.acme_client
+    # registration = messages.RegistrationResource.from_json(dict(uri=""))
+    registration = acme_client.net.account
+    try:
+        context.vars[account_var] = acme_client.query_registration(registration)
+    except Exception as exp:
+        context.vars["error"] = exp
 
 
 @then("I register a new ACME account with email {email} without EAB")
@@ -600,6 +620,19 @@ def step_impl(context: Context, var_path: str, jq_query: str):
     )
 
 
+@then("the value {var_path} with should be absent")
+def step_impl(context: Context, var_path: str):
+    try:
+        value = eval_var(context, var_path)
+    except Exception as exp:
+        if isinstance(exp, KeyError):
+            return
+        raise
+    assert False, (
+        f"value at {var_path!r} should be absent, but we got this instead: {value!r}"
+    )
+
+
 @then('the value {var_path} with jq "{jq_query}" should be equal to {expected}')
 def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
     value, result = apply_value_with_jq(
@@ -615,13 +648,14 @@ def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
 
 @then('the value {var_path} with jq "{jq_query}" should match pattern {regex}')
 def step_impl(context: Context, var_path: str, jq_query: str, regex: str):
+    actual_regex = replace_vars(regex, context.vars)
     value, result = apply_value_with_jq(
         context=context,
         var_path=var_path,
         jq_query=jq_query,
     )
-    assert re.match(replace_vars(regex, context.vars), result), (
-        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {regex!r}"
+    assert re.match(actual_regex, result), (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {actual_regex!r}"
     )
 
 

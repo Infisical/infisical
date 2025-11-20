@@ -116,8 +116,8 @@ const Page = () => {
               )}
             </div>
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
+          <div className="flex flex-col gap-4 md:flex-row">
+            <div className="w-full md:w-96">
               <IdentityDetailsSection
                 isOrgIdentity={data.identity.orgId === currentOrg.id}
                 identityId={identityId}

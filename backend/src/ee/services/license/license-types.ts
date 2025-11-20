@@ -136,3 +136,18 @@ export type TDelOrgTaxIdDTO = TOrgPermission & { taxId: string };
 export type TOrgInvoiceDTO = TOrgPermission;
 
 export type TOrgLicensesDTO = TOrgPermission;
+
+export enum LicenseType {
+  Offline = "offline",
+  Online = "online"
+}
+
+export type TLicenseKeyConfig =
+  | {
+      isValid: false;
+    }
+  | {
+      isValid: true;
+      licenseKey: string;
+      type: LicenseType;
+    };

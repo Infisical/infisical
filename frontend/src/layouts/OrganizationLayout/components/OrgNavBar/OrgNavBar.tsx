@@ -21,7 +21,7 @@ export const OrgNavBar = ({ isHidden }: Props) => {
   return (
     <>
       {!isHidden && (
-        <div className="dark hidden w-full flex-col overflow-x-hidden border-b border-mineshaft-600 bg-mineshaft-900 px-4 md:flex">
+        <div className="dark flex w-full flex-col overflow-x-hidden border-b border-mineshaft-600 bg-mineshaft-900 px-4">
           <motion.div
             key="menu-org-items"
             initial={{ x: -150 }}

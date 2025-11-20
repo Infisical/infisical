@@ -9,6 +9,9 @@ Feature: Directory
       {
         "newNonce": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-nonce",
         "newAccount": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-account",
-        "newOrder": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order"
+        "newOrder": "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order",
+        "meta": {
+          "externalAccountRequired": true
+        }
       }
       """

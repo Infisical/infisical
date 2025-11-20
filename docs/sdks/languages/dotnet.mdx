@@ -118,6 +118,22 @@ var _ = await sdk.Auth().UniversalAuth().LoginAsync(
 - `clientId` (string): The client ID of your Machine Identity.
 - `clientSecret` (string): The client secret of your Machine Identity.
 
+### LDAP Auth
+
+#### Authenticating
+```cs
+var _ = await sdk.Auth().LdapAuth().LoginAsync(
+  "IDENTITY_ID",
+  "USERNAME",
+  "PASSWORD"
+);
+```
+
+**Parameters:**
+- `identityId` (string): The ID of your Machine Identity .
+- `username` (string): The LDAP username for authentication.
+- `password` (string): The LDAP password for authentication.
+
 ### `Secrets()`
 
 The `Secrets()` sub-class handles operations related to the Infisical secrets management product.

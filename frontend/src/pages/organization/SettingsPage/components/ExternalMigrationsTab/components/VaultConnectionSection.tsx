@@ -71,7 +71,7 @@ export const VaultConnectionSection = () => {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <img
             src="/images/integrations/Vault.png"

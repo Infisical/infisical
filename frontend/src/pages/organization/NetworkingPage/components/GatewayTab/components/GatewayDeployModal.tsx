@@ -4,6 +4,7 @@ import { Modal, ModalContent } from "@app/components/v2";
 import { GatewayDeploymentMethodSelect } from "@app/pages/organization/NetworkingPage/components/GatewayTab/components/GatewayDeploymentMethodSelect";
 
 import { GatewayCliDeploymentMethod } from "./GatewayCliDeploymentMethod";
+import { GatewayCliSystemdDeploymentMethod } from "./GatewayCliSystemdDeploymentMethod";
 
 type Props = {
   isOpen: boolean;
@@ -11,7 +12,8 @@ type Props = {
 };
 
 export const GatewayDeploymentInfoMap = {
-  cli: { name: "CLI", image: "SSH.png", component: GatewayCliDeploymentMethod }
+  cli: { name: "CLI", image: "SSH.png", component: GatewayCliDeploymentMethod },
+  systemd: { name: "CLI (systemd)", image: "SSH.png", component: GatewayCliSystemdDeploymentMethod }
 } as const;
 
 export type GatewayDeploymentMethod = keyof typeof GatewayDeploymentInfoMap;

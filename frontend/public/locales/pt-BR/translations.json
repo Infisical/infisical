@@ -41,7 +41,6 @@
   "common": {
     "head-title": "{{title}} | Infisical",
     "error_project-already-exists": "Já exite um projeto com este nome.",
-    "no-mobile": "Para usar o Infisical, faça o login através de um dispositivo com dimensões maiores.",
     "email": "Email",
     "password": "Senha",
     "first-name": "Primeiro Nome",
