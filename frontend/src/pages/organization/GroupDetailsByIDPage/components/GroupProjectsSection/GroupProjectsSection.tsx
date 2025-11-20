@@ -31,7 +31,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
     });
 
     createNotification({
-      text: `Successfully removed group from project ${projectName}`,
+      text: `Successfully removed the group from project ${projectName}`,
       type: "success"
     });
 

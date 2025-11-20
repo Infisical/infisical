@@ -149,14 +149,14 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
         {isEmpty && (
           <EmptyState
             title={
-              groupMemberships?.projects.length
+              debouncedSearch
                 ? "No projects match this search..."
                 : "This group is not a part of any projects yet"
             }
-            icon={groupMemberships?.projects.length ? faSearch : faFolder}
+            icon={debouncedSearch ? faSearch : faFolder}
           />
         )}
-        {!groupMemberships?.projects.length && (
+        {isEmpty && (
           <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
             {(isAllowed) => (
               <div className="mb-4 flex items-center justify-center">

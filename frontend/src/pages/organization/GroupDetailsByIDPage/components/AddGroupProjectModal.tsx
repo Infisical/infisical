@@ -85,7 +85,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
     });
 
     createNotification({
-      text: `Successfully assigned project ${projectName} to the group`,
+      text: `Successfully assigned the group to project ${projectName}`,
       type: "success"
     });
   };
