@@ -40,6 +40,12 @@ export type TGetTokenAuthTokensDTO = {
   isActorSuperAdmin?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGetTokenAuthTokenByIdDTO = {
+  tokenId: string;
+  identityId: string;
+  isActorSuperAdmin?: boolean;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TUpdateTokenAuthTokenDTO = {
   tokenId: string;
   name?: string;

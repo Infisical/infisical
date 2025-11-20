@@ -38,6 +38,7 @@ import {
   TAttachTokenAuthDTO,
   TCreateTokenAuthTokenDTO,
   TGetTokenAuthDTO,
+  TGetTokenAuthTokenByIdDTO,
   TGetTokenAuthTokensDTO,
   TRevokeTokenAuthDTO,
   TRevokeTokenAuthTokenDTO,
@@ -618,6 +619,52 @@ export const identityTokenAuthServiceFactory = ({
     return { tokens, identityMembershipOrg };
   };
 
+  const getTokenAuthTokenById = async ({
+    tokenId,
+    identityId,
+    isActorSuperAdmin,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetTokenAuthTokenByIdDTO) => {
+    await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
+
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId
+    });
+    if (!identityMembershipOrg) throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
+      throw new BadRequestError({
+        message: "The identity does not have Token Auth"
+      });
+    }
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: identityMembershipOrg.scopeOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+
+    const token = await identityAccessTokenDAL.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
+      [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH,
+      [`${TableName.IdentityAccessToken}.identityId` as "identityId"]: identityId
+    });
+
+    if (!token) throw new NotFoundError({ message: `Token with ID ${tokenId} not found` });
+
+    return { token, identityMembershipOrg };
+  };
+
   const updateTokenAuthToken = async ({
     tokenId,
     name,
@@ -797,6 +844,7 @@ export const identityTokenAuthServiceFactory = ({
     revokeIdentityTokenAuth,
     createTokenAuthToken,
     getTokenAuthTokens,
+    getTokenAuthTokenById,
     updateTokenAuthToken,
     revokeTokenAuthToken
   };

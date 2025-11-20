@@ -840,9 +840,7 @@ export type CreateTokenIdentityTokenAuthDTO = {
 
 export type CreateTokenIdentityTokenAuthRes = {
   accessToken: string;
-  tokenType: string;
-  expiresIn: number;
-  accessTokenMaxTTL: number;
+  tokenData: IdentityAccessToken;
 };
 
 export type UpdateTokenIdentityTokenAuthDTO = {
