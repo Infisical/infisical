@@ -112,7 +112,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
-  [AppConnection.DNSMadeEasy]: { name: "DNS Made Easy", image: "DNSMadeEasy.svg" },
+  [AppConnection.DNSMadeEasy]: { name: "DNS Made Easy", image: "DNSMadeEasy.svg", size: 120 },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },

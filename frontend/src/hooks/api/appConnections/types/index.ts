@@ -57,6 +57,7 @@ export * from "./camunda-connection";
 export * from "./checkly-connection";
 export * from "./chef-connection";
 export * from "./cloudflare-connection";
+export * from "./dns-made-easy-connection";
 export * from "./databricks-connection";
 export * from "./flyio-connection";
 export * from "./gcp-connection";

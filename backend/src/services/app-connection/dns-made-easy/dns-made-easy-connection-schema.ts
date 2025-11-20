@@ -13,7 +13,7 @@ import { DNSMadeEasyConnectionMethod } from "./dns-made-easy-connection-enum";
 
 export const DNSMadeEasyConnectionApiKeyCredentialsSchema = z.object({
   apiKey: z.string().trim().min(1, "API key required").max(256, "API key cannot exceed 256 characters"),
-  apiSecret: z.string().trim().min(1, "API secret required").max(256, "API secret cannot exceed 256 characters")
+  secretKey: z.string().trim().min(1, "Secret key required").max(256, "Secret key cannot exceed 256 characters")
 });
 
 const BaseDNSMadeEasyConnectionSchema = BaseAppConnectionSchema.extend({

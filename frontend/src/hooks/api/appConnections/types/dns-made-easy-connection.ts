@@ -8,7 +8,7 @@ export enum DNSMadeEasyConnectionMethod {
 export type TDNSMadeEasyConnection = TRootAppConnection & { app: AppConnection.DNSMadeEasy } & {
   method: DNSMadeEasyConnectionMethod.APIKeySecret;
   credentials: {
-    apiToken: string;
-    accountId: string;
+    apiKey: string;
+    secretKey: string;
   };
 };
