@@ -57,6 +57,7 @@ import { OCIConnectionMethod } from "@app/hooks/api/appConnections/types/oci-con
 import { RailwayConnectionMethod } from "@app/hooks/api/appConnections/types/railway-connection";
 import { RenderConnectionMethod } from "@app/hooks/api/appConnections/types/render-connection";
 import { SupabaseConnectionMethod } from "@app/hooks/api/appConnections/types/supabase-connection";
+import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 
 export const APP_CONNECTION_MAP: Record<
   AppConnection,
@@ -111,6 +112,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
+  [AppConnection.DNSMadeEasy]: { name: "DNS Made Easy", image: "DNSMadeEasy.svg" },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
@@ -214,6 +216,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Client Secret", icon: faKey };
     case AzureClientSecretsConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
+    case DNSMadeEasyConnectionMethod.APIKeySecret:
+      return { name: "API Key & Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }
