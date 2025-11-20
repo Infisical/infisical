@@ -38,7 +38,7 @@ const getFormTabs = (
     { name: "Sync Options", key: "options", fields: ["syncOptions"] as (keyof TPkiSyncForm)[] }
   ];
 
-  if (destination === PkiSync.Chef) {
+  if (destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) {
     baseTabs.push({
       name: "Mappings",
       key: "mappings",
@@ -82,13 +82,17 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
         canRemoveCertificates: false,
         preserveArn: true,
         certificateNameSchema: syncOption?.defaultCertificateNameSchema,
-        ...(destination === PkiSync.Chef && {
+        ...((destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && {
           fieldMappings: {
             certificate: "certificate",
             privateKey: "private_key",
             certificateChain: "certificate_chain",
             caCertificate: "ca_certificate"
           }
+        }),
+        ...(destination === PkiSync.AwsSecretsManager && {
+          preserveSecretOnRenewal: true,
+          updateExistingCertificates: true
         })
       },
       ...initialData
@@ -259,7 +263,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
                 }}
               />
             </Tab.Panel>
-            {destination === PkiSync.Chef && (
+            {(destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && (
               <Tab.Panel className="max-h-full overflow-y-auto">
                 <PkiSyncFieldMappingsFields destination={destination} />
               </Tab.Panel>
