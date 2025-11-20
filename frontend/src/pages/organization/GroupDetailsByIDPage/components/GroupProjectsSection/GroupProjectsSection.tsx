@@ -31,7 +31,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
     });
 
     createNotification({
-      text: `Successfully removed project ${projectName} from the group`,
+      text: `Successfully removed group from project ${projectName}`,
       type: "success"
     });
 
@@ -41,7 +41,7 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
   return (
     <div className="w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Group Projects</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Projects</h3>
         <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => (
             <IconButton
@@ -71,9 +71,9 @@ export const GroupProjectsSection = ({ groupId, groupSlug }: Props) => {
       <AddGroupProjectModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
       <DeleteActionModal
         isOpen={popUp.removeProjectFromGroup.isOpen}
-        title={`Are you sure you want to remove ${
+        title={`Are you sure you want to remove the group from ${
           (popUp?.removeProjectFromGroup?.data as { projectName: string })?.projectName || ""
-        } from the group?`}
+        }?`}
         onChange={(isOpen) => handlePopUpToggle("removeProjectFromGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => {

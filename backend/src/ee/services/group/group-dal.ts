@@ -4,8 +4,9 @@ import { TDbClient } from "@app/db";
 import { AccessScope, TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
-import { EFilterReturnedProjects, EFilterReturnedUsers } from "./group-types";
+import { EFilterReturnedProjects, EFilterReturnedUsers, EGroupProjectsOrderBy } from "./group-types";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
@@ -172,7 +173,9 @@ export const groupDALFactory = (db: TDbClient) => {
     offset,
     limit,
     search,
-    filter
+    filter,
+    orderBy,
+    orderDirection
   }: {
     orgId: string;
     groupId: string;
@@ -180,10 +183,10 @@ export const groupDALFactory = (db: TDbClient) => {
     limit?: number;
     search?: string;
     filter?: EFilterReturnedProjects;
+    orderBy?: EGroupProjectsOrderBy;
+    orderDirection?: OrderByDirection;
   }) => {
     try {
-      const normalizedSearch = search?.trim();
-
       const query = db
         .replicaNode()(TableName.Project)
         .where(`${TableName.Project}.orgId`, orgId)
@@ -201,17 +204,23 @@ export const groupDALFactory = (db: TDbClient) => {
           db.ref("createdAt").withSchema(TableName.Membership).as("joinedGroupAt"),
           db.raw(`count(*) OVER() as "totalCount"`)
         )
-        .orderBy(`${TableName.Project}.name`, "asc")
         .offset(offset ?? 0);
+
+      if (orderBy) {
+        void query.orderByRaw(
+          `LOWER(${TableName.Project}.??) ${orderDirection === OrderByDirection.ASC ? "asc" : "desc"}`,
+          [orderBy]
+        );
+      }
 
       if (limit) {
         void query.limit(limit);
       }
 
-      if (normalizedSearch && normalizedSearch.toLowerCase() !== "undefined") {
+      if (search) {
         void query.andWhereRaw(
           `CONCAT_WS(' ', "${TableName.Project}"."name", "${TableName.Project}"."slug", "${TableName.Project}"."description") ilike ?`,
-          [`%${normalizedSearch}%`]
+          [`%${search}%`]
         );
       }
 

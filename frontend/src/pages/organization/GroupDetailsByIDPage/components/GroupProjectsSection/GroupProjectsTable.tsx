@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -61,6 +60,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
     setPerPage,
     offset,
     orderDirection,
+    orderBy,
     toggleOrderDirection
   } = usePagination(GroupProjectsOrderBy.Name, {
     initPerPage: getUserTablePreference("groupProjectsTable", PreferenceKey.PerPage, 20)
@@ -76,37 +76,17 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
     offset,
     limit: perPage,
     search: debouncedSearch,
+    orderBy,
+    orderDirection,
     filter: EFilterReturnedProjects.ASSIGNED_PROJECTS
   });
 
-  const filteredGroupProjects = useMemo(() => {
-    return groupMemberships && groupMemberships?.projects
-      ? groupMemberships?.projects
-          ?.filter((project) => {
-            const projectSearchString = `${project.name || ""} ${project.slug || ""} ${
-              project.description || ""
-            }`;
-            return projectSearchString.toLowerCase().includes(search.trim().toLowerCase());
-          })
-          .sort((a, b) => {
-            const [projectOne, projectTwo] =
-              orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-            const projectOneComparisonString = projectOne.name || "";
-
-            const projectTwoComparisonString = projectTwo.name || "";
-
-            const comparison = projectOneComparisonString
-              .toLowerCase()
-              .localeCompare(projectTwoComparisonString.toLowerCase());
-
-            return comparison;
-          })
-      : [];
-  }, [groupMemberships, orderDirection, search]);
+  const totalCount = groupMemberships?.totalCount ?? 0;
+  const isEmpty = !isPending && totalCount === 0;
+  const projects = groupMemberships?.projects ?? [];
 
   useResetPageHelper({
-    totalCount: filteredGroupProjects?.length,
+    totalCount,
     offset,
     setPage
   });
@@ -146,7 +126,7 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
           <TBody>
             {isPending && <TableSkeleton columns={4} innerKey="group-project-memberships" />}
             {!isPending &&
-              filteredGroupProjects.slice(offset, perPage * page).map((project) => {
+              projects.map((project) => {
                 return (
                   <GroupProjectRow
                     key={`group-project-${project.id}`}
@@ -157,21 +137,21 @@ export const GroupProjectsTable = ({ groupId, groupSlug, handlePopUpOpen }: Prop
               })}
           </TBody>
         </Table>
-        {Boolean(filteredGroupProjects.length) && (
+        {!isEmpty && (
           <Pagination
-            count={filteredGroupProjects.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
             onChangePage={setPage}
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!isPending && !filteredGroupProjects?.length && (
+        {isEmpty && (
           <EmptyState
             title={
               groupMemberships?.projects.length
                 ? "No projects match this search..."
-                : "This group does not have any projects assigned yet"
+                : "This group is not a part of any projects yet"
             }
             icon={groupMemberships?.projects.length ? faSearch : faFolder}
           />

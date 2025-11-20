@@ -21,12 +21,14 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { useDebounce, useResetPageHelper } from "@app/hooks";
 import {
   useAddGroupToWorkspace as useAddProjectToGroup,
   useListGroupProjects
 } from "@app/hooks/api";
 import { EFilterReturnedProjects } from "@app/hooks/api/groups/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -95,7 +97,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
         handlePopUpToggle("addGroupProjects", isOpen);
       }}
     >
-      <ModalContent title="Add Group Projects">
+      <ModalContent title="Add Projects">
         <Input
           value={searchProjectFilter}
           onChange={(e) => setSearchProjectFilter(e.target.value)}
@@ -117,16 +119,16 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
                 data?.projects?.map((project) => {
                   return (
                     <Tr className="items-center" key={`group-project-${project.id}`}>
-                      <Td>
+                      <Td className="w-1/3">
                         <p>{project.name}</p>
                         {project.description && (
                           <p className="text-sm text-mineshaft-400">{project.description}</p>
                         )}
                       </Td>
                       <Td>
-                        <p className="capitalize">{project.type?.replace("-", " ") || "-"}</p>
+                        <p>{getProjectTitle(project.type as ProjectType)}</p>
                       </Td>
-                      <Td className="flex justify-end">
+                      <Td>
                         <OrgPermissionCan
                           I={OrgPermissionGroupActions.Edit}
                           a={OrgPermissionSubjects.Groups}
@@ -134,6 +136,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
                           {(isAllowed) => {
                             return (
                               <Button
+                                className="self-center"
                                 isLoading={isAdding}
                                 isDisabled={!isAllowed}
                                 colorSchema="primary"
@@ -166,7 +169,7 @@ export const AddGroupProjectModal = ({ popUp, handlePopUpToggle }: Props) => {
               title={
                 debouncedSearch
                   ? "No projects match search"
-                  : "All projects are already assigned to the group"
+                  : "This group is already a part of all projects"
               }
               icon={faFolder}
             />

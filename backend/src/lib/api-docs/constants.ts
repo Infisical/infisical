@@ -112,7 +112,9 @@ export const GROUPS = {
     limit: "The number of projects to return.",
     search: "The text string that project name or slug will be filtered by.",
     filterProjects:
-      "Whether to filter the list of returned projects. 'assignedProjects' will only return projects assigned to the group, 'unassignedProjects' will only return projects not assigned to the group, undefined will return all projects in the organization."
+      "Whether to filter the list of returned projects. 'assignedProjects' will only return projects assigned to the group, 'unassignedProjects' will only return projects not assigned to the group, undefined will return all projects in the organization.",
+    orderBy: "The column to order projects by.",
+    orderDirection: "The direction to order projects in."
   },
   ADD_USER: {
     id: "The ID of the group to add the user to.",

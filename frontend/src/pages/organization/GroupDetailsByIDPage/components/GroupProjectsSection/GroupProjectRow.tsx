@@ -13,7 +13,9 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { getProjectTitle } from "@app/helpers/project";
 import { TGroupProject } from "@app/hooks/api/groups/types";
+import { ProjectType } from "@app/hooks/api/projects/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -31,7 +33,7 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
         <p>{project.name}</p>
       </Td>
       <Td>
-        <p className="capitalize">{project.type?.replace("-", " ") || "-"}</p>
+        <p>{getProjectTitle(project.type as ProjectType)}</p>
       </Td>
       <Td>
         <Tooltip content={new Date(project.joinedGroupAt).toLocaleString()}>
@@ -65,7 +67,7 @@ export const GroupProjectRow = ({ project, handlePopUpOpen }: Props) => {
                       }
                       isDisabled={!isAllowed}
                     >
-                      Remove Project From Group
+                      Remove group from project
                     </DropdownMenuItem>
                   );
                 }}

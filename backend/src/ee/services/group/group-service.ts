@@ -381,6 +381,8 @@ export const groupServiceFactory = ({
     limit,
     search,
     filter,
+    orderBy,
+    orderDirection,
     actor,
     actorId,
     actorAuthMethod,
@@ -414,7 +416,9 @@ export const groupServiceFactory = ({
       offset,
       limit,
       search,
-      filter
+      filter,
+      orderBy,
+      orderDirection
     });
 
     return { projects, totalCount };

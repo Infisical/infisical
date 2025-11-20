@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
+import { OrderByDirection } from "../generic/types";
 import {
   EFilterReturnedProjects,
   EFilterReturnedUsers,
@@ -55,14 +56,22 @@ export const groupKeys = {
     offset,
     limit,
     search,
-    filter
+    filter,
+    orderBy,
+    orderDirection
   }: {
     groupId: string;
     offset: number;
     limit: number;
     search: string;
     filter?: EFilterReturnedProjects;
-  }) => [...groupKeys.forGroupProjects(groupId), { offset, limit, search, filter }] as const
+    orderBy?: string;
+    orderDirection?: OrderByDirection;
+  }) =>
+    [
+      ...groupKeys.forGroupProjects(groupId),
+      { offset, limit, search, filter, orderBy, orderDirection }
+    ] as const
 };
 
 export const useGetGroupById = (groupId: string) => {
@@ -175,12 +184,16 @@ export const useListGroupProjects = ({
   offset = 0,
   limit = 10,
   search,
-  filter
+  filter,
+  orderBy,
+  orderDirection
 }: {
   id: string;
   offset: number;
   limit: number;
   search: string;
+  orderBy?: string;
+  orderDirection?: OrderByDirection;
   filter?: EFilterReturnedProjects;
 }) => {
   return useQuery({
@@ -189,7 +202,9 @@ export const useListGroupProjects = ({
       offset,
       limit,
       search,
-      filter
+      filter,
+      orderBy,
+      orderDirection
     }),
     enabled: Boolean(id),
     placeholderData: (previousData) => previousData,
@@ -198,7 +213,9 @@ export const useListGroupProjects = ({
         offset: String(offset),
         limit: String(limit),
         search,
-        ...(filter && { filter })
+        ...(filter && { filter }),
+        ...(orderBy && { orderBy }),
+        ...(orderDirection && { orderDirection })
       });
 
       const { data } = await apiRequest.get<{ projects: TGroupProject[]; totalCount: number }>(

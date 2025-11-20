@@ -2,7 +2,7 @@ import { Knex } from "knex";
 
 import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
-import { TGenericPermission } from "@app/lib/types";
+import { OrderByDirection, TGenericPermission } from "@app/lib/types";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -48,6 +48,8 @@ export type TListGroupProjectsDTO = {
   limit: number;
   search?: string;
   filter?: EFilterReturnedProjects;
+  orderBy?: EGroupProjectsOrderBy;
+  orderDirection?: OrderByDirection;
 } & TGenericPermission;
 
 export type TListProjectGroupUsersDTO = TListGroupUsersDTO & {
@@ -123,4 +125,8 @@ export enum EFilterReturnedUsers {
 export enum EFilterReturnedProjects {
   ASSIGNED_PROJECTS = "assignedProjects",
   UNASSIGNED_PROJECTS = "unassignedProjects"
+}
+
+export enum EGroupProjectsOrderBy {
+  Name = "name"
 }
