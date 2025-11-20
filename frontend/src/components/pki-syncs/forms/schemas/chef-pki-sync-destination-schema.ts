@@ -20,6 +20,7 @@ const ChefFieldMappingsSchema = z.object({
 const ChefSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(true),
+  includeRootCa: z.boolean().default(false),
   preserveItemOnRenewal: z.boolean().default(true),
   updateExistingCertificates: z.boolean().default(true),
   certificateNameSchema: z

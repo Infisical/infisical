@@ -14,7 +14,7 @@ export enum PkiSyncStatus {
 
 export enum CertificateSyncStatus {
   Pending = "pending",
-  Syncing = "syncing",
+  Running = "running",
   Succeeded = "succeeded",
   Failed = "failed"
 }

@@ -42,14 +42,14 @@ type Props = {
 const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "success";
   if (status === CertificateSyncStatus.Failed) return "danger";
-  if (status === CertificateSyncStatus.Syncing) return "neutral";
+  if (status === CertificateSyncStatus.Running) return "neutral";
   return "project";
 };
 
 const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "Synced";
   if (status === CertificateSyncStatus.Failed) return "Failed";
-  if (status === CertificateSyncStatus.Syncing) return "Syncing";
+  if (status === CertificateSyncStatus.Running) return "Syncing";
   if (status === CertificateSyncStatus.Pending) return "Pending";
   return "Unknown";
 };

@@ -23,6 +23,8 @@ import { mapEnumsForValidation } from "@app/services/certificate-common/certific
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
+import { booleanSchema } from "../sanitizedSchemas";
+
 interface CertificateRequestForService {
   commonName?: string;
   keyUsages?: CertKeyUsageType[];
@@ -87,7 +89,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             )
             .optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -131,7 +134,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
         profileId: req.body.profileId,
-        certificateRequest: mappedCertificateRequest
+        certificateRequest: mappedCertificateRequest,
+        removeRootsFromChain: req.body.removeRootsFromChain
       });
 
       await server.services.auditLog.createAuditLog({
@@ -171,7 +175,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
             .min(1, "TTL cannot be empty")
             .refine((val) => ms(val) > 0, "TTL must be a positive number"),
           notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional()
+          notAfter: validateCaDateField.optional(),
+          removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -206,7 +211,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         },
         notBefore: req.body.notBefore ? new Date(req.body.notBefore) : undefined,
         notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
-        enrollmentType: EnrollmentType.API
+        enrollmentType: EnrollmentType.API,
+        removeRootsFromChain: req.body.removeRootsFromChain
       });
 
       await server.services.auditLog.createAuditLog({
@@ -262,7 +268,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notAfter: validateCaDateField.optional(),
           commonName: validateTemplateRegexField.optional(),
           signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm)
+          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
+          removeRootsFromChain: booleanSchema.default(false).optional()
         })
         .refine(validateTtlAndDateFields, {
           message:
@@ -325,7 +332,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           notAfter: req.body.notAfter ? new Date(req.body.notAfter) : undefined,
           signatureAlgorithm: req.body.signatureAlgorithm,
           keyAlgorithm: req.body.keyAlgorithm
-        }
+        },
+        removeRootsFromChain: req.body.removeRootsFromChain
       });
 
       await server.services.auditLog.createAuditLog({
@@ -357,6 +365,11 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       params: z.object({
         certificateId: z.string().uuid()
       }),
+      body: z
+        .object({
+          removeRootsFromChain: booleanSchema.default(false).optional()
+        })
+        .optional(),
       response: {
         200: z.object({
           certificate: z.string().trim(),
@@ -375,7 +388,8 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        certificateId: req.params.certificateId
+        certificateId: req.params.certificateId,
+        removeRootsFromChain: req.body?.removeRootsFromChain
       });
 
       await server.services.auditLog.createAuditLog({

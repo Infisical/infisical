@@ -95,6 +95,48 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         )}
       />
 
+      <Controller
+        control={control}
+        name="syncOptions.includeRootCa"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl isError={Boolean(error)} errorText={error?.message}>
+            <Switch
+              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+              id="include-root-ca"
+              thumbClassName="bg-mineshaft-800"
+              onCheckedChange={onChange}
+              isChecked={value}
+            >
+              <p>
+                Include Root CA in Certificate Chain{" "}
+                <Tooltip
+                  className="max-w-md"
+                  content={
+                    <>
+                      <p>
+                        When enabled, the full certificate chain including the root CA will be
+                        synced to the destination.
+                      </p>
+                      <p className="mt-4">
+                        When disabled, the root CA will be excluded from the certificate chain
+                        during sync operations, reducing the size of the synced certificate chain.
+                      </p>
+                      <p className="mt-4">
+                        Most applications and services work correctly with intermediate certificates
+                        only, as they can validate the trust chain up to a root CA they already
+                        trust.
+                      </p>
+                    </>
+                  }
+                >
+                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                </Tooltip>
+              </p>
+            </Switch>
+          </FormControl>
+        )}
+      />
+
       {currentDestination === PkiSync.AwsCertificateManager && (
         <Controller
           control={control}

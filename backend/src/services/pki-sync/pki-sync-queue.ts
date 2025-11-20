@@ -26,7 +26,7 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
-import { extractRootCaFromChain } from "../certificate-common/certificate-utils";
+import { extractRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -269,7 +269,12 @@ export const pkiSyncQueueFactory = ({
             }
 
             let certificateName: string;
-            const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
+            const syncOptions = pkiSync.syncOptions as
+              | {
+                  certificateNameSchema?: string;
+                  includeRootCa?: boolean;
+                }
+              | undefined;
             const certificateNameSchema = syncOptions?.certificateNameSchema;
 
             if (certificateNameSchema) {
@@ -301,10 +306,15 @@ export const pkiSyncQueueFactory = ({
               alternativeNames.push(originalLegacyName);
             }
 
+            let processedCertificateChain = certificateChain;
+            if (certificateChain && syncOptions?.includeRootCa === false) {
+              processedCertificateChain = removeRootCaFromChain(certificateChain);
+            }
+
             certificateMap[certificateName] = {
               cert: certificatePem,
               privateKey: certPrivateKey || "",
-              certificateChain,
+              certificateChain: processedCertificateChain,
               caCertificate,
               alternativeNames,
               certificateId: certificate.id
