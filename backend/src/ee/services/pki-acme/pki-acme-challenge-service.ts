@@ -1,3 +1,5 @@
+import axios, { AxiosError } from "axios";
+
 import { getConfig } from "@app/lib/config/env";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
@@ -12,10 +14,6 @@ import {
 } from "./pki-acme-errors";
 import { AcmeAuthStatus, AcmeChallengeStatus, AcmeChallengeType } from "./pki-acme-schemas";
 import { TPkiAcmeChallengeServiceFactory } from "./pki-acme-types";
-
-type FetchError = Error & {
-  code?: string;
-};
 
 type TPkiAcmeChallengeServiceFactoryDep = {
   acmeChallengeDAL: Pick<
@@ -74,18 +72,20 @@ export const pkiAcmeChallengeServiceFactory = ({
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
         //         a long running operation for long time. But assuming we are not performing a tons of
         //         challenge validation at the same time, it should be fine.
-        const challengeResponse = await fetch(challengeUrl, {
+        const challengeResponse = await axios.get<string>(challengeUrl.toString(), {
           // In case if we override the host in the development mode, still provide the original host in the header
           // to help the upstream server to validate the request
           headers: { Host: host },
-          signal: AbortSignal.timeout(timeoutMs)
+          timeout: timeoutMs,
+          responseType: "text",
+          validateStatus: () => true
         });
         if (challengeResponse.status !== 200) {
           throw new AcmeIncorrectResponseError({
             message: `ACME challenge response is not 200: ${challengeResponse.status}`
           });
         }
-        const challengeResponseBody = await challengeResponse.text();
+        const challengeResponseBody: string = challengeResponse.data;
         const thumbprint = challenge.auth.account.publicKeyThumbprint;
         const expectedChallengeResponseBody = `${challenge.auth.token}.${thumbprint}`;
         if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
@@ -96,35 +96,25 @@ export const pkiAcmeChallengeServiceFactory = ({
         // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
         await acmeChallengeDAL.markAsInvalidCascadeById(challengeId, tx);
         // Properly type and inspect the error
-        if (exp instanceof TypeError && exp.message.includes("fetch failed")) {
-          const { cause } = exp;
-          let errors: Error[] = [];
-          if (cause instanceof AggregateError) {
-            errors = cause.errors as Error[];
-          } else if (cause instanceof Error) {
-            errors = [cause];
+        if (axios.isAxiosError(exp)) {
+          const axiosError = exp as AxiosError;
+          const errorCode = axiosError.code;
+          const errorMessage = axiosError.message;
+
+          if (errorCode === "ECONNREFUSED" || errorMessage.includes("ECONNREFUSED")) {
+            return new AcmeConnectionError({ message: "Connection refused" });
           }
-          // eslint-disable-next-line no-unreachable-loop
-          for (const err of errors) {
-            // TODO: handle multiple errors, return a compound error instead of just the first error
-            const fetchError = err as FetchError;
-            if (fetchError.code === "ECONNREFUSED" || fetchError.message.includes("ECONNREFUSED")) {
-              return new AcmeConnectionError({ message: "Connection refused" });
-            }
-            if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
-              return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
-            }
-            logger.error(exp, "Unknown error validating ACME challenge response");
-            return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
+          if (errorCode === "ENOTFOUND" || errorMessage.includes("ENOTFOUND")) {
+            return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
           }
-        } else if (exp instanceof DOMException) {
-          if (exp.name === "TimeoutError") {
+          if (errorCode === "ECONNABORTED" || errorMessage.includes("timeout")) {
             logger.error(exp, "Connection timed out while validating ACME challenge response");
             return new AcmeConnectionError({ message: "Connection timed out" });
           }
           logger.error(exp, "Unknown error validating ACME challenge response");
           return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
-        } else if (exp instanceof Error) {
+        }
+        if (exp instanceof Error) {
           logger.error(exp, "Error validating ACME challenge response");
         } else {
           logger.error(exp, "Unknown error validating ACME challenge response");
