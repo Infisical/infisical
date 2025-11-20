@@ -78,6 +78,11 @@ import {
   getCloudflareConnectionListItem,
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
+import { DNSMadeEasyConnectionMethod } from "./dns-made-easy/dns-made-easy-connection-enum";
+import {
+  getDNSMadeEasyConnectionListItem,
+  validateDNSMadeEasyConnectionCredentials
+} from "./dns-made-easy/dns-made-easy-connection-fns";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -207,6 +212,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
+    getDNSMadeEasyConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
     getBitbucketConnectionListItem(),
@@ -339,6 +345,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -483,6 +490,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
+  [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,
