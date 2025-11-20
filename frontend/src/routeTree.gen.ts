@@ -272,9 +272,17 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsImpor
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections',
   )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$',
+  )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdImport =
   createFileRoute(
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId',
+  )()
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatImport =
+  createFileRoute(
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$',
   )()
 const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectIdImport =
   createFileRoute(
@@ -656,6 +664,14 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute
     } as any,
   )
 
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatImport.update({
+    id: '/$',
+    path: '/$',
+    getParentRoute: () =>
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
+  } as any)
+
 const adminResourceOverviewPageRouteRoute =
   adminResourceOverviewPageRouteImport.update({
     id: '/resources/overview',
@@ -710,6 +726,15 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjec
       path: '/secret-manager/$projectId',
       getParentRoute: () =>
         AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRoute,
+    } as any,
+  )
+
+const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute =
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatImport.update(
+    {
+      id: '/$',
+      path: '/$',
+      getParentRoute: () => organizationProjectsPageRouteRoute,
     } as any,
   )
 
@@ -2562,6 +2587,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof adminResourceOverviewPageRouteImport
       parentRoute: typeof adminLayoutImport
     }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$'
+      path: '/$'
+      fullPath: '/organizations/$orgId/$'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatImport
+      parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdImport
+    }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections'
       path: '/app-connections'
@@ -2694,6 +2726,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/integrations/vercel/oauth2/callback'
       preLoaderRoute: typeof secretManagerIntegrationsRouteVercelOauthRedirectImport
       parentRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutIntegrationsImport
+    }
+    '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$': {
+      id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$'
+      path: '/$'
+      fullPath: '/organizations/$orgId/projects/$'
+      preLoaderRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatImport
+      parentRoute: typeof organizationProjectsPageRouteImport
     }
     '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId': {
       id: '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId'
@@ -4693,6 +4732,7 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSshProjectI
   )
 
 interface organizationProjectsPageRouteRouteChildren {
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsPamProjectIdRouteWithChildren
@@ -4703,6 +4743,8 @@ interface organizationProjectsPageRouteRouteChildren {
 
 const organizationProjectsPageRouteRouteChildren: organizationProjectsPageRouteRouteChildren =
   {
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsKmsProjectIdRoute:
@@ -4793,6 +4835,7 @@ interface AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren {
   organizationBillingPageRouteRoute: typeof organizationBillingPageRouteRoute
   organizationNetworkingPageRouteRoute: typeof organizationNetworkingPageRouteRoute
   organizationProjectsPageRouteRoute: typeof organizationProjectsPageRouteRouteWithChildren
+  AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRoute: typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
@@ -4812,6 +4855,8 @@ const AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdRouteChildren: Auth
     organizationNetworkingPageRouteRoute: organizationNetworkingPageRouteRoute,
     organizationProjectsPageRouteRoute:
       organizationProjectsPageRouteRouteWithChildren,
+    AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute:
+      AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRoute:
       AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren,
     AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRoute:
@@ -5075,6 +5120,7 @@ export interface FileRoutesByFullPath {
   '/organizations/$orgId/networking': typeof organizationNetworkingPageRouteRoute
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/organizations/$orgId/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute
   '/organizations/$orgId/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
   '/organizations/$orgId/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   '/organizations/$orgId/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
@@ -5094,6 +5140,7 @@ export interface FileRoutesByFullPath {
   '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
   '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+  '/organizations/$orgId/projects/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
@@ -5312,6 +5359,7 @@ export interface FileRoutesByTo {
   '/organizations/$orgId/networking': typeof organizationNetworkingPageRouteRoute
   '/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/admin/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/organizations/$orgId/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute
   '/organizations/$orgId/app-connections': typeof organizationAppConnectionsAppConnectionsPageRouteRoute
   '/organizations/$orgId/secret-sharing': typeof organizationSecretSharingPageRouteRoute
   '/organizations/$orgId/settings': typeof organizationSettingsPageRouteRoute
@@ -5328,6 +5376,7 @@ export interface FileRoutesByTo {
   '/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
   '/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+  '/organizations/$orgId/projects/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute
   '/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/organizations/$orgId/projects/cert-management/$projectId': typeof certManagerLayoutRouteWithChildren
@@ -5548,6 +5597,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking': typeof organizationNetworkingPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects': typeof organizationProjectsPageRouteRouteWithChildren
   '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview': typeof adminResourceOverviewPageRouteRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSplatRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdAppConnectionsRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretSharingRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSettingsRouteWithChildren
@@ -5567,6 +5617,7 @@ export interface FileRoutesById {
   '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback': typeof secretManagerIntegrationsRouteHerokuOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback': typeof secretManagerIntegrationsRouteNetlifyOauthRedirectRoute
   '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback': typeof secretManagerIntegrationsRouteVercelOauthRedirectRoute
+  '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsSplatRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdSecretManagerProjectIdRouteWithChildren
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback': typeof organizationSettingsPageOauthCallbackPageRouteRoute
   '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId': typeof AuthenticateInjectOrgDetailsOrgLayoutOrganizationsOrgIdProjectsCertManagementProjectIdRouteWithChildren
@@ -5797,6 +5848,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/networking'
     | '/organizations/$orgId/projects'
     | '/admin/resources/overview'
+    | '/organizations/$orgId/$'
     | '/organizations/$orgId/app-connections'
     | '/organizations/$orgId/secret-sharing'
     | '/organizations/$orgId/settings'
@@ -5816,6 +5868,7 @@ export interface FileRouteTypes {
     | '/integrations/heroku/oauth2/callback'
     | '/integrations/netlify/oauth2/callback'
     | '/integrations/vercel/oauth2/callback'
+    | '/organizations/$orgId/projects/$'
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId'
@@ -6033,6 +6086,7 @@ export interface FileRouteTypes {
     | '/organizations/$orgId/networking'
     | '/organizations/$orgId/projects'
     | '/admin/resources/overview'
+    | '/organizations/$orgId/$'
     | '/organizations/$orgId/app-connections'
     | '/organizations/$orgId/secret-sharing'
     | '/organizations/$orgId/settings'
@@ -6049,6 +6103,7 @@ export interface FileRouteTypes {
     | '/integrations/heroku/oauth2/callback'
     | '/integrations/netlify/oauth2/callback'
     | '/integrations/vercel/oauth2/callback'
+    | '/organizations/$orgId/projects/$'
     | '/organizations/$orgId/secret-manager/$projectId'
     | '/organizations/$orgId/settings/oauth/callback'
     | '/organizations/$orgId/projects/cert-management/$projectId'
@@ -6267,6 +6322,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects'
     | '/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings'
@@ -6286,6 +6342,7 @@ export interface FileRouteTypes {
     | '/_authenticate/_inject-org-details/_org-layout/integrations/heroku/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/netlify/oauth2/callback'
     | '/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback'
+    | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback'
     | '/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId'
@@ -6759,6 +6816,7 @@ export const routeTree = rootRoute
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/billing",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects",
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-sharing",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings",
@@ -6789,6 +6847,7 @@ export const routeTree = rootRoute
       "filePath": "organization/ProjectsPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId",
       "children": [
+        "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId",
         "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId",
@@ -6800,6 +6859,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/admin/_admin-layout/resources/overview": {
       "filePath": "admin/ResourceOverviewPage/route.tsx",
       "parent": "/_authenticate/_inject-org-details/admin/_admin-layout"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/$": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections": {
       "filePath": "",
@@ -6887,6 +6950,10 @@ export const routeTree = rootRoute
     "/_authenticate/_inject-org-details/_org-layout/integrations/vercel/oauth2/callback": {
       "filePath": "secret-manager/integrations/route-vercel-oauth-redirect.tsx",
       "parent": "/_authenticate/_inject-org-details/_org-layout/integrations"
+    },
+    "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/$": {
+      "filePath": "",
+      "parent": "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects"
     },
     "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/secret-manager/$projectId": {
       "filePath": "",

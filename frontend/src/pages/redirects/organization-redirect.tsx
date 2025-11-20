@@ -14,8 +14,11 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details/organiz
     const remainingPath = params._splat || "";
 
     throw redirect({
-      to: `/organizations/$orgId/${remainingPath}` as const,
-      params: { orgId },
+      to: "/organizations/$orgId/$",
+      params: {
+        orgId,
+        _splat: remainingPath ?? ""
+      },
       search
     });
   }
