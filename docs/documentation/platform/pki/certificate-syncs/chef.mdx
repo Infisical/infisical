@@ -40,7 +40,6 @@ Any role with these permissions would work such as a custom role with **Data Bag
 
             - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
             - **Preserve Data Bag Item on Renewal**: Only applies to certificate renewals. When a certificate is renewed in Infisical, this option controls how the renewed certificate is handled. If enabled, the renewed certificate will update the existing data bag item, preserving the same item name. If disabled, the renewed certificate will be created as a new data bag item with a new name.
-            - **Update Existing Certificates**: If enabled, Infisical will update existing data bag items when certificate content changes.
             - **Certificate Name Schema** (Optional): Customize how certificate item names are generated in Chef data bags. Use `{{certificateId}}` as a placeholder for the certificate ID.
             - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
 
@@ -49,8 +48,8 @@ Any role with these permissions would work such as a custom role with **Data Bag
 
             - **Certificate Field**: The field name where the certificate will be stored in the data bag item (default: `certificate`)
             - **Private Key Field**: The field name where the private key will be stored in the data bag item (default: `private_key`)
-            - **Certificate Chain Field**: The field name where the full certificate chain will be stored in the data bag item (default: `certificate_chain`)
-            - **CA Certificate Field**: The field name where the CA certificate will be stored in the data bag item (default: `ca_certificate`)
+            - **Certificate Chain Field**: The field name where the full certificate chain excluding the root CA certificate will be stored (default: `certificate_chain`)
+            - **CA Certificate Field**: The field name where the root CA certificate will be stored (default: `ca_certificate`)
 
         <Tip>
             **Chef Data Bag Item Structure**: Certificates are stored in Chef data bags as items with the following structure (field names can be customized via field mappings):
@@ -119,7 +118,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
             ],
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "preserveArn": true,
+                "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
                 "certificateNameSchema": "myapp-{{certificateId}}",
                 "fieldMappings": {
@@ -151,7 +150,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
             "isAutoSyncEnabled": true,
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "preserveArn": true,
+                "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
                 "certificateNameSchema": "{{commonName}}-{{certificateId}}",
                 "fieldMappings": {
@@ -182,7 +181,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
                 },
                 "syncOptions": {
                     "canRemoveCertificates": true,
-                    "preserveArn": true,
+                    "preserveSecretOnRenewal": true,
                     "canImportCertificates": false,
                     "certificateNameSchema": "myapp-{{certificateId}}",
                     "fieldMappings": {

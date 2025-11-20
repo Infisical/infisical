@@ -56,3 +56,4 @@ backend/src/ee/services/app-connections/chef/chef-connection-fns.ts:private-key:
 docs/documentation/platform/pki/enrollment-methods/api.mdx:generic-api-key:93
 docs/documentation/platform/pki/enrollment-methods/api.mdx:private-key:139
 docs/documentation/platform/pki/certificate-syncs/aws-secrets-manager.mdx:private-key:62
+docs/documentation/platform/pki/certificate-syncs/chef.mdx:private-key:61
