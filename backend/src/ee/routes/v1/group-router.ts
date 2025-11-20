@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
-import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
+import { GroupsSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
+import { EFilterReturnedProjects, EFilterReturnedUsers } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -200,6 +200,55 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return { users, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/projects",
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.LIST_PROJECTS.id)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_PROJECTS.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_PROJECTS.limit),
+        search: z.string().trim().optional().describe(GROUPS.LIST_PROJECTS.search),
+        filter: z.nativeEnum(EFilterReturnedProjects).optional().describe(GROUPS.LIST_PROJECTS.filterProjects)
+      }),
+      response: {
+        200: z.object({
+          projects: ProjectsSchema.pick({
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            type: true
+          })
+            .merge(
+              z.object({
+                joinedGroupAt: z.date().nullable()
+              })
+            )
+            .array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { projects, totalCount } = await server.services.group.listGroupProjects({
+        id: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return { projects, totalCount };
     }
   });
 

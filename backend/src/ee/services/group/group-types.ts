@@ -42,6 +42,14 @@ export type TListGroupUsersDTO = {
   filter?: EFilterReturnedUsers;
 } & TGenericPermission;
 
+export type TListGroupProjectsDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  filter?: EFilterReturnedProjects;
+} & TGenericPermission;
+
 export type TListProjectGroupUsersDTO = TListGroupUsersDTO & {
   projectId: string;
 };
@@ -110,4 +118,9 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
 export enum EFilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
+}
+
+export enum EFilterReturnedProjects {
+  ASSIGNED_PROJECTS = "assignedProjects",
+  UNASSIGNED_PROJECTS = "unassignedProjects"
 }

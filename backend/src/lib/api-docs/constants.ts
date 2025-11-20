@@ -106,6 +106,14 @@ export const GROUPS = {
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
+  LIST_PROJECTS: {
+    id: "The ID of the group to list projects for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th project.",
+    limit: "The number of projects to return.",
+    search: "The text string that project name or slug will be filtered by.",
+    filterProjects:
+      "Whether to filter the list of returned projects. 'assignedProjects' will only return projects assigned to the group, 'unassignedProjects' will only return projects not assigned to the group, undefined will return all projects in the organization."
+  },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
