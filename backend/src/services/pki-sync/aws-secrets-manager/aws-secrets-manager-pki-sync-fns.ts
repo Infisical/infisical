@@ -462,13 +462,6 @@ export const awsSecretsManagerPkiSyncFactory = ({
             );
 
             result.removed += 1;
-
-            const recordToRemove = syncRecordsByExternalId.get(secretName);
-            if (recordToRemove?.id) {
-              await certificateSyncDAL.updateById(recordToRemove.id, {
-                syncStatus: CertificateSyncStatus.Failed
-              });
-            }
           } catch (error) {
             result.failedRemovals += 1;
             result.details?.failedRemovals?.push({
