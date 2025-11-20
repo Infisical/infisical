@@ -24,9 +24,9 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
   let normalizedHost = config.credentials.host.trim();
   const isSrvFromHost = srvRegex.test(normalizedHost);
   if (isSrvFromHost) {
-    normalizedHost = normalizedHost.replace(srvRegex, "");
+    normalizedHost = srvRegex.replace(normalizedHost, "");
   } else if (protocolRegex.test(normalizedHost)) {
-    normalizedHost = normalizedHost.replace(protocolRegex, "");
+    normalizedHost = protocolRegex.replace(normalizedHost, "");
   }
 
   const [hostIp] = await verifyHostInputValidity(normalizedHost);
@@ -48,7 +48,7 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
         username: config.credentials.username,
         password: config.credentials.password
       },
-      authSource: config.credentials.database,
+      authSource: isSrv ? undefined : config.credentials.database,
       directConnection: !isSrv
     };
 

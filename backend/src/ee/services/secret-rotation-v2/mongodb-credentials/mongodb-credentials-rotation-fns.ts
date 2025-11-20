@@ -55,9 +55,9 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
 
     const isSrvFromHost = srvRegex.test(normalizedHost);
     if (isSrvFromHost) {
-      normalizedHost = normalizedHost.replace(srvRegex, "");
+      normalizedHost = srvRegex.replace(normalizedHost, "");
     } else if (protocolRegex.test(normalizedHost)) {
-      normalizedHost = normalizedHost.replace(protocolRegex, "");
+      normalizedHost = protocolRegex.replace(normalizedHost, "");
     }
 
     const [hostIp] = await verifyHostInputValidity(normalizedHost);
@@ -77,12 +77,12 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
         username: authCredentials.username,
         password: authCredentials.password
       },
-      authSource: connection.credentials.database,
+      authSource: isSrv ? undefined : connection.credentials.database,
       directConnection: !isSrv
     };
 
     // SSL is enabled if explicitly enabled OR if using SRV (which requires TLS) and requireTlsForSrv is true
-    if (connection.credentials.sslEnabled || (isSrv && options?.requireTlsForSrv)) {
+    if (connection.credentials.sslEnabled) {
       clientOptions.tls = true;
       clientOptions.tlsInsecure = !connection.credentials.sslRejectUnauthorized;
       if (connection.credentials.sslCertificate) {
