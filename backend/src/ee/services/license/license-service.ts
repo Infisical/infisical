@@ -22,9 +22,10 @@ import { OrgPermissionBillingActions, OrgPermissionSubjects } from "../permissio
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { BillingPlanRows, BillingPlanTableHead } from "./licence-enums";
 import { TLicenseDALFactory } from "./license-dal";
-import { getDefaultOnPremFeatures, setupLicenseRequestWithStore } from "./license-fns";
+import { getDefaultOnPremFeatures, getLicenseKeyConfig, setupLicenseRequestWithStore } from "./license-fns";
 import {
   InstanceType,
+  LicenseType,
   TAddOrgPmtMethodDTO,
   TAddOrgTaxIdDTO,
   TCreateOrgPortalSession,
@@ -77,6 +78,7 @@ export const licenseServiceFactory = ({
   let instanceType = InstanceType.OnPrem;
   let onPremFeatures: TFeatureSet = getDefaultOnPremFeatures();
   let selfHostedLicense: TOfflineLicense | null = null;
+  const licenseKeyConfig = getLicenseKeyConfig(envConfig);
 
   const licenseServerCloudApi = setupLicenseRequestWithStore(
     envConfig.LICENSE_SERVER_URL || "",
@@ -85,10 +87,13 @@ export const licenseServiceFactory = ({
     envConfig.INTERNAL_REGION
   );
 
+  const onlineLicenseKey =
+    licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online ? licenseKeyConfig.licenseKey : "";
+
   const licenseServerOnPremApi = setupLicenseRequestWithStore(
     envConfig.LICENSE_SERVER_URL || "",
     LICENSE_SERVER_ON_PREM_LOGIN,
-    envConfig.LICENSE_KEY || "",
+    onlineLicenseKey,
     envConfig.INTERNAL_REGION
   );
 
@@ -131,7 +136,7 @@ export const licenseServiceFactory = ({
         return;
       }
 
-      if (envConfig.LICENSE_KEY) {
+      if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Online) {
         const token = await licenseServerOnPremApi.refreshLicense();
         if (token) {
           await syncLicenseKeyOnPremFeatures(true);
@@ -142,10 +147,10 @@ export const licenseServiceFactory = ({
         return;
       }
 
-      if (envConfig.LICENSE_KEY_OFFLINE) {
+      if (licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline) {
         let isValidOfflineLicense = true;
         const contents: TOfflineLicenseContents = JSON.parse(
-          Buffer.from(envConfig.LICENSE_KEY_OFFLINE, "base64").toString("utf8")
+          Buffer.from(licenseKeyConfig.licenseKey, "base64").toString("utf8")
         );
         const isVerified = await verifyOfflineLicense(JSON.stringify(contents.license), contents.signature);
 
@@ -184,7 +189,7 @@ export const licenseServiceFactory = ({
   };
 
   const initializeBackgroundSync = async () => {
-    if (envConfig.LICENSE_KEY) {
+    if (licenseKeyConfig?.isValid && licenseKeyConfig?.type === LicenseType.Online) {
       logger.info("Setting up background sync process for refresh onPremFeatures");
       const job = new CronJob("*/10 * * * *", syncLicenseKeyOnPremFeatures);
       job.start();

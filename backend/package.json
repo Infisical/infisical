@@ -32,7 +32,7 @@
     "binary:clean": "rm -rf ./dist && rm -rf ./binary",
     "binary:rename-imports": "ts-node ./scripts/rename-mjs.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
+    "dev": "tsx watch --clear-screen=false ./src/main.ts  --config tsconfig.dev.json | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
     "build": "tsup --sourcemap",
     "build:frontend": "npm run build --prefix ../frontend",

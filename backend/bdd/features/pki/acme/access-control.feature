@@ -221,7 +221,6 @@ Feature: Access Control
       | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                          |                 |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                     | {}              |
 
-
   Scenario Outline: URL mismatch
     Given I have an ACME cert profile as "acme_profile"
     When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
@@ -271,3 +270,52 @@ Feature: Access Control
       | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                         | https://example.com/acmes/auths/FOOBAR                                                   | URL mismatch in the protected header |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    | BAD                                                                                      | Invalid URL in the protected header  |
       | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    | https://example.com/acmes/challenges/FOOBAR                                              | URL mismatch in the protected header |
+
+  Scenario Outline: Send KID and JWK in the same time
+    Given I have an ACME cert profile as "acme_profile"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
+    Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
+    And I memorize acme_account.uri with jq "capture("/(?<id>[^/]+)$") | .id" as account_id
+    When I create certificate signing request as csr
+    Then I add names to certificate signing request csr
+      """
+      {
+        "COMMON_NAME": "localhost"
+      }
+      """
+    Then I create a RSA private key pair as cert_key
+    And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
+    And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
+    And I peak and memorize the next nonce as nonce_value
+    And I memorize <src_var> with jq "<jq>" as <dest_var>
+    When I send a raw ACME request to "<url>"
+      """
+      {
+        "protected": {
+          "alg": "RS256",
+          "nonce": "{nonce_value}",
+          "url": "<url>",
+          "kid": "{acme_account.uri}",
+          "jwk": {
+            "n": "mmEWxUv2lUYDZe_M2FXJ_WDXgHoEG7PVvg-dfz1STzyMwx0qvM66KMenXSyVA0r-_Ssb6p8VexSWGOFKskM4ryKUihn2KNH5e8nXZBqzqYeKQ8vqaCdaWzTxFI1dg0xhk0CWptkZHxpRpLalztFJ1Pq7L2qvQOM2YT7wPYbwQhpaSiVNXAb1W4FwAPyC04v1mHehvST-esaDT7j_5-eU5cCcmyi4_g5nBawcinOjj5o3VCg4X8UjK--AjhAyYHx1nRMr-7xk4x-0VIpQ_OODjLB3WzN8s1YEb0Jx5Bv1JyeCw35zahqs3fAFyRje-p5ENk9NCxfz5x9ZGkszkkNt0Q",
+            "e": "AQAB",
+            "kty": "RSA"
+          }
+        },
+        "payload": {}
+      }
+      """
+    Then the value response.status_code should be equal to 400
+    And the value response with jq ".status" should be equal to 400
+    And the value response with jq ".type" should be equal to "urn:ietf:params:acme:error:malformed"
+    And the value response with jq ".detail" should be equal to "Both JWK and KID are provided in the protected header"
+
+    Examples: Endpoints
+      | src_var | jq                                        | dest_var      | url                                                                                |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/accounts/{account_id}/orders |
+      | order   | .                                         | not_used      | {BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/new-order                    |
+      | order   | .                                         | not_used      | {order.uri}                                                                        |
+      | order   | .                                         | not_used      | {order.uri}/finalize                                                               |
+      | order   | .                                         | not_used      | {order.uri}/certificate                                                            |
+      | order   | .authorizations[0].uri                    | auth_uri      | {auth_uri}                                                                         |
+      | order   | .authorizations[0].body.challenges[0].url | challenge_uri | {challenge_uri}                                                                    |

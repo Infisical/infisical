@@ -584,6 +584,10 @@ export const TOKEN_AUTH = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
     limit: "The number of tokens to return."
   },
+  GET_TOKEN: {
+    identityId: "The ID of the machine identity to get the token for.",
+    tokenId: "The ID of the token to get metadata for."
+  },
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create."
