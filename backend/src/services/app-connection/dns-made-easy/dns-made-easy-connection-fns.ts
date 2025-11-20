@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 
 import { request } from "@app/lib/config/request";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
@@ -12,11 +13,42 @@ import {
   TDNSMadeEasyZone
 } from "./dns-made-easy-connection-types";
 
+interface DNSMadeEasyApiResponse {
+  totalRecords: number;
+  totalPages: number;
+  data: Array<{
+    id: number;
+    name: string;
+    [key: string]: unknown;
+  }>;
+  page: number;
+}
+
+export const makeDNSMadeEasyAuthHeaders = (
+  apiKey: string,
+  apiSecret: string,
+  currentDate: Date = new Date()
+): Record<string, string> => {
+  // Format date as "Day, DD Mon YYYY HH:MM:SS GMT" (e.g., "Mon, 01 Jan 2024 12:00:00 GMT")
+  const requestDate = currentDate.toUTCString();
+
+  // Generate HMAC-SHA1 signature
+  const hmac = crypto.nativeCrypto.createHmac("sha1", apiSecret);
+  hmac.update(requestDate);
+  const hmacSignature = hmac.digest("hex");
+
+  return {
+    "x-dnsme-apiKey": apiKey,
+    "x-dnsme-hmac": hmacSignature,
+    "x-dnsme-requestDate": requestDate
+  };
+};
+
 export const getDNSMadeEasyConnectionListItem = () => {
   return {
     name: "DNS Made Easy" as const,
     app: AppConnection.DNSMadeEasy as const,
-    methods: Object.values(DNSMadeEasyConnectionMethod) as [DNSMadeEasyConnectionMethod.APIKey]
+    methods: Object.values(DNSMadeEasyConnectionMethod) as [DNSMadeEasyConnectionMethod.APIKeySecret]
   };
 };
 
@@ -27,7 +59,7 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
   // Authentication: Use API key and secret from appConnection.credentials
   // Return format: Array of { id: string, name: string }
 
-  if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKey) {
+  if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
     throw new Error("Unsupported DNS Made Easy connection method");
   }
 
@@ -35,56 +67,42 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
     credentials: { apiKey, apiSecret }
   } = appConnection;
 
-  // TODO: Make API request to DNS Made Easy
-  // const { data } = await request.get<{ data: { id: number; name: string }[] }>(
-  //   `${IntegrationUrls.DNS_MADE_EASY_API_URL}/V2.0/dns/managed`,
-  //   {
-  //     headers: {
-  //       "x-dnsme-apiKey": apiKey,
-  //       "x-dnsme-hmac": generateHMAC(apiSecret, ...),
-  //       "x-dnsme-requestDate": requestDate,
-  //       Accept: "application/json"
-  //     }
-  //   }
-  // );
-
-  // TODO: Transform response data to match TDNSMadeEasyZone format
-  // return data.data.map((zone) => ({
-  //   name: zone.name,
-  //   id: zone.id.toString()
-  // }));
-
-  throw new Error("Not implemented: listDNSMadeEasyZones");
+  try {
+    // TODO:
+    const allZones: TDNSMadeEasyZone[] = [];
+    return allZones;
+  } catch (error: unknown) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        message: `Failed to list DNS Made Easy zones: ${error.response?.data?.error?.[0] || error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to list DNS Made Easy zones"
+    });
+  }
 };
 
 export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeEasyConnectionConfig) => {
-  // TODO: Implement DNS Made Easy credentials validation
-  // This should call the DNS Made Easy API to validate the API key and secret
-  // Example API endpoint: GET https://api.dnsmadeeasy.com/V2.0/account
-  // Authentication: Use API key and secret from config.credentials
-
-  if (config.method !== DNSMadeEasyConnectionMethod.APIKey) {
+  if (config.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
     throw new Error("Unsupported DNS Made Easy connection method");
   }
 
   const { apiKey, apiSecret } = config.credentials;
 
   try {
-    // TODO: Make API request to validate credentials
-    // const resp = await request.get(`${IntegrationUrls.DNS_MADE_EASY_API_URL}/V2.0/account`, {
-    //   headers: {
-    //     "x-dnsme-apiKey": apiKey,
-    //     "x-dnsme-hmac": generateHMAC(apiSecret, ...),
-    //     "x-dnsme-requestDate": requestDate,
-    //     Accept: "application/json"
-    //   }
-    // });
-    // TODO: Validate response
-    // if (resp.data === null || !resp.data.id) {
-    //   throw new BadRequestError({
-    //     message: "Unable to validate connection: Invalid API credentials provided."
-    //   });
-    // }
+    const resp = await request.get(`${IntegrationUrls.DNS_MADE_EASY_API_URL}/V2.0/dns/managed/`, {
+      headers: {
+        ...makeDNSMadeEasyAuthHeaders(apiKey, apiSecret),
+        Accept: "application/json"
+      }
+    });
+    if (resp.status !== 200) {
+      throw new BadRequestError({
+        message: "Unable to validate connection: Invalid API credentials provided."
+      });
+    }
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
       throw new BadRequestError({

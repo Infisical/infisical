@@ -11,8 +11,8 @@ import {
   validateOCIConnectionCredentials
 } from "@app/ee/services/app-connections/oci";
 import { getOracleDBConnectionListItem, OracleDBConnectionMethod } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { SECRET_ROTATION_CONNECTION_MAP } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-maps";
 import { SECRET_SCANNING_DATA_SOURCE_CONNECTION_MAP } from "@app/ee/services/secret-scanning-v2/secret-scanning-v2-maps";
@@ -78,11 +78,6 @@ import {
   getCloudflareConnectionListItem,
   validateCloudflareConnectionCredentials
 } from "./cloudflare/cloudflare-connection-fns";
-import { DNSMadeEasyConnectionMethod } from "./dns-made-easy/dns-made-easy-connection-enum";
-import {
-  getDNSMadeEasyConnectionListItem,
-  validateDNSMadeEasyConnectionCredentials
-} from "./dns-made-easy/dns-made-easy-connection-fns";
 import {
   DatabricksConnectionMethod,
   getDatabricksConnectionListItem,
@@ -93,6 +88,11 @@ import {
   getDigitalOceanConnectionListItem,
   validateDigitalOceanConnectionCredentials
 } from "./digital-ocean";
+import { DNSMadeEasyConnectionMethod } from "./dns-made-easy/dns-made-easy-connection-enum";
+import {
+  getDNSMadeEasyConnectionListItem,
+  validateDNSMadeEasyConnectionCredentials
+} from "./dns-made-easy/dns-made-easy-connection-fns";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -402,6 +402,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return "API Token";
+    case DNSMadeEasyConnectionMethod.APIKeySecret:
+      return "API Key & Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
