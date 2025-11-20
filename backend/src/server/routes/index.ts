@@ -2431,6 +2431,7 @@ export const registerRoutes = async (
     }
   }
 
+  await kmsService.startService(hsmStatus);
   await telemetryQueue.startTelemetryCheck();
   await telemetryQueue.startAggregatedEventsJob();
   await dailyResourceCleanUp.init();
@@ -2443,7 +2444,6 @@ export const registerRoutes = async (
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
-  await kmsService.startService(hsmStatus);
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
   await eventBusService.init();
