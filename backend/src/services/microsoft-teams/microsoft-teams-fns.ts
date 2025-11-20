@@ -357,7 +357,7 @@ export const isBotInstalledInTenant = async (
   }
 };
 
-export const buildTeamsPayload = (notification: TNotification) => {
+export const buildTeamsPayload = (orgId: string, notification: TNotification) => {
   const appCfg = getConfig();
 
   switch (notification.type) {
@@ -402,7 +402,7 @@ export const buildTeamsPayload = (notification: TNotification) => {
           {
             type: "Action.OpenUrl",
             title: "View request in Infisical",
-            url: `${appCfg.SITE_URL}/projects/secret-management/${payload.projectId}/approval?requestId=${payload.requestId}`
+            url: `${appCfg.SITE_URL}/organizations/${orgId}/projects/secret-management/${payload.projectId}/approval?requestId=${payload.requestId}`
           }
         ]
       };
@@ -590,10 +590,11 @@ export class TeamsBot extends TeamsActivityHandler {
     tenantId: string,
     channelId: string,
     teamId: string,
+    orgId: string,
     notification: TNotification
   ) {
     try {
-      const { adaptiveCard } = buildTeamsPayload(notification);
+      const { adaptiveCard } = buildTeamsPayload(orgId, notification);
 
       const adaptiveCardActivity = {
         type: "message",

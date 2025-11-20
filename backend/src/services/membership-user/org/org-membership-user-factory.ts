@@ -129,7 +129,7 @@ export const newOrgMembershipUserFactory = ({
         recipients: emails as string[],
         substitutions: {
           subOrganizationName: orgDetails.slug,
-          callback_url: `${appCfg.SITE_URL}/organization/projects?subOrganization=${orgDetails.slug}`
+          callback_url: `${appCfg.SITE_URL}/organizations/${dto.permission.orgId}/projects?subOrganization=${orgDetails.slug}`
         }
       });
     } else {

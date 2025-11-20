@@ -391,7 +391,7 @@ export const secretSharingServiceFactory = ({
         substitutions: {
           name: secretRequest.name,
           respondentUsername,
-          secretRequestUrl: `${appCfg.SITE_URL}/organization/secret-sharing?selectedTab=request-secret`
+          secretRequestUrl: `${appCfg.SITE_URL}/organizations/${secretRequest.orgId}/secret-sharing?selectedTab=request-secret`
         },
         template: SmtpTemplates.SecretRequestCompleted
       });

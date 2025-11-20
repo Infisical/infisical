@@ -759,7 +759,7 @@ export const microsoftTeamsServiceFactory = ({
     });
 
     for await (const channelId of target.channelIds) {
-      await teamsBot.sendMessageToChannel(botAccessToken, tenantId, channelId, target.teamId, notification);
+      await teamsBot.sendMessageToChannel(botAccessToken, tenantId, channelId, target.teamId, orgId, notification);
     }
   };
 

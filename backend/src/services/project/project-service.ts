@@ -1984,7 +1984,7 @@ export const projectServiceFactory = ({
       projectTypeUrl = "cert-management";
     }
 
-    const callbackPath = `/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+    const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
 
     await notificationService.createUserNotifications(
       projectMembers

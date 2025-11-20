@@ -30,28 +30,35 @@ export const serviceTokenDALFactory = (db: TDbClient) => {
 
   const findExpiringTokens = async (tx?: Knex, batchSize = 500, offset = 0) => {
     try {
-      const batch: { name: string; projectName: string; createdByEmail: string; id: string; projectId: string }[] =
-        await (tx || db.replicaNode())(TableName.ServiceToken)
-          .leftJoin<TUsers>(
-            TableName.Users,
-            `${TableName.Users}.id`,
-            db.raw(`${TableName.ServiceToken}."createdBy"::uuid`)
-          )
-          .join(TableName.Project, `${TableName.Project}.id`, `${TableName.ServiceToken}.projectId`)
-          .whereRaw(
-            `${TableName.ServiceToken}."expiresAt" < NOW() + INTERVAL '1 day' AND ${TableName.ServiceToken}."expiryNotificationSent" = false`
-          )
-          .whereNotNull(`${TableName.Users}.email`)
-          .select(
-            db.ref("id").withSchema(TableName.ServiceToken),
-            db.ref("name").withSchema(TableName.ServiceToken),
-            db.ref("projectId").withSchema(TableName.ServiceToken),
-            db.ref("createdBy").withSchema(TableName.ServiceToken),
-            db.ref("email").withSchema(TableName.Users).as("createdByEmail"),
-            db.ref("name").withSchema(TableName.Project).as("projectName")
-          )
-          .limit(batchSize)
-          .offset(offset);
+      const batch: {
+        name: string;
+        projectName: string;
+        createdByEmail: string;
+        id: string;
+        projectId: string;
+        orgId: string;
+      }[] = await (tx || db.replicaNode())(TableName.ServiceToken)
+        .leftJoin<TUsers>(
+          TableName.Users,
+          `${TableName.Users}.id`,
+          db.raw(`${TableName.ServiceToken}."createdBy"::uuid`)
+        )
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.ServiceToken}.projectId`)
+        .whereRaw(
+          `${TableName.ServiceToken}."expiresAt" < NOW() + INTERVAL '1 day' AND ${TableName.ServiceToken}."expiryNotificationSent" = false`
+        )
+        .whereNotNull(`${TableName.Users}.email`)
+        .select(
+          db.ref("id").withSchema(TableName.ServiceToken),
+          db.ref("name").withSchema(TableName.ServiceToken),
+          db.ref("projectId").withSchema(TableName.ServiceToken),
+          db.ref("createdBy").withSchema(TableName.ServiceToken),
+          db.ref("email").withSchema(TableName.Users).as("createdByEmail"),
+          db.ref("name").withSchema(TableName.Project).as("projectName"),
+          db.ref("orgId").withSchema(TableName.Project).as("orgId")
+        )
+        .limit(batchSize)
+        .offset(offset);
 
       return batch;
     } catch (err) {
