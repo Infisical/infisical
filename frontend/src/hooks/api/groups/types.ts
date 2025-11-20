@@ -52,7 +52,21 @@ export type TGroupUser = {
   joinedGroupAt: Date;
 };
 
+export type TGroupProject = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  type: string;
+  joinedGroupAt: Date;
+};
+
 export enum EFilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
+}
+
+export enum EFilterReturnedProjects {
+  ASSIGNED_PROJECTS = "assignedProjects",
+  UNASSIGNED_PROJECTS = "unassignedProjects"
 }
