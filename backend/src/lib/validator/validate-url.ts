@@ -8,10 +8,10 @@ import { getConfig } from "@app/lib/config/env";
 import { BadRequestError } from "../errors";
 import { isPrivateIp } from "../ip/ipRange";
 
-export const blockLocalAndPrivateIpAddresses = async (url: string) => {
+export const blockLocalAndPrivateIpAddresses = async (url: string, isGateway = false) => {
   const appCfg = getConfig();
 
-  if (appCfg.isDevelopmentMode) return;
+  if (appCfg.isDevelopmentMode || isGateway) return;
 
   const validUrl = new URL(url);
 

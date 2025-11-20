@@ -10,6 +10,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const CamundaSyncDestinationConfigSchema = z.object({
   scope: z.string().trim().min(1, "Camunda scope required").describe(SecretSyncs.DESTINATION_CONFIG.CAMUNDA.scope),
   clusterUUID: z
@@ -20,10 +22,12 @@ const CamundaSyncDestinationConfigSchema = z.object({
 
 const CamundaSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const CamundaSyncSchema = BaseSecretSyncSchema(SecretSync.Camunda, CamundaSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.Camunda),
-  destinationConfig: CamundaSyncDestinationConfigSchema
-});
+export const CamundaSyncSchema = BaseSecretSyncSchema(SecretSync.Camunda, CamundaSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.Camunda),
+    destinationConfig: CamundaSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Camunda] }));
 
 export const CreateCamundaSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Camunda,
@@ -39,9 +43,11 @@ export const UpdateCamundaSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: CamundaSyncDestinationConfigSchema.optional()
 });
 
-export const CamundaSyncListItemSchema = z.object({
-  name: z.literal("Camunda"),
-  connection: z.literal(AppConnection.Camunda),
-  destination: z.literal(SecretSync.Camunda),
-  canImportSecrets: z.literal(true)
-});
+export const CamundaSyncListItemSchema = z
+  .object({
+    name: z.literal("Camunda"),
+    connection: z.literal(AppConnection.Camunda),
+    destination: z.literal(SecretSync.Camunda),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Camunda] }));

@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { Auth0ConnectionMethod } from "./auth0-connection-enums";
 
 export const Auth0ConnectionClientCredentialsInputCredentialsSchema = z.object({
@@ -59,7 +60,7 @@ export const SanitizedAuth0ConnectionSchema = z.discriminatedUnion("method", [
       clientId: true,
       audience: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Auth0]} (Client Credentials)` }))
 ]);
 
 export const ValidateAuth0ConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -85,10 +86,12 @@ export const UpdateAuth0ConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Auth0));
 
-export const Auth0ConnectionListItemSchema = z.object({
-  name: z.literal("Auth0"),
-  app: z.literal(AppConnection.Auth0),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
-  methods: z.nativeEnum(Auth0ConnectionMethod).array()
-});
+export const Auth0ConnectionListItemSchema = z
+  .object({
+    name: z.literal("Auth0"),
+    app: z.literal(AppConnection.Auth0),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
+    methods: z.nativeEnum(Auth0ConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Auth0] }));

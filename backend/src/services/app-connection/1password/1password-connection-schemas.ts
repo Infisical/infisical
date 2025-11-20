@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { OnePassConnectionMethod } from "./1password-connection-enums";
 
 export const OnePassConnectionAccessTokenCredentialsSchema = z.object({
@@ -33,7 +34,7 @@ export const SanitizedOnePassConnectionSchema = z.discriminatedUnion("method", [
     credentials: OnePassConnectionAccessTokenCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.OnePass]} (API Token)` }))
 ]);
 
 export const ValidateOnePassConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -57,8 +58,10 @@ export const UpdateOnePassConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.OnePass));
 
-export const OnePassConnectionListItemSchema = z.object({
-  name: z.literal("1Password"),
-  app: z.literal(AppConnection.OnePass),
-  methods: z.nativeEnum(OnePassConnectionMethod).array()
-});
+export const OnePassConnectionListItemSchema = z
+  .object({
+    name: z.literal("1Password"),
+    app: z.literal(AppConnection.OnePass),
+    methods: z.nativeEnum(OnePassConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.OnePass] }));

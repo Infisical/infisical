@@ -45,12 +45,20 @@ jobs:
         run: npm install
         working-directory: backend
 
-      - name: Output .env file
+      - name: Output .env file and enable feature flags for BDD tests
         run: |
           cp .env.example .env
           echo "ACME_DEVELOPMENT_MODE=true" >> .env
-          echo "ACME_FEATURE_ENABLED=true" >> .env
-          echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\"}" >> .env
+          echo "ACME_DEVELOPMENT_HTTP01_CHALLENGE_HOST_OVERRIDES={\"localhost\": \"host.docker.internal:8087\", \"infisical.com\": \"host.docker.internal:8087\", \"example.com\": \"host.docker.internal:8087\"}" >> .env
+          echo "BDD_NOCK_API_ENABLED=true" >> .env
+          # Skip upstream validation, otherwise the ACME client for the upstream will try to
+          # validate the DNS records, which will fail because the DNS records are not actually created.
+          echo "ACME_SKIP_UPSTREAM_VALIDATION=true" >> .env
+          # We are not using FIPS mode, need a different encryption key for BDD tests
+          NEW_ENCRYPTION_KEY=6c1fe4e407b8911c104518103505b218
+          sed -i "s#ENCRYPTION_KEY=.*#ENCRYPTION_KEY=$NEW_ENCRYPTION_KEY#" .env
+          # Enable ACME feature in license for BDD tests
+          sed -i 's/pkiAcme: .*/pkiAcme: true,/g' backend/src/ee/services/license/license-fns.ts
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
         with:

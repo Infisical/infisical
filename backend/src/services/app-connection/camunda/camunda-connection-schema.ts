@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { CamundaConnectionMethod } from "./camunda-connection-enums";
 
 const BaseCamundaConnectionSchema = BaseAppConnectionSchema.extend({ app: z.literal(AppConnection.Camunda) });
@@ -44,7 +45,7 @@ export const SanitizedCamundaConnectionSchema = z.discriminatedUnion("method", [
     credentials: CamundaConnectionClientCredentialsOutputCredentialsSchema.pick({
       clientId: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Camunda]} (Client Credentials)` }))
 ]);
 
 export const ValidateCamundaConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -70,8 +71,10 @@ export const UpdateCamundaConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Camunda));
 
-export const CamundaConnectionListItemSchema = z.object({
-  name: z.literal("Camunda"),
-  app: z.literal(AppConnection.Camunda),
-  methods: z.nativeEnum(CamundaConnectionMethod).array()
-});
+export const CamundaConnectionListItemSchema = z
+  .object({
+    name: z.literal("Camunda"),
+    app: z.literal(AppConnection.Camunda),
+    methods: z.nativeEnum(CamundaConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Camunda] }));

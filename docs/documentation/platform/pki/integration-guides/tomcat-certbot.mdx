@@ -1,0 +1,251 @@
+---
+title: "Tomcat"
+description: "Learn how to issue SSL/TLS certificates from Infisical using ACME enrollment on Tomcat with Certbot"
+---
+
+This guide demonstrates how to use Infisical to issue SSL/TLS certificates for your [Apache Tomcat](https://tomcat.apache.org/) application server.
+
+It uses [Certbot](https://certbot.eff.org/), an installable [ACME](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) client, to request and renew certificates from Infisical using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). Unlike web servers with native Certbot plugins, Tomcat requires certificates to be manually configured after issuance.
+
+## Prerequisites
+
+Before you begin, make sure you have:
+
+- An [Apache Tomcat](https://tomcat.apache.org/) application server running on a Linux system with administrative access.
+- A [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) in Infisical.
+- Network connectivity from your Tomcat server to Infisical.
+- Port 80 open and reachable for ACME [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) validation.
+
+## Guide
+
+<Steps>
+    <Step title="Obtain ACME Configuration from Infisical">
+        Navigate to your certificate management project in Infisical and locate your [certificate profile](/documentation/platform/pki/certificates/profiles) configured with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme).
+        ![Certificate profile with ACME enrollment option](/images/platform/pki/acme/certificate-profile-acme-option.png)
+
+        Click the **Reveal ACME EAB** option to view the ACME configuration details.
+
+        ![ACME configuration modal showing directory URL and EAB credentials](/images/platform/pki/acme/acme-configuration-modal.png)
+
+        From the ACME configuration, gather the following values:
+
+        - ACME Directory URL: The URL that Certbot will use to communicate with Infisical's ACME server. This takes the form `https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory`.
+        - EAB Key Identifier (KID): A unique identifier that tells Infisical which ACME account is making the request.
+        - EAB Secret: A secret key that authenticates your ACME client with Infisical.
+
+        <Note>
+            Keep your EAB credentials secure as they authenticate your ACME client with Infisical PKI. These credentials are unique to each [certificate profile](/documentation/platform/pki/certificates/profiles) and should not be shared.
+        </Note>
+    </Step>
+
+    <Step title="Install Certbot">
+        Install Certbot on the server where Tomcat is running by following the official Certbot [installation guide](https://certbot.eff.org/instructions).
+
+        The installation guide provides up-to-date instructions for various Linux distributions and package managers, ensuring you get the most current version of Certbot.
+
+        After installation, you can verify that Certbot has been installed correctly by running:
+
+        ```bash
+        certbot --version
+        ```
+    </Step>
+
+    <Step title="Request Certificate Using Certbot">
+        Since Tomcat doesn't have a native Certbot plugin, use the standalone authenticator to obtain certificates. **Important**: You must stop Tomcat before running this command as Certbot needs to bind to port 80 for the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge.
+
+        Stop your Tomcat server:
+
+        ```bash
+        sudo systemctl stop tomcat
+        ```
+
+        Run the following command to request a certificate from Infisical:
+
+        ```bash
+        sudo certbot certonly \
+          --standalone \
+          --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+          --eab-kid "your-eab-key-identifier" \
+          --eab-hmac-key "your-eab-secret" \
+          -d example.infisical.com \
+          --email admin@example.com \
+          --agree-tos \
+          --non-interactive
+        ```
+
+        For guidance on each parameter:
+
+        - `certonly`: Instructs Certbot to request a certificate without modifying your Tomcat configuration; this mode is recommended because Tomcat requires manual SSL connector configuration in its server.xml file.
+        - `--standalone`: Uses Certbot's standalone authenticator to solve the [HTTP-01](https://letsencrypt.org/docs/challenge-types/#http-01-challenge) challenge by starting a temporary web server on port 80.
+        - `--server`: The Infisical ACME directory URL from Step 1. This instructs Certbot to communicate with Infisical's ACME server instead of Let's Encrypt.
+        - `--eab-kid`: Your External Account Binding (EAB) Key Identifier from Step 1.
+        - `--eab-hmac-key`: The EAB secret associated with the KID from Step 1.
+        - `-d`: Specifies the domain name for which the certificate is being requested.
+        - `--email`: The contact email for expiration notices and account recovery.
+        - `--agree-tos`: Accepts the ACME server's Terms of Service.
+        - `--non-interactive`: Runs Certbot without prompting for user input (recommended for automation).
+
+        The Certbot command generates a private key on your server, creates a Certificate Signing Request (CSR) using that key, and sends the CSR to Infisical for certificate issuance. Certbot stores the private key and resulting leaf certificate and full certificate chain in `/etc/letsencrypt/live/{domain-name}/`.
+
+        Because Tomcat requires manual SSL configuration, you'll need to configure the SSL connector in your Tomcat server.xml file to reference these certificate files. You can restart Tomcat after the certificate is issued, but SSL won't be enabled until you complete the server configuration.
+
+        ```bash
+        sudo systemctl start tomcat
+        ```
+    </Step>
+
+    <Step title="Configure Tomcat SSL Connector">
+        To enable SSL/TLS in Tomcat, you need to configure an SSL connector in the server.xml configuration file. Tomcat can use the PEM certificates directly without conversion to Java keystore format (available in Tomcat 8.5+ with the NIO or NIO2 connector).
+
+        Edit your Tomcat server.xml file (typically located at `/opt/tomcat/conf/server.xml` or `/usr/share/tomcat/conf/server.xml`):
+
+        ```xml
+        <Connector port="8443"
+                   protocol="org.apache.coyote.http11.Http11NioProtocol"
+                   maxThreads="150"
+                   SSLEnabled="true">
+            <SSLHostConfig>
+                <Certificate certificateFile="/etc/letsencrypt/live/example.infisical.com/cert.pem"
+                           certificateKeyFile="/etc/letsencrypt/live/example.infisical.com/privkey.pem"
+                           certificateChainFile="/etc/letsencrypt/live/example.infisical.com/chain.pem"
+                           type="RSA" />
+            </SSLHostConfig>
+        </Connector>
+        ```
+
+        Restart Tomcat to apply the SSL configuration:
+
+        ```bash
+        sudo systemctl restart tomcat
+        ```
+
+        You can verify SSL is working by accessing your Tomcat application at `https://example.infisical.com:8443`. For production deployments, consider configuring a reverse proxy (like [Apache HTTP Server](https://httpd.apache.org/) or [Nginx](https://nginx.org/)) to handle SSL termination on standard port 443.
+
+        <Note>
+            The certificate paths must be readable by the Tomcat user. You may need to adjust file permissions or copy the certificates to a location accessible by Tomcat. For security, ensure the private key file has restricted permissions (600) and is owned by the Tomcat user.
+        </Note>
+    </Step>
+
+    <Step title="Verify Certificate Installation">
+        After configuring Tomcat SSL, verify that your certificate was issued correctly and Tomcat is serving it properly.
+
+        Check that the certificate files were created by Certbot:
+
+        ```bash
+        sudo ls -la /etc/letsencrypt/live/example.infisical.com/
+        ```
+
+        You should see files like:
+        - `cert.pem` (your certificate)
+        - `chain.pem` (certificate chain)
+        - `fullchain.pem` (certificate + chain)
+        - `privkey.pem` (private key)
+    </Step>
+
+    <Step title="Renew Your Certificate with Certbot">
+        Unlike web servers with native Certbot plugins, Tomcat certificate renewal requires stopping the server, renewing the certificate, and restarting to load the new certificates.
+
+        To test the renewal process without affecting your live certificates, run the following command:
+
+        ```bash
+        sudo certbot renew --dry-run
+        ```
+
+        This command simulates the full renewal process without modifying your active certificate. If the dry run succeeds, the renewal mechanism will work as expected.
+
+        For actual renewal, since Tomcat requires the standalone authenticator, you'll need to stop the server, perform the renewal, and restart:
+
+        ```bash
+        # Stop Tomcat
+        sudo systemctl stop tomcat
+
+        # Renew the certificate
+        sudo certbot renew --quiet
+
+        # Start Tomcat
+        sudo systemctl start tomcat
+        ```
+
+        **Important considerations for Tomcat renewal:**
+
+        Because Tomcat uses the standalone authenticator, the server must be stopped during renewal. This creates a service interruption that requires manual coordination:
+
+        1. **Plan maintenance windows** for certificate renewals (typically every 60-90 days)
+        2. **Monitor renewal dates** to schedule downtime appropriately
+        3. **Consider load balancers** or multiple instances for high availability during renewals
+
+        Create a deploy hook to automate post-renewal tasks. Create `/etc/letsencrypt/renewal-hooks/deploy/tomcat-renewal.sh`:
+
+        ```bash
+        #!/bin/bash
+        # Tomcat certificate renewal hook
+        # This runs AFTER Certbot successfully renews certificates
+
+        DOMAIN="example.infisical.com"
+        TOMCAT_USER="tomcat"
+
+        # Ensure certificate files are readable by Tomcat
+        chown root:$TOMCAT_USER "/etc/letsencrypt/live/$DOMAIN/cert.pem"
+        chown root:$TOMCAT_USER "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+        chown root:$TOMCAT_USER "/etc/letsencrypt/live/$DOMAIN/chain.pem"
+        chown root:$TOMCAT_USER "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+
+        # Set appropriate permissions
+        chmod 640 "/etc/letsencrypt/live/$DOMAIN/cert.pem"
+        chmod 640 "/etc/letsencrypt/live/$DOMAIN/privkey.pem"
+        chmod 640 "/etc/letsencrypt/live/$DOMAIN/chain.pem"
+        chmod 640 "/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
+
+        # Start Tomcat (it was stopped for renewal)
+        systemctl start tomcat
+
+        # Wait for startup and verify service is running
+        sleep 10
+        if ! systemctl is-active --quiet tomcat; then
+            echo "ERROR: Tomcat failed to start after certificate renewal"
+            exit 1
+        fi
+
+        echo "Tomcat certificate renewal completed successfully"
+        ```
+
+        Make the hook executable:
+
+        ```bash
+        sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/tomcat-renewal.sh
+        ```
+
+        <Note>
+            Certbot automatically renews certificates when they are within 30 days of expiration using its built-in systemd timer. The deploy hook above will run after each successful renewal, handling the certificate permissions and service restart automatically. Because Tomcat requires the standalone authenticator (which stops the service temporarily), plan for brief service interruptions during renewal.
+        </Note>
+    </Step>
+
+    <Step title="Using Renewed Certificates Manually">
+        If you need to manually apply renewed certificates to Tomcat (when the deploy hook isn't used), follow these steps:
+
+        **Step 1: Set certificate file permissions**
+
+        After Certbot renews your certificates, ensure they're readable by Tomcat:
+
+        ```bash
+        sudo chown root:tomcat /etc/letsencrypt/live/example.infisical.com/cert.pem
+        sudo chown root:tomcat /etc/letsencrypt/live/example.infisical.com/privkey.pem
+        sudo chown root:tomcat /etc/letsencrypt/live/example.infisical.com/chain.pem
+        sudo chmod 640 /etc/letsencrypt/live/example.infisical.com/cert.pem
+        sudo chmod 640 /etc/letsencrypt/live/example.infisical.com/privkey.pem
+        sudo chmod 640 /etc/letsencrypt/live/example.infisical.com/chain.pem
+        ```
+
+        **Step 2: Restart Tomcat to load new certificates**
+
+        ```bash
+        sudo systemctl restart tomcat
+        ```
+
+        That's it! Tomcat will automatically use the renewed certificates since your `server.xml` already points to the Let's Encrypt certificate files.
+
+        <Note>
+            Since Tomcat reads certificates from the file system on startup, you only need to restart the service after certificate renewal. The certificate file paths in `/etc/letsencrypt/live/` are symbolic links that automatically point to the latest certificates.
+        </Note>
+    </Step>
+</Steps>

@@ -13,6 +13,8 @@ import { Button, IconButton } from "@app/components/v2";
 import { useTimedReset, useToggle } from "@app/hooks";
 import { TViewSharedSecretResponse } from "@app/hooks/api/secretSharing";
 
+import { SecretShareInfo } from "./SecretShareInfo";
+
 type Props = {
   secret: TViewSharedSecretResponse["secret"];
   secretKey: string | null;
@@ -71,6 +73,7 @@ export const SecretContainer = ({ secret, secretKey: key }: Props) => {
           </IconButton>
         </div>
       </div>
+      <SecretShareInfo secret={secret} />
       <Button
         className="mt-4 w-full bg-mineshaft-700 py-3 text-bunker-200"
         colorSchema="primary"

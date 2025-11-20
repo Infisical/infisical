@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { NetlifyConnectionMethod } from "./netlify-connection-constants";
 
 export const NetlifyConnectionMethodSchema = z
@@ -36,7 +37,7 @@ export const SanitizedNetlifyConnectionSchema = z.discriminatedUnion("method", [
   BaseNetlifyConnectionSchema.extend({
     method: NetlifyConnectionMethodSchema,
     credentials: NetlifyConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Netlify]} (Access Token)` }))
 ]);
 
 export const ValidateNetlifyConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -60,8 +61,10 @@ export const UpdateNetlifyConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Netlify));
 
-export const NetlifyConnectionListItemSchema = z.object({
-  name: z.literal("Netlify"),
-  app: z.literal(AppConnection.Netlify),
-  methods: z.nativeEnum(NetlifyConnectionMethod).array()
-});
+export const NetlifyConnectionListItemSchema = z
+  .object({
+    name: z.literal("Netlify"),
+    app: z.literal(AppConnection.Netlify),
+    methods: z.nativeEnum(NetlifyConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Netlify] }));

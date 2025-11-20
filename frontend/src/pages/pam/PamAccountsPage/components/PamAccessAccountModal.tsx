@@ -61,18 +61,15 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
   const command = useMemo(() => {
     if (!account) return "";
 
-    if (
-      account.resource.resourceType === PamResourceType.Postgres ||
-      account.resource.resourceType === PamResourceType.MySQL
-    ) {
-      return `infisical pam db access-account ${account.id} --duration ${cliDuration}`;
+    switch (account.resource.resourceType) {
+      case PamResourceType.Postgres:
+      case PamResourceType.MySQL:
+        return `infisical pam db access-account ${account.id} --duration ${cliDuration}`;
+      case PamResourceType.SSH:
+        return `infisical pam ssh access-account ${account.id} --duration ${cliDuration}`;
+      default:
+        return "";
     }
-
-    if (account.resource.resourceType === PamResourceType.SSH) {
-      return `infisical pam ssh ${account.id} --duration ${cliDuration}`;
-    }
-
-    return "";
   }, [account, cliDuration]);
 
   if (!account) return null;

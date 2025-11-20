@@ -21,5 +21,3 @@
 ---
 
 - [ ] I have read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview), agreed and acknowledged the [code of conduct](https://infisical.com/docs/contributing/getting-started/code-of-conduct). 📝
-
-<!-- If you have any questions regarding contribution, here's the FAQ : https://infisical.com/docs/contributing/getting-started/faq -->

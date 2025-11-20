@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { SupabaseConnectionMethod } from "./supabase-connection-constants";
 
 export const SupabaseConnectionMethodSchema = z
@@ -39,7 +40,7 @@ export const SanitizedSupabaseConnectionSchema = z.discriminatedUnion("method", 
     credentials: SupabaseConnectionAccessTokenCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Supabase]} (Access Token)` }))
 ]);
 
 export const ValidateSupabaseConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -63,8 +64,10 @@ export const UpdateSupabaseConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Supabase));
 
-export const SupabaseConnectionListItemSchema = z.object({
-  name: z.literal("Supabase"),
-  app: z.literal(AppConnection.Supabase),
-  methods: z.nativeEnum(SupabaseConnectionMethod).array()
-});
+export const SupabaseConnectionListItemSchema = z
+  .object({
+    name: z.literal("Supabase"),
+    app: z.literal(AppConnection.Supabase),
+    methods: z.nativeEnum(SupabaseConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Supabase] }));

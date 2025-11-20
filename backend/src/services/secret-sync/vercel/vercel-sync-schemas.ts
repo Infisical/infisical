@@ -10,6 +10,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { VercelEnvironmentType } from "./vercel-sync-enums";
 
 const VercelSyncDestinationConfigSchema = z.object({
@@ -22,10 +23,12 @@ const VercelSyncDestinationConfigSchema = z.object({
 
 const VercelSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const VercelSyncSchema = BaseSecretSyncSchema(SecretSync.Vercel, VercelSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.Vercel),
-  destinationConfig: VercelSyncDestinationConfigSchema
-});
+export const VercelSyncSchema = BaseSecretSyncSchema(SecretSync.Vercel, VercelSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.Vercel),
+    destinationConfig: VercelSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Vercel] }));
 
 export const CreateVercelSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Vercel,
@@ -41,9 +44,11 @@ export const UpdateVercelSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: VercelSyncDestinationConfigSchema.optional()
 });
 
-export const VercelSyncListItemSchema = z.object({
-  name: z.literal("Vercel"),
-  connection: z.literal(AppConnection.Vercel),
-  destination: z.literal(SecretSync.Vercel),
-  canImportSecrets: z.literal(true)
-});
+export const VercelSyncListItemSchema = z
+  .object({
+    name: z.literal("Vercel"),
+    connection: z.literal(AppConnection.Vercel),
+    destination: z.literal(SecretSync.Vercel),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Vercel] }));

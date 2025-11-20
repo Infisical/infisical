@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { AzureKeyVaultConnectionMethod } from "./azure-key-vault-connection-enums";
 
 export const AzureKeyVaultConnectionOAuthInputCredentialsSchema = z.object({
@@ -104,19 +105,21 @@ export const SanitizedAzureKeyVaultConnectionSchema = z.discriminatedUnion("meth
     credentials: AzureKeyVaultConnectionOAuthOutputCredentialsSchema.pick({
       tenantId: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (OAuth)` })),
   BaseAzureKeyVaultConnectionSchema.extend({
     method: z.literal(AzureKeyVaultConnectionMethod.ClientSecret),
     credentials: AzureKeyVaultConnectionClientSecretOutputCredentialsSchema.pick({
       clientId: true,
       tenantId: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault]} (Client Secret)` }))
 ]);
 
-export const AzureKeyVaultConnectionListItemSchema = z.object({
-  name: z.literal("Azure Key Vault"),
-  app: z.literal(AppConnection.AzureKeyVault),
-  methods: z.nativeEnum(AzureKeyVaultConnectionMethod).array(),
-  oauthClientId: z.string().optional()
-});
+export const AzureKeyVaultConnectionListItemSchema = z
+  .object({
+    name: z.literal("Azure Key Vault"),
+    app: z.literal(AppConnection.AzureKeyVault),
+    methods: z.nativeEnum(AzureKeyVaultConnectionMethod).array(),
+    oauthClientId: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.AzureKeyVault] }));

@@ -1,3 +1,6 @@
+## 1.0.3 (November 14, 2025)
+* Added support for setting the image repository by setting `image.repository`. Defaults to `infisical/cli`.
+
 ## 0.0.41 (June 10, 2025)
 * Added new gateway action for fully off-loading CA certificate, cluster URL, and token management to the gateway.
 * Structural improvements

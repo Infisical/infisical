@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { GitHubConnectionMethod } from "./github-connection-enums";
 
 export const GitHubConnectionOAuthInputCredentialsSchema = z.union([
@@ -161,29 +162,31 @@ export const SanitizedGitHubConnectionSchema = z.discriminatedUnion("method", [
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHub]} (GitHub App)` })),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.OAuth),
     credentials: z.object({
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHub]} (OAuth)` })),
   BaseGitHubConnectionSchema.extend({
     method: z.literal(GitHubConnectionMethod.Pat),
     credentials: z.object({
       instanceType: z.union([z.literal("server"), z.literal("cloud")]).optional(),
       host: z.string().optional()
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitHub]} (Personal Access Token)` }))
 ]);
 
-export const GitHubConnectionListItemSchema = z.object({
-  name: z.literal("GitHub"),
-  app: z.literal(AppConnection.GitHub),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
-  methods: z.nativeEnum(GitHubConnectionMethod).array(),
-  oauthClientId: z.string().optional(),
-  appClientSlug: z.string().optional()
-});
+export const GitHubConnectionListItemSchema = z
+  .object({
+    name: z.literal("GitHub"),
+    app: z.literal(AppConnection.GitHub),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
+    methods: z.nativeEnum(GitHubConnectionMethod).array(),
+    oauthClientId: z.string().optional(),
+    appClientSlug: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.GitHub] }));

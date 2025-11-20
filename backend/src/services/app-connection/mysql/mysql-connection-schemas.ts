@@ -8,6 +8,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { AppConnection } from "../app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { BaseSqlUsernameAndPasswordConnectionSchema } from "../shared/sql";
 import { MySqlConnectionMethod } from "./mysql-connection-enums";
 
@@ -32,7 +33,7 @@ export const SanitizedMySqlConnectionSchema = z.discriminatedUnion("method", [
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.MySql]} (Username and Password)` }))
 ]);
 
 export const ValidateMySqlConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -66,9 +67,11 @@ export const UpdateMySqlConnectionSchema = z
     })
   );
 
-export const MySqlConnectionListItemSchema = z.object({
-  name: z.literal("MySQL"),
-  app: z.literal(AppConnection.MySql),
-  methods: z.nativeEnum(MySqlConnectionMethod).array(),
-  supportsPlatformManagement: z.literal(true)
-});
+export const MySqlConnectionListItemSchema = z
+  .object({
+    name: z.literal("MySQL"),
+    app: z.literal(AppConnection.MySql),
+    methods: z.nativeEnum(MySqlConnectionMethod).array(),
+    supportsPlatformManagement: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.MySql] }));

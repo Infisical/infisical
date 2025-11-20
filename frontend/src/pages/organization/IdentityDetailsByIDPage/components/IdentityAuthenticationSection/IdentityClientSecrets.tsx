@@ -7,9 +7,9 @@ import { Button, IconButton, Tooltip } from "@app/components/v2";
 import { OrgPermissionIdentityActions, OrgPermissionSubjects } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import {
-  useGetIdentityById,
   useGetIdentityUniversalAuth,
-  useGetIdentityUniversalAuthClientSecrets
+  useGetIdentityUniversalAuthClientSecrets,
+  useGetOrgIdentityMembershipById
 } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -30,7 +30,7 @@ export const IdentityClientSecrets = ({ identityId, handlePopUpOpen }: Props) =>
     initialState: "Copy Client ID to clipboard"
   });
 
-  const { data } = useGetIdentityById(identityId);
+  const { data } = useGetOrgIdentityMembershipById(identityId);
   const { data: identityUniversalAuth } = useGetIdentityUniversalAuth(identityId);
   const { data: clientSecrets } = useGetIdentityUniversalAuthClientSecrets(identityId);
   return (

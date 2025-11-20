@@ -1,5 +1,4 @@
 import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-template-router";
-import { getConfig } from "@app/lib/config/env";
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
@@ -109,10 +108,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (pkiRouter) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
-      // Notice: current this feature is still in development and is not yet ready for production.
-      if (getConfig().isAcmeFeatureEnabled === true) {
-        await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
-      }
+      await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
     { prefix: "/pki" }
   );

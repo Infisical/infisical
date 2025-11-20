@@ -66,6 +66,7 @@ export const ViewIdentityUniversalAuthContent = ({
     <ViewIdentityContentWrapper
       onEdit={() => handlePopUpOpen("identityAuthMethod")}
       onDelete={onDelete}
+      identityId={identityId}
     >
       {Number(data.accessTokenPeriod) > 0 ? (
         <IdentityAuthFieldDisplay label="Access Token Period (seconds)">

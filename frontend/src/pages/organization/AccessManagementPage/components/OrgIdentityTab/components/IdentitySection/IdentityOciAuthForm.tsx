@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -84,7 +85,9 @@ export const IdentityOciAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityOciAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityOciAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -156,7 +159,7 @@ export const IdentityOciAuthForm = ({
 
     if (data) {
       await updateMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         tenancyOcid,
         allowedUsernames,
         identityId,
@@ -167,7 +170,7 @@ export const IdentityOciAuthForm = ({
       });
     } else {
       await addMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         identityId,
         tenancyOcid,
         allowedUsernames: allowedUsernames || undefined,
@@ -184,7 +187,6 @@ export const IdentityOciAuthForm = ({
       text: `Successfully ${isUpdate ? "updated" : "configured"} auth method`,
       type: "success"
     });
-
     reset();
   };
 

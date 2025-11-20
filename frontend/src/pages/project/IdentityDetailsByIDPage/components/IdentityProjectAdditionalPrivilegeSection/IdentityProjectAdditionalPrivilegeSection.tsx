@@ -26,17 +26,18 @@ import {
   ProjectPermissionActions,
   ProjectPermissionIdentityActions,
   ProjectPermissionSub,
+  useProject,
   useProjectPermission
 } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteIdentityProjectAdditionalPrivilege } from "@app/hooks/api";
-import { IdentityMembership } from "@app/hooks/api/identities/types";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { useListIdentityProjectPrivileges } from "@app/hooks/api/identityProjectAdditionalPrivilege/queries";
 
 import { IdentityProjectAdditionalPrivilegeModifySection } from "./IdentityProjectAdditionalPrivilegeModifySection";
 
 type Props = {
-  identityMembershipDetails: IdentityMembership;
+  identityMembershipDetails: IdentityProjectMembershipV1;
 };
 
 export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDetails }: Props) => {
@@ -46,13 +47,13 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   ] as const);
   const { permission } = useProjectPermission();
   const identityId = identityMembershipDetails?.identity?.id;
-  const projectId = identityMembershipDetails?.project?.id;
+  const { projectId } = useProject();
 
   const { mutateAsync: deletePrivilege } = useDeleteIdentityProjectAdditionalPrivilege();
 
   const { data: identityProjectPrivileges, isPending } = useListIdentityProjectPrivileges({
     identityId: identityMembershipDetails?.identity?.id,
-    projectId: identityMembershipDetails?.project?.id
+    projectId
   });
 
   const handlePrivilegeDelete = async () => {

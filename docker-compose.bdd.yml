@@ -55,8 +55,12 @@ services:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable
       - TELEMETRY_ENABLED=false
+      # This is needed to trust the Pebble CA certificate, which is used for the BDD tests
+      - NODE_EXTRA_CA_CERTS=/usr/local/share/ca-certificates/pebble.minica.crt
     volumes:
       - ./backend/src:/app/src
+      # This is needed to trust the Pebble CA certificate, which is used for the BDD tests
+      - ./backend/bdd/pebble/pebble.minica.pem:/usr/local/share/ca-certificates/pebble.minica.crt:ro
       - softhsm_tokens:/etc/softhsm2/tokens # SoftHSM tokens are stored in a volume to persist across container restarts
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -74,6 +78,21 @@ services:
       - ./frontend/src:/app/src/ # mounted whole src to avoid missing reload on new files
       - ./frontend/public:/app/public
     env_file: .env
+
+  # ACME server for BDD tests
+  pebble:
+    image: ghcr.io/letsencrypt/pebble:2.8.0
+    command: -config /var/data/pebble/pebble-config.json
+    ports:
+      - 14000:14000  # ACME port
+      - 15000:15000  # Management port
+    environment:
+      # Do not perform validation sleep to make the BDD tests faster
+      - PEBBLE_VA_NOSLEEP=1
+      # Skip validation for now to make the BDD tests easier to write
+      - PEBBLE_VA_ALWAYS_VALID=1
+    volumes:
+      - ./backend/bdd/pebble/:/var/data/pebble:ro
 
 volumes:
   postgres-data:

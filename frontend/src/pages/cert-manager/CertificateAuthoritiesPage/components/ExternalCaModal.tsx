@@ -368,7 +368,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
             name="type"
             defaultValue={CaType.ACME}
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
-              <FormControl label="Type" errorText={error?.message} isError={Boolean(error)}>
+              <FormControl label="CA Type" errorText={error?.message} isError={Boolean(error)}>
                 <Select
                   defaultValue={field.value}
                   {...field}

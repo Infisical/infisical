@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { LaravelForgeConnectionMethod } from "./laravel-forge-connection-enums";
 
 export const LaravelForgeConnectionApiTokenCredentialsSchema = z.object({
@@ -25,7 +26,7 @@ export const SanitizedLaravelForgeConnectionSchema = z.discriminatedUnion("metho
   BaseLaravelForgeConnectionSchema.extend({
     method: z.literal(LaravelForgeConnectionMethod.ApiToken),
     credentials: LaravelForgeConnectionApiTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.LaravelForge]} (API Token)` }))
 ]);
 
 export const ValidateLaravelForgeConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -51,8 +52,10 @@ export const UpdateLaravelForgeConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.LaravelForge));
 
-export const LaravelForgeConnectionListItemSchema = z.object({
-  name: z.literal("Laravel Forge"),
-  app: z.literal(AppConnection.LaravelForge),
-  methods: z.nativeEnum(LaravelForgeConnectionMethod).array()
-});
+export const LaravelForgeConnectionListItemSchema = z
+  .object({
+    name: z.literal("Laravel Forge"),
+    app: z.literal(AppConnection.LaravelForge),
+    methods: z.nativeEnum(LaravelForgeConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.LaravelForge] }));

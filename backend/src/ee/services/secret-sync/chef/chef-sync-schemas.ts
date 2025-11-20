@@ -3,6 +3,7 @@ import { z } from "zod";
 import { SecretSyncs } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
+import { SECRET_SYNC_NAME_MAP } from "@app/services/secret-sync/secret-sync-maps";
 import {
   BaseSecretSyncSchema,
   GenericCreateSecretSyncFieldsSchema,
@@ -25,10 +26,12 @@ const ChefSyncDestinationConfigSchema = z.object({
 
 const ChefSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const ChefSyncSchema = BaseSecretSyncSchema(SecretSync.Chef, ChefSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.Chef),
-  destinationConfig: ChefSyncDestinationConfigSchema
-});
+export const ChefSyncSchema = BaseSecretSyncSchema(SecretSync.Chef, ChefSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.Chef),
+    destinationConfig: ChefSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Chef] }));
 
 export const CreateChefSyncSchema = GenericCreateSecretSyncFieldsSchema(SecretSync.Chef, ChefSyncOptionsConfig).extend({
   destinationConfig: ChefSyncDestinationConfigSchema
@@ -38,10 +41,12 @@ export const UpdateChefSyncSchema = GenericUpdateSecretSyncFieldsSchema(SecretSy
   destinationConfig: ChefSyncDestinationConfigSchema.optional()
 });
 
-export const ChefSyncListItemSchema = z.object({
-  name: z.literal("Chef"),
-  connection: z.literal(AppConnection.Chef),
-  destination: z.literal(SecretSync.Chef),
-  canImportSecrets: z.literal(true),
-  enterprise: z.boolean()
-});
+export const ChefSyncListItemSchema = z
+  .object({
+    name: z.literal("Chef"),
+    connection: z.literal(AppConnection.Chef),
+    destination: z.literal(SecretSync.Chef),
+    canImportSecrets: z.literal(true),
+    enterprise: z.boolean()
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Chef] }));

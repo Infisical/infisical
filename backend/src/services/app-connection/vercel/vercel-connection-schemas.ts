@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { VercelConnectionMethod } from "./vercel-connection-enums";
 
 export const VercelConnectionAccessTokenCredentialsSchema = z.object({
@@ -27,7 +28,7 @@ export const SanitizedVercelConnectionSchema = z.discriminatedUnion("method", [
   BaseVercelConnectionSchema.extend({
     method: z.literal(VercelConnectionMethod.ApiToken),
     credentials: VercelConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Vercel]} (API Token)` }))
 ]);
 
 export const ValidateVercelConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -51,8 +52,10 @@ export const UpdateVercelConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Vercel));
 
-export const VercelConnectionListItemSchema = z.object({
-  name: z.literal("Vercel"),
-  app: z.literal(AppConnection.Vercel),
-  methods: z.nativeEnum(VercelConnectionMethod).array()
-});
+export const VercelConnectionListItemSchema = z
+  .object({
+    name: z.literal("Vercel"),
+    app: z.literal(AppConnection.Vercel),
+    methods: z.nativeEnum(VercelConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Vercel] }));

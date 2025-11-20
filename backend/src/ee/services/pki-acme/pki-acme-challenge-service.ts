@@ -76,7 +76,9 @@ export const pkiAcmeChallengeServiceFactory = ({
         //         challenge validation at the same time, it should be fine.
         const challengeResponse = await fetch(challengeUrl, { signal: AbortSignal.timeout(timeoutMs) });
         if (challengeResponse.status !== 200) {
-          throw new BadRequestError({ message: "ACME challenge response is not 200" });
+          throw new AcmeIncorrectResponseError({
+            message: `ACME challenge response is not 200: ${challengeResponse.status}`
+          });
         }
         const challengeResponseBody = await challengeResponse.text();
         const thumbprint = challenge.auth.account.publicKeyThumbprint;
@@ -107,6 +109,7 @@ export const pkiAcmeChallengeServiceFactory = ({
             if (fetchError.code === "ENOTFOUND" || fetchError.message.includes("ENOTFOUND")) {
               return new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
             }
+            logger.error(exp, "Unknown error validating ACME challenge response");
             return new AcmeServerInternalError({ message: "Unknown error validating ACME challenge response" });
           }
         } else if (exp instanceof DOMException) {

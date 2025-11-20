@@ -56,6 +56,7 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
     secretsLimit: 40
   },
   pkiEst: false,
+  pkiAcme: false,
   enforceMfa: false,
   projectTemplates: false,
   kmip: false,

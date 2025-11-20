@@ -36,13 +36,18 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertSanInclude,
   CertSubjectAlternativeNameType,
+  CertSubjectAttributeInclude,
   CertSubjectAttributeType,
   SAN_INCLUDE_OPTIONS,
   SAN_TYPE_OPTIONS,
   SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS,
-  SUBJECT_ATTRIBUTE_TYPE_OPTIONS
+  SUBJECT_ATTRIBUTE_TYPE_OPTIONS,
+  TEMPLATE_PRESET_IDS,
+  type TemplatePresetId
 } from "./shared/certificate-constants";
+import { CERTIFICATE_TEMPLATE_PRESETS } from "./shared/template-presets";
 import { KeyUsagesSection, TemplateFormData, templateSchema } from "./shared";
 
 export type FormData = TemplateFormData;
@@ -91,7 +96,7 @@ const SIGNATURE_ALGORITHMS = [
   "SHA256-ECDSA",
   "SHA384-ECDSA",
   "SHA512-ECDSA"
-];
+] as const;
 
 const KEY_ALGORITHMS = [
   "RSA-2048",
@@ -100,7 +105,7 @@ const KEY_ALGORITHMS = [
   "ECDSA-P256",
   "ECDSA-P384",
   "ECDSA-P521"
-];
+] as const;
 
 export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create" }: Props) => {
   const { currentProject } = useProject();
@@ -117,7 +122,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
           subj.allowed.forEach((allowedValue) => {
             attributes.push({
               type: subj.type as CertSubjectAttributeType,
-              include: "optional",
+              include: CertSubjectAttributeInclude.OPTIONAL,
               value: [allowedValue]
             });
           });
@@ -126,7 +131,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
           subj.denied.forEach((deniedValue) => {
             attributes.push({
               type: subj.type as CertSubjectAttributeType,
-              include: "prohibit",
+              include: CertSubjectAttributeInclude.PROHIBIT,
               value: [deniedValue]
             });
           });
@@ -141,7 +146,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
           san.required.forEach((requiredValue) => {
             subjectAlternativeNames.push({
               type: san.type as CertSubjectAlternativeNameType,
-              include: "mandatory",
+              include: CertSanInclude.MANDATORY,
               value: [requiredValue]
             });
           });
@@ -150,7 +155,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
           san.allowed.forEach((allowedValue) => {
             subjectAlternativeNames.push({
               type: san.type as CertSubjectAlternativeNameType,
-              include: "optional",
+              include: CertSanInclude.OPTIONAL,
               value: [allowedValue]
             });
           });
@@ -159,7 +164,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
           san.denied.forEach((deniedValue) => {
             subjectAlternativeNames.push({
               type: san.type as CertSubjectAlternativeNameType,
-              include: "prohibit",
+              include: CertSanInclude.PROHIBIT,
               value: [deniedValue]
             });
           });
@@ -219,6 +224,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
 
     return {
+      preset: TEMPLATE_PRESET_IDS.CUSTOM,
       name: templateData.name || "",
       description: templateData.description || "",
       attributes,
@@ -231,25 +237,30 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
     };
   };
 
-  const getDefaultValues = (): FormData => ({
-    name: "",
-    description: "",
-    attributes: [],
-    keyUsages: { requiredUsages: [], optionalUsages: [] },
-    extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
-    subjectAlternativeNames: [],
-    validity: {
-      maxDuration: { value: 365, unit: CertDurationUnit.DAYS }
-    },
-    signatureAlgorithm: {
-      allowedAlgorithms: []
-    },
-    keyAlgorithm: {
-      allowedKeyTypes: []
-    }
-  });
+  const getDefaultValues = (): FormData & { preset: TemplatePresetId } => {
+    return {
+      preset: TEMPLATE_PRESET_IDS.CUSTOM,
+      name: "",
+      description: "",
+      attributes: [],
+      keyUsages: { requiredUsages: [], optionalUsages: [] },
+      extendedKeyUsages: { requiredUsages: [], optionalUsages: [] },
+      subjectAlternativeNames: [],
+      validity: {
+        maxDuration: { value: 365, unit: CertDurationUnit.DAYS }
+      },
+      signatureAlgorithm: {
+        allowedAlgorithms: []
+      },
+      keyAlgorithm: {
+        allowedKeyTypes: []
+      }
+    };
+  };
 
-  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
+  const { control, handleSubmit, reset, watch, setValue, formState } = useForm<
+    FormData & { preset: TemplatePresetId }
+  >({
     resolver: zodResolver(templateSchema),
     defaultValues: getDefaultValues(),
     mode: "onChange",
@@ -260,7 +271,7 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   useEffect(() => {
     if (isEdit && template) {
       const convertedData = convertApiToUiFormat(template);
-      reset(convertedData);
+      reset({ ...convertedData, preset: TEMPLATE_PRESET_IDS.CUSTOM });
     } else if (!isEdit) {
       reset(getDefaultValues());
     }
@@ -272,6 +283,37 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
   const watchedExtendedKeyUsages = watch("extendedKeyUsages") || {
     requiredUsages: [],
     optionalUsages: []
+  };
+  const watchedPreset = watch("preset") || TEMPLATE_PRESET_IDS.CUSTOM;
+
+  const handlePresetChange = (presetId: TemplatePresetId) => {
+    setValue("preset", presetId);
+
+    if (presetId === TEMPLATE_PRESET_IDS.CUSTOM) {
+      return;
+    }
+
+    const selectedPreset = CERTIFICATE_TEMPLATE_PRESETS.find((p) => p.id === presetId);
+    if (selectedPreset) {
+      if (selectedPreset.formData.keyUsages) {
+        setValue("keyUsages", selectedPreset.formData.keyUsages);
+      }
+      if (selectedPreset.formData.extendedKeyUsages) {
+        setValue("extendedKeyUsages", selectedPreset.formData.extendedKeyUsages);
+      }
+      if (selectedPreset.formData.attributes) {
+        setValue("attributes", selectedPreset.formData.attributes);
+      }
+      if (selectedPreset.formData.subjectAlternativeNames) {
+        setValue("subjectAlternativeNames", selectedPreset.formData.subjectAlternativeNames);
+      }
+      if (selectedPreset.formData.signatureAlgorithm) {
+        setValue("signatureAlgorithm", selectedPreset.formData.signatureAlgorithm);
+      }
+      if (selectedPreset.formData.keyAlgorithm) {
+        setValue("keyAlgorithm", selectedPreset.formData.keyAlgorithm);
+      }
+    }
   };
 
   const consolidateByType = <
@@ -309,9 +351,17 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       data.attributes?.map((attr) => {
         const result: AttributeTransform = { type: attr.type };
 
-        if (attr.include === "optional" && attr.value && attr.value.length > 0) {
+        if (
+          attr.include === CertSubjectAttributeInclude.OPTIONAL &&
+          attr.value &&
+          attr.value.length > 0
+        ) {
           result.allowed = attr.value;
-        } else if (attr.include === "prohibit" && attr.value && attr.value.length > 0) {
+        } else if (
+          attr.include === CertSubjectAttributeInclude.PROHIBIT &&
+          attr.value &&
+          attr.value.length > 0
+        ) {
           result.denied = attr.value;
         }
 
@@ -322,11 +372,11 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       data.subjectAlternativeNames?.map((san) => {
         const result: SanTransform = { type: san.type };
 
-        if (san.include === "mandatory" && san.value && san.value.length > 0) {
+        if (san.include === CertSanInclude.MANDATORY && san.value && san.value.length > 0) {
           result.required = san.value;
-        } else if (san.include === "optional" && san.value && san.value.length > 0) {
+        } else if (san.include === CertSanInclude.OPTIONAL && san.value && san.value.length > 0) {
           result.allowed = san.value;
-        } else if (san.include === "prohibit" && san.value && san.value.length > 0) {
+        } else if (san.include === CertSanInclude.PROHIBIT && san.value && san.value.length > 0) {
           result.denied = san.value;
         }
 
@@ -464,11 +514,19 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       value: ["*"]
     };
     setValue("attributes", [...watchedAttributes, newAttribute]);
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   const removeAttribute = (index: number) => {
     const newAttributes = watchedAttributes.filter((_, i) => i !== index);
     setValue("attributes", newAttributes);
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   const addSan = () => {
@@ -478,11 +536,19 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       value: ["*"]
     };
     setValue("subjectAlternativeNames", [...watchedSans, newSan]);
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   const removeSan = (index: number) => {
     const newSans = watchedSans.filter((_, i) => i !== index);
     setValue("subjectAlternativeNames", newSans);
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   const handleKeyUsagesChange = (usages: {
@@ -493,6 +559,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       requiredUsages: usages.requiredUsages,
       optionalUsages: usages.optionalUsages
     });
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   const handleExtendedKeyUsagesChange = (usages: {
@@ -503,6 +573,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
       requiredUsages: usages.requiredUsages,
       optionalUsages: usages.optionalUsages
     });
+
+    if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+      setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+    }
   };
 
   return (
@@ -555,6 +629,33 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                   </FormControl>
                 )}
               />
+
+              <Controller
+                control={control}
+                name="preset"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Template Preset"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                  >
+                    <Select
+                      value={field.value}
+                      onValueChange={handlePresetChange}
+                      className="w-full"
+                      position="popper"
+                      dropdownContainerClassName="max-w-none"
+                    >
+                      <SelectItem value={TEMPLATE_PRESET_IDS.CUSTOM}>Custom</SelectItem>
+                      {CERTIFICATE_TEMPLATE_PRESETS.map((preset) => (
+                        <SelectItem key={preset.id} value={preset.id}>
+                          {preset.name}
+                        </SelectItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
+              />
             </div>
             <AccordionItem value="attributes">
               <AccordionTrigger>Subject Attributes</AccordionTrigger>
@@ -595,6 +696,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                   type: value as CertSubjectAttributeType
                                 };
                                 setValue("attributes", newAttributes);
+
+                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                }
                               }}
                               className="w-48"
                             >
@@ -615,6 +720,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                     value as (typeof SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS)[number]
                                 };
                                 setValue("attributes", newAttributes);
+
+                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                }
                               }}
                               className="w-32"
                             >
@@ -635,6 +744,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                   value: e.target.value.trim() ? [e.target.value.trim()] : []
                                 };
                                 setValue("attributes", newAttributes);
+
+                                if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                  setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                                }
                               }}
                               className={`flex-1 ${
                                 attr.value && attr.value.length > 0 && attr.value[0] === ""
@@ -701,6 +814,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 type: value as CertSubjectAlternativeNameType
                               };
                               setValue("subjectAlternativeNames", newSans);
+
+                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              }
                             }}
                             className="w-36"
                           >
@@ -720,6 +837,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 include: value as (typeof SAN_INCLUDE_OPTIONS)[number]
                               };
                               setValue("subjectAlternativeNames", newSans);
+
+                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              }
                             }}
                             className="w-32"
                           >
@@ -740,6 +861,10 @@ export const CreateTemplateModal = ({ isOpen, onClose, template, mode = "create"
                                 value: e.target.value.trim() ? [e.target.value.trim()] : []
                               };
                               setValue("subjectAlternativeNames", newSans);
+
+                              if (watchedPreset !== TEMPLATE_PRESET_IDS.CUSTOM) {
+                                setValue("preset", TEMPLATE_PRESET_IDS.CUSTOM);
+                              }
                             }}
                             className={`flex-1 ${
                               san.value && san.value.length > 0 && san.value[0] === ""

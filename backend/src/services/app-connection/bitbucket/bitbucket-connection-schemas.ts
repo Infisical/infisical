@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { BitbucketConnectionMethod } from "./bitbucket-connection-enums";
 
 export const BitbucketConnectionAccessTokenCredentialsSchema = z.object({
@@ -39,7 +40,7 @@ export const SanitizedBitbucketConnectionSchema = z.discriminatedUnion("method",
     credentials: BitbucketConnectionAccessTokenCredentialsSchema.pick({
       email: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Bitbucket]} (API Token)` }))
 ]);
 
 export const ValidateBitbucketConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -65,8 +66,10 @@ export const UpdateBitbucketConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Bitbucket));
 
-export const BitbucketConnectionListItemSchema = z.object({
-  name: z.literal("Bitbucket"),
-  app: z.literal(AppConnection.Bitbucket),
-  methods: z.nativeEnum(BitbucketConnectionMethod).array()
-});
+export const BitbucketConnectionListItemSchema = z
+  .object({
+    name: z.literal("Bitbucket"),
+    app: z.literal(AppConnection.Bitbucket),
+    methods: z.nativeEnum(BitbucketConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Bitbucket] }));

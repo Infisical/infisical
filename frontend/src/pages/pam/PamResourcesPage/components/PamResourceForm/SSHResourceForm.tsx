@@ -5,14 +5,18 @@ import { z } from "zod";
 import { Button, ModalClose } from "@app/components/v2";
 import { PamResourceType, TSSHResource } from "@app/hooks/api/pam";
 
-import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
-import { BaseSshConnectionDetailsSchema } from "./shared/ssh-resource-schemas";
 import { SshResourceFields } from "./shared/SshResourceFields";
+import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
   resource?: TSSHResource;
   onSubmit: (formData: FormData) => Promise<void>;
 };
+
+const BaseSshConnectionDetailsSchema = z.object({
+  host: z.string().trim().min(1, "Host is required"),
+  port: z.number().int().min(1).max(65535)
+});
 
 const formSchema = genericResourceFieldsSchema.extend({
   resourceType: z.literal(PamResourceType.SSH),

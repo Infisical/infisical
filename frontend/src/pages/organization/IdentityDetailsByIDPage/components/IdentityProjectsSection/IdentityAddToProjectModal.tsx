@@ -14,7 +14,7 @@ import {
 } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import {
-  useAddIdentityToWorkspace,
+  useCreateProjectIdentityMembership,
   useGetIdentityProjectMemberships,
   useGetProjectRoles,
   useGetUserProjects,
@@ -45,7 +45,7 @@ type Props = {
 const Content = ({ identityId, handlePopUpToggle }: Omit<Props, "popUp">) => {
   const { currentOrg } = useOrganization();
   const { data: workspaces = [] } = useGetUserProjects();
-  const { mutateAsync: addIdentityToWorkspace } = useAddIdentityToWorkspace();
+  const { mutateAsync: addIdentityToWorkspace } = useCreateProjectIdentityMembership();
 
   const {
     control,

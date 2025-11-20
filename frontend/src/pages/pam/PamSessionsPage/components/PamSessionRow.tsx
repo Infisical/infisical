@@ -25,7 +25,7 @@ import {
 } from "@app/components/v2";
 import { HighlightText } from "@app/components/v2/HighlightText";
 import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
-import { PAM_RESOURCE_TYPE_MAP, TTerminalEvent, TPamSession } from "@app/hooks/api/pam";
+import { PAM_RESOURCE_TYPE_MAP, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
 
 import { formatLogContent } from "../../PamSessionsByIDPage/components/PamSessionLogsSection.utils";
 import { aggregateTerminalEvents } from "../../PamSessionsByIDPage/components/terminal-utils";

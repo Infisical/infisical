@@ -33,11 +33,13 @@ export enum ApiDocsTags {
   LdapAuth = "LDAP Auth",
   Groups = "Groups",
   Organizations = "Organizations",
+  OrgIdentityMembership = "Organization Identity Membership",
   SubOrganizations = "Sub Organizations",
   Projects = "Projects",
   ProjectUsers = "Project Users",
   ProjectGroups = "Project Groups",
   ProjectIdentities = "Project Identities",
+  IdentityProjectMembership = "Project Identity Membership",
   ProjectRoles = "Project Roles",
   ProjectTemplates = "Project Templates",
   Environments = "Environments",
@@ -122,13 +124,15 @@ export const IDENTITIES = {
     name: "The name of the identity to create.",
     organizationId: "The organization ID to which the identity belongs.",
     role: "The role of the identity. Possible values are 'no-access', 'member', and 'admin'.",
-    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+    hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    metadata: "An optional array of key-value pairs to attach to the identity."
   },
   UPDATE: {
     identityId: "The ID of the machine identity to update.",
     name: "The new name of the identity.",
     role: "The new role of the identity.",
-    hasDeleteProtection: "Prevents deletion of the identity when enabled."
+    hasDeleteProtection: "Prevents deletion of the identity when enabled.",
+    metadata: "An optional array of key-value pairs to attach to the identity."
   },
   DELETE: {
     identityId: "The ID of the machine identity to delete."
@@ -138,7 +142,10 @@ export const IDENTITIES = {
     orgId: "The ID of the org of the identity"
   },
   LIST: {
-    orgId: "The ID of the organization to list identities."
+    orgId: "The ID of the organization to list identities.",
+    search: "The text string that identity names will be filtered by.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return."
   },
   SEARCH: {
     search: {
@@ -577,6 +584,10 @@ export const TOKEN_AUTH = {
     offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
     limit: "The number of tokens to return."
   },
+  GET_TOKEN: {
+    identityId: "The ID of the machine identity to get the token for.",
+    tokenId: "The ID of the token to get metadata for."
+  },
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create."
@@ -716,6 +727,50 @@ export const ORGANIZATIONS = {
   },
   LIST_GROUPS: {
     organizationId: "The ID of the organization to list groups for."
+  }
+} as const;
+
+export const ORG_IDENTITY_MEMBERSHIP = {
+  CREATE_IDENTITY_MEMBERSHIP: {
+    identityId: "The ID of the machine identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity organization membership.",
+      role: "The role slug to assign to the newly created identity organization membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    identityId: "The ID of the machine identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity organization membership.",
+      role: "The role slug to assign to the identity organization membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    identityId: "The ID of the machine identity to delete the membership from."
+  },
+  LIST_IDENTITY_MEMBERSHIPS: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    identityName: "",
+    roles: "The role slugs to filter identity memberships by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    identityId: "The ID of the machine identity to get the membership for."
+  },
+  LIST_AVAILABLE_IDENTITIES: {
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    identityName: "The text string that identity membership names will be filtered by."
   }
 } as const;
 
@@ -906,6 +961,56 @@ export const PROJECT_IDENTITIES = {
     }
   }
 };
+
+export const PROJECT_IDENTITY_MEMBERSHIP = {
+  CREATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to create the identity membership for.",
+    identityId: "The ID of the machine identity to create the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity project membership.",
+      role: "The role slug to assign to the newly created identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  UPDATE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to update the identity membership for.",
+    identityId: "The ID of the machine identity to update the membership for.",
+    roles: {
+      description: "A list of role slugs to assign to the identity project membership.",
+      role: "The role slug to assign to the identity project membership.",
+      isTemporary:
+        "Whether the assigned role is temporary. If isTemporary is set true, must provide temporaryMode, temporaryRange and temporaryAccessStartTime.",
+      temporaryMode: "Type of temporary expiry.",
+      temporaryRange: "Expiry time for temporary access. In relative mode it could be 1s, 2m, 3h, etc.",
+      temporaryAccessStartTime: "Time to which the temporary access starts."
+    }
+  },
+  DELETE_IDENTITY_MEMBERSHIP: {
+    projectId: "The ID of the project to delete the identity membership from.",
+    identityId: "The ID of the machine identity to delete the membership from."
+  },
+  LIST_IDENTITY_MEMBERSHIPS: {
+    projectId: "The ID of the project to list identity memberships from.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity membership.",
+    limit: "The number of identity memberships to return.",
+    identityName: "The text string that identity membership names will be filtered by.",
+    roles: "The role slugs to filter identity memberships by."
+  },
+  GET_IDENTITY_MEMBERSHIP_BY_ID: {
+    projectId: "The ID of the project to get the identity membership for.",
+    identityId: "The ID of the machine identity to get the membership for."
+  },
+  LIST_AVAILABLE_IDENTITIES: {
+    projectId: "The ID of the project to list available identities for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
+    limit: "The number of identities to return.",
+    identityName: "The text string that identity membership names will be filtered by."
+  }
+} as const;
 
 export const ENVIRONMENTS = {
   CREATE: {

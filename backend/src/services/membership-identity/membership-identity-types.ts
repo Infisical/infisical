@@ -6,7 +6,7 @@ export interface TMembershipIdentityScopeFactory {
 
   onUpdateMembershipIdentityGuard: (arg: TUpdateMembershipIdentityDTO) => Promise<void>;
   onDeleteMembershipIdentityGuard: (arg: TDeleteMembershipIdentityDTO) => Promise<void>;
-  onListMembershipIdentityGuard: (arg: TListMembershipIdentityDTO) => Promise<void>;
+  onListMembershipIdentityGuard: (arg: TListMembershipIdentityDTO) => Promise<(arg: { identityId: string }) => boolean>;
   onGetMembershipIdentityByIdentityIdGuard: (arg: TGetMembershipIdentityByIdentityIdDTO) => Promise<void>;
   getScopeField: (scope: AccessScopeData) => { key: "orgId" | "namespaceId" | "projectId"; value: string };
   getScopeDatabaseFields: (scope: AccessScopeData) => {

@@ -8,7 +8,7 @@ Suppose you're interested in implementing a new feature in Infisical's backend, 
 If your feature involves a change in the database, you need to first address this by generating the necessary database schemas.
 
 1. If you're adding a new table, update the `TableName` enum in `/src/db/schemas/models.ts` to include the new table name.
-2. Create a new migration file by running `npm run migration:new` and give it a relevant name, such as `feature-x`.
+2. Create a new migration file by going to the `/backend` folder and running `npm run migration:new` and give it a relevant name, such as `feature-x`.
 3. Navigate to `/src/db/migrations/<timestamp>_<feature-x>.ts`.
 4. Modify both the `up` and `down` functions to create or alter Postgres fields on migration up and to revert these changes on migration down, ensuring idempotency as outlined [here](https://github.com/graphile/migrate/blob/main/docs/idempotent-examples.md).
 
@@ -16,10 +16,11 @@ If your feature involves a change in the database, you need to first address thi
 
 While typically you would need to manually write TS types for Knex type-sense, we have automated this process:
 
-1. Start the server.
-2. Run `npm run migration:latest` to apply all database changes.
-3. Execute `npm run generate:schema` to automatically generate types and schemas using [zod](https://github.com/colinhacks/zod) in the `/src/db/schemas` folder.
-4. Update the barrel export in `schema/index` and include the new tables in `/src/@types/knex.d.ts` to enable type-sensing in Knex.js.
+1. If you haven't done it yet, create a new `.env.migration` file at the root of the Infisical directory then copy the contents of the file linked [here](https://github.com/Infisical/infisical/blob/main/.env.migration.example)
+2. Start the server.
+3. Go to the `/backend` folder and run `npm run migration:latest-dev` to apply all database changes.
+4. Execute `npm run generate:schema` to automatically generate types and schemas using [zod](https://github.com/colinhacks/zod) in the `/src/db/schemas` folder.
+5. Update the barrel export in `schema/index` and include the new tables in `/src/@types/knex.d.ts` to enable type-sensing in Knex.js.
 
 ## Business Logic
 
@@ -38,10 +39,10 @@ Use the custom Infisical function `ormify` in `src/lib/knex` for simple database
 
 ## Connecting the Service Layer to the Server Layer
 
-Server-related logic is handled in `/src/server`. To connect the service layer to the server layer, we use Fastify plugins for dependency injection:
+Server-related logic is handled in `/src/server`. To connect the service layer to the server layer, we use Fastify's dependency injection pattern:
 
-1. Add the service type in the `fastify.d.ts` file under the `service` namespace of a FastifyServerInstance type.
-2. In `/src/server/routes/index.ts`, instantiate the required dependencies for `feature-x`, such as the DAL and service layers, and then pass them to `fastify.register("service,{...dependencies})`.
+1. Add the service type in `/src/@types/fastify.d.ts` under the `services` namespace of the `FastifyInstance` interface.
+2. In `/src/server/routes/index.ts`, instantiate the required dependencies for `feature-x` (such as the DAL and service layers), and then add the service instance to the `server.decorate()` call, where all services are registered for dependency injection.
 3. This makes the service layer accessible within all routes under the Fastify service instance, accessed via `server.services.<registered service name>.<function>`.
 
 ## Writing API Routes

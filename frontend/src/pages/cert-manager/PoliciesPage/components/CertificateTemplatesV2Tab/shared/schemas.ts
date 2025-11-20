@@ -4,21 +4,22 @@ import {
   CertDurationUnit,
   CertExtendedKeyUsageType,
   CertKeyUsageType,
+  CertSanInclude,
   CertSubjectAlternativeNameType,
+  CertSubjectAttributeInclude,
   CertSubjectAttributeType,
-  SAN_INCLUDE_OPTIONS,
-  SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS
+  TEMPLATE_PRESET_IDS
 } from "./certificate-constants";
 
 export const uiAttributeSchema = z.object({
   type: z.nativeEnum(CertSubjectAttributeType),
-  include: z.enum(SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS),
+  include: z.nativeEnum(CertSubjectAttributeInclude),
   value: z.array(z.string().min(1, "Value cannot be empty"))
 });
 
 export const uiSanSchema = z.object({
   type: z.nativeEnum(CertSubjectAlternativeNameType),
-  include: z.enum(SAN_INCLUDE_OPTIONS),
+  include: z.nativeEnum(CertSanInclude),
   value: z.array(z.string().min(1, "Value cannot be empty"))
 });
 
@@ -51,7 +52,21 @@ export const uiKeyAlgorithmSchema = z.object({
     .min(1, "At least one key type must be selected")
 });
 
+export const uiPresetSchema = z
+  .enum([
+    TEMPLATE_PRESET_IDS.CUSTOM,
+    TEMPLATE_PRESET_IDS.TLS_SERVER,
+    TEMPLATE_PRESET_IDS.TLS_CLIENT,
+    TEMPLATE_PRESET_IDS.CODE_SIGNING,
+    TEMPLATE_PRESET_IDS.DEVICE,
+    TEMPLATE_PRESET_IDS.USER,
+    TEMPLATE_PRESET_IDS.EMAIL_PROTECTION,
+    TEMPLATE_PRESET_IDS.DUAL_PURPOSE_SERVER
+  ])
+  .default(TEMPLATE_PRESET_IDS.CUSTOM);
+
 export const templateSchema = z.object({
+  preset: uiPresetSchema,
   name: z
     .string()
     .trim()

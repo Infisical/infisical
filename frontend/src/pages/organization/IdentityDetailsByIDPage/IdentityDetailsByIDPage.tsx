@@ -7,16 +7,21 @@ import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal, PageHeader } from "@app/components/v2";
+import { Button, DeleteActionModal, Modal, ModalContent, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { OrgPermissionIdentityActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useDeleteIdentity, useGetIdentityById } from "@app/hooks/api";
+import {
+  OrgPermissionActions,
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  useOrganization
+} from "@app/context";
+import { useDeleteOrgIdentity, useGetOrgIdentityMembershipById } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityAuthModal";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
 import { IdentityAuthMethodModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-import { IdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityModal";
+import { OrgIdentityModal } from "../AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/OrgIdentityModal";
 import {
   IdentityAuthenticationSection,
   IdentityDetailsSection,
@@ -31,8 +36,8 @@ const Page = () => {
   const identityId = params.identityId as string;
   const { currentOrg, isSubOrganization } = useOrganization();
   const orgId = currentOrg?.id || "";
-  const { data } = useGetIdentityById(identityId);
-  const { mutateAsync: deleteIdentity } = useDeleteIdentity();
+  const { data } = useGetOrgIdentityMembershipById(identityId);
+  const { mutateAsync: deleteIdentity, isPending: isDeletingIdentity } = useDeleteOrgIdentity();
   const isAuthHidden = orgId !== data?.identity?.orgId;
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -46,7 +51,7 @@ const Page = () => {
   const onDeleteIdentitySubmit = async (id: string) => {
     await deleteIdentity({
       identityId: id,
-      organizationId: orgId
+      orgId
     });
 
     createNotification({
@@ -81,9 +86,38 @@ const Page = () => {
             scope={isSubOrganization ? "namespace" : "org"}
             description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
             title={data.identity.name}
-          />
-          <div className="flex">
-            <div className="mr-4 w-96">
+          >
+            <div className="flex items-center gap-2">
+              {isSubOrganization && data.identity.orgId !== currentOrg.id && (
+                <OrgPermissionCan
+                  I={OrgPermissionActions.Delete}
+                  a={OrgPermissionSubjects.Identity}
+                  renderTooltip
+                  allowedLabel="Remove from sub-organization"
+                >
+                  {(isAllowed) => (
+                    <Button
+                      colorSchema="danger"
+                      variant="outline_bg"
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      isLoading={isDeletingIdentity}
+                      onClick={() =>
+                        handlePopUpOpen("deleteIdentity", {
+                          identityId: data.identity.id,
+                          name: data.identity.name
+                        })
+                      }
+                    >
+                      Unlink Identity
+                    </Button>
+                  )}
+                </OrgPermissionCan>
+              )}
+            </div>
+          </PageHeader>
+          <div className="flex flex-col gap-4 md:flex-row">
+            <div className="w-full md:w-96">
               <IdentityDetailsSection
                 isOrgIdentity={data.identity.orgId === currentOrg.id}
                 identityId={identityId}
@@ -100,7 +134,17 @@ const Page = () => {
           </div>
         </div>
       )}
-      <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+      <Modal
+        isOpen={popUp?.identity?.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("identity", isOpen)}
+      >
+        <ModalContent
+          bodyClassName="overflow-visible"
+          title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
+        >
+          <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        </ModalContent>
+      </Modal>
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}

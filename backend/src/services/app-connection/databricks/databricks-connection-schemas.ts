@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { DatabricksConnectionMethod } from "./databricks-connection-enums";
 
 export const DatabricksConnectionServicePrincipalInputCredentialsSchema = z.object({
@@ -42,7 +43,7 @@ export const SanitizedDatabricksConnectionSchema = z.discriminatedUnion("method"
       clientId: true,
       workspaceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Databricks]} (Service Principal)` }))
 ]);
 
 export const ValidateDatabricksConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -68,10 +69,12 @@ export const UpdateDatabricksConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Databricks));
 
-export const DatabricksConnectionListItemSchema = z.object({
-  name: z.literal("Databricks"),
-  app: z.literal(AppConnection.Databricks),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
-  methods: z.nativeEnum(DatabricksConnectionMethod).array()
-});
+export const DatabricksConnectionListItemSchema = z
+  .object({
+    name: z.literal("Databricks"),
+    app: z.literal(AppConnection.Databricks),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
+    methods: z.nativeEnum(DatabricksConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Databricks] }));

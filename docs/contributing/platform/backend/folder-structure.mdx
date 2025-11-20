@@ -5,28 +5,47 @@ title: 'Backend folder structure'
 ```
 ├── scripts
 ├── e2e-test
+├── bdd
 └── src/
     ├── @types/
     │   ├── knex.d.ts
-    │   └── fastify.d.ts
+    │   ├── fastify.d.ts
+    │   ├── ...
     ├── db/
     │   ├── migrations
     │   ├── schemas
-    │   └── seed
+    │   └── seeds
+    ├── keystore/
     ├── lib/
+    │   ├── api-docs
+    │   ├── aws
+    │   ├── axios
+    │   ├── base64
+    │   ├── casl
+    │   ├── certificates
+    │   ├── config
+    │   ├── crypto
+    │   ├── dates
+    │   ├── delay
+    │   ├── error-codes
+    │   ├── errors
+    │   ├── files
     │   ├── fn
-    │   ├── date
-    │   └── config
+    │   ├── ...
     ├── queue
     ├── server/
     │   ├── routes/
     │   │   ├── v1
-    │   │   └── v2
+    │   │   ├── v2
+    │   │   ├── v3
+    │   │   └── v4
     │   ├── plugins
-    │   └── config
+    │   ├── config
+    │   └── lib
     ├── services/
     │   ├── auth
     │   ├── org
+    │   ├── ...
     │   └── project/
     │       ├── project-service.ts
     │       ├── project-types.ts
@@ -42,19 +61,23 @@ Contains reusable scripts for backend automation, like running migrations and ge
 ### `backend/e2e-test` 
 Integration tests for the APIs.
 
+### `backend/bdd`
+Behavior-Driven Development (BDD) tests using Python and Gherkin feature files.
+
 ### `backend/src`
 The source code of the backend.
 
-- `@types`: Type definitions for libraries like Fastify and Knex.
-- `db`: Knex.js configuration for the database, including migration, seed files, and SQL type schemas.
-- `lib`: Stateless, reusable functions used across the codebase.
+- `@types`: Type definitions for libraries like Fastify, Knex, and other third-party dependencies.
+- `db`: Knex.js configuration for the database, including migrations, seed files, and SQL type schemas.
+- `keystore`: Key-value store abstraction layer supporting Redis and PostgreSQL for application caching, distributed locking, and coordination.
+- `lib`: Stateless, reusable functions used across the codebase, organized by functionality (crypto, config, dates, etc.).
 - `queue`: Infisical's queue system based on BullMQ.
 
 ### `src/server`
 
 - Scope anything related to Fastify/service here.
-- Includes routes, Fastify plugins, and server configurations.
-- The routes folder contains various versions of routes separated into v1, v2, etc.
+- Includes routes, Fastify plugins, server configurations, and server-specific utilities.
+- The routes folder contains various versions of routes separated into v1, v2, v3, v4, etc.
 
 ### `src/services`
 

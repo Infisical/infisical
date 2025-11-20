@@ -6,6 +6,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { validateHandlebarTemplate } from "@app/lib/template/validate-handlebars";
 import { UnpackedPermissionSchema, unpackPermissions } from "@app/server/routes/sanitizedSchema/permission";
+import { TMembershipRoleDALFactory } from "@app/services/membership/membership-role-dal";
 
 import { ActorType } from "../auth/auth-type";
 import { TExternalGroupOrgRoleMappingDALFactory } from "../external-group-org-role-mapping/external-group-org-role-mapping-dal";
@@ -33,6 +34,7 @@ type TRoleServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectDAL: Pick<TProjectDALFactory, "findById">;
   externalGroupOrgRoleMappingDAL: Pick<TExternalGroupOrgRoleMappingDALFactory, "findOne">;
+  membershipRoleDAL: Pick<TMembershipRoleDALFactory, "find">;
 };
 
 export type TRoleServiceFactory = ReturnType<typeof roleServiceFactory>;
@@ -43,7 +45,8 @@ export const roleServiceFactory = ({
   projectDAL,
   identityDAL,
   userDAL,
-  externalGroupOrgRoleMappingDAL
+  externalGroupOrgRoleMappingDAL,
+  membershipRoleDAL
 }: TRoleServiceFactoryDep) => {
   const orgRoleFactory = newOrgRoleFactory({
     permissionService,
@@ -136,6 +139,23 @@ export const roleServiceFactory = ({
       [scope.key]: scope.value
     });
     if (!existingRole) throw new NotFoundError({ message: `Role with ${dto.selector.id} not found` });
+
+    const [roleUsageData] = await membershipRoleDAL.find(
+      {
+        customRoleId: dto.selector.id
+      },
+      { count: true }
+    );
+
+    if (roleUsageData) {
+      const count = Number.parseInt(roleUsageData.count, 10);
+      if (count > 0) {
+        const plural = count > 1 ? "s" : "";
+        throw new BadRequestError({
+          message: `Role is assigned to ${count} identity membership${plural}. Re-assign membership role${plural} to delete this role.`
+        });
+      }
+    }
 
     const [role] = await roleDAL.delete({
       id: existingRole.id,

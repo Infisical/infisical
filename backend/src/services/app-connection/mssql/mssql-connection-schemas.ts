@@ -8,6 +8,7 @@ import {
 } from "@app/services/app-connection/app-connection-schemas";
 
 import { AppConnection } from "../app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { BaseSqlUsernameAndPasswordConnectionSchema } from "../shared/sql";
 import { MsSqlConnectionMethod } from "./mssql-connection-enums";
 
@@ -34,7 +35,7 @@ export const SanitizedMsSqlConnectionSchema = z.discriminatedUnion("method", [
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.MsSql]} (Username and Password)` }))
 ]);
 
 export const ValidateMsSqlConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -68,9 +69,11 @@ export const UpdateMsSqlConnectionSchema = z
     })
   );
 
-export const MsSqlConnectionListItemSchema = z.object({
-  name: z.literal("Microsoft SQL Server"),
-  app: z.literal(AppConnection.MsSql),
-  methods: z.nativeEnum(MsSqlConnectionMethod).array(),
-  supportsPlatformManagement: z.literal(true)
-});
+export const MsSqlConnectionListItemSchema = z
+  .object({
+    name: z.literal("Microsoft SQL Server"),
+    app: z.literal(AppConnection.MsSql),
+    methods: z.nativeEnum(MsSqlConnectionMethod).array(),
+    supportsPlatformManagement: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.MsSql] }));

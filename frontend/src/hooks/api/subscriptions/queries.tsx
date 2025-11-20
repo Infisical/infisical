@@ -7,7 +7,8 @@ import { SubscriptionPlan } from "./types";
 // import { Workspace } from './types';
 
 export const subscriptionQueryKeys = {
-  getOrgSubsription: (orgID: string) => ["plan", { orgID }] as const
+  all: () => ["plan"] as const,
+  getOrgSubsription: (orgID: string) => [...subscriptionQueryKeys.all(), { orgID }] as const
 };
 
 export const fetchOrgSubscription = async (orgID: string, refreshCache: boolean = false) => {

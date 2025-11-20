@@ -11,6 +11,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const tagFieldCharacterValidator = characterValidator([
   CharacterType.AlphaNumeric,
   CharacterType.Spaces,
@@ -105,10 +107,12 @@ export const AwsParameterStoreSyncSchema = BaseSecretSyncSchema(
   SecretSync.AWSParameterStore,
   AwsParameterStoreSyncOptionsConfig,
   AwsParameterStoreSyncOptionsSchema
-).extend({
-  destination: z.literal(SecretSync.AWSParameterStore),
-  destinationConfig: AwsParameterStoreSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destination: z.literal(SecretSync.AWSParameterStore),
+    destinationConfig: AwsParameterStoreSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSParameterStore] }));
 
 export const CreateAwsParameterStoreSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AWSParameterStore,
@@ -126,9 +130,11 @@ export const UpdateAwsParameterStoreSyncSchema = GenericUpdateSecretSyncFieldsSc
   destinationConfig: AwsParameterStoreSyncDestinationConfigSchema.optional()
 });
 
-export const AwsParameterStoreSyncListItemSchema = z.object({
-  name: z.literal("AWS Parameter Store"),
-  connection: z.literal(AppConnection.AWS),
-  destination: z.literal(SecretSync.AWSParameterStore),
-  canImportSecrets: z.literal(true)
-});
+export const AwsParameterStoreSyncListItemSchema = z
+  .object({
+    name: z.literal("AWS Parameter Store"),
+    connection: z.literal(AppConnection.AWS),
+    destination: z.literal(SecretSync.AWSParameterStore),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSParameterStore] }));

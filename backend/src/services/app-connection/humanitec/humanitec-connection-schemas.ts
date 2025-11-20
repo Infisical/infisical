@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { HumanitecConnectionMethod } from "./humanitec-connection-enums";
 
 export const HumanitecConnectionAccessTokenCredentialsSchema = z.object({
@@ -25,7 +26,7 @@ export const SanitizedHumanitecConnectionSchema = z.discriminatedUnion("method",
   BaseHumanitecConnectionSchema.extend({
     method: z.literal(HumanitecConnectionMethod.ApiToken),
     credentials: HumanitecConnectionAccessTokenCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Humanitec]} (API Token)` }))
 ]);
 
 export const ValidateHumanitecConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -51,8 +52,10 @@ export const UpdateHumanitecConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Humanitec));
 
-export const HumanitecConnectionListItemSchema = z.object({
-  name: z.literal("Humanitec"),
-  app: z.literal(AppConnection.Humanitec),
-  methods: z.nativeEnum(HumanitecConnectionMethod).array()
-});
+export const HumanitecConnectionListItemSchema = z
+  .object({
+    name: z.literal("Humanitec"),
+    app: z.literal(AppConnection.Humanitec),
+    methods: z.nativeEnum(HumanitecConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Humanitec] }));

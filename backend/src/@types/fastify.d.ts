@@ -91,6 +91,7 @@ import { TIdentityProjectServiceFactory } from "@app/services/identity-project/i
 import { TIdentityTlsCertAuthServiceFactory } from "@app/services/identity-tls-cert-auth/identity-tls-cert-auth-types";
 import { TIdentityTokenAuthServiceFactory } from "@app/services/identity-token-auth/identity-token-auth-service";
 import { TIdentityUaServiceFactory } from "@app/services/identity-ua/identity-ua-service";
+import { TScopedIdentityV2ServiceFactory } from "@app/services/identity-v2/identity-service";
 import { TIntegrationServiceFactory } from "@app/services/integration/integration-service";
 import { TIntegrationAuthServiceFactory } from "@app/services/integration-auth/integration-auth-service";
 import { TMembershipGroupServiceFactory } from "@app/services/membership-group/membership-group-service";
@@ -260,7 +261,8 @@ declare module "fastify" {
       integrationAuth: TIntegrationAuthServiceFactory;
       webhook: TWebhookServiceFactory;
       serviceToken: TServiceTokenServiceFactory;
-      identity: TIdentityServiceFactory;
+      identityV1: TIdentityServiceFactory;
+      identityV2: TScopedIdentityV2ServiceFactory;
       identityAccessToken: TIdentityAccessTokenServiceFactory;
       identityProject: TIdentityProjectServiceFactory;
       identityTokenAuth: TIdentityTokenAuthServiceFactory;

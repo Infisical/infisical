@@ -22,10 +22,7 @@ where you can manage various aspects of its lifecycle including deployment to cl
 To issue a certificate, you must first create a [certificate profile](/documentation/platform/pki/certificates/profiles) and a [certificate template](/documentation/platform/pki/certificates/templates) to go along with it.
 
 The [enrollment method](/documentation/platform/pki/enrollment-methods/overview) configured on the certificate profile determines how a certificate is issued for it.
-Refer to the documentation for each enrollment method below to learn more about how to issue certificates using it.
-
-- [API](/documentation/platform/pki/enrollment-methods/api): Issue a certificate over UI or by making an API request to Infisical.
-- [EST](/documentation/platform/pki/enrollment-methods/est): Issue a certificate over the EST protocol.
+Refer to the documentation for each enrollment method to learn more about how to issue certificates using it.
 
 ## Guide to Renewing Certificates
 
@@ -49,24 +46,33 @@ Note that server-driven certificate renewal is only available for certificates i
 A certificate can be considered for auto-renewal at time of issuance if the **Enable Auto-Renewal By Default** option is selected on its [certificate profile](/documentation/platform/pki/certificates/profiles) or after issuance by toggling this option manually.
 
 <Info>
-  For server-driven certificate renewal workflows, you can programmatically fetch the latest active certificate bundle for a certificate profile using the [Get Latest Active Certificate Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) API endpoint. 
-  
-  This ensures you always retrieve the most current valid certificate, including any that have been automatically renewed, making it particularly useful for deployment pipelines and automation workflows where you don't want to track individual serial numbers.
+  For server-driven certificate renewal workflows, you can programmatically
+  fetch the latest active certificate bundle for a certificate profile using the
+  [Get Latest Active Certificate
+  Bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle)
+  API endpoint. This ensures you always retrieve the most current valid
+  certificate, including any that have been automatically renewed, making it
+  particularly useful for deployment pipelines and automation workflows where
+  you don't want to track individual serial numbers.
 </Info>
 
 The following examples demonstrate different approaches to certificate renewal:
 
-- Using the ACME enrollment method, you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for Apache, Nginx, or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.
-- Using the ACME enrollment method, you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
-- Using the API enrollment method, you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
+- Using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme), you may connect an ACME client like [certbot](https://certbot.eff.org/) to fetch back and renew certificates for [Apache](/documentation/platform/pki/integration-guides/apache-certbot), [Nginx](/documentation/platform/pki/integration-guides/nginx-certbot), or other server. The ACME client will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to the server's configuration.
+- Using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme), you may use [cert-manager](https://cert-manager.io/) with Infisical to issue and renew certificates for Kubernetes workloads; cert-manager will pursue a client-driven approach and submit certificate requests upon certificate expiration for you, saving renewed certificates back to Kubernetes secrets.
+- Using the [API enrollment method](/documentation/platform/pki/enrollment-methods/api), you may push and auto-renew certificates to AWS and Azure using [certificate syncs](/documentation/platform/pki/certificate-syncs/overview). Certificates issued over the API enrollment method, where key pairs are generated server-side, are also eligible for server-side auto-renewal; once renewed, certificates are automatically pushed back to their sync destination.
 
-## Guide to Exporting Certificates
+## Guide to Downloading Certificates
 
-In the following steps, we explore how to export certificates from Infisical in different formats for use in your applications and infrastructure.
+In the following steps, we explore different options for exporting already-issued certificates from Infisical in different formats for use in your applications and infrastructure.
 
-### Accessing the Export Certificate Modal
+### Download Latest Profile Certificate
 
-To export any certificate, first navigate to your project's certificate inventory and locate the certificate you want to export. Click on the **Export Certificate** option from the certificate's action menu.
+You can download the latest certificate issued against a [certificate profile](/documentation/platform/pki/certificates/profiles) using the [latest certificate bundle](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle) endpoint.
+
+### Download Specific Certificate
+
+To export a specific certificate, first navigate to your project's certificate inventory and locate the certificate you want to export. Click on the **Export Certificate** option from the certificate's action menu.
 
 ![pki export certificate option](/images/platform/pki/certificate/cert-export-option.png)
 
@@ -108,6 +114,7 @@ To export any certificate, first navigate to your project's certificate inventor
         ```
       </Step>
     </Steps>
+
   </Tab>
   <Tab title="PKCS12 Format">
     <Steps>
@@ -158,6 +165,7 @@ To export any certificate, first navigate to your project's certificate inventor
         </Info>
       </Step>
     </Steps>
+
   </Tab>
 </Tabs>
 
@@ -206,7 +214,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
   <Tab title="API">
     <Steps>
       <Step title="Revoking a certificate">
-        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificate-authorities/revoke) API endpoint,
+        Assuming that you've issued a certificate under a CA, you can revoke it by making an API request to the [Revoke Certificate](/api-reference/endpoints/certificates/revoke) API endpoint,
         specifying the serial number of the certificate and the reason for revocation.
         
         ### Sample request
@@ -232,7 +240,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
       </Step>
       <Step title="Obtaining a CRL">
         In order to check the revocation status of a certificate, you can check it against the CRL of the issuing CA.
-        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crls) API endpoint.
+        To obtain the CRLs of the CA, make an API request to the [List CRLs](/api-reference/endpoints/certificate-authorities/crl) API endpoint.
 
         ### Sample request
 

@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { HCVaultConnectionMethod } from "./hc-vault-connection-enums";
 
 const InstanceUrlSchema = z
@@ -59,7 +60,7 @@ export const SanitizedHCVaultConnectionSchema = z.discriminatedUnion("method", [
       namespace: true,
       instanceUrl: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.HCVault]} (Access Token)` })),
   BaseHCVaultConnectionSchema.extend({
     method: z.literal(HCVaultConnectionMethod.AppRole),
     credentials: HCVaultConnectionAppRoleCredentialsSchema.pick({
@@ -67,7 +68,7 @@ export const SanitizedHCVaultConnectionSchema = z.discriminatedUnion("method", [
       instanceUrl: true,
       roleId: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.HCVault]} (App Role)` }))
 ]);
 
 export const ValidateHCVaultConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -100,8 +101,10 @@ export const UpdateHCVaultConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.HCVault, { supportsGateways: true }));
 
-export const HCVaultConnectionListItemSchema = z.object({
-  name: z.literal("HCVault"),
-  app: z.literal(AppConnection.HCVault),
-  methods: z.nativeEnum(HCVaultConnectionMethod).array()
-});
+export const HCVaultConnectionListItemSchema = z
+  .object({
+    name: z.literal("HCVault"),
+    app: z.literal(AppConnection.HCVault),
+    methods: z.nativeEnum(HCVaultConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.HCVault] }));

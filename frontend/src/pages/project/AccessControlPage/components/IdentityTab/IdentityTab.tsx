@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   faArrowDown,
@@ -11,7 +12,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { format } from "date-fns";
+import { AnimatePresence, motion } from "framer-motion";
+import { LinkIcon, PlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -29,6 +31,8 @@ import {
   HoverCardTrigger,
   IconButton,
   Input,
+  Modal,
+  ModalContent,
   Pagination,
   Spinner,
   Table,
@@ -42,8 +46,20 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { DocumentationLinkBadge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { Blur } from "@app/components/v2/Blur";
+import {
+  Badge,
+  DocumentationLinkBadge,
+  OrgIcon,
+  ProjectIcon,
+  SubOrgIcon
+} from "@app/components/v3";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import {
@@ -53,19 +69,33 @@ import {
 } from "@app/helpers/userTablePreferences";
 import { withProjectPermission } from "@app/hoc";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useDeleteIdentityFromWorkspace, useGetWorkspaceIdentityMemberships } from "@app/hooks/api";
+import {
+  useDeleteProjectIdentity,
+  useDeleteProjectIdentityMembership,
+  useListProjectIdentityMemberships
+} from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { ProjectIdentityOrderBy } from "@app/hooks/api/projects/types";
 import { usePopUp } from "@app/hooks/usePopUp";
+import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/components/IdentityTab/components/ProjectIdentityModal";
 
-import { IdentityModal } from "./components/IdentityModal";
+import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal";
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
+
+enum WizardSteps {
+  SelectAction = "select-action",
+  LinkIdentity = "link-identity",
+  ProjectIdentity = "project-identity"
+}
 
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
+    const { isSubOrganization, currentOrg } = useOrganization();
+
+    const [wizardStep, setWizardStep] = useState(WizardSteps.SelectAction);
 
     const {
       offset,
@@ -90,7 +120,7 @@ export const IdentityTab = withProjectPermission(
       setUserTablePreference("projectIdentityTable", PreferenceKey.PerPage, newPerPage);
     };
 
-    const { data, isPending, isFetching } = useGetWorkspaceIdentityMemberships(
+    const { data, isPending, isFetching } = useListProjectIdentityMemberships(
       {
         projectId,
         offset,
@@ -110,28 +140,41 @@ export const IdentityTab = withProjectPermission(
       setPage
     });
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteIdentityFromWorkspace();
+    const { mutateAsync: deleteMembershipMutateAsync } = useDeleteProjectIdentityMembership();
+    const { mutateAsync: deleteProjectIdentity } = useDeleteProjectIdentity();
 
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
-      "identity",
+      "createIdentity",
       "deleteIdentity",
-      "upgradePlan"
+      "upgradePlan",
+      "addOptions"
     ] as const);
 
-    const onRemoveIdentitySubmit = async (identityId: string) => {
-      await deleteMutateAsync({
-        identityId,
-        projectId
-      });
+    const onRemoveIdentitySubmit = async (identityId: string, isProjectIdentity: boolean) => {
+      if (isProjectIdentity) {
+        await deleteProjectIdentity({
+          identityId,
+          projectId
+        });
 
-      createNotification({
-        text: "Successfully removed identity from project",
-        type: "success"
-      });
+        createNotification({
+          text: "Successfully deleted project identity",
+          type: "success"
+        });
+      } else {
+        await deleteMembershipMutateAsync({
+          identityId,
+          projectId
+        });
+
+        createNotification({
+          text: "Successfully removed identity from project",
+          type: "success"
+        });
+      }
 
       handlePopUpClose("deleteIdentity");
     };
-
     const handleSort = (column: ProjectIdentityOrderBy) => {
       if (column === orderBy) {
         setOrderDirection((prev) =>
@@ -144,6 +187,12 @@ export const IdentityTab = withProjectPermission(
       setOrderDirection(OrderByDirection.ASC);
     };
 
+    const noAccessIdentityCount = Math.max(
+      (page * perPage > totalCount ? totalCount % perPage : perPage) -
+        (data?.identityMemberships?.length || 0),
+      0
+    );
+
     return (
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
@@ -151,22 +200,23 @@ export const IdentityTab = withProjectPermission(
             <p className="text-xl font-medium text-mineshaft-100">Identities</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
           </div>
-          <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.Identity}
-          >
-            {(isAllowed) => (
-              <Button
-                colorSchema="secondary"
-                type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                onClick={() => handlePopUpOpen("identity")}
-                isDisabled={!isAllowed}
-              >
-                Add Identity
-              </Button>
-            )}
-          </ProjectPermissionCan>
+          <div className="flex items-center">
+            <ProjectPermissionCan
+              I={ProjectPermissionActions.Create}
+              a={ProjectPermissionSub.Identity}
+            >
+              {(isAllowed) => (
+                <Button
+                  variant="outline_bg"
+                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                  onClick={() => handlePopUpOpen("createIdentity")}
+                  isDisabled={!isAllowed}
+                >
+                  Create Identity
+                </Button>
+              )}
+            </ProjectPermissionCan>
+          </div>
         </div>
         <Input
           containerClassName="mb-4"
@@ -202,7 +252,7 @@ export const IdentityTab = withProjectPermission(
                   </div>
                 </Th>
                 <Th className="w-1/3">Role</Th>
-                <Th>Added on</Th>
+                <Th>Managed by</Th>
                 <Th className="w-5">{isFetching ? <Spinner size="xs" /> : null}</Th>
               </Tr>
             </THead>
@@ -213,9 +263,8 @@ export const IdentityTab = withProjectPermission(
                 data.identityMemberships.length > 0 &&
                 data.identityMemberships.map((identityMember) => {
                   const {
-                    identity: { id, name },
-                    roles,
-                    createdAt
+                    identity: { id, name, projectId: identityProjectId, orgId: identityOrgId },
+                    roles
                   } = identityMember;
                   return (
                     <Tr
@@ -339,7 +388,36 @@ export const IdentityTab = withProjectPermission(
                           )}
                         </div>
                       </Td>
-                      <Td>{format(new Date(createdAt), "yyyy-MM-dd")}</Td>
+                      <Td>
+                        <Badge
+                          variant={
+                            // eslint-disable-next-line no-nested-ternary
+                            identityProjectId
+                              ? "project"
+                              : isSubOrganization && currentOrg.id === identityOrgId
+                                ? "sub-org"
+                                : "org"
+                          }
+                        >
+                          {/* eslint-disable-next-line no-nested-ternary */}
+                          {identityProjectId ? (
+                            <>
+                              <ProjectIcon />
+                              Project
+                            </>
+                          ) : isSubOrganization && currentOrg.id === identityOrgId ? (
+                            <>
+                              <SubOrgIcon />
+                              Sub-Organization
+                            </>
+                          ) : (
+                            <>
+                              <OrgIcon />
+                              Organization
+                            </>
+                          )}
+                        </Badge>
+                      </Td>
                       <Td className="flex justify-end space-x-2">
                         <Tooltip className="max-w-sm text-center" content="Options">
                           <DropdownMenu>
@@ -369,11 +447,12 @@ export const IdentityTab = withProjectPermission(
                                       evt.preventDefault();
                                       handlePopUpOpen("deleteIdentity", {
                                         identityId: id,
-                                        name
+                                        name,
+                                        isProjectIdentity: Boolean(identityProjectId)
                                       });
                                     }}
                                   >
-                                    Remove Identity From Project
+                                    {identityProjectId ? "Delete Identity" : "Remove From Project"}
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
@@ -384,6 +463,20 @@ export const IdentityTab = withProjectPermission(
                     </Tr>
                   );
                 })}
+              {!isPending &&
+                data &&
+                data?.totalCount !== 0 &&
+                Array.from(Array(noAccessIdentityCount)).map((_e, i) => (
+                  <Tr key={`hid-identity-${i + 1}`}>
+                    <Td>No Access</Td>
+                    <Td colSpan={3}>
+                      <Blur
+                        className="w-min"
+                        tooltipText="You do not have permission to read this identity."
+                      />
+                    </Td>
+                  </Tr>
+                ))}
             </TBody>
           </Table>
           {!isPending && data && totalCount > 0 && (
@@ -395,18 +488,113 @@ export const IdentityTab = withProjectPermission(
               onChangePerPage={handlePerPageChange}
             />
           )}
-          {!isPending && data && data?.identityMemberships.length === 0 && (
-            <EmptyState
-              title={
-                debouncedSearch.trim().length > 0
-                  ? "No identities match search filter"
-                  : "No identities have been added to this project"
-              }
-              icon={faServer}
-            />
-          )}
+          {!isPending &&
+            data &&
+            data?.identityMemberships.length === 0 &&
+            data?.totalCount === 0 && (
+              <EmptyState
+                title={
+                  debouncedSearch.trim().length > 0
+                    ? "No identities match search filter"
+                    : "No identities have been added to this project"
+                }
+                icon={faServer}
+              />
+            )}
         </TableContainer>
-        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+        <Modal
+          isOpen={popUp.createIdentity.isOpen}
+          onOpenChange={(open) => {
+            handlePopUpToggle("createIdentity", open);
+            if (!open) setWizardStep(WizardSteps.SelectAction);
+          }}
+        >
+          <ModalContent
+            bodyClassName="overflow-visible"
+            title="Add Project Identity"
+            subTitle="Create a new identity or assign an existing identity"
+          >
+            <AnimatePresence mode="wait">
+              {wizardStep === WizardSteps.SelectAction && (
+                <motion.div
+                  key="select-type-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <div
+                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(WizardSteps.ProjectIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(WizardSteps.ProjectIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <PlusIcon size="1rem" />
+                      <div>Create New Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Create a new machine identity specifically for this project. This identity
+                      will be managed at the project-level.
+                    </div>
+                  </div>
+                  <div
+                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(WizardSteps.LinkIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(WizardSteps.LinkIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size="1rem" />
+                      <div>Assign Existing Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Assign an existing identity from your organization. The identity will continue
+                      to be managed at its original scope.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {wizardStep === WizardSteps.ProjectIdentity && (
+                <motion.div
+                  key="identity-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <ProjectIdentityModal
+                    onClose={() => {
+                      handlePopUpClose("createIdentity");
+                      setWizardStep(WizardSteps.SelectAction);
+                    }}
+                  />
+                </motion.div>
+              )}
+              {wizardStep === WizardSteps.LinkIdentity && (
+                <motion.div
+                  key="link-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </ModalContent>
+        </Modal>
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to remove ${
@@ -416,7 +604,8 @@ export const IdentityTab = withProjectPermission(
           deleteKey="confirm"
           onDeleteApproved={() =>
             onRemoveIdentitySubmit(
-              (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
+              popUp?.deleteIdentity?.data?.identityId,
+              popUp?.deleteIdentity?.data?.isProjectIdentity
             )
           }
         />

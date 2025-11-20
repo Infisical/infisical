@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { ZabbixConnectionMethod } from "./zabbix-connection-enums";
 
 export const ZabbixConnectionApiTokenCredentialsSchema = z.object({
@@ -31,7 +32,7 @@ export const SanitizedZabbixConnectionSchema = z.discriminatedUnion("method", [
   BaseZabbixConnectionSchema.extend({
     method: z.literal(ZabbixConnectionMethod.ApiToken),
     credentials: ZabbixConnectionApiTokenCredentialsSchema.pick({ instanceUrl: true })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Zabbix]} (API Token)` }))
 ]);
 
 export const ValidateZabbixConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -55,8 +56,10 @@ export const UpdateZabbixConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Zabbix));
 
-export const ZabbixConnectionListItemSchema = z.object({
-  name: z.literal("Zabbix"),
-  app: z.literal(AppConnection.Zabbix),
-  methods: z.nativeEnum(ZabbixConnectionMethod).array()
-});
+export const ZabbixConnectionListItemSchema = z
+  .object({
+    name: z.literal("Zabbix"),
+    app: z.literal(AppConnection.Zabbix),
+    methods: z.nativeEnum(ZabbixConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Zabbix] }));

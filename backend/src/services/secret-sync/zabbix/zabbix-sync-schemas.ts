@@ -10,6 +10,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { ZabbixSyncScope } from "./zabbix-sync-enums";
 
 const ZabbixSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
@@ -40,10 +41,12 @@ const ZabbixSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
 
 const ZabbixSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const ZabbixSyncSchema = BaseSecretSyncSchema(SecretSync.Zabbix, ZabbixSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.Zabbix),
-  destinationConfig: ZabbixSyncDestinationConfigSchema
-});
+export const ZabbixSyncSchema = BaseSecretSyncSchema(SecretSync.Zabbix, ZabbixSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.Zabbix),
+    destinationConfig: ZabbixSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Zabbix] }));
 
 export const CreateZabbixSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Zabbix,
@@ -59,9 +62,11 @@ export const UpdateZabbixSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: ZabbixSyncDestinationConfigSchema.optional()
 });
 
-export const ZabbixSyncListItemSchema = z.object({
-  name: z.literal("Zabbix"),
-  connection: z.literal(AppConnection.Zabbix),
-  destination: z.literal(SecretSync.Zabbix),
-  canImportSecrets: z.literal(true)
-});
+export const ZabbixSyncListItemSchema = z
+  .object({
+    name: z.literal("Zabbix"),
+    connection: z.literal(AppConnection.Zabbix),
+    destination: z.literal(SecretSync.Zabbix),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Zabbix] }));

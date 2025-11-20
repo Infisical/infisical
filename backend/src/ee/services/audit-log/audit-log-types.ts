@@ -159,9 +159,22 @@ export enum EventType {
   DELETE_TRUSTED_IP = "delete-trusted-ip",
   CREATE_SERVICE_TOKEN = "create-service-token", // v2
   DELETE_SERVICE_TOKEN = "delete-service-token", // v2
+
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
   CREATE_IDENTITY = "create-identity",
   UPDATE_IDENTITY = "update-identity",
   DELETE_IDENTITY = "delete-identity",
+
+  CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
+  UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
+  DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
+
+  CREATE_IDENTITY_PROJECT_MEMBERSHIP = "create-identity-project-membership",
+  UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
+  DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
+
   MACHINE_IDENTITY_AUTH_TEMPLATE_CREATE = "machine-identity-auth-template-create",
   MACHINE_IDENTITY_AUTH_TEMPLATE_UPDATE = "machine-identity-auth-template-update",
   MACHINE_IDENTITY_AUTH_TEMPLATE_DELETE = "machine-identity-auth-template-delete",
@@ -173,9 +186,7 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
-
-  CREATE_SUB_ORGANIZATION = "create-sub-organization",
-  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+  GET_TOKEN_IDENTITY_TOKEN_AUTH = "get-token-identity-token-auth",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -355,6 +366,8 @@ export enum EventType {
   LOAD_PROJECT_KMS_BACKUP = "load-project-kms-backup",
   ORG_ADMIN_ACCESS_PROJECT = "org-admin-accessed-project",
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
+  USER_LOGIN = "user-login",
+  SELECT_ORGANIZATION = "select-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -523,6 +536,7 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
@@ -560,6 +574,7 @@ interface UserActorMetadata {
   email?: string | null;
   username: string;
   permission?: Record<string, unknown>;
+  authMethod?: string;
 }
 
 interface ServiceActorMetadata {
@@ -891,6 +906,7 @@ interface CreateIdentityEvent {
     identityId: string;
     name: string;
     hasDeleteProtection: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -900,6 +916,7 @@ interface UpdateIdentityEvent {
     identityId: string;
     name?: string;
     hasDeleteProtection?: boolean;
+    metadata?: { key: string; value: string }[];
   };
 }
 
@@ -1011,6 +1028,15 @@ interface GetTokensIdentityTokenAuthEvent {
   type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
   metadata: {
     identityId: string;
+  };
+}
+
+interface GetTokenIdentityTokenAuthEvent {
+  type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    identityName: string;
+    tokenId: string;
   };
 }
 
@@ -1496,6 +1522,52 @@ interface RevokeIdentityLdapAuthEvent {
 
 interface ClearIdentityLdapAuthLockoutsEvent {
   type: EventType.CLEAR_IDENTITY_LDAP_AUTH_LOCKOUTS;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityOrgMembershipEvent {
+  type: EventType.CREATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityOrgMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityOrgMembershipEvent {
+  type: EventType.DELETE_IDENTITY_ORG_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+  };
+}
+
+interface CreateIdentityProjectMembershipEvent {
+  type: EventType.CREATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles: unknown;
+  };
+}
+
+interface UpdateIdentityProjectMembershipEvent {
+  type: EventType.UPDATE_IDENTITY_PROJECT_MEMBERSHIP;
+  metadata: {
+    identityId: string;
+    roles?: unknown;
+  };
+}
+
+interface DeleteIdentityProjectMembershipEvent {
+  type: EventType.DELETE_IDENTITY_PROJECT_MEMBERSHIP;
   metadata: {
     identityId: string;
   };
@@ -2597,6 +2669,22 @@ interface OrgAdminAccessProjectEvent {
 interface OrgAdminBypassSSOEvent {
   type: EventType.ORG_ADMIN_BYPASS_SSO;
   metadata: Record<string, string>; // no metadata yet
+}
+
+interface UserLoginEvent {
+  type: EventType.USER_LOGIN;
+  metadata: {
+    organizationId?: string;
+    authProvider?: string;
+  };
+}
+
+interface SelectOrganizationEvent {
+  type: EventType.SELECT_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+  };
 }
 
 interface CreateCertificateTemplateEstConfig {
@@ -3901,6 +3989,14 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface PamSessionCredentialsGetEvent {
+  type: EventType.PAM_SESSION_CREDENTIALS_GET;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
@@ -4139,6 +4235,7 @@ export type Event =
   | CreateTokenIdentityTokenAuthEvent
   | UpdateTokenIdentityTokenAuthEvent
   | GetTokensIdentityTokenAuthEvent
+  | GetTokenIdentityTokenAuthEvent
   | AddIdentityTokenAuthEvent
   | UpdateIdentityTokenAuthEvent
   | GetIdentityTokenAuthEvent
@@ -4199,6 +4296,12 @@ export type Event =
   | GetIdentityLdapAuthEvent
   | RevokeIdentityLdapAuthEvent
   | ClearIdentityLdapAuthLockoutsEvent
+  | CreateIdentityOrgMembershipEvent
+  | UpdateIdentityOrgMembershipEvent
+  | DeleteIdentityOrgMembershipEvent
+  | CreateIdentityProjectMembershipEvent
+  | UpdateIdentityProjectMembershipEvent
+  | DeleteIdentityProjectMembershipEvent
   | CreateEnvironmentEvent
   | GetEnvironmentEvent
   | UpdateEnvironmentEvent
@@ -4450,6 +4553,7 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
+  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
@@ -4473,4 +4577,6 @@ export type Event =
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
   | AutomatedRenewCertificate
-  | AutomatedRenewCertificateFailed;
+  | AutomatedRenewCertificateFailed
+  | UserLoginEvent
+  | SelectOrganizationEvent;

@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { GcpConnectionMethod } from "./gcp-connection-enums";
 
 export const GcpConnectionServiceAccountImpersonationCredentialsSchema = z.object({
@@ -30,7 +31,9 @@ export const SanitizedGcpConnectionSchema = z.discriminatedUnion("method", [
   BaseGcpConnectionSchema.extend({
     method: z.literal(GcpConnectionMethod.ServiceAccountImpersonation),
     credentials: GcpConnectionServiceAccountImpersonationCredentialsSchema.pick({})
-  })
+  }).describe(
+    JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GCP]} (Service Account Impersonation)` })
+  )
 ]);
 
 export const ValidateGcpConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -56,10 +59,12 @@ export const UpdateGcpConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.GCP));
 
-export const GcpConnectionListItemSchema = z.object({
-  name: z.literal("GCP"),
-  app: z.literal(AppConnection.GCP),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
-  methods: z.nativeEnum(GcpConnectionMethod).array()
-});
+export const GcpConnectionListItemSchema = z
+  .object({
+    name: z.literal("GCP"),
+    app: z.literal(AppConnection.GCP),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(GitHubConnectionMethod.App), z.literal(GitHubConnectionMethod.OAuth)]),
+    methods: z.nativeEnum(GcpConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.GCP] }));

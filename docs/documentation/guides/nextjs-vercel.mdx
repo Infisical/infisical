@@ -199,7 +199,7 @@ Next, navigate to your project's integrations tab in Infisical and press on the 
     Opting in for the Infisical-Vercel integration will break end-to-end encryption since Infisical will be able to read
     your secrets. This is, however, necessary for Infisical to sync the secrets to Vercel.
 
-    Your secrets remain encrypted at rest following our [security guide mechanics](/security/mechanics).
+    Your secrets remain encrypted at rest following our [security guide mechanics](/internals/security).
 </Note>
 
 Now select **Production** for (the source) **Environment** and sync it to the **Production Environment** of the (target) application in Vercel.
@@ -238,7 +238,7 @@ At this stage, you know how to use the Infisical-Vercel integration to sync prod
     <Accordion title="Is opting out of end-to-end encryption for the Infisical-Vercel integration safe?">
         Yes. Your secrets are still encrypted at rest. To note, most secret managers actually don't support end-to-end encryption.
 
-        Check out the [security guide](/security/overview).
+        Check out the [security guide](/internals/security).
     </Accordion>
 </AccordionGroup>
 

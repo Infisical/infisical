@@ -16,15 +16,19 @@ import {
   faSignOut,
   faToolbox,
   faUser,
+  faUserCog,
+  faUserPlus,
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
 import { createNotification } from "@app/components/notifications";
+import { OrgPermissionCan } from "@app/components/permissions";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import {
   BreadcrumbContainer,
@@ -44,7 +48,13 @@ import {
 } from "@app/components/v2";
 import { Badge, InstanceIcon, OrgIcon, SubOrgIcon } from "@app/components/v3";
 import { envConfig } from "@app/config/env";
-import { useOrganization, useSubscription, useUser } from "@app/context";
+import {
+  OrgPermissionActions,
+  OrgPermissionSubjects,
+  useOrganization,
+  useSubscription,
+  useUser
+} from "@app/context";
 import { isInfisicalCloud } from "@app/helpers/platform";
 import { useToggle } from "@app/hooks";
 import {
@@ -294,7 +304,7 @@ export const Navbar = () => {
           </>
         ) : (
           <>
-            <div className="flex items-center overflow-hidden">
+            <div className="flex min-w-12 items-center overflow-hidden">
               <DropdownMenu modal={false} open={isOrgSelectOpen} onOpenChange={setIsOrgSelectOpen}>
                 <div className="group flex cursor-pointer items-center gap-2 overflow-hidden text-sm text-white transition-all duration-100 hover:text-primary">
                   <Badge
@@ -324,7 +334,7 @@ export const Navbar = () => {
                       <span>{currentOrg?.name}</span>
                     </button>
                   </Badge>
-                  <div className="mr-1 rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline!">
+                  <div className="mr-1 hidden rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline! md:inline-block">
                     {getPlan(subscription)}
                   </div>
                   {subscription.cardDeclined && (
@@ -468,7 +478,7 @@ export const Navbar = () => {
                     className={twMerge(
                       "gap-x-1.5 text-sm",
                       !isOrgScope &&
-                        "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
+                        "min-w-6 bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
                     )}
                   >
                     <Link to="/organization/projects">
@@ -567,15 +577,36 @@ export const Navbar = () => {
           </Button>
         </Tooltip>
       )}
-      {user.superAdmin && !location.pathname.startsWith("/admin") && (
-        <Link
-          className="mr-2 flex items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-          to="/admin"
-        >
-          <InstanceIcon className="mr-2 inline-block size-3.5" />
-          Server Console
-        </Link>
-      )}
+      {/* eslint-disable-next-line no-nested-ternary */}
+      {!location.pathname.startsWith("/admin") ? (
+        user.superAdmin ? (
+          <Link
+            className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+            to="/admin"
+          >
+            <InstanceIcon className="inline-block size-3.5" />
+            <span className="ml-2 hidden md:inline-block">Server Console</span>
+          </Link>
+        ) : (
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
+                  to="/organization/access-management"
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <UserPlusIcon className="inline-block size-3.5" />
+                  <span className="ml-2 hidden md:inline-block">Invite Members</span>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
+        )
+      ) : null}
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
@@ -657,8 +688,27 @@ export const Navbar = () => {
             </div>
           </div>
           <Link to="/personal-settings">
-            <DropdownMenuItem>Personal Settings</DropdownMenuItem>
+            <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserCog} />}>
+              Personal Settings
+            </DropdownMenuItem>
           </Link>
+          <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
+            {(isAllowed) =>
+              isAllowed ? (
+                <Link
+                  to="/organization/access-management"
+                  search={{
+                    selectedTab: "members",
+                    action: "invite-members"
+                  }}
+                >
+                  <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
+                    Invite Members
+                  </DropdownMenuItem>
+                </Link>
+              ) : null
+            }
+          </OrgPermissionCan>
           <a
             href="https://infisical.com/docs/documentation/getting-started/introduction"
             target="_blank"

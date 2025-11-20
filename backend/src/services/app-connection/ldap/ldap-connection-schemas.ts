@@ -9,6 +9,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { LdapConnectionMethod, LdapProvider } from "./ldap-connection-enums";
 
 export const LdapConnectionSimpleBindCredentialsSchema = z.object({
@@ -61,7 +62,7 @@ export const SanitizedLdapConnectionSchema = z.discriminatedUnion("method", [
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.LDAP]} (Simple Bind)` }))
 ]);
 
 export const ValidateLdapConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -74,7 +75,9 @@ export const ValidateLdapConnectionCredentialsSchema = z.discriminatedUnion("met
 ]);
 
 export const CreateLdapConnectionSchema = ValidateLdapConnectionCredentialsSchema.and(
-  GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP)
+  GenericCreateAppConnectionFieldsSchema(AppConnection.LDAP, {
+    supportsGateways: true
+  })
 );
 
 export const UpdateLdapConnectionSchema = z
@@ -83,12 +86,18 @@ export const UpdateLdapConnectionSchema = z
       AppConnections.UPDATE(AppConnection.LDAP).credentials
     )
   })
-  .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP));
+  .and(
+    GenericUpdateAppConnectionFieldsSchema(AppConnection.LDAP, {
+      supportsGateways: true
+    })
+  );
 
-export const LdapConnectionListItemSchema = z.object({
-  name: z.literal("LDAP"),
-  app: z.literal(AppConnection.LDAP),
-  // the below is preferable but currently breaks with our zod to json schema parser
-  // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
-  methods: z.nativeEnum(LdapConnectionMethod).array()
-});
+export const LdapConnectionListItemSchema = z
+  .object({
+    name: z.literal("LDAP"),
+    app: z.literal(AppConnection.LDAP),
+    // the below is preferable but currently breaks with our zod to json schema parser
+    // methods: z.tuple([z.literal(AwsConnectionMethod.ServicePrincipal), z.literal(AwsConnectionMethod.AccessKey)]),
+    methods: z.nativeEnum(LdapConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.LDAP] }));

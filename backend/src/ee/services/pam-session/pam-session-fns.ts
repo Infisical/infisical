@@ -2,7 +2,7 @@ import { TPamSessions } from "@app/db/schemas";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
-import { TPamSanitizedSession, TPamSessionCommandLog, TTerminalEvent } from "./pam-session.types";
+import { TPamSanitizedSession, TPamSessionCommandLog, TTerminalEvent } from "./pam-session-types";
 
 export const decryptSessionCommandLogs = async ({
   projectId,

@@ -198,7 +198,7 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
           error.message.includes("publickey")
         ) {
           throw new BadRequestError({
-            message: "Account credentials invalid: Username or credentials incorrect"
+            message: "Account credentials invalid."
           });
         }
 

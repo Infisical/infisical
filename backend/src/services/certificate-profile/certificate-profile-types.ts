@@ -33,6 +33,10 @@ export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enr
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {
+  project?: {
+    id: string;
+    orgId: string;
+  };
   certificateAuthority?: {
     id: string;
     projectId: string;

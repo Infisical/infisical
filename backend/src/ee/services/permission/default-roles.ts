@@ -171,7 +171,11 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionIdentityActions.Delete,
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionIdentityActions.GrantPrivileges,
-      ProjectPermissionIdentityActions.AssumePrivileges
+      ProjectPermissionIdentityActions.AssumePrivileges,
+      ProjectPermissionIdentityActions.GetToken,
+      ProjectPermissionIdentityActions.CreateToken,
+      ProjectPermissionIdentityActions.DeleteToken,
+      ProjectPermissionIdentityActions.RevokeAuth
     ],
     ProjectPermissionSub.Identity
   );

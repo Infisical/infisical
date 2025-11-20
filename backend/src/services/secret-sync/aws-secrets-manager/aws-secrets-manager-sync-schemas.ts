@@ -12,6 +12,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const AwsSecretsManagerSyncDestinationConfigSchema = z
   .discriminatedUnion("mappingBehavior", [
     z.object({
@@ -119,10 +121,12 @@ export const AwsSecretsManagerSyncSchema = BaseSecretSyncSchema(
   SecretSync.AWSSecretsManager,
   AwsSecretsManagerSyncOptionsConfig,
   AwsSecretsManagerSyncOptionsSchema
-).extend({
-  destination: z.literal(SecretSync.AWSSecretsManager),
-  destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destination: z.literal(SecretSync.AWSSecretsManager),
+    destinationConfig: AwsSecretsManagerSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSSecretsManager] }));
 
 export const CreateAwsSecretsManagerSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AWSSecretsManager,
@@ -164,9 +168,11 @@ export const UpdateAwsSecretsManagerSyncSchema = GenericUpdateSecretSyncFieldsSc
     }
   });
 
-export const AwsSecretsManagerSyncListItemSchema = z.object({
-  name: z.literal("AWS Secrets Manager"),
-  connection: z.literal(AppConnection.AWS),
-  destination: z.literal(SecretSync.AWSSecretsManager),
-  canImportSecrets: z.literal(true)
-});
+export const AwsSecretsManagerSyncListItemSchema = z
+  .object({
+    name: z.literal("AWS Secrets Manager"),
+    connection: z.literal(AppConnection.AWS),
+    destination: z.literal(SecretSync.AWSSecretsManager),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AWSSecretsManager] }));

@@ -9,6 +9,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const ChecklySyncDestinationConfigSchema = z.object({
   accountId: z.string().min(1, "Account ID is required").max(255, "Account ID must be less than 255 characters"),
   accountName: z
@@ -26,10 +28,12 @@ const ChecklySyncDestinationConfigSchema = z.object({
 
 const ChecklySyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
-export const ChecklySyncSchema = BaseSecretSyncSchema(SecretSync.Checkly, ChecklySyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.Checkly),
-  destinationConfig: ChecklySyncDestinationConfigSchema
-});
+export const ChecklySyncSchema = BaseSecretSyncSchema(SecretSync.Checkly, ChecklySyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.Checkly),
+    destinationConfig: ChecklySyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Checkly] }));
 
 export const CreateChecklySyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Checkly,
@@ -45,9 +49,11 @@ export const UpdateChecklySyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: ChecklySyncDestinationConfigSchema.optional()
 });
 
-export const ChecklySyncListItemSchema = z.object({
-  name: z.literal("Checkly"),
-  connection: z.literal(AppConnection.Checkly),
-  destination: z.literal(SecretSync.Checkly),
-  canImportSecrets: z.literal(false)
-});
+export const ChecklySyncListItemSchema = z
+  .object({
+    name: z.literal("Checkly"),
+    connection: z.literal(AppConnection.Checkly),
+    destination: z.literal(SecretSync.Checkly),
+    canImportSecrets: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Checkly] }));

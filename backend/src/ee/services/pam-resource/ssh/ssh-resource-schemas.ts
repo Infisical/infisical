@@ -20,25 +20,25 @@ export const SSHResourceListItemSchema = z.object({
 });
 
 export const SSHResourceConnectionDetailsSchema = z.object({
-  host: z.string().trim(),
+  host: z.string().trim().max(255),
   port: z.number()
 });
 
 export const SSHPasswordCredentialsSchema = z.object({
   authMethod: z.literal(SSHAuthMethod.Password),
-  username: z.string().trim(),
-  password: z.string().trim()
+  username: z.string().trim().max(255),
+  password: z.string().trim().max(255)
 });
 
 export const SSHPublicKeyCredentialsSchema = z.object({
   authMethod: z.literal(SSHAuthMethod.PublicKey),
-  username: z.string().trim(),
-  privateKey: z.string().trim()
+  username: z.string().trim().max(255),
+  privateKey: z.string().trim().max(5000)
 });
 
 export const SSHCertificateCredentialsSchema = z.object({
   authMethod: z.literal(SSHAuthMethod.Certificate),
-  username: z.string().trim()
+  username: z.string().trim().max(255)
 });
 
 export const SSHAccountCredentialsSchema = z.discriminatedUnion("authMethod", [

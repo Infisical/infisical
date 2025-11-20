@@ -196,7 +196,7 @@ export const permissionServiceFactory = ({
     }
 
     if (orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "You are not allowed to access organization resource" });
     }
 
     const permissionData = await permissionDAL.getPermission({
@@ -344,7 +344,7 @@ export const permissionServiceFactory = ({
     });
 
     if (projectDetails.orgId !== actorOrgId) {
-      throw new ForbiddenRequestError({ name: "You are not logged into this organization" });
+      throw new ForbiddenRequestError({ name: "This project does not belong to your selected organization." });
     }
 
     if (actionProjectType !== ActionProjectType.Any && actionProjectType !== projectDetails.type) {
@@ -362,7 +362,7 @@ export const permissionServiceFactory = ({
       actorId,
       actorType: actor
     });
-    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this organization" });
+    if (!permissionData?.length) throw new ForbiddenRequestError({ name: "You are not member of this project" });
 
     const permissionFromRoles = permissionData.flatMap((membership) => {
       const activeRoles = membership?.roles

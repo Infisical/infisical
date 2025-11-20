@@ -55,6 +55,19 @@ export const DrawerContent = forwardRef<HTMLDivElement, DrawerContentProps>(
         {...props}
         ref={forwardedRef}
         className={twMerge(drawerContentVariation({ direction, className }))}
+        onPointerDownOutside={(e) => {
+          const target = e.target as HTMLElement;
+          const toastElement = target.closest('[class*="Toastify"]');
+          if (toastElement) {
+            e.preventDefault();
+            return;
+          }
+
+          if (onClose) {
+            onClose();
+          }
+          props.onPointerDownOutside?.(e);
+        }}
       >
         <Card isRounded={false} className="dark h-full w-full">
           {title && (

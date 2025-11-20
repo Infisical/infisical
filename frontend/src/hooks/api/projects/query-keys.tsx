@@ -23,6 +23,8 @@ export const projectKeys = {
     [{ projectId }, "project-identity-memberships"] as const,
   getProjectIdentityMembershipDetails: (projectId: string, identityId: string) =>
     [{ projectId, identityId }, "project-identity-membership-details"] as const,
+  getProjectIdentityMembershipDetailsV2: (projectId: string, identityId: string) =>
+    [{ projectId, identityId }, "project-identity-membership-details"] as const,
   // allows invalidation using above key without knowing params
   getProjectIdentityMembershipsWithParams: ({ projectId, ...params }: TListProjectIdentitiesDTO) =>
     [...projectKeys.getProjectIdentityMemberships(projectId), params] as const,

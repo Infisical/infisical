@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { AccessScope, ActionProjectType, ProjectMembershipRole } from "@app/db/schemas";
 import {
@@ -12,6 +12,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, InternalServerError, PermissionBoundaryError } from "@app/lib/errors";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 
 import { TMembershipIdentityDALFactory } from "../membership-identity-dal";
@@ -19,6 +20,8 @@ import { TMembershipIdentityScopeFactory } from "../membership-identity-types";
 
 type TProjectMembershipIdentityScopeFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getProjectPermissionByRoles">;
+
+  identityDAL: Pick<TIdentityDALFactory, "findById">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne">;
 };
@@ -26,7 +29,8 @@ type TProjectMembershipIdentityScopeFactoryDep = {
 export const newProjectMembershipIdentityFactory = ({
   permissionService,
   orgDAL,
-  membershipIdentityDAL
+  membershipIdentityDAL,
+  identityDAL
 }: TProjectMembershipIdentityScopeFactoryDep): TMembershipIdentityScopeFactory => {
   const getScopeField: TMembershipIdentityScopeFactory["getScopeField"] = (dto) => {
     if (dto.scope === AccessScope.Project) {
@@ -67,6 +71,11 @@ export const newProjectMembershipIdentityFactory = ({
     });
     if (!orgMembership)
       throw new BadRequestError({ message: `Identity ${dto.data.identityId} is missing organization membership` });
+
+    const identityDetails = await identityDAL.findById(dto.data.identityId);
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: "Failed to create project membership for a project scoped identity" });
+    }
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
@@ -110,8 +119,13 @@ export const newProjectMembershipIdentityFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Edit,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
+
+    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    if (identityDetails.projectId && identityDetails.projectId !== scope.value) {
+      throw new BadRequestError({ message: "Failed to update project membership for a project scoped identity" });
+    }
 
     const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(dto.permission.orgId);
     const permissionRoles = await permissionService.getProjectPermissionByRoles(
@@ -154,8 +168,13 @@ export const newProjectMembershipIdentityFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionIdentityActions.Delete,
-      ProjectPermissionSub.Identity
+      subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
     );
+
+    const identityDetails = await identityDAL.findById(dto.selector.identityId);
+    if (identityDetails.projectId) {
+      throw new BadRequestError({ message: "Failed to delete project membership for a project scoped identity" });
+    }
   };
 
   const onListMembershipIdentityGuard: TMembershipIdentityScopeFactory["onListMembershipIdentityGuard"] = async (
@@ -175,6 +194,12 @@ export const newProjectMembershipIdentityFactory = ({
       ProjectPermissionIdentityActions.Read,
       ProjectPermissionSub.Identity
     );
+
+    return (arg) =>
+      permission.can(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: arg.identityId })
+      );
   };
 
   const onGetMembershipIdentityByIdentityIdGuard: TMembershipIdentityScopeFactory["onGetMembershipIdentityByIdentityIdGuard"] =
@@ -191,7 +216,7 @@ export const newProjectMembershipIdentityFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionIdentityActions.Read,
-        ProjectPermissionSub.Identity
+        subject(ProjectPermissionSub.Identity, { identityId: dto.selector.identityId })
       );
     };
 

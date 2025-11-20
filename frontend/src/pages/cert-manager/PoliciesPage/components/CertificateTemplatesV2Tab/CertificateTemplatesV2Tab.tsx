@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { useDeleteCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/mutations";
-import { TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
+import { type TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
 
 import { CreateTemplateModal } from "./CreateTemplateModal";
 import { TemplateList } from "./TemplateList";
@@ -84,7 +84,12 @@ export const CertificateTemplatesV2Tab = () => {
 
       <TemplateList onEditTemplate={handleEditTemplate} onDeleteTemplate={handleDeleteTemplate} />
 
-      <CreateTemplateModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+      <CreateTemplateModal
+        isOpen={isCreateModalOpen}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+        }}
+      />
 
       {selectedTemplate && (
         <>

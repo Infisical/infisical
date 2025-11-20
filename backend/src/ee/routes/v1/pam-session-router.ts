@@ -35,29 +35,42 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          credentials: z.any() // UNION DOES NOT WORK WITH ZOD SCHEMA
+          credentials: SessionCredentialsSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const { credentials, projectId, account } = await server.services.pamAccount.getSessionCredentials(
-        req.params.sessionId,
-        req.permission
-      );
+      const { credentials, projectId, account, sessionStarted } =
+        await server.services.pamAccount.getSessionCredentials(req.params.sessionId, req.permission);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         orgId: req.permission.orgId,
         projectId,
         event: {
-          type: EventType.PAM_SESSION_START,
+          type: EventType.PAM_SESSION_CREDENTIALS_GET,
           metadata: {
             sessionId: req.params.sessionId,
             accountName: account.name
           }
         }
       });
+
+      if (sessionStarted) {
+        await server.services.auditLog.createAuditLog({
+          ...req.auditLogInfo,
+          orgId: req.permission.orgId,
+          projectId,
+          event: {
+            type: EventType.PAM_SESSION_START,
+            metadata: {
+              sessionId: req.params.sessionId,
+              accountName: account.name
+            }
+          }
+        });
+      }
 
       return { credentials: credentials as z.infer<typeof SessionCredentialsSchema> };
     }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProjectPermission } from "@app/context";
@@ -9,6 +10,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { usePopUp } from "@app/hooks";
 import {
   TCertificateProfileWithDetails,
   useDeleteCertificateProfile
@@ -29,6 +31,7 @@ export const CertificateProfilesTab = () => {
   const [selectedProfile, setSelectedProfile] = useState<TCertificateProfileWithDetails | null>(
     null
   );
+  const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp(["upgradePlan"] as const);
 
   const deleteProfile = useDeleteCertificateProfile();
 
@@ -99,7 +102,17 @@ export const CertificateProfilesTab = () => {
         onDeleteProfile={handleDeleteProfile}
       />
 
-      <CreateProfileModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+      <CreateProfileModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        handlePopUpOpen={handlePopUpOpen}
+      />
+      <UpgradePlanModal
+        isOpen={popUp.upgradePlan.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
+        isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
+        text="Your current plan does not include access to managing template enrollment options for ACME. To unlock this feature, please upgrade to Infisical Enterprise plan."
+      />
 
       {selectedProfile && (
         <>
@@ -109,6 +122,7 @@ export const CertificateProfilesTab = () => {
               setIsEditModalOpen(false);
               setSelectedProfile(null);
             }}
+            handlePopUpOpen={handlePopUpOpen}
             profile={selectedProfile}
             mode="edit"
           />

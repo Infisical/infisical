@@ -2,16 +2,21 @@ import json
 import os
 
 import pathlib
+import typing
+
 import httpx
 from behave.runner import Context
 from dotenv import load_dotenv
 from faker import Faker
 import logging
 
+from features.steps.utils import clean_all_nock, restore_nock
+
 load_dotenv()
 logger = logging.getLogger(__name__)
 
 BASE_URL = os.environ.get("INFISICAL_API_URL", "http://localhost:8080")
+PEBBLE_URL = os.environ.get("PEBBLE_URL", "https://pebble:14000/dir")
 PROJECT_ID = os.environ.get("PROJECT_ID")
 CERT_CA_ID = os.environ.get("CERT_CA_ID")
 CERT_TEMPLATE_ID = os.environ.get("CERT_TEMPLATE_ID")
@@ -116,7 +121,7 @@ def bootstrap_infisical(context: Context):
                 "name": cert_template_slug,
                 "description": "",
                 "subject": [{"type": "common_name", "allowed": ["*"]}],
-                "sans": [],
+                "sans": [{"type": "dns_name", "allowed": ["*"]}],
                 "keyUsages": {
                     "required": [],
                     "allowed": [
@@ -184,6 +189,7 @@ def before_all(context: Context):
         details = bootstrap_infisical(context)
         context.vars = {
             "BASE_URL": BASE_URL,
+            "PEBBLE_URL": PEBBLE_URL,
             "PROJECT_ID": details["project"]["id"],
             "CERT_CA_ID": details["ca"]["id"],
             "CERT_TEMPLATE_ID": details["cert_template"]["id"],
@@ -192,9 +198,17 @@ def before_all(context: Context):
     else:
         context.vars = {
             "BASE_URL": BASE_URL,
+            "PEBBLE_URL": PEBBLE_URL,
             "PROJECT_ID": PROJECT_ID,
             "CERT_CA_ID": CERT_CA_ID,
             "CERT_TEMPLATE_ID": CERT_TEMPLATE_ID,
             "AUTH_TOKEN": AUTH_TOKEN,
         }
     context.http_client = httpx.Client(base_url=BASE_URL)
+
+
+def after_scenario(context: Context, scenario: typing.Any):
+    if hasattr(context, "web_server"):
+        context.web_server.shutdown_and_server_close()
+    clean_all_nock(context)
+    restore_nock(context)

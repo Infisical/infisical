@@ -1,4 +1,7 @@
+import { OrderByDirection, TProjectPermission } from "@app/lib/types";
+
 import { TPamAccount } from "../pam-resource/pam-resource-types";
+import { PamAccountOrderBy, PamAccountView } from "./pam-account-enums";
 
 // DTOs
 export type TCreateAccountDTO = Pick<
@@ -26,3 +29,14 @@ export type TAccessAccountDTO = {
   duration: number;
   mfaSessionId?: string;
 };
+
+export type TListAccountsDTO = {
+  accountPath: string;
+  accountView: PamAccountView;
+  search?: string;
+  orderBy?: PamAccountOrderBy;
+  orderDirection?: OrderByDirection;
+  limit?: number;
+  offset?: number;
+  filterResourceIds?: string[];
+} & TProjectPermission;

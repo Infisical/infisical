@@ -150,8 +150,19 @@ export const SUBJECT_ATTRIBUTE_TYPE_OPTIONS = Object.values(CertSubjectAttribute
 export const ATTRIBUTE_RULE_OPTIONS = Object.values(CertAttributeRule);
 export const SAN_EFFECT_OPTIONS = Object.values(CertSanEffect);
 
-export const SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS = ["optional", "prohibit"] as const;
-export const SAN_INCLUDE_OPTIONS = ["mandatory", "optional", "prohibit"] as const;
+export enum CertSubjectAttributeInclude {
+  OPTIONAL = "optional",
+  PROHIBIT = "prohibit"
+}
+
+export enum CertSanInclude {
+  MANDATORY = "mandatory",
+  OPTIONAL = "optional",
+  PROHIBIT = "prohibit"
+}
+
+export const SUBJECT_ATTRIBUTE_INCLUDE_OPTIONS = Object.values(CertSubjectAttributeInclude);
+export const SAN_INCLUDE_OPTIONS = Object.values(CertSanInclude);
 
 export const USAGE_STATES = {
   REQUIRED: "required",
@@ -239,3 +250,27 @@ export const mapTemplateKeyAlgorithmToApi = (templateFormat: string): string => 
   };
   return mapping[templateFormat] || templateFormat;
 };
+
+export const TEMPLATE_PRESET_IDS = {
+  CUSTOM: "custom",
+  TLS_SERVER: "tls-server",
+  TLS_CLIENT: "tls-client",
+  CODE_SIGNING: "code-signing",
+  DEVICE: "device",
+  USER: "user",
+  EMAIL_PROTECTION: "email-protection",
+  DUAL_PURPOSE_SERVER: "dual-purpose-server"
+} as const;
+
+export type TemplatePresetId = (typeof TEMPLATE_PRESET_IDS)[keyof typeof TEMPLATE_PRESET_IDS];
+
+export const ALGORITHM_FAMILIES = {
+  ECDSA: {
+    signature: ["SHA256-ECDSA", "SHA384-ECDSA", "SHA512-ECDSA"] as const,
+    key: ["ECDSA-P256", "ECDSA-P384", "ECDSA-P521"] as const
+  },
+  RSA: {
+    signature: ["SHA256-RSA", "SHA384-RSA", "SHA512-RSA"] as const,
+    key: ["RSA-2048", "RSA-3072", "RSA-4096"] as const
+  }
+} as const;

@@ -10,6 +10,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { GitLabSyncScope } from "./gitlab-sync-enums";
 
 const GitLabSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
@@ -70,10 +71,12 @@ const GitLabSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
 
 const GitLabSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: false };
 
-export const GitLabSyncSchema = BaseSecretSyncSchema(SecretSync.GitLab, GitLabSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.GitLab),
-  destinationConfig: GitLabSyncDestinationConfigSchema
-});
+export const GitLabSyncSchema = BaseSecretSyncSchema(SecretSync.GitLab, GitLabSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.GitLab),
+    destinationConfig: GitLabSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitLab] }));
 
 export const CreateGitLabSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.GitLab,
@@ -89,9 +92,11 @@ export const UpdateGitLabSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: GitLabSyncDestinationConfigSchema.optional()
 });
 
-export const GitLabSyncListItemSchema = z.object({
-  name: z.literal("GitLab"),
-  connection: z.literal(AppConnection.GitLab),
-  destination: z.literal(SecretSync.GitLab),
-  canImportSecrets: z.literal(false)
-});
+export const GitLabSyncListItemSchema = z
+  .object({
+    name: z.literal("GitLab"),
+    connection: z.literal(AppConnection.GitLab),
+    destination: z.literal(SecretSync.GitLab),
+    canImportSecrets: z.literal(false)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GitLab] }));

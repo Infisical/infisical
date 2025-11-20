@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { RenderConnectionMethod } from "./render-connection-enums";
 
 export const RenderConnectionApiKeyCredentialsSchema = z.object({
@@ -25,7 +26,7 @@ export const SanitizedRenderConnectionSchema = z.discriminatedUnion("method", [
   BaseRenderConnectionSchema.extend({
     method: z.literal(RenderConnectionMethod.ApiKey),
     credentials: RenderConnectionApiKeyCredentialsSchema.pick({})
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Render]} (API Key)` }))
 ]);
 
 export const ValidateRenderConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -49,8 +50,10 @@ export const UpdateRenderConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Render));
 
-export const RenderConnectionListItemSchema = z.object({
-  name: z.literal("Render"),
-  app: z.literal(AppConnection.Render),
-  methods: z.nativeEnum(RenderConnectionMethod).array()
-});
+export const RenderConnectionListItemSchema = z
+  .object({
+    name: z.literal("Render"),
+    app: z.literal(AppConnection.Render),
+    methods: z.nativeEnum(RenderConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Render] }));

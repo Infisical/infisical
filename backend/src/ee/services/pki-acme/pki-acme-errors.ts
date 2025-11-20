@@ -468,7 +468,7 @@ export class AcmeOrderNotReadyError extends AcmeError {
     super({
       type: AcmeErrorType.OrderNotReady,
       message,
-      status: 403,
+      status: 400,
       error
     });
     this.name = "AcmeOrderNotReadyError";

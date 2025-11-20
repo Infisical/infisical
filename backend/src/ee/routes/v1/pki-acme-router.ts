@@ -2,7 +2,6 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { AcmeMalformedError } from "@app/ee/services/pki-acme/pki-acme-errors";
 import {
   AcmeOrderResourceSchema,
   CreateAcmeAccountResponseSchema,
@@ -257,12 +256,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({
+      const { profileId, accountId } = await validateExistingAccount({
         req
       });
-      if (payload !== "") {
-        throw new AcmeMalformedError({ message: "Payload should be empty" });
-      }
       return sendAcmeResponse(
         res,
         profileId,
@@ -369,12 +365,9 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({
+      const { profileId, accountId } = await validateExistingAccount({
         req
       });
-      if (payload !== "") {
-        throw new AcmeMalformedError({ message: "Payload should be empty" });
-      }
       res.type("application/pem-certificate-chain");
       return sendAcmeResponse(
         res,
@@ -405,10 +398,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req, res) => {
-      const { profileId, accountId, payload } = await validateExistingAccount({ req });
-      if (payload !== "") {
-        throw new AcmeMalformedError({ message: "Payload should be empty" });
-      }
+      const { profileId, accountId } = await validateExistingAccount({ req });
       return sendAcmeResponse(
         res,
         profileId,

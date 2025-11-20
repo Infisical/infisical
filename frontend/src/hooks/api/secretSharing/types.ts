@@ -59,6 +59,8 @@ export type TViewSharedSecretResponse = {
     tag: string;
     accessType: SecretSharingAccessType;
     orgName?: string;
+    expiresAt?: Date | string;
+    expiresAfterViews?: number | null;
   };
 };
 

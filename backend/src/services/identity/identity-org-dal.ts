@@ -159,6 +159,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.Membership, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.projectId`)
         .orderBy(`${TableName.Identity}.${orderBy}`, orderDirection)
         .select(
           selectAllTableCols(TableName.Membership),
@@ -188,9 +189,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         )
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder
-            .on(`paginatedIdentity.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`paginatedIdentity.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+          void queryBuilder.on(`paginatedIdentity.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .leftJoin<TIdentityUniversalAuths>(
           TableName.IdentityUniversalAuth,
@@ -404,6 +403,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scopeOrgId`, orgId)
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.projectId`)
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .orderBy(
@@ -447,9 +447,7 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder
-            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .leftJoin(
           TableName.IdentityUniversalAuth,

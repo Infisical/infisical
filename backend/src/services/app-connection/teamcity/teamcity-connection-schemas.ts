@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { TeamCityConnectionMethod } from "./teamcity-connection-enums";
 
 export const TeamCityConnectionAccessTokenCredentialsSchema = z.object({
@@ -37,7 +38,7 @@ export const SanitizedTeamCityConnectionSchema = z.discriminatedUnion("method", 
     credentials: TeamCityConnectionAccessTokenCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.TeamCity]} (Access Token)` }))
 ]);
 
 export const ValidateTeamCityConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -63,8 +64,10 @@ export const UpdateTeamCityConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.TeamCity));
 
-export const TeamCityConnectionListItemSchema = z.object({
-  name: z.literal("TeamCity"),
-  app: z.literal(AppConnection.TeamCity),
-  methods: z.nativeEnum(TeamCityConnectionMethod).array()
-});
+export const TeamCityConnectionListItemSchema = z
+  .object({
+    name: z.literal("TeamCity"),
+    app: z.literal(AppConnection.TeamCity),
+    methods: z.nativeEnum(TeamCityConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.TeamCity] }));

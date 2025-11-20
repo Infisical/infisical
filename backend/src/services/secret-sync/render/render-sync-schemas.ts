@@ -10,6 +10,7 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { RenderSyncScope, RenderSyncType } from "./render-sync-enums";
 
 const RenderSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
@@ -38,10 +39,12 @@ export const RenderSyncSchema = BaseSecretSyncSchema(
   SecretSync.Render,
   RenderSyncOptionsConfig,
   RenderSyncOptionsSchema
-).extend({
-  destination: z.literal(SecretSync.Render),
-  destinationConfig: RenderSyncDestinationConfigSchema
-});
+)
+  .extend({
+    destination: z.literal(SecretSync.Render),
+    destinationConfig: RenderSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Render] }));
 
 export const CreateRenderSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.Render,
@@ -59,9 +62,11 @@ export const UpdateRenderSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: RenderSyncDestinationConfigSchema.optional()
 });
 
-export const RenderSyncListItemSchema = z.object({
-  name: z.literal("Render"),
-  connection: z.literal(AppConnection.Render),
-  destination: z.literal(SecretSync.Render),
-  canImportSecrets: z.literal(true)
-});
+export const RenderSyncListItemSchema = z
+  .object({
+    name: z.literal("Render"),
+    connection: z.literal(AppConnection.Render),
+    destination: z.literal(SecretSync.Render),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.Render] }));

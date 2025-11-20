@@ -2,6 +2,7 @@ import z from "zod";
 
 import { AppConnections } from "@app/lib/api-docs";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
+import { APP_CONNECTION_NAME_MAP } from "@app/services/app-connection/app-connection-maps";
 import {
   BaseAppConnectionSchema,
   GenericCreateAppConnectionFieldsSchema,
@@ -32,7 +33,7 @@ export const SanitizedOracleDBConnectionSchema = z.discriminatedUnion("method", 
       sslRejectUnauthorized: true,
       sslCertificate: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.OracleDB]} (Username and Password)` }))
 ]);
 
 export const ValidateOracleDBConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -64,9 +65,11 @@ export const UpdateOracleDBConnectionSchema = z
     })
   );
 
-export const OracleDBConnectionListItemSchema = z.object({
-  name: z.literal("OracleDB"),
-  app: z.literal(AppConnection.OracleDB),
-  methods: z.nativeEnum(OracleDBConnectionMethod).array(),
-  supportsPlatformManagement: z.literal(true)
-});
+export const OracleDBConnectionListItemSchema = z
+  .object({
+    name: z.literal("OracleDB"),
+    app: z.literal(AppConnection.OracleDB),
+    methods: z.nativeEnum(OracleDBConnectionMethod).array(),
+    supportsPlatformManagement: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.OracleDB] }));

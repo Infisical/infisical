@@ -10,6 +10,8 @@ import {
 } from "@app/services/secret-sync/secret-sync-schemas";
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
+
 const AzureKeyVaultSyncDestinationConfigSchema = z.object({
   vaultBaseUrl: z
     .string()
@@ -20,13 +22,12 @@ const AzureKeyVaultSyncDestinationConfigSchema = z.object({
 
 const AzureKeyVaultSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
 
-export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(
-  SecretSync.AzureKeyVault,
-  AzureKeyVaultSyncOptionsConfig
-).extend({
-  destination: z.literal(SecretSync.AzureKeyVault),
-  destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
-});
+export const AzureKeyVaultSyncSchema = BaseSecretSyncSchema(SecretSync.AzureKeyVault, AzureKeyVaultSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.AzureKeyVault),
+    destinationConfig: AzureKeyVaultSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureKeyVault] }));
 
 export const CreateAzureKeyVaultSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.AzureKeyVault,
@@ -42,9 +43,11 @@ export const UpdateAzureKeyVaultSyncSchema = GenericUpdateSecretSyncFieldsSchema
   destinationConfig: AzureKeyVaultSyncDestinationConfigSchema.optional()
 });
 
-export const AzureKeyVaultSyncListItemSchema = z.object({
-  name: z.literal("Azure Key Vault"),
-  connection: z.literal(AppConnection.AzureKeyVault),
-  destination: z.literal(SecretSync.AzureKeyVault),
-  canImportSecrets: z.literal(true)
-});
+export const AzureKeyVaultSyncListItemSchema = z
+  .object({
+    name: z.literal("Azure Key Vault"),
+    connection: z.literal(AppConnection.AzureKeyVault),
+    destination: z.literal(SecretSync.AzureKeyVault),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.AzureKeyVault] }));

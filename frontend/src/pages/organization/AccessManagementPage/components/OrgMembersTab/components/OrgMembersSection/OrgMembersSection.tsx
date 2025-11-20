@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { useEffect, useState } from "react";
+import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { BanIcon } from "lucide-react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { BanIcon, UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -16,6 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge, DocumentationLinkBadge } from "@app/components/v3";
+import { ROUTE_PATHS } from "@app/const/routes";
 import {
   OrgPermissionActions,
   OrgPermissionSubjects,
@@ -35,6 +37,7 @@ import { OrgMembersTable } from "./OrgMembersTable";
 export const OrgMembersSection = () => {
   const { subscription } = useSubscription();
   const { currentOrg, isSubOrganization } = useOrganization();
+  const navigate = useNavigate();
   const orgId = currentOrg?.id ?? "";
   const { user } = useUser();
   const userId = user?.id || "";
@@ -54,6 +57,22 @@ export const OrgMembersSection = () => {
   ] as const);
 
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  const urlAction = useSearch({
+    from: ROUTE_PATHS.Organization.AccessControlPage.id,
+    select: (el) => el.action,
+    structuralSharing: true
+  });
+
+  useEffect(() => {
+    if (urlAction === "invite-members") {
+      handlePopUpOpen("addMember");
+      navigate({
+        to: ".",
+        search: ({ action, ...search }) => search
+      });
+    }
+  }, [urlAction]);
 
   const { mutateAsync: deleteMutateAsync } = useDeleteOrgMembership();
   const { mutateAsync: deleteBatchMutateAsync } = useDeleteOrgMembershipBatch();
@@ -184,7 +203,7 @@ export const OrgMembersSection = () => {
         </div>
       </div>
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-x-2">
             <p className="text-xl font-medium text-mineshaft-100">Users</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/user-identities" />
@@ -194,13 +213,13 @@ export const OrgMembersSection = () => {
               <Button
                 colorSchema="secondary"
                 type="submit"
-                leftIcon={<FontAwesomeIcon icon={faPlus} />}
+                leftIcon={<UserPlusIcon size={16} />}
                 onClick={() =>
                   isSubOrganization ? handlePopUpOpen("addMemberToSubOrg") : handleAddMemberModal()
                 }
                 isDisabled={!isAllowed}
               >
-                Add Member
+                {isSubOrganization ? "Add Members" : "Invite Members"}
               </Button>
             )}
           </OrgPermissionCan>

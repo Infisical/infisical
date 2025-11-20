@@ -40,9 +40,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.MembershipRole, `${TableName.Membership}.id`, `${TableName.MembershipRole}.membershipId`)
         .leftJoin(TableName.Role, `${TableName.MembershipRole}.customRoleId`, `${TableName.Role}.id`)
         .leftJoin(TableName.IdentityMetadata, (queryBuilder) => {
-          void queryBuilder
-            .on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`)
-            .andOn(`${TableName.Membership}.scopeOrgId`, `${TableName.IdentityMetadata}.orgId`);
+          void queryBuilder.on(`${TableName.Membership}.actorIdentityId`, `${TableName.IdentityMetadata}.identityId`);
         })
         .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
         .where(`${TableName.Membership}.actorIdentityId`, identityId)
@@ -92,6 +90,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
           db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
+          db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -134,6 +133,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           const {
             identityId: actorIdentityId,
             identityOrgId,
+            identityProjectId,
             identityHasDeleteProtection,
             identityName,
             uaId,
@@ -155,7 +155,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               name: identityName,
               id: actorIdentityId,
               hasDeleteProtection: identityHasDeleteProtection,
-              identityOrgId,
+              orgId: identityOrgId,
+              projectId: identityProjectId,
               authMethods: buildAuthMethods({
                 uaId,
                 awsId,
@@ -213,7 +214,10 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         ]
       });
 
-      return data?.[0];
+      const el = data?.[0];
+      if (!el) return el;
+
+      return { ...el, identity: { ...el.identity, metadata: el.metadata } };
     } catch (error) {
       throw new DatabaseError({ error, name: "MembershipGetByIdentityId" });
     }
@@ -281,6 +285,8 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .select(
           db.ref("name").withSchema(TableName.Identity).as("identityName"),
           db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.ref("orgId").withSchema(TableName.Identity).as("identityOrgId"),
+          db.ref("projectId").withSchema(TableName.Identity).as("identityProjectId"),
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
@@ -310,13 +316,22 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         data: docs,
         key: "id",
         parentMapper: (el) => {
-          const { identityId: actorIdentityId, identityHasDeleteProtection, identityName } = el;
+          const {
+            identityId: actorIdentityId,
+            identityHasDeleteProtection,
+            identityName,
+            identityProjectId,
+            identityOrgId
+          } = el;
           return {
             ...MembershipsSchema.parse(el),
+            identityId: actorIdentityId,
             identity: {
               name: identityName,
               id: actorIdentityId,
-              hasDeleteProtection: identityHasDeleteProtection
+              hasDeleteProtection: identityHasDeleteProtection,
+              orgId: identityOrgId,
+              projectId: identityProjectId
             }
           };
         },
@@ -356,14 +371,20 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
     }
   };
 
-  // this right now only support sub organization
-  const listAvailableIdentities = async (orgId: string, rootOrgId: string) => {
+  const listAvailableIdentities = async (scopeData: AccessScopeData, rootOrgId: string) => {
+    // TODO (akhil/scott): need to implement filters
+
     try {
-      const usersConnectedToOrg = db
+      const identitiesConnectedToOrg = db
         .replicaNode()(TableName.Membership)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
-        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId)
+        .where(`${TableName.Membership}.scope`, scopeData.scope)
+        .where((qb) => {
+          if (scopeData.scope === AccessScope.Project) {
+            void qb.where(`${TableName.Membership}.scopeProjectId`, scopeData.projectId);
+          }
+        })
         .select("actorIdentityId");
 
       const docs = await db
@@ -371,8 +392,16 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
         .join(TableName.Identity, `${TableName.Identity}.id`, `${TableName.Membership}.actorIdentityId`)
         .where(`${TableName.Membership}.scope`, AccessScope.Organization)
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
-        .where(`${TableName.Membership}.scopeOrgId`, rootOrgId)
-        .whereNotIn(`${TableName.Membership}.actorIdentityId`, usersConnectedToOrg)
+        .whereNull(`${TableName.Identity}.projectId`)
+        .where((qb) => {
+          // if sub org pick from root and if project pick from org of project
+          if (scopeData.scope === AccessScope.Organization) {
+            void qb.where(`${TableName.Membership}.scopeOrgId`, rootOrgId);
+          } else {
+            void qb.where(`${TableName.Membership}.scopeOrgId`, scopeData.orgId);
+          }
+        })
+        .whereNotIn(`${TableName.Membership}.actorIdentityId`, identitiesConnectedToOrg)
         .select(
           db.ref("id").withSchema(TableName.Identity),
           db.ref("name").withSchema(TableName.Identity),

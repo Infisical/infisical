@@ -1,5 +1,8 @@
-import { faLink, faPlus } from "@fortawesome/free-solid-svg-icons";
+import { useState } from "react";
+import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AnimatePresence, motion } from "framer-motion";
+import { LinkIcon, PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
@@ -14,17 +17,23 @@ import {
 } from "@app/context";
 import { OrgPermissionMachineIdentityAuthTemplateActions } from "@app/context/OrgPermissionContext/types";
 import { withPermission } from "@app/hoc";
-import { useDeleteIdentity } from "@app/hooks/api";
+import { useDeleteOrgIdentity } from "@app/hooks/api";
 import { useDeleteIdentityAuthTemplate } from "@app/hooks/api/identityAuthTemplates";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { IdentityAuthTemplateModal } from "./IdentityAuthTemplateModal";
 import { IdentityAuthTemplatesTable } from "./IdentityAuthTemplatesTable";
-import { IdentityLinkForm } from "./IdentityLinkForm";
-import { IdentityModal } from "./IdentityModal";
 import { IdentityTable } from "./IdentityTable";
 import { IdentityTokenAuthTokenModal } from "./IdentityTokenAuthTokenModal";
 import { MachineAuthTemplateUsagesModal } from "./MachineAuthTemplateUsagesModal";
+import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
+import { OrgIdentityModal } from "./OrgIdentityModal";
+
+enum IdentityWizardSteps {
+  SelectAction = "select-action",
+  LinkIdentity = "link-identity",
+  OrganizationIdentity = "project-identity"
+}
 
 export const IdentitySection = withPermission(
   () => {
@@ -32,7 +41,9 @@ export const IdentitySection = withPermission(
     const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    const { mutateAsync: deleteMutateAsync } = useDeleteIdentity();
+    const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.SelectAction);
+
+    const { mutateAsync: deleteMutateAsync } = useDeleteOrgIdentity();
     const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
     const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
       "identity",
@@ -46,7 +57,7 @@ export const IdentitySection = withPermission(
       "editTemplate",
       "deleteTemplate",
       "viewUsages",
-      "linkIdentity"
+      "addOptions"
     ] as const);
 
     const isMoreIdentitiesAllowed = subscription?.identityLimit
@@ -58,7 +69,7 @@ export const IdentitySection = withPermission(
     const onDeleteIdentitySubmit = async (identityId: string) => {
       await deleteMutateAsync({
         identityId,
-        organizationId: orgId
+        orgId
       });
 
       createNotification({
@@ -86,61 +97,49 @@ export const IdentitySection = withPermission(
     return (
       <div>
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex w-full items-center gap-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identities</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
-            {isSubOrganization && (
+            <div className="flex items-center">
               <OrgPermissionCan
                 I={OrgPermissionIdentityActions.Create}
                 a={OrgPermissionSubjects.Identity}
               >
                 {(isAllowed) => (
                   <Button
-                    variant="plain"
-                    colorSchema="secondary"
-                    leftIcon={<FontAwesomeIcon icon={faLink} />}
+                    variant="outline_bg"
+                    type="submit"
+                    leftIcon={<FontAwesomeIcon icon={faPlus} />}
                     onClick={() => {
-                      handlePopUpOpen("linkIdentity");
+                      if (!isMoreIdentitiesAllowed && !isEnterprise) {
+                        handlePopUpOpen("upgradePlan", {
+                          description:
+                            "You can add more identities if you upgrade your Infisical Pro plan."
+                        });
+                        return;
+                      }
+
+                      if (!isSubOrganization) {
+                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
+                      }
+
+                      handlePopUpOpen("identity");
                     }}
                     isDisabled={!isAllowed}
                   >
-                    Link Identity
+                    Create Identity
                   </Button>
                 )}
               </OrgPermissionCan>
-            )}
-            <OrgPermissionCan
-              I={OrgPermissionIdentityActions.Create}
-              a={OrgPermissionSubjects.Identity}
-            >
-              {(isAllowed) => (
-                <Button
-                  colorSchema="secondary"
-                  type="submit"
-                  leftIcon={<FontAwesomeIcon icon={faPlus} />}
-                  onClick={() => {
-                    if (!isMoreIdentitiesAllowed && !isEnterprise) {
-                      handlePopUpOpen("upgradePlan", {
-                        text: "You have reached the maximum number of identities allowed on your current plan. Upgrade to Infisical Pro plan to add more identities."
-                      });
-                      return;
-                    }
-                    handlePopUpOpen("identity");
-                  }}
-                  isDisabled={!isAllowed}
-                >
-                  Create Identity
-                </Button>
-              )}
-            </OrgPermissionCan>
+            </div>
           </div>
           <IdentityTable handlePopUpOpen={handlePopUpOpen} />
         </div>
         {/* Identity Auth Templates Section */}
         <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">Identity Auth Templates</p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
@@ -173,7 +172,6 @@ export const IdentitySection = withPermission(
           </div>
           <IdentityAuthTemplatesTable handlePopUpOpen={handlePopUpOpen} />
         </div>
-        <IdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <IdentityAuthTemplateModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <MachineAuthTemplateUsagesModal
           isOpen={popUp.viewUsages.isOpen}
@@ -187,19 +185,99 @@ export const IdentitySection = withPermission(
               ?.name || ""
           }
         />
+        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <Modal
-          isOpen={popUp.linkIdentity.isOpen}
-          onOpenChange={(isOpen) => handlePopUpToggle("linkIdentity", isOpen)}
+          isOpen={popUp.identity.isOpen}
+          onOpenChange={(open) => {
+            handlePopUpToggle("identity", open);
+            if (!open) {
+              setWizardStep(IdentityWizardSteps.SelectAction);
+            }
+          }}
         >
           <ModalContent
-            title="Assign Existing Identity"
-            subTitle="Assign an existing identity from your root organization to the sub organization. The identity will continue to be managed at its original scope."
             bodyClassName="overflow-visible"
+            title="Add Identity"
+            subTitle={
+              isSubOrganization ? "Create a new identity or assign an existing identity" : undefined
+            }
           >
-            <IdentityLinkForm onClose={() => handlePopUpClose("linkIdentity")} />
+            <AnimatePresence mode="wait">
+              {wizardStep === IdentityWizardSteps.SelectAction && (
+                <motion.div
+                  key="select-type-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <div
+                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(IdentityWizardSteps.OrganizationIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <PlusIcon size="1rem" />
+                      <div>Create New Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Create a new machine identity specifically for this sub-organization. This
+                      identity will be managed at the sub-organization level.
+                    </div>
+                  </div>
+                  <div
+                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setWizardStep(IdentityWizardSteps.LinkIdentity)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setWizardStep(IdentityWizardSteps.LinkIdentity);
+                      }
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <LinkIcon size="1rem" />
+                      <div>Assign Existing Identity</div>
+                    </div>
+                    <div className="mt-2 text-xs text-mineshaft-300">
+                      Assign an existing identity from your parent organization. The identity will
+                      continue to be managed at its original scope.
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+              {wizardStep === IdentityWizardSteps.OrganizationIdentity && (
+                <motion.div
+                  key="identity-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+                </motion.div>
+              )}
+              {wizardStep === IdentityWizardSteps.LinkIdentity && (
+                <motion.div
+                  key="link-step"
+                  transition={{ duration: 0.1 }}
+                  initial={{ opacity: 0, translateX: 30 }}
+                  animate={{ opacity: 1, translateX: 0 }}
+                  exit={{ opacity: 0, translateX: -30 }}
+                >
+                  <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </ModalContent>
         </Modal>
-        <IdentityTokenAuthTokenModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         <DeleteActionModal
           isOpen={popUp.deleteIdentity.isOpen}
           title={`Are you sure you want to delete ${

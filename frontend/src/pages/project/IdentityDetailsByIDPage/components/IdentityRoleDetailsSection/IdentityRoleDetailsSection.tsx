@@ -26,14 +26,14 @@ import {
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
-import { useUpdateIdentityWorkspaceRole } from "@app/hooks/api";
-import { IdentityMembership } from "@app/hooks/api/identities/types";
+import { useUpdateProjectIdentityMembership } from "@app/hooks/api";
+import { IdentityProjectMembershipV1 } from "@app/hooks/api/identities/types";
 import { TProjectRole } from "@app/hooks/api/roles/types";
 
 import { IdentityRoleModify } from "./IdentityRoleModify";
 
 type Props = {
-  identityMembershipDetails: IdentityMembership;
+  identityMembershipDetails: IdentityProjectMembershipV1;
   isMembershipDetailsLoading?: boolean;
 };
 
@@ -46,12 +46,12 @@ export const IdentityRoleDetailsSection = ({
     "deleteRole",
     "modifyRole"
   ] as const);
-  const { mutateAsync: updateIdentityWorkspaceRole } = useUpdateIdentityWorkspaceRole();
+  const { mutateAsync: updateIdentityProjectMembership } = useUpdateProjectIdentityMembership();
 
   const handleRoleDelete = async () => {
     const { id } = popUp?.deleteRole?.data as TProjectRole;
     const updatedRoles = identityMembershipDetails?.roles?.filter((el) => el.id !== id);
-    await updateIdentityWorkspaceRole({
+    await updateIdentityProjectMembership({
       projectId: currentProject?.id || "",
       identityId: identityMembershipDetails.identity.id,
       roles: updatedRoles.map(

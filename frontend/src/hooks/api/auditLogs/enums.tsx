@@ -243,6 +243,18 @@ export enum EventType {
   UPDATE_ORG_ROLE = "update-org-role",
   DELETE_ORG_ROLE = "delete-org-role",
 
+  CREATE_SUB_ORGANIZATION = "create-sub-organization",
+  UPDATE_SUB_ORGANIZATION = "update-sub-organization",
+
+  CREATE_IDENTITY_ORG_MEMBERSHIP = "create-identity-org-membership",
+  UPDATE_IDENTITY_ORG_MEMBERSHIP = "update-identity-org-membership",
+  DELETE_IDENTITY_ORG_MEMBERSHIP = "delete-identity-org-membership",
+
+  CREATE_IDENTITY_PROJECT_MEMBERSHIP = "create-identity-project-membership",
+  UPDATE_IDENTITY_PROJECT_MEMBERSHIP = "update-identity-project-membership",
+  DELETE_IDENTITY_PROJECT_MEMBERSHIP = "delete-identity-project-membership",
+
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",

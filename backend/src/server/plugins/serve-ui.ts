@@ -31,10 +31,7 @@ export const registerServeUI = async (
         CAPTCHA_SITE_KEY: appCfg.CAPTCHA_SITE_KEY,
         POSTHOG_API_KEY: appCfg.POSTHOG_PROJECT_API_KEY,
         INTERCOM_ID: appCfg.INTERCOM_ID,
-        TELEMETRY_CAPTURING_ENABLED: appCfg.TELEMETRY_ENABLED,
-        // The feature flag to enable/disable the ACME feature.
-        // Will be removed once the feature is ready for production.
-        ACME_FEATURE_ENABLED: appCfg.isAcmeFeatureEnabled
+        TELEMETRY_CAPTURING_ENABLED: appCfg.TELEMETRY_ENABLED
       };
       const js = `window.__INFISICAL_RUNTIME_ENV__ = Object.freeze(${JSON.stringify(config)});`;
       return res.send(js);

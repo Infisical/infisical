@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faQuestionCircle, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import ms from "ms";
 import { z } from "zod";
 
@@ -168,7 +169,9 @@ export const IdentityLdapAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityLdapAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityLdapAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -345,7 +348,7 @@ export const IdentityLdapAuthForm = ({
       ms(`${lockoutCounterResetValue}${lockoutCounterResetUnit}`) / 1000;
 
     const basePayload = {
-      organizationId: orgId,
+      ...(projectId ? { projectId } : { organizationId: orgId }),
       identityId,
       searchFilter,
       ldapCaCertificate,

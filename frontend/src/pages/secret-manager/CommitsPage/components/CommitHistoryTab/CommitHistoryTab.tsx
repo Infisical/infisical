@@ -39,7 +39,7 @@ const CommitItem = ({
       <div className="flex gap-2 px-4 py-3 transition-colors duration-200 hover:bg-zinc-800">
         <div className="flex min-w-0 flex-1 flex-col items-start">
           <p className="block w-full truncate text-left text-sm text-mineshaft-100">
-            {commit.message}
+            {commit.message || <span className="text-mineshaft-400 italic">No message</span>}
           </p>
           <p className="text-left text-xs text-mineshaft-300">
             {commit.actorMetadata?.email || commit.actorMetadata?.name || commit.actorType}{" "}

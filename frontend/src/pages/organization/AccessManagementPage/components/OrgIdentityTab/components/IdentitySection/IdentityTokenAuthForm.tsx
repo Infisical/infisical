@@ -3,6 +3,7 @@ import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useParams } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -70,7 +71,9 @@ export const IdentityTokenAuthForm = ({
   const { currentOrg } = useOrganization();
   const orgId = currentOrg?.id || "";
   const { subscription } = useSubscription();
-
+  const { projectId } = useParams({
+    strict: false
+  });
   const { mutateAsync: addMutateAsync } = useAddIdentityTokenAuth();
   const { mutateAsync: updateMutateAsync } = useUpdateIdentityTokenAuth();
   const [tabValue, setTabValue] = useState<IdentityFormTab>(IdentityFormTab.Configuration);
@@ -134,7 +137,7 @@ export const IdentityTokenAuthForm = ({
 
     if (data) {
       await updateMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),
@@ -143,7 +146,7 @@ export const IdentityTokenAuthForm = ({
       });
     } else {
       await addMutateAsync({
-        organizationId: orgId,
+        ...(projectId ? { projectId } : { organizationId: orgId }),
         identityId,
         accessTokenTTL: Number(accessTokenTTL),
         accessTokenMaxTTL: Number(accessTokenMaxTTL),

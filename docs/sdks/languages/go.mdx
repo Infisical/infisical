@@ -56,7 +56,7 @@ This example demonstrates how to use the Infisical Go SDK in a simple Go applica
 
 <Warning>
   We do not recommend hardcoding your [Machine Identity
-  Tokens](/platform/identities/overview). Setting it as an environment variable
+  Tokens](/documentation/platform/identities/machine-identities). Setting it as an environment variable
   would be best.
 </Warning>
 
@@ -283,6 +283,114 @@ if err != nil {
   os.Exit(1)
 }
 ```
+
+#### JWT Auth
+
+<Info>
+  Please note that this authentication method requires a valid JWT token from your JWT issuer. Please [read
+  more](/documentation/platform/identities/jwt-auth) about this authentication
+  method.
+</Info>
+
+**Using the SDK**
+
+```go
+credential, err := client.Auth().JwtAuthLogin("MACHINE_IDENTITY_ID", "JWT_TOKEN")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### LDAP Auth
+
+<Info>
+  Please note that this authentication method requires LDAP credentials. Please [read
+  more](/documentation/platform/identities/ldap-auth/general) about this authentication
+  method.
+</Info>
+
+**Using environment variables**
+
+You can set the `INFISICAL_LDAP_AUTH_IDENTITY_ID` environment variable and pass empty string for the identity ID:
+
+```go
+credential, err := client.Auth().LdapAuthLogin("", "LDAP_USERNAME", "LDAP_PASSWORD")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+**Using the SDK directly**
+
+```go
+credential, err := client.Auth().LdapAuthLogin("MACHINE_IDENTITY_ID", "LDAP_USERNAME", "LDAP_PASSWORD")
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+#### OCI Auth
+
+<Info>
+  Please note that this authentication method will only work if you're running
+  your application on Oracle Cloud Infrastructure. Please [read
+  more](/documentation/platform/identities/oci-auth) about this authentication
+  method.
+</Info>
+
+**Using environment variables**
+
+You can set the `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable and omit the `IdentityID` field:
+
+```go
+credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
+  UserID:      "USER_OCID",
+  TenancyID:   "TENANCY_OCID",
+  Fingerprint: "FINGERPRINT",
+  PrivateKey:  "PRIVATE_KEY",
+  Region:      "REGION",
+})
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+**Using the SDK directly**
+
+```go
+credential, err := client.Auth().OciAuthLogin(infisical.OciAuthLoginOptions{
+  IdentityID:  "MACHINE_IDENTITY_ID",
+  UserID:      "USER_OCID",
+  TenancyID:   "TENANCY_OCID",
+  Fingerprint: "FINGERPRINT",
+  PrivateKey:  "PRIVATE_KEY",
+  Region:      "REGION",
+  Passphrase:  nil, // Optional: pointer to string if your private key has a passphrase
+})
+
+if err != nil {
+  fmt.Println(err)
+  os.Exit(1)
+}
+```
+
+**OciAuthLoginOptions fields:**
+
+- `IdentityID` (string) - Your Infisical Machine Identity ID. Can be set via `INFISICAL_OCI_AUTH_IDENTITY_ID` environment variable.
+- `UserID` (string) - Your OCI user OCID.
+- `TenancyID` (string) - Your OCI tenancy OCID.
+- `Fingerprint` (string) - Your OCI API key fingerprint.
+- `PrivateKey` (string) - Your OCI private key (PEM format).
+- `Region` (string) - Your OCI region (e.g., `us-ashburn-1`).
+- `Passphrase` (*string) - Optional: pointer to passphrase string if your private key is encrypted.
 
 ## Secrets
 

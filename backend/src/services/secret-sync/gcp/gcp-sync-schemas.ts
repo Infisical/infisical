@@ -10,6 +10,7 @@ import {
 import { TSyncOptionsConfig } from "@app/services/secret-sync/secret-sync-types";
 
 import { SecretSync } from "../secret-sync-enums";
+import { SECRET_SYNC_NAME_MAP } from "../secret-sync-maps";
 import { GCPSecretManagerLocation, GcpSyncScope } from "./gcp-sync-enums";
 
 const GcpSyncOptionsConfig: TSyncOptionsConfig = { canImportSecrets: true };
@@ -38,10 +39,12 @@ const GcpSyncDestinationConfigSchema = z.discriminatedUnion("scope", [
     )
 ]);
 
-export const GcpSyncSchema = BaseSecretSyncSchema(SecretSync.GCPSecretManager, GcpSyncOptionsConfig).extend({
-  destination: z.literal(SecretSync.GCPSecretManager),
-  destinationConfig: GcpSyncDestinationConfigSchema
-});
+export const GcpSyncSchema = BaseSecretSyncSchema(SecretSync.GCPSecretManager, GcpSyncOptionsConfig)
+  .extend({
+    destination: z.literal(SecretSync.GCPSecretManager),
+    destinationConfig: GcpSyncDestinationConfigSchema
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GCPSecretManager] }));
 
 export const CreateGcpSyncSchema = GenericCreateSecretSyncFieldsSchema(
   SecretSync.GCPSecretManager,
@@ -57,9 +60,11 @@ export const UpdateGcpSyncSchema = GenericUpdateSecretSyncFieldsSchema(
   destinationConfig: GcpSyncDestinationConfigSchema.optional()
 });
 
-export const GcpSyncListItemSchema = z.object({
-  name: z.literal("GCP Secret Manager"),
-  connection: z.literal(AppConnection.GCP),
-  destination: z.literal(SecretSync.GCPSecretManager),
-  canImportSecrets: z.literal(true)
-});
+export const GcpSyncListItemSchema = z
+  .object({
+    name: z.literal("GCP Secret Manager"),
+    connection: z.literal(AppConnection.GCP),
+    destination: z.literal(SecretSync.GCPSecretManager),
+    canImportSecrets: z.literal(true)
+  })
+  .describe(JSON.stringify({ title: SECRET_SYNC_NAME_MAP[SecretSync.GCPSecretManager] }));

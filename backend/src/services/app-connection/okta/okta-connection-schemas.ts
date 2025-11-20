@@ -9,6 +9,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { OktaConnectionMethod } from "./okta-connection-enums";
 
 export const OktaConnectionApiTokenCredentialsSchema = z.object({
@@ -40,7 +41,7 @@ export const SanitizedOktaConnectionSchema = z.discriminatedUnion("method", [
     credentials: OktaConnectionApiTokenCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.Okta]} (API Token)` }))
 ]);
 
 export const ValidateOktaConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -62,8 +63,10 @@ export const UpdateOktaConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.Okta));
 
-export const OktaConnectionListItemSchema = z.object({
-  name: z.literal("Okta"),
-  app: z.literal(AppConnection.Okta),
-  methods: z.nativeEnum(OktaConnectionMethod).array()
-});
+export const OktaConnectionListItemSchema = z
+  .object({
+    name: z.literal("Okta"),
+    app: z.literal(AppConnection.Okta),
+    methods: z.nativeEnum(OktaConnectionMethod).array()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.Okta] }));

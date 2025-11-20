@@ -1,14 +1,10 @@
 import json
 import logging
 import re
-import threading
 import urllib.parse
 
 import acme.client
-import httpx
 import jq
-import requests
-import glom
 from faker import Faker
 from acme import client
 from acme import messages
@@ -19,13 +15,18 @@ from behave import given
 from behave import when
 from behave import then
 from josepy.jwk import JWKRSA
-from josepy import JSONObjectWithFields
 from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
+
+from features.steps.utils import define_nock, clean_all_nock, restore_nock
+from utils import replace_vars, with_nocks
+from utils import eval_var
+from utils import prepare_headers
+
 
 ACC_KEY_BITS = 2048
 ACC_KEY_PUBLIC_EXPONENT = 65537
@@ -38,96 +39,6 @@ class AcmeProfile:
         self.id = id
         self.eab_kid = eab_kid
         self.eab_secret = eab_secret
-
-
-def replace_vars(payload: dict | list | int | float | str, vars: dict):
-    if isinstance(payload, dict):
-        return {
-            replace_vars(key, vars): replace_vars(value, vars)
-            for key, value in payload.items()
-        }
-    elif isinstance(payload, list):
-        return [replace_vars(item, vars) for item in payload]
-    elif isinstance(payload, str):
-        return payload.format(**vars)
-    else:
-        return payload
-
-
-def parse_glom_path(path_str: str) -> glom.Path:
-    """
-    Parse a glom path string with 'attr[index]' syntax into a Path object.
-
-    Examples:
-    >>> parse_glom_path('authorizations[0]') == Path('authorizations', 0)
-    True
-    >>> parse_glom_path('data.items[1].name') == Path('data', 'items', 1, 'name')
-    True
-    >>> parse_glom_path('user.addresses[0].street') == Path('user', 'addresses', 0, 'street')
-    True
-    """
-    parts = []
-
-    # Split by dots, but preserve bracketed content
-    tokens = re.split(r"(?<!\[)\.(?![^\[]*\])", path_str)
-
-    for token in tokens:
-        token = token.strip()
-        if not token:
-            continue
-
-        # Check for attr[index] pattern
-        match = re.match(r"^(.+?)\[([^\]]+)\]$", token)
-        if match:
-            attr_name = match.group(1).strip()
-            index_str = match.group(2).strip()
-
-            # Parse index (support integers, slices, etc.)
-            if index_str.isdigit():
-                index = int(index_str)
-            elif "-" in index_str:
-                # Handle negative indices like [-1]
-                index = int(index_str)
-            elif ":" in index_str:
-                # Handle slices like [0:10]
-                index = slice(
-                    *map(int, [x.strip() for x in index_str.split(":") if x.strip()])
-                )
-            else:
-                # Treat as string key
-                index = index_str
-
-            parts.extend([attr_name, index])
-        else:
-            # Plain attribute/key
-            parts.append(token)
-
-    return glom.Path(*parts)
-
-
-def eval_var(context: Context, var_path: str, as_json: bool = True):
-    parts = var_path.split(".", 1)
-    value = context.vars[parts[0]]
-    if len(parts) == 2:
-        value = glom.glom(value, parse_glom_path(parts[1]))
-    if as_json:
-        if isinstance(value, JSONObjectWithFields):
-            value = value.to_json()
-        elif isinstance(value, requests.Response):
-            value = value.json()
-        elif isinstance(value, httpx.Response):
-            value = value.json()
-    return value
-
-
-def prepare_headers(context: Context) -> dict | None:
-    headers = {}
-    auth_token = getattr(context, "auth_token", None)
-    if auth_token is not None:
-        headers["authorization"] = "Bearer {}".format(auth_token)
-    if not headers:
-        return None
-    return headers
 
 
 @given("I make a random {faker_type} as {var_name}")
@@ -175,6 +86,198 @@ def step_impl(context: Context, profile_var: str):
         eab_kid=kid,
         eab_secret=secret,
     )
+
+
+@given("I create a Cloudflare connection as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    conn_slug = faker.slug()
+    mock_account_id = "MOCK_ACCOUNT_ID"
+    with with_nocks(
+        context,
+        definitions=[
+            {
+                "scope": "https://api.cloudflare.com:443",
+                "method": "GET",
+                "path": f"/client/v4/accounts/{mock_account_id}",
+                "status": 200,
+                "response": {
+                    "result": {
+                        "id": "A2A6347F-88B5-442D-9798-95E408BC7701",
+                        "name": "Mock Account",
+                        "type": "standard",
+                        "settings": {
+                            "enforce_twofactor": True,
+                            "api_access_enabled": None,
+                            "access_approval_expiry": None,
+                            "abuse_contact_email": None,
+                            "user_groups_ui_beta": False,
+                        },
+                        "legacy_flags": {
+                            "enterprise_zone_quota": {
+                                "maximum": 0,
+                                "current": 0,
+                                "available": 0,
+                            }
+                        },
+                        "created_on": "2013-04-18T00:41:02.215243Z",
+                    },
+                    "success": True,
+                    "errors": [],
+                    "messages": [],
+                },
+                "responseIsBinary": False,
+            }
+        ],
+    ):
+        response = context.http_client.post(
+            "/api/v1/app-connections/cloudflare",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "name": conn_slug,
+                "description": "",
+                "method": "api-token",
+                "credentials": {
+                    "apiToken": "MOCK_API_TOKEN",
+                    "accountId": mock_account_id,
+                },
+            },
+        )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
+@given("I create a external ACME CA with the following config as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    ca_slug = faker.slug()
+    config = replace_vars(json.loads(context.text), context.vars)
+    response = context.http_client.post(
+        "/api/v1/pki/ca/acme",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json={
+            "projectId": context.vars["PROJECT_ID"],
+            "name": ca_slug,
+            "type": "acme",
+            "status": "active",
+            "enableDirectIssuance": True,
+            "configuration": config,
+        },
+    )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
+@given("I create a certificate template with the following config as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    template_slug = faker.slug()
+    config = replace_vars(json.loads(context.text), context.vars)
+    response = context.http_client.post(
+        "/api/v2/certificate-templates",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json={
+            "projectId": context.vars["PROJECT_ID"],
+            "name": template_slug,
+            "description": "",
+        }
+        | config,
+    )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
+@given(
+    'I create an ACME profile with ca {ca_id} and template {template_id} as "{profile_var}"'
+)
+def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
+    profile_slug = faker.slug()
+    jwt_token = context.vars["AUTH_TOKEN"]
+    response = context.http_client.post(
+        "/api/v1/pki/certificate-profiles",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+        json={
+            "projectId": context.vars["PROJECT_ID"],
+            "slug": profile_slug,
+            "description": "ACME Profile created by BDD test",
+            "enrollmentType": "acme",
+            "caId": replace_vars(ca_id, context.vars),
+            "certificateTemplateId": replace_vars(template_id, context.vars),
+            "acmeConfig": {},
+        },
+    )
+    response.raise_for_status()
+    resp_json = response.json()
+    profile_id = resp_json["certificateProfile"]["id"]
+    kid = profile_id
+
+    response = context.http_client.get(
+        f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+        headers=dict(authorization="Bearer {}".format(jwt_token)),
+    )
+    response.raise_for_status()
+    resp_json = response.json()
+    secret = resp_json["eabSecret"]
+
+    context.vars[profile_var] = AcmeProfile(
+        profile_id,
+        eab_kid=kid,
+        eab_secret=secret,
+    )
+
+
+@given('I have an ACME cert profile with external ACME CA as "{profile_var}"')
+def step_impl(context: Context, profile_var: str):
+    profile_id = context.vars.get("PROFILE_ID")
+    secret = context.vars.get("EAB_SECRET")
+    if profile_id is not None and secret is not None:
+        kid = profile_id
+    else:
+        profile_slug = faker.slug()
+        jwt_token = context.vars["AUTH_TOKEN"]
+        response = context.http_client.post(
+            "/api/v1/pki/certificate-profiles",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "projectId": context.vars["PROJECT_ID"],
+                "slug": profile_slug,
+                "description": "ACME Profile created by BDD test",
+                "enrollmentType": "acme",
+                "caId": context.vars["CERT_CA_ID"],
+                "certificateTemplateId": context.vars["CERT_TEMPLATE_ID"],
+                "acmeConfig": {},
+            },
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        profile_id = resp_json["certificateProfile"]["id"]
+        kid = profile_id
+
+        response = context.http_client.get(
+            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+        )
+        response.raise_for_status()
+        resp_json = response.json()
+        secret = resp_json["eabSecret"]
+
+    context.vars[profile_var] = AcmeProfile(
+        profile_id,
+        eab_kid=kid,
+        eab_secret=secret,
+    )
+
+
+@given("I intercept outgoing requests")
+def step_impl(context: Context):
+    definitions = replace_vars(json.loads(context.text), context.vars)
+    define_nock(context, definitions)
+
+
+@then("I reset requests interceptions")
+def step_impl(context: Context):
+    clean_all_nock(context)
+    restore_nock(context)
 
 
 @given("I use {token_var} for authentication")
@@ -388,6 +491,15 @@ def step_impl(context: Context, url: str):
 
 
 @then(
+    "I encode CSR {pem_var} as JOSE Base-64 DER as {var_name}",
+)
+def step_impl(context: Context, pem_var: str, var_name: str):
+    csr = eval_var(context, pem_var)
+    parsed_csr = x509.load_pem_x509_csr(csr)
+    context.vars[var_name] = json_util.encode_csr(parsed_csr)
+
+
+@then(
     "I submit the certificate signing request PEM {pem_var} certificate order to the ACME server as {order_var}"
 )
 def step_impl(context: Context, pem_var: str, order_var: str):
@@ -569,51 +681,61 @@ def step_impl(context: Context, var_path: str):
     print(json.dumps(value.json(), indent=2))
 
 
-@then(
-    "I select challenge with type {challenge_type} for domain {domain} from order at {var_path} as {challenge_var}"
-)
-def step_impl(
+def select_challenge(
     context: Context,
     challenge_type: str,
+    order_var_path: str,
     domain: str,
-    var_path: str,
-    challenge_var: str,
 ):
-    order = eval_var(context, var_path, as_json=False)
+    acme_client = context.acme_client
+    order = eval_var(context, order_var_path, as_json=False)
+    if isinstance(order, dict):
+        order_body = messages.Order.from_json(order)
+        order = messages.OrderResource(
+            body=order_body,
+            authorizations=[
+                acme_client._authzr_from_response(
+                    acme_client._post_as_get(url), uri=url
+                )
+                for url in order_body.authorizations
+            ],
+        )
     if not isinstance(order, messages.OrderResource):
         raise ValueError(
-            f"Expected OrderResource but got {type(order)!r} at {var_path!r}"
+            f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
         )
     auths = list(
         filter(lambda o: o.body.identifier.value == domain, order.authorizations)
     )
     if not auths:
         raise ValueError(
-            f"Authorization for domain {domain!r} not found in {var_path!r}"
+            f"Authorization for domain {domain!r} not found in {order_var_path!r}"
         )
     if len(auths) > 1:
         raise ValueError(
-            f"More than one order for domain {domain!r} found in {var_path!r}"
+            f"More than one order for domain {domain!r} found in {order_var_path!r}"
         )
     auth = auths[0]
 
     challenges = list(filter(lambda a: a.typ == challenge_type, auth.body.challenges))
     if not challenges:
         raise ValueError(
-            f"Authorization type {challenge_type!r} not found in {var_path!r}"
+            f"Authorization type {challenge_type!r} not found in {order_var_path!r}"
         )
     if len(challenges) > 1:
         raise ValueError(
-            f"More than one authorization for type {challenge_type!r} found in {var_path!r}"
+            f"More than one authorization for type {challenge_type!r} found in {order_var_path!r}"
         )
-    context.vars[challenge_var] = challenges[0]
+    return challenges[0]
 
 
-@then("I serve challenge response for {var_path} at {hostname}")
-def step_impl(context: Context, var_path: str, hostname: str):
-    if hostname != "localhost":
-        raise ValueError("Currently only localhost is supported")
-    challenge = eval_var(context, var_path, as_json=False)
+def serve_challenge(
+    context: Context,
+    challenge: messages.ChallengeBody,
+):
+    if hasattr(context, "web_server"):
+        context.web_server.shutdown_and_server_close()
+
     response, validation = challenge.response_and_validation(
         context.acme_client.net.key
     )
@@ -622,19 +744,101 @@ def step_impl(context: Context, var_path: str, hostname: str):
     )
     # TODO: make port configurable
     servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
-    # Start client standalone web server.
-    web_server = threading.Thread(name="web_server", target=servers.serve_forever)
-    web_server.daemon = True
-    web_server.start()
-    context.web_server = web_server
+    servers.serve_forever()
+    context.web_server = servers
+
+
+def notify_challenge_ready(context: Context, challenge: messages.ChallengeBody):
+    acme_client = context.acme_client
+    response, validation = challenge.response_and_validation(acme_client.net.key)
+    acme_client.answer_challenge(challenge, response)
+
+
+@then(
+    "I select challenge with type {challenge_type} for domain {domain} from order in {var_path} as {challenge_var}"
+)
+def step_impl(
+    context: Context,
+    challenge_type: str,
+    domain: str,
+    var_path: str,
+    challenge_var: str,
+):
+    challenge = select_challenge(
+        context=context,
+        challenge_type=challenge_type,
+        domain=domain,
+        order_var_path=var_path,
+    )
+    context.vars[challenge_var] = challenge
+
+
+@then("I pass all challenges with type {challenge_type} for order in {order_var_path}")
+def step_impl(
+    context: Context,
+    challenge_type: str,
+    order_var_path: str,
+):
+    acme_client = context.acme_client
+    order = eval_var(context, order_var_path, as_json=False)
+    if isinstance(order, dict):
+        order_body = messages.Order.from_json(order)
+        order = messages.OrderResource(
+            body=order_body,
+            authorizations=[
+                acme_client._authzr_from_response(
+                    acme_client._post_as_get(url), uri=url
+                )
+                for url in order_body.authorizations
+            ],
+        )
+    if not isinstance(order, messages.OrderResource):
+        raise ValueError(
+            f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
+        )
+
+    for domain in order.body.identifiers:
+        logger.info(
+            "Selecting challenge for domain %s with type %s ...",
+            domain.value,
+            challenge_type,
+        )
+        challenge = select_challenge(
+            context=context,
+            challenge_type=challenge_type,
+            domain=domain.value,
+            order_var_path=order_var_path,
+        )
+        logger.info(
+            "Found challenge for domain %s with type %s, challenge=%s",
+            domain.value,
+            challenge_type,
+            challenge.uri,
+        )
+
+        logger.info(
+            "Serving challenge for domain %s with type %s ...",
+            domain.value,
+            challenge_type,
+        )
+        serve_challenge(context=context, challenge=challenge)
+
+        logger.info(
+            "Notifying challenge for domain %s with type %s ...", domain, challenge_type
+        )
+        notify_challenge_ready(context=context, challenge=challenge)
+
+
+@then("I serve challenge response for {var_path} at {hostname}")
+def step_impl(context: Context, var_path: str, hostname: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    serve_challenge(context=context, challenge=challenge)
 
 
 @then("I tell ACME server that {var_path} is ready to be verified")
 def step_impl(context: Context, var_path: str):
     challenge = eval_var(context, var_path, as_json=False)
-    acme_client = context.acme_client
-    response, validation = challenge.response_and_validation(acme_client.net.key)
-    acme_client.answer_challenge(challenge, response)
+    notify_challenge_ready(context=context, challenge=challenge)
 
 
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")
@@ -643,3 +847,10 @@ def step_impl(context: Context, var_path: str, finalized_var: str):
     acme_client = context.acme_client
     finalized_order = acme_client.poll_and_finalize(order)
     context.vars[finalized_var] = finalized_order
+
+
+@then("I parse the full-chain certificate from order {order_var_path} as {cert_var}")
+def step_impl(context: Context, order_var_path: str, cert_var: str):
+    order = eval_var(context, order_var_path, as_json=False)
+    cert = x509.load_pem_x509_certificate(order.fullchain_pem.encode())
+    context.vars[cert_var] = cert

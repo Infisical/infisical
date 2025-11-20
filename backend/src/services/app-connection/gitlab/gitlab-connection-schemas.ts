@@ -8,6 +8,7 @@ import {
   GenericUpdateAppConnectionFieldsSchema
 } from "@app/services/app-connection/app-connection-schemas";
 
+import { APP_CONNECTION_NAME_MAP } from "../app-connection-maps";
 import { GitLabAccessTokenType, GitLabConnectionMethod } from "./gitlab-connection-enums";
 
 export const GitLabConnectionAccessTokenCredentialsSchema = z.object({
@@ -84,13 +85,13 @@ export const SanitizedGitLabConnectionSchema = z.discriminatedUnion("method", [
       instanceUrl: true,
       accessTokenType: true
     })
-  }),
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitLab]} (Access Token)` })),
   BaseGitLabConnectionSchema.extend({
     method: z.literal(GitLabConnectionMethod.OAuth),
     credentials: GitLabConnectionOAuthOutputCredentialsSchema.pick({
       instanceUrl: true
     })
-  })
+  }).describe(JSON.stringify({ title: `${APP_CONNECTION_NAME_MAP[AppConnection.GitLab]} (OAuth)` }))
 ]);
 
 export const ValidateGitLabConnectionCredentialsSchema = z.discriminatedUnion("method", [
@@ -130,9 +131,11 @@ export const UpdateGitLabConnectionSchema = z
   })
   .and(GenericUpdateAppConnectionFieldsSchema(AppConnection.GitLab));
 
-export const GitLabConnectionListItemSchema = z.object({
-  name: z.literal("GitLab"),
-  app: z.literal(AppConnection.GitLab),
-  methods: z.nativeEnum(GitLabConnectionMethod).array(),
-  oauthClientId: z.string().optional()
-});
+export const GitLabConnectionListItemSchema = z
+  .object({
+    name: z.literal("GitLab"),
+    app: z.literal(AppConnection.GitLab),
+    methods: z.nativeEnum(GitLabConnectionMethod).array(),
+    oauthClientId: z.string().optional()
+  })
+  .describe(JSON.stringify({ title: APP_CONNECTION_NAME_MAP[AppConnection.GitLab] }));
