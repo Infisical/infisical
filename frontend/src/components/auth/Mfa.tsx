@@ -302,9 +302,6 @@ export const Mfa = ({ successCallback, closeMfa, hideLogo, email, method }: Prop
 
         setShouldShowWebAuthnRegistration(false);
         await successCallback();
-        if (closeMfa) {
-          closeMfa();
-        }
       } finally {
         // Restore MFA token
         SecurityClient.setMfaToken(mfaToken);
