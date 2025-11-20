@@ -428,7 +428,13 @@ describe("CertificateProfileService", () => {
         service.createProfile({
           ...mockActor,
           projectId: "project-123",
-          data: validProfileData
+          data: {
+            ...validProfileData,
+            enrollmentType: EnrollmentType.ACME,
+            acmeConfig: {},
+            apiConfig: undefined,
+            estConfig: undefined
+          }
         })
       ).rejects.toThrowError(
         new BadRequestError({

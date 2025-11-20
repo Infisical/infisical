@@ -1,3 +1,4 @@
+import { registerBddNockRouter } from "@bdd_routes/bdd-nock-router";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
@@ -2697,6 +2698,12 @@ export const registerRoutes = async (
   );
   await server.register(registerV3Routes, { prefix: "/api/v3" });
   await server.register(registerV4Routes, { prefix: "/api/v4" });
+
+  // Note: This is a special route for BDD tests. It's only available in development mode and only for BDD tests.
+  // This route should NEVER BE ENABLED IN PRODUCTION!
+  if (getConfig().isBddNockApiEnabled) {
+    await server.register(registerBddNockRouter, { prefix: "/api/__bdd_nock__" });
+  }
 
   server.addHook("onClose", async () => {
     cronJobs.forEach((job) => job.stop());

@@ -615,13 +615,14 @@ def step_impl(context: Context, var_path: str, jq_query: str, expected: str):
 
 @then('the value {var_path} with jq "{jq_query}" should match pattern {regex}')
 def step_impl(context: Context, var_path: str, jq_query: str, regex: str):
+    actual_regex = replace_vars(regex, context.vars)
     value, result = apply_value_with_jq(
         context=context,
         var_path=var_path,
         jq_query=jq_query,
     )
-    assert re.match(replace_vars(regex, context.vars), result), (
-        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {regex!r}"
+    assert re.match(actual_regex, result), (
+        f"{json.dumps(value)!r} with jq {jq_query!r}, the result {json.dumps(result)!r} does not match {actual_regex!r}"
     )
 
 
