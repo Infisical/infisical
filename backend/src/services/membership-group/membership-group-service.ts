@@ -93,15 +93,6 @@ export const membershipGroupServiceFactory = ({
     }
 
     const scopeDatabaseFields = factory.getScopeDatabaseFields(dto.scopeData);
-    const existingMembership = await membershipGroupDAL.findOne({
-      scope: scopeData.scope,
-      ...scopeDatabaseFields,
-      actorGroupId: dto.data.groupId
-    });
-    if (existingMembership)
-      throw new BadRequestError({
-        message: "Group is already a member"
-      });
 
     await factory.onCreateMembershipGroupGuard(dto);
 
@@ -122,6 +113,19 @@ export const membershipGroupServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membership = await membershipGroupDAL.transaction(async (tx) => {
+      const existingMembership = await membershipGroupDAL.findOne(
+        {
+          scope: scopeData.scope,
+          ...scopeDatabaseFields,
+          actorGroupId: dto.data.groupId
+        },
+        tx
+      );
+      if (existingMembership)
+        throw new BadRequestError({
+          message: "Group is already a member"
+        });
+
       const doc = await membershipGroupDAL.create(
         {
           scope: scopeData.scope,
