@@ -536,6 +536,7 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
@@ -3988,6 +3989,14 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface PamSessionCredentialsGetEvent {
+  type: EventType.PAM_SESSION_CREDENTIALS_GET;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
@@ -4542,6 +4551,7 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
+  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent

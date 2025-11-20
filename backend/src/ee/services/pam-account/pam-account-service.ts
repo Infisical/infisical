@@ -668,11 +668,6 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Session has ended or expired" });
     }
 
-    // Verify that the session has not already had credentials fetched
-    if (session.status !== PamSessionStatus.Starting) {
-      throw new BadRequestError({ message: "Session has already been started" });
-    }
-
     const account = await pamAccountDAL.findById(session.accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${session.accountId}' not found` });
 
@@ -689,11 +684,16 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
 
+    let sessionStarted = false;
+
     // Mark session as started
-    await pamSessionDAL.updateById(sessionId, {
-      status: PamSessionStatus.Active,
-      startedAt: new Date()
-    });
+    if (session.status === PamSessionStatus.Starting) {
+      await pamSessionDAL.updateById(sessionId, {
+        status: PamSessionStatus.Active,
+        startedAt: new Date()
+      });
+      sessionStarted = true;
+    }
 
     return {
       credentials: {
@@ -701,7 +701,8 @@ export const pamAccountServiceFactory = ({
         ...decryptedAccount.credentials
       },
       projectId: project.id,
-      account
+      account,
+      sessionStarted
     };
   };
 
