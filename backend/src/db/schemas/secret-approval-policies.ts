@@ -17,8 +17,7 @@ export const SecretApprovalPoliciesSchema = z.object({
   updatedAt: z.date(),
   enforcementLevel: z.string().default("hard"),
   deletedAt: z.date().nullable().optional(),
-  allowedSelfApprovals: z.boolean().default(true),
-  shouldCheckSecretPermission: z.boolean().nullable().optional()
+  allowedSelfApprovals: z.boolean().default(true)
 });
 
 export type TSecretApprovalPolicies = z.infer<typeof SecretApprovalPoliciesSchema>;
