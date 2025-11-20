@@ -61,6 +61,10 @@ import {
   DigitalOceanConnectionListItemSchema,
   SanitizedDigitalOceanConnectionSchema
 } from "@app/services/app-connection/digital-ocean";
+import {
+  DNSMadeEasyConnectionListItemSchema,
+  SanitizedDNSMadeEasyConnectionSchema
+} from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-schema";
 import { FlyioConnectionListItemSchema, SanitizedFlyioConnectionSchema } from "@app/services/app-connection/flyio";
 import { GcpConnectionListItemSchema, SanitizedGcpConnectionSchema } from "@app/services/app-connection/gcp";
 import { GitHubConnectionListItemSchema, SanitizedGitHubConnectionSchema } from "@app/services/app-connection/github";
@@ -170,7 +174,8 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
-  ...SanitizedChefConnectionSchema.options
+  ...SanitizedChefConnectionSchema.options,
+  ...SanitizedDNSMadeEasyConnectionSchema.options
 ]);
 
 const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
@@ -215,7 +220,8 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
-  ChefConnectionListItemSchema
+  ChefConnectionListItemSchema,
+  DNSMadeEasyConnectionListItemSchema
 ]);
 
 export const registerAppConnectionRouter = async (server: FastifyZodProvider) => {

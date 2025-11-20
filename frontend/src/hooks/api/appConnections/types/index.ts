@@ -15,6 +15,7 @@ import { TChefConnection } from "./chef-connection";
 import { TCloudflareConnection } from "./cloudflare-connection";
 import { TDatabricksConnection } from "./databricks-connection";
 import { TDigitalOceanConnection } from "./digital-ocean";
+import { TDNSMadeEasyConnection } from "./dns-made-easy-connection";
 import { TFlyioConnection } from "./flyio-connection";
 import { TGcpConnection } from "./gcp-connection";
 import { TGitHubConnection } from "./github-connection";
@@ -127,7 +128,8 @@ export type TAppConnection =
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
-  | TChefConnection;
+  | TChefConnection
+  | TDNSMadeEasyConnection;
 
 export type TAvailableAppConnection = Pick<TAppConnection, "name" | "id" | "projectId">;
 

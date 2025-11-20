@@ -223,7 +223,8 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
-    getChefConnectionListItem()
+    getChefConnectionListItem(),
+    getDNSMadeEasyConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
