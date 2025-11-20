@@ -102,6 +102,16 @@ export const membershipIdentityServiceFactory = ({
       throw new NotFoundError({ message: "One or more custom roles not found" });
     }
 
+    const existingMembership = await membershipIdentityDAL.findOne({
+      scope: scopeData.scope,
+      ...scopeDatabaseFields,
+      actorIdentityId: dto.data.identityId
+    });
+    if (existingMembership)
+      throw new BadRequestError({
+        message: "Identity is already a member"
+      });
+
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membership = await membershipIdentityDAL.transaction(async (tx) => {
