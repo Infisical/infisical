@@ -26,14 +26,14 @@ interface DNSMadeEasyApiResponse {
 
 export const makeDNSMadeEasyAuthHeaders = (
   apiKey: string,
-  apiSecret: string,
+  secretKey: string,
   currentDate: Date = new Date()
 ): Record<string, string> => {
   // Format date as "Day, DD Mon YYYY HH:MM:SS GMT" (e.g., "Mon, 01 Jan 2024 12:00:00 GMT")
   const requestDate = currentDate.toUTCString();
 
   // Generate HMAC-SHA1 signature
-  const hmac = crypto.nativeCrypto.createHmac("sha1", apiSecret);
+  const hmac = crypto.nativeCrypto.createHmac("sha1", secretKey);
   hmac.update(requestDate);
   const hmacSignature = hmac.digest("hex");
 
@@ -64,7 +64,7 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
   }
 
   const {
-    credentials: { apiKey, apiSecret }
+    credentials: { apiKey, secretKey }
   } = appConnection;
 
   try {
@@ -89,12 +89,12 @@ export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeE
     throw new Error("Unsupported DNS Made Easy connection method");
   }
 
-  const { apiKey, apiSecret } = config.credentials;
+  const { apiKey, secretKey } = config.credentials;
 
   try {
     const resp = await request.get(`${IntegrationUrls.DNS_MADE_EASY_API_URL}/V2.0/dns/managed/`, {
       headers: {
-        ...makeDNSMadeEasyAuthHeaders(apiKey, apiSecret),
+        ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
         Accept: "application/json"
       }
     });
