@@ -119,7 +119,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
             ],
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "preserveArn": true,
+                "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
                 "certificateNameSchema": "myapp-{{certificateId}}",
                 "fieldMappings": {
@@ -151,7 +151,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
             "isAutoSyncEnabled": true,
             "syncOptions": {
                 "canRemoveCertificates": true,
-                "preserveArn": true,
+                "preserveSecretOnRenewal": true,
                 "canImportCertificates": false,
                 "certificateNameSchema": "{{commonName}}-{{certificateId}}",
                 "fieldMappings": {
@@ -182,7 +182,7 @@ Any role with these permissions would work such as a custom role with **Data Bag
                 },
                 "syncOptions": {
                     "canRemoveCertificates": true,
-                    "preserveArn": true,
+                    "preserveSecretOnRenewal": true,
                     "canImportCertificates": false,
                     "certificateNameSchema": "myapp-{{certificateId}}",
                     "fieldMappings": {
