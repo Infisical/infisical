@@ -27,6 +27,17 @@ export const getChefServerUrl = async (serverUrl?: string) => {
   return chefServerUrl;
 };
 
+const buildSecureUrl = (baseUrl: string, path: string): string => {
+  try {
+    const url = new URL(path, baseUrl);
+    return url.toString();
+  } catch (error) {
+    throw new BadRequestError({
+      message: "Invalid URL construction parameters"
+    });
+  }
+};
+
 // Helper to ensure private key is in proper PEM format
 const formatPrivateKey = (key: string): string => {
   let formattedKey = key.trim();
@@ -138,7 +149,8 @@ export const validateChefConnectionCredentials = async (config: TChefConnectionC
 
     const headers = getChefAuthHeaders("GET", path, "", inputCredentials.userName, inputCredentials.privateKey);
 
-    await request.get(`${hostServerUrl}${path}`, {
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    await request.get(secureUrl, {
       headers
     });
   } catch (error: unknown) {
@@ -168,7 +180,8 @@ export const listChefDataBags = async (appConnection: TChefConnection): Promise<
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
-    const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    const res = await request.get<Record<string, string>>(secureUrl, {
       headers
     });
 
@@ -203,7 +216,8 @@ export const listChefDataBagItems = async (
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
-    const res = await request.get<Record<string, string>>(`${hostServerUrl}${path}`, {
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    const res = await request.get<Record<string, string>>(secureUrl, {
       headers
     });
 
@@ -238,7 +252,8 @@ export const getChefDataBagItem = async ({
 
     const headers = getChefAuthHeaders("GET", path, body, userName, privateKey);
 
-    const res = await request.get<TChefDataBagItemContent>(`${hostServerUrl}${path}`, {
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    const res = await request.get<TChefDataBagItemContent>(secureUrl, {
       headers
     });
 
@@ -251,6 +266,38 @@ export const getChefDataBagItem = async ({
     }
     throw new BadRequestError({
       message: "Unable to get Chef data bag item"
+    });
+  }
+};
+
+export const createChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  data
+}: Omit<TUpdateChefDataBagItem, "dataBagItemName">): Promise<void> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}`;
+    const body = JSON.stringify(data);
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("POST", path, body, userName, privateKey);
+
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    await request.post(secureUrl, data, {
+      headers
+    });
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to create Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to create Chef data bag item"
     });
   }
 };
@@ -272,7 +319,8 @@ export const updateChefDataBagItem = async ({
 
     const headers = getChefAuthHeaders("PUT", path, body, userName, privateKey);
 
-    await request.put(`${hostServerUrl}${path}`, data, {
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    await request.put(secureUrl, data, {
       headers
     });
   } catch (error) {
@@ -283,6 +331,38 @@ export const updateChefDataBagItem = async ({
     }
     throw new BadRequestError({
       message: "Unable to update Chef data bag item"
+    });
+  }
+};
+
+export const removeChefDataBagItem = async ({
+  serverUrl,
+  userName,
+  privateKey,
+  orgName,
+  dataBagName,
+  dataBagItemName
+}: Omit<TUpdateChefDataBagItem, "data">): Promise<void> => {
+  try {
+    const path = `/organizations/${orgName}/data/${dataBagName}/${dataBagItemName}`;
+    const body = "";
+
+    const hostServerUrl = await getChefServerUrl(serverUrl);
+
+    const headers = getChefAuthHeaders("DELETE", path, body, userName, privateKey);
+
+    const secureUrl = buildSecureUrl(hostServerUrl, path);
+    await request.delete(secureUrl, {
+      headers
+    });
+  } catch (error) {
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        message: `Failed to remove Chef data bag item: ${error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to remove Chef data bag item"
     });
   }
 };

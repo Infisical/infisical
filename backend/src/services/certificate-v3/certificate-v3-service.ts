@@ -47,7 +47,8 @@ import {
   convertKeyUsageArrayFromLegacy,
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
-  normalizeDateForApi
+  normalizeDateForApi,
+  removeRootCaFromChain
 } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -366,7 +367,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    removeRootsFromChain
   }: TIssueCertificateFromProfileDTO): Promise<TCertificateFromProfileResponse> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -480,10 +482,15 @@ export const certificateV3ServiceFactory = ({
       renewBeforeDays: finalRenewBeforeDays
     });
 
+    let finalCertificateChain = bufferToString(certificateChain);
+    if (removeRootsFromChain) {
+      finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
+    }
+
     return {
       certificate: bufferToString(certificate),
       issuingCaCertificate: bufferToString(issuingCaCertificate),
-      certificateChain: bufferToString(certificateChain),
+      certificateChain: finalCertificateChain,
       privateKey: bufferToString(privateKey),
       serialNumber,
       certificateId: cert.id,
@@ -503,7 +510,8 @@ export const certificateV3ServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    enrollmentType
+    enrollmentType,
+    removeRootsFromChain
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -590,7 +598,10 @@ export const certificateV3ServiceFactory = ({
     });
 
     const certificateString = extractCertificateFromBuffer(certificate as unknown as Buffer);
-    const certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
+    let certificateChainString = extractCertificateFromBuffer(certificateChain as unknown as Buffer);
+    if (removeRootsFromChain) {
+      certificateChainString = removeRootCaFromChain(certificateChainString);
+    }
 
     return {
       certificate: certificateString,
@@ -610,7 +621,8 @@ export const certificateV3ServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    removeRootsFromChain
   }: TOrderCertificateFromProfileDTO): Promise<TCertificateOrderResponse> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -665,7 +677,8 @@ export const certificateV3ServiceFactory = ({
         actor,
         actorId,
         actorAuthMethod,
-        actorOrgId
+        actorOrgId,
+        removeRootsFromChain
       });
 
       const orderId = randomUUID();
@@ -703,7 +716,8 @@ export const certificateV3ServiceFactory = ({
     actorId,
     actorAuthMethod,
     actorOrgId,
-    internal = false
+    internal = false,
+    removeRootsFromChain
   }: TRenewCertificateDTO & { internal?: boolean }): Promise<TCertificateFromProfileResponse> => {
     const renewalResult = await certificateDAL.transaction(async (tx) => {
       const originalCert = await certificateDAL.findById(certificateId, tx);
@@ -929,10 +943,14 @@ export const certificateV3ServiceFactory = ({
       pkiSyncQueue
     });
 
+    let finalCertificateChain = renewalResult.certificateChain;
+    if (removeRootsFromChain) {
+      finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
+    }
     return {
       certificate: renewalResult.certificate,
       issuingCaCertificate: renewalResult.issuingCaCertificate,
-      certificateChain: renewalResult.certificateChain,
+      certificateChain: finalCertificateChain,
       serialNumber: renewalResult.serialNumber,
       certificateId: renewalResult.newCert.id,
       projectId: renewalResult.profile.projectId,

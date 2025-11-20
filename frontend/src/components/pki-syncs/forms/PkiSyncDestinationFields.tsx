@@ -4,7 +4,9 @@ import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { AwsCertificateManagerPkiSyncFields } from "./AwsCertificateManagerPkiSyncFields";
+import { AwsSecretsManagerPkiSyncFields } from "./AwsSecretsManagerPkiSyncFields";
 import { AzureKeyVaultPkiSyncFields } from "./AzureKeyVaultPkiSyncFields";
+import { ChefPkiSyncFields } from "./ChefPkiSyncFields";
 
 export const PkiSyncDestinationFields = () => {
   const { watch } = useFormContext<TPkiSyncForm>();
@@ -16,6 +18,10 @@ export const PkiSyncDestinationFields = () => {
       return <AzureKeyVaultPkiSyncFields />;
     case PkiSync.AwsCertificateManager:
       return <AwsCertificateManagerPkiSyncFields />;
+    case PkiSync.AwsSecretsManager:
+      return <AwsSecretsManagerPkiSyncFields />;
+    case PkiSync.Chef:
+      return <ChefPkiSyncFields />;
     default:
       return (
         <div className="flex items-center justify-center rounded-md border border-red-500 bg-red-100 p-4 text-red-700">

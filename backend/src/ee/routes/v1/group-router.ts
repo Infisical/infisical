@@ -1,8 +1,14 @@
 import { z } from "zod";
 
-import { GroupsSchema, OrgMembershipRole, UsersSchema } from "@app/db/schemas";
-import { EFilterReturnedUsers } from "@app/ee/services/group/group-types";
+import { GroupsSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
+import {
+  EFilterReturnedProjects,
+  EFilterReturnedUsers,
+  EGroupProjectsOrderBy
+} from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
+import { OrderByDirection } from "@app/lib/types";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -11,6 +17,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -40,6 +49,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:id",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -69,6 +81,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/",
     method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -93,6 +108,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:id",
     method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -128,6 +146,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     url: "/:id",
     method: "DELETE",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -155,6 +176,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
     url: "/:id/users",
+    config: {
+      rateLimit: readLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -163,7 +187,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         id: z.string().trim().describe(GROUPS.LIST_USERS.id)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).max(100).default(0).describe(GROUPS.LIST_USERS.offset),
+        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_USERS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
         search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
@@ -204,8 +228,71 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   });
 
   server.route({
+    method: "GET",
+    url: "/:id/projects",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.LIST_PROJECTS.id)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_PROJECTS.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_PROJECTS.limit),
+        search: z.string().trim().optional().describe(GROUPS.LIST_PROJECTS.search),
+        filter: z.nativeEnum(EFilterReturnedProjects).optional().describe(GROUPS.LIST_PROJECTS.filterProjects),
+        orderBy: z
+          .nativeEnum(EGroupProjectsOrderBy)
+          .default(EGroupProjectsOrderBy.Name)
+          .describe(GROUPS.LIST_PROJECTS.orderBy),
+        orderDirection: z
+          .nativeEnum(OrderByDirection)
+          .default(OrderByDirection.ASC)
+          .describe(GROUPS.LIST_PROJECTS.orderDirection)
+      }),
+      response: {
+        200: z.object({
+          projects: ProjectsSchema.pick({
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            type: true
+          })
+            .merge(
+              z.object({
+                joinedGroupAt: z.date().nullable()
+              })
+            )
+            .array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { projects, totalCount } = await server.services.group.listGroupProjects({
+        id: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return { projects, totalCount };
+    }
+  });
+
+  server.route({
     method: "POST",
     url: "/:id/users/:username",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,
@@ -241,6 +328,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "DELETE",
     url: "/:id/users/:username",
+    config: {
+      rateLimit: writeLimit
+    },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
       hide: false,

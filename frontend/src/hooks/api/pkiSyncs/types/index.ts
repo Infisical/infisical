@@ -1,7 +1,9 @@
 import { PkiSync } from "@app/hooks/api/pkiSyncs";
 
 import { TAwsCertificateManagerPkiSync } from "./aws-certificate-manager-sync";
+import { TAwsSecretsManagerPkiSync } from "./aws-secrets-manager-sync";
 import { TAzureKeyVaultPkiSync } from "./azure-key-vault-sync";
+import { TChefPkiSync } from "./chef-sync";
 
 export type TPkiSyncOption = {
   name: string;
@@ -16,7 +18,11 @@ export type TPkiSyncOption = {
   minCertificateNameLength?: number;
 };
 
-export type TPkiSync = TAzureKeyVaultPkiSync | TAwsCertificateManagerPkiSync;
+export type TPkiSync =
+  | TAzureKeyVaultPkiSync
+  | TAwsCertificateManagerPkiSync
+  | TAwsSecretsManagerPkiSync
+  | TChefPkiSync;
 
 export type TListPkiSyncs = { pkiSyncs: TPkiSync[] };
 
@@ -31,6 +37,17 @@ type TCreatePkiSyncDTOBase = {
     canRemoveCertificates: boolean;
     certificateNamePrefix?: string;
     certificateNameSchema?: string;
+    preserveArn?: boolean;
+    enableVersioning?: boolean;
+    preserveItemOnRenewal?: boolean;
+    updateExistingCertificates?: boolean;
+    preserveSecretOnRenewal?: boolean;
+    fieldMappings?: {
+      certificate: string;
+      privateKey: string;
+      certificateChain: string;
+      caCertificate: string;
+    };
   };
   isAutoSyncEnabled: boolean;
   subscriberId?: string | null;
@@ -43,6 +60,7 @@ export type TCreatePkiSyncDTO = TCreatePkiSyncDTOBase & {
   destinationConfig: {
     vaultBaseUrl?: string;
     region?: string;
+    dataBagName?: string;
   };
 };
 
@@ -76,5 +94,7 @@ export type TTriggerPkiSyncRemoveCertificatesDTO = {
 };
 
 export * from "./aws-certificate-manager-sync";
+export * from "./aws-secrets-manager-sync";
 export * from "./azure-key-vault-sync";
+export * from "./chef-sync";
 export * from "./common";

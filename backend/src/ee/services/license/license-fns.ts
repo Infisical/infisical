@@ -1,13 +1,56 @@
 import axios, { AxiosError } from "axios";
 
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { getConfig } from "@app/lib/config/env";
+import { getConfig, TEnvConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { UserAliasType } from "@app/services/user-alias/user-alias-types";
 
-import { TFeatureSet } from "./license-types";
+import { LicenseType, TFeatureSet, TLicenseKeyConfig, TOfflineLicenseContents } from "./license-types";
+
+export const isOfflineLicenseKey = (licenseKey: string): boolean => {
+  try {
+    const contents = JSON.parse(Buffer.from(licenseKey, "base64").toString("utf8")) as TOfflineLicenseContents;
+
+    return "signature" in contents && "license" in contents;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const getLicenseKeyConfig = (
+  config?: Pick<TEnvConfig, "LICENSE_KEY" | "LICENSE_KEY_OFFLINE">
+): TLicenseKeyConfig => {
+  const cfg = config || getConfig();
+
+  if (!cfg) {
+    return { isValid: false };
+  }
+
+  const licenseKey = cfg.LICENSE_KEY;
+
+  if (licenseKey) {
+    if (isOfflineLicenseKey(licenseKey)) {
+      return { isValid: true, licenseKey, type: LicenseType.Offline };
+    }
+
+    return { isValid: true, licenseKey, type: LicenseType.Online };
+  }
+
+  const offlineLicenseKey = cfg.LICENSE_KEY_OFFLINE;
+
+  // backwards compatibility
+  if (offlineLicenseKey) {
+    if (isOfflineLicenseKey(offlineLicenseKey)) {
+      return { isValid: true, licenseKey: offlineLicenseKey, type: LicenseType.Offline };
+    }
+
+    return { isValid: false };
+  }
+
+  return { isValid: false };
+};
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   _id: null,

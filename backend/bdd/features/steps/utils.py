@@ -15,6 +15,7 @@ from josepy import JSONObjectWithFields
 
 ACC_KEY_BITS = 2048
 ACC_KEY_PUBLIC_EXPONENT = 65537
+NOCK_API_PREFIX = "/api/__bdd_nock__"
 logger = logging.getLogger(__name__)
 faker = Faker()
 
@@ -265,7 +266,7 @@ def x509_cert_to_dict(cert: x509.Certificate) -> dict:
 def define_nock(context: Context, definitions: list[dict]):
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/bdd-nock/define",
+        f"{NOCK_API_PREFIX}/define",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json=dict(definitions=definitions),
     )
@@ -275,7 +276,7 @@ def define_nock(context: Context, definitions: list[dict]):
 def restore_nock(context: Context):
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/bdd-nock/restore",
+        f"{NOCK_API_PREFIX}/restore",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json=dict(),
     )
@@ -285,7 +286,7 @@ def restore_nock(context: Context):
 def clean_all_nock(context: Context):
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/bdd-nock/clean-all",
+        f"{NOCK_API_PREFIX}/clean-all",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json=dict(),
     )

@@ -11,6 +11,7 @@ import { TPkiSync, useUpdatePkiSync } from "@app/hooks/api/pkiSyncs";
 import { TUpdatePkiSyncForm, UpdatePkiSyncFormSchema } from "./schemas/pki-sync-schema";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
+import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncSourceFields } from "./PkiSyncSourceFields";
 
@@ -65,6 +66,9 @@ export const EditPkiSyncForm = ({ pkiSync, fields, onComplete }: Props) => {
       break;
     case PkiSyncEditFields.Options:
       Component = <PkiSyncOptionsFields destination={pkiSync.destination} />;
+      break;
+    case PkiSyncEditFields.Mappings:
+      Component = <PkiSyncFieldMappingsFields destination={pkiSync.destination} />;
       break;
     case PkiSyncEditFields.Source:
       Component = <PkiSyncSourceFields />;
