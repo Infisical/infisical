@@ -6,6 +6,7 @@ export const BasePkiSyncSchema = <T extends AnyZodObject | undefined = undefined
   const baseSyncOptionsSchema = z.object({
     canImportCertificates: z.boolean().default(false),
     canRemoveCertificates: z.boolean().default(false),
+    includeRootCa: z.boolean().default(false),
     certificateNameSchema: z
       .string()
       .optional()

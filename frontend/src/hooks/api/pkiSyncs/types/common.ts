@@ -2,11 +2,23 @@ import { AppConnection } from "@app/hooks/api/appConnections/enums";
 
 import { CertificateSyncStatus, PkiSyncStatus } from "../enums";
 
+export type TChefFieldMappings = {
+  certificate: string;
+  privateKey: string;
+  certificateChain: string;
+  caCertificate: string;
+};
+
 export type RootPkiSyncOptions = {
   canImportCertificates: boolean;
   canRemoveCertificates: boolean;
   certificateNamePrefix?: string;
   certificateNameSchema?: string;
+  preserveArn?: boolean;
+  enableVersioning?: boolean;
+  preserveItemOnRenewal?: boolean;
+  updateExistingCertificates?: boolean;
+  fieldMappings?: TChefFieldMappings;
 };
 
 export type TRootPkiSync = {
