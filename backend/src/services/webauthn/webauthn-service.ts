@@ -324,8 +324,8 @@ export const webAuthnServiceFactory = ({
   /**
    * Delete a WebAuthn credential
    */
-  const deleteWebAuthnCredential = async ({ userId, credentialId }: TDeleteWebAuthnCredentialDTO) => {
-    const credential = await webAuthnCredentialDAL.findOne({ credentialId });
+  const deleteWebAuthnCredential = async ({ userId, id }: TDeleteWebAuthnCredentialDTO) => {
+    const credential = await webAuthnCredentialDAL.findById(id);
 
     if (!credential) {
       throw new NotFoundError({
@@ -349,8 +349,8 @@ export const webAuthnServiceFactory = ({
   /**
    * Update a WebAuthn credential (e.g., rename it)
    */
-  const updateWebAuthnCredential = async ({ userId, credentialId, name }: TUpdateWebAuthnCredentialDTO) => {
-    const credential = await webAuthnCredentialDAL.findOne({ credentialId });
+  const updateWebAuthnCredential = async ({ userId, id, name }: TUpdateWebAuthnCredentialDTO) => {
+    const credential = await webAuthnCredentialDAL.findById(id);
 
     if (!credential) {
       throw new NotFoundError({

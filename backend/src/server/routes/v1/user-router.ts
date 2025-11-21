@@ -444,13 +444,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/me/webauthn/:credentialId",
+    url: "/me/webauthn/:id",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        credentialId: z.string()
+        id: z.string()
       }),
       body: z.object({
         name: z.string().optional()
@@ -467,7 +467,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       return server.services.webAuthn.updateWebAuthnCredential({
         userId: req.permission.id,
-        credentialId: req.params.credentialId,
+        id: req.params.id,
         name: req.body.name
       });
     }
@@ -475,13 +475,13 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/me/webauthn/:credentialId",
+    url: "/me/webauthn/:id",
     config: {
       rateLimit: writeLimit
     },
     schema: {
       params: z.object({
-        credentialId: z.string()
+        id: z.string()
       }),
       response: {
         200: z.object({
@@ -493,7 +493,7 @@ export const registerUserRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       await server.services.webAuthn.deleteWebAuthnCredential({
         userId: req.permission.id,
-        credentialId: req.params.credentialId
+        id: req.params.id
       });
       return { success: true };
     }

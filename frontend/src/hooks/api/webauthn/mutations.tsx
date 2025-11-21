@@ -65,9 +65,9 @@ export const useDeleteWebAuthnCredential = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ credentialId }: TDeleteWebAuthnCredentialDTO) => {
+    mutationFn: async ({ id }: TDeleteWebAuthnCredentialDTO) => {
       const { data } = await apiRequest.delete<{ success: boolean }>(
-        `/api/v1/user/me/webauthn/${credentialId}`
+        `/api/v1/user/me/webauthn/${id}`
       );
       return data;
     },
@@ -81,12 +81,12 @@ export const useUpdateWebAuthnCredential = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ credentialId, name }: TUpdateWebAuthnCredentialDTO) => {
+    mutationFn: async ({ id, name }: TUpdateWebAuthnCredentialDTO) => {
       const { data } = await apiRequest.patch<{
         id: string;
         credentialId: string;
         name?: string | null;
-      }>(`/api/v1/user/me/webauthn/${credentialId}`, { name });
+      }>(`/api/v1/user/me/webauthn/${id}`, { name });
       return data;
     },
     onSuccess: () => {

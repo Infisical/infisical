@@ -1,4 +1,5 @@
 import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
+import { crypto } from "@app/lib/crypto";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -134,9 +135,35 @@ export const mfaSessionServiceFactory = ({
     };
   };
 
+  const createMfaSession = async (userId: string, resourceId: string, mfaMethod: MfaMethod): Promise<string> => {
+    const mfaSessionId = crypto.randomBytes(32).toString("hex");
+    const mfaSession: TMfaSession = {
+      sessionId: mfaSessionId,
+      userId,
+      resourceId,
+      status: MfaSessionStatus.PENDING,
+      mfaMethod
+    };
+
+    await keyStore.setItemWithExpiry(
+      KeyStorePrefixes.MfaSession(mfaSessionId),
+      KeyStoreTtls.MfaSessionInSeconds,
+      JSON.stringify(mfaSession)
+    );
+
+    return mfaSessionId;
+  };
+
+  const deleteMfaSession = async (mfaSessionId: string) => {
+    await keyStore.deleteItem(KeyStorePrefixes.MfaSession(mfaSessionId));
+  };
+
   return {
+    createMfaSession,
     verifyMfaSession,
     getMfaSessionStatus,
-    sendMfaCode
+    sendMfaCode,
+    getMfaSession,
+    deleteMfaSession
   };
 };

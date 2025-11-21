@@ -25,11 +25,11 @@ export type TGetUserWebAuthnCredentialsDTO = {
 
 export type TDeleteWebAuthnCredentialDTO = {
   userId: string;
-  credentialId: string;
+  id: string;
 };
 
 export type TUpdateWebAuthnCredentialDTO = {
   userId: string;
-  credentialId: string;
+  id: string;
   name?: string;
 };

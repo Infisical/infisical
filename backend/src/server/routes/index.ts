@@ -2391,7 +2391,7 @@ export const registerRoutes = async (
     orgDAL,
     userDAL,
     auditLogService,
-    keyStore,
+    mfaSessionService,
     tokenService,
     smtpService
   });

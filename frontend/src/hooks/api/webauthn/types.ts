@@ -28,10 +28,10 @@ export type TVerifyAuthenticationDTO = {
 };
 
 export type TUpdateWebAuthnCredentialDTO = {
-  credentialId: string;
+  id: string;
   name?: string;
 };
 
 export type TDeleteWebAuthnCredentialDTO = {
-  credentialId: string;
+  id: string;
 };

@@ -9,21 +9,19 @@ import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { KeyStorePrefixes, KeyStoreTtls, TKeyStoreFactory } from "@app/keystore/keystore";
-import { crypto } from "@app/lib/crypto";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
-import { TokenType } from "@app/services/auth-token/auth-token-types";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
-import { MfaSessionStatus, TMfaSession } from "@app/services/mfa-session/mfa-session-types";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
-import { SmtpTemplates, TSmtpService } from "@app/services/smtp/smtp-service";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
@@ -48,6 +46,7 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
   pamFolderDAL: TPamFolderDALFactory;
+  mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
   orgDAL: TOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
@@ -59,7 +58,6 @@ type TPamAccountServiceFactoryDep = {
   >;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
-  keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
 };
@@ -71,6 +69,7 @@ export const pamAccountServiceFactory = ({
   pamResourceDAL,
   pamSessionDAL,
   pamAccountDAL,
+  mfaSessionService,
   pamFolderDAL,
   projectDAL,
   orgDAL,
@@ -79,47 +78,8 @@ export const pamAccountServiceFactory = ({
   licenseService,
   kmsService,
   gatewayV2Service,
-  auditLogService,
-  keyStore,
-  tokenService,
-  smtpService
+  auditLogService
 }: TPamAccountServiceFactoryDep) => {
-  const createMfaSession = async (userId: string, accountId: string, mfaMethod: MfaMethod): Promise<string> => {
-    const mfaSessionId = crypto.randomBytes(32).toString("hex");
-    const mfaSession: TMfaSession = {
-      sessionId: mfaSessionId,
-      userId,
-      resourceId: accountId,
-      status: MfaSessionStatus.PENDING,
-      mfaMethod
-    };
-
-    await keyStore.setItemWithExpiry(
-      KeyStorePrefixes.MfaSession(mfaSessionId),
-      KeyStoreTtls.MfaSessionInSeconds,
-      JSON.stringify(mfaSession)
-    );
-
-    return mfaSessionId;
-  };
-
-  // Helper function to send MFA code via email
-  const sendMfaCode = async (userId: string, email: string) => {
-    const code = await tokenService.createTokenForUser({
-      type: TokenType.TOKEN_EMAIL_MFA,
-      userId
-    });
-
-    await smtpService.sendMail({
-      template: SmtpTemplates.EmailMfa,
-      subjectLine: "Infisical PAM Access MFA code",
-      recipients: [email],
-      substitutions: {
-        code
-      }
-    });
-  };
-
   const create = async (
     {
       credentials,
@@ -595,8 +555,6 @@ export const pamAccountServiceFactory = ({
       })
     );
 
-    // MFA is required for all PAM account access (as per user requirement)
-    // Get user to check MFA configuration
     const actorUser = await userDAL.findById(actor.id);
     if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
@@ -617,11 +575,11 @@ export const pamAccountServiceFactory = ({
       const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
 
       // Create MFA session
-      const newMfaSessionId = await createMfaSession(actorUser.id, accountId, mfaMethod);
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actorUser.id, accountId, mfaMethod);
 
       // If MFA method is email, send the code immediately
       if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
-        await sendMfaCode(actorUser.id, actorUser.email);
+        await mfaSessionService.sendMfaCode(actorUser.id, actorUser.email);
       }
 
       // Throw an error with the mfaSessionId to signal that MFA is required
@@ -636,21 +594,16 @@ export const pamAccountServiceFactory = ({
     }
 
     if (mfaSessionId && account.requireMfa) {
-      // If mfaSessionId is provided, verify it
-      const mfaSessionKey = KeyStorePrefixes.MfaSession(mfaSessionId);
-      const mfaSessionData = await keyStore.getItem(mfaSessionKey);
-
-      if (!mfaSessionData) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
         throw new BadRequestError({
           message: "MFA session not found or expired"
         });
       }
 
-      const mfaSession = JSON.parse(mfaSessionData) as TMfaSession;
-
       // Verify the session belongs to the current user
       if (mfaSession.userId !== actor.id) {
-        throw new ForbiddenRequestError({
+        throw new BadRequestError({
           message: "MFA session does not belong to current user"
         });
       }
@@ -670,7 +623,7 @@ export const pamAccountServiceFactory = ({
       }
 
       // MFA verified successfully, delete the session and proceed with access
-      await keyStore.deleteItem(mfaSessionKey);
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
     }
 
     const session = await pamSessionDAL.create({

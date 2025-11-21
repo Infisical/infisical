@@ -202,7 +202,7 @@ export const MFASection = () => {
 
   const handleDeleteWebAuthnCredential = async () => {
     try {
-      await deleteWebAuthnCredential({ credentialId: selectedCredentialId });
+      await deleteWebAuthnCredential({ id: selectedCredentialId });
 
       createNotification({
         text: "Successfully deleted passkey",
@@ -222,7 +222,7 @@ export const MFASection = () => {
   const handleRenameWebAuthnCredential = async () => {
     try {
       await updateWebAuthnCredential({
-        credentialId: selectedCredentialId,
+        id: selectedCredentialId,
         name: credentialName
       });
 
@@ -357,8 +357,6 @@ export const MFASection = () => {
       if (formData.selectedMfaMethod !== user.selectedMfaMethod) {
         updates.selectedMfaMethod = formData.selectedMfaMethod;
       }
-
-      console.log("updates", updates, formData.selectedMfaMethod, user.selectedMfaMethod);
 
       if (Object.keys(updates).length > 0) {
         await mutateAsync(updates);
@@ -769,7 +767,7 @@ export const MFASection = () => {
                             colorSchema="secondary"
                             variant="outline_bg"
                             onClick={() => {
-                              setSelectedCredentialId(credential.credentialId);
+                              setSelectedCredentialId(credential.id);
                               setCredentialName(credential.name || "");
                               handlePopUpOpen("renameWebAuthnCredential");
                             }}
@@ -781,7 +779,7 @@ export const MFASection = () => {
                             colorSchema="danger"
                             variant="outline_bg"
                             onClick={() => {
-                              setSelectedCredentialId(credential.credentialId);
+                              setSelectedCredentialId(credential.id);
                               handlePopUpOpen("deleteWebAuthnCredential");
                             }}
                           >
