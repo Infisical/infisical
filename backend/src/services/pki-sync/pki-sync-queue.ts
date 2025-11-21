@@ -26,6 +26,7 @@ import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-
 import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
 import { getCaCertChain } from "../certificate-authority/certificate-authority-fns";
+import { extractRootCaFromChain, removeRootCaFromChain } from "../certificate-common/certificate-utils";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { CertificateSyncStatus } from "../certificate-sync/certificate-sync-enums";
 import { TPkiSyncDALFactory } from "./pki-sync-dal";
@@ -180,11 +181,16 @@ export const pkiSyncQueueFactory = ({
         (cert, index, self) => self.findIndex((c) => c.id === cert.id) === index
       );
 
-      if (uniqueCertificates.length === 0) {
+      const activeCertificates = uniqueCertificates.filter((cert) => {
+        const typedCert = cert as TCertificates;
+        return !typedCert.renewedByCertificateId;
+      });
+
+      if (activeCertificates.length === 0) {
         return { certificateMap, certificateMetadata };
       }
 
-      certificates = uniqueCertificates;
+      certificates = activeCertificates;
 
       for (const certificate of certificates) {
         const cert = certificate as TCertificates;
@@ -231,13 +237,15 @@ export const pkiSyncQueueFactory = ({
             }
 
             let certificateChain: string | undefined;
+            let caCertificate: string | undefined;
             try {
               if (certBody.encryptedCertificateChain) {
                 const decryptedCertChain = await kmsDecryptor({
                   cipherTextBlob: certBody.encryptedCertificateChain
                 });
                 certificateChain = decryptedCertChain.toString();
-              } else if (certificate.caCertId) {
+              }
+              if (certificate.caCertId) {
                 const { caCert, caCertChain } = await getCaCertChain({
                   caCertId: certificate.caCertId,
                   certificateAuthorityDAL,
@@ -245,7 +253,10 @@ export const pkiSyncQueueFactory = ({
                   projectDAL,
                   kmsService
                 });
-                certificateChain = `${caCert}\n${caCertChain}`.trim();
+                if (!certBody.encryptedCertificateChain) {
+                  certificateChain = `${caCert}\n${caCertChain}`.trim();
+                }
+                caCertificate = certificateChain ? extractRootCaFromChain(certificateChain) : caCert;
               }
             } catch (chainError) {
               logger.warn(
@@ -254,10 +265,16 @@ export const pkiSyncQueueFactory = ({
               );
               // Continue without certificate chain
               certificateChain = undefined;
+              caCertificate = undefined;
             }
 
             let certificateName: string;
-            const syncOptions = pkiSync.syncOptions as { certificateNameSchema?: string } | undefined;
+            const syncOptions = pkiSync.syncOptions as
+              | {
+                  certificateNameSchema?: string;
+                  includeRootCa?: boolean;
+                }
+              | undefined;
             const certificateNameSchema = syncOptions?.certificateNameSchema;
 
             if (certificateNameSchema) {
@@ -289,10 +306,16 @@ export const pkiSyncQueueFactory = ({
               alternativeNames.push(originalLegacyName);
             }
 
+            let processedCertificateChain = certificateChain;
+            if (certificateChain && syncOptions?.includeRootCa === false) {
+              processedCertificateChain = removeRootCaFromChain(certificateChain);
+            }
+
             certificateMap[certificateName] = {
               cert: certificatePem,
               privateKey: certPrivateKey || "",
-              certificateChain,
+              certificateChain: processedCertificateChain,
+              caCertificate,
               alternativeNames,
               certificateId: certificate.id
             };

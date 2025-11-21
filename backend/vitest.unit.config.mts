@@ -11,7 +11,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@app": path.resolve(__dirname, "./src")
+      "@app": path.resolve(__dirname, "./src"),
+      "@bdd_routes/bdd-nock-router": path.resolve(__dirname, "./src/server/routes/bdd/bdd-nock-router.dev.ts")
     }
   }
 });

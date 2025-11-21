@@ -34,9 +34,11 @@ export const ProjectTemplatesSection = () => {
             project setup
           </p>
           <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-            <div className="mb-4 flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
-              <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/project-templates" />
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-x-2">
+                <p className="text-xl font-medium text-mineshaft-100">Project Templates</p>
+                <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/project-templates" />
+              </div>
               <OrgPermissionCan
                 I={OrgPermissionActions.Create}
                 a={OrgPermissionSubjects.ProjectTemplates}
@@ -57,7 +59,7 @@ export const ProjectTemplatesSection = () => {
                       handlePopUpOpen("addTemplate");
                     }}
                     isDisabled={!isAllowed}
-                    className="ml-auto"
+                    // className="ml-auto"
                   >
                     Add Template
                   </Button>

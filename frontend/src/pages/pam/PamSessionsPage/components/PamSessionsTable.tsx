@@ -113,7 +113,7 @@ export const PamSessionsTable = ({ sessions }: Props) => {
         id,
         resourceName,
         userId,
-        commandLogs
+        logs
       } = session;
 
       const { name: resourceTypeName } = PAM_RESOURCE_TYPE_MAP[resourceType];
@@ -131,11 +131,25 @@ export const PamSessionsTable = ({ sessions }: Props) => {
 
       const filteredLogs =
         searchValue.length >= 2
-          ? commandLogs.filter(
-              (log) =>
-                log.input.toLowerCase().includes(searchValue) ||
-                log.output.toLowerCase().includes(searchValue)
-            )
+          ? logs.filter((log) => {
+              // Handle command logs (database sessions)
+              if ("input" in log && "output" in log) {
+                return (
+                  log.input.toLowerCase().includes(searchValue) ||
+                  log.output.toLowerCase().includes(searchValue)
+                );
+              }
+              // Handle terminal events (SSH sessions)
+              if ("data" in log) {
+                try {
+                  const decodedData = atob(log.data);
+                  return decodedData.toLowerCase().includes(searchValue);
+                } catch {
+                  return false;
+                }
+              }
+              return false;
+            })
           : [];
 
       return {
@@ -385,7 +399,7 @@ export const PamSessionsTable = ({ sessions }: Props) => {
                 key={session.id}
                 session={session}
                 search={search.trim().toLowerCase()}
-                filteredCommandLogs={filteredLogs}
+                filteredLogs={filteredLogs}
               />
             ))}
           </TBody>

@@ -27,6 +27,7 @@ import { usePopUp } from "@app/hooks/usePopUp";
 import { GroupCreateUpdateModal } from "./components/GroupCreateUpdateModal";
 import { GroupDetailsSection } from "./components/GroupDetailsSection";
 import { GroupMembersSection } from "./components/GroupMembersSection";
+import { GroupProjectsSection } from "./components/GroupProjectsSection";
 
 export enum TabSections {
   Member = "members",
@@ -150,11 +151,14 @@ const Page = () => {
               </DropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex">
-            <div className="mr-4 w-96">
+          <div className="flex flex-col gap-4 md:flex-row">
+            <div className="w-full md:w-96">
               <GroupDetailsSection groupId={groupId} handlePopUpOpen={handlePopUpOpen} />
             </div>
-            <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
+            <div className="flex grow flex-col gap-4">
+              <GroupMembersSection groupId={groupId} groupSlug={data.group.slug} />
+              <GroupProjectsSection groupId={groupId} groupSlug={data.group.slug} />
+            </div>
           </div>
         </div>
       )}

@@ -40,6 +40,7 @@ Any role with these permissions would work such as the **Key Vault Certificates 
 
             - **Enable Removal of Expired/Revoked Certificates**: If enabled, Infisical will remove certificates from the destination if they are no longer active in Infisical.
             - **Enable Versioning on Renewal**: If enabled, Infisical will sync renewed certificates to the destination under a new version of the original synced certificate instead of creating a new certificate.
+            - **Include Root CA**: If enabled, the Root CA certificate will be included in the certificate chain when syncing to Azure Key Vault. If disabled, only intermediate certificates will be included.
             - **Certificate Name Schema** (Optional): Customize how certificate names are generated in Azure Key Vault. Use `{{certificateId}}` as a placeholder for the certificate ID. If not specified, defaults to `Infisical-{{certificateId}}`.
             - **Auto-Sync Enabled**: If enabled, certificates will automatically be synced when changes occur. Disable to enforce manual syncing only.
 
@@ -93,6 +94,7 @@ Any role with these permissions would work such as the **Key Vault Certificates 
             "syncOptions": {
                 "canRemoveCertificates": true,
                 "enableVersioningOnRenewal": true,
+                "includeRootCa": false,
                 "certificateNameSchema": "myapp-{{certificateId}}"
             },
             "destinationConfig": {
@@ -117,6 +119,7 @@ Any role with these permissions would work such as the **Key Vault Certificates 
                 "syncOptions": {
                     "canRemoveCertificates": true,
                     "enableVersioningOnRenewal": true,
+                    "includeRootCa": false,
                     "certificateNameSchema": "myapp-{{certificateId}}"
                 },
                 "projectId": "3c90c3cc-0d44-4b50-8888-8dd25736052a",

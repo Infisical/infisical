@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@app/*": ["./src/*"],
+      "@bdd_routes/bdd-nock-router": ["./src/server/routes/bdd/bdd-nock-router.dev.ts"]
+    }
+  }
+}

@@ -105,6 +105,19 @@ export const membershipIdentityServiceFactory = ({
     const customRolesGroupBySlug = groupBy(customRoles, ({ slug }) => slug);
 
     const membership = await membershipIdentityDAL.transaction(async (tx) => {
+      const existingMembership = await membershipIdentityDAL.findOne(
+        {
+          scope: scopeData.scope,
+          ...scopeDatabaseFields,
+          actorIdentityId: dto.data.identityId
+        },
+        tx
+      );
+      if (existingMembership)
+        throw new BadRequestError({
+          message: "Identity is already a member"
+        });
+
       const doc = await membershipIdentityDAL.create(
         {
           scope: scopeData.scope,

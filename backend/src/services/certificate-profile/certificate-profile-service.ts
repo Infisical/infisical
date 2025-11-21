@@ -213,7 +213,7 @@ export const certificateProfileServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiAcme) {
+    if (!plan.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
       throw new BadRequestError({
         message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
       });

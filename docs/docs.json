@@ -770,7 +770,9 @@
                 "pages": [
                   "documentation/platform/pki/certificate-syncs/overview",
                   "documentation/platform/pki/certificate-syncs/aws-certificate-manager",
-                  "documentation/platform/pki/certificate-syncs/azure-key-vault"
+                  "documentation/platform/pki/certificate-syncs/aws-secrets-manager",
+                  "documentation/platform/pki/certificate-syncs/azure-key-vault",
+                  "documentation/platform/pki/certificate-syncs/chef"
                 ]
               },
               {
@@ -894,15 +896,30 @@
             ]
           },
           {
-            "group": "Endpoints",
+            "group": "Organization",
             "pages": [
               {
-                "group": "Admin",
-                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
+                "group": "Organization Users",
+                "pages": [
+                  "api-reference/endpoints/organizations/memberships",
+                  "api-reference/endpoints/organizations/update-membership",
+                  "api-reference/endpoints/organizations/delete-membership",
+                  "api-reference/endpoints/organizations/bulk-delete-memberships",
+                  "api-reference/endpoints/organizations/list-identity-memberships"
+                ]
               },
               {
-                "group": "Events",
-                "pages": ["api-reference/endpoints/events/project-events"]
+                "group": "Organization Groups",
+                "pages": [
+                  "api-reference/endpoints/groups/create",
+                  "api-reference/endpoints/groups/update",
+                  "api-reference/endpoints/groups/delete",
+                  "api-reference/endpoints/groups/get",
+                  "api-reference/endpoints/groups/get-by-id",
+                  "api-reference/endpoints/groups/add-group-user",
+                  "api-reference/endpoints/groups/remove-group-user",
+                  "api-reference/endpoints/groups/list-group-users"
+                ]
               },
               {
                 "group": "Organization Identities",
@@ -916,187 +933,34 @@
                 ]
               },
               {
-                "group": "Token Auth",
+                "group": "OIDC SSO",
                 "pages": [
-                  "api-reference/endpoints/token-auth/attach",
-                  "api-reference/endpoints/token-auth/retrieve",
-                  "api-reference/endpoints/token-auth/update",
-                  "api-reference/endpoints/token-auth/revoke",
-                  "api-reference/endpoints/token-auth/get-tokens",
-                  "api-reference/endpoints/token-auth/create-token",
-                  "api-reference/endpoints/token-auth/update-token",
-                  "api-reference/endpoints/token-auth/revoke-token"
+                  "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
+                  "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
+                  "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
                 ]
               },
               {
-                "group": "Universal Auth",
+                "group": "LDAP SSO",
                 "pages": [
-                  "api-reference/endpoints/universal-auth/login",
-                  "api-reference/endpoints/universal-auth/attach",
-                  "api-reference/endpoints/universal-auth/retrieve",
-                  "api-reference/endpoints/universal-auth/update",
-                  "api-reference/endpoints/universal-auth/revoke",
-                  "api-reference/endpoints/universal-auth/create-client-secret",
-                  "api-reference/endpoints/universal-auth/list-client-secrets",
-                  "api-reference/endpoints/universal-auth/revoke-client-secret",
-                  "api-reference/endpoints/universal-auth/get-client-secret-by-id",
-                  "api-reference/endpoints/universal-auth/renew-access-token",
-                  "api-reference/endpoints/universal-auth/revoke-access-token"
+                  "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
+                  "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
+                  "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
                 ]
               },
               {
-                "group": "GCP Auth",
+                "group": "SAML SSO",
                 "pages": [
-                  "api-reference/endpoints/gcp-auth/login",
-                  "api-reference/endpoints/gcp-auth/attach",
-                  "api-reference/endpoints/gcp-auth/retrieve",
-                  "api-reference/endpoints/gcp-auth/update",
-                  "api-reference/endpoints/gcp-auth/revoke"
+                  "api-reference/endpoints/organizations/saml-sso/get-saml-config",
+                  "api-reference/endpoints/organizations/saml-sso/update-saml-config",
+                  "api-reference/endpoints/organizations/saml-sso/create-saml-config"
                 ]
-              },
-              {
-                "group": "Alibaba Cloud Auth",
-                "pages": [
-                  "api-reference/endpoints/alicloud-auth/login",
-                  "api-reference/endpoints/alicloud-auth/attach",
-                  "api-reference/endpoints/alicloud-auth/retrieve",
-                  "api-reference/endpoints/alicloud-auth/update",
-                  "api-reference/endpoints/alicloud-auth/revoke"
-                ]
-              },
-              {
-                "group": "TLS Certificate Auth",
-                "pages": [
-                  "api-reference/endpoints/tls-cert-auth/login",
-                  "api-reference/endpoints/tls-cert-auth/attach",
-                  "api-reference/endpoints/tls-cert-auth/retrieve",
-                  "api-reference/endpoints/tls-cert-auth/update",
-                  "api-reference/endpoints/tls-cert-auth/revoke"
-                ]
-              },
-              {
-                "group": "AWS Auth",
-                "pages": [
-                  "api-reference/endpoints/aws-auth/login",
-                  "api-reference/endpoints/aws-auth/attach",
-                  "api-reference/endpoints/aws-auth/retrieve",
-                  "api-reference/endpoints/aws-auth/update",
-                  "api-reference/endpoints/aws-auth/revoke"
-                ]
-              },
-              {
-                "group": "OCI Auth",
-                "pages": [
-                  "api-reference/endpoints/oci-auth/login",
-                  "api-reference/endpoints/oci-auth/attach",
-                  "api-reference/endpoints/oci-auth/retrieve",
-                  "api-reference/endpoints/oci-auth/update",
-                  "api-reference/endpoints/oci-auth/revoke"
-                ]
-              },
-              {
-                "group": "Azure Auth",
-                "pages": [
-                  "api-reference/endpoints/azure-auth/login",
-                  "api-reference/endpoints/azure-auth/attach",
-                  "api-reference/endpoints/azure-auth/retrieve",
-                  "api-reference/endpoints/azure-auth/update",
-                  "api-reference/endpoints/azure-auth/revoke"
-                ]
-              },
-              {
-                "group": "Kubernetes Auth",
-                "pages": [
-                  "api-reference/endpoints/kubernetes-auth/login",
-                  "api-reference/endpoints/kubernetes-auth/attach",
-                  "api-reference/endpoints/kubernetes-auth/retrieve",
-                  "api-reference/endpoints/kubernetes-auth/update",
-                  "api-reference/endpoints/kubernetes-auth/revoke"
-                ]
-              },
-              {
-                "group": "OIDC Auth",
-                "pages": [
-                  "api-reference/endpoints/oidc-auth/login",
-                  "api-reference/endpoints/oidc-auth/attach",
-                  "api-reference/endpoints/oidc-auth/retrieve",
-                  "api-reference/endpoints/oidc-auth/update",
-                  "api-reference/endpoints/oidc-auth/revoke"
-                ]
-              },
-              {
-                "group": "JWT Auth",
-                "pages": [
-                  "api-reference/endpoints/jwt-auth/login",
-                  "api-reference/endpoints/jwt-auth/attach",
-                  "api-reference/endpoints/jwt-auth/retrieve",
-                  "api-reference/endpoints/jwt-auth/update",
-                  "api-reference/endpoints/jwt-auth/revoke"
-                ]
-              },
-              {
-                "group": "LDAP Auth",
-                "pages": [
-                  "api-reference/endpoints/ldap-auth/login",
-                  "api-reference/endpoints/ldap-auth/attach",
-                  "api-reference/endpoints/ldap-auth/retrieve",
-                  "api-reference/endpoints/ldap-auth/update",
-                  "api-reference/endpoints/ldap-auth/revoke"
-                ]
-              },
-              {
-                "group": "Groups",
-                "pages": [
-                  "api-reference/endpoints/groups/create",
-                  "api-reference/endpoints/groups/update",
-                  "api-reference/endpoints/groups/delete",
-                  "api-reference/endpoints/groups/get",
-                  "api-reference/endpoints/groups/get-by-id",
-                  "api-reference/endpoints/groups/add-group-user",
-                  "api-reference/endpoints/groups/remove-group-user",
-                  "api-reference/endpoints/groups/list-group-users"
-                ]
-              },
-              {
-                "group": "Organizations",
-                "pages": [
-                  {
-                    "group": "OIDC SSO",
-                    "pages": [
-                      "api-reference/endpoints/organizations/oidc-sso/get-oidc-config",
-                      "api-reference/endpoints/organizations/oidc-sso/update-oidc-config",
-                      "api-reference/endpoints/organizations/oidc-sso/create-oidc-config"
-                    ]
-                  },
-                  {
-                    "group": "LDAP SSO",
-                    "pages": [
-                      "api-reference/endpoints/organizations/ldap-sso/get-ldap-config",
-                      "api-reference/endpoints/organizations/ldap-sso/update-ldap-config",
-                      "api-reference/endpoints/organizations/ldap-sso/create-ldap-config"
-                    ]
-                  },
-                  {
-                    "group": "SAML SSO",
-                    "pages": [
-                      "api-reference/endpoints/organizations/saml-sso/get-saml-config",
-                      "api-reference/endpoints/organizations/saml-sso/update-saml-config",
-                      "api-reference/endpoints/organizations/saml-sso/create-saml-config"
-                    ]
-                  },
-                  "api-reference/endpoints/organizations/memberships",
-                  "api-reference/endpoints/organizations/update-membership",
-                  "api-reference/endpoints/organizations/delete-membership",
-                  "api-reference/endpoints/organizations/bulk-delete-memberships",
-                  "api-reference/endpoints/organizations/list-identity-memberships",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/organizations/projects"
-                    ]
-                  }
-                ]
-              },
+              }
+            ]
+          },
+          {
+            "group": "Project",
+            "pages": [
               {
                 "group": "Projects",
                 "pages": [
@@ -1114,6 +978,7 @@
                       "api-reference/endpoints/deprecated/projects/create-project",
                       "api-reference/endpoints/deprecated/projects/delete-project",
                       "api-reference/endpoints/deprecated/projects/get-project",
+                      "api-reference/endpoints/deprecated/organizations/projects",
                       "api-reference/endpoints/deprecated/projects/update-project",
                       "api-reference/endpoints/deprecated/projects/secret-snapshots"
                     ]
@@ -1191,6 +1056,16 @@
                 ]
               },
               {
+                "group": "Project Templates",
+                "pages": [
+                  "api-reference/endpoints/project-templates/create",
+                  "api-reference/endpoints/project-templates/update",
+                  "api-reference/endpoints/project-templates/delete",
+                  "api-reference/endpoints/project-templates/get-by-id",
+                  "api-reference/endpoints/project-templates/list"
+                ]
+              },
+              {
                 "group": "Project Roles",
                 "pages": [
                   "api-reference/endpoints/project-roles/create",
@@ -1206,349 +1081,6 @@
                       "api-reference/endpoints/deprecated/project-roles/delete",
                       "api-reference/endpoints/deprecated/project-roles/get-by-slug",
                       "api-reference/endpoints/deprecated/project-roles/list"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Project Templates",
-                "pages": [
-                  "api-reference/endpoints/project-templates/create",
-                  "api-reference/endpoints/project-templates/update",
-                  "api-reference/endpoints/project-templates/delete",
-                  "api-reference/endpoints/project-templates/get-by-id",
-                  "api-reference/endpoints/project-templates/list"
-                ]
-              },
-              {
-                "group": "Environments",
-                "pages": [
-                  "api-reference/endpoints/environments/create",
-                  "api-reference/endpoints/environments/update",
-                  "api-reference/endpoints/environments/delete",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/environments/create",
-                      "api-reference/endpoints/deprecated/environments/update",
-                      "api-reference/endpoints/deprecated/environments/delete"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Folders",
-                "pages": [
-                  "api-reference/endpoints/folders/list",
-                  "api-reference/endpoints/folders/get-by-id",
-                  "api-reference/endpoints/folders/create",
-                  "api-reference/endpoints/folders/update",
-                  "api-reference/endpoints/folders/delete",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/folders/list",
-                      "api-reference/endpoints/deprecated/folders/get-by-id",
-                      "api-reference/endpoints/deprecated/folders/create",
-                      "api-reference/endpoints/deprecated/folders/update",
-                      "api-reference/endpoints/deprecated/folders/delete"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Secret Tags",
-                "pages": [
-                  "api-reference/endpoints/secret-tags/list",
-                  "api-reference/endpoints/secret-tags/get-by-id",
-                  "api-reference/endpoints/secret-tags/get-by-slug",
-                  "api-reference/endpoints/secret-tags/create",
-                  "api-reference/endpoints/secret-tags/update",
-                  "api-reference/endpoints/secret-tags/delete",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/secret-tags/list",
-                      "api-reference/endpoints/deprecated/secret-tags/get-by-id",
-                      "api-reference/endpoints/deprecated/secret-tags/get-by-slug",
-                      "api-reference/endpoints/deprecated/secret-tags/create",
-                      "api-reference/endpoints/deprecated/secret-tags/update",
-                      "api-reference/endpoints/deprecated/secret-tags/delete"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Secrets",
-                "pages": [
-                  "api-reference/endpoints/secrets/list",
-                  "api-reference/endpoints/secrets/create",
-                  "api-reference/endpoints/secrets/read",
-                  "api-reference/endpoints/secrets/update",
-                  "api-reference/endpoints/secrets/delete",
-                  "api-reference/endpoints/secrets/create-many",
-                  "api-reference/endpoints/secrets/update-many",
-                  "api-reference/endpoints/secrets/delete-many",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/secrets/list",
-                      "api-reference/endpoints/deprecated/secrets/create",
-                      "api-reference/endpoints/deprecated/secrets/read",
-                      "api-reference/endpoints/deprecated/secrets/update",
-                      "api-reference/endpoints/deprecated/secrets/delete",
-                      "api-reference/endpoints/deprecated/secrets/create-many",
-                      "api-reference/endpoints/deprecated/secrets/update-many",
-                      "api-reference/endpoints/deprecated/secrets/delete-many",
-                      "api-reference/endpoints/deprecated/secrets/attach-tags",
-                      "api-reference/endpoints/deprecated/secrets/detach-tags"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Dynamic Secrets",
-                "pages": [
-                  {
-                    "group": "Kubernetes",
-                    "pages": [
-                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
-                    ]
-                  },
-                  "api-reference/endpoints/dynamic-secrets/create",
-                  "api-reference/endpoints/dynamic-secrets/update",
-                  "api-reference/endpoints/dynamic-secrets/delete",
-                  "api-reference/endpoints/dynamic-secrets/get",
-                  "api-reference/endpoints/dynamic-secrets/list",
-                  "api-reference/endpoints/dynamic-secrets/list-leases",
-                  "api-reference/endpoints/dynamic-secrets/create-lease",
-                  "api-reference/endpoints/dynamic-secrets/delete-lease",
-                  "api-reference/endpoints/dynamic-secrets/renew-lease",
-                  "api-reference/endpoints/dynamic-secrets/get-lease"
-                ]
-              },
-              {
-                "group": "Secret Imports",
-                "pages": [
-                  "api-reference/endpoints/secret-imports/list",
-                  "api-reference/endpoints/secret-imports/create",
-                  "api-reference/endpoints/secret-imports/update",
-                  "api-reference/endpoints/secret-imports/delete",
-                  {
-                    "group": "Legacy",
-                    "pages": [
-                      "api-reference/endpoints/deprecated/secret-imports/list",
-                      "api-reference/endpoints/deprecated/secret-imports/create",
-                      "api-reference/endpoints/deprecated/secret-imports/update",
-                      "api-reference/endpoints/deprecated/secret-imports/delete"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Secret Rotations",
-                "pages": [
-                  "api-reference/endpoints/secret-rotations/list",
-                  "api-reference/endpoints/secret-rotations/options",
-                  {
-                    "group": "Auth0 Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/auth0-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "AWS IAM User Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/create",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/delete",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/list",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "Azure Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/azure-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "LDAP Password",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/ldap-password/create",
-                      "api-reference/endpoints/secret-rotations/ldap-password/delete",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-id",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-name",
-                      "api-reference/endpoints/secret-rotations/ldap-password/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/ldap-password/list",
-                      "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/ldap-password/update"
-                    ]
-                  },
-                  {
-                    "group": "Microsoft SQL Server Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/create",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/list",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/mssql-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "MySQL Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/create",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/list",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/mysql-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "Okta Client Secret",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/create",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/delete",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-id",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-name",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/list",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/okta-client-secret/update"
-                    ]
-                  },
-                  {
-                    "group": "OracleDB Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/create",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/list",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/oracledb-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "PostgreSQL Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/create",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/list",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/postgres-credentials/update"
-                    ]
-                  },
-                  {
-                    "group": "Redis Credentials",
-                    "pages": [
-                      "api-reference/endpoints/secret-rotations/redis-credentials/create",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/delete",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-id",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-name",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/get-generated-credentials-by-id",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/list",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
-                      "api-reference/endpoints/secret-rotations/redis-credentials/update"
-                    ]
-                  }
-                ]
-              },
-              {
-                "group": "Secret Scanning",
-                "pages": [
-                  {
-                    "group": "Data Sources",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/data-sources/list",
-                      "api-reference/endpoints/secret-scanning/data-sources/options",
-                      {
-                        "group": "Bitbucket",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan-resource"
-                        ]
-                      },
-                      {
-                        "group": "GitHub",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
-                        ]
-                      },
-                      {
-                        "group": "GitLab",
-                        "pages": [
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
-                          "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
-                        ]
-                      }
-                    ]
-                  },
-                  {
-                    "group": "Findings",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/findings/list",
-                      "api-reference/endpoints/secret-scanning/findings/update"
-                    ]
-                  },
-                  {
-                    "group": "Configuration",
-                    "pages": [
-                      "api-reference/endpoints/secret-scanning/config/get-by-project-id",
-                      "api-reference/endpoints/secret-scanning/config/update"
                     ]
                   }
                 ]
@@ -1580,6 +1112,15 @@
                   }
                 ]
               },
+              {
+                "group": "Service Tokens",
+                "pages": ["api-reference/endpoints/service-tokens/get"]
+              }
+            ]
+          },
+          {
+            "group": "Shared",
+            "pages": [
               {
                 "group": "App Connections",
                 "pages": [
@@ -2091,6 +1632,415 @@
                 ]
               },
               {
+                "group": "Audit Logs",
+                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
+              },
+              {
+                "group": "Events",
+                "pages": ["api-reference/endpoints/events/project-events"]
+              }
+            ]
+          },
+          {
+            "group": "Identity Auth",
+            "pages": [
+              {
+                "group": "Token Auth",
+                "pages": [
+                  "api-reference/endpoints/token-auth/attach",
+                  "api-reference/endpoints/token-auth/retrieve",
+                  "api-reference/endpoints/token-auth/update",
+                  "api-reference/endpoints/token-auth/revoke",
+                  "api-reference/endpoints/token-auth/get-tokens",
+                  "api-reference/endpoints/token-auth/create-token",
+                  "api-reference/endpoints/token-auth/update-token",
+                  "api-reference/endpoints/token-auth/revoke-token"
+                ]
+              },
+              {
+                "group": "Universal Auth",
+                "pages": [
+                  "api-reference/endpoints/universal-auth/login",
+                  "api-reference/endpoints/universal-auth/attach",
+                  "api-reference/endpoints/universal-auth/retrieve",
+                  "api-reference/endpoints/universal-auth/update",
+                  "api-reference/endpoints/universal-auth/revoke",
+                  "api-reference/endpoints/universal-auth/create-client-secret",
+                  "api-reference/endpoints/universal-auth/list-client-secrets",
+                  "api-reference/endpoints/universal-auth/revoke-client-secret",
+                  "api-reference/endpoints/universal-auth/get-client-secret-by-id",
+                  "api-reference/endpoints/universal-auth/renew-access-token",
+                  "api-reference/endpoints/universal-auth/revoke-access-token"
+                ]
+              },
+              {
+                "group": "GCP Auth",
+                "pages": [
+                  "api-reference/endpoints/gcp-auth/login",
+                  "api-reference/endpoints/gcp-auth/attach",
+                  "api-reference/endpoints/gcp-auth/retrieve",
+                  "api-reference/endpoints/gcp-auth/update",
+                  "api-reference/endpoints/gcp-auth/revoke"
+                ]
+              },
+              {
+                "group": "Alibaba Cloud Auth",
+                "pages": [
+                  "api-reference/endpoints/alicloud-auth/login",
+                  "api-reference/endpoints/alicloud-auth/attach",
+                  "api-reference/endpoints/alicloud-auth/retrieve",
+                  "api-reference/endpoints/alicloud-auth/update",
+                  "api-reference/endpoints/alicloud-auth/revoke"
+                ]
+              },
+              {
+                "group": "TLS Certificate Auth",
+                "pages": [
+                  "api-reference/endpoints/tls-cert-auth/login",
+                  "api-reference/endpoints/tls-cert-auth/attach",
+                  "api-reference/endpoints/tls-cert-auth/retrieve",
+                  "api-reference/endpoints/tls-cert-auth/update",
+                  "api-reference/endpoints/tls-cert-auth/revoke"
+                ]
+              },
+              {
+                "group": "AWS Auth",
+                "pages": [
+                  "api-reference/endpoints/aws-auth/login",
+                  "api-reference/endpoints/aws-auth/attach",
+                  "api-reference/endpoints/aws-auth/retrieve",
+                  "api-reference/endpoints/aws-auth/update",
+                  "api-reference/endpoints/aws-auth/revoke"
+                ]
+              },
+              {
+                "group": "OCI Auth",
+                "pages": [
+                  "api-reference/endpoints/oci-auth/login",
+                  "api-reference/endpoints/oci-auth/attach",
+                  "api-reference/endpoints/oci-auth/retrieve",
+                  "api-reference/endpoints/oci-auth/update",
+                  "api-reference/endpoints/oci-auth/revoke"
+                ]
+              },
+              {
+                "group": "Azure Auth",
+                "pages": [
+                  "api-reference/endpoints/azure-auth/login",
+                  "api-reference/endpoints/azure-auth/attach",
+                  "api-reference/endpoints/azure-auth/retrieve",
+                  "api-reference/endpoints/azure-auth/update",
+                  "api-reference/endpoints/azure-auth/revoke"
+                ]
+              },
+              {
+                "group": "Kubernetes Auth",
+                "pages": [
+                  "api-reference/endpoints/kubernetes-auth/login",
+                  "api-reference/endpoints/kubernetes-auth/attach",
+                  "api-reference/endpoints/kubernetes-auth/retrieve",
+                  "api-reference/endpoints/kubernetes-auth/update",
+                  "api-reference/endpoints/kubernetes-auth/revoke"
+                ]
+              },
+              {
+                "group": "OIDC Auth",
+                "pages": [
+                  "api-reference/endpoints/oidc-auth/login",
+                  "api-reference/endpoints/oidc-auth/attach",
+                  "api-reference/endpoints/oidc-auth/retrieve",
+                  "api-reference/endpoints/oidc-auth/update",
+                  "api-reference/endpoints/oidc-auth/revoke"
+                ]
+              },
+              {
+                "group": "JWT Auth",
+                "pages": [
+                  "api-reference/endpoints/jwt-auth/login",
+                  "api-reference/endpoints/jwt-auth/attach",
+                  "api-reference/endpoints/jwt-auth/retrieve",
+                  "api-reference/endpoints/jwt-auth/update",
+                  "api-reference/endpoints/jwt-auth/revoke"
+                ]
+              },
+              {
+                "group": "LDAP Auth",
+                "pages": [
+                  "api-reference/endpoints/ldap-auth/login",
+                  "api-reference/endpoints/ldap-auth/attach",
+                  "api-reference/endpoints/ldap-auth/retrieve",
+                  "api-reference/endpoints/ldap-auth/update",
+                  "api-reference/endpoints/ldap-auth/revoke"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secrets Management",
+            "pages": [
+              {
+                "group": "Environments",
+                "pages": [
+                  "api-reference/endpoints/environments/create",
+                  "api-reference/endpoints/environments/update",
+                  "api-reference/endpoints/environments/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/environments/create",
+                      "api-reference/endpoints/deprecated/environments/update",
+                      "api-reference/endpoints/deprecated/environments/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Folders",
+                "pages": [
+                  "api-reference/endpoints/folders/list",
+                  "api-reference/endpoints/folders/get-by-id",
+                  "api-reference/endpoints/folders/create",
+                  "api-reference/endpoints/folders/update",
+                  "api-reference/endpoints/folders/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/folders/list",
+                      "api-reference/endpoints/deprecated/folders/get-by-id",
+                      "api-reference/endpoints/deprecated/folders/create",
+                      "api-reference/endpoints/deprecated/folders/update",
+                      "api-reference/endpoints/deprecated/folders/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Secrets",
+                "pages": [
+                  "api-reference/endpoints/secrets/list",
+                  "api-reference/endpoints/secrets/create",
+                  "api-reference/endpoints/secrets/read",
+                  "api-reference/endpoints/secrets/update",
+                  "api-reference/endpoints/secrets/delete",
+                  "api-reference/endpoints/secrets/create-many",
+                  "api-reference/endpoints/secrets/update-many",
+                  "api-reference/endpoints/secrets/delete-many",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secrets/list",
+                      "api-reference/endpoints/deprecated/secrets/create",
+                      "api-reference/endpoints/deprecated/secrets/read",
+                      "api-reference/endpoints/deprecated/secrets/update",
+                      "api-reference/endpoints/deprecated/secrets/delete",
+                      "api-reference/endpoints/deprecated/secrets/create-many",
+                      "api-reference/endpoints/deprecated/secrets/update-many",
+                      "api-reference/endpoints/deprecated/secrets/delete-many",
+                      "api-reference/endpoints/deprecated/secrets/attach-tags",
+                      "api-reference/endpoints/deprecated/secrets/detach-tags"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Secret Tags",
+                "pages": [
+                  "api-reference/endpoints/secret-tags/list",
+                  "api-reference/endpoints/secret-tags/get-by-id",
+                  "api-reference/endpoints/secret-tags/get-by-slug",
+                  "api-reference/endpoints/secret-tags/create",
+                  "api-reference/endpoints/secret-tags/update",
+                  "api-reference/endpoints/secret-tags/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secret-tags/list",
+                      "api-reference/endpoints/deprecated/secret-tags/get-by-id",
+                      "api-reference/endpoints/deprecated/secret-tags/get-by-slug",
+                      "api-reference/endpoints/deprecated/secret-tags/create",
+                      "api-reference/endpoints/deprecated/secret-tags/update",
+                      "api-reference/endpoints/deprecated/secret-tags/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Secret Imports",
+                "pages": [
+                  "api-reference/endpoints/secret-imports/list",
+                  "api-reference/endpoints/secret-imports/create",
+                  "api-reference/endpoints/secret-imports/update",
+                  "api-reference/endpoints/secret-imports/delete",
+                  {
+                    "group": "Legacy",
+                    "pages": [
+                      "api-reference/endpoints/deprecated/secret-imports/list",
+                      "api-reference/endpoints/deprecated/secret-imports/create",
+                      "api-reference/endpoints/deprecated/secret-imports/update",
+                      "api-reference/endpoints/deprecated/secret-imports/delete"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Dynamic Secrets",
+                "pages": [
+                  {
+                    "group": "Kubernetes",
+                    "pages": [
+                      "api-reference/endpoints/dynamic-secrets/kubernetes/create-lease"
+                    ]
+                  },
+                  "api-reference/endpoints/dynamic-secrets/create",
+                  "api-reference/endpoints/dynamic-secrets/update",
+                  "api-reference/endpoints/dynamic-secrets/delete",
+                  "api-reference/endpoints/dynamic-secrets/get",
+                  "api-reference/endpoints/dynamic-secrets/list",
+                  "api-reference/endpoints/dynamic-secrets/list-leases",
+                  "api-reference/endpoints/dynamic-secrets/create-lease",
+                  "api-reference/endpoints/dynamic-secrets/delete-lease",
+                  "api-reference/endpoints/dynamic-secrets/renew-lease",
+                  "api-reference/endpoints/dynamic-secrets/get-lease"
+                ]
+              },
+              {
+                "group": "Secret Rotations",
+                "pages": [
+                  "api-reference/endpoints/secret-rotations/list",
+                  "api-reference/endpoints/secret-rotations/options",
+                  {
+                    "group": "Auth0 Client Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/create",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/delete",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/list",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/auth0-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "AWS IAM User Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/create",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/delete",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/list",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/aws-iam-user-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "Azure Client Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/create",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/delete",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/list",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/azure-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "LDAP Password",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/ldap-password/create",
+                      "api-reference/endpoints/secret-rotations/ldap-password/delete",
+                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-id",
+                      "api-reference/endpoints/secret-rotations/ldap-password/get-by-name",
+                      "api-reference/endpoints/secret-rotations/ldap-password/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/ldap-password/list",
+                      "api-reference/endpoints/secret-rotations/ldap-password/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/ldap-password/update"
+                    ]
+                  },
+                  {
+                    "group": "Microsoft SQL Server Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/create",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/list",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/mssql-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "MySQL Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/create",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/list",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/mysql-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Okta Client Secret",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/create",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/delete",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-id",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-by-name",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/list",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/okta-client-secret/update"
+                    ]
+                  },
+                  {
+                    "group": "OracleDB Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/create",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/list",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/oracledb-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "PostgreSQL Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/create",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/list",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/postgres-credentials/update"
+                    ]
+                  },
+                  {
+                    "group": "Redis Credentials",
+                    "pages": [
+                      "api-reference/endpoints/secret-rotations/redis-credentials/create",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/delete",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-by-name",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/get-generated-credentials-by-id",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/list",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/rotate-secrets",
+                      "api-reference/endpoints/secret-rotations/redis-credentials/update"
+                    ]
+                  }
+                ]
+              },
+              {
                 "group": "Secret Syncs",
                 "pages": [
                   "api-reference/endpoints/secret-syncs/list",
@@ -2558,14 +2508,6 @@
                   "api-reference/endpoints/integrations/delete",
                   "api-reference/endpoints/integrations/list-project-integrations"
                 ]
-              },
-              {
-                "group": "Service Tokens",
-                "pages": ["api-reference/endpoints/service-tokens/get"]
-              },
-              {
-                "group": "Audit Logs",
-                "pages": ["api-reference/endpoints/audit-logs/export-audit-log"]
               }
             ]
           },
@@ -2682,6 +2624,18 @@
                     ]
                   },
                   {
+                    "group": "AWS Secrets Manager",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/list",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/get-by-id",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/create",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/update",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/delete",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/aws-secrets-manager/remove-certificates"
+                    ]
+                  },
+                  {
                     "group": "Azure Key Vault",
                     "pages": [
                       "api-reference/endpoints/pki/syncs/azure-key-vault/list",
@@ -2692,7 +2646,90 @@
                       "api-reference/endpoints/pki/syncs/azure-key-vault/sync-certificates",
                       "api-reference/endpoints/pki/syncs/azure-key-vault/remove-certificates"
                     ]
+                  },
+                  {
+                    "group": "Chef",
+                    "pages": [
+                      "api-reference/endpoints/pki/syncs/chef/list",
+                      "api-reference/endpoints/pki/syncs/chef/get-by-id",
+                      "api-reference/endpoints/pki/syncs/chef/create",
+                      "api-reference/endpoints/pki/syncs/chef/update",
+                      "api-reference/endpoints/pki/syncs/chef/delete",
+                      "api-reference/endpoints/pki/syncs/chef/sync-certificates",
+                      "api-reference/endpoints/pki/syncs/chef/remove-certificates"
+                    ]
                   }
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Secret Scanning",
+            "pages": [
+              {
+                "group": "Data Sources",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/data-sources/list",
+                  "api-reference/endpoints/secret-scanning/data-sources/options",
+                  {
+                    "group": "Bitbucket",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/bitbucket/scan-resource"
+                    ]
+                  },
+                  {
+                    "group": "GitHub",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/github/scan-resource"
+                    ]
+                  },
+                  {
+                    "group": "GitLab",
+                    "pages": [
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-id",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/get-by-name",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-resources",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/list-scans",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/create",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/update",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/delete",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan",
+                      "api-reference/endpoints/secret-scanning/data-sources/gitlab/scan-resource"
+                    ]
+                  }
+                ]
+              },
+              {
+                "group": "Findings",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/findings/list",
+                  "api-reference/endpoints/secret-scanning/findings/update"
+                ]
+              },
+              {
+                "group": "Configuration",
+                "pages": [
+                  "api-reference/endpoints/secret-scanning/config/get-by-project-id",
+                  "api-reference/endpoints/secret-scanning/config/update"
                 ]
               }
             ]
@@ -2788,6 +2825,15 @@
                   "api-reference/endpoints/kms/signing/public-key",
                   "api-reference/endpoints/kms/signing/signing-algorithms"
                 ]
+              }
+            ]
+          },
+          {
+            "group": "Other",
+            "pages": [
+              {
+                "group": "Admin",
+                "pages": ["api-reference/endpoints/admin/bootstrap-instance"]
               }
             ]
           }

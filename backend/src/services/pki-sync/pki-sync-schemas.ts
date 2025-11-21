@@ -7,6 +7,7 @@ import { PkiSync } from "./pki-sync-enums";
 export const PkiSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean(),
   canRemoveCertificates: z.boolean().optional(),
+  includeRootCa: z.boolean().optional().default(false),
   certificateNameSchema: z
     .string()
     .optional()

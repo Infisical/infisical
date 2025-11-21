@@ -74,7 +74,12 @@ export const pkiAcmeChallengeServiceFactory = ({
         // Notice: well, we are in a transaction, ideally we should not hold transaction and perform
         //         a long running operation for long time. But assuming we are not performing a tons of
         //         challenge validation at the same time, it should be fine.
-        const challengeResponse = await fetch(challengeUrl, { signal: AbortSignal.timeout(timeoutMs) });
+        const challengeResponse = await fetch(challengeUrl, {
+          // In case if we override the host in the development mode, still provide the original host in the header
+          // to help the upstream server to validate the request
+          headers: { Host: host },
+          signal: AbortSignal.timeout(timeoutMs)
+        });
         if (challengeResponse.status !== 200) {
           throw new AcmeIncorrectResponseError({
             message: `ACME challenge response is not 200: ${challengeResponse.status}`
