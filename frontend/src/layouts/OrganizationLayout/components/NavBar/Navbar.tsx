@@ -249,7 +249,7 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isOrgScope = location.pathname.startsWith("/organization"); // TODO: scott/akhil is this adequate?
+  const isProjectScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -314,7 +314,7 @@ export const Navbar = () => {
                     // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
                     className={twMerge(
                       "gap-x-1.5 text-sm",
-                      (!isOrgScope || isSubOrganization) &&
+                      (isProjectScope || isSubOrganization) &&
                         "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-org"
                     )}
                   >
@@ -477,7 +477,7 @@ export const Navbar = () => {
                     // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
                     className={twMerge(
                       "gap-x-1.5 text-sm",
-                      !isOrgScope &&
+                      isProjectScope &&
                         "min-w-6 bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
                     )}
                   >
@@ -541,7 +541,7 @@ export const Navbar = () => {
                 </DropdownMenu>
               </>
             )}
-            {!isOrgScope && (
+            {isProjectScope && (
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 {breadcrumbs ? (
