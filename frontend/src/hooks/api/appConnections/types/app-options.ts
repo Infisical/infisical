@@ -184,6 +184,10 @@ export type TRedisConnectionOption = TAppConnectionOptionBase & {
   app: AppConnection.Redis;
 };
 
+export type TDNSMadeEasyConnectionOption = TAppConnectionOptionBase & {
+  app: AppConnection.DNSMadeEasy;
+};
+
 export type TAppConnectionOption =
   | TAwsConnectionOption
   | TGitHubConnectionOption
@@ -225,7 +229,8 @@ export type TAppConnectionOption =
   | TOktaConnectionOption
   | TAzureAdCsConnectionOption
   | TLaravelForgeConnectionOption
-  | TChefConnectionOption;
+  | TChefConnectionOption
+  | TDNSMadeEasyConnectionOption;
 
 export type TAppConnectionOptionMap = {
   [AppConnection.AWS]: TAwsConnectionOption;
@@ -257,6 +262,7 @@ export type TAppConnectionOptionMap = {
   [AppConnection.Flyio]: TFlyioConnectionOption;
   [AppConnection.GitLab]: TGitlabConnectionOption;
   [AppConnection.Cloudflare]: TCloudflareConnectionOption;
+  [AppConnection.DNSMadeEasy]: TDNSMadeEasyConnectionOption;
   [AppConnection.Bitbucket]: TBitbucketConnectionOption;
   [AppConnection.Zabbix]: TZabbixConnectionOption;
   [AppConnection.Railway]: TRailwayConnectionOption;
