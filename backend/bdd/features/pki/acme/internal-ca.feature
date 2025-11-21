@@ -24,4 +24,10 @@ Feature: Internal CA
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
     And I parse the full-chain certificate from order finalized_order as cert
-    And the value cert with jq ".subject.common_name" should be equal to "localhost"
+    And the value cert with jq ".subject.common_name" should be equal to null
+    And the value cert with jq "[.extensions.subjectAltName.general_names.[].value] | sort" should be equal to json
+      """
+      [
+        "localhost"
+      ]
+      """
