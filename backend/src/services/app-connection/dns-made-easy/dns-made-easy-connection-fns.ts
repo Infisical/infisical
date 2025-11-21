@@ -4,6 +4,7 @@ import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 
@@ -116,6 +117,7 @@ export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeE
         message: `Failed to validate credentials: ${error.response?.data?.error?.[0] || error.message || "Unknown error"}`
       });
     }
+    logger.error(error, "Error validating DNS Made Easy connection credentials");
     throw new BadRequestError({
       message: "Unable to validate connection: verify credentials"
     });
