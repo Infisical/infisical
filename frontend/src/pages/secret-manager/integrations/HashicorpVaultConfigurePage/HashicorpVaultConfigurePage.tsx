@@ -23,7 +23,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { isValidPath } from "@app/helpers/string";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
@@ -58,7 +58,7 @@ type TForm = z.infer<ReturnType<typeof generateFormSchema>>;
 export const HashicorpVaultConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.HashicorpVaultConfigurePage.id,
@@ -98,8 +98,9 @@ export const HashicorpVaultConfigurePage = () => {
       secretPath: formData.secretPath
     });
     navigate({
-      to: "/projects/secret-management/$projectId/integrations",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

@@ -46,6 +46,7 @@ import { InfisicalSecretInput } from "@app/components/v2/InfisicalSecretInput";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -98,6 +99,7 @@ export const SecretDetailSidebar = ({
   secretPath,
   handleSecretShare
 }: Props) => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [isFieldFocused, setIsFieldFocused] = useToggle();
   const queryClient = useQueryClient();
@@ -776,6 +778,7 @@ export const SecretDetailSidebar = ({
                                   `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const
                                 }
                                 params={{
+                                  orgId: currentOrg.id,
                                   projectId: currentProject.id,
                                   identityId: identity.id
                                 }}
@@ -806,8 +809,9 @@ export const SecretDetailSidebar = ({
                               className="z-100"
                             >
                               <Link
-                                to={"/organization/groups/$groupId" as const}
+                                to={"/organizations/$orgId/groups/$groupId" as const}
                                 params={{
+                                  orgId: currentOrg.id,
                                   groupId: group.id
                                 }}
                                 className="text-secondary/80 rounded-md border border-mineshaft-600 bg-mineshaft-700 px-1 py-0.5 text-sm hover:text-mineshaft-100"

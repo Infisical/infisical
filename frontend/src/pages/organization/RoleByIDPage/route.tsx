@@ -3,14 +3,17 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { RoleByIDPage } from "./RoleByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/roles/$roleId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/roles/$roleId"
 )({
   component: RoleByIDPage,
-  context: () => ({
+  context: ({ params }) => ({
     breadcrumbs: [
       {
         label: "Access Control",
-        link: linkOptions({ to: "/organization/access-management" })
+        link: linkOptions({
+          to: "/organizations/$orgId/access-management",
+          params: { orgId: params.orgId }
+        })
       },
       {
         label: "Roles"

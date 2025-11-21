@@ -243,7 +243,7 @@ export const accessApprovalRequestServiceFactory = ({
       );
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
-      const projectPath = `/projects/secret-management/${project.id}`;
+      const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
       const approvalPath = `${projectPath}/approval`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
@@ -399,7 +399,7 @@ export const accessApprovalRequestServiceFactory = ({
 
       const requesterFullName = `${requestedByUser.firstName} ${requestedByUser.lastName}`;
       const editorFullName = `${editedByUser.firstName} ${editedByUser.lastName}`;
-      const projectPath = `/projects/secret-management/${project.id}`;
+      const projectPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}`;
       const approvalPath = `${projectPath}/approval`;
       const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
@@ -766,7 +766,7 @@ export const accessApprovalRequestServiceFactory = ({
               .map((appUser) => appUser.email)
               .filter((email): email is string => !!email);
 
-            const approvalPath = `/projects/secret-management/${project.id}/approval`;
+            const approvalPath = `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`;
             const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
 
             await notificationService.createUserNotifications(

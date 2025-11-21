@@ -8,7 +8,7 @@ import { ProjectSelect } from "@app/layouts/ProjectLayout/components/ProjectSele
 import { SecretManagerLayout } from "@app/layouts/SecretManagerLayout";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout"
 )({
   component: SecretManagerLayout,
 

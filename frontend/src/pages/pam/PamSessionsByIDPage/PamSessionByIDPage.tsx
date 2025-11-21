@@ -6,7 +6,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPamSessionActions } from "@app/context/ProjectPermissionContext/types";
 import { useGetPamSessionById } from "@app/hooks/api/pam";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -20,14 +20,16 @@ const Page = () => {
     select: (el) => el.sessionId
   });
   const { data: session } = useGetPamSessionById(sessionId);
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       {session && (
         <div className="mx-auto mb-6 flex w-full max-w-8xl flex-col">
           <Link
-            to="/projects/pam/$projectId/sessions"
+            to="/organizations/$orgId/projects/pam/$projectId/sessions"
             params={{
+              orgId: currentOrg.id,
               projectId: currentProject.id
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

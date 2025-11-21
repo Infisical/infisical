@@ -263,7 +263,8 @@ export const LDAPGroupMapModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }:
               size="sm"
               onClick={() =>
                 navigate({
-                  to: "/organization/access-management"
+                  to: "/organizations/$orgId/access-management",
+                  params: { orgId: currentOrg.id }
                 })
               }
             >

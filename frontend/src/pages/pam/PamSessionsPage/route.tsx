@@ -5,7 +5,7 @@ import { z } from "zod";
 import { PamSessionPage } from "./PamSessionsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/"
 )({
   validateSearch: zodValidator(
     z.object({

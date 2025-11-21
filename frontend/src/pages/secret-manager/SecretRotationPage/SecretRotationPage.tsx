@@ -40,6 +40,7 @@ import {
 import { NoticeBannerV2 } from "@app/components/v2/NoticeBannerV2/NoticeBannerV2";
 import {
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -57,6 +58,7 @@ import { TSecretRotationProviderTemplate } from "@app/hooks/api/secretRotation/t
 import { CreateRotationForm } from "@app/pages/secret-manager/SecretRotationPage/components/CreateRotationForm";
 
 const Page = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { permission } = useProjectPermission();
 
@@ -158,8 +160,8 @@ const Page = () => {
           PostgreSQL and Microsoft SQL Server Rotations can now be created from the{" "}
           <Link
             className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-            to="/projects/secret-management/$projectId/overview"
-            params={{ projectId: currentProject.id }}
+            to="/organizations/$orgId/projects/secret-management/$projectId/overview"
+            params={{ orgId: currentOrg.id, projectId: currentProject.id }}
           >
             Secret Manager Dashboard
           </Link>{" "}
@@ -393,8 +395,8 @@ const Page = () => {
               Infisical is revamping its Secret Rotation experience. Navigate to the{" "}
               <Link
                 className="text-mineshaft-100 underline decoration-primary underline-offset-2 hover:text-mineshaft-200"
-                to="/projects/secret-management/$projectId/overview"
-                params={{ projectId: currentProject.id }}
+                to="/organizations/$orgId/projects/secret-management/$projectId/overview"
+                params={{ orgId: currentOrg.id, projectId: currentProject.id }}
               >
                 Secret Manager Dashboard
               </Link>{" "}
@@ -410,8 +412,8 @@ const Page = () => {
               <Button
                 onClick={() =>
                   navigate({
-                    to: "/projects/secret-management/$projectId/overview",
-                    params: { projectId: currentProject.id }
+                    to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
+                    params: { orgId: currentOrg.id, projectId: currentProject.id }
                   })
                 }
                 colorSchema="secondary"

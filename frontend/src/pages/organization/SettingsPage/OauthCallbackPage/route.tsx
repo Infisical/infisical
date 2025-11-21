@@ -20,7 +20,7 @@ const SettingsOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/settings/oauth/callback"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/settings/oauth/callback"
 )({
   component: OAuthCallbackPage,
   validateSearch: zodValidator(SettingsOAuthCallbackPageQueryParamsSchema)

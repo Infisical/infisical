@@ -8,7 +8,7 @@ type Props = {
 
 export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
   const navigate = useNavigate({
-    from: "/projects/pam/$projectId/accounts"
+    from: "/organizations/$orgId/projects/pam/$projectId/accounts"
   });
 
   const onFolderCrumbClick = (index: number) => {

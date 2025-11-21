@@ -23,6 +23,10 @@ export const CommitDetailsPage = () => {
     from: ROUTE_PATHS.SecretManager.CommitDetailsPage.id,
     select: (el) => el.folderId
   });
+  const orgId = useParams({
+    from: ROUTE_PATHS.SecretManager.CommitDetailsPage.id,
+    select: (el) => el.orgId
+  });
   const { currentProject } = useProject();
 
   const navigate = useNavigate();
@@ -34,8 +38,9 @@ export const CommitDetailsPage = () => {
 
   const handleGoBackToHistory = () => {
     navigate({
-      to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
+        orgId,
         projectId: currentProject.id,
         folderId,
         environment: envSlug
@@ -49,8 +54,9 @@ export const CommitDetailsPage = () => {
 
   const handleGoToRollbackPreview = () => {
     navigate({
-      to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId/restore",
       params: {
+        orgId,
         projectId: currentProject.id,
         folderId,
         environment: envSlug,

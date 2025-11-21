@@ -7,7 +7,12 @@ import { formatRelative } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { EmptyState, PageHeader, Spinner } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useGetWorkspaceGroupMembershipDetails } from "@app/hooks/api/projects/queries";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -21,6 +26,7 @@ const Page = () => {
     select: (el) => el.groupId as string
   });
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const { data: groupMembership, isPending } = useGetWorkspaceGroupMembershipDetails(
@@ -42,7 +48,8 @@ const Page = () => {
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
-              projectId: currentProject.id
+              projectId: currentProject.id,
+              orgId: currentOrg.id
             }}
             search={{
               selectedTab: ProjectAccessControlTabs.Groups

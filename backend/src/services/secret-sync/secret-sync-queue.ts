@@ -932,7 +932,7 @@ export const secretSyncQueueFactory = ({
         break;
     }
 
-    const baseProjectPath = `/projects/secret-management/${projectId}`;
+    const baseProjectPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}`;
     const overviewPath = `${baseProjectPath}/overview`;
     const syncPath = `${baseProjectPath}/integrations/secret-syncs/${destination}/${secretSync.id}`;
 

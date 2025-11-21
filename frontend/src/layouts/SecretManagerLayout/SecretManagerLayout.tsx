@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 import { Tab, TabList, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useProject, useProjectPermission } from "@app/context";
+import { useOrganization, useProject, useProjectPermission } from "@app/context";
 import {
   useGetAccessRequestsCount,
   useGetSecretApprovalRequestCount,
@@ -15,6 +15,7 @@ import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePri
 export const SecretManagerLayout = () => {
   const { currentProject, projectId } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
+  const { currentOrg } = useOrganization();
   const location = useLocation();
 
   const projectSlug = currentProject?.slug || "";
@@ -52,8 +53,9 @@ export const SecretManagerLayout = () => {
             <Tabs value="selected">
               <TabList className="border-b-0">
                 <Link
-                  to="/projects/secret-management/$projectId/overview"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/overview"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id,
                     ...(currentProject.environments.length
                       ? { envSlug: currentProject.environments[0]?.slug }
@@ -73,8 +75,9 @@ export const SecretManagerLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/secret-management/$projectId/approval"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/approval"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -92,8 +95,9 @@ export const SecretManagerLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/secret-management/$projectId/integrations"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/integrations"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -101,8 +105,9 @@ export const SecretManagerLayout = () => {
                 </Link>
                 {Boolean(secretRotations?.length) && (
                   <Link
-                    to="/projects/secret-management/$projectId/secret-rotation"
+                    to="/organizations/$orgId/projects/secret-management/$projectId/secret-rotation"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
@@ -112,16 +117,18 @@ export const SecretManagerLayout = () => {
                   </Link>
                 )}
                 <Link
-                  to="/projects/secret-management/$projectId/app-connections"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/app-connections"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>App Connections</Tab>}
                 </Link>
                 <Link
-                  to="/projects/secret-management/$projectId/access-management"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/access-management"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -139,16 +146,18 @@ export const SecretManagerLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/secret-management/$projectId/audit-logs"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/audit-logs"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
-                  to="/projects/secret-management/$projectId/settings"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/settings"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
