@@ -390,6 +390,8 @@ const organizationRoutes = route("/organizations/$orgId", [
     )
   ]),
   route("/networking", "organization/NetworkingPage/route.tsx"),
+
+  // Added these dummy routes to avoid errors when navigating from the organization-redirect and project-redirect
   route("/projects/$", ""),
   route("/$", "")
 ]);
