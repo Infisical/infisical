@@ -18,6 +18,7 @@ export const dnsMadeEasyInsertTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
+  logger.info({ hostedZoneId, domain, value }, "Inserting TXT record for DNS Made Easy");
   try {
     await request.post(
       getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records`),
@@ -64,6 +65,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
+  logger.info({ hostedZoneId, domain, value }, "Deleting TXT record for DNS Made Easy");
   try {
     // First, list records to find the record ID
     const listRecordsResponse = await request.get<{

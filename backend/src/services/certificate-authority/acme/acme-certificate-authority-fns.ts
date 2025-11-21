@@ -243,7 +243,11 @@ export const orderCertificate = async (
         throw new Error("Unsupported challenge type");
       }
 
-      const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+      let recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+      if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy) {
+        // For DNS Made Easy, we don't need to provide the domain name in the record name.
+        recordName = "_acme-challenge";
+      }
       const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
