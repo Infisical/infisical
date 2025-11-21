@@ -5,7 +5,9 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import https from "https";
 
+import { getConfig } from "@app/lib/config/env";
 import { DNSMadeEasyConnectionMethod } from "./dns-made-easy-connection-enum";
 import {
   TDNSMadeEasyConnection,
@@ -23,6 +25,11 @@ interface DNSMadeEasyApiResponse {
   }>;
   page: number;
 }
+
+const getDNSMadeEasyUrl = (path: string) => {
+  const appCfg = getConfig();
+  return `${appCfg.DNS_MADE_EASY_SANDBOX_ENABLED ? IntegrationUrls.DNS_MADE_EASY_SANDBOX_API_URL : IntegrationUrls.DNS_MADE_EASY_API_URL}${path}`;
+};
 
 export const makeDNSMadeEasyAuthHeaders = (
   apiKey: string,
@@ -92,7 +99,11 @@ export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeE
   const { apiKey, secretKey } = config.credentials;
 
   try {
-    const resp = await request.get(`${IntegrationUrls.DNS_MADE_EASY_API_URL}/V2.0/dns/managed/`, {
+    const resp = await request.get(getDNSMadeEasyUrl("/V2.0/dns/managed/"), {
+      httpAgent: new https.Agent({
+        minVersion: "TLSv1.2",
+        maxVersion: "TLSv1.2"
+      }),
       headers: {
         ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
         Accept: "application/json"
