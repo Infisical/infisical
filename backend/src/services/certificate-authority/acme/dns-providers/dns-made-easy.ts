@@ -5,6 +5,7 @@ import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
+import { logger } from "@app/lib/logger";
 
 const getDNSMadeEasyUrl = (path: string) => {
   const appCfg = getConfig();
@@ -100,7 +101,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
 
     if (Array.isArray(dnsRecords) && dnsRecords.length > 0) {
       const recordToDelete = dnsRecords.find(
-        (record) => record.type === "TXT" && record.name === domain && record.value === value
+        (record) => record.type === "TXT" && record.name === domain && JSON.parse(record.value) === value
       );
 
       if (recordToDelete) {
@@ -113,6 +114,8 @@ export const dnsMadeEasyDeleteTxtRecord = async (
             }
           }
         );
+      } else {
+        logger.warn({ domain, value }, `Record to delete not found for domain: ${domain} and value: ${value}`);
       }
     }
   } catch (error) {
