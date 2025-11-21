@@ -1719,15 +1719,17 @@ export const internalCertificateAuthorityServiceFactory = ({
     const dn = parseDistinguishedName(csrObj.subject);
     let cn = commonName || dn.commonName;
 
-    if ((allowEmptyCommonName ?? false) && !cn) {
-      // Notice: for modern TLS certificates, the CN is deprecated, many ACME clients will generate CSRs with without a CN
-      //         we allow empty CN here to support ACME clients mostly. Since it's unclear what's the side effect of
-      //         allowing empty CN for legacy PKI code, let's only do it if a true allowEmptyCommonName value is provided.
-      cn = "";
-    } else if (!cn) {
-      throw new BadRequestError({
-        message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
-      });
+    if (!cn) {
+      if (allowEmptyCommonName ?? false) {
+        // Notice: for modern TLS certificates, the CN is deprecated, many ACME clients will generate CSRs with without a CN
+        //         we allow empty CN here to support ACME clients mostly. Since it's unclear what's the side effect of
+        //         allowing empty CN for legacy PKI code, let's only do it if a true allowEmptyCommonName value is provided.
+        cn = "";
+      } else {
+        throw new BadRequestError({
+          message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
+        });
+      }
     }
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
@@ -1946,7 +1948,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           certificateTemplateId: certificateTemplate?.id,
           status: CertStatus.ACTIVE,
           friendlyName: friendlyName || csrObj.subject,
-          commonName: cn,
+          commonName: cn!,
           altNames: altNamesFromCsr || altNames,
           serialNumber,
           notBefore: notBeforeDate,
