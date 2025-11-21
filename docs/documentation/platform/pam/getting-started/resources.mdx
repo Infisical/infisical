@@ -12,7 +12,7 @@ A resource represents a target system, such as a database, server, or applicatio
 
 ## Prerequisites
 
-Before you can create a resource, you must have an **Infisical Gateway** deployed and running on the same network as the target resource.
+Before you can create a resource, you must have an **Infisical Gateway** deployed that is able to reach the target resource over the network.
 
 The Gateway acts as a secure bridge, allowing Infisical to reach your private infrastructure without exposing it to the public internet. When creating a resource, you will be asked to specify which Gateway should be used to connect to it.
 
@@ -40,15 +40,6 @@ Clicking **Create Resource** will trigger a connection test from the selected Ga
 
 ## Automated Credential Rotation
 
-Some resources, such as PostgreSQL, support automated credential rotation to enhance your security posture. This requires configuration on both the resource and the accounts that use it.
+Some resources, such as PostgreSQL, support automated credential rotation to enhance your security posture. This feature requires configuring a privileged "Rotation Account" on the resource.
 
-<Steps>
-    <Step title="Configure Rotation Account on Resource">
-        When creating or editing a resource, configure a "rotation account." This is a master or privileged account that has the necessary permissions to change the passwords of other accounts on that same resource.
-        ![Credential Rotation Account](/images/pam/getting-started/resources/credential-rotation-account.png)
-    </Step>
-    <Step title="Enable Rotation on Account">
-        For each individual account you want to rotate, enable rotation in the account's settings and set a desired interval (e.g., every 30 days). This option is only available if the account's resource has a rotation account configured.
-        ![Rotate Credentials Account](/images/pam/getting-started/resources/rotate-credentials-account.png)
-    </Step>
-</Steps>
+To learn more about how to configure this, please refer to the [Credential Rotation guide](/documentation/platform/pam/product-reference/credential-rotation).

@@ -841,7 +841,8 @@
                 "group": "Product Reference",
                 "pages": [
                   "documentation/platform/pam/product-reference/auditing",
-                  "documentation/platform/pam/product-reference/session-recording"
+                  "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/credential-rotation"
                 ]
               }
             ]

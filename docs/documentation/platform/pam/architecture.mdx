@@ -8,14 +8,11 @@ Infisical PAM utilizes a secure, proxy-based architecture designed to provide ac
 
 ## Core Components
 
-The architecture consists of four main components working in unison:
+The architecture consists of three main components working in unison:
 
 <Steps>
   <Step title="Infisical CLI">
     The client-side interface used to initiate access requests. It creates a local listener that forwards traffic securely to the Gateway.
-  </Step>
-  <Step title="Relay Server">
-    An intermediary routing service that facilitates communication between the CLI/Platform and the Gateway. It enables connectivity without requiring direct inbound access to your network.
   </Step>
   <Step title="Infisical Gateway">
     A lightweight service deployed within your private network (e.g., VPC, on-prem). It acts as a proxy, intercepting traffic to enforce policies and record sessions before forwarding requests to the target resource.
@@ -27,14 +24,34 @@ The architecture consists of four main components working in unison:
 
 ## Access Flow
 
+```mermaid
+graph LR
+    subgraph Client ["User Environment"]
+        CLI["Infisical CLI"]
+    end
+
+    Relay["Relay Server"]
+
+    subgraph Network ["Private Network (VPC)"]
+        Gateway["Infisical Gateway"]
+        DB[("Target Resource (Database/Server)")]
+    end
+
+    CLI <-->|Encrypted Tunnel| Relay
+    Relay <-->|Reverse Tunnel| Gateway
+    Gateway <-->|Native Protocol| DB
+```
+
 When a user accesses a resource (e.g., via `infisical access`), the following workflow occurs:
 
 1. **Connection Initiation**: The Infisical CLI initiates a connection to the Relay server.
 2. **Tunnel Establishment**: The Relay facilitates an end-to-end encrypted tunnel between the CLI and the Gateway.
-3. **Proxy & Authentication**: The Gateway authenticates the request and establishes a connection to the target resource on the user's behalf.
+3. **Proxy & Credential Injection**: The Gateway authenticates the request and connects to the target resource on the user's behalf. It automatically injects the necessary credentials (e.g., database passwords, SSH keys), ensuring the user never directly handles sensitive secrets.
 4. **Traffic Forwarding**: Traffic flows securely from the user's machine, through the Relay, to the Gateway, and finally to the resource.
 
 ## Session Recording & Auditing
+
+![Session Logging](/images/pam/architecture/session-logging.png)
 
 A key feature of the Gateway is its ability to act as a "middleman" for all session traffic.
 

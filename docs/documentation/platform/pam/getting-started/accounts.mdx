@@ -4,13 +4,15 @@ sidebarTitle: "Accounts"
 description: "Learn how to create and manage accounts in PAM to control access to resources like databases and servers."
 ---
 
-An **Account** represents a specific identity or set of credentials (username/password) used to authenticate against a [Resource](/documentation/platform/pam/getting-started/resources).
+An **Account** contains the credentials (such as a username and password) used to connect to a [Resource](/documentation/platform/pam/getting-started/resources).
 
 ## Relationship to Resources
 
-Accounts are children of Resources. A single Resource can have multiple Accounts associated with it, each with different permission levels.
+Accounts belong to Resources. A single Resource can have multiple Accounts associated with it, each with different permission levels.
 
-For example:
+For example, your database would normally have multiple accounts. You might have a superuser account for admins, a standard read/write account for applications, and a read-only account for reporting.
+
+In PAM, these are represented as:
 - **Resource**: `Production Database` (PostgreSQL)
     - **Account 1**: `postgres` (Superuser)
     - **Account 2**: `app_user` (Read/Write)
@@ -40,10 +42,6 @@ Clicking **Create Account** will trigger a validation check. Infisical will atte
 
 ## Automated Credential Rotation
 
-Accounts for certain resources, such as PostgreSQL, support automated credential rotation. This feature automatically changes the password for the account at a set interval.
+Infisical supports automated credential rotation for some accounts on select resources, allowing you to automatically change passwords at set intervals to enhance security.
 
-**Requirements:**
-1. The parent Resource must have a [Rotation Account](/documentation/platform/pam/getting-started/resources#automated-credential-rotation) configured (a master account with permission to change other users' passwords).
-2. You must enable rotation in the Account settings.
-
-![Rotate Credentials Account](/images/pam/getting-started/resources/rotate-credentials-account.png)
+To learn more about how to configure this, please refer to the [Credential Rotation guide](/documentation/platform/pam/product-reference/credential-rotation).

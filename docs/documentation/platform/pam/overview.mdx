@@ -6,6 +6,17 @@ description: "Manage and secure access to critical infrastructure like databases
 
 Infisical Privileged Access Management (PAM) provides a centralized way to manage and secure access to your critical infrastructure. It allows you to enforce fine-grained, policy-based controls over resources like databases, servers, and more, ensuring that only authorized users can access sensitive systems, and only when they need to.
 
+## The PAM Workflow
+
+At its core, Infisical PAM is designed to decouple **user identity** from **infrastructure credentials**. Instead of sharing static passwords or SSH keys, users authenticate with their SSO identity, and Infisical handles the rest.
+
+Here is how a typical access lifecycle looks:
+
+1.  **Discovery**: A user logs into Infisical and sees a catalog of resources (databases, servers) and accounts they are allowed to access.
+2.  **Connection**: The user selects a resource and an account (e.g., "Production DB" as `read_only`). They initiate the connection via the Infisical CLI.
+3.  **Credential Injection**: Infisical validates the request. If allowed, it establishes a secure tunnel and automatically injects the credentials for the target account. **The user never sees the underlying password or key.**
+4.  **Monitoring**: The session is established. All traffic is intercepted, logged, and recorded for audit purposes.
+
 ## Core Concepts
 
 To successfully implement Infisical PAM, it is essential to understand the relationship between the following components:
@@ -15,10 +26,10 @@ To successfully implement Infisical PAM, it is essential to understand the relat
     A lightweight service deployed in your network that acts as a secure bridge to your private infrastructure.
   </Card>
   <Card title="Resource" icon="database">
-    The specific target you are protecting (e.g., a PostgreSQL database or an Ubuntu server) that resides behind a Gateway.
+    The specific target you are protecting (e.g., a PostgreSQL database or an Ubuntu server).
   </Card>
   <Card title="Account" icon="user-lock">
-    Specific credentials (username/password) used to authenticate against a Resource. One Resource can have multiple Accounts.
+    The specific identity on the Resource that the user is trying to access. One Resource can have multiple Accounts.
   </Card>
 </CardGroup>
 
@@ -26,13 +37,26 @@ To successfully implement Infisical PAM, it is essential to understand the relat
 
 The hierarchy is structured as follows:
 
+```mermaid
+graph TD
+    GW[Gateway] --> |Provides Access| DB[Resource: Production DB]
+    GW[Gateway] --> |Provides Access| SRV[Resource: Linux Server]
+    
+    DB --> A1[Account: admin]
+    DB --> A2[Account: readonly]
+    
+    SRV --> A3[Account: ubuntu]
+```
+
 1.  **Gateway**: Deployed once per network/VPC. It provides connectivity to all resources in that environment.
 2.  **Resource**: Configured within Infisical. It points to a specific IP/Host accessible by the Gateway.
 3.  **Account**: Defined under a Resource. Users request access to a specific *Account* on a *Resource*.
 
-## How it Works
+## Network Architecture
 
-Infisical PAM uses a proxy-based architecture. When a user accesses a resource, their connection is routed securely through a Relay to your self-hosted Gateway, which then connects to the target resource. This ensures zero-trust access without exposing your infrastructure to the public internet.
+Infisical PAM uses a secure proxy-based architecture to connect users to resources without direct network exposure.
+
+When a user accesses a resource, their connection is routed securely through a Relay to your self-hosted Gateway, which then connects to the target resource. This ensures zero-trust access without exposing your infrastructure to the public internet.
 
 For a deep dive into the technical architecture and security model, see [Architecture](/documentation/platform/pam/architecture).
 
@@ -52,8 +76,8 @@ Follow this sequence to get up and running with PAM:
     [Learn about Resources](/documentation/platform/pam/getting-started/resources)
   </Step>
   <Step title="Add Accounts">
-    Add **Accounts** to your Resource (e.g., `postgres` or `read_only_user`). These are the actual credentials Infisical will inject when a user connects.
-    
+    Add **Accounts** to your Resource (e.g., `postgres` or `read_only_user`). These represent the actual PAM users or privileged identities that are utilized when a user connects.
+
     [Learn about Accounts](/documentation/platform/pam/getting-started/accounts)
   </Step>
   <Step title="Connect">
@@ -65,4 +89,4 @@ Follow this sequence to get up and running with PAM:
 
 - **[Auditing](/documentation/platform/pam/product-reference/auditing)**: Track and review a comprehensive log of all user actions and system events.
 - **[Session Recording](/documentation/platform/pam/product-reference/session-recording)**: Record and playback user sessions for security reviews, compliance, and troubleshooting.
-- **[Automated Credential Rotation](/documentation/platform/pam/getting-started/resources#automated-credential-rotation)**: Automatically rotate credentials for supported resources to minimize the risk of compromised credentials.
+- **[Automated Credential Rotation](/documentation/platform/pam/product-reference/credential-rotation)**: Automatically rotate credentials for supported resources to minimize the risk of compromised credentials.
