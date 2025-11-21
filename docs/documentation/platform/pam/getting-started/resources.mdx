@@ -1,0 +1,46 @@
+---
+title: "PAM Resource"
+sidebarTitle: "Resources"
+description: "Learn how to add and configure resources like databases and servers, and set up automated credential rotation."
+---
+
+A resource represents a target system, such as a database, server, or application, that you want to manage access to. Some examples of resources are:
+- PostgreSQL Database
+- MCP Server
+- Linux Server
+- Web Application
+
+## Creating a Resource
+
+<Warning>
+    Certain resources require you to have a Gateway deployed on the same network as your target resource. [Gateway Deployment Guide](/documentation/platform/gateways/gateway-deployment)
+</Warning>
+
+To add a resource, navigate to the **Resources** tab in your PAM project and click **Add Resource**.
+
+![Add Resource Button](/images/pam/getting-started/resources/add-resource-button.png)
+
+Next, select the type of resource you want to add.
+
+![Select Resource Type](/images/pam/getting-started/resources/select-resource-type.png)
+
+After selecting a resource type, provide the necessary connection details. The required fields vary depending on the resource type. In this PostgreSQL example, you need to provide details such as host, port, gateway, and database name.
+
+![Create Resource](/images/pam/getting-started/resources/create-resource.png)
+
+Clicking **Create Resource** will run a validation to check if your resource is reachable by the platform or Gateway. If the connection fails, an error message will be displayed to help you troubleshoot.
+
+## Automated Credential Rotation
+
+Some resources, such as PostgreSQL, support automated credential rotation to enhance your security posture. This requires configuration on both the resource and the accounts that use it.
+
+<Steps>
+    <Step title="Configure Rotation Account on Resource">
+        When creating or editing a resource, configure a "rotation account." This is a master or privileged account that has the necessary permissions to change the passwords of other accounts on that same resource.
+        ![Credential Rotation Account](/images/pam/getting-started/resources/credential-rotation-account.png)
+    </Step>
+    <Step title="Enable Rotation on Account">
+        For each individual account you want to rotate, enable rotation in the account's settings and set a desired interval (e.g., every 30 days). This option is only available if the account's resource has a rotation account configured.
+        ![Rotate Credentials Account](/images/pam/getting-started/resources/rotate-credentials-account.png)
+    </Step>
+</Steps>

@@ -1,0 +1,34 @@
+---
+title: "PAM Account"
+sidebarTitle: "Accounts"
+description: "Learn how to create and manage accounts in PAM to control access to resources like databases and servers."
+---
+
+An account represents a specific set of credentials (e.g., a username and password) used to access a [resource](/documentation/platform/pam/getting-started/resources).
+
+## Creating an Account
+
+<Info>
+    Before you can create an account, you must first [Create a Resource](/documentation/platform/pam/getting-started/resources#creating-a-resource).
+</Info>
+
+To add an account, navigate to the **Accounts** tab in your PAM project and click **Add Account**.
+
+![Add Account Button](/images/pam/getting-started/accounts/add-account-button.png)
+
+Next, select the resource where you want to add the account.
+
+![Select Resource](/images/pam/getting-started/accounts/select-resource.png)
+
+After selecting a resource, provide the necessary credentials. The required fields vary depending on the resource type. For example, an SSH resource needs the username and password for a Unix user.
+
+![Create Account](/images/pam/getting-started/accounts/create-account.png)
+
+Clicking **Create Account** triggers a validation check to verify the credentials. If the validation fails, an error message is displayed to help you troubleshoot.
+
+## Automated Credential Rotation
+
+Accounts for certain resources, such as PostgreSQL, support automated credential rotation.
+
+You can enable rotation when creating or editing an account and set a desired interval (e.g., every 30 days). This option is only available if a [rotation account is configured](/documentation/platform/pam/getting-started/resources#automated-credential-rotation) on the resource.
+![Rotate Credentials Account](/images/pam/getting-started/resources/rotate-credentials-account.png)
