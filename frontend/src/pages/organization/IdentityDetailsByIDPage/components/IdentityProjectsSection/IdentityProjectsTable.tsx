@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -7,6 +6,7 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo } from "react";
 
 import {
   EmptyState,
@@ -151,7 +151,7 @@ export const IdentityProjectsTable = ({ identityId, handlePopUpOpen }: Props) =>
             title={
               projectMemberships.length
                 ? "No projects match search..."
-                : "This identity has not been assigned to any projects"
+                : "This machine identity has not been assigned to any projects"
             }
             icon={projectMemberships.length ? faSearch : faFolder}
           />

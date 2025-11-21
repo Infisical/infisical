@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -18,8 +18,8 @@ import {
 } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -58,7 +58,7 @@ export const AccessManagementPage = () => {
     },
     {
       key: OrgAccessControlTabSections.Identities,
-      label: "Identities",
+      label: "Machine Identities",
       isHidden: permission.cannot(
         OrgPermissionIdentityActions.Read,
         OrgPermissionSubjects.Identity
@@ -84,7 +84,7 @@ export const AccessManagementPage = () => {
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
           title="Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
+          description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
           <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">

@@ -1,6 +1,6 @@
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
@@ -44,7 +44,7 @@ const Page = () => {
         <PageHeader
           scope={currentProject.type}
           title="Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your project resources."
+          description="Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
         />
         <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
           <TabList>
@@ -55,7 +55,7 @@ const Page = () => {
               Groups
             </Tab>
             <Tab variant="project" value={ProjectAccessControlTabs.Identities}>
-              Identities
+              Machine Identities
             </Tab>
             {isSecretManager && (
               <Tab variant="project" value={ProjectAccessControlTabs.ServiceTokens}>

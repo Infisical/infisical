@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
-import { SingleValue } from "react-select";
 import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useMemo, useState } from "react";
+import { SingleValue } from "react-select";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
@@ -229,8 +229,8 @@ export const RelayCliDeploymentMethod = () => {
       {canCreateToken && autogenerateToken ? (
         <>
           <FormLabel
-            label="Identity"
-            tooltipText="The identity that your relay will use for authentication."
+            label="Machine Identity"
+            tooltipText="The machine identity that your relay will use for authentication."
             className="mt-4"
           />
           <FilterableSelect
@@ -244,7 +244,7 @@ export const RelayCliDeploymentMethod = () => {
               )
             }
             isLoading={isIdentitiesLoading}
-            placeholder="Select identity..."
+            placeholder="select machine identity..."
             options={identityMembershipOrgs.map((membership) => membership.identity)}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
@@ -254,8 +254,8 @@ export const RelayCliDeploymentMethod = () => {
       ) : (
         <>
           <FormLabel
-            label="Identity Token"
-            tooltipText="The identity token that your relay will use for authentication."
+            label="Machine Identity Token"
+            tooltipText="The machine identity token that your relay will use for authentication."
             className="mt-4"
           />
           <Input
@@ -279,15 +279,15 @@ export const RelayCliDeploymentMethod = () => {
             className="mr-2"
           >
             <div className="flex items-center">
-              <span>Automatically enable token auth and generate a token for identity</span>
+              <span>Automatically enable token auth and generate a token for machine identity</span>
               <Tooltip
                 className="max-w-md"
                 content={
                   <>
-                    Token authentication will be automatically enabled for the selected identity if
-                    it isn&apos;t already configured. By default, it will be configured to allow all
-                    IP addresses with a token TTL of 30 days. You can manage these settings in
-                    Access Control.
+                    Token authentication will be automatically enabled for the selected machine
+                    identity if it isn&apos;t already configured. By default, it will be configured
+                    to allow all IP addresses with a token TTL of 30 days. You can manage these
+                    settings in Access Control.
                     <br />
                     <br />A token will automatically be generated to be used with the CLI command.
                   </>
