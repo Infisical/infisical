@@ -82,7 +82,7 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
             <FilterableSelect
               value={value}
               onChange={onChange}
-              placeholder="select machine identity..."
+              placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
               options={rootOrgIdentities}
               getOptionValue={(option) => option.id}

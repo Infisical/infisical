@@ -244,7 +244,7 @@ export const RelayCliDeploymentMethod = () => {
               )
             }
             isLoading={isIdentitiesLoading}
-            placeholder="select machine identity..."
+            placeholder="Select machine identity..."
             options={identityMembershipOrgs.map((membership) => membership.identity)}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}

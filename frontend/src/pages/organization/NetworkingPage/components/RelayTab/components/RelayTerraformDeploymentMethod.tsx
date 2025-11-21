@@ -364,7 +364,7 @@ resource "aws_eip_association" "eip_assoc" {
               )
             }
             isLoading={isIdentitiesLoading}
-            placeholder="select machine identity..."
+            placeholder="Select machine identity..."
             options={identityMembershipOrgs.map((membership) => membership.identity)}
             getOptionValue={(option) => option.id}
             getOptionLabel={(option) => option.name}
