@@ -163,7 +163,7 @@ export const ProjectSelect = () => {
                         }
                       });
                       const urlInstance = new URL(
-                        `${window.location.origin}/${url.to.replaceAll("$projectId", workspace.id)}`
+                        `${window.location.origin}${url.to.replaceAll("$orgId", url.params.orgId).replaceAll("$projectId", url.params.projectId)}`
                       );
                       if (currentOrg?.subOrganization) {
                         urlInstance.searchParams.set(

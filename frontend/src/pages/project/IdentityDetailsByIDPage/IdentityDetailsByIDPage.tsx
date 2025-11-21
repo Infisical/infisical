@@ -95,7 +95,9 @@ const Page = () => {
             text: "Identity privilege assumption has started"
           });
           const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
-          window.location.href = url.replace("$projectId", currentProject.id);
+          window.location.assign(
+            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+          );
         }
       }
     );

@@ -20,9 +20,14 @@ export default function TeamInviteStep(): JSX.Element {
   const { mutateAsync } = useAddUsersToOrg();
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["setUpEmail"] as const);
 
+  const orgId = String(localStorage.getItem("orgData.id"));
+
   // Redirect user to the getting started page
   const redirectToHome = async () => {
-    navigate({ to: "/" as const });
+    navigate({
+      to: orgId ? ("/organizations/$orgId/projects" as const) : "/",
+      params: { orgId }
+    });
   };
 
   const inviteUsers = async ({ emails: inviteEmails }: { emails: string }) => {
@@ -32,7 +37,7 @@ export default function TeamInviteStep(): JSX.Element {
       .map(async (email) => {
         mutateAsync({
           inviteeEmails: [email],
-          organizationId: String(localStorage.getItem("orgData.id")),
+          organizationId: orgId,
           organizationRoleSlug: "member"
         });
       });
