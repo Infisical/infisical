@@ -1,7 +1,7 @@
 ---
 title: "AWS Lambda"
 sidebarTitle: "AWS Lambda"
-description: "Keep AWS Lambda environment variables in sync with Infisical"
+description: "How to use Infisical secrets in AWS Lambda"
 ---
 
 Learn how to sync Infisical secrets to AWS Lambda regardless of how you deploy your function.  
@@ -19,19 +19,12 @@ This guide covers the following strategies:
 If you control the Lambda code, the simplest method is to fetch secrets directly from Infisical using one of our SDKs.  
 You can read more about the Infisical SDKs [here](/sdks/overview).
 
-### 2. Sync secrets using AWS Secrets Manager
+### 2. Push via secret sync
 
-Infisical can continuously push secrets into AWS Secrets Manager.  
-Configure a secret sync from your Infisical project, and Infisical will keep your Secrets Manager values up to date. Your Lambda function can then reference those secrets directly.  
-Learn more about the AWS Secrets Manager integration [here](/integrations/secret-syncs/aws-secrets-manager).
+Configure a secret sync from your Infisical project, and Infisical will keep your Secrets Manager or Parameter Store values up to date. Your Lambda function can then reference those secrets directly.  
+Learn more about the [AWS Secrets Manager integration](/integrations/secret-syncs/aws-secrets-manager) and the [AWS Parameter Store integration](/integrations/secret-syncs/aws-parameter-store).
 
-### 3. Sync secrets using AWS Systems Manager Parameter Store
-
-Similarly, Infisical can automatically sync secrets into AWS Systems Manager Parameter Store.  
-Once configured, your Parameter Store values will remain up to date and can be referenced by your Lambda function.  
-Learn more about the Parameter Store integration [here](/integrations/secret-syncs/aws-parameter-store).
-
-### 4. Push environment variables directly using the AWS CLI
+### 3. Push environment variables directly using the AWS CLI
 
 For straightforward workflows or quick rotations, you can push Infisical secrets directly into Lambda environment variables using the AWS CLI.
 
@@ -93,26 +86,14 @@ On success, the updated `Environment.Variables` block will be returned.
 Verify the values in the Lambda console or by invoking the function.
 
 <Tip>
-  {" "}
-  Automate this step in CI/CD. Run `infisical export` using an Infisical API key
-  scoped to your project and environment, and trigger the sync as part of your deployment
-  workflow.{" "}
+  Automate this step in CI/CD. Run `infisical export` using an Infisical API
+  Token scoped to your project and environment, and trigger the sync as part of
+  your deployment workflow. Learn more about the [Infisical API
+  Token](/cli/commands/login#user:plain-token-output-useful-for-scripting-and-ci-cd).
 </Tip>
 
-#### Test your Lambda
-
-Deploy or update your Lambda function, then run a test invocation to confirm the secrets were loaded correctly.
-For example, a simple Node.js handler might log the environment variables:
-
-```javascript
-export const handler = async () => {
-  const allEnvVars = process.env;
-  console.log("Environment Variables:", JSON.stringify(allEnvVars, null, 2));
-};
-```
-
-<Tip>
+<Note>
   We recommend using automatic secret syncs to AWS Secrets Manager or AWS
-  Systems Manager Parameter Store to keep your secrets continuously in sync and
-  avoid manually updating the Lambda configuration.
-</Tip>
+  Parameter Store to keep your secrets continuously in sync and avoid manually
+  updating the Lambda configuration.
+</Note>
