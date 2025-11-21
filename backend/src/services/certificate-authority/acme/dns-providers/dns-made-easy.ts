@@ -66,6 +66,12 @@ export const dnsMadeEasyInsertTxtRecord = async (
         (error.response?.data as { error?: string[] | string })?.error ||
         error.message ||
         "Unknown error";
+
+      if (error.status === 400 && error.message.includes("already exists")) {
+        logger.info({ domain, value }, `Record already exists for domain: ${domain} and value: ${value}`);
+        return;
+      }
+
       throw new Error(typeof errorMessage === "string" ? errorMessage : String(errorMessage));
     }
     throw error;
