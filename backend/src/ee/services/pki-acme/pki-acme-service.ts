@@ -703,9 +703,6 @@ export const pkiAcmeServiceFactory = ({
 
         // Check and validate the CSR
         const certificateRequest = extractCertificateRequestFromCSR(csr);
-        if (!certificateRequest.commonName) {
-          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name is required" });
-        }
         if (
           certificateRequest.subjectAlternativeNames?.some(
             (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
@@ -721,7 +718,7 @@ export const pkiAcmeServiceFactory = ({
         const csrIdentifierValues = new Set(
           (certificateRequest.subjectAlternativeNames ?? [])
             .map((san) => san.value.toLowerCase())
-            .concat([certificateRequest.commonName.toLowerCase()])
+            .concat(certificateRequest.commonName ? [certificateRequest.commonName.toLowerCase()] : [])
         );
         if (
           csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
@@ -758,7 +755,8 @@ export const pkiAcmeServiceFactory = ({
                     }
                   : // ttl is not used if notAfter is provided
                     ({ ttl: "0d" } as const),
-                enrollmentType: EnrollmentType.ACME
+                enrollmentType: EnrollmentType.ACME,
+                allowEmptyCommonName: true
               });
               return { certificateId: result.certificateId };
             }

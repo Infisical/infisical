@@ -1577,7 +1577,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       keyUsages,
       extendedKeyUsages,
       signatureAlgorithm,
-      keyAlgorithm
+      keyAlgorithm,
+      allowEmptyCommonName
     } = dto;
 
     let collectionId = pkiCollectionId;
@@ -1716,12 +1717,18 @@ export const internalCertificateAuthorityServiceFactory = ({
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
     const dn = parseDistinguishedName(csrObj.subject);
-    const cn = commonName || dn.commonName;
+    let cn = commonName || dn.commonName;
 
-    if (!cn)
+    if ((allowEmptyCommonName ?? false) && !cn) {
+      // Notice: for modern TLS certificates, the CN is deprecated, many ACME clients will generate CSRs with without a CN
+      //         we allow empty CN here to support ACME clients mostly. Since it's unclear what's the side effect of
+      //         allowing empty CN for legacy PKI code, let's only do it if a true allowEmptyCommonName value is provided.
+      cn = "";
+    } else if (!cn) {
       throw new BadRequestError({
         message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
       });
+    }
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,

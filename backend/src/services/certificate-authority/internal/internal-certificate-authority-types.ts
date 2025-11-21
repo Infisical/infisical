@@ -164,6 +164,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      allowEmptyCommonName?: boolean;
     }
   | ({
       isInternal: false;
@@ -183,6 +184,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      allowEmptyCommonName?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {

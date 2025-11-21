@@ -511,7 +511,8 @@ export const certificateV3ServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     enrollmentType,
-    removeRootsFromChain
+    removeRootsFromChain,
+    allowEmptyCommonName
   }: TSignCertificateFromProfileDTO): Promise<Omit<TCertificateFromProfileResponse, "privateKey">> => {
     const profile = await validateProfileAndPermissions(
       profileId,
@@ -582,7 +583,8 @@ export const certificateV3ServiceFactory = ({
         notAfter: normalizeDateForApi(notAfter),
         signatureAlgorithm: effectiveSignatureAlgorithm,
         keyAlgorithm: effectiveKeyAlgorithm,
-        isFromProfile: true
+        isFromProfile: true,
+        allowEmptyCommonName
       });
 
     const cert = await certificateDAL.findOne({ serialNumber, caId: ca.id });

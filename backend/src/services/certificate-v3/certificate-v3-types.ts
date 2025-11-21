@@ -39,6 +39,7 @@ export type TSignCertificateFromProfileDTO = {
   notAfter?: Date;
   enrollmentType: EnrollmentType;
   removeRootsFromChain?: boolean;
+  allowEmptyCommonName?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
