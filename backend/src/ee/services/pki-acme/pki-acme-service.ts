@@ -755,8 +755,7 @@ export const pkiAcmeServiceFactory = ({
                     }
                   : // ttl is not used if notAfter is provided
                     ({ ttl: "0d" } as const),
-                enrollmentType: EnrollmentType.ACME,
-                allowEmptyCommonName: true
+                enrollmentType: EnrollmentType.ACME
               });
               return { certificateId: result.certificateId };
             }
