@@ -95,6 +95,48 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
         )}
       />
 
+      <Controller
+        control={control}
+        name="syncOptions.includeRootCa"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl isError={Boolean(error)} errorText={error?.message}>
+            <Switch
+              className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+              id="include-root-ca"
+              thumbClassName="bg-mineshaft-800"
+              onCheckedChange={onChange}
+              isChecked={value}
+            >
+              <p>
+                Include Root CA in Certificate Chain{" "}
+                <Tooltip
+                  className="max-w-md"
+                  content={
+                    <>
+                      <p>
+                        When enabled, the full certificate chain including the root CA will be
+                        synced to the destination.
+                      </p>
+                      <p className="mt-4">
+                        When disabled, the root CA will be excluded from the certificate chain
+                        during sync operations, reducing the size of the synced certificate chain.
+                      </p>
+                      <p className="mt-4">
+                        Most applications and services work correctly with intermediate certificates
+                        only, as they can validate the trust chain up to a root CA they already
+                        trust.
+                      </p>
+                    </>
+                  }
+                >
+                  <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                </Tooltip>
+              </p>
+            </Switch>
+          </FormControl>
+        )}
+      />
+
       {currentDestination === PkiSync.AwsCertificateManager && (
         <Controller
           control={control}
@@ -170,6 +212,97 @@ export const PkiSyncOptionsFields = ({ destination }: Props) => {
                         <p className="mt-4">
                           When disabled, new certificates will be created with new names, and old
                           certificates will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.AwsSecretsManager && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveSecretOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-secret-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Secret on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> When a certificate
+                          is renewed in Infisical, this option controls how the renewed certificate
+                          is handled in AWS Secrets Manager.
+                        </p>
+                        <p className="mt-4">
+                          When enabled, the renewed certificate will update the existing secret,
+                          preserving the same secret name and ARN. This allows consuming services to
+                          continue using the same secret reference without requiring updates.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, the renewed certificate will be created as a new secret
+                          with a new name, and the old secret will be removed.
+                        </p>
+                      </>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
+            </FormControl>
+          )}
+        />
+      )}
+
+      {currentDestination === PkiSync.Chef && (
+        <Controller
+          control={control}
+          name="syncOptions.preserveItemOnRenewal"
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/80 shadow-inner data-[state=checked]:bg-green/80"
+                id="preserve-item-on-renewal"
+                thumbClassName="bg-mineshaft-800"
+                onCheckedChange={onChange}
+                isChecked={value}
+              >
+                <p>
+                  Preserve Data Bag Item on Renewal{" "}
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <>
+                        <p>
+                          <strong>Only applies to certificate renewals:</strong> When a certificate
+                          is renewed in Infisical, this option controls how the renewed certificate
+                          is handled in Chef.
+                        </p>
+                        <p className="mt-4">
+                          When enabled, the renewed certificate will update the existing data bag
+                          item, preserving the same item name. This allows consuming services to
+                          continue using the same data bag item without requiring updates to Chef
+                          cookbooks or recipes.
+                        </p>
+                        <p className="mt-4">
+                          When disabled, the renewed certificate will be created as a new data bag
+                          item with a new name, and the old item will be removed.
                         </p>
                       </>
                     }

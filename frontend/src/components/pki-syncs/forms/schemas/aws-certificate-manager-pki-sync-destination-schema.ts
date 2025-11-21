@@ -7,6 +7,7 @@ import { BasePkiSyncSchema } from "./base-pki-sync-schema";
 const AwsCertificateManagerSyncOptionsSchema = z.object({
   canImportCertificates: z.boolean().default(false),
   canRemoveCertificates: z.boolean().default(false),
+  includeRootCa: z.boolean().default(false),
   preserveArn: z.boolean().default(true),
   certificateNameSchema: z
     .string()

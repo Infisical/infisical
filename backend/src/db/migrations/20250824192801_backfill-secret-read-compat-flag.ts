@@ -14,13 +14,16 @@ export async function up(knex: Knex): Promise<void> {
     if (rows.length > 0) {
       for (let i = 0; i < rows.length; i += BATCH_SIZE) {
         const batch = rows.slice(i, i + BATCH_SIZE);
+        const ids = batch.map((row) => row.id);
         // eslint-disable-next-line no-await-in-loop
-        await knex(TableName.SecretApprovalPolicy)
-          .whereIn(
-            "id",
-            batch.map((row) => row.id)
-          )
-          .update({ shouldCheckSecretPermission: true });
+        await knex.raw(
+          `
+          UPDATE ??
+          SET ?? = true
+          WHERE ?? IN (${ids.map(() => "?").join(",")})
+          `,
+          [TableName.SecretApprovalPolicy, "shouldCheckSecretPermission", "id", ids]
+        );
       }
     }
   }

@@ -4,8 +4,9 @@ import { TDbClient } from "@app/db";
 import { AccessScope, TableName, TGroups } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
+import { OrderByDirection } from "@app/lib/types";
 
-import { EFilterReturnedUsers } from "./group-types";
+import { EFilterReturnedProjects, EFilterReturnedUsers, EGroupProjectsOrderBy } from "./group-types";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
@@ -166,6 +167,89 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllGroupProjects = async ({
+    orgId,
+    groupId,
+    offset,
+    limit,
+    search,
+    filter,
+    orderBy,
+    orderDirection
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    search?: string;
+    filter?: EFilterReturnedProjects;
+    orderBy?: EGroupProjectsOrderBy;
+    orderDirection?: OrderByDirection;
+  }) => {
+    try {
+      const query = db
+        .replicaNode()(TableName.Project)
+        .where(`${TableName.Project}.orgId`, orgId)
+        .leftJoin(TableName.Membership, (bd) => {
+          bd.on(`${TableName.Project}.id`, "=", `${TableName.Membership}.scopeProjectId`)
+            .andOn(`${TableName.Membership}.actorGroupId`, "=", db.raw("?", [groupId]))
+            .andOn(`${TableName.Membership}.scope`, "=", db.raw("?", [AccessScope.Project]));
+        })
+        .select(
+          db.ref("id").withSchema(TableName.Project),
+          db.ref("name").withSchema(TableName.Project),
+          db.ref("slug").withSchema(TableName.Project),
+          db.ref("description").withSchema(TableName.Project),
+          db.ref("type").withSchema(TableName.Project),
+          db.ref("createdAt").withSchema(TableName.Membership).as("joinedGroupAt"),
+          db.raw(`count(*) OVER() as "totalCount"`)
+        )
+        .offset(offset ?? 0);
+
+      if (orderBy) {
+        void query.orderByRaw(
+          `LOWER(${TableName.Project}.??) ${orderDirection === OrderByDirection.ASC ? "asc" : "desc"}`,
+          [orderBy]
+        );
+      }
+
+      if (limit) {
+        void query.limit(limit);
+      }
+
+      if (search) {
+        void query.andWhereRaw(
+          `CONCAT_WS(' ', "${TableName.Project}"."name", "${TableName.Project}"."slug", "${TableName.Project}"."description") ilike ?`,
+          [`%${search}%`]
+        );
+      }
+
+      switch (filter) {
+        case EFilterReturnedProjects.ASSIGNED_PROJECTS:
+          void query.whereNotNull(`${TableName.Membership}.id`);
+          break;
+        case EFilterReturnedProjects.UNASSIGNED_PROJECTS:
+          void query.whereNull(`${TableName.Membership}.id`);
+          break;
+        default:
+          break;
+      }
+
+      const projects = await query;
+
+      return {
+        projects: projects.map(({ joinedGroupAt, ...project }) => ({
+          ...project,
+          joinedGroupAt
+        })),
+        // @ts-expect-error col select is raw and not strongly typed
+        totalCount: Number(projects?.[0]?.totalCount ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all group projects" });
+    }
+  };
+
   const findGroupsByProjectId = async (projectId: string, tx?: Knex) => {
     try {
       const docs = await (tx || db.replicaNode())(TableName.Groups)
@@ -230,6 +314,7 @@ export const groupDALFactory = (db: TDbClient) => {
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
+    findAllGroupProjects,
     findGroupsByProjectId,
     findById,
     findOne

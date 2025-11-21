@@ -10,8 +10,12 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 
 import { AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-constants";
 import { awsCertificateManagerPkiSyncFactory } from "./aws-certificate-manager/aws-certificate-manager-pki-sync-fns";
+import { AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION } from "./aws-secrets-manager/aws-secrets-manager-pki-sync-constants";
+import { awsSecretsManagerPkiSyncFactory } from "./aws-secrets-manager/aws-secrets-manager-pki-sync-fns";
 import { AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION } from "./azure-key-vault/azure-key-vault-pki-sync-constants";
 import { azureKeyVaultPkiSyncFactory } from "./azure-key-vault/azure-key-vault-pki-sync-fns";
+import { chefPkiSyncFactory } from "./chef/chef-pki-sync-fns";
+import { CHEF_PKI_SYNC_LIST_OPTION } from "./chef/chef-pki-sync-list-constants";
 import { PkiSync } from "./pki-sync-enums";
 import { TCertificateMap, TPkiSyncWithCredentials } from "./pki-sync-types";
 
@@ -19,7 +23,9 @@ const ENTERPRISE_PKI_SYNCS: PkiSync[] = [];
 
 const PKI_SYNC_LIST_OPTIONS = {
   [PkiSync.AzureKeyVault]: AZURE_KEY_VAULT_PKI_SYNC_LIST_OPTION,
-  [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION
+  [PkiSync.AwsCertificateManager]: AWS_CERTIFICATE_MANAGER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.AwsSecretsManager]: AWS_SECRETS_MANAGER_PKI_SYNC_LIST_OPTION,
+  [PkiSync.Chef]: CHEF_PKI_SYNC_LIST_OPTION
 };
 
 export const enterprisePkiSyncCheck = async (
@@ -162,6 +168,8 @@ export const PkiSyncFns = {
     dependencies: {
       appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
       kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
+      certificateDAL: TCertificateDALFactory;
+      certificateSyncDAL: TCertificateSyncDALFactory;
     }
   ): Promise<TCertificateMap> => {
     switch (pkiSync.destination) {
@@ -173,6 +181,14 @@ export const PkiSyncFns = {
       case PkiSync.AwsCertificateManager: {
         throw new Error(
           "AWS Certificate Manager does not support importing certificates into Infisical (private keys cannot be extracted)"
+        );
+      }
+      case PkiSync.AwsSecretsManager: {
+        throw new Error("AWS Secrets Manager does not support importing certificates into Infisical");
+      }
+      case PkiSync.Chef: {
+        throw new Error(
+          "Chef does not support importing certificates into Infisical (private keys cannot be extracted securely)"
         );
       }
       default:
@@ -203,7 +219,7 @@ export const PkiSyncFns = {
   }> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
-        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
+        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault as PkiSync);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
@@ -213,7 +229,7 @@ export const PkiSyncFns = {
         return azureKeyVaultPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       case PkiSync.AwsCertificateManager: {
-        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager as PkiSync);
         const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
@@ -221,6 +237,22 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         return awsCertificateManagerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.AwsSecretsManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsSecretsManager as PkiSync);
+        const awsSecretsManagerPkiSync = awsSecretsManagerPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return awsSecretsManagerPkiSync.syncCertificates(pkiSync, certificateMap);
+      }
+      case PkiSync.Chef: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
+        const chefPkiSync = chefPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        return chefPkiSync.syncCertificates(pkiSync, certificateMap);
       }
       default:
         throw new Error(`Unsupported PKI sync destination: ${String(pkiSync.destination)}`);
@@ -240,7 +272,7 @@ export const PkiSyncFns = {
   ): Promise<void> => {
     switch (pkiSync.destination) {
       case PkiSync.AzureKeyVault: {
-        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault);
+        checkPkiSyncDestination(pkiSync, PkiSync.AzureKeyVault as PkiSync);
         const azureKeyVaultPkiSync = azureKeyVaultPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
@@ -254,7 +286,7 @@ export const PkiSyncFns = {
         break;
       }
       case PkiSync.AwsCertificateManager: {
-        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager);
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsCertificateManager as PkiSync);
         const awsCertificateManagerPkiSync = awsCertificateManagerPkiSyncFactory({
           appConnectionDAL: dependencies.appConnectionDAL,
           kmsService: dependencies.kmsService,
@@ -262,6 +294,27 @@ export const PkiSyncFns = {
           certificateSyncDAL: dependencies.certificateSyncDAL
         });
         await awsCertificateManagerPkiSync.removeCertificates(pkiSync, certificateNames, {
+          certificateSyncDAL: dependencies.certificateSyncDAL,
+          certificateMap: dependencies.certificateMap
+        });
+        break;
+      }
+      case PkiSync.AwsSecretsManager: {
+        checkPkiSyncDestination(pkiSync, PkiSync.AwsSecretsManager as PkiSync);
+        const awsSecretsManagerPkiSync = awsSecretsManagerPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await awsSecretsManagerPkiSync.removeCertificates(pkiSync, dependencies.certificateMap);
+        break;
+      }
+      case PkiSync.Chef: {
+        checkPkiSyncDestination(pkiSync, PkiSync.Chef as PkiSync);
+        const chefPkiSync = chefPkiSyncFactory({
+          certificateDAL: dependencies.certificateDAL,
+          certificateSyncDAL: dependencies.certificateSyncDAL
+        });
+        await chefPkiSync.removeCertificates(pkiSync, certificateNames, {
           certificateSyncDAL: dependencies.certificateSyncDAL,
           certificateMap: dependencies.certificateMap
         });
