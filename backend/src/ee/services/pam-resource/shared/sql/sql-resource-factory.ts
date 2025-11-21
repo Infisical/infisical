@@ -122,7 +122,7 @@ const makeSqlConnection = (
           await client.raw(`ALTER USER :username: WITH PASSWORD '${newPassword.replace(/'/g, "''")}'`, {
             username: currentCredentials.username
           });
-          return { username: currentCredentials.username, password: newPassword };
+          return { ...currentCredentials, password: newPassword };
         },
         close: () => client.destroy()
       };

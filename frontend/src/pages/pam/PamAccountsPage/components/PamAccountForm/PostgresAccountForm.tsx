@@ -12,10 +12,9 @@ import {
 } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
-import { BaseSqlAccountSchema } from "./shared/sql-account-schemas";
-import { SqlAccountFields } from "./shared/SqlAccountFields";
-import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
-import { RotateAccountFields, rotateAccountFieldsSchema } from "./RotateAccountFields";
+import { baseSqlAccountFieldsSchema, SqlAccountFields } from "./shared/SqlAccountFields";
+import { GenericAccountFields } from "./GenericAccountFields";
+import { RotateAccountFields } from "./RotateAccountFields";
 
 type Props = {
   account?: TPostgresAccount;
@@ -24,17 +23,13 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const formSchema = genericAccountFieldsSchema.extend(rotateAccountFieldsSchema.shape).extend({
-  credentials: BaseSqlAccountSchema
-});
-
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<typeof baseSqlAccountFieldsSchema>;
 
 export const PostgresAccountForm = ({ account, resourceId, resourceType, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(baseSqlAccountFieldsSchema),
     defaultValues: account
       ? {
           ...account,
