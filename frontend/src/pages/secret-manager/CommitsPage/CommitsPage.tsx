@@ -26,6 +26,10 @@ export const CommitsPage = () => {
     from: ROUTE_PATHS.SecretManager.CommitsPage.id,
     select: (el) => el.folderId
   });
+  const orgId = useParams({
+    from: ROUTE_PATHS.SecretManager.CommitsPage.id,
+    select: (el) => el.orgId
+  });
   const routerQueryParams: { secretPath?: string } = useSearch({
     from: ROUTE_PATHS.SecretManager.CommitsPage.id
   });
@@ -34,8 +38,9 @@ export const CommitsPage = () => {
 
   const handleSelectCommit = (commitId: string) => {
     navigate({
-      to: "/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId/$commitId",
       params: {
+        orgId,
         projectId: currentProject.id,
         folderId,
         environment: envSlug,
@@ -52,8 +57,9 @@ export const CommitsPage = () => {
     <div className="mx-auto mb-4 flex h-full w-full max-w-8xl justify-center bg-bunker-800 text-white">
       <div className="w-full">
         <Link
-          to="/projects/secret-management/$projectId/secrets/$envSlug"
+          to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
           params={{
+            orgId,
             projectId: currentProject.id,
             envSlug
           }}

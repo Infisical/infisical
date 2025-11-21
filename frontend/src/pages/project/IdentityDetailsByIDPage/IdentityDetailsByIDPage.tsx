@@ -95,7 +95,9 @@ const Page = () => {
             text: "Identity privilege assumption has started"
           });
           const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
-          window.location.href = url.replace("$projectId", currentProject.id);
+          window.location.assign(
+            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+          );
         }
       }
     );
@@ -114,7 +116,8 @@ const Page = () => {
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
-        projectId
+        projectId,
+        orgId: currentOrg.id
       },
       search: {
         selectedTab: "identities"
@@ -137,7 +140,8 @@ const Page = () => {
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
-              projectId
+              projectId,
+              orgId: currentOrg.id
             }}
             search={{
               selectedTab: ProjectAccessControlTabs.Identities
@@ -223,9 +227,10 @@ const Page = () => {
                   {(isAllowed) =>
                     isAllowed ? (
                       <Link
-                        to="/organization/identities/$identityId"
+                        to="/organizations/$orgId/identities/$identityId"
                         params={{
-                          identityId
+                          identityId,
+                          orgId: currentOrg.id
                         }}
                       >
                         <span className="cursor-pointer text-info underline underline-offset-2">

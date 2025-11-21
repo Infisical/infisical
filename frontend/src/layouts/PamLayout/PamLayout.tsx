@@ -4,13 +4,14 @@ import { motion } from "framer-motion";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
-import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import { usePopUp } from "@app/hooks";
 
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const PamLayout = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const { subscription } = useSubscription();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const location = useLocation();
@@ -42,32 +43,36 @@ export const PamLayout = () => {
               <Tabs value="selected">
                 <TabList className="border-b-0">
                   <Link
-                    to="/projects/pam/$projectId/accounts"
+                    to="/organizations/$orgId/projects/pam/$projectId/accounts"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Accounts</Tab>}
                   </Link>
                   <Link
-                    to="/projects/pam/$projectId/resources"
+                    to="/organizations/$orgId/projects/pam/$projectId/resources"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Resources</Tab>}
                   </Link>
                   <Link
-                    to="/projects/pam/$projectId/sessions"
+                    to="/organizations/$orgId/projects/pam/$projectId/sessions"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Sessions</Tab>}
                   </Link>
                   <Link
-                    to="/projects/pam/$projectId/access-management"
+                    to="/organizations/$orgId/projects/pam/$projectId/access-management"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
@@ -85,16 +90,18 @@ export const PamLayout = () => {
                     )}
                   </Link>
                   <Link
-                    to="/projects/pam/$projectId/audit-logs"
+                    to="/organizations/$orgId/projects/pam/$projectId/audit-logs"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >
                     {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                   </Link>
                   <Link
-                    to="/projects/pam/$projectId/settings"
+                    to="/organizations/$orgId/projects/pam/$projectId/settings"
                     params={{
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     }}
                   >

@@ -12,7 +12,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetWorkspaceById } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -28,7 +28,7 @@ const cloudflareEnvironments = [
 export const CloudflarePagesConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const integrationAuthId = useSearch({
@@ -92,8 +92,9 @@ export const CloudflarePagesConfigurePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

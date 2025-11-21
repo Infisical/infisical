@@ -249,7 +249,7 @@ export const Navbar = () => {
 
   const isServerAdminPanel = location.pathname.startsWith("/admin");
 
-  const isOrgScope = location.pathname.startsWith("/organization"); // TODO: scott/akhil is this adequate?
+  const isProjectScope = location.pathname.startsWith(`/organizations/${currentOrg.id}/projects`);
 
   const handleOrgNav = async (org: Organization) => {
     if (currentOrg?.id === org.id) return;
@@ -282,7 +282,7 @@ export const Navbar = () => {
     <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4 pt-1">
       <div className="mr-auto flex items-center overflow-hidden">
         <div className="shrink-0">
-          <Link to="/organization/projects">
+          <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
             <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
           </Link>
         </div>
@@ -314,7 +314,7 @@ export const Navbar = () => {
                     // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
                     className={twMerge(
                       "gap-x-1.5 text-sm",
-                      (!isOrgScope || isSubOrganization) &&
+                      (isProjectScope || isSubOrganization) &&
                         "bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-org"
                     )}
                   >
@@ -322,8 +322,8 @@ export const Navbar = () => {
                       type="button"
                       onClick={async () => {
                         navigate({
-                          to: "/organization/projects",
-                          search: (search) => ({ ...search, subOrganization: undefined })
+                          to: "/organizations/$orgId/projects",
+                          params: { orgId: currentOrg.id }
                         });
                         if (isSubOrganization) {
                           await router.invalidate({ sync: true }).catch(() => null);
@@ -407,8 +407,8 @@ export const Navbar = () => {
                               <DropdownMenuItem
                                 onClick={async () => {
                                   navigate({
-                                    to: "/organization/projects",
-                                    search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                                    to: "/organizations/$orgId/projects",
+                                    params: { orgId: subOrg.id }
                                   });
                                   await router.invalidate({ sync: true }).catch(() => null);
                                 }}
@@ -477,11 +477,11 @@ export const Navbar = () => {
                     // TODO(scott): either add badge size/style variant or create designated component for namespace/org nav bar
                     className={twMerge(
                       "gap-x-1.5 text-sm",
-                      !isOrgScope &&
+                      isProjectScope &&
                         "min-w-6 bg-transparent text-mineshaft-200 hover:!bg-transparent hover:underline [&>svg]:!text-sub-org"
                     )}
                   >
-                    <Link to="/organization/projects">
+                    <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
                       <SubOrgIcon className="size-[12px]" />
                       <span>{currentOrg.subOrganization.name}</span>
                     </Link>
@@ -511,8 +511,8 @@ export const Navbar = () => {
                       <DropdownMenuItem
                         onClick={async () => {
                           navigate({
-                            to: "/organization/projects",
-                            search: (prev) => ({ ...prev, subOrganization: subOrg.name })
+                            to: "/organizations/$orgId/projects",
+                            params: { orgId: subOrg.id }
                           });
                           await router.invalidate({ sync: true }).catch(() => null);
                         }}
@@ -541,7 +541,7 @@ export const Navbar = () => {
                 </DropdownMenu>
               </>
             )}
-            {!isOrgScope && (
+            {isProjectScope && (
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 {breadcrumbs ? (
@@ -593,7 +593,8 @@ export const Navbar = () => {
               isAllowed ? (
                 <Link
                   className="mr-2 flex h-[34px] items-center rounded-md border border-mineshaft-500 px-2.5 py-1.5 text-sm whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
-                  to="/organization/access-management"
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
                   search={{
                     selectedTab: "members",
                     action: "invite-members"
@@ -696,7 +697,8 @@ export const Navbar = () => {
             {(isAllowed) =>
               isAllowed ? (
                 <Link
-                  to="/organization/access-management"
+                  to="/organizations/$orgId/access-management"
+                  params={{ orgId: currentOrg.id }}
                   search={{
                     selectedTab: "members",
                     action: "invite-members"
@@ -778,7 +780,11 @@ export const Navbar = () => {
               </div>
               <div className="mt-4">
                 <div className="flex space-x-3">
-                  <Link to="/organization/billing" className="inline-flex">
+                  <Link
+                    to="/organizations/$orgId/billing"
+                    params={{ orgId: currentOrg.id }}
+                    className="inline-flex"
+                  >
                     <Button
                       colorSchema="primary"
                       variant="solid"

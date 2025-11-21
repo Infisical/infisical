@@ -12,7 +12,10 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
 
   if (organizationId) {
     localStorage.setItem("orgData.id", organizationId);
-    navigate({ to: "/organization/projects" });
+    navigate({
+      to: "/organizations/$orgId/projects",
+      params: { orgId: organizationId }
+    });
     return;
   }
 
@@ -20,11 +23,14 @@ export const navigateUserToOrg = async (navigate: NavigateFn, organizationId?: s
     // user is part of at least 1 non-auth enforced org
     const userOrg = nonAuthEnforcedOrgs[0] && nonAuthEnforcedOrgs[0].id;
     localStorage.setItem("orgData.id", userOrg);
-    navigate({ to: "/organization/projects" });
+    navigate({
+      to: "/organizations/$orgId/projects",
+      params: { orgId: userOrg }
+    });
   } else {
     // user is not part of any non-auth enforced orgs
     localStorage.removeItem("orgData.id");
-    navigate({ to: "/organization/none" });
+    navigate({ to: "/organizations/none" });
   }
 };
 

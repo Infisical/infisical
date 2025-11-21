@@ -59,8 +59,9 @@ const Content = ({ role, onClose }: ContentProps) => {
     });
 
     navigate({
-      to: "/organization/roles/$roleId",
+      to: "/organizations/$orgId/roles/$roleId" as const,
       params: {
+        orgId: role.orgId,
         roleId: newRole.id
       }
     });

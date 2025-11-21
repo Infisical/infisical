@@ -277,6 +277,7 @@ export const IdentityTab = withProjectPermission(
                           navigate({
                             to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                             params: {
+                              orgId: currentOrg.id,
                               projectId: currentProject.id,
                               identityId: id
                             }
@@ -287,6 +288,7 @@ export const IdentityTab = withProjectPermission(
                         navigate({
                           to: `${getProjectBaseURL(currentProject.type)}/identities/$identityId` as const,
                           params: {
+                            orgId: currentOrg.id,
                             projectId: currentProject.id,
                             identityId: id
                           }

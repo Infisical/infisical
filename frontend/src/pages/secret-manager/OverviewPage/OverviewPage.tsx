@@ -20,7 +20,7 @@ import {
   faRotate
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, useNavigate, useRouter, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams, useRouter, useSearch } from "@tanstack/react-router";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -164,6 +164,11 @@ export const OverviewPage = () => {
       secretPath: el.secretPath,
       search: el.search
     })
+  });
+
+  const orgId = useParams({
+    from: ROUTE_PATHS.SecretManager.OverviewPage.id,
+    select: (el) => el.orgId
   });
   const [scrollOffset, setScrollOffset] = useState(0);
   const [debouncedScrollOffset] = useDebounce(scrollOffset);
@@ -658,8 +663,9 @@ export const OverviewPage = () => {
     const envIndex = visibleEnvs.findIndex((el) => slug === el.slug);
     if (envIndex !== -1) {
       navigate({
-        to: "/projects/secret-management/$projectId/secrets/$envSlug",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug",
         params: {
+          orgId,
           projectId,
           envSlug: slug
         },
@@ -1417,8 +1423,9 @@ export const OverviewPage = () => {
                         iconSize="3x"
                       >
                         <Link
-                          to="/projects/secret-management/$projectId/settings"
+                          to="/organizations/$orgId/projects/secret-management/$projectId/settings"
                           params={{
+                            orgId,
                             projectId
                           }}
                           hash="environments"

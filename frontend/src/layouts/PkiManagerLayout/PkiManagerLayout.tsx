@@ -2,7 +2,7 @@ import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 
 import { Tab, TabList, Tabs } from "@app/components/v2";
-import { useProject, useProjectPermission, useSubscription } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useSubscription } from "@app/context";
 import {
   useListWorkspaceCertificateTemplates,
   useListWorkspacePkiSubscribers
@@ -11,6 +11,7 @@ import {
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const PkiManagerLayout = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const { subscription } = useSubscription();
@@ -42,16 +43,18 @@ export const PkiManagerLayout = () => {
             <Tabs value="selected">
               <TabList className="border-b-0">
                 <Link
-                  to="/projects/cert-management/$projectId/policies"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/policies"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Certificates</Tab>}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/certificate-authorities"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -62,24 +65,27 @@ export const PkiManagerLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/alerting"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/alerting"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Alerting</Tab>}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/integrations"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/integrations"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Integrations</Tab>}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/app-connections"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/app-connections"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -89,8 +95,9 @@ export const PkiManagerLayout = () => {
                   <>
                     {(subscription.pkiLegacyTemplates || hasExistingSubscribers) && (
                       <Link
-                        to="/projects/cert-management/$projectId/subscribers"
+                        to="/organizations/$orgId/projects/cert-management/$projectId/subscribers"
                         params={{
+                          orgId: currentOrg.id,
                           projectId: currentProject.id
                         }}
                       >
@@ -101,8 +108,9 @@ export const PkiManagerLayout = () => {
                     )}
                     {(subscription.pkiLegacyTemplates || hasExistingTemplates) && (
                       <Link
-                        to="/projects/cert-management/$projectId/certificate-templates"
+                        to="/organizations/$orgId/projects/cert-management/$projectId/certificate-templates"
                         params={{
+                          orgId: currentOrg.id,
                           projectId: currentProject.id
                         }}
                       >
@@ -116,8 +124,9 @@ export const PkiManagerLayout = () => {
                   </>
                 )}
                 <Link
-                  to="/projects/cert-management/$projectId/access-management"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/access-management"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -135,16 +144,18 @@ export const PkiManagerLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/audit-logs"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/audit-logs"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
-                  to="/projects/cert-management/$projectId/settings"
+                  to="/organizations/$orgId/projects/cert-management/$projectId/settings"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >

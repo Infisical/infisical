@@ -70,7 +70,8 @@ export default function NavHeader({
         {currentOrg?.name?.charAt(0)}
       </div>
       <Link
-        to="/organization/projects"
+        to="/organizations/$orgId/projects"
+        params={{ orgId: currentOrg.id }}
         className="truncate pl-0.5 text-sm font-medium text-primary/80 hover:text-primary"
       >
         {currentOrg?.name}
@@ -90,8 +91,8 @@ export default function NavHeader({
       <FontAwesomeIcon icon={faAngleRight} className="mr-3 ml-3 text-sm text-gray-400" />
       {pageName === "Secrets" ? (
         <Link
-          to="/projects/secret-management/$projectId/overview"
-          params={{ projectId: currentProject.id }}
+          to="/organizations/$orgId/projects/secret-management/$projectId/overview"
+          params={{ orgId: currentOrg?.id || "", projectId: currentProject.id }}
           className="text-sm font-medium text-primary/80 hover:text-primary"
         >
           {pageName}
@@ -126,8 +127,8 @@ export default function NavHeader({
         <div className="flex items-center space-x-3">
           <FontAwesomeIcon icon={faAngleRight} className="mr-1.5 ml-3 text-xs text-gray-400" />
           <Link
-            to="/projects/secret-management/$projectId/secrets/$envSlug"
-            params={{ projectId: currentProject.id, envSlug: routerEnvSlug }}
+            to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
+            params={{ orgId: currentOrg.id, projectId: currentProject.id, envSlug: routerEnvSlug }}
             className="text-sm font-medium text-primary/80 hover:text-primary"
           >
             {userAvailableEnvs?.find(({ slug }) => slug === currentEnv)?.name}
@@ -188,8 +189,9 @@ export default function NavHeader({
                 </div>
               ) : (
                 <Link
-                  to="/projects/secret-management/$projectId/secrets/$envSlug"
+                  to="/organizations/$orgId/projects/secret-management/$projectId/secrets/$envSlug"
                   params={{
+                    orgId: currentOrg?.id || "",
                     projectId: currentProject.id,
                     envSlug: routerEnvSlug || ""
                   }}

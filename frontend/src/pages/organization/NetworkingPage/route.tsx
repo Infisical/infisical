@@ -10,7 +10,7 @@ const NetworkingPageQueryParams = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/networking"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking"
 )({
   component: NetworkingPage,
   validateSearch: zodValidator(NetworkingPageQueryParams),

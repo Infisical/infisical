@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
@@ -18,6 +18,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
@@ -29,6 +30,7 @@ const Page = () => {
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       search: (prev) => ({ ...prev, selectedTab: tab }),
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       }
     });

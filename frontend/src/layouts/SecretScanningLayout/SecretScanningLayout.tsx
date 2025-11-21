@@ -5,6 +5,7 @@ import { Tab, TabList, Tabs } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission,
   useSubscription
@@ -15,6 +16,7 @@ import { useGetSecretScanningUnresolvedFindingCount } from "@app/hooks/api/secre
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SecretScanningLayout = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
 
@@ -50,16 +52,18 @@ export const SecretScanningLayout = () => {
             <Tabs value="selected">
               <TabList className="border-b-0">
                 <Link
-                  to="/projects/secret-scanning/$projectId/data-sources"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/data-sources"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Data Sources</Tab>}
                 </Link>
                 <Link
-                  to="/projects/secret-scanning/$projectId/findings"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/findings"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -75,16 +79,18 @@ export const SecretScanningLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/secret-scanning/$projectId/app-connections"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/app-connections"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>App Connections</Tab>}
                 </Link>
                 <Link
-                  to="/projects/secret-scanning/$projectId/access-management"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/access-management"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -102,16 +108,18 @@ export const SecretScanningLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/secret-scanning/$projectId/audit-logs"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/audit-logs"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
-                  to="/projects/secret-scanning/$projectId/settings"
+                  to="/organizations/$orgId/projects/secret-scanning/$projectId/settings"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >

@@ -1037,7 +1037,7 @@ export const secretApprovalRequestServiceFactory = ({
           bypassReason,
           secretPath: policy.secretPath,
           environment: env.name,
-          approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval`
+          approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
         },
         template: SmtpTemplates.AccessSecretRequestBypassed
       });
@@ -1416,7 +1416,7 @@ export const secretApprovalRequestServiceFactory = ({
     const env = await projectEnvDAL.findOne({ id: policy.envId });
     const user = await userDAL.findById(actorId);
 
-    const projectPath = `/projects/secret-management/${projectId}`;
+    const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${projectId}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;
@@ -1792,7 +1792,7 @@ export const secretApprovalRequestServiceFactory = ({
     const user = await userDAL.findById(actorId);
     const env = await projectEnvDAL.findOne({ id: policy.envId });
 
-    const projectPath = `/projects/secret-management/${project.id}`;
+    const projectPath = `/organizations/${actorOrgId}/projects/secret-management/${project.id}`;
     const approvalPath = `${projectPath}/approval`;
     const cfg = getConfig();
     const approvalUrl = `${cfg.SITE_URL}${approvalPath}`;

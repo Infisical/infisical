@@ -16,7 +16,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 enum AwsAuthType {
@@ -40,6 +40,7 @@ type TForm = z.infer<typeof formSchema>;
 
 export const AWSParameterStoreAuthorizeIntegrationPage = () => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { mutateAsync } = useSaveIntegrationAccessToken();
 
@@ -68,8 +69,9 @@ export const AWSParameterStoreAuthorizeIntegrationPage = () => {
       });
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/aws-parameter-store/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/aws-parameter-store/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

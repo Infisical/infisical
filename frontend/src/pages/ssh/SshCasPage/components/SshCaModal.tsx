@@ -15,7 +15,7 @@ import {
   SelectItem,
   TextArea
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateSshCa, useGetSshCaById, useUpdateSshCa } from "@app/hooks/api";
 import {
   SshCaKeySource,
@@ -55,6 +55,7 @@ export type FormData = z.infer<typeof schema>;
 export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const navigate = useNavigate();
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
   const { data: ca } = useGetSshCaById((popUp?.sshCa?.data as { caId: string })?.caId || "");
 
@@ -124,8 +125,9 @@ export const SshCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       });
 
       navigate({
-        to: "/projects/ssh/$projectId/ca/$caId",
+        to: "/organizations/$orgId/projects/ssh/$projectId/ca/$caId",
         params: {
+          orgId: currentOrg.id,
           projectId,
           caId: newCaId
         }

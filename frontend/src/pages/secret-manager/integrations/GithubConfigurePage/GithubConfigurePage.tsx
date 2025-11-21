@@ -35,7 +35,7 @@ import {
   Tabs
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
@@ -139,7 +139,7 @@ type FormData = z.infer<typeof schema>;
 export const GithubConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.GithubConfigurePage.id,
@@ -265,8 +265,9 @@ export const GithubConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

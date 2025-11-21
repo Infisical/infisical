@@ -21,6 +21,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject
 } from "@app/context";
 import { useDeletePkiSubscriber, useGetPkiSubscriber } from "@app/hooks/api";
@@ -32,6 +33,7 @@ import { PkiSubscriberCertificatesSection, PkiSubscriberDetailsSection } from ".
 
 const Page = () => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const projectId = currentProject.id;
   const subscriberName = useParams({
@@ -62,8 +64,9 @@ const Page = () => {
 
     handlePopUpClose("deletePkiSubscriber");
     navigate({
-      to: "/projects/cert-management/$projectId/subscribers",
+      to: "/organizations/$orgId/projects/cert-management/$projectId/subscribers",
       params: {
+        orgId: currentOrg.id,
         projectId
       }
     });
@@ -74,8 +77,9 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/subscribers"
+            to="/organizations/$orgId/projects/cert-management/$projectId/subscribers"
             params={{
+              orgId: currentOrg.id,
               projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"

@@ -15,7 +15,7 @@ import {
   Select,
   SelectItem
 } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations } from "@app/hooks/api";
 
@@ -32,7 +32,7 @@ export const GithubAuthorizePage = () => {
   const githubIntegration = cloudIntegrations?.find((integration) => integration.slug === "github");
   const [selectedAuthMethod, setSelectedAuthMethod] = useState<AuthMethod>(AuthMethod.APP);
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Helmet>
@@ -82,8 +82,9 @@ export const GithubAuthorizePage = () => {
               onClick={() => {
                 if (selectedAuthMethod === AuthMethod.APP) {
                   navigate({
-                    to: "/projects/secret-management/$projectId/integrations/select-integration-auth",
+                    to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/select-integration-auth",
                     params: {
+                      orgId: currentOrg.id,
                       projectId: currentProject.id
                     },
                     search: {

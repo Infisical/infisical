@@ -5,13 +5,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 export const DatabricksAuthorizePage = () => {
   const navigate = useNavigate();
   const { mutateAsync, isPending } = useSaveIntegrationAccessToken();
-
+  const { currentOrg } = useOrganization();
   const [apiKey, setApiKey] = useState("");
   const [instanceURL, setInstanceURL] = useState("");
   const [apiKeyErrorText, setApiKeyErrorText] = useState("");
@@ -40,8 +40,9 @@ export const DatabricksAuthorizePage = () => {
       });
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/databricks/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/databricks/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

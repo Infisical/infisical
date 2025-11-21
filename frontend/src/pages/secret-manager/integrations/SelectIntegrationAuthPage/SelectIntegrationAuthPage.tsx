@@ -119,8 +119,9 @@ export const SelectIntegrationAuthPage = () => {
     if (integrationSlug === "github") {
       if (integrationAuth.projectId === currentProject?.id) {
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/github/create",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/github/create",
           params: {
+            orgId: currentOrg.id,
             projectId: currentProject.id
           },
           search: {
@@ -135,8 +136,9 @@ export const SelectIntegrationAuthPage = () => {
         });
 
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/github/create",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/github/create",
           params: {
+            orgId: currentOrg.id,
             projectId: currentProject.id
           },
           search: {

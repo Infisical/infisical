@@ -61,7 +61,8 @@ const Page = () => {
 
     handlePopUpClose("deleteIdentity");
     navigate({
-      to: "/organization/access-management",
+      to: "/organizations/$orgId/access-management" as const,
+      params: { orgId },
       search: {
         selectedTab: OrgAccessControlTabSections.Identities
       }
@@ -73,7 +74,8 @@ const Page = () => {
       {data && (
         <div className="mx-auto w-full max-w-8xl">
           <Link
-            to="/organization/access-management"
+            to="/organizations/$orgId/access-management"
+            params={{ orgId }}
             search={{
               selectedTab: OrgAccessControlTabSections.Identities
             }}

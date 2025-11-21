@@ -6,6 +6,7 @@ import { format } from "date-fns";
 
 import { createNotification } from "@app/components/notifications";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { useGetUserProjects } from "@app/hooks/api";
@@ -33,6 +34,7 @@ export const IdentityProjectRow = ({
 }: Props) => {
   const { data: workspaces } = useGetUserProjects();
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
 
   const isAccessible = useMemo(() => {
     const workspaceIds = new Map();
@@ -53,6 +55,7 @@ export const IdentityProjectRow = ({
           navigate({
             to: `${getProjectBaseURL(project.type)}/access-management` as const,
             params: {
+              orgId: currentOrg?.id || "",
               projectId: project.id
             },
             search: {

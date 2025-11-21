@@ -235,8 +235,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                     <Tr
                       onClick={() =>
                         navigate({
-                          to: "/organization/groups/$groupId",
+                          to: "/organizations/$orgId/groups/$groupId",
                           params: {
+                            orgId,
                             groupId: id
                           }
                         })
@@ -334,8 +335,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faUserGroup} />}
                                   onClick={() =>
                                     navigate({
-                                      to: "/organization/groups/$groupId",
+                                      to: "/organizations/$orgId/groups/$groupId",
                                       params: {
+                                        orgId,
                                         groupId: id
                                       }
                                     })

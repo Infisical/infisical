@@ -11,7 +11,7 @@ import {
   SelectItem
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
   useGetIntegrationAuthApps,
@@ -25,6 +25,7 @@ export const RailwayConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const [targetAppId, setTargetAppId] = useState("");
   const [targetEnvironmentId, setTargetEnvironmentId] = useState("");
@@ -108,8 +109,9 @@ export const RailwayConfigurePage = () => {
       setIsLoading(false);
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

@@ -742,7 +742,7 @@ export const secretQueueFactory = ({
           environment: jobPayload.environmentName,
           count: jobPayload.count,
           projectName: project.name,
-          integrationUrl: `${appCfg.SITE_URL}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
+          integrationUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
         }
       });
     }
