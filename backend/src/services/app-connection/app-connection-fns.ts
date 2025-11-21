@@ -176,7 +176,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
   AppConnection.AzureKeyVault,
-  AppConnection.Chef
+  AppConnection.Chef,
+  AppConnection.DNSMadeEasy
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -223,8 +224,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
-    getChefConnectionListItem(),
-    getDNSMadeEasyConnectionListItem()
+    getChefConnectionListItem()
   ]
     .filter((option) => {
       switch (projectType) {
