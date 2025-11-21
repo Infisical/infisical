@@ -26,7 +26,7 @@ interface DNSMadeEasyApiResponse {
   page: number;
 }
 
-const getDNSMadeEasyUrl = (path: string) => {
+export const getDNSMadeEasyUrl = (path: string) => {
   const appCfg = getConfig();
   return `${appCfg.DNS_MADE_EASY_SANDBOX_ENABLED ? IntegrationUrls.DNS_MADE_EASY_SANDBOX_API_URL : IntegrationUrls.DNS_MADE_EASY_API_URL}${path}`;
 };

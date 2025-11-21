@@ -1,36 +1,12 @@
 import axios from "axios";
 
-import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
-import { crypto } from "@app/lib/crypto/cryptography";
-import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
-import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
 import { logger } from "@app/lib/logger";
-
-const getDNSMadeEasyUrl = (path: string) => {
-  const appCfg = getConfig();
-  return `${appCfg.DNS_MADE_EASY_SANDBOX_ENABLED ? IntegrationUrls.DNS_MADE_EASY_SANDBOX_API_URL : IntegrationUrls.DNS_MADE_EASY_API_URL}${path}`;
-};
-
-const makeDNSMadeEasyAuthHeaders = (
-  apiKey: string,
-  secretKey: string,
-  currentDate: Date = new Date()
-): Record<string, string> => {
-  // Format date as "Day, DD Mon YYYY HH:MM:SS GMT" (e.g., "Mon, 01 Jan 2024 12:00:00 GMT")
-  const requestDate = currentDate.toUTCString();
-
-  // Generate HMAC-SHA1 signature
-  const hmac = crypto.nativeCrypto.createHmac("sha1", secretKey);
-  hmac.update(requestDate);
-  const hmacSignature = hmac.digest("hex");
-
-  return {
-    "x-dnsme-apiKey": apiKey,
-    "x-dnsme-hmac": hmacSignature,
-    "x-dnsme-requestDate": requestDate
-  };
-};
+import {
+  getDNSMadeEasyUrl,
+  makeDNSMadeEasyAuthHeaders
+} from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-fns";
+import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 
 export const dnsMadeEasyInsertTxtRecord = async (
   connection: TDNSMadeEasyConnection,
