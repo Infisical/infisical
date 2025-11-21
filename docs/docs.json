@@ -833,7 +833,8 @@
                       "documentation/platform/pam/getting-started/resources",
                       "documentation/platform/pam/getting-started/accounts"
                     ]
-                  }
+                  },
+                  "documentation/platform/pam/architecture"
                 ]
               },
               {

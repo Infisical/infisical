@@ -6,29 +6,63 @@ description: "Manage and secure access to critical infrastructure like databases
 
 Infisical Privileged Access Management (PAM) provides a centralized way to manage and secure access to your critical infrastructure. It allows you to enforce fine-grained, policy-based controls over resources like databases, servers, and more, ensuring that only authorized users can access sensitive systems, and only when they need to.
 
-Infisical PAM organizes access around your resources (e.g., databases, servers, web apps). This resource-centric approach makes it intuitive to manage permissions and scale your security policies as your infrastructure grows.
+## Core Concepts
+
+To successfully implement Infisical PAM, it is essential to understand the relationship between the following components:
+
+<CardGroup cols={3}>
+  <Card title="Gateway" icon="server">
+    A lightweight service deployed in your network that acts as a secure bridge to your private infrastructure.
+  </Card>
+  <Card title="Resource" icon="database">
+    The specific target you are protecting (e.g., a PostgreSQL database or an Ubuntu server) that resides behind a Gateway.
+  </Card>
+  <Card title="Account" icon="user-lock">
+    Specific credentials (username/password) used to authenticate against a Resource. One Resource can have multiple Accounts.
+  </Card>
+</CardGroup>
+
+### Relationship Model
+
+The hierarchy is structured as follows:
+
+1.  **Gateway**: Deployed once per network/VPC. It provides connectivity to all resources in that environment.
+2.  **Resource**: Configured within Infisical. It points to a specific IP/Host accessible by the Gateway.
+3.  **Account**: Defined under a Resource. Users request access to a specific *Account* on a *Resource*.
+
+## How it Works
+
+Infisical PAM uses a proxy-based architecture. When a user accesses a resource, their connection is routed securely through a Relay to your self-hosted Gateway, which then connects to the target resource. This ensures zero-trust access without exposing your infrastructure to the public internet.
+
+For a deep dive into the technical architecture and security model, see [Architecture](/documentation/platform/pam/architecture).
+
+## Setup Workflow
+
+Follow this sequence to get up and running with PAM:
+
+<Steps>
+  <Step title="Deploy a Gateway">
+    Before you can manage any resources, you must deploy an **Infisical Gateway** within your infrastructure. This component is responsible for brokering connections to your private resources.
+    
+    [Read the Gateway Deployment Guide](/documentation/platform/gateways/gateway-deployment)
+  </Step>
+  <Step title="Create a Resource">
+    Once the Gateway is active, define a **Resource** in Infisical (e.g., "Production Database"). You will link this resource to your deployed Gateway so Infisical knows how to reach it.
+    
+    [Learn about Resources](/documentation/platform/pam/getting-started/resources)
+  </Step>
+  <Step title="Add Accounts">
+    Add **Accounts** to your Resource (e.g., `postgres` or `read_only_user`). These are the actual credentials Infisical will inject when a user connects.
+    
+    [Learn about Accounts](/documentation/platform/pam/getting-started/accounts)
+  </Step>
+  <Step title="Connect">
+    Users can now use the Infisical CLI to securely connect to the resource using the defined accounts, with full auditing and session recording enabled.
+  </Step>
+</Steps>
 
 ## Core Capabilities
 
 - **[Auditing](/documentation/platform/pam/product-reference/auditing)**: Track and review a comprehensive log of all user actions and system events.
 - **[Session Recording](/documentation/platform/pam/product-reference/session-recording)**: Record and playback user sessions for security reviews, compliance, and troubleshooting.
 - **[Automated Credential Rotation](/documentation/platform/pam/getting-started/resources#automated-credential-rotation)**: Automatically rotate credentials for supported resources to minimize the risk of compromised credentials.
-
-## Getting Started
-
-<Columns cols="2">
-    <Card
-        icon="box"
-        title="Creating a Resource"
-        href="/documentation/platform/pam/getting-started/resources#creating-a-resource"
-    >
-        Add and configure the databases, servers, and other infrastructure you want to protect.
-    </Card>
-    <Card
-        icon="user"
-        title="Creating an Account"
-        href="/documentation/platform/pam/getting-started/accounts#creating-an-account"
-    >
-        Create accounts that users will use to access your protected resources.
-    </Card>
-</Columns>
