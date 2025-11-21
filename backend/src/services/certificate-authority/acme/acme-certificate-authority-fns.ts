@@ -14,6 +14,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
+import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -43,8 +44,8 @@ import {
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
+import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
-import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
@@ -308,6 +309,7 @@ export const orderCertificate = async (
             recordName,
             recordValue
           );
+          break;
         }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
