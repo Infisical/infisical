@@ -1,13 +1,12 @@
 import { AxiosError } from "axios";
 
+import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
 import { IntegrationUrls } from "@app/services/integration-auth/integration-list";
-import https from "https";
 
-import { getConfig } from "@app/lib/config/env";
 import { DNSMadeEasyConnectionMethod } from "./dns-made-easy-connection-enum";
 import {
   TDNSMadeEasyConnection,
@@ -100,10 +99,6 @@ export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeE
 
   try {
     const resp = await request.get(getDNSMadeEasyUrl("/V2.0/dns/managed/"), {
-      httpAgent: new https.Agent({
-        minVersion: "TLSv1.2",
-        maxVersion: "TLSv1.2"
-      }),
       headers: {
         ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
         Accept: "application/json"
