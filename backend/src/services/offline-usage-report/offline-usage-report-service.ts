@@ -1,7 +1,8 @@
 import crypto from "crypto";
 
+import { getLicenseKeyConfig } from "@app/ee/services/license/license-fns";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
-import { getConfig } from "@app/lib/config/env";
+import { LicenseType } from "@app/ee/services/license/license-types";
 import { BadRequestError } from "@app/lib/errors";
 
 import { TOfflineUsageReportDALFactory } from "./offline-usage-report-dal";
@@ -30,10 +31,13 @@ export const offlineUsageReportServiceFactory = ({
   };
 
   const generateUsageReportCSV = async () => {
-    const cfg = getConfig();
-    if (!cfg.LICENSE_KEY_OFFLINE) {
+    const licenseKeyConfig = getLicenseKeyConfig();
+    const hasOfflineLicense = licenseKeyConfig.isValid && licenseKeyConfig.type === LicenseType.Offline;
+
+    if (!hasOfflineLicense) {
       throw new BadRequestError({
-        message: "Offline usage reports are not enabled. LICENSE_KEY_OFFLINE must be configured."
+        message:
+          "Offline usage reports are not enabled. Usage reports are only available for self-hosted offline instances"
       });
     }
 

@@ -2,7 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { EFilterReturnedUsers, TGroup, TGroupUser } from "./types";
+import { OrderByDirection } from "../generic/types";
+import {
+  EFilterReturnedProjects,
+  EFilterReturnedUsers,
+  TGroup,
+  TGroupProject,
+  TGroupUser
+} from "./types";
 
 export const groupKeys = {
   getGroupById: (groupId: string) => [{ groupId }, "group"] as const,
@@ -41,6 +48,29 @@ export const groupKeys = {
       ...groupKeys.forGroupUserMemberships(slug),
       projectId,
       { offset, limit, search, filter }
+    ] as const,
+  allGroupProjects: () => ["group-projects"] as const,
+  forGroupProjects: (groupId: string) => [...groupKeys.allGroupProjects(), groupId] as const,
+  specificGroupProjects: ({
+    groupId,
+    offset,
+    limit,
+    search,
+    filter,
+    orderBy,
+    orderDirection
+  }: {
+    groupId: string;
+    offset: number;
+    limit: number;
+    search: string;
+    filter?: EFilterReturnedProjects;
+    orderBy?: string;
+    orderDirection?: OrderByDirection;
+  }) =>
+    [
+      ...groupKeys.forGroupProjects(groupId),
+      { offset, limit, search, filter, orderBy, orderDirection }
     ] as const
 };
 
@@ -139,6 +169,57 @@ export const useListProjectGroupUsers = ({
 
       const { data } = await apiRequest.get<{ users: TGroupUser[]; totalCount: number }>(
         `/api/v1/projects/${projectId}/groups/${id}/users`,
+        {
+          params
+        }
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useListGroupProjects = ({
+  id,
+  offset = 0,
+  limit = 10,
+  search,
+  filter,
+  orderBy,
+  orderDirection
+}: {
+  id: string;
+  offset: number;
+  limit: number;
+  search: string;
+  orderBy?: string;
+  orderDirection?: OrderByDirection;
+  filter?: EFilterReturnedProjects;
+}) => {
+  return useQuery({
+    queryKey: groupKeys.specificGroupProjects({
+      groupId: id,
+      offset,
+      limit,
+      search,
+      filter,
+      orderBy,
+      orderDirection
+    }),
+    enabled: Boolean(id),
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit),
+        search,
+        ...(filter && { filter }),
+        ...(orderBy && { orderBy }),
+        ...(orderDirection && { orderDirection })
+      });
+
+      const { data } = await apiRequest.get<{ projects: TGroupProject[]; totalCount: number }>(
+        `/api/v1/groups/${id}/projects`,
         {
           params
         }

@@ -196,3 +196,62 @@ export const convertExtendedKeyUsageArrayToLegacy = (
 ): CertExtendedKeyUsage[] | undefined => {
   return usages?.map(convertToLegacyExtendedKeyUsage);
 };
+
+/**
+ * Parses a PEM-formatted certificate chain and returns individual certificates
+ * @param certificateChain - PEM-formatted certificate chain
+ * @returns Array of individual PEM certificates
+ */
+const parseCertificateChain = (certificateChain: string): string[] => {
+  if (!certificateChain || typeof certificateChain !== "string") {
+    return [];
+  }
+
+  const certRegex = new RE2(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g);
+  const certificates = certificateChain.match(certRegex);
+
+  return certificates ? certificates.map((cert) => cert.trim()) : [];
+};
+
+/**
+ * Removes the root CA certificate from a certificate chain, leaving only intermediate certificates.
+ * If the chain contains only the root CA certificate, returns an empty string.
+ *
+ * @param certificateChain - PEM-formatted certificate chain containing leaf + intermediates + root CA
+ * @returns PEM-formatted certificate chain with only intermediate certificates (no root CA)
+ */
+export const removeRootCaFromChain = (certificateChain?: string): string => {
+  if (!certificateChain || typeof certificateChain !== "string") {
+    return "";
+  }
+
+  const certificates = parseCertificateChain(certificateChain);
+
+  if (certificates.length === 0) {
+    return "";
+  }
+
+  const intermediateCerts = certificates.slice(0, -1);
+
+  return intermediateCerts.join("\n");
+};
+
+/**
+ * Extracts the root CA certificate from a certificate chain.
+ *
+ * @param certificateChain - PEM-formatted certificate chain containing leaf + intermediates + root CA
+ * @returns PEM-formatted root CA certificate, or empty string if not found
+ */
+export const extractRootCaFromChain = (certificateChain?: string): string => {
+  if (!certificateChain || typeof certificateChain !== "string") {
+    return "";
+  }
+
+  const certificates = parseCertificateChain(certificateChain);
+
+  if (certificates.length === 0) {
+    return "";
+  }
+
+  return certificates[certificates.length - 1];
+};

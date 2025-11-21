@@ -354,6 +354,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
             <div>
               <h4 className="text-sm font-medium text-mineshaft-300">Certificate Details</h4>
               <p className="text-sm text-mineshaft-400">Serial Number: {cert.serialNumber}</p>
+              <p className="text-sm text-mineshaft-400">Certificate Id: {cert.id}</p>
               <p className="text-sm text-mineshaft-400">Common Name: {cert.commonName}</p>
               <p className="text-sm text-mineshaft-400">Status: {cert.status}</p>
             </div>

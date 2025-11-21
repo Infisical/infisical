@@ -26,6 +26,7 @@ export type TIssueCertificateFromProfileDTO = {
     signatureAlgorithm?: string;
     keyAlgorithm?: string;
   };
+  removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TSignCertificateFromProfileDTO = {
@@ -37,6 +38,7 @@ export type TSignCertificateFromProfileDTO = {
   notBefore?: Date;
   notAfter?: Date;
   enrollmentType: EnrollmentType;
+  removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TOrderCertificateFromProfileDTO = {
@@ -57,6 +59,7 @@ export type TOrderCertificateFromProfileDTO = {
     signatureAlgorithm?: string;
     keyAlgorithm?: string;
   };
+  removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCertificateFromProfileResponse = {
@@ -101,6 +104,7 @@ export type TCertificateOrderResponse = {
 
 export type TRenewCertificateDTO = {
   certificateId: string;
+  removeRootsFromChain?: boolean;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {
