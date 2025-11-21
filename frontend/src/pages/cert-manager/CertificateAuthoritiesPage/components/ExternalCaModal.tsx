@@ -229,7 +229,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
-    return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
+    return [
+      ...(availableRoute53Connections || []),
+      ...(availableCloudflareConnections || []),
+      ...(availableDNSMadeEasyConnections || [])
+    ];
   }, [
     caType,
     availableRoute53Connections,
