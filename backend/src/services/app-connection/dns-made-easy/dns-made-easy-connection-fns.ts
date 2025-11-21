@@ -60,12 +60,6 @@ export const getDNSMadeEasyConnectionListItem = () => {
 };
 
 export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection): Promise<TDNSMadeEasyZone[]> => {
-  // TODO: Implement DNS Made Easy zones listing
-  // This should call the DNS Made Easy API to list all zones/domains
-  // Example API endpoint: GET https://api.dnsmadeeasy.com/V2.0/dns/managed
-  // Authentication: Use API key and secret from appConnection.credentials
-  // Return format: Array of { id: string, name: string }
-
   if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
     throw new Error("Unsupported DNS Made Easy connection method");
   }
@@ -75,10 +69,42 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
   } = appConnection;
 
   try {
-    // TODO:
     const allZones: TDNSMadeEasyZone[] = [];
+    let currentPage = 0;
+    let totalPages = 1;
+
+    // Fetch all pages of zones
+    while (currentPage < totalPages) {
+      // eslint-disable-next-line no-await-in-loop
+      const resp = await request.get<DNSMadeEasyApiResponse>(getDNSMadeEasyUrl("/V2.0/dns/managed/"), {
+        headers: {
+          ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
+          Accept: "application/json"
+        },
+        params: {
+          page: currentPage
+        }
+      });
+
+      if (resp.data?.data) {
+        // Map the API response to TDNSMadeEasyZone format
+        const zones = resp.data.data.map((zone) => ({
+          id: String(zone.id),
+          name: zone.name
+        }));
+        allZones.push(...zones);
+
+        // Update pagination info
+        totalPages = resp.data.totalPages || 1;
+        currentPage += 1;
+      } else {
+        break;
+      }
+    }
+
     return allZones;
   } catch (error: unknown) {
+    logger.error(error, "Error listing DNS Made Easy zones");
     if (error instanceof AxiosError) {
       throw new BadRequestError({
         // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
