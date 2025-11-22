@@ -1,11 +1,11 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";
@@ -92,7 +92,7 @@ const Page = () => {
         onSuccess: () => {
           createNotification({
             type: "success",
-            text: "Identity privilege assumption has started"
+            text: "Machine identity privilege assumption has started"
           });
           const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
           window.location.assign(
@@ -109,7 +109,7 @@ const Page = () => {
       projectId
     });
     createNotification({
-      text: "Successfully removed identity from project",
+      text: "Successfully removed machine identity from project",
       type: "success"
     });
     handlePopUpClose("deleteIdentity");
@@ -149,12 +149,12 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Identities
+            Machine Identities
           </Link>
           <PageHeader
             scope={currentProject.type}
             title={identityMembershipDetails?.identity?.name}
-            description={`Identity ${isProjectIdentity ? "created" : "added"} on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
+            description={`Machine identity ${isProjectIdentity ? "created" : "added"} on ${identityMembershipDetails?.createdAt && formatRelative(new Date(identityMembershipDetails?.createdAt || ""), new Date())}`}
             className={!isProjectIdentity ? "mb-4" : undefined}
           >
             <div className="flex items-center gap-2">
@@ -177,7 +177,7 @@ const Page = () => {
                   identityId: identityMembershipDetails?.identity.id
                 })}
                 renderTooltip
-                allowedLabel="Assume privileges of the user"
+                allowedLabel="Assume privileges of the machine identity"
                 passThrough={false}
               >
                 {(isAllowed) => (
@@ -209,7 +209,7 @@ const Page = () => {
                       isLoading={isDeletingIdentity}
                       onClick={() => handlePopUpOpen("deleteIdentity")}
                     >
-                      Remove Identity
+                      Remove Machine Identity
                     </Button>
                   )}
                 </ProjectPermissionCan>
@@ -219,7 +219,7 @@ const Page = () => {
           {!isProjectIdentity && (
             <Alert hideTitle iconClassName="text-info" className="mb-4 border-info/50 bg-info/10">
               <AlertDescription>
-                This identity is managed by your organization.{" "}
+                This machine identity is managed by your organization.{" "}
                 <OrgPermissionCan
                   I={OrgPermissionIdentityActions.Read}
                   an={OrgPermissionSubjects.Identity}
@@ -234,7 +234,7 @@ const Page = () => {
                         }}
                       >
                         <span className="cursor-pointer text-info underline underline-offset-2">
-                          Click here to manage identity.
+                          Click here to manage machine identity.
                         </span>
                       </Link>
                     ) : null
@@ -286,15 +286,15 @@ const Page = () => {
           <ConfirmActionModal
             isOpen={popUp.assumePrivileges.isOpen}
             confirmKey="assume"
-            title="Do you want to assume privileges of this identity?"
-            subTitle="This will set your privileges to those of the identity for the next hour."
+            title="Do you want to assume privileges of this machine identity?"
+            subTitle="This will set your privileges to those of the machine identity for the next hour."
             onChange={(isOpen) => handlePopUpToggle("assumePrivileges", isOpen)}
             onConfirmed={handleAssumePrivileges}
             buttonText="Confirm"
           />
         </>
       ) : (
-        <EmptyState title="Error: Unable to find the identity." className="py-12" />
+        <EmptyState title="Error: Unable to find the machine identity." className="py-12" />
       )}
     </div>
   );

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   faEllipsisV,
   faMagnifyingGlass,
@@ -8,6 +7,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ServerCogIcon } from "lucide-react";
+import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -90,7 +90,7 @@ const IdentityPanelTable = ({
           value={searchIdentityFilter}
           onChange={(e) => setSearchIdentityFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search identities by name..."
+          placeholder="Search machine identities by name..."
           className="flex-1"
         />
       </div>
