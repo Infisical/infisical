@@ -66,11 +66,12 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ hostedZoneId, domain }, "Deleting TXT record for DNS Made Easy");
+  logger.info({ zoneId: hostedZoneId, domain }, "Deleting TXT record for DNS Made Easy");
   try {
     const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
 
-    if (Array.isArray(dnsRecords) && dnsRecords.length > 0) {
+    let foundRecord = false;
+    if (dnsRecords.length > 0) {
       const recordToDelete = dnsRecords.find(
         (record) => record.type === "TXT" && record.name === domain && JSON.parse(record.value) === value
       );
@@ -85,9 +86,11 @@ export const dnsMadeEasyDeleteTxtRecord = async (
             }
           }
         );
-      } else {
-        logger.warn({ domain, value }, `Record to delete not found for domain: ${domain} and value: ${value}`);
+        foundRecord = true;
       }
+    }
+    if (!foundRecord) {
+      logger.warn({ zoneId: hostedZoneId, domain, value }, "Record to delete not found");
     }
   } catch (error) {
     if (axios.isAxiosError(error)) {
