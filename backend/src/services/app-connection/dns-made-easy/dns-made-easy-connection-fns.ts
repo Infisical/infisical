@@ -35,10 +35,10 @@ export const getDNSMadeEasyUrl = (path: string) => {
 export const makeDNSMadeEasyAuthHeaders = (
   apiKey: string,
   secretKey: string,
-  currentDate: Date = new Date()
+  currentDate?: Date
 ): Record<string, string> => {
   // Format date as "Day, DD Mon YYYY HH:MM:SS GMT" (e.g., "Mon, 01 Jan 2024 12:00:00 GMT")
-  const requestDate = currentDate.toUTCString();
+  const requestDate = (currentDate ?? new Date()).toUTCString();
 
   // Generate HMAC-SHA1 signature
   const hmac = crypto.nativeCrypto.createHmac("sha1", secretKey);
