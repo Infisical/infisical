@@ -15,6 +15,10 @@ type Props = {
 };
 
 export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
+  const { protocol, hostname, port } = window.location;
+  const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
+  const siteURL = `${protocol}//${hostname}${portSuffix}`;
+
   const [duration, setDuration] = useState("4h");
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
@@ -64,9 +68,9 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     switch (account.resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
-        return `infisical pam db access-account ${account.id} --duration ${cliDuration}`;
+        return `infisical pam db access-account ${account.id} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.SSH:
-        return `infisical pam ssh access-account ${account.id} --duration ${cliDuration}`;
+        return `infisical pam ssh access-account ${account.id} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }
