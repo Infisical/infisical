@@ -14,6 +14,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
+import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -43,6 +44,7 @@ import {
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
+import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 type TAcmeCertificateAuthorityFnsDeps = {
@@ -241,7 +243,11 @@ export const orderCertificate = async (
         throw new Error("Unsupported challenge type");
       }
 
-      const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+      let recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
+      if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy) {
+        // For DNS Made Easy, we don't need to provide the domain name in the record name.
+        recordName = "_acme-challenge";
+      }
       const recordValue = `"${keyAuthorization}"`; // must be double quoted
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
@@ -257,6 +263,15 @@ export const orderCertificate = async (
         case AcmeDnsProvider.Cloudflare: {
           await cloudflareInsertTxtRecord(
             connection as TCloudflareConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.DNSMadeEasy: {
+          await dnsMadeEasyInsertTxtRecord(
+            connection as TDNSMadeEasyConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -285,6 +300,15 @@ export const orderCertificate = async (
         case AcmeDnsProvider.Cloudflare: {
           await cloudflareDeleteTxtRecord(
             connection as TCloudflareConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.DNSMadeEasy: {
+          await dnsMadeEasyDeleteTxtRecord(
+            connection as TDNSMadeEasyConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -413,6 +437,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy && appConnection.app !== AppConnection.DNSMadeEasy) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
+      });
+    }
+
     // validates permission to connect
     await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
@@ -505,6 +535,15 @@ export const AcmeCertificateAuthorityFns = ({
         ) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
+          });
+        }
+
+        if (
+          dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy &&
+          appConnection.app !== AppConnection.DNSMadeEasy
+        ) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
           });
         }
 

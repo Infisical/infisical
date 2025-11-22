@@ -72,6 +72,8 @@ import { checklyConnectionService } from "./checkly/checkly-connection-service";
 import { ValidateCloudflareConnectionCredentialsSchema } from "./cloudflare/cloudflare-connection-schema";
 import { cloudflareConnectionService } from "./cloudflare/cloudflare-connection-service";
 import { ValidateDatabricksConnectionCredentialsSchema } from "./databricks";
+import { ValidateDNSMadeEasyConnectionCredentialsSchema } from "./dns-made-easy/dns-made-easy-connection-schema";
+import { dnsMadeEasyConnectionService } from "./dns-made-easy/dns-made-easy-connection-service";
 import { databricksConnectionService } from "./databricks/databricks-connection-service";
 import { ValidateDigitalOceanConnectionCredentialsSchema } from "./digital-ocean";
 import { digitalOceanAppPlatformConnectionService } from "./digital-ocean/digital-ocean-connection-service";
@@ -167,6 +169,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Flyio]: ValidateFlyioConnectionCredentialsSchema,
   [AppConnection.GitLab]: ValidateGitLabConnectionCredentialsSchema,
   [AppConnection.Cloudflare]: ValidateCloudflareConnectionCredentialsSchema,
+  [AppConnection.DNSMadeEasy]: ValidateDNSMadeEasyConnectionCredentialsSchema,
   [AppConnection.Zabbix]: ValidateZabbixConnectionCredentialsSchema,
   [AppConnection.Railway]: ValidateRailwayConnectionCredentialsSchema,
   [AppConnection.Bitbucket]: ValidateBitbucketConnectionCredentialsSchema,
@@ -875,6 +878,7 @@ export const appConnectionServiceFactory = ({
     flyio: flyioConnectionService(connectAppConnectionById),
     gitlab: gitlabConnectionService(connectAppConnectionById, appConnectionDAL, kmsService),
     cloudflare: cloudflareConnectionService(connectAppConnectionById),
+    dnsMadeEasy: dnsMadeEasyConnectionService(connectAppConnectionById),
     zabbix: zabbixConnectionService(connectAppConnectionById),
     railway: railwayConnectionService(connectAppConnectionById),
     bitbucket: bitbucketConnectionService(connectAppConnectionById),
