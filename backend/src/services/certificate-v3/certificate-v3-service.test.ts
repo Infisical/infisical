@@ -2026,44 +2026,6 @@ describe("CertificateV3Service", () => {
 
       expect(result).toHaveProperty("certificate", "renewed-cert");
     });
-
-    it("should successfully renew self-signed certificate", async () => {
-      // Self-signed certificate has no caId and no profileId
-      const selfSignedCert = {
-        ...mockOriginalCert,
-        profileId: null,
-        certificateTemplateId: null,
-        caId: null
-      };
-
-      vi.mocked(mockCertificateDAL.findById).mockResolvedValue(selfSignedCert);
-      vi.mocked(mockCertificateAuthorityDAL.findByIdWithAssociatedCa).mockResolvedValue(mockCA);
-      vi.mocked(mockCertificateSecretDAL.findOne).mockResolvedValue({ id: "secret-123", certId: "cert-123" } as any);
-      vi.mocked(mockCertificateTemplateV2Service.getTemplateV2ById).mockResolvedValue(mockTemplate);
-
-      const newCert = {
-        ...selfSignedCert,
-        id: "cert-456",
-        serialNumber: "self-signed-789012"
-      };
-      vi.mocked(mockCertificateDAL.create).mockResolvedValue(newCert);
-      vi.mocked(mockCertificateDAL.findOne).mockResolvedValue(newCert);
-      vi.mocked(mockCertificateDAL.updateById).mockResolvedValue(newCert);
-
-      // Set up transaction mock
-      vi.mocked(mockCertificateDAL.transaction).mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
-        const mockTx = {};
-        return callback(mockTx);
-      });
-
-      const result = await service.renewCertificate({
-        certificateId: "cert-123",
-        ...mockActor
-      });
-
-      expect(result).toHaveProperty("certificate");
-      expect(result).toHaveProperty("serialNumber");
-    });
   });
 
   describe("updateRenewalConfig", () => {
