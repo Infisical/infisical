@@ -4088,6 +4088,7 @@ interface PamAccountCreateEvent {
     description?: string | null;
     rotationEnabled: boolean;
     rotationIntervalSeconds?: number | null;
+    requireMfa?: boolean | null;
   };
 }
 
@@ -4101,6 +4102,7 @@ interface PamAccountUpdateEvent {
     description?: string | null;
     rotationEnabled?: boolean;
     rotationIntervalSeconds?: number | null;
+    requireMfa?: boolean | null;
   };
 }
 

@@ -571,7 +571,10 @@ import {
   TWebhooksUpdate,
   TWorkflowIntegrations,
   TWorkflowIntegrationsInsert,
-  TWorkflowIntegrationsUpdate
+  TWorkflowIntegrationsUpdate,
+  TWebauthnCredentials,
+  TWebauthnCredentialsInsert,
+  TWebauthnCredentialsUpdate
 } from "@app/db/schemas";
 import {
   TAccessApprovalPoliciesEnvironments,
@@ -1464,6 +1467,11 @@ declare module "knex/types/tables" {
       TVaultExternalMigrationConfigs,
       TVaultExternalMigrationConfigsInsert,
       TVaultExternalMigrationConfigsUpdate
+    >;
+    [TableName.WebAuthnCredential]: KnexOriginal.CompositeTableType<
+      TWebauthnCredentials,
+      TWebauthnCredentialsInsert,
+      TWebauthnCredentialsUpdate
     >;
   }
 }
