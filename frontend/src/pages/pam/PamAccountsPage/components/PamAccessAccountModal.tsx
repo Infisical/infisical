@@ -16,7 +16,7 @@ type Props = {
 
 export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
   const { protocol, hostname, port } = window.location;
-  const portSuffix = port && port !== "80" ? `:${port}` : "";
+  const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
   const [duration, setDuration] = useState("4h");
