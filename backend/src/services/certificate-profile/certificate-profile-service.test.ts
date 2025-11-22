@@ -22,7 +22,12 @@ import type { TKmsServiceFactory } from "../kms/kms-service";
 import type { TProjectDALFactory } from "../project/project-dal";
 import type { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import { certificateProfileServiceFactory, TCertificateProfileServiceFactory } from "./certificate-profile-service";
-import { EnrollmentType, TCertificateProfile, TCertificateProfileWithConfigs } from "./certificate-profile-types";
+import {
+  EnrollmentType,
+  IssuerType,
+  TCertificateProfile,
+  TCertificateProfileWithConfigs
+} from "./certificate-profile-types";
 
 vi.mock("@app/lib/crypto/cryptography", () => ({
   crypto: {
@@ -90,6 +95,7 @@ describe("CertificateProfileService", () => {
     description: "Test certificate profile",
     slug: "test-profile",
     enrollmentType: EnrollmentType.API,
+    issuerType: IssuerType.CA,
     caId: "ca-123",
     certificateTemplateId: "template-123",
     apiConfigId: "api-config-123",
@@ -272,6 +278,7 @@ describe("CertificateProfileService", () => {
       slug: "new-profile",
       description: "New test profile",
       enrollmentType: EnrollmentType.API,
+      issuerType: IssuerType.CA,
       caId: "ca-123",
       certificateTemplateId: "template-123",
       apiConfig: {
@@ -312,6 +319,7 @@ describe("CertificateProfileService", () => {
           slug: "new-profile",
           description: "New test profile",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           apiConfigId: "api-config-123",
@@ -383,6 +391,7 @@ describe("CertificateProfileService", () => {
         slug: "invalid-profile",
         description: "Invalid test profile",
         enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
         caId: "ca-123",
         certificateTemplateId: "template-123"
       };
@@ -401,6 +410,7 @@ describe("CertificateProfileService", () => {
         slug: "api-profile",
         description: "Profile with API enrollment",
         enrollmentType: EnrollmentType.API,
+        issuerType: IssuerType.CA,
         caId: "ca-123",
         certificateTemplateId: "template-123",
         apiConfig: {
@@ -726,6 +736,7 @@ describe("CertificateProfileService", () => {
           slug: "est-profile",
           description: "Profile with EST enrollment",
           enrollmentType: EnrollmentType.EST,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           estConfig: {
@@ -776,6 +787,7 @@ describe("CertificateProfileService", () => {
           slug: "different-profile-name",
           description: "Profile with duplicate slug",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           apiConfig: {
@@ -801,6 +813,7 @@ describe("CertificateProfileService", () => {
           slug: "auto-renew-profile",
           description: "Profile with auto-renewal",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           apiConfig: {
@@ -965,6 +978,7 @@ describe("CertificateProfileService", () => {
           slug: "invalid-template-profile",
           description: "Profile with invalid template",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "nonexistent-template",
           apiConfig: {
@@ -990,6 +1004,7 @@ describe("CertificateProfileService", () => {
           slug: "concurrent-profile",
           description: "Profile created concurrently",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           apiConfig: {
@@ -1018,6 +1033,7 @@ describe("CertificateProfileService", () => {
           slug: "cross-project-profile",
           description: "Profile using template from different project",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-456",
           apiConfig: {
@@ -1047,6 +1063,7 @@ describe("CertificateProfileService", () => {
           slug: "invalid-slug-profile",
           description: "Profile with invalid slug format",
           enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           caId: "ca-123",
           certificateTemplateId: "template-123",
           apiConfig: {

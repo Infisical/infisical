@@ -2219,7 +2219,10 @@ export const registerRoutes = async (
     permissionService,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    kmsService,
+    projectDAL,
+    certificateBodyDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

@@ -1,11 +1,12 @@
 export type TCertificateProfile = {
   id: string;
   projectId: string;
-  caId: string;
+  caId: string | null;
   certificateTemplateId: string;
   slug: string;
   description?: string;
   enrollmentType: "api" | "est" | "acme";
+  issuerType: "ca" | "self-signed";
   estConfigId?: string;
   apiConfigId?: string;
   createdAt: string;
@@ -44,11 +45,12 @@ export type TCertificateProfileWithDetails = TCertificateProfile & {
 
 export type TCreateCertificateProfileDTO = {
   projectId: string;
-  caId: string;
+  caId?: string;
   certificateTemplateId: string;
   slug: string;
   description?: string;
   enrollmentType: "api" | "est" | "acme";
+  issuerType: "ca" | "self-signed";
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase: string;
@@ -65,6 +67,8 @@ export type TUpdateCertificateProfileDTO = {
   profileId: string;
   slug?: string;
   description?: string;
+  enrollmentType?: "api" | "est" | "acme";
+  issuerType?: "ca" | "self-signed";
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase?: string;
@@ -88,6 +92,8 @@ export type TListCertificateProfilesDTO = {
   search?: string;
   includeConfigs?: boolean;
   enrollmentType?: "api" | "est" | "acme";
+  issuerType?: "ca" | "self-signed";
+  caId?: string;
 };
 
 export type TGetCertificateProfileByIdDTO = {

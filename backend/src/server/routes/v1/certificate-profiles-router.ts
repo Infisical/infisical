@@ -8,7 +8,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { CertStatus } from "@app/services/certificate/certificate-types";
-import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
 
 export const registerCertificateProfilesRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -23,7 +23,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       body: z
         .object({
           projectId: z.string().min(1),
-          caId: z.string().uuid(),
+          caId: z.string().uuid().optional(),
           certificateTemplateId: z.string().uuid(),
           slug: z
             .string()
@@ -32,6 +32,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             .regex(new RE2("^[a-z0-9-]+$"), "Slug must contain only lowercase letters, numbers, and hyphens"),
           description: z.string().max(1000).optional(),
           enrollmentType: z.nativeEnum(EnrollmentType),
+          issuerType: z.nativeEnum(IssuerType).default(IssuerType.CA),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),
@@ -82,11 +83,26 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 return false;
               }
             }
+
+            if (data.issuerType === IssuerType.CA) {
+              if (!data.caId) {
+                return false;
+              }
+            }
+            if (data.issuerType === IssuerType.SELF_SIGNED) {
+              if (data.caId) {
+                return false;
+              }
+              if (data.enrollmentType !== EnrollmentType.API) {
+                return false;
+              }
+            }
+
             return true;
           },
           {
             message:
-              "EST enrollment type requires EST configuration and cannot have API or ACME configuration. API enrollment type requires API configuration and cannot have EST or ACME configuration. ACME enrollment type requires ACME configuration and cannot have EST or API configuration."
+              "EST enrollment type requires EST configuration and cannot have API or ACME configuration. API enrollment type requires API configuration and cannot have EST or ACME configuration. ACME enrollment type requires ACME configuration and cannot have EST or API configuration. CA issuer type requires a CA ID. Self-signed issuer type cannot have a CA ID and only supports API enrollment."
           }
         ),
       response: {
@@ -115,7 +131,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             certificateProfileId: certificateProfile.id,
             name: certificateProfile.slug,
             projectId: certificateProfile.projectId,
-            enrollmentType: certificateProfile.enrollmentType
+            enrollmentType: certificateProfile.enrollmentType,
+            issuerType: certificateProfile.issuerType
           }
         }
       });
@@ -139,6 +156,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         limit: z.coerce.number().min(1).max(100).default(20),
         search: z.string().optional(),
         enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+        issuerType: z.nativeEnum(IssuerType).optional(),
         caId: z.string().uuid().optional()
       }),
       response: {
@@ -339,6 +357,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             .optional(),
           description: z.string().max(1000).optional(),
           enrollmentType: z.nativeEnum(EnrollmentType).optional(),
+          issuerType: z.nativeEnum(IssuerType).optional(),
           estConfig: z
             .object({
               disableBootstrapCaValidation: z.boolean().default(false),

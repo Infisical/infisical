@@ -47,6 +47,7 @@ export const ProfileList = ({
             <Tr>
               <Th>Name</Th>
               <Th>Enrollment Method</Th>
+              <Th>Issuer Type</Th>
               <Th>Issuing CA</Th>
               <Th>Certificate Template</Th>
               <Th className="w-5" />
@@ -54,7 +55,7 @@ export const ProfileList = ({
           </THead>
           <TBody>
             <Tr>
-              <Td colSpan={6}>
+              <Td colSpan={7}>
                 <EmptyState title="No Project Selected" />
               </Td>
             </Tr>
@@ -71,6 +72,7 @@ export const ProfileList = ({
           <Tr>
             <Th>Name</Th>
             <Th>Enrollment Method</Th>
+            <Th>Issuer Type</Th>
             <Th>Issuing CA</Th>
             <Th>Certificate Template</Th>
             <Th className="w-5" />

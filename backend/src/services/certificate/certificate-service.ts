@@ -309,6 +309,14 @@ export const certificateServiceFactory = ({
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
+    if (!certBody) {
+      throw new NotFoundError({ message: "Certificate body not found" });
+    }
+
+    if (!certBody.encryptedCertificate) {
+      throw new BadRequestError({ message: "Certificate data not available" });
+    }
+
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
       projectId: cert.projectId,
       projectDAL,
@@ -598,6 +606,14 @@ export const certificateServiceFactory = ({
     );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
+
+    if (!certBody) {
+      throw new NotFoundError({ message: "Certificate body not found" });
+    }
+
+    if (!certBody.encryptedCertificate) {
+      throw new BadRequestError({ message: "Certificate data not available" });
+    }
 
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
       projectId: cert.projectId,
