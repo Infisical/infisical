@@ -318,23 +318,26 @@ Feature: External CA
         {
           "scope": "https://api.dnsmadeeasy.com:443",
           "method": "GET",
-          "path": "/V2.0/dns/managed/MOCK_ZONE_ID/records",
-          "query": {"type": "TXT", "recordName": "_acme-challenge", "page": "0"},
+          "path": "/V2.0/dns/managed/MOCK_ZONE_ID/records?type=TXT&recordName=_acme-challenge&page=0",
           "status": 200,
           "response": {
             "totalRecords": 1,
             "totalPages": 1,
             "data": [
               {
-                "processMulti": false,
-                "activeThirdParties": [],
-                "folderId": 2702,
-                "pendingActionId": 0,
-                "gtdEnabled": false,
-                "updated": 1763767936141,
-                "created": 1763596800000,
-                "name": "localhost",
-                "id": 1111111
+                "gtdLocation": "DEFAULT",
+                "failed": false,
+                "monitor": false,
+                "failover": false,
+                "sourceId": 895364,
+                "dynamicDns": false,
+                "hardLink": false,
+                "ttl": 60,
+                "source": 1,
+                "name": "_acme-challenge",
+                "value": "\"MOCK_CHALLENGE_VALUE\"",
+                "id": 1111111,
+                "type": "TXT"
               }
             ],
             "page": 0
