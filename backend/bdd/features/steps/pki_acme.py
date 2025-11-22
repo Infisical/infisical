@@ -170,7 +170,7 @@ def step_impl(context: Context, var_name: str):
             json={
                 "name": conn_slug,
                 "description": "",
-                "method": "api-token",
+                "method": "api-key-secret",
                 "credentials": {
                     "apiKey": "MOCK_API_KEY",
                     "secretKey": "MOCK_SECRET_KEY",
