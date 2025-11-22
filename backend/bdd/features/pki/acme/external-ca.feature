@@ -319,7 +319,7 @@ Feature: External CA
           "scope": "https://api.dnsmadeeasy.com:443",
           "method": "GET",
           "path": "/V2.0/dns/managed/MOCK_ZONE_ID/records",
-          "query": {"type": "TXT", "recordName": "_acme-challenge"},
+          "query": {"type": "TXT", "recordName": "_acme-challenge", "page": "0"},
           "status": 200,
           "response": {
             "totalRecords": 1,
