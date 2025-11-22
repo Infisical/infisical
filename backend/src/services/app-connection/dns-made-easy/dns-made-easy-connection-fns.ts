@@ -117,6 +117,74 @@ export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection
   }
 };
 
+export const listDNSMadeEasyRecords = async (
+  appConnection: TDNSMadeEasyConnection,
+  options: { zoneId: string; type?: string; name?: string }
+): Promise<DNSMadeEasyApiResponse["data"]> => {
+  if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
+    throw new Error("Unsupported DNS Made Easy connection method");
+  }
+
+  const {
+    credentials: { apiKey, secretKey }
+  } = appConnection;
+  const { zoneId, type, name } = options;
+
+  try {
+    const allRecords: DNSMadeEasyApiResponse["data"] = [];
+    let currentPage = 0;
+    let totalPages = 1;
+
+    // Fetch all pages of records
+    while (currentPage < totalPages) {
+      // Build query parameters
+      const queryParams: Array<[string, string | number]> = [];
+      if (type) {
+        queryParams.push(["type", type]);
+      }
+      if (name) {
+        queryParams.push(["recordName", name]);
+      }
+      queryParams.push(["page", currentPage]);
+
+      // eslint-disable-next-line no-await-in-loop
+      const resp = await request.get<DNSMadeEasyApiResponse>(
+        getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(zoneId)}/records`),
+        {
+          headers: {
+            ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
+            Accept: "application/json"
+          },
+          params: queryParams
+        }
+      );
+
+      if (resp.data?.data) {
+        allRecords.push(...resp.data.data);
+
+        // Update pagination info
+        totalPages = resp.data.totalPages || 1;
+        currentPage += 1;
+      } else {
+        break;
+      }
+    }
+
+    return allRecords;
+  } catch (error: unknown) {
+    logger.error(error, "Error listing DNS Made Easy records");
+    if (error instanceof AxiosError) {
+      throw new BadRequestError({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        message: `Failed to list DNS Made Easy records: ${error.response?.data?.error?.[0] || error.message || "Unknown error"}`
+      });
+    }
+    throw new BadRequestError({
+      message: "Unable to list DNS Made Easy records"
+    });
+  }
+};
+
 export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeEasyConnectionConfig) => {
   if (config.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
     throw new Error("Unsupported DNS Made Easy connection method");
