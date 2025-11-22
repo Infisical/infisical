@@ -147,6 +147,40 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = response
 
 
+@given("I create a DNS Made Easy connection as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    conn_slug = faker.slug()
+    with with_nocks(
+        context,
+        definitions=[
+            {
+                "scope": "https://api.dnsmadeeasy.com:443",
+                "method": "GET",
+                "path": "/V2.0/dns/managed/",
+                "status": 200,
+                "response": {"totalRecords": 0, "totalPages": 1, "data": [], "page": 0},
+                "responseIsBinary": False,
+            }
+        ],
+    ):
+        response = context.http_client.post(
+            "/api/v1/app-connections/dns-made-easy",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "name": conn_slug,
+                "description": "",
+                "method": "api-token",
+                "credentials": {
+                    "apiKey": "MOCK_API_KEY",
+                    "secretKey": "MOCK_SECRET_KEY",
+                },
+            },
+        )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
 @given("I create a external ACME CA with the following config as {var_name}")
 def step_impl(context: Context, var_name: str):
     jwt_token = context.vars["AUTH_TOKEN"]
