@@ -1,7 +1,7 @@
 Feature: External CA
 
   @cloudflare
-  Scenario: Issue a certificate from an external CA with Cloudflare
+  Scenario Outline: Issue a certificate from an external CA with Cloudflare
     Given I create a Cloudflare connection as cloudflare
     Then I memorize cloudflare with jq ".appConnection.id" as app_conn_id
     Given I create a external ACME CA with the following config as ext_ca
@@ -93,9 +93,7 @@ Feature: External CA
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
       """
-      {
-        "COMMON_NAME": "localhost"
-      }
+      <subject>
       """
     # Pebble has a strict rule to only takes SANs
     Then I add subject alternative name to certificate signing request csr
@@ -180,8 +178,13 @@ Feature: External CA
       ]
       """
 
+    Examples:
+      | subject                      |
+      | {"COMMON_NAME": "localhost"} |
+      | {}                           |
+
   @dnsme
-  Scenario: Issue a certificate from an external CA with DNS Made Easy
+  Scenario Outline: Issue a certificate from an external CA with DNS Made Easy
     Given I create a DNS Made Easy connection as dnsme
     Then I memorize dnsme with jq ".appConnection.id" as app_conn_id
     Given I create a external ACME CA with the following config as ext_ca
@@ -273,9 +276,7 @@ Feature: External CA
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
       """
-      {
-        "COMMON_NAME": "localhost"
-      }
+      <subject>
       """
     # Pebble has a strict rule to only takes SANs
     Then I add subject alternative name to certificate signing request csr
@@ -363,3 +364,8 @@ Feature: External CA
         "localhost"
       ]
       """
+
+    Examples:
+      | subject                      |
+      | {"COMMON_NAME": "localhost"} |
+      | {}                           |
