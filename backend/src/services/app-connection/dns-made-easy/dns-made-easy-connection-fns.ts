@@ -21,7 +21,8 @@ interface DNSMadeEasyApiResponse {
   data: Array<{
     id: number;
     name: string;
-    [key: string]: unknown;
+    type: string;
+    value: string;
   }>;
   page: number;
 }
@@ -124,7 +125,6 @@ export const listDNSMadeEasyRecords = async (
   if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
     throw new Error("Unsupported DNS Made Easy connection method");
   }
-
   const {
     credentials: { apiKey, secretKey }
   } = appConnection;
@@ -138,14 +138,14 @@ export const listDNSMadeEasyRecords = async (
     // Fetch all pages of records
     while (currentPage < totalPages) {
       // Build query parameters
-      const queryParams: Array<[string, string | number]> = [];
+      const queryParams: Record<string, string | number> = {};
       if (type) {
-        queryParams.push(["type", type]);
+        queryParams.type = type;
       }
       if (name) {
-        queryParams.push(["recordName", name]);
+        queryParams.recordName = name;
       }
-      queryParams.push(["page", currentPage]);
+      queryParams.page = currentPage;
 
       // eslint-disable-next-line no-await-in-loop
       const resp = await request.get<DNSMadeEasyApiResponse>(
