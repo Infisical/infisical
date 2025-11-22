@@ -776,7 +776,9 @@ export const pkiAcmeServiceFactory = ({
             const cert = await orderCertificate(
               {
                 caId: certificateAuthority!.id,
-                commonName: certificateRequest.commonName!,
+                // It is possible that the CSR does not have a common name, in which case we use an empty string
+                // (more likely than not for a CSR from a modern ACME client like certbot, cert-manager, etc.)
+                commonName: certificateRequest.commonName ?? "",
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
                 csr: Buffer.from(csrPem),
                 // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
