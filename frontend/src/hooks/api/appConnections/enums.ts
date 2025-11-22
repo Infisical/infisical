@@ -39,6 +39,7 @@ export enum AppConnection {
   Northflank = "northflank",
   Okta = "okta",
   Redis = "redis",
+  MongoDB = "mongodb",
   LaravelForge = "laravel-forge",
   Chef = "chef"
 }

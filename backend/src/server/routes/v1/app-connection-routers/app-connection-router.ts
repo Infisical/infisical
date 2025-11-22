@@ -83,6 +83,10 @@ import {
   SanitizedLaravelForgeConnectionSchema
 } from "@app/services/app-connection/laravel-forge";
 import { LdapConnectionListItemSchema, SanitizedLdapConnectionSchema } from "@app/services/app-connection/ldap";
+import {
+  MongoDBConnectionListItemSchema,
+  SanitizedMongoDBConnectionSchema
+} from "@app/services/app-connection/mongodb";
 import { MsSqlConnectionListItemSchema, SanitizedMsSqlConnectionSchema } from "@app/services/app-connection/mssql";
 import { MySqlConnectionListItemSchema, SanitizedMySqlConnectionSchema } from "@app/services/app-connection/mysql";
 import {
@@ -169,6 +173,7 @@ const SanitizedAppConnectionSchema = z.union([
   ...SanitizedOktaConnectionSchema.options,
   ...SanitizedAzureADCSConnectionSchema.options,
   ...SanitizedRedisConnectionSchema.options,
+  ...SanitizedMongoDBConnectionSchema.options,
   ...SanitizedLaravelForgeConnectionSchema.options,
   ...SanitizedChefConnectionSchema.options
 ]);
@@ -214,6 +219,7 @@ const AppConnectionOptionsSchema = z.discriminatedUnion("app", [
   OktaConnectionListItemSchema,
   AzureADCSConnectionListItemSchema,
   RedisConnectionListItemSchema,
+  MongoDBConnectionListItemSchema,
   LaravelForgeConnectionListItemSchema,
   ChefConnectionListItemSchema
 ]);

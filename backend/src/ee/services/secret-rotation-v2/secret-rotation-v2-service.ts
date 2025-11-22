@@ -84,6 +84,7 @@ import { TSecretVersionV2TagDALFactory } from "@app/services/secret-v2-bridge/se
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import { awsIamUserSecretRotationFactory } from "./aws-iam-user-secret/aws-iam-user-secret-rotation-fns";
+import { mongodbCredentialsRotationFactory } from "./mongodb-credentials/mongodb-credentials-rotation-fns";
 import { oktaClientSecretRotationFactory } from "./okta-client-secret/okta-client-secret-rotation-fns";
 import { redisCredentialsRotationFactory } from "./redis-credentials/redis-credentials-rotation-fns";
 import { TSecretRotationV2DALFactory } from "./secret-rotation-v2-dal";
@@ -134,7 +135,8 @@ const SECRET_ROTATION_FACTORY_MAP: Record<SecretRotation, TRotationFactoryImplem
   [SecretRotation.AwsIamUserSecret]: awsIamUserSecretRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.LdapPassword]: ldapPasswordRotationFactory as TRotationFactoryImplementation,
   [SecretRotation.OktaClientSecret]: oktaClientSecretRotationFactory as TRotationFactoryImplementation,
-  [SecretRotation.RedisCredentials]: redisCredentialsRotationFactory as TRotationFactoryImplementation
+  [SecretRotation.RedisCredentials]: redisCredentialsRotationFactory as TRotationFactoryImplementation,
+  [SecretRotation.MongoDBCredentials]: mongodbCredentialsRotationFactory as TRotationFactoryImplementation
 };
 
 export const secretRotationV2ServiceFactory = ({

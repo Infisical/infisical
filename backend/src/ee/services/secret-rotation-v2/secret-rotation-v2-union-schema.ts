@@ -4,6 +4,7 @@ import { Auth0ClientSecretRotationSchema } from "@app/ee/services/secret-rotatio
 import { AwsIamUserSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/aws-iam-user-secret";
 import { AzureClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/azure-client-secret";
 import { LdapPasswordRotationSchema } from "@app/ee/services/secret-rotation-v2/ldap-password";
+import { MongoDBCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mongodb-credentials";
 import { MsSqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mssql-credentials";
 import { MySqlCredentialsRotationSchema } from "@app/ee/services/secret-rotation-v2/mysql-credentials";
 import { OktaClientSecretRotationSchema } from "@app/ee/services/secret-rotation-v2/okta-client-secret";
@@ -21,5 +22,6 @@ export const SecretRotationV2Schema = z.discriminatedUnion("type", [
   LdapPasswordRotationSchema,
   AwsIamUserSecretRotationSchema,
   OktaClientSecretRotationSchema,
-  RedisCredentialsRotationSchema
+  RedisCredentialsRotationSchema,
+  MongoDBCredentialsRotationSchema
 ]);

@@ -48,7 +48,8 @@ export const AppConnectionsBrowser = () => {
     {"name": "Okta", "slug": "okta", "path": "/integrations/app-connections/okta", "description": "Learn how to connect your Okta to pull secrets from Infisical.", "category": "Identity & Auth"},
     {"name": "Laravel Forge", "slug": "laravel-forge", "path": "/integrations/app-connections/laravel-forge", "description": "Learn how to connect your Laravel Forge to pull secrets from Infisical.", "category": "Hosting"},
     {"name": "Chef", "slug": "chef", "path": "/integrations/app-connections/chef", "description": "Learn how to connect your Chef to pull secrets from Infisical.", "category": "DevOps Tools"},
-    {"name": "Northflank", "slug": "northflank", "path": "/integrations/app-connections/northflank", "description": "Learn how to connect your Northflank projects to pull secrets from Infisical.", "category": "Hosting"}
+    {"name": "Northflank", "slug": "northflank", "path": "/integrations/app-connections/northflank", "description": "Learn how to connect your Northflank projects to pull secrets from Infisical.", "category": "Hosting"},
+    {"name": "MongoDB", "slug": "mongodb", "path": "/integrations/app-connections/mongodb", "description": "Learn how to connect your MongoDB to pull secrets from Infisical.", "category": "Databases"}
   ].sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });

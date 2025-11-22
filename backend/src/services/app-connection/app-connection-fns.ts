@@ -114,6 +114,7 @@ import {
   validateLaravelForgeConnectionCredentials
 } from "./laravel-forge";
 import { getLdapConnectionListItem, LdapConnectionMethod, validateLdapConnectionCredentials } from "./ldap";
+import { getMongoDBConnectionListItem, MongoDBConnectionMethod, validateMongoDBConnectionCredentials } from "./mongodb";
 import { getMsSqlConnectionListItem, MsSqlConnectionMethod } from "./mssql";
 import { MySqlConnectionMethod } from "./mysql/mysql-connection-enums";
 import { getMySqlConnectionListItem } from "./mysql/mysql-connection-fns";
@@ -217,6 +218,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getNorthflankConnectionListItem(),
     getOktaConnectionListItem(),
     getRedisConnectionListItem(),
+    getMongoDBConnectionListItem(),
     getChefConnectionListItem()
   ]
     .filter((option) => {
@@ -349,7 +351,8 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Northflank]: validateNorthflankConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Okta]: validateOktaConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Chef]: validateChefConnectionCredentials as TAppConnectionCredentialsValidator,
-    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator
+    [AppConnection.Redis]: validateRedisConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.MongoDB]: validateMongoDBConnectionCredentials as TAppConnectionCredentialsValidator
   };
 
   return VALIDATE_APP_CONNECTION_CREDENTIALS_MAP[appConnection.app](appConnection, gatewayService, gatewayV2Service);
@@ -401,6 +404,7 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
+    case MongoDBConnectionMethod.UsernameAndPassword:
       return "Username & Password";
     case WindmillConnectionMethod.AccessToken:
     case HCVaultConnectionMethod.AccessToken:
@@ -493,6 +497,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Northflank]: platformManagedCredentialsNotSupported,
   [AppConnection.Okta]: platformManagedCredentialsNotSupported,
   [AppConnection.Redis]: platformManagedCredentialsNotSupported,
+  [AppConnection.MongoDB]: platformManagedCredentialsNotSupported,
   [AppConnection.LaravelForge]: platformManagedCredentialsNotSupported,
   [AppConnection.Chef]: platformManagedCredentialsNotSupported
 };

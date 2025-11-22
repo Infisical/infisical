@@ -94,6 +94,7 @@ import { humanitecConnectionService } from "./humanitec/humanitec-connection-ser
 import { ValidateLaravelForgeConnectionCredentialsSchema } from "./laravel-forge";
 import { laravelForgeConnectionService } from "./laravel-forge/laravel-forge-connection-service";
 import { ValidateLdapConnectionCredentialsSchema } from "./ldap";
+import { ValidateMongoDBConnectionCredentialsSchema } from "./mongodb";
 import { ValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { ValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import { ValidateNetlifyConnectionCredentialsSchema } from "./netlify";
@@ -177,6 +178,7 @@ const VALIDATE_APP_CONNECTION_CREDENTIALS_MAP: Record<AppConnection, TValidateAp
   [AppConnection.Northflank]: ValidateNorthflankConnectionCredentialsSchema,
   [AppConnection.Okta]: ValidateOktaConnectionCredentialsSchema,
   [AppConnection.Redis]: ValidateRedisConnectionCredentialsSchema,
+  [AppConnection.MongoDB]: ValidateMongoDBConnectionCredentialsSchema,
   [AppConnection.Chef]: ValidateChefConnectionCredentialsSchema
 };
 
