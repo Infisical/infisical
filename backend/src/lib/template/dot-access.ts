@@ -4,8 +4,8 @@
 export const getValueByDot = (
   obj: Record<string, unknown> | null | undefined,
   path: string,
-  defaultValue?: string | number | boolean
-): string | number | boolean | undefined => {
+  defaultValue?: string | number | boolean | string[]
+): string | number | boolean | string[] | undefined => {
   // Handle null or undefined input
   if (!obj) {
     return defaultValue;
@@ -26,7 +26,12 @@ export const getValueByDot = (
     current = (current as Record<string, unknown>)[part];
   }
 
-  if (typeof current !== "string" && typeof current !== "number" && typeof current !== "boolean") {
+  if (
+    typeof current !== "string" &&
+    typeof current !== "number" &&
+    typeof current !== "boolean" &&
+    !(Array.isArray(current) && current.every(item => typeof item === "string"))
+  ) {
     return defaultValue;
   }
 
