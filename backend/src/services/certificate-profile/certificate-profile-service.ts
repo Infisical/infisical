@@ -415,9 +415,7 @@ export const certificateProfileServiceFactory = ({
     validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
 
     const updatedData =
-      finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId && data.issuerType === IssuerType.SELF_SIGNED
-        ? { ...data, caId: null }
-        : data;
+      finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
     const { estConfig, apiConfig, ...profileUpdateData } = updatedData;
 

@@ -49,7 +49,7 @@ export const ProfileRow = ({
 }: Props) => {
   const { permission } = useProjectPermission();
 
-  const { data: caData } = useGetCaById(profile.caId || "");
+  const { data: caData } = useGetCaById(profile.caId ?? "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 

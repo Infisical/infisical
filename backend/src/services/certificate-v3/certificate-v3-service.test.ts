@@ -1792,7 +1792,7 @@ describe("CertificateV3Service", () => {
           certificateId: "cert-123",
           ...mockActor
         })
-      ).rejects.toThrow("Only certificates issued from a profile or self-signed certificates can be renewed");
+      ).rejects.toThrow("Only certificates issued from a profile can be renewed");
     });
 
     it("should reject renewal if certificate was issued from CSR (external private key)", async () => {

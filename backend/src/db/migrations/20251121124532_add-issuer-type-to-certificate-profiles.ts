@@ -24,8 +24,4 @@ export async function down(knex: Knex): Promise<void> {
       t.dropColumn("issuerType");
     });
   }
-
-  await knex.schema.alterTable(TableName.PkiCertificateProfile, (t) => {
-    t.uuid("caId").notNullable().alter();
-  });
 }

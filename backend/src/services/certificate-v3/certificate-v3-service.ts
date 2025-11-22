@@ -1191,10 +1191,9 @@ export const certificateV3ServiceFactory = ({
         throw new NotFoundError({ message: "Certificate not found" });
       }
 
-      const isSelfSigned = !originalCert.profileId && !originalCert.caId && originalCert.certificateTemplateId === null;
-      if (!originalCert.profileId && !originalCert.caId && !isSelfSigned) {
+      if (!originalCert.profileId) {
         throw new ForbiddenRequestError({
-          message: "Only certificates issued from a profile or self-signed certificates can be renewed"
+          message: "Only certificates issued from a profile can be renewed"
         });
       }
 
