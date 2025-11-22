@@ -19,7 +19,7 @@ export const dnsMadeEasyInsertTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ hostedZoneId, domain }, "Inserting TXT record for DNS Made Easy");
+  logger.info({ hostedZoneId, domain, value }, "Inserting TXT record for DNS Made Easy");
   try {
     await request.post(
       getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records`),
@@ -66,7 +66,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     credentials: { apiKey, secretKey }
   } = connection;
 
-  logger.info({ zoneId: hostedZoneId, domain }, "Deleting TXT record for DNS Made Easy");
+  logger.info({ hostedZoneId, domain, value }, "Deleting TXT record for DNS Made Easy");
   try {
     const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
 
@@ -90,7 +90,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
       }
     }
     if (!foundRecord) {
-      logger.warn({ zoneId: hostedZoneId, domain, value }, "Record to delete not found");
+      logger.warn({ hostedZoneId, domain, value }, "Record to delete not found");
     }
   } catch (error) {
     if (axios.isAxiosError(error)) {
