@@ -32,12 +32,41 @@ import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
   EnrollmentType,
+  IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
+
+const validateIssuerTypeConstraints = (
+  issuerType: IssuerType,
+  enrollmentType: EnrollmentType,
+  caId: string | null,
+  existingCaId?: string | null
+) => {
+  if (issuerType === IssuerType.CA) {
+    if (!caId && !existingCaId) {
+      throw new ForbiddenRequestError({
+        message: "CA issuer type requires a Certificate Authority to be selected"
+      });
+    }
+  }
+
+  if (issuerType === IssuerType.SELF_SIGNED) {
+    if (caId) {
+      throw new ForbiddenRequestError({
+        message: "Self-signed issuer type cannot have a Certificate Authority"
+      });
+    }
+    if (enrollmentType !== EnrollmentType.API) {
+      throw new ForbiddenRequestError({
+        message: "Self-signed issuer type only supports API enrollment"
+      });
+    }
+  }
+};
 
 const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
@@ -163,7 +192,8 @@ export type TCertificateProfileServiceFactory = ReturnType<typeof certificatePro
 const convertDalToService = (dalResult: Record<string, unknown>): TCertificateProfile => {
   return {
     ...dalResult,
-    enrollmentType: dalResult.enrollmentType as EnrollmentType
+    enrollmentType: dalResult.enrollmentType as EnrollmentType,
+    issuerType: dalResult.issuerType as IssuerType
   } as TCertificateProfile;
 };
 
@@ -239,6 +269,8 @@ export const certificateProfileServiceFactory = ({
         message: "Certificate profile with this name already exists in project"
       });
     }
+
+    validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
 
     // Validate enrollment configuration requirements
     if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
@@ -376,7 +408,18 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
-    const { estConfig, apiConfig, ...profileUpdateData } = data;
+    const finalIssuerType = data.issuerType || existingProfile.issuerType;
+    const finalEnrollmentType = data.enrollmentType || existingProfile.enrollmentType;
+    const finalCaId = data.caId !== undefined ? data.caId : existingProfile.caId;
+
+    validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
+
+    const updatedData =
+      finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId && data.issuerType === IssuerType.SELF_SIGNED
+        ? { ...data, caId: null }
+        : data;
+
+    const { estConfig, apiConfig, ...profileUpdateData } = updatedData;
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
@@ -569,6 +612,7 @@ export const certificateProfileServiceFactory = ({
     limit = 20,
     search,
     enrollmentType,
+    issuerType,
     caId
   }: {
     actor: ActorType;
@@ -580,6 +624,7 @@ export const certificateProfileServiceFactory = ({
     limit?: number;
     search?: string;
     enrollmentType?: EnrollmentType;
+    issuerType?: IssuerType;
     caId?: string;
   }): Promise<{
     profiles: TCertificateProfileWithConfigs[];
@@ -603,12 +648,14 @@ export const certificateProfileServiceFactory = ({
       limit,
       search,
       enrollmentType,
+      issuerType,
       caId
     });
 
     const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
       search,
       enrollmentType,
+      issuerType,
       caId
     });
 

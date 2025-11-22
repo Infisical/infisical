@@ -47,7 +47,8 @@ const createSchema = z
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
     enrollmentType: z.enum(["api", "est", "acme"]),
-    certificateAuthorityId: z.string().min(1, "Certificate Authority is required"),
+    issuerType: z.enum(["ca", "self-signed"]),
+    certificateAuthorityId: z.string().nullable().optional(),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
     estConfig: z
       .object({
@@ -87,10 +88,21 @@ const createSchema = z
       if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
+
+      if (data.issuerType === "ca" && !data.certificateAuthorityId) {
+        return false;
+      }
+      if (data.issuerType === "self-signed" && data.certificateAuthorityId) {
+        return false;
+      }
+      if (data.issuerType === "self-signed" && data.enrollmentType !== "api") {
+        return false;
+      }
+
       return true;
     },
     {
-      message: "Configuration is required for selected enrollment type"
+      message: "Configuration is required for selected enrollment type and issuer type"
     }
   );
 
@@ -111,7 +123,8 @@ const editSchema = z
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
     enrollmentType: z.enum(["api", "est", "acme"]),
-    certificateAuthorityId: z.string().optional(),
+    issuerType: z.enum(["ca", "self-signed"]),
+    certificateAuthorityId: z.string().nullable().optional(),
     certificateTemplateId: z.string().optional(),
     estConfig: z
       .object({
@@ -139,10 +152,22 @@ const editSchema = z
       if (data.enrollmentType === "acme" && !data.acmeConfig) {
         return false;
       }
+
+      if (data.issuerType === "ca" && !data.certificateAuthorityId) {
+        return false;
+      }
+      if (data.issuerType === "self-signed" && data.certificateAuthorityId) {
+        return false;
+      }
+      if (data.issuerType === "self-signed" && data.enrollmentType !== "api") {
+        return false;
+      }
+
       return true;
     },
     {
-      message: "Configuration is required for selected enrollment type"
+      message:
+        "Configuration is required for selected enrollment type and issuer type. CA issuer requires a certificate authority. Self-signed issuer cannot have a certificate authority and only supports API enrollment."
     }
   );
 
@@ -193,7 +218,8 @@ export const CreateProfileModal = ({
           slug: profile.slug,
           description: profile.description || "",
           enrollmentType: profile.enrollmentType,
-          certificateAuthorityId: profile.caId,
+          issuerType: profile.issuerType,
+          certificateAuthorityId: profile.caId || undefined,
           certificateTemplateId: profile.certificateTemplateId,
           estConfig:
             profile.enrollmentType === "est"
@@ -217,6 +243,7 @@ export const CreateProfileModal = ({
           slug: "",
           description: "",
           enrollmentType: "api",
+          issuerType: "ca",
           certificateAuthorityId: "",
           certificateTemplateId: "",
           apiConfig: {
@@ -228,6 +255,7 @@ export const CreateProfileModal = ({
   });
 
   const watchedEnrollmentType = watch("enrollmentType");
+  const watchedIssuerType = watch("issuerType");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
 
@@ -237,7 +265,8 @@ export const CreateProfileModal = ({
         slug: profile.slug,
         description: profile.description || "",
         enrollmentType: profile.enrollmentType,
-        certificateAuthorityId: profile.caId,
+        issuerType: profile.issuerType,
+        certificateAuthorityId: profile.caId || undefined,
         certificateTemplateId: profile.certificateTemplateId,
         estConfig:
           profile.enrollmentType === "est"
@@ -276,7 +305,8 @@ export const CreateProfileModal = ({
       const updateData: TUpdateCertificateProfileDTO = {
         profileId: profile.id,
         slug: data.slug,
-        description: data.description
+        description: data.description,
+        issuerType: data.issuerType
       };
 
       if (data.enrollmentType === "est" && data.estConfig) {
@@ -298,7 +328,9 @@ export const CreateProfileModal = ({
         slug: data.slug,
         description: data.description,
         enrollmentType: data.enrollmentType,
-        caId: data.certificateAuthorityId,
+        issuerType: data.issuerType,
+        caId:
+          data.issuerType === "self-signed" ? undefined : data.certificateAuthorityId || undefined,
         certificateTemplateId: data.certificateTemplateId
       };
 
@@ -372,33 +404,72 @@ export const CreateProfileModal = ({
 
           <Controller
             control={control}
-            name="certificateAuthorityId"
+            name="issuerType"
             render={({ field: { onChange, ...field }, fieldState: { error } }) => (
               <FormControl
-                label="Issuing CA"
+                label="Issuer Type"
                 isRequired
                 isError={Boolean(error)}
                 errorText={error?.message}
               >
                 <Select
                   {...field}
-                  onValueChange={onChange}
-                  placeholder="Select a certificate authority"
+                  onValueChange={(value) => {
+                    if (value === "self-signed") {
+                      setValue("certificateAuthorityId", "");
+                      setValue("enrollmentType", "api");
+                      setValue("apiConfig", {
+                        autoRenew: false,
+                        renewBeforeDays: 30
+                      });
+                      setValue("estConfig", undefined);
+                      setValue("acmeConfig", undefined);
+                    }
+                    onChange(value);
+                  }}
                   className="w-full"
                   position="popper"
                   isDisabled={Boolean(isEdit)}
                 >
-                  {certificateAuthorities.map((ca) => (
-                    <SelectItem key={ca.id} value={ca.id}>
-                      {ca.type === "internal" && ca.configuration.friendlyName
-                        ? ca.configuration.friendlyName
-                        : ca.name}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="ca">Certificate Authority</SelectItem>
+                  <SelectItem value="self-signed">Self-signed</SelectItem>
                 </Select>
               </FormControl>
             )}
           />
+
+          {watchedIssuerType === "ca" && (
+            <Controller
+              control={control}
+              name="certificateAuthorityId"
+              render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+                <FormControl
+                  label="Issuing CA"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <Select
+                    {...field}
+                    value={value || undefined}
+                    onValueChange={onChange}
+                    placeholder="Select a certificate authority"
+                    className="w-full"
+                    position="popper"
+                    isDisabled={Boolean(isEdit)}
+                  >
+                    {certificateAuthorities.map((ca) => (
+                      <SelectItem key={ca.id} value={ca.id}>
+                        {ca.type === "internal" && ca.configuration.friendlyName
+                          ? ca.configuration.friendlyName
+                          : ca.name}
+                      </SelectItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+            />
+          )}
 
           <Controller
             control={control}
@@ -488,8 +559,12 @@ export const CreateProfileModal = ({
                   isDisabled={Boolean(isEdit)}
                 >
                   <SelectItem value="api">API</SelectItem>
-                  <SelectItem value="est">EST</SelectItem>
-                  <SelectItem value="acme">ACME</SelectItem>
+                  <SelectItem value="est" isDisabled={watchedIssuerType === "self-signed"}>
+                    EST
+                  </SelectItem>
+                  <SelectItem value="acme" isDisabled={watchedIssuerType === "self-signed"}>
+                    ACME
+                  </SelectItem>
                 </Select>
               </FormControl>
             )}

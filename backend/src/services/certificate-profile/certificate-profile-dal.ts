@@ -7,6 +7,7 @@ import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 import {
   EnrollmentType,
+  IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
@@ -198,6 +199,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         slug: result.slug,
         description: result.description,
         enrollmentType: result.enrollmentType as EnrollmentType,
+        issuerType: result.issuerType as IssuerType,
         estConfigId: result.estConfigId,
         apiConfigId: result.apiConfigId,
         acmeConfigId: result.acmeConfigId,
@@ -239,12 +241,13 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       limit?: number;
       search?: string;
       enrollmentType?: EnrollmentType;
+      issuerType?: IssuerType;
       caId?: string;
     } = {},
     tx?: Knex
   ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
-      const { offset = 0, limit = 20, search, enrollmentType, caId } = options;
+      const { offset = 0, limit = 20, search, enrollmentType, issuerType, caId } = options;
 
       let baseQuery = (tx || db)(TableName.PkiCertificateProfile).where(
         `${TableName.PkiCertificateProfile}.projectId`,
@@ -267,6 +270,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (caId) {
         baseQuery = baseQuery.where(`${TableName.PkiCertificateProfile}.caId`, caId);
+      }
+
+      if (issuerType) {
+        baseQuery = baseQuery.where(`${TableName.PkiCertificateProfile}.issuerType`, issuerType);
       }
 
       const query = baseQuery
@@ -338,8 +345,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           slug: result.slug,
           description: result.description,
           enrollmentType: result.enrollmentType as EnrollmentType,
+          issuerType: result.issuerType as IssuerType,
           estConfigId: result.estConfigId,
           apiConfigId: result.apiConfigId,
+          acmeConfigId: result.acmeConfigId,
           createdAt: result.createdAt,
           updatedAt: result.updatedAt,
           estConfig,
@@ -359,12 +368,13 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
     options: {
       search?: string;
       enrollmentType?: EnrollmentType;
+      issuerType?: IssuerType;
       caId?: string;
     } = {},
     tx?: Knex
   ): Promise<number> => {
     try {
-      const { search, enrollmentType, caId } = options;
+      const { search, enrollmentType, issuerType, caId } = options;
 
       let query = (tx || db)(TableName.PkiCertificateProfile).where({ projectId });
 
@@ -382,6 +392,10 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (caId) {
         query = query.where({ caId });
+      }
+
+      if (issuerType) {
+        query = query.where({ issuerType });
       }
 
       const result = await query.count("*").first();

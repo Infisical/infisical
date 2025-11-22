@@ -49,7 +49,7 @@ export const ProfileRow = ({
 }: Props) => {
   const { permission } = useProjectPermission();
 
-  const { data: caData } = useGetCaById(profile.caId);
+  const { data: caData } = useGetCaById(profile.caId || "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
@@ -106,6 +106,20 @@ export const ProfileRow = ({
     return <Badge variant={variant}>{label}</Badge>;
   };
 
+  const getIssuerTypeBadge = (issuerType: string) => {
+    const config = {
+      ca: { variant: "success" as const, label: "CA" },
+      "self-signed": { variant: "info" as const, label: "Self-Signed" }
+    } as const;
+
+    const configKey = Object.keys(config).includes(issuerType)
+      ? (issuerType as keyof typeof config)
+      : "ca";
+    const { variant, label } = config[configKey];
+
+    return <Badge variant={variant}>{label}</Badge>;
+  };
+
   return (
     <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
       <Td>
@@ -119,9 +133,12 @@ export const ProfileRow = ({
         </div>
       </Td>
       <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
+      <Td className="text-start">{getIssuerTypeBadge(profile.issuerType)}</Td>
       <Td className="text-start">
         <span className="text-sm text-mineshaft-300">
-          {caData?.friendlyName || caData?.commonName || profile.caId}
+          {profile.issuerType === "self-signed"
+            ? "—"
+            : caData?.friendlyName || caData?.commonName || profile.caId}
         </span>
       </Td>
       <Td>
