@@ -4,6 +4,7 @@ import { request } from "@app/lib/config/request";
 import { logger } from "@app/lib/logger";
 import {
   getDNSMadeEasyUrl,
+  listDNSMadeEasyRecords,
   makeDNSMadeEasyAuthHeaders
 } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-fns";
 import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
@@ -67,21 +68,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
 
   logger.info({ hostedZoneId, domain }, "Deleting TXT record for DNS Made Easy");
   try {
-    // First, list records to find the record ID
-    const listRecordsResponse = await request.get<{
-      data: Array<{ id: number; type: string; name: string; value: string }>;
-    }>(getDNSMadeEasyUrl(`/V2.0/dns/managed/${encodeURIComponent(hostedZoneId)}/records`), {
-      headers: {
-        ...makeDNSMadeEasyAuthHeaders(apiKey, secretKey),
-        Accept: "application/json"
-      },
-      params: {
-        type: "TXT",
-        recordName: domain
-      }
-    });
-
-    const dnsRecords = listRecordsResponse.data?.data;
+    const dnsRecords = await listDNSMadeEasyRecords(connection, { zoneId: hostedZoneId, type: "TXT", name: domain });
 
     if (Array.isArray(dnsRecords) && dnsRecords.length > 0) {
       const recordToDelete = dnsRecords.find(
