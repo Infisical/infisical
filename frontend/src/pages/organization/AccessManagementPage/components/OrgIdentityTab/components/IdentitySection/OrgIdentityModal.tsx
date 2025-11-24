@@ -1,9 +1,9 @@
+import { useEffect } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   faEllipsisV,
   faMagnifyingGlass,
@@ -7,7 +8,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ServerCogIcon } from "lucide-react";
-import { useState } from "react";
 
 import { createNotification } from "@app/components/notifications";
 import {

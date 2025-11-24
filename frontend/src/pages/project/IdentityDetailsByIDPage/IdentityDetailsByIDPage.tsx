@@ -1,11 +1,11 @@
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan, ProjectPermissionCan } from "@app/components/permissions";

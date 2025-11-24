@@ -1,8 +1,8 @@
+import { useMemo, useState } from "react";
+import { SingleValue } from "react-select";
 import { faCopy, faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
-import { useMemo, useState } from "react";
-import { SingleValue } from "react-select";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";

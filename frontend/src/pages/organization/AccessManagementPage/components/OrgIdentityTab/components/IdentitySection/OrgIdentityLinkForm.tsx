@@ -1,7 +1,7 @@
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
-import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";

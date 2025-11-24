@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -6,7 +7,6 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useMemo } from "react";
 
 import {
   EmptyState,

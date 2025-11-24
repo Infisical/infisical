@@ -154,7 +154,9 @@ export const IdentityAuthTemplateModal = ({ popUp, handlePopUpToggle }: Props) =
       onOpenChange={handleClose}
     >
       <ModalContent
-        title={isEdit ? "Edit Machine Identity Auth Template" : "Create Machine Identity Auth Template"}
+        title={
+          isEdit ? "Edit Machine Identity Auth Template" : "Create Machine Identity Auth Template"
+        }
         subTitle={
           isEdit ? "Update the authentication template" : "Create a new authentication template"
         }

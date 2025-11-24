@@ -1,7 +1,7 @@
-import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useMemo, useState } from "react";
 import { SingleValue } from "react-select";
+import { faCopy, faQuestionCircle, faUpRightFromSquare } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
