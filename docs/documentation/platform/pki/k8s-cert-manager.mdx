@@ -18,28 +18,27 @@ We recommend reading the [cert-manager documentation](https://cert-manager.io/do
 
 A typical workflow for using the Infisical PKI Issuer to issue certificates for your Kubernetes resources consists of the following steps:
 
-1. Creating a machine identity in Infisical.
-2. Creating a Kubernetes secret to store the credentials of the machine identity.
+1. Creating a certificate profile with ACME as the enrollment method in Infisical.
+2. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
 3. Installing `cert-manager` into your Kubernetes cluster.
-4. Installing the Infisical PKI Issuer controller into your Kubernetes cluster.
-5. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to represent the Infisical PKI issuer you wish to use.
-6. Create the approver policy to accept certificate request.
-7. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
-8. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
+4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to represent the Infisical PKI issuer you wish to use.
+5. Create the approver policy to accept certificate request.
+6. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
+7. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
 
 ## Guide
 
 In the following steps, we explore how to install the Infisical PKI Issuer using [kubectl](https://github.com/kubernetes/kubectl) and use it to obtain certificates for your Kubernetes resources.
 
 <Steps>
-    <Step title="Create an identity in Infisical">
+    <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
 
-        Follow the instructions [here](/documentation/platform/identities/universal-auth) to configure a [machine identity](/documentation/platform/identities/machine-identities) in Infisical with Universal Auth.
+        Follow the instructions [here](/documentation/platform/pki/enrollment-methods/acme) to create a certificate profile with ACME as the enrollment method.
 
-        By the end of this step, you should have a **Client ID** and **Client Secret** on hand as part of the Universal Auth configuration for the Infisical PKI Issuer to authenticate with Infisical; this will be useful in steps 4 and 5.
+        By the end of this step, you should have a **ACME Directory URL**, **EAB KID** and **EAB Secret** on hand as part of the credentials for the Infisical PKI ACME service to authenticate with Infisical; this will be useful in steps 4 and 5.
 
         <Note>
-            Currently, the Infisical PKI Issuer only supports authenticating with Infisical via the [Universal Auth](/documentation/platform/identities/universal-auth) authentication method.
+            Currently, the Infisical PKI ACME service only supports authenticating with Infisical via the dedicated EAB credentials generated for each certificate profile as the authentication method.
 
             We're planning to add support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) in the near future.
         </Note>
@@ -50,23 +49,6 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         ```bash
         kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
         ```
-    </Step>
-    <Step title="Install the Issuer Controller">
-        Install the Infisical PKI Issuer controller into your Kubernetes cluster using one of the following methods:
-
-        <Tabs>
-            <Tab title="Helm">
-                ```bash
-                helm repo add infisical-helm-charts 'https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/'
-                helm install infisical-pki-issuer infisical-helm-charts/infisical-pki-issuer
-                ```
-            </Tab>
-            <Tab title="kubectl">
-                ```bash
-                kubectl apply -f https://raw.githubusercontent.com/Infisical/infisical-issuer/main/build/install.yaml
-                ```
-            </Tab>
-        </Tabs>
     </Step>
     <Step title="Create Kubernetes Secret for Infisical PKI Issuer">
         Start by creating a Kubernetes `Secret` containing the **Client Secret** from step 1. As mentioned previously, this will be used by the Infisical PKI issuer to authenticate with Infisical.
