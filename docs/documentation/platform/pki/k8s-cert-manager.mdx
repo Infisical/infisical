@@ -5,44 +5,50 @@ description: "Learn how to automatically provision and manage TLS certificates i
 
 ## Concept
 
-The Infisical PKI provides [ACME (Automated Certificate Management Environment)](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) integration for various of ACME clients to issue and renew certificates automatically.
-Under Kubernetes environment, [cert-manager](https://cert-manager.io) is the most popular issuer to issue certificates via ACME.
-The issuer is perfect for getting X.509 certificates for ingresses and other Kubernetes resources and capable of automatically renewing certificates as needed.
+The Infisical PKI provides ACME (Automated Certificate Management Environment) integration, enabling various ACME clients to issue and renew certificates automatically.
+In Kubernetes environments, [cert-manager](https://cert-manager.io) is the most popular tool for issuing certificates via ACME.
+The issuer is perfect at obtaining X.509 certificates for Ingresses and other Kubernetes resources and can automatically renew them before expiration.
 
-As part of the workflow, you install `cert-manager` and configure resources to represent the connection details to your Infisical PKI and the certificates you wish to issue.
-Each issued certificate and corresponding private key is made available in a Kubernetes secret.
+The typical workflow involves installing `cert-manager` and configuring resources that represent the connection details to your Infisical PKI as well as the certificates you want to issue.
+Each issued certificate and its corresponding private key are stored in a Kubernetes `Secret`.
 
-We recommend reading the [cert-manager documentation](https://cert-manager.io/docs/) for a fuller understanding of all the moving parts.
-For the ACME part, please reference to the [ACME](https://cert-manager.io/docs/configuration/acme/) section.
+We recommend reading the official [cert-manager documentation](https://cert-manager.io/docs/) for a complete overview.
+For the ACME-specific configuration, refer to the [ACME section](https://cert-manager.io/docs/configuration/acme/).
 
 ## Workflow
 
-A typical workflow for using cert-manager with Infisical PKI via ACME to issue certificates for your Kubernetes resources consists of the following steps:
+A typical workflow for using cert-manager with Infisical PKI via ACME consists of the following steps:
 
-1. Creating a certificate profile with ACME as the enrollment method in Infisical.
-2. Installing `cert-manager` into your Kubernetes cluster.
-3. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
-4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to connect to the Infisical PKI certificate profile you wish to use.
-5. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
-6. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
+1. Create a certificate profile in Infisical with ACME as the enrollment method.
+2. Install `cert-manager` in your Kubernetes cluster.
+3. Create a Kubernetes `Secret` containing the EAB (External Account Binding) credentials for the ACME certificate profile.
+4. Create an `Issuer` or `ClusterIssuer` resource that connects to the desired Infisical PKI certificate profile.
+5. Create a `Certificate` resource defining the certificate you wish to issue and the target `Secret` where the certificate and private key will be stored.
+6. Use the resulting Kubernetes `Secret` in your Ingresses or other resources.
 
 ## Guide
 
-In the following steps, we explore how to install the cert-manager using [kubectl](https://github.com/kubernetes/kubectl) and use it to obtain certificates for your Kubernetes resources.
+The following steps show how to install cert-manager (using `kubectl`) and obtain certificates from Infisical PKI.
 
 <Steps>
-    <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
+  <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
 
-        Follow the instructions [here](/documentation/platform/pki/enrollment-methods/acme) to create a certificate profile with ACME as the enrollment method.
+    Follow the instructions [here](/documentation/platform/pki/enrollment-methods/acme) to create a certificate profile that uses ACME enrollment.
 
-        By the end of this step, you should have a **ACME Directory URL**, **EAB KID** and **EAB Secret** on hand as part of the credentials for the Infisical PKI ACME server to authenticate with Infisical; this will be useful in step 4.
+    After completion, you will have the following values:
+    - **ACME Directory URL**
+    - **EAB Key ID (KID)**
+    - **EAB Secret**
 
-        <Note>
-            Currently, the Infisical PKI ACME server only supports authenticating with Infisical via the dedicated EAB credentials generated for each certificate profile as the authentication method.
+    These will be needed in later steps.
 
-            We're planning to add support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) in the near future.
-        </Note>
-    </Step>
+    <Note>
+      Currently, the Infisical PKI ACME server only supports authentication via dedicated EAB credentials generated per certificate profile.
+
+      Support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) is planned for the near future.
+    </Note>
+
+  </Step>
     <Step title="Install cert-manager">
         Install `cert-manager` into your Kubernetes cluster by following the instructions [here](https://cert-manager.io/docs/installation/) or by running the following command:
 
