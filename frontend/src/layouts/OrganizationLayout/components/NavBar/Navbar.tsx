@@ -197,7 +197,6 @@ export const Navbar = () => {
 
   const handleOrgChange = async (orgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
@@ -212,6 +211,11 @@ export const Navbar = () => {
       setMfaSuccessCallback(() => () => handleOrgChange(orgId));
       return;
     }
+
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
+
     await router.invalidate();
     await navigateUserToOrg(navigate, orgId);
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
@@ -219,7 +223,6 @@ export const Navbar = () => {
 
   const handleSubOrgChange = async (subOrgId: string) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     const { token, isMfaEnabled, mfaMethod } = await selectSubOrganization({
       subOrganizationId: subOrgId
@@ -235,6 +238,10 @@ export const Navbar = () => {
       return;
     }
 
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
     await router.invalidate();
     navigate({
       to: "/organizations/$orgId/projects",
@@ -630,7 +637,6 @@ export const Navbar = () => {
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
-            aple
             <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
