@@ -13,14 +13,15 @@ As part of the workflow, you install `cert-manager` and configure resources to r
 Each issued certificate and corresponding private key is made available in a Kubernetes secret.
 
 We recommend reading the [cert-manager documentation](https://cert-manager.io/docs/) for a fuller understanding of all the moving parts.
+For the ACME part, please reference to the [ACME](https://cert-manager.io/docs/configuration/acme/) section.
 
 ## Workflow
 
 A typical workflow for using the Infisical PKI Issuer to issue certificates for your Kubernetes resources consists of the following steps:
 
 1. Creating a certificate profile with ACME as the enrollment method in Infisical.
-2. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
-3. Installing `cert-manager` into your Kubernetes cluster.
+2. Installing `cert-manager` into your Kubernetes cluster.
+3. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
 4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to connect to the Infisical PKI certificate profile you wish to use.
 5. Create the approver policy to accept certificate request.
 6. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
@@ -38,7 +39,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         By the end of this step, you should have a **ACME Directory URL**, **EAB KID** and **EAB Secret** on hand as part of the credentials for the Infisical PKI ACME server to authenticate with Infisical; this will be useful in steps 4 and 5.
 
         <Note>
-            Currently, the Infisical PKI ACME service only supports authenticating with Infisical via the dedicated EAB credentials generated for each certificate profile as the authentication method.
+            Currently, the Infisical PKI ACME server only supports authenticating with Infisical via the dedicated EAB credentials generated for each certificate profile as the authentication method.
 
             We're planning to add support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) in the near future.
         </Note>
@@ -78,26 +79,36 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
             </Tab>
         </Tabs>
     </Step>
-    <Step title="Create Infisical PKI Issuer">
-        Next, create the Infisical PKI Issuer by filling out `url`, `clientId`, `projectId` or `certificateTemplateName`, and applying the following configuration file for the `Issuer` resource.
+    <Step title="Create the cert-manager Issuer connecting to Infisical ACME server">
+        Next, create the cert-manager Issuer or ClusterIssuer by filling out `acme_server_url`, `your_email`, `acme_eab_kid`, and applying the following configuration file for the `Issuer` resource.
         This configuration file specifies the connection details to your Infisical PKI CA to be used for issuing certificates.
 
         ```yaml infisical-issuer.yaml
-        apiVersion: infisical-issuer.infisical.com/v1alpha1
+        apiVersion: cert-manager.io/v1
         kind: Issuer
         metadata:
             name: issuer-infisical
-            namespace: <namespace_you_want_to_issue_certificates_in>
         spec:
-            url: "https://app.infisical.com" # the URL of your Infisical instance
-            projectId: <project_id> # the ID of the project you want to use to issue certificates
-            certificateTemplateName: <certificate_template_name> # the name of the certificate template you want to use to issue certificates against
-            authentication:
-                universalAuth:
-                    clientId: <client_id> # the Client ID from step 1
-                    secretRef: # reference to the Secret created in step 4
-                        name: "issuer-infisical-client-secret"
-                        key: "clientSecret"
+            acme:
+                # the URL of your Infisical certificate profile with
+                # ACME enrollment method from step 1
+                server: <acme_server_url>
+                # your email address, any email could work.
+                # currently we just ignore the value
+                email: <your_email>
+                externalAccountBinding:
+                    keyID: <acme_eab_kid> # the EAB secret value from step 1
+                keySecretRef: # reference to the Secret created in step 3
+                    name: "issuer-infisical-client-secret"
+                    key: "clientSecret"
+                privateKeySecretRef:
+                    name: issuer-infisical-account-key
+                solvers:
+                - http01:
+                    ingress:
+                        # this doesn't need to be nginx, you can use any
+                        # ingressClassName available in your Kubernetes cluster
+                        ingressClassName: nginx
         ```
 
         ```
@@ -107,7 +118,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         You can check that the issuer was created successfully by running the following command:
 
         ```bash
-        kubectl get issuers.infisical-issuer.infisical.com -n <namespace_of_issuer> -o wide
+        kubectl get issuers.cert-manager.io -n <namespace_of_issuer> -o wide
         ```
 
         ```bash
@@ -122,6 +133,9 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
             If you want to create a single `Issuer` that can be consumed in multiple namespaces, you should consider creating a `ClusterIssuer` resource. This is almost identical to the `Issuer` resource, however is non-namespaced so it can be used to issue `Certificates` across all namespaces.
 
             You can read more about the `Issuer` and `ClusterIssuer` resources [here](https://cert-manager.io/docs/configuration/).
+
+            Also, currently Infisical ACME server only supports HTTP-01 and requires all the certificate orders passing the challenge before issuing certificates.
+            We will allow users to opt-out challenge in the near future and also provide support DNS-01 as well.
         </Note>
     </Step>
     <Step title="Create Approver Policy">
