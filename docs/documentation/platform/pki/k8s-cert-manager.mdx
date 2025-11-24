@@ -17,7 +17,7 @@ For the ACME part, please reference to the [ACME](https://cert-manager.io/docs/c
 
 ## Workflow
 
-A typical workflow for using the Infisical PKI Issuer to issue certificates for your Kubernetes resources consists of the following steps:
+A typical workflow for using cert-manager with Infisical PKI via ACME to issue certificates for your Kubernetes resources consists of the following steps:
 
 1. Creating a certificate profile with ACME as the enrollment method in Infisical.
 2. Installing `cert-manager` into your Kubernetes cluster.
@@ -28,7 +28,7 @@ A typical workflow for using the Infisical PKI Issuer to issue certificates for 
 
 ## Guide
 
-In the following steps, we explore how to install the Infisical PKI Issuer using [kubectl](https://github.com/kubernetes/kubectl) and use it to obtain certificates for your Kubernetes resources.
+In the following steps, we explore how to install the cert-manager using [kubectl](https://github.com/kubernetes/kubectl) and use it to obtain certificates for your Kubernetes resources.
 
 <Steps>
     <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
