@@ -195,7 +195,7 @@ export const Navbar = () => {
   const matches = useRouterState({ select: (s) => s.matches.at(-1)?.context });
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
-  const handleOrgChange = async (orgId: string) => {
+  const handleOrgChange = async (orgId: string, onSuccess?: () => void | Promise<void>) => {
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
 
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
@@ -208,7 +208,9 @@ export const Navbar = () => {
         setRequiredMfaMethod(mfaMethod);
       }
       toggleShowMfa.on();
-      setMfaSuccessCallback(() => () => handleOrgChange(orgId));
+      setMfaSuccessCallback(() => async () => {
+        await handleOrgChange(orgId, onSuccess);
+      });
       return;
     }
 
@@ -219,6 +221,26 @@ export const Navbar = () => {
     await router.invalidate();
     await navigateUserToOrg(navigate, orgId);
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+
+    if (onSuccess) {
+      await onSuccess();
+    }
+  };
+
+  const handleNavigateToRootOrgBilling = async () => {
+    const navigateToBilling = async () => {
+      navigate({
+        to: "/organizations/$orgId/billing",
+        params: { orgId: rootOrg.id }
+      });
+      setShowCardDeclinedModal(false);
+    };
+
+    if (currentOrg.id !== rootOrg.id) {
+      await handleOrgChange(rootOrg.id, navigateToBilling);
+    } else {
+      await navigateToBilling();
+    }
   };
 
   const handleSubOrgChange = async (subOrgId: string) => {
@@ -807,19 +829,13 @@ export const Navbar = () => {
               </div>
               <div className="mt-4">
                 <div className="flex space-x-3">
-                  <Link
-                    to="/organizations/$orgId/billing"
-                    params={{ orgId: rootOrg.id }}
-                    className="inline-flex"
+                  <Button
+                    colorSchema="primary"
+                    variant="solid"
+                    onClick={handleNavigateToRootOrgBilling}
                   >
-                    <Button
-                      colorSchema="primary"
-                      variant="solid"
-                      onClick={() => setShowCardDeclinedModal(false)}
-                    >
-                      Update Payment Method
-                    </Button>
-                  </Link>
+                    Update Payment Method
+                  </Button>
                   {!isModalIntrusive && (
                     <Button
                       colorSchema="secondary"
