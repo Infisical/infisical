@@ -102,17 +102,19 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
         acme:
             # ACME server URL from your Infisical certificate profile (Step 1)
             server: <acme_server_url>
-            # Email address for ACME account (any valid email works; currently ignored by Infisical)
+            # Email address for ACME account
+            # (any valid email works; currently ignored by Infisical)
             email: <your_email>
             externalAccountBinding:
-            # EAB Key ID from Step 1
-            keyID: <acme_eab_kid>
-            # Reference to the Kubernetes Secret containing the EAB HMAC key (created in Step 3)
-            keySecretRef:
-                name: issuer-infisical-client-secret
-                key: clientSecret
+                # EAB Key ID from Step 1
+                keyID: <acme_eab_kid>
+                # Reference to the Kubernetes Secret containing the EAB
+                # HMAC key (created in Step 3)
+                keySecretRef:
+                    name: infisical-acme-eab-secret
+                    key: eabSecret
             privateKeySecretRef:
-            name: issuer-infisical-account-key
+                name: issuer-infisical-account-key
             solvers:
             - http01:
                 ingress:
