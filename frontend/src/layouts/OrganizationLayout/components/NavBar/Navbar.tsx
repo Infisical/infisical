@@ -196,8 +196,6 @@ export const Navbar = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const handleOrgChange = async (orgId: string, onSuccess?: () => void | Promise<void>) => {
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
@@ -216,6 +214,7 @@ export const Navbar = () => {
 
     SecurityClient.setToken(token);
     SecurityClient.setProviderAuthToken("");
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     await router.invalidate();
@@ -244,8 +243,6 @@ export const Navbar = () => {
   };
 
   const handleSubOrgChange = async (subOrgId: string) => {
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-
     const { token, isMfaEnabled, mfaMethod } = await selectSubOrganization({
       subOrganizationId: subOrgId
     });
@@ -265,6 +262,7 @@ export const Navbar = () => {
     SecurityClient.setToken(token);
     SecurityClient.setProviderAuthToken("");
 
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
     await router.invalidate();
     navigate({
