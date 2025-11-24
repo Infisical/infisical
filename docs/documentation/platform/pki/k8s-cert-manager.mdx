@@ -89,35 +89,35 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
 
   </Step>
   <Step title="Create the cert-manager Issuer connecting to Infisical ACME server">
-    Next, create the cert-manager Issuer or ClusterIssuer by filling out `acme_server_url`, `your_email`, `acme_eab_kid`, and applying the following configuration file for the `Issuer` resource.
-    This configuration file specifies the connection details to your Infisical PKI CA to be used for issuing certificates.
+    Next, create a cert-manager `Issuer` (or `ClusterIssuer`) by replacing the placeholders `<acme_server_url>`, `<your_email>`, and `<acme_eab_kid>` in the configuration below and applying it.
+    This resource configures cert-manager to use your Infisical PKI collection's ACME server for certificate issuance.
 
     ```yaml infisical-issuer.yaml
     apiVersion: cert-manager.io/v1
     kind: Issuer
     metadata:
         name: issuer-infisical
+        namespace: <namespace_you_want_to_issue_certificates_in>
     spec:
         acme:
-            # the URL of your Infisical certificate profile with
-            # ACME enrollment method from step 1
+            # ACME server URL from your Infisical certificate profile (Step 1)
             server: <acme_server_url>
-            # your email address, any email could work.
-            # currently we just ignore the value
+            # Email address for ACME account (any valid email works; currently ignored by Infisical)
             email: <your_email>
             externalAccountBinding:
-                keyID: <acme_eab_kid> # the EAB secret value from step 1
-            keySecretRef: # reference to the Secret created in step 3
-                name: "issuer-infisical-client-secret"
-                key: "clientSecret"
+            # EAB Key ID from Step 1
+            keyID: <acme_eab_kid>
+            # Reference to the Kubernetes Secret containing the EAB HMAC key (created in Step 3)
+            keySecretRef:
+                name: issuer-infisical-client-secret
+                key: clientSecret
             privateKeySecretRef:
-                name: issuer-infisical-account-key
+            name: issuer-infisical-account-key
             solvers:
             - http01:
                 ingress:
-                    # this doesn't need to be nginx, you can use any
-                    # ingressClassName available in your Kubernetes cluster
-                    ingressClassName: nginx
+                    # Replace with your actual ingress class if different
+                    className: nginx
     ```
 
     ```
@@ -136,15 +136,10 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     ```
 
     <Note>
-        An `Issuer` is a namespaced resource, and it is not possible to issue certificates from an `Issuer` in a different namespace.
-        This means you will need to create an `Issuer` in each namespace you wish to obtain `Certificates` in.
-
-        If you want to create a single `Issuer` that can be consumed in multiple namespaces, you should consider creating a `ClusterIssuer` resource. This is almost identical to the `Issuer` resource, however is non-namespaced so it can be used to issue `Certificates` across all namespaces.
-
-        You can read more about the `Issuer` and `ClusterIssuer` resources [here](https://cert-manager.io/docs/configuration/).
-
-        Also, currently Infisical ACME server only supports HTTP-01 and requires all the certificate orders passing the challenge before issuing certificates.
-        We will allow users to opt-out challenge in the near future and also provide support DNS-01 as well.
+        - Currently, the Infisical ACME server only supports the HTTP-01 challenge and requires successful challenge completion before issuing certificates. Support for optional challenges and DNS-01 is planned for a future release.
+        - An `Issuer` is namespace-scoped. Certificates can only be issued using an `Issuer` that exists in the same namespace as the `Certificate` resource.
+        - If you need to issue certificates across multiple namespaces with a single resource, create a `ClusterIssuer` instead. The configuration is identical except `kind: ClusterIssuer` and no `metadata.namespace`.
+        - More details: https://cert-manager.io/docs/configuration/acme/
     </Note>
 
   </Step>
