@@ -10,6 +10,8 @@ import {
   faArrowRight,
   faArrowRightToBracket,
   faArrowUp,
+  faCheck,
+  faCopy,
   faFilter,
   faFingerprint,
   faFolder,
@@ -79,6 +81,7 @@ import {
   usePopUp,
   useResetPageHelper,
   useResizableHeaderHeight,
+  useTimedReset,
   useToggle
 } from "@app/hooks";
 import {
@@ -192,6 +195,15 @@ export const OverviewPage = () => {
     } else {
       localStorage.setItem("overview-collapse-environments", "true");
     }
+  };
+
+  const [isCopied, , setIsCopied] = useTimedReset<boolean>({
+    initialState: false
+  });
+
+  const copyToClipboard = (value: string) => {
+    navigator.clipboard.writeText(value);
+    setIsCopied(true);
   };
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
@@ -1324,18 +1336,31 @@ export const OverviewPage = () => {
                       >
                         <Tooltip
                           content={
-                            collapseEnvironments ? (
-                              <p className="whitespace-break-spaces">{name}</p>
-                            ) : (
-                              ""
-                            )
+                            <div className="flex flex-col gap-2">
+                              {collapseEnvironments ? (
+                                <p className="whitespace-break-spaces text-mineshaft-300">{name}</p>
+                              ) : (
+                                ""
+                              )}
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs text-mineshaft-300">{slug}</p>
+                                <IconButton
+                                  variant="plain"
+                                  colorSchema="secondary"
+                                  ariaLabel="Copy environment slug"
+                                  onClick={() => copyToClipboard(slug)}
+                                >
+                                  <FontAwesomeIcon icon={isCopied ? faCheck : faCopy} />
+                                </IconButton>
+                              </div>
+                            </div>
                           }
                           side="bottom"
-                          sideOffset={-1}
-                          align="end"
+                          sideOffset={5}
+                          align="center"
                           className="max-w-xl text-xs normal-case"
                           rootProps={{
-                            disableHoverableContent: true
+                            disableHoverableContent: false
                           }}
                         >
                           <div
