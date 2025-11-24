@@ -21,7 +21,7 @@ A typical workflow for using the Infisical PKI Issuer to issue certificates for 
 1. Creating a certificate profile with ACME as the enrollment method in Infisical.
 2. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
 3. Installing `cert-manager` into your Kubernetes cluster.
-4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to represent the Infisical PKI issuer you wish to use.
+4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to connect to the Infisical PKI certificate profile you wish to use.
 5. Create the approver policy to accept certificate request.
 6. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
 7. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
@@ -35,7 +35,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
 
         Follow the instructions [here](/documentation/platform/pki/enrollment-methods/acme) to create a certificate profile with ACME as the enrollment method.
 
-        By the end of this step, you should have a **ACME Directory URL**, **EAB KID** and **EAB Secret** on hand as part of the credentials for the Infisical PKI ACME service to authenticate with Infisical; this will be useful in steps 4 and 5.
+        By the end of this step, you should have a **ACME Directory URL**, **EAB KID** and **EAB Secret** on hand as part of the credentials for the Infisical PKI ACME server to authenticate with Infisical; this will be useful in steps 4 and 5.
 
         <Note>
             Currently, the Infisical PKI ACME service only supports authenticating with Infisical via the dedicated EAB credentials generated for each certificate profile as the authentication method.
@@ -50,30 +50,30 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
         ```
     </Step>
-    <Step title="Create Kubernetes Secret for Infisical PKI Issuer">
+    <Step title="Create Kubernetes Secret for the EAB secret of Infisical ACME server">
         Start by creating a Kubernetes `Secret` containing the **Client Secret** from step 1. As mentioned previously, this will be used by the Infisical PKI issuer to authenticate with Infisical.
 
         <Tabs>
             <Tab title="kubectl command">
                 ```bash
-                kubectl create secret generic issuer-infisical-client-secret \
+                kubectl create secret generic infisical-acme-eab-secret \
                     --namespace <namespace_you_want_to_issue_certificates_in> \
-                    --from-literal=clientSecret=<client_secret>
+                    --from-literal=eabSecret=<eab_secret>
                 ```
             </Tab>
             <Tab title="Configuration file">
-                ```yaml secret-issuer.yaml
+                ```yaml acme-eab-secret.yaml
                 apiVersion: v1
                 kind: Secret
                 metadata:
-                    name: issuer-infisical-client-secret
+                    name: infisical-acme-eab-secret
                     namespace: <namespace_you_want_to_issue_certificates_in>
                 data:
-                    clientSecret: <client_secret>
+                    eabSecret: <eab_secret>
                 ```
 
                 ```bash
-                kubectl apply -f secret-issuer.yaml
+                kubectl apply -f acme-eab-secret.yaml
                 ```
             </Tab>
         </Tabs>
