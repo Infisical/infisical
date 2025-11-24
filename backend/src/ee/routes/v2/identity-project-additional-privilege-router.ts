@@ -158,6 +158,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         },
         data: {
           ...req.body,
+          name: req.body.slug,
           ...req.body.type,
           permissions: req.body.permissions || undefined
         }
