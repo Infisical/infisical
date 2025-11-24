@@ -23,9 +23,8 @@ A typical workflow for using the Infisical PKI Issuer to issue certificates for 
 2. Installing `cert-manager` into your Kubernetes cluster.
 3. Creating a Kubernetes secret to store the EAB (External Account Binding) credentials of the ACME certificate profile.
 4. Creating an `Issuer` or `ClusterIssuer` resource in your Kubernetes cluster to connect to the Infisical PKI certificate profile you wish to use.
-5. Create the approver policy to accept certificate request.
-6. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
-7. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
+5. Creating a `Certificate` resource in your Kubernetes cluster to represent a certificate you wish to issue. As part of this step, you specify the Kubernetes `Secret` to create and store the issued certificate and private key.
+6. Consuming the issued certificate across your Kubernetes resources from the specified Kubernetes `Secret`.
 
 ## Guide
 
@@ -52,7 +51,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
         ```
     </Step>
     <Step title="Create Kubernetes Secret for the EAB secret of Infisical ACME server">
-        Start by creating a Kubernetes `Secret` containing the **Client Secret** from step 1. As mentioned previously, this will be used by the Infisical PKI issuer to authenticate with Infisical.
+        Start by creating a Kubernetes `Secret` containing the **EAB Secret** from step 1. As mentioned previously, this will be used by the Infisical PKI issuer to authenticate with Infisical.
 
         <Tabs>
             <Tab title="kubectl command">
@@ -138,50 +137,6 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
             We will allow users to opt-out challenge in the near future and also provide support DNS-01 as well.
         </Note>
     </Step>
-    <Step title="Create Approver Policy">
-      If you create a `CertificateRequest` now, you'll notice it's neither approved nor denied. This is expected because by default cert-manager approver controller requires an approver-policy.
-
-      To enable approval, create the following YAML file and apply it:
-
-       ```yaml infisical-approver-policy.yaml
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRole
-      metadata:
-        name: infisical-issuer-approver
-      rules:
-        # Permission to approve or deny CertificateRequests for signers in cert-manager.io API group
-        - apiGroups: ['cert-manager.io']
-          resources: ['signers']
-          verbs: ['approve']
-          resourceNames:
-            # Grant approval permissions for namespaced issuers
-            - "issuers.infisical-issuer.infisical.com/default.issuer-infisical"
-            # Grant approval permissions for cluster-scoped issuers
-            - "clusterissuers.infisical-issuer.infisical.com/clusterissuer-infisical"
-      ---
-      # Bind the cert-manager service account to the new role
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: infisical-issuer-approver-binding
-      subjects:
-        - kind: ServiceAccount
-          name: cert-manager
-          namespace: cert-manager
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: infisical-issuer-approver
-        ```
-
-        ```
-        kubectl apply -f infisical-approver-policy.yaml
-        ```
-
-        This configuration creates a `ClusterRole` named `infisical-issuer-approver` that grants approval permissions for specific Infisical issuer types. It then binds this role to the cert-manager service account, allowing it to approve certificate requests from your Infisical issuers.
-
-        For information, check out [cert manager approval policy doc](https://cert-manager.io/docs/policy/approval/approver-policy/).
-    </Step>
     <Step title="Create Certificate">
 
         Finally, create a `Certificate` by applying the following configuration file.
@@ -194,17 +149,23 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
             name: certificate-by-issuer
             namespace: <namespace_you_want_to_issue_certificates_in>
         spec:
-            commonName: certificate-by-issuer.example.com # the common name for the certificate
-            secretName: certificate-by-issuer # the name of the Kubernetes Secret to create and store the certificate and private key in
+            # the common name for the certificate
+            commonName: certificate-by-issuer.example.com
+            # the name of the Kubernetes Secret to create and store
+            # the certificate and private key in
+            secretName: certificate-by-issuer
             issuerRef:
                 name: issuer-infisical
-                group: infisical-issuer.infisical.com
+                group: issuers.cert-manager.io
                 kind: Issuer
-            privateKey: # the algorithm and key size to use
+            # the algorithm and key size to use
+            privateKey:
                 algorithm: ECDSA
                 size: 256
-            duration: 48h # the ttl for the certificate
-            renewBefore: 12h # the time before the certificate expiry that the certificate should be automatically renewed
+            # the ttl for the certificate
+            duration: 48h
+            # the time before the certificate expiry that the certificate should be automatically renewed
+            renewBefore: 12h
         ```
 
         The above sample configuration file specifies a certificate to be issued with the common name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
