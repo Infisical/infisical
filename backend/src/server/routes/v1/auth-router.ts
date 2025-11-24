@@ -81,7 +81,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           token: z.string(),
-          organizationId: z.string().optional()
+          organizationId: z.string().optional(),
+          subOrganizationId: z.string().optional()
         })
       }
     },
@@ -131,7 +132,6 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         appCfg.AUTH_SECRET,
         { expiresIn }
       );
-
       return { token, organizationId: decodedToken.organizationId, subOrganizationId: decodedToken.subOrganizationId };
     }
   });

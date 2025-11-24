@@ -250,6 +250,8 @@ export const Navbar = () => {
       subOrganizationId: subOrgId
     });
 
+    localStorage.setItem("orgData.id", subOrgId);
+
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
       if (mfaMethod) {
