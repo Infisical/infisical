@@ -752,7 +752,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
-                  "documentation/platform/pki/pki-issuer",
+                  "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
                   "documentation/platform/pki/integration-guides/nginx-certbot",

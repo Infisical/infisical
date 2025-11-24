@@ -1,13 +1,16 @@
 ---
-title: "Kubernetes Issuer"
+title: "Kubernetes cert-manager"
 description: "Learn how to automatically provision and manage TLS certificates in Kubernetes using Infisical PKI"
 ---
 
 ## Concept
 
-The Infisical PKI Issuer is an installable Kubernetes [cert-manager](https://cert-manager.io/) controller that uses Infisical PKI to sign certificate requests. The issuer is perfect for getting X.509 certificates for ingresses and other Kubernetes resources and capable of automatically renewing certificates as needed.
+The Infisical PKI provides [ACME (Automated Certificate Management Environment)](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) integration for various of ACME clients to issue and renew certificates automatically.
+Under Kubernetes environment, [cert-manager](https://cert-manager.io) is the most popular issuer to issue certificates via ACME.
+The issuer is perfect for getting X.509 certificates for ingresses and other Kubernetes resources and capable of automatically renewing certificates as needed.
 
-As part of the workflow, you install `cert-manager`, the Infisical PKI Issuer, and configure resources to represent the connection details to your Infisical PKI and the certificates you wish to issue. Each issued certificate and corresponding private key is made available in a Kubernetes secret.
+As part of the workflow, you install `cert-manager` and configure resources to represent the connection details to your Infisical PKI and the certificates you wish to issue.
+Each issued certificate and corresponding private key is made available in a Kubernetes secret.
 
 We recommend reading the [cert-manager documentation](https://cert-manager.io/docs/) for a fuller understanding of all the moving parts.
 
