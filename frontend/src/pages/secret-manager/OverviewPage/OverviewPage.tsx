@@ -197,13 +197,13 @@ export const OverviewPage = () => {
     }
   };
 
-  const [isCopied, , setIsCopied] = useTimedReset<boolean>({
-    initialState: false
+  const [copiedSlug, , setCopiedSlug] = useTimedReset<string>({
+    initialState: ""
   });
 
-  const copyToClipboard = (value: string) => {
+  const copyToClipboard = (value: string, slug: string) => {
     navigator.clipboard.writeText(value);
-    setIsCopied(true);
+    setCopiedSlug(slug);
   };
 
   const [filter, setFilter] = useState<Filter>(DEFAULT_FILTER_STATE);
@@ -1348,9 +1348,9 @@ export const OverviewPage = () => {
                                   variant="plain"
                                   colorSchema="secondary"
                                   ariaLabel="Copy environment slug"
-                                  onClick={() => copyToClipboard(slug)}
+                                  onClick={() => copyToClipboard(slug, slug)}
                                 >
-                                  <FontAwesomeIcon icon={isCopied ? faCheck : faCopy} />
+                                  <FontAwesomeIcon icon={copiedSlug === slug ? faCheck : faCopy} />
                                 </IconButton>
                               </div>
                             </div>
@@ -1362,6 +1362,7 @@ export const OverviewPage = () => {
                           rootProps={{
                             disableHoverableContent: false
                           }}
+                          key={`tooltip-${name}-${index + 1}`}
                         >
                           <div
                             className={twMerge(
