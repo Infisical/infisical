@@ -42,10 +42,10 @@ const formSchemaWithIdentity = baseFormSchema.extend({
         id: z.string(),
         name: z.string()
       },
-      { required_error: "Identity is required" }
+      { required_error: "Machine identity is required" }
     )
     .nullable()
-    .refine((val) => val !== null, { message: "Identity is required" })
+    .refine((val) => val !== null, { message: "Machine identity is required" })
 });
 
 const formSchemaWithToken = baseFormSchema.extend({
@@ -381,7 +381,7 @@ resource "aws_eip_association" "eip_assoc" {
           <Input
             value={identityToken}
             onChange={(e) => setIdentityToken(e.target.value)}
-            placeholder="Enter identity token..."
+            placeholder="Enter machine identity token..."
             isError={Boolean(errors.identityToken)}
           />
           {errors.identityToken && <p className="mt-1 text-sm text-red">{errors.identityToken}</p>}
