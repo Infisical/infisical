@@ -122,6 +122,22 @@ export const castDbEntryToAcmeCertificateAuthority = (
   };
 };
 
+const getAcmeChallengeRecord = (
+  provider: AcmeDnsProvider,
+  identifierValue: string,
+  keyAuthorization: string
+): { recordName: string; recordValue: string } => {
+  let recordName: string;
+  if (provider === AcmeDnsProvider.DNSMadeEasy) {
+    // For DNS Made Easy, we don't need to provide the domain name in the record name.
+    recordName = "_acme-challenge";
+  } else {
+    recordName = `_acme-challenge.${identifierValue}`; // e.g., "_acme-challenge.example.com"
+  }
+  const recordValue = `"${keyAuthorization}"`; // must be double quoted
+  return { recordName, recordValue };
+};
+
 export const orderCertificate = async (
   {
     caId,
@@ -243,12 +259,11 @@ export const orderCertificate = async (
         throw new Error("Unsupported challenge type");
       }
 
-      let recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-      if (acmeCa.configuration.dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy) {
-        // For DNS Made Easy, we don't need to provide the domain name in the record name.
-        recordName = "_acme-challenge";
-      }
-      const recordValue = `"${keyAuthorization}"`; // must be double quoted
+      const { recordName, recordValue } = getAcmeChallengeRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        authz.identifier.value,
+        keyAuthorization
+      );
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
@@ -284,8 +299,11 @@ export const orderCertificate = async (
       }
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
-      const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-      const recordValue = `"${keyAuthorization}"`; // must be double quoted
+      const { recordName, recordValue } = getAcmeChallengeRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        authz.identifier.value,
+        keyAuthorization
+      );
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
