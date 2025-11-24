@@ -233,9 +233,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
               />
             </div>
             <div className="grow">
-              {i === 0 && (
-                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
-              )}
+              {i === 0 && <FormLabel label="Value" className="text-xs text-mineshaft-400" />}
               <Controller
                 control={control}
                 name={`metadata.${i}.value`}
