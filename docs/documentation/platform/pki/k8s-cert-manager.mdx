@@ -145,9 +145,9 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     </Note>
 
   </Step>
-  <Step title="Create Certificate">
+  <Step title="Create the Certificate">
 
-    Finally, create a `Certificate` by applying the following configuration file.
+    Finally, request a certificate from Infisical ACME server by creating a cert-manager `Certificate` resource.
     This configuration file specifies the details of the (end-entity/leaf) certificate to be issued.
 
     ```yaml certificate-issuer.yaml
@@ -157,24 +157,22 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
         name: certificate-by-issuer
         namespace: <namespace_you_want_to_issue_certificates_in>
     spec:
-        # the common name for the certificate
         commonName: certificate-by-issuer.example.com
-        # the name of the Kubernetes Secret to create and store
-        # the certificate and private key in
-        secretName: certificate-by-issuer
-        issuerRef:
-            name: issuer-infisical
-            group: issuers.cert-manager.io
-            kind: Issuer
-        # the algorithm and key size to use
+        # name of the resulting Kubernetes Secret
+        secretName: certificate-by-issuer-tls
+        # total validity period of the certificate
+        duration: 48h
+        # cert-manager will attempt renewal 12 hours before expiry
+        renewBefore: 12h
         privateKey:
             algorithm: ECDSA
+            # uses NIST P-256 curve
             size: 256
-        # the ttl for the certificate
-        duration: 48h
-        # the time before the certificate expiry that the certificate should
-        # be automatically renewed
-        renewBefore: 12h
+        issuerRef:
+            name: issuer-infisical
+            # use ClusterIssuer if you created a ClusterIssuer instead
+            kind: Issuer
+            group: cert-manager.io
     ```
 
     The above sample configuration file specifies a certificate to be issued with the common name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
