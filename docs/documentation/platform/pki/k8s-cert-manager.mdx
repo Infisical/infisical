@@ -164,7 +164,8 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
                 size: 256
             # the ttl for the certificate
             duration: 48h
-            # the time before the certificate expiry that the certificate should be automatically renewed
+            # the time before the certificate expiry that the certificate should
+            # be automatically renewed
             renewBefore: 12h
         ```
 
@@ -210,7 +211,7 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
                     cert-manager.io/certificate-name: certificate-by-issuer
                     cert-manager.io/common-name: certificate-by-issuer.example.com
                     cert-manager.io/ip-sans:
-                    cert-manager.io/issuer-group: infisical-issuer.infisical.com
+                    cert-manager.io/issuer-group: issuers.cert-manager.io
                     cert-manager.io/issuer-kind: Issuer
                     cert-manager.io/issuer-name: issuer-infisical
                     cert-manager.io/uri-sans:
@@ -254,12 +255,5 @@ In the following steps, we explore how to install the Infisical PKI Issuer using
 
     You can read more about the `renewBefore` field [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
 
-</Accordion>
-<Accordion title="Why is my CertificateRequest not being approved, showing 'CertificateRequest has not been approved yet. Ignoring.'?">
-    If you see log messages similar to:
-    ```
-    "CertificateRequest has not been approved yet. Ignoring.","controller":"certificaterequest","controllerGroup":"cert-manager.io","controllerKind":"CertificateRequest","CertificateRequest":{"name":"skynet-infisical-rta-rsa2048-1","namespace":"infisical-system"},"namespace":"infisical-system","name":"skynet-infisical-rta-rsa2048-1","reconcileID":"bfb7cad9-d867-45b5-b3a3-0139e731b7a6"}
-    ```
-    This indicates that the `CertificateRequest` has been created, but `cert-manager` has not yet approved it. This typically occurs because a necessary approver policy is missing. Refer to the documentation above to create an approver policy.
 </Accordion>
 </AccordionGroup>
