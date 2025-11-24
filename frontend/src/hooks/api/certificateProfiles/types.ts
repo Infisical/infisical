@@ -1,3 +1,14 @@
+export enum EnrollmentType {
+  API = "api",
+  EST = "est",
+  ACME = "acme"
+}
+
+export enum IssuerType {
+  CA = "ca",
+  SELF_SIGNED = "self-signed"
+}
+
 export type TCertificateProfile = {
   id: string;
   projectId: string;
@@ -5,8 +16,8 @@ export type TCertificateProfile = {
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est" | "acme";
-  issuerType: "ca" | "self-signed";
+  enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
   estConfigId?: string;
   apiConfigId?: string;
   createdAt: string;
@@ -49,8 +60,8 @@ export type TCreateCertificateProfileDTO = {
   certificateTemplateId: string;
   slug: string;
   description?: string;
-  enrollmentType: "api" | "est" | "acme";
-  issuerType: "ca" | "self-signed";
+  enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase: string;
@@ -67,8 +78,8 @@ export type TUpdateCertificateProfileDTO = {
   profileId: string;
   slug?: string;
   description?: string;
-  enrollmentType?: "api" | "est" | "acme";
-  issuerType?: "ca" | "self-signed";
+  enrollmentType?: EnrollmentType;
+  issuerType?: IssuerType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase?: string;
@@ -91,8 +102,8 @@ export type TListCertificateProfilesDTO = {
   offset?: number;
   search?: string;
   includeConfigs?: boolean;
-  enrollmentType?: "api" | "est" | "acme";
-  issuerType?: "ca" | "self-signed";
+  enrollmentType?: EnrollmentType;
+  issuerType?: IssuerType;
   caId?: string;
 };
 

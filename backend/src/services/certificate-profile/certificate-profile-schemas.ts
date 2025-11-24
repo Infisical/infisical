@@ -7,11 +7,7 @@ import { EnrollmentType, IssuerType } from "./certificate-profile-types";
 export const createCertificateProfileSchema = z
   .object({
     projectId: z.string().uuid("Project ID must be valid"),
-    caId: z
-      .union([z.string().uuid(), z.literal("")])
-      .optional()
-      .nullable()
-      .transform((val) => (val === "" ? null : val)),
+    caId: z.string().uuid().nullable().optional(),
     certificateTemplateId: z.string().uuid(),
     slug: z
       .string()
@@ -38,60 +34,101 @@ export const createCertificateProfileSchema = z
   })
   .refine(
     (data) => {
-      // Validate enrollment type configurations
       if (data.enrollmentType === EnrollmentType.EST) {
-        if (!data.estConfig) {
-          return false;
-        }
-        if (data.apiConfig) {
-          return false;
-        }
-        if (data.acmeConfig) {
-          return false;
-        }
+        return !!data.estConfig;
       }
-      if (data.enrollmentType === EnrollmentType.API) {
-        if (!data.apiConfig) {
-          return false;
-        }
-        if (data.estConfig) {
-          return false;
-        }
-        if (data.acmeConfig) {
-          return false;
-        }
-      }
-      if (data.enrollmentType === EnrollmentType.ACME) {
-        if (!data.acmeConfig) {
-          return false;
-        }
-        if (data.estConfig) {
-          return false;
-        }
-        if (data.apiConfig) {
-          return false;
-        }
-      }
-
-      if (data.issuerType === IssuerType.CA) {
-        if (!data.caId) {
-          return false;
-        }
-      }
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        if (data.caId) {
-          return false;
-        }
-        if (data.enrollmentType !== EnrollmentType.API) {
-          return false;
-        }
-      }
-
       return true;
     },
     {
-      message:
-        "EST enrollment type requires EST configuration and cannot have API configuration. API enrollment type requires API configuration and cannot have EST configuration. CA issuer type requires a CA ID. Self-signed issuer type cannot have a CA ID and only supports API enrollment."
+      message: "EST enrollment type requires EST configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !!data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type requires API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !!data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type requires ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.EST) {
+        return !data.apiConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "EST enrollment type cannot have API or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !data.estConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type cannot have EST or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !data.estConfig && !data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type cannot have EST or API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.CA) {
+        return !!data.caId;
+      }
+      return true;
+    },
+    {
+      message: "CA issuer type requires a CA ID"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.caId;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type cannot have a CA ID"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return data.enrollmentType === EnrollmentType.API;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type only supports API enrollment"
     }
   );
 
@@ -123,27 +160,34 @@ export const updateCertificateProfileSchema = z
   .refine(
     (data) => {
       if (data.enrollmentType === EnrollmentType.EST) {
-        if (data.apiConfig) {
-          return false;
-        }
+        return !data.apiConfig;
       }
-      if (data.enrollmentType === EnrollmentType.API) {
-        if (data.estConfig) {
-          return false;
-        }
-      }
-
-      if (data.issuerType === IssuerType.SELF_SIGNED) {
-        if (data.enrollmentType && data.enrollmentType !== EnrollmentType.API) {
-          return false;
-        }
-      }
-
       return true;
     },
     {
-      message:
-        "Cannot have EST config with API enrollment type or API config with EST enrollment type. Self-signed issuer type only supports API enrollment."
+      message: "EST enrollment type cannot have API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !data.estConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type cannot have EST configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.enrollmentType || data.enrollmentType === EnrollmentType.API;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type only supports API enrollment"
     }
   );
 

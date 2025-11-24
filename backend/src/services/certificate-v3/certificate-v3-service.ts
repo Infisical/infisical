@@ -407,11 +407,16 @@ const generateSelfSignedCertificate = async ({
   const signatureAlgorithmConfig = signatureAlgorithmToAlgCfg(effectiveSignatureAlgorithm, effectiveKeyAlgorithm);
 
   const notBeforeDate = certificateRequest.notBefore ? new Date(certificateRequest.notBefore) : new Date();
-  let notAfterDate = new Date(new Date().setFullYear(new Date().getFullYear() + 1));
+
+  let notAfterDate: Date;
   if (certificateRequest.notAfter) {
     notAfterDate = new Date(certificateRequest.notAfter);
   } else if (certificateRequest.validity.ttl) {
     notAfterDate = new Date(new Date().getTime() + ms(certificateRequest.validity.ttl));
+  } else {
+    throw new BadRequestError({
+      message: "Either notAfter date or TTL must be provided for certificate validity"
+    });
   }
 
   const serialNumber = createSerialNumber();
@@ -458,10 +463,22 @@ const generateSelfSignedCertificate = async ({
       ...(subjectAlternativeNames
         ? [
             new x509.SubjectAlternativeNameExtension(
-              certificateRequest.altNames?.map((san) => ({
-                type: san.type === CertSubjectAlternativeNameType.DNS_NAME ? "dns" : "ip",
-                value: san.value
-              })) || [],
+              certificateRequest.altNames?.map((san) => {
+                switch (san.type) {
+                  case CertSubjectAlternativeNameType.DNS_NAME:
+                    return { type: "dns" as const, value: san.value };
+                  case CertSubjectAlternativeNameType.IP_ADDRESS:
+                    return { type: "ip" as const, value: san.value };
+                  case CertSubjectAlternativeNameType.EMAIL:
+                    return { type: "email" as const, value: san.value };
+                  case CertSubjectAlternativeNameType.URI:
+                    return { type: "url" as const, value: san.value };
+                  default:
+                    throw new BadRequestError({
+                      message: `Unsupported Subject Alternative Name type: ${san.type as string}`
+                    });
+                }
+              }) || [],
               false
             )
           ]
@@ -545,7 +562,7 @@ const createSelfSignedCertificateRecord = async ({
     (selfSignedResult.certificateSubject.common_name as string) ||
     certificateRequest.commonName ||
     originalCert?.commonName ||
-    (isRenewal ? "Renewed Self-signed Certificate" : "Self-signed Certificate");
+    "";
 
   const altNamesList = selfSignedResult.subjectAlternativeNames.map((san) => san.value).join(",");
 
@@ -726,8 +743,8 @@ const processSelfSignedCertificate = async ({
 
   await createEncryptedCertificateData({
     certificateId: certificateData.id,
-    certificate: Buffer.from(selfSignedResult.certificate),
-    privateKey: Buffer.from(selfSignedResult.privateKey),
+    certificate: selfSignedResult.certificate,
+    privateKey: selfSignedResult.privateKey,
     projectId,
     certificateBodyDAL,
     certificateSecretDAL,
@@ -1100,10 +1117,25 @@ export const certificateV3ServiceFactory = ({
       commonName: certificateOrder.commonName,
       keyUsages: certificateOrder.keyUsages,
       extendedKeyUsages: certificateOrder.extendedKeyUsages,
-      subjectAlternativeNames: certificateOrder.altNames.map((san) => ({
-        type: san.type === "dns" ? CertSubjectAlternativeNameType.DNS_NAME : CertSubjectAlternativeNameType.IP_ADDRESS,
-        value: san.value
-      })),
+      subjectAlternativeNames: certificateOrder.altNames.map((san) => {
+        let certType: CertSubjectAlternativeNameType;
+        switch (san.type) {
+          case "dns":
+            certType = CertSubjectAlternativeNameType.DNS_NAME;
+            break;
+          case "ip":
+            certType = CertSubjectAlternativeNameType.IP_ADDRESS;
+            break;
+          default:
+            throw new BadRequestError({
+              message: `Unsupported Subject Alternative Name type: ${san.type as string}`
+            });
+        }
+        return {
+          type: certType,
+          value: san.value
+        };
+      }),
       validity: certificateOrder.validity,
       notBefore: certificateOrder.notBefore,
       notAfter: certificateOrder.notAfter,
@@ -1216,7 +1248,8 @@ export const certificateV3ServiceFactory = ({
 
         if (profile.enrollmentType !== EnrollmentType.API) {
           throw new ForbiddenRequestError({
-            message: "Certificate is not eligible for renewal: EST certificates cannot be renewed through this endpoint"
+            message:
+              "Certificate is not eligible for renewal: Only certificates issued from an API enrollment profile can be renewed through this endpoint"
           });
         }
       }

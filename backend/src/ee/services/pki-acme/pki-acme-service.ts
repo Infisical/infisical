@@ -739,11 +739,7 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
 
-        if (!profile.caId) {
-          throw new NotFoundError({ message: "Self-signed certificates are not supported for ACME enrollment" });
-        }
-
-        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }

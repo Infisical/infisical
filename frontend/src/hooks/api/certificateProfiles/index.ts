@@ -10,4 +10,4 @@ export {
   useGetProfileCertificates,
   useListCertificateProfiles
 } from "./queries";
-export type * from "./types";
+export * from "./types";

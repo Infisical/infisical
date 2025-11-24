@@ -21,6 +21,8 @@ import {
 import { useProject, useSubscription } from "@app/context";
 import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
+  EnrollmentType,
+  IssuerType,
   TCertificateProfileWithDetails,
   TCreateCertificateProfileDTO,
   TUpdateCertificateProfileDTO,
@@ -46,8 +48,8 @@ const createSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est", "acme"]),
-    issuerType: z.enum(["ca", "self-signed"]),
+    enrollmentType: z.nativeEnum(EnrollmentType),
+    issuerType: z.nativeEnum(IssuerType),
     certificateAuthorityId: z.string().nullable().optional(),
     certificateTemplateId: z.string().min(1, "Certificate Template is required"),
     estConfig: z
@@ -79,30 +81,101 @@ const createSchema = z
   })
   .refine(
     (data) => {
-      if (data.enrollmentType === "est" && !data.estConfig) {
-        return false;
+      if (data.enrollmentType === EnrollmentType.EST) {
+        return !!data.estConfig;
       }
-      if (data.enrollmentType === "api" && !data.apiConfig) {
-        return false;
-      }
-      if (data.enrollmentType === "acme" && !data.acmeConfig) {
-        return false;
-      }
-
-      if (data.issuerType === "ca" && !data.certificateAuthorityId) {
-        return false;
-      }
-      if (data.issuerType === "self-signed" && data.certificateAuthorityId) {
-        return false;
-      }
-      if (data.issuerType === "self-signed" && data.enrollmentType !== "api") {
-        return false;
-      }
-
       return true;
     },
     {
-      message: "Configuration is required for selected enrollment type and issuer type"
+      message: "EST enrollment type requires EST configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !!data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type requires API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !!data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type requires ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.EST) {
+        return !data.apiConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "EST enrollment type cannot have API or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !data.estConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type cannot have EST or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !data.estConfig && !data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type cannot have EST or API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.CA) {
+        return !!data.certificateAuthorityId;
+      }
+      return true;
+    },
+    {
+      message: "CA issuer type requires a certificate authority"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.certificateAuthorityId;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type cannot have a certificate authority"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return data.enrollmentType === EnrollmentType.API;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type only supports API enrollment"
     }
   );
 
@@ -122,8 +195,8 @@ const editSchema = z
       .trim()
       .max(1000, "Description must be less than 1000 characters")
       .optional(),
-    enrollmentType: z.enum(["api", "est", "acme"]),
-    issuerType: z.enum(["ca", "self-signed"]),
+    enrollmentType: z.nativeEnum(EnrollmentType),
+    issuerType: z.nativeEnum(IssuerType),
     certificateAuthorityId: z.string().nullable().optional(),
     certificateTemplateId: z.string().optional(),
     estConfig: z
@@ -143,31 +216,101 @@ const editSchema = z
   })
   .refine(
     (data) => {
-      if (data.enrollmentType === "est" && !data.estConfig) {
-        return false;
+      if (data.enrollmentType === EnrollmentType.EST) {
+        return !!data.estConfig;
       }
-      if (data.enrollmentType === "api" && !data.apiConfig) {
-        return false;
-      }
-      if (data.enrollmentType === "acme" && !data.acmeConfig) {
-        return false;
-      }
-
-      if (data.issuerType === "ca" && !data.certificateAuthorityId) {
-        return false;
-      }
-      if (data.issuerType === "self-signed" && data.certificateAuthorityId) {
-        return false;
-      }
-      if (data.issuerType === "self-signed" && data.enrollmentType !== "api") {
-        return false;
-      }
-
       return true;
     },
     {
-      message:
-        "Configuration is required for selected enrollment type and issuer type. CA issuer requires a certificate authority. Self-signed issuer cannot have a certificate authority and only supports API enrollment."
+      message: "EST enrollment type requires EST configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !!data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type requires API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !!data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type requires ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.EST) {
+        return !data.apiConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "EST enrollment type cannot have API or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.API) {
+        return !data.estConfig && !data.acmeConfig;
+      }
+      return true;
+    },
+    {
+      message: "API enrollment type cannot have EST or ACME configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.enrollmentType === EnrollmentType.ACME) {
+        return !data.estConfig && !data.apiConfig;
+      }
+      return true;
+    },
+    {
+      message: "ACME enrollment type cannot have EST or API configuration"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.CA) {
+        return !!data.certificateAuthorityId;
+      }
+      return true;
+    },
+    {
+      message: "CA issuer type requires a certificate authority"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return !data.certificateAuthorityId;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type cannot have a certificate authority"
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.issuerType === IssuerType.SELF_SIGNED) {
+        return data.enrollmentType === EnrollmentType.API;
+      }
+      return true;
+    },
+    {
+      message: "Self-signed issuer type only supports API enrollment"
     }
   );
 
@@ -222,7 +365,7 @@ export const CreateProfileModal = ({
           certificateAuthorityId: profile.caId || undefined,
           certificateTemplateId: profile.certificateTemplateId,
           estConfig:
-            profile.enrollmentType === "est"
+            profile.enrollmentType === EnrollmentType.EST
               ? {
                   disableBootstrapCaValidation:
                     profile.estConfig?.disableBootstrapCaValidation || false,
@@ -231,19 +374,19 @@ export const CreateProfileModal = ({
                 }
               : undefined,
           apiConfig:
-            profile.enrollmentType === "api"
+            profile.enrollmentType === EnrollmentType.API
               ? {
                   autoRenew: profile.apiConfig?.autoRenew || false,
                   renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
                 }
               : undefined,
-          acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
+          acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined
         }
       : {
           slug: "",
           description: "",
-          enrollmentType: "api",
-          issuerType: "ca",
+          enrollmentType: EnrollmentType.API,
+          issuerType: IssuerType.CA,
           certificateAuthorityId: "",
           certificateTemplateId: "",
           apiConfig: {
@@ -284,13 +427,13 @@ export const CreateProfileModal = ({
                 renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
               }
             : undefined,
-        acmeConfig: profile.enrollmentType === "acme" ? {} : undefined
+        acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined
       });
     }
   }, [isEdit, profile, reset]);
 
   const onFormSubmit = async (data: FormData) => {
-    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === "acme") {
+    if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
       reset();
       onClose();
       handlePopUpOpen("upgradePlan", {
@@ -309,11 +452,11 @@ export const CreateProfileModal = ({
         issuerType: data.issuerType
       };
 
-      if (data.enrollmentType === "est" && data.estConfig) {
+      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         updateData.estConfig = data.estConfig;
-      } else if (data.enrollmentType === "api" && data.apiConfig) {
+      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
         updateData.apiConfig = data.apiConfig;
-      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         updateData.acmeConfig = data.acmeConfig;
       }
 
@@ -330,19 +473,21 @@ export const CreateProfileModal = ({
         enrollmentType: data.enrollmentType,
         issuerType: data.issuerType,
         caId:
-          data.issuerType === "self-signed" ? undefined : data.certificateAuthorityId || undefined,
+          data.issuerType === IssuerType.SELF_SIGNED
+            ? undefined
+            : data.certificateAuthorityId || undefined,
         certificateTemplateId: data.certificateTemplateId
       };
 
-      if (data.enrollmentType === "est" && data.estConfig) {
+      if (data.enrollmentType === EnrollmentType.EST && data.estConfig) {
         createData.estConfig = {
           passphrase: data.estConfig.passphrase,
           caChain: data.estConfig.caChain || undefined,
           disableBootstrapCaValidation: data.estConfig.disableBootstrapCaValidation
         };
-      } else if (data.enrollmentType === "api" && data.apiConfig) {
+      } else if (data.enrollmentType === EnrollmentType.API && data.apiConfig) {
         createData.apiConfig = data.apiConfig;
-      } else if (data.enrollmentType === "acme" && data.acmeConfig) {
+      } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         createData.acmeConfig = data.acmeConfig;
       }
 
@@ -417,7 +562,7 @@ export const CreateProfileModal = ({
                   onValueChange={(value) => {
                     if (value === "self-signed") {
                       setValue("certificateAuthorityId", "");
-                      setValue("enrollmentType", "api");
+                      setValue("enrollmentType", EnrollmentType.API);
                       setValue("apiConfig", {
                         autoRenew: false,
                         renewBeforeDays: 30
@@ -559,12 +704,12 @@ export const CreateProfileModal = ({
                   isDisabled={Boolean(isEdit)}
                 >
                   <SelectItem value="api">API</SelectItem>
-                  <SelectItem value="est" isDisabled={watchedIssuerType === "self-signed"}>
-                    EST
-                  </SelectItem>
-                  <SelectItem value="acme" isDisabled={watchedIssuerType === "self-signed"}>
-                    ACME
-                  </SelectItem>
+                  {watchedIssuerType !== IssuerType.SELF_SIGNED && (
+                    <SelectItem value="est">EST</SelectItem>
+                  )}
+                  {watchedIssuerType !== IssuerType.SELF_SIGNED && (
+                    <SelectItem value="acme">ACME</SelectItem>
+                  )}
                 </Select>
               </FormControl>
             )}

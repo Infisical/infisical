@@ -30,7 +30,7 @@ import {
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
 import { useGetCaById } from "@app/hooks/api/ca/queries";
-import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
+import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
@@ -106,20 +106,6 @@ export const ProfileRow = ({
     return <Badge variant={variant}>{label}</Badge>;
   };
 
-  const getIssuerTypeBadge = (issuerType: string) => {
-    const config = {
-      ca: { variant: "success" as const, label: "CA" },
-      "self-signed": { variant: "info" as const, label: "Self-Signed" }
-    } as const;
-
-    const configKey = Object.keys(config).includes(issuerType)
-      ? (issuerType as keyof typeof config)
-      : "ca";
-    const { variant, label } = config[configKey];
-
-    return <Badge variant={variant}>{label}</Badge>;
-  };
-
   return (
     <Tr key={profile.id} className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
       <Td>
@@ -133,11 +119,10 @@ export const ProfileRow = ({
         </div>
       </Td>
       <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
-      <Td className="text-start">{getIssuerTypeBadge(profile.issuerType)}</Td>
       <Td className="text-start">
         <span className="text-sm text-mineshaft-300">
-          {profile.issuerType === "self-signed"
-            ? "—"
+          {profile.issuerType === IssuerType.SELF_SIGNED
+            ? "Self-signed"
             : caData?.friendlyName || caData?.commonName || profile.caId}
         </span>
       </Td>
