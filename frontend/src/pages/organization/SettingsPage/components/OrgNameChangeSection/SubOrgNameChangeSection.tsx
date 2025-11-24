@@ -33,7 +33,7 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   const { handleSubmit, control } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: currentOrg?.subOrganization?.name || ""
+      name: currentOrg?.name || ""
     }
   });
   const { mutateAsync, isPending } = useUpdateSubOrganization();

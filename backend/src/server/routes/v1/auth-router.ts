@@ -89,16 +89,30 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       const { decodedToken, tokenVersion } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
       const appCfg = getConfig();
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
+
       if (decodedToken.organizationId) {
-        const org = await server.services.org.findOrganizationById(
-          decodedToken.userId,
-          decodedToken.organizationId,
-          decodedToken.authMethod,
-          decodedToken.organizationId,
-          decodedToken.organizationId
-        );
-        if (org && org.userTokenExpiration) {
-          expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+        if (decodedToken.subOrganizationId) {
+          const subOrg = await server.services.org.findOrganizationById({
+            userId: decodedToken.userId,
+            orgId: decodedToken.subOrganizationId,
+            actorAuthMethod: decodedToken.authMethod,
+            actorOrgId: decodedToken.subOrganizationId,
+            rootOrgId: decodedToken.organizationId
+          });
+          if (subOrg && subOrg.userTokenExpiration) {
+            expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, subOrg.userTokenExpiration);
+          }
+        } else {
+          const org = await server.services.org.findOrganizationById({
+            userId: decodedToken.userId,
+            orgId: decodedToken.organizationId,
+            actorAuthMethod: decodedToken.authMethod,
+            actorOrgId: decodedToken.organizationId,
+            rootOrgId: decodedToken.organizationId
+          });
+          if (org && org.userTokenExpiration) {
+            expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
+          }
         }
       }
 
@@ -110,6 +124,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           tokenVersionId: tokenVersion.id,
           accessVersion: tokenVersion.accessVersion,
           organizationId: decodedToken.organizationId,
+          ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
           isMfaVerified: decodedToken.isMfaVerified,
           mfaMethod: decodedToken.mfaMethod
         },
@@ -117,7 +132,7 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
         { expiresIn }
       );
 
-      return { token, organizationId: decodedToken.organizationId };
+      return { token, organizationId: decodedToken.organizationId, subOrganizationId: decodedToken.subOrganizationId };
     }
   });
 };

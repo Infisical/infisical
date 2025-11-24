@@ -350,22 +350,25 @@ export const licenseServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    rootOrgId,
     actorAuthMethod,
     projectId,
     refreshCache
   }: TOrgPlanDTO) => {
+    const isChildOrg = rootOrgId !== actorOrgId;
+
     await permissionService.getOrgPermission({
       actorId,
       actor,
       orgId,
       actorOrgId,
       actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: isChildOrg ? OrganizationActionScope.ChildOrganization : OrganizationActionScope.ParentOrganization
     });
     if (refreshCache) {
-      await refreshPlan(orgId);
+      await refreshPlan(rootOrgId);
     }
-    const plan = await getPlan(orgId, projectId);
+    const plan = await getPlan(rootOrgId, projectId);
     return plan;
   };
 

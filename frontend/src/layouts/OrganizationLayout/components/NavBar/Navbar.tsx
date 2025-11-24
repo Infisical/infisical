@@ -64,7 +64,7 @@ import {
   useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
-import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
+import { authKeys, selectOrganization, selectSubOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
@@ -81,7 +81,11 @@ const getPlan = (subscription: SubscriptionPlan) => {
   return "Free";
 };
 
-const getFormattedSupportEmailLink = (variables: { org_id: string; domain: string }) => {
+const getFormattedSupportEmailLink = (variables: {
+  org_id: string;
+  domain: string;
+  root_org_id?: string;
+}) => {
   const email = "support@infisical.com";
 
   const body = `Hello Infisical Support Team,
@@ -95,6 +99,7 @@ Issue Details:
 
 Account Info:
 - Organization ID: ${variables.org_id}
+${variables.root_org_id ? `- Root Organization ID: ${variables.root_org_id}` : ""}
 - Domain: ${variables.domain}
 
 Thank you,
@@ -170,6 +175,10 @@ export const Navbar = () => {
 
   const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
 
+  const rootOrg = isSubOrganization
+    ? orgs?.find((org) => org.id === currentOrg.rootOrgId) || currentOrg
+    : currentOrg;
+
   useEffect(() => {
     if (isModalIntrusive) {
       setShowCardDeclinedModal(true);
@@ -206,6 +215,31 @@ export const Navbar = () => {
     await router.invalidate();
     await navigateUserToOrg(navigate, orgId);
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+  };
+
+  const handleSubOrgChange = async (subOrgId: string) => {
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
+
+    const { token, isMfaEnabled, mfaMethod } = await selectSubOrganization({
+      subOrganizationId: subOrgId
+    });
+
+    if (isMfaEnabled) {
+      SecurityClient.setMfaToken(token);
+      if (mfaMethod) {
+        setRequiredMfaMethod(mfaMethod);
+      }
+      toggleShowMfa.on();
+      setMfaSuccessCallback(() => () => handleSubOrgChange(subOrgId));
+      return;
+    }
+
+    await router.invalidate();
+    navigate({
+      to: "/organizations/$orgId/projects",
+      params: { orgId: subOrgId }
+    });
   };
 
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -321,17 +355,14 @@ export const Navbar = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        navigate({
-                          to: "/organizations/$orgId/projects",
-                          params: { orgId: currentOrg.id }
-                        });
+                        handleOrgChange(rootOrg.id);
                         if (isSubOrganization) {
                           await router.invalidate({ sync: true }).catch(() => null);
                         }
                       }}
                     >
                       <OrgIcon className="size-[12px]" />
-                      <span>{currentOrg?.name}</span>
+                      <span>{rootOrg?.name}</span>
                     </button>
                   </Badge>
                   <div className="mr-1 hidden rounded-sm border border-mineshaft-500 px-1 text-xs text-bunker-300 no-underline! md:inline-block">
@@ -405,13 +436,7 @@ export const Navbar = () => {
                             </div>
                             {subOrganizations.map((subOrg) => (
                               <DropdownMenuItem
-                                onClick={async () => {
-                                  navigate({
-                                    to: "/organizations/$orgId/projects",
-                                    params: { orgId: subOrg.id }
-                                  });
-                                  await router.invalidate({ sync: true }).catch(() => null);
-                                }}
+                                onClick={() => handleSubOrgChange(subOrg.id)}
                                 className="cursor-pointer font-normal"
                                 key={subOrg.id}
                               >
@@ -466,7 +491,7 @@ export const Navbar = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            {currentOrg.subOrganization && (
+            {isSubOrganization && (
               <>
                 <p className="pr-3 pl-1 text-lg text-mineshaft-400/70">/</p>
                 <DropdownMenu modal={false}>
@@ -483,7 +508,7 @@ export const Navbar = () => {
                   >
                     <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
                       <SubOrgIcon className="size-[12px]" />
-                      <span>{currentOrg.subOrganization.name}</span>
+                      <span>{currentOrg.name}</span>
                     </Link>
                   </Badge>
                   <DropdownMenuTrigger asChild>
@@ -509,13 +534,7 @@ export const Navbar = () => {
                     </div>
                     {subOrganizations.map((subOrg) => (
                       <DropdownMenuItem
-                        onClick={async () => {
-                          navigate({
-                            to: "/organizations/$orgId/projects",
-                            params: { orgId: subOrg.id }
-                          });
-                          await router.invalidate({ sync: true }).catch(() => null);
-                        }}
+                        onClick={() => handleSubOrgChange(subOrg.id)}
                         className="cursor-pointer font-normal"
                         key={subOrg.id}
                       >
@@ -562,11 +581,11 @@ export const Navbar = () => {
             className="mr-2 border-mineshaft-500 px-2.5 py-1.5 whitespace-nowrap text-mineshaft-200 hover:bg-mineshaft-600"
             leftIcon={<FontAwesomeIcon icon={faInfinity} />}
             onClick={async () => {
-              if (!subscription || !currentOrg) return;
+              if (!subscription || !rootOrg) return;
 
               // direct user to start pro trial
               const url = await mutateAsync({
-                orgId: currentOrg.id,
+                orgId: rootOrg.id,
                 success_url: window.location.href
               });
 
@@ -611,6 +630,7 @@ export const Navbar = () => {
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger>
           <div className="rounded-l-md border border-r-0 border-mineshaft-500 px-2.5 py-1 hover:bg-mineshaft-600">
+            aple
             <FontAwesomeIcon icon={faCircleQuestion} className="text-mineshaft-200" />
           </div>
         </DropdownMenuTrigger>
@@ -620,7 +640,8 @@ export const Navbar = () => {
               text === "Email Support"
                 ? getUrl({
                     org_id: currentOrg.id,
-                    domain: window.location.origin
+                    domain: window.location.origin,
+                    ...(isSubOrganization && { root_org_id: rootOrg.id })
                   })
                 : getUrl();
 
@@ -782,7 +803,7 @@ export const Navbar = () => {
                 <div className="flex space-x-3">
                   <Link
                     to="/organizations/$orgId/billing"
-                    params={{ orgId: currentOrg.id }}
+                    params={{ orgId: rootOrg.id }}
                     className="inline-flex"
                   >
                     <Button
