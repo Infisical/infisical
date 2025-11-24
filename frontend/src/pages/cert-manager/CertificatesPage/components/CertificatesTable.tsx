@@ -416,7 +416,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {/* Manual renewal action for profile-issued certificates that are not revoked/expired (including failed ones) */}
                         {(() => {
                           const canRenew =
-                            certificate.profileId &&
+                            (certificate.profileId || certificate.caId) &&
                             certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&

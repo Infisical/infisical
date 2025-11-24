@@ -2787,6 +2787,7 @@ interface CreateCertificateProfile {
     name: string;
     projectId: string;
     enrollmentType: string;
+    issuerType: string;
   };
 }
 
