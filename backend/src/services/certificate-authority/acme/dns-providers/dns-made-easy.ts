@@ -73,7 +73,7 @@ export const dnsMadeEasyDeleteTxtRecord = async (
     let foundRecord = false;
     if (dnsRecords.length > 0) {
       const recordToDelete = dnsRecords.find(
-        (record) => record.type === "TXT" && record.name === domain && JSON.parse(record.value) === value
+        (record) => record.type === "TXT" && record.name === domain && record.value === value
       );
 
       if (recordToDelete) {
