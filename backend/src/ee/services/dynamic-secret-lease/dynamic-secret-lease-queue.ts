@@ -42,6 +42,8 @@ export type TDynamicSecretLeaseQueueServiceFactory = {
   init: () => Promise<void>;
 };
 
+const MAX_REVOCATION_RETRY_COUNT = 10;
+
 export const dynamicSecretLeaseQueueServiceFactory = ({
   queueService,
   dynamicSecretDAL,
@@ -96,7 +98,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       {
         singletonKey: `${leaseId}-retry`, // avoid conflicts with scheduled revocation
         retryDelay: retryDelaySeconds,
-        retryLimit: 10, // we dont want it to ever hit the limit, we want the expireInHours to take effect.
+        retryLimit: MAX_REVOCATION_RETRY_COUNT, // we dont want it to ever hit the limit, we want the expireInHours to take effect.
         expireInHours: 23 // if we set it to 24 hours, pgboss will complain that the expireIn is too high
       }
     );
@@ -111,7 +113,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       },
       {
         jobId: `dynamic-secret-lease-revocation-failed-email-${dynamicSecretId}`,
-        delay: 1000 * 60, // 1 minute
+        delay: 1000 * 60 * 10, // 10 minute
+        attempts: 3,
         backoff: {
           type: "exponential",
           delay: 1000 * 60 // 1 minute
@@ -234,8 +237,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
           await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, jobId);
           await queueFailedRevocation(leaseId, dynamicSecretId);
+
+          // if its the last attempt, and the error isn't a DisableRotationErrors error, send an email to the project admins (debounced)
         } else if (isRetry && !(error instanceof DisableRotationErrors)) {
-          if (retryCount && retryCount === 10) {
+          if (retryCount && retryCount === MAX_REVOCATION_RETRY_COUNT) {
             await $queueDynamicSecretLeaseRevocationFailedEmail(leaseId, dynamicSecretId);
           }
         }
@@ -252,6 +257,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
     }
   };
 
+  // send alert email once all revocation attempts have failed
   const $dynamicSecretLeaseRevocationFailedEmailJob = async (jobId: string, data: { leaseId: string }) => {
     try {
       const appCfg = getConfig();
