@@ -1,15 +1,16 @@
 ---
 title: "Kubernetes cert-manager"
-description: "Learn how to automatically provision and manage TLS certificates in Kubernetes using Infisical PKI"
+description: "Learn how to automatically provision and manage TLS certificates in Kubernetes using Infisical"
 ---
 
 ## Concept
 
-The Infisical PKI provides [ACME (Automated Certificate Management Environment)](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) integration, enabling various ACME clients to issue and renew certificates automatically.
-In Kubernetes environments, [cert-manager](https://cert-manager.io) is the most popular tool for issuing certificates via ACME.
-The issuer is perfect at obtaining X.509 certificates for Ingresses and other Kubernetes resources and can automatically renew them before expiration.
+This guide demonstrates how to use Infisical to issue TLS certificates back to your Kubernetes environment using [cert-manager](https://cert-manager.io/).
 
-The typical workflow involves installing `cert-manager` and configuring resources that represent the connection details to your Infisical PKI as well as the certificates you want to issue.
+It uses the [ACME issuer type](https://cert-manager.io/docs/configuration/acme/) to request and renew certificates automatically from Infisical
+using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). The issuer is perfect at obtaining X.509 certificates for Ingresses and other Kubernetes resources and can automatically renew them before expiration.
+
+The typical workflow involves installing `cert-manager` and configuring resources that represent the connection details to Infisical as well as the certificates you want to issue.
 Each issued certificate and its corresponding private key are stored in a Kubernetes `Secret`.
 
 We recommend reading the official [cert-manager documentation](https://cert-manager.io/docs/) for a complete overview.
@@ -17,18 +18,18 @@ For the ACME-specific configuration, refer to the [ACME section](https://cert-ma
 
 ## Workflow
 
-A typical workflow for using cert-manager with Infisical PKI via ACME consists of the following steps:
+A typical workflow for using cert-manager with Infisical via ACME consists of the following steps:
 
-1. Create a certificate profile in Infisical with ACME as the enrollment method.
+1. Create a [certificate profile](/documentation/platform/pki/certificates/profiles) in Infisical with the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on it.
 2. Install `cert-manager` in your Kubernetes cluster.
 3. Create a Kubernetes `Secret` containing the EAB (External Account Binding) credentials for the ACME certificate profile.
-4. Create an `Issuer` or `ClusterIssuer` resource that connects to the desired Infisical PKI certificate profile.
+4. Create an `Issuer` or `ClusterIssuer` resource that connects to the desired Infisical [certificate profile](/documentation/platform/pki/certificates/profiles).
 5. Create a `Certificate` resource defining the certificate you wish to issue and the target `Secret` where the certificate and private key will be stored.
 6. Use the resulting Kubernetes `Secret` in your Ingresses or other resources.
 
 ## Guide
 
-The following steps show how to install cert-manager (using `kubectl`) and obtain certificates from Infisical PKI.
+The following steps show how to install cert-manager (using `kubectl`) and obtain certificates from Infisical.
 
 <Steps>
   <Step title="Create a certificate profile with ACME as the enrollment method in Infisical">
@@ -43,7 +44,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     These will be needed in later steps.
 
     <Note>
-      Currently, the Infisical PKI ACME server only supports authentication via dedicated EAB credentials generated per certificate profile.
+      Currently, the Infisical ACME enrollment method only supports authentication via dedicated EAB credentials generated per certificate profile.
 
       Support for [Kubernetes Auth](/documentation/platform/identities/kubernetes-auth) is planned for the near future.
     </Note>
