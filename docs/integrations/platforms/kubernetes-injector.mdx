@@ -120,19 +120,83 @@ You will need to set the `nodeSelector.kubernetes.io/os` label to `windows` and 
 
 The Infisical Agent Injector supports the following annotations:
 
-<Accordion title="org.infisical.com/inject">
-  The inject annotation is used to enable the injector on a pod. Set the value to `true` and the pod will be patched with an Infisical Agent container on update or create.
-</Accordion>
-<Accordion title="org.infisical.com/inject-mode">
-  The inject mode annotation is used to specify the mode to use to inject the secrets into the pod.
+<AccordionGroup>
+  <Accordion title="org.infisical.com/inject">
+    The inject annotation is used to enable the injector on a pod. Set the value to `true` and the pod will be patched with an Infisical Agent container on update or create.
+  </Accordion>
+  <Accordion title="org.infisical.com/inject-mode">
+    The inject mode annotation is used to specify the mode to use to inject the secrets into the pod.
 
-  - `init`: The init method will create an init container for the pod that will render the secrets into a shared volume mount within the pod. The agent init container will run before any other containers in the pod runs, including other init containers.
-  - `sidecar`: The sidecar method will create a sidecar container for the pod that will render the secrets into a shared volume mount within the pod. The agent sidecar container will run alongside the main container in the pod. This means that the secrets rendered will always be in sync with your Infisical secrets.
-  - `sidecar-init`: The sidecar-init method will create the init container and the sidecar container from the other two methods. The init container will run before any other container and fetch the secrets from the start and the sidecar container will keep the secrets in sync throughout the lifecycle of the deployment.
-</Accordion>
-<Accordion title="org.infisical.com/agent-config-map">
-  The agent config map annotation is used to specify the name of the config map that contains the configuration for the injector. The config map must be in the same namespace as the pod.
-</Accordion>
+    - `init`: The init method will create an init container for the pod that will render the secrets into a shared volume mount within the pod. The agent init container will run before any other containers in the pod runs, including other init containers.
+    - `sidecar`: The sidecar method will create a sidecar container for the pod that will render the secrets into a shared volume mount within the pod. The agent sidecar container will run alongside the main container in the pod. This means that the secrets rendered will always be in sync with your Infisical secrets.
+    - `sidecar-init`: The sidecar-init method will create the init container and the sidecar container from the other two methods. The init container will run before any other container and fetch the secrets from the start and the sidecar container will keep the secrets in sync throughout the lifecycle of the deployment.
+  </Accordion>
+  <Accordion title="org.infisical.com/agent-config-map">
+    The agent config map annotation is used to specify the name of the config map that contains the configuration for the injector. The config map must be in the same namespace as the pod.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-cache-enabled">
+    Whether to enable client-side caching of dynamic secret leases. Defaults to `false`. If you set this to `true`, the agent will persist any dynamic secret leases across restarts of the agent. This is especially useful when using the `sidecar-init` inject mode, to pass the dynamic secret leases created in the init container to the sidecar container.
+    This will ensure that no new leases are created except those initially created in the init container. The sidecar container will register the leases created in the init container and start managing them from that point onwards.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-revoke-on-shutdown">
+    Whether to revoke all managed dynamic secret leases and machine identity access tokens on shutdown. Defaults to `false`.
+    
+    If you set this to `true`, all managed dynamic secret leases and machine identity access tokens will be revoked when a `SIGTERM` signal is sent to the agents container _(such as when a pod is terminated or when the pod is restarted)_.
+    
+    **Note:** In disaster events such as cluster power outages, a `SIGTERM` signal won't be sent to the agents container, and the credentials will not be revoked.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-client-max-retries">
+    How many times to retry failed API requests such as authentication, secret retrieval, etc. Defaults to `3` retries. Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-client-max-delay">
+    The maximum delay between retries. Defaults to `5s` (5 seconds). Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-client-base-delay">
+    The base delay between retries. Defaults to `200ms` (200 milliseconds). Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-limits-cpu">
+    The maximum CPU limit for the agent containers.
+    
+    Linux Pods: Defaults to `500m` (500 milliCPUs).
+    Windows Pods: Defaults to `500m` (500 milliCPUs).
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-requests-cpu">
+    The minimum CPU request for the agent containers.
+    
+    Linux Pods: Defaults to `100m` (100 milliCPUs).
+    Windows Pods: Defaults to `100m` (100 milliCPUs).
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-limits-memory">
+    The maximum memory limit for the agent containers.
+
+    Linux Pods: Defaults to `128Mi` (128 megabytes).
+    Windows Pods: Defaults to `512Mi` (512 megabytes).
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-requests-memory">
+    The minimum memory request for the agent containers.
+    
+    Linux Pods: Defaults to `64Mi` (64 megabytes).
+    Windows Pods: Defaults to `256Mi` (256 megabytes).
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-limits-ephemeral">
+    The maximum ephemeral storage limit for the agent containers. Doesn't have an explicit default vaule. The default value will conform to the default ephemeral storage limit for the pod.
+  </Accordion>
+
+  <Accordion title="org.infisical.com/agent-requests-ephemeral">
+    The minimum ephemeral storage request for the agent containers. Doesn't have an explicit default vaule. The default value will conform to the default ephemeral storage request for the pod.
+  </Accordion>
+
+</AccordionGroup>
 
 ## ConfigMap Configuration
 
@@ -141,18 +205,22 @@ The Infisical Agent Injector supports the following annotations:
 When you are configuring a pod to use the injector, you must create a config map in the same namespace as the pod you want to inject secrets into.
 The entire config needs to be of string format and needs to be assigned to the `config.yaml` key in the config map. You can find a full example of the config at the end of this section.
 
+<AccordionGroup>
 <Accordion title="infisical.address">
   The address of your Infisical instance. This field is optional and will default to `https://app.infisical.com` if not provided.
 </Accordion>
 
 <Accordion title="infisical.revoke-credentials-on-shutdown">
-  Whether to revoke all managed dynamic secret leases and identity access tokens on shutdown. Default: `"false"`.
+  Whether to revoke all managed dynamic secret leases and machine identity access tokens on shutdown. Default: `"false"`.
 
-  If this is set to `true`, all managed dynamic secret leases and identity access tokens will be revoked when a `SIGTERM` signal is sent to the agents container _(such as when a pod is terminated or when the pod is restarted)_.
+  If this is set to `true`, all managed dynamic secret leases and machine identity access tokens will be revoked when a `SIGTERM` signal is sent to the agents container _(such as when a pod is terminated or when the pod is restarted)_.
+  
   **Note:** In disaster events such as cluster power outages, a `SIGTERM` signal won't be sent to the agents container, and the credentials will not be revoked.
 
   <Note>
-    Note that this is currently unsupported on Windows-based pods, and will only work when injecting into Linux-based pods.
+    This is currently unsupported on Windows-based pods, and will only work when injecting into Linux-based pods.
+    
+    It's recommended to use the annotation `org.infisical.com/agent-revoke-on-shutdown: "true"` instead of configuring the revoke on shutdown on the config map. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the revoke on shutdown through annotations.
   </Note>
 </Accordion>
 
@@ -162,8 +230,59 @@ The entire config needs to be of string format and needs to be assigned to the `
   Please note that the pod's default service account will be used to authenticate with Infisical.
 </Accordion>
 
+
 <Accordion title="infisical.auth.config.identity-id">
-  The ID of the machine identity to use to connect to Infisical. This field is required if the `infisical.auth.type` is set to `kubernetes`.
+  The ID of the machine identity to use for Kubernetes or LDAP authentication. This field is required if the `infisical.auth.type` is set to `kubernetes`.
+</Accordion>
+
+<Accordion title="infisical.auth.config.username">
+  The LDAP username to use for LDAP authentication.
+  This field is required if the `infisical.auth.type` is set to `ldap-auth`.
+</Accordion>
+
+<Accordion title="infisical.auth.config.password">
+  The LDAP password to use for LDAP authentication.
+  This field is required if the `infisical.auth.type` is set to `ldap-auth`.
+</Accordion>
+
+<Accordion title="infisical.retry-strategy.max-retries">
+  How many times to retry failed API requests such as authentication, secret retrieval, etc. Defaults to `3` retries. Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+
+  <Note>
+    You can also configure the max retries through annotations. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the max retries through annotations.
+  </Note>
+</Accordion>
+
+<Accordion title="infisical.retry-strategy.max-delay">
+  The maximum delay between retries. Defaults to `5s` (5 seconds). Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+
+  <Note>
+    You can also configure the max delay through annotations. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the max delay through annotations.
+  </Note>
+</Accordion>
+
+<Accordion title="infisical.retry-strategy.base-delay">
+  The base delay between retries. Defaults to `200ms` (200 milliseconds). Refer to the [Retrying mechanism](/integrations/platforms/infisical-agent#retrying-mechanism) documentation for more information on how to configure the retry strategy.
+
+  <Note>
+    You can also configure the base delay through annotations. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the base delay through annotations.
+  </Note>
+</Accordion>
+
+<Accordion title="cache.persistent.type">
+  The type of persistent caching to use. Currently only `kubernetes` is available, and will only work within Kubernetes environments.
+
+  <Note>
+    It is recommended to use the annotation `org.infisical.com/agent-cache-enabled: "true"` instead of configuring the cache on the config map. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the cache through annotations.
+  </Note>
+</Accordion>
+
+<Accordion title="cache.persistent.service-account-token-path">
+  The path to the Kubernetes service account token to use for encrypting the persistent cache. Required when using `kubernetes` cache type. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
+
+    <Note>
+    It is recommended to use the annotation `org.infisical.com/agent-cache-enabled: "true"` instead of configuring the cache on the config map. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the cache through annotations.
+  </Note>
 </Accordion>
 
 <Accordion title="templates[]">
@@ -180,6 +299,7 @@ The templates hold an array of templates that will be rendered and injected into
   This will be rendered as a [Go Template](https://pkg.go.dev/text/template) and will have access to the following variables.
   It follows the templating format and supports the same functions as the [Infisical Agent](/integrations/platforms/infisical-agent#quick-start-infisical-agent)
 </Accordion>
+</AccordionGroup>
 
 
 ### Authentication
@@ -271,7 +391,7 @@ The Infisical Agent Injector supports Machine Identity [Kubernetes Auth](/docume
   </Accordion>
 </AccordionGroup>
 
-To use the config map in your pod, you will need to add the `org.infisical.com/agent-config-map` annotation to your pod's deployment. The value of the annotation is the name of the config map you created above.
+To use the config map in your pod, you will need to add the `org.infisical.com/agent-config-map` annotation to your pod's deployment. The value of the annotation is the name of the config map you created above. The config map must be in the same namespace as the pod you're injecting into.
 ```yaml
 apiVersion: v1
 kind: Pod

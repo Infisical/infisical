@@ -358,11 +358,13 @@ export const dynamicSecretLeaseServiceFactory = ({
     if ((revokeResponse as { error?: Error })?.error) {
       const { error } = revokeResponse as { error?: Error };
       logger.error(error?.message, "Failed to revoke lease");
-      const deletedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
+      const updatedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
         status: DynamicSecretLeaseStatus.FailedDeletion,
         statusDetails: error?.message?.slice(0, 255)
       });
-      return deletedDynamicSecretLease;
+      // queue a job to retry the revocation at a later time
+      await dynamicSecretQueueService.queueFailedRevocation(dynamicSecretLease.id);
+      return updatedDynamicSecretLease;
     }
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);

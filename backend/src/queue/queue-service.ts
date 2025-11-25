@@ -61,6 +61,7 @@ export enum QueueName {
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
+  DynamicSecretRevocationFailedRetry = "dynamic-secret-revocation-failed-retry",
   CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   SecretReplication = "secret-replication",
@@ -101,6 +102,7 @@ export enum QueueJobs {
   UpgradeProjectToGhost = "upgrade-project-to-ghost-job",
   DynamicSecretRevocation = "dynamic-secret-revocation",
   DynamicSecretPruning = "dynamic-secret-pruning",
+  DynamicSecretRevocationFailedRetry = "dynamic-secret-revocation-failed-retry",
   CaCrlRotation = "ca-crl-rotation-job",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
@@ -218,6 +220,12 @@ export type TQueueJobTypes = {
   [QueueName.TelemetryInstanceStats]: {
     name: QueueJobs.TelemetryInstanceStats;
     payload: undefined;
+  };
+  [QueueName.DynamicSecretRevocationFailedRetry]: {
+    name: QueueJobs.DynamicSecretRevocationFailedRetry;
+    payload: {
+      leaseId: string;
+    };
   };
   [QueueName.DynamicSecretRevocation]:
     | {
