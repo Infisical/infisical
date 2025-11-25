@@ -168,7 +168,7 @@ export const AddOrgMemberModal = ({
 
     if (!data.completeInviteLinks?.length) {
       createNotification({
-        text: "Successfully invited users to the organization.",
+        text: `Successfully invited user${usernames.length > 1 ? "s" : ""} to the organization.`,
         type: "success"
       });
     }
