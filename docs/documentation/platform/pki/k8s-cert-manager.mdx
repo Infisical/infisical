@@ -214,9 +214,10 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     Labels:       controller.cert-manager.io/fao=true
     Annotations:  cert-manager.io/alt-names:
                 cert-manager.io/certificate-name: certificate-by-issuer
-                cert-manager.io/common-name: certificate-by-issuer.example.com
+                cert-manager.io/common-name:
+                cert-manager.io/alt-names: certificate-by-issuer.example.com
                 cert-manager.io/ip-sans:
-                cert-manager.io/issuer-group: issuers.cert-manager.io
+                cert-manager.io/issuer-group: cert-manager.io
                 cert-manager.io/issuer-kind: Issuer
                 cert-manager.io/issuer-name: issuer-infisical
                 cert-manager.io/uri-sans:
