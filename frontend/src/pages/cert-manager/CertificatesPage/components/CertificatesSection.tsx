@@ -39,11 +39,11 @@ export const CertificatesSection = () => {
     "managePkiSyncs"
   ] as const);
 
-  const onRemoveCertificateSubmit = async (serialNumber: string) => {
+  const onRemoveCertificateSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
     await deleteCert({
-      serialNumber,
+      id,
       projectId: currentProject.id
     });
 
@@ -150,7 +150,7 @@ export const CertificatesSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { serialNumber: string })?.serialNumber
+            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
           )
         }
       />

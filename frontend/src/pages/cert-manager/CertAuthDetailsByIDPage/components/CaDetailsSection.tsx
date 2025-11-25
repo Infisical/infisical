@@ -4,7 +4,7 @@ import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
@@ -13,15 +13,14 @@ import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  caName: string;
+  caId: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert"]>,
     data?: object
   ) => void;
 };
 
-export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
-  const { currentProject } = useProject();
+export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -30,8 +29,7 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
   });
 
   const { data } = useGetCa({
-    caName,
-    projectId: currentProject.id,
+    caId,
     type: CaType.INTERNAL
   });
 
@@ -53,7 +51,7 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePopUpOpen("ca", {
-                      name: ca.name
+                      caId: ca.id
                     });
                   }}
                 >

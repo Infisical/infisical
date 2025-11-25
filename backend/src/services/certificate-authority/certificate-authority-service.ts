@@ -123,7 +123,7 @@ export const certificateAuthorityServiceFactory = ({
   });
 
   const createCertificateAuthority = async (
-    { type, projectId, name, enableDirectIssuance, configuration, status }: TCreateCertificateAuthorityDTO,
+    { type, projectId, name, configuration, status }: TCreateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -145,7 +145,6 @@ export const certificateAuthorityServiceFactory = ({
         ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
         isInternal: true,
         projectId,
-        enableDirectIssuance,
         name
       });
 
@@ -171,7 +170,6 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateAcmeCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         status,
         actor
       });
@@ -182,7 +180,6 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         status,
         actor
       });
@@ -191,18 +188,12 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const findCertificateAuthorityByNameAndProjectId = async (
-    { caName, type, projectId }: { caName: string; type: CaType; projectId: string },
-    actor: OrgServiceActor
-  ) => {
-    const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
-      caName,
-      projectId
-    );
+  const findCertificateAuthorityById = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
     if (!certificateAuthority)
       throw new NotFoundError({
-        message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
+        message: `Could not find certificate authority with id "${id}"`
       });
 
     const { permission } = await permissionService.getProjectPermission({
@@ -222,7 +213,7 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
         throw new NotFoundError({
-          message: `Internal certificate authority with name "${caName}" in project "${projectId}" not found`
+          message: `Internal certificate authority with id "${id}" not found`
         });
       }
 
@@ -239,7 +230,7 @@ export const certificateAuthorityServiceFactory = ({
 
     if (certificateAuthority.externalCa?.type !== type) {
       throw new NotFoundError({
-        message: `Could not find external certificate authority with name "${caName}" in project "${projectId}" and type "${type}"`
+        message: `Could not find external certificate authority with id ${id} and type "${type}"`
       });
     }
 
@@ -303,17 +294,14 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   const updateCertificateAuthority = async (
-    { caName, type, configuration, enableDirectIssuance, status, name, projectId }: TUpdateCertificateAuthorityDTO,
+    { id, type, configuration, status, name }: TUpdateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
-    const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
-      caName,
-      projectId
-    );
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
     if (!certificateAuthority)
       throw new NotFoundError({
-        message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
+        message: `Could not find certificate authority with id "${id}"`
       });
 
     const { permission } = await permissionService.getProjectPermission({
@@ -333,13 +321,12 @@ export const certificateAuthorityServiceFactory = ({
     if (type === CaType.INTERNAL) {
       if (!certificateAuthority.internalCa?.id) {
         throw new NotFoundError({
-          message: `Internal certificate authority with name "${caName}" in project "${projectId}" not found`
+          message: `Internal certificate authority with id "${id}" not found`
         });
       }
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
-        enableDirectIssuance,
         caId: certificateAuthority.id,
         status,
         name
@@ -366,7 +353,6 @@ export const certificateAuthorityServiceFactory = ({
       return acmeFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         actor,
         status,
         name
@@ -377,7 +363,6 @@ export const certificateAuthorityServiceFactory = ({
       return azureAdCsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         actor,
         status,
         name
@@ -387,18 +372,12 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const deleteCertificateAuthority = async (
-    { caName, type, projectId }: { caName: string; type: CaType; projectId: string },
-    actor: OrgServiceActor
-  ) => {
-    const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
-      caName,
-      projectId
-    );
+  const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
 
     if (!certificateAuthority)
       throw new NotFoundError({
-        message: `Could not find certificate authority with name "${caName}" in project "${projectId}"`
+        message: `Could not find certificate authority with id "${id}"`
       });
 
     const { permission } = await permissionService.getProjectPermission({
@@ -489,7 +468,7 @@ export const certificateAuthorityServiceFactory = ({
 
   return {
     createCertificateAuthority,
-    findCertificateAuthorityByNameAndProjectId,
+    findCertificateAuthorityById,
     listCertificateAuthoritiesByProjectId,
     updateCertificateAuthority,
     deleteCertificateAuthority,

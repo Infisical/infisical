@@ -56,7 +56,7 @@ def step_impl(context: Context, profile_var: str):
         profile_slug = faker.slug()
         jwt_token = context.vars["AUTH_TOKEN"]
         response = context.http_client.post(
-            "/api/v1/pki/certificate-profiles",
+            "/api/v1/cert-manager/certificate-profiles",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
             json={
                 "projectId": context.vars["PROJECT_ID"],
@@ -74,7 +74,7 @@ def step_impl(context: Context, profile_var: str):
         kid = profile_id
 
         response = context.http_client.get(
-            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
         )
         response.raise_for_status()
@@ -153,7 +153,7 @@ def step_impl(context: Context, var_name: str):
     ca_slug = faker.slug()
     config = replace_vars(json.loads(context.text), context.vars)
     response = context.http_client.post(
-        "/api/v1/pki/ca/acme",
+        "/api/v1/cert-manager/ca/acme",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -174,7 +174,7 @@ def step_impl(context: Context, var_name: str):
     template_slug = faker.slug()
     config = replace_vars(json.loads(context.text), context.vars)
     response = context.http_client.post(
-        "/api/v2/certificate-templates",
+        "/api/v1/cert-manager/certificate-templates",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -194,7 +194,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
     profile_slug = faker.slug()
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/pki/certificate-profiles",
+        "/api/v1/cert-manager/certificate-profiles",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -212,7 +212,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
     kid = profile_id
 
     response = context.http_client.get(
-        f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+        f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
     )
     response.raise_for_status()
@@ -236,7 +236,7 @@ def step_impl(context: Context, profile_var: str):
         profile_slug = faker.slug()
         jwt_token = context.vars["AUTH_TOKEN"]
         response = context.http_client.post(
-            "/api/v1/pki/certificate-profiles",
+            "/api/v1/cert-manager/certificate-profiles",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
             json={
                 "projectId": context.vars["PROJECT_ID"],
@@ -254,7 +254,7 @@ def step_impl(context: Context, profile_var: str):
         kid = profile_id
 
         response = context.http_client.get(
-            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
         )
         response.raise_for_status()

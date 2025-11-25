@@ -71,7 +71,7 @@ export const useListCertificateProfiles = ({
       const { data } = await apiRequest.get<{
         certificateProfiles: TCertificateProfile[];
         totalCount: number;
-      }>("/api/v1/pki/certificate-profiles", {
+      }>("/api/v1/cert-manager/certificate-profiles", {
         params: {
           projectId,
           limit,
@@ -93,7 +93,7 @@ export const useGetCertificateProfileById = ({ profileId }: TGetCertificateProfi
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateProfile: TCertificateProfileWithDetails;
-      }>(`/api/v1/pki/certificate-profiles/${profileId}`);
+      }>(`/api/v1/cert-manager/certificate-profiles/${profileId}`);
       return data.certificateProfile;
     },
     enabled: Boolean(profileId)
@@ -109,7 +109,7 @@ export const useGetCertificateProfileBySlug = ({
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateProfile: TCertificateProfile;
-      }>(`/api/v1/pki/certificate-profiles/slug/${slug}`, {
+      }>(`/api/v1/cert-manager/certificate-profiles/slug/${slug}`, {
         params: { projectId }
       });
       return data.certificateProfile;
@@ -125,7 +125,7 @@ export const useRevealAcmeEabSecret = ({ profileId }: TRevealAcmeEabSecretDTO) =
       const { data } = await apiRequest.get<{
         eabKid: string;
         eabSecret: string;
-      }>(`/api/v1/pki/certificate-profiles/${profileId}/acme/eab-secret/reveal`);
+      }>(`/api/v1/cert-manager/certificate-profiles/${profileId}/acme/eab-secret/reveal`);
       return data;
     },
     enabled: Boolean(profileId)
@@ -144,7 +144,7 @@ export const useGetProfileCertificates = ({
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificates: TProfileCertificate[];
-      }>(`/api/v1/pki/certificate-profiles/${profileId}/certificates`, {
+      }>(`/api/v1/cert-manager/certificate-profiles/${profileId}/certificates`, {
         params: {
           offset,
           limit,

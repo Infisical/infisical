@@ -26,8 +26,8 @@ import { useProject } from "@app/context";
 import {
   CaStatus,
   useCreateCertTemplate,
-  useGetCaById,
   useGetCertTemplate,
+  useGetInternalCaById,
   useListWorkspaceCas,
   useListWorkspacePkiCollections,
   useUpdateCertTemplate
@@ -84,7 +84,7 @@ type Props = {
 export const CertificateTemplateModal = ({ popUp, handlePopUpToggle, caId }: Props) => {
   const { currentProject } = useProject();
 
-  const { data: ca } = useGetCaById(caId);
+  const { data: ca } = useGetInternalCaById(caId);
 
   const { data: certTemplate } = useGetCertTemplate(
     (popUp?.certificateTemplate?.data as { id: string })?.id || ""

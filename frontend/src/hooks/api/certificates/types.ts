@@ -24,13 +24,13 @@ export type TCertificate = {
 };
 
 export type TDeleteCertDTO = {
+  id: string;
   projectId: string;
-  serialNumber: string;
 };
 
 export type TRevokeCertDTO = {
   projectId: string;
-  serialNumber: string;
+  id: string;
   revocationReason: string;
 };
 

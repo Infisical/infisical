@@ -11,10 +11,14 @@ import { registerAuthRoutes } from "./auth-router";
 import { registerProjectBotRouter } from "./bot-router";
 import { registerCaRouter } from "./certificate-authority-router";
 import { CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./certificate-authority-routers";
+import { registerGeneralCertificateAuthorityRouter } from "./certificate-authority-routers/general-certificate-authority-router";
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
-import { registerCertRouter } from "./certificate-router";
+import { registerCertificateRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { registerDeprecatedCertRouter } from "./deprecated-certificate-router";
+import { registerDeprecatedCertificateTemplateRouter } from "./deprecated-certificate-template-router";
 import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
+import { registerDeprecatedPkiAlertRouter } from "./deprecated-pki-alert-router";
 import { registerDeprecatedProjectEnvRouter } from "./deprecated-project-env-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
 import { registerDeprecatedProjectRouter } from "./deprecated-project-router";
@@ -150,6 +154,39 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
 
   await server.register(
     async (pkiRouter) => {
+      await pkiRouter.register(
+        async (caRouter) => {
+          for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
+            await caRouter.register(router, { prefix: `/${caType}` });
+          }
+
+          await caRouter.register(registerGeneralCertificateAuthorityRouter);
+        },
+        {
+          prefix: "/ca"
+        }
+      );
+      await pkiRouter.register(registerCertificateRouter, { prefix: "/certificates" });
+      await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
+      await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
+      await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(
+        async (pkiSyncRouter) => {
+          await pkiSyncRouter.register(registerPkiSyncRouter);
+          for await (const [destination, router] of Object.entries(PKI_SYNC_REGISTER_ROUTER_MAP)) {
+            await pkiSyncRouter.register(router, { prefix: `/${destination}` });
+          }
+        },
+        { prefix: "/syncs" }
+      );
+    },
+    { prefix: "/cert-manager" }
+  );
+
+  // NOTE: THESE /pki/* ENDPOINTS ARE TO BE DEPRECATED IN FAVOR OF /cert-manager/*
+  // DO NOT EXTEND THEM ANYMORE!!!
+  await server.register(
+    async (pkiRouter) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(
         async (caRouter) => {
@@ -161,10 +198,10 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
           prefix: "/ca"
         }
       );
-      await pkiRouter.register(registerCertRouter, { prefix: "/certificates" });
-      await pkiRouter.register(registerCertificateTemplateRouter, { prefix: "/certificate-templates" });
+      await pkiRouter.register(registerDeprecatedCertRouter, { prefix: "/certificates" });
+      await pkiRouter.register(registerDeprecatedCertificateTemplateRouter, { prefix: "/certificate-templates" });
       await pkiRouter.register(registerCertificateProfilesRouter, { prefix: "/certificate-profiles" });
-      await pkiRouter.register(registerPkiAlertRouter, { prefix: "/alerts" });
+      await pkiRouter.register(registerDeprecatedPkiAlertRouter, { prefix: "/alerts" });
       await pkiRouter.register(registerPkiCollectionRouter, { prefix: "/collections" });
       await pkiRouter.register(registerPkiSubscriberRouter, { prefix: "/subscribers" });
       await pkiRouter.register(

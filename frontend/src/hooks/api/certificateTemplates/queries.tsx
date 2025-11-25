@@ -31,6 +31,7 @@ export const certTemplateKeys = {
   getTemplateV2ById: (id: string) => ["cert-template-v2", id]
 };
 
+// TODO: DEPRECATE
 export const useGetCertTemplate = (id: string) => {
   return useQuery({
     queryKey: certTemplateKeys.getCertTemplateById(id),
@@ -44,6 +45,7 @@ export const useGetCertTemplate = (id: string) => {
   });
 };
 
+// TODO: DEPRECATE
 export const useListCertificateTemplates = ({
   limit = 100,
   offset = 0,
@@ -55,7 +57,7 @@ export const useListCertificateTemplates = ({
       const { data } = await apiRequest.get<{
         certificateTemplates: TCertificateTemplateV2[];
         totalCount?: number;
-      }>("/api/v2/pki/certificate-templates", {
+      }>("/api/v1/pki/certificate-templates", {
         params: {
           limit,
           offset,
@@ -67,6 +69,7 @@ export const useListCertificateTemplates = ({
   });
 };
 
+// TODO: DEPRECATE
 export const useGetEstConfig = (certificateTemplateId: string) => {
   return useQuery({
     queryKey: certTemplateKeys.getEstConfig(certificateTemplateId),
@@ -92,7 +95,7 @@ export const useListCertificateTemplatesV2 = ({
       const { data } = await apiRequest.get<{
         certificateTemplates: TCertificateTemplateV2WithPolicies[];
         totalCount: number;
-      }>("/api/v2/certificate-templates", {
+      }>("/api/v1/cert-manager/certificate-templates", {
         params: {
           projectId,
           limit,
@@ -113,7 +116,7 @@ export const useGetCertificateTemplateV2ById = ({
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateTemplate: TCertificateTemplateV2WithPolicies;
-      }>(`/api/v2/certificate-templates/${templateId}`);
+      }>(`/api/v1/cert-manager/certificate-templates/${templateId}`);
       return data.certificateTemplate;
     },
     enabled: Boolean(templateId)

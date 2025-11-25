@@ -1190,7 +1190,7 @@ export const certificateV3ServiceFactory = ({
           status: CertificateOrderStatus.VALID
         })),
         authorizations: [],
-        finalize: `/api/v3/pki/certificates/orders/${orderId}/completed`,
+        finalize: `/api/v1/cert-manager/certificates/orders/${orderId}/completed`,
         certificate: certificateResult.certificate,
         projectId: certificateResult.projectId,
         profileName: certificateResult.profileName

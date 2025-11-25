@@ -6,6 +6,7 @@ import { projectKeys } from "../projects";
 import { pkiAlertKeys } from "./queries";
 import { TCreatePkiAlertDTO, TDeletePkiAlertDTO, TPkiAlert, TUpdatePkiAlertDTO } from "./types";
 
+// TODO: DEPRECATE
 export const useCreatePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, object, TCreatePkiAlertDTO>({
@@ -19,6 +20,7 @@ export const useCreatePkiAlert = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useUpdatePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, object, TUpdatePkiAlertDTO>({
@@ -36,6 +38,7 @@ export const useUpdatePkiAlert = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useDeletePkiAlert = () => {
   const queryClient = useQueryClient();
   return useMutation<TPkiAlert, object, TDeletePkiAlertDTO>({

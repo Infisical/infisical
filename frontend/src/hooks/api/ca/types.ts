@@ -68,15 +68,14 @@ export type TUnifiedCertificateAuthority =
 
 export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
 export type TUpdateCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
-  caName: string;
-  projectId: string;
+  id: string;
   type: CaType;
 };
 
 export type TDeleteCertificateAuthorityDTO = {
-  caName: string;
-  type: CaType;
+  id: string;
   projectId: string;
+  type: CaType;
 };
 
 export type TCertificateAuthority = {

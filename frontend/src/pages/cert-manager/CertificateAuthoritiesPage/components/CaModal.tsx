@@ -80,8 +80,7 @@ const caTypes = [
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { data: ca } = useGetCa({
-    caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentProject?.id || "",
+    caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: CaType.INTERNAL
   });
 
@@ -180,8 +179,7 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (ca) {
       // update
       await updateMutateAsync({
-        caName: ca.name,
-        projectId: currentProject.id,
+        id: ca.id,
         name,
         type: CaType.INTERNAL,
         status,

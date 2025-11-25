@@ -377,7 +377,6 @@ export const AcmeCertificateAuthorityFns = ({
     name,
     projectId,
     configuration,
-    enableDirectIssuance,
     actor,
     status
   }: {
@@ -385,7 +384,6 @@ export const AcmeCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAcmeCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
     if (crypto.isFipsModeEnabled()) {
@@ -425,7 +423,7 @@ export const AcmeCertificateAuthorityFns = ({
         const ca = await certificateAuthorityDAL.create(
           {
             projectId,
-            enableDirectIssuance,
+            enableDirectIssuance: false,
             name,
             status
           },
@@ -473,14 +471,12 @@ export const AcmeCertificateAuthorityFns = ({
     id,
     status,
     configuration,
-    enableDirectIssuance,
     actor,
     name
   }: {
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance?: boolean;
     actor: OrgServiceActor;
     name?: string;
   }) => {
@@ -541,13 +537,12 @@ export const AcmeCertificateAuthorityFns = ({
         );
       }
 
-      if (name || status || enableDirectIssuance) {
+      if (name || status) {
         await certificateAuthorityDAL.updateById(
           id,
           {
             name,
-            status,
-            enableDirectIssuance
+            status
           },
           tx
         );

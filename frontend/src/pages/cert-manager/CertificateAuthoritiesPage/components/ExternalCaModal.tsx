@@ -131,8 +131,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
-    caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentProject?.id || "",
+    caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
   });
 
@@ -320,7 +319,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     if (ca) {
       await updateMutateAsync({
-        caName: ca.name,
+        id: ca.id,
         projectId: currentProject.id,
         name,
         type,
