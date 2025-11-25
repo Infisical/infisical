@@ -389,15 +389,13 @@ export const scimServiceFactory = ({
           );
         }
       } else {
-        if (trustScimEmails) {
-          user = await userDAL.findOne(
-            {
-              email: email.toLowerCase(),
-              isEmailVerified: true
-            },
-            tx
-          );
-        }
+        user = await userDAL.findOne(
+          {
+            email: email.toLowerCase(),
+            isEmailVerified: true
+          },
+          tx
+        );
 
         if (!user) {
           const uniqueUsername = await normalizeUsername(
@@ -425,7 +423,8 @@ export const scimServiceFactory = ({
             aliasType,
             externalId,
             emails: email ? [email.toLowerCase()] : [],
-            orgId
+            orgId,
+            isEmailVerified: trustScimEmails
           },
           tx
         );
