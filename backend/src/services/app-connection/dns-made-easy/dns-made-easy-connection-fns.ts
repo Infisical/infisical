@@ -62,7 +62,7 @@ export const getDNSMadeEasyConnectionListItem = () => {
 
 export const listDNSMadeEasyZones = async (appConnection: TDNSMadeEasyConnection): Promise<TDNSMadeEasyZone[]> => {
   if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
-    throw new Error("Unsupported DNS Made Easy connection method");
+    throw new BadRequestError({ message: "Unsupported DNS Made Easy connection method" });
   }
 
   const {
@@ -123,7 +123,7 @@ export const listDNSMadeEasyRecords = async (
   options: { zoneId: string; type?: string; name?: string }
 ): Promise<DNSMadeEasyApiResponse["data"]> => {
   if (appConnection.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
-    throw new Error("Unsupported DNS Made Easy connection method");
+    throw new BadRequestError({ message: "Unsupported DNS Made Easy connection method" });
   }
   const {
     credentials: { apiKey, secretKey }
@@ -187,7 +187,7 @@ export const listDNSMadeEasyRecords = async (
 
 export const validateDNSMadeEasyConnectionCredentials = async (config: TDNSMadeEasyConnectionConfig) => {
   if (config.method !== DNSMadeEasyConnectionMethod.APIKeySecret) {
-    throw new Error("Unsupported DNS Made Easy connection method");
+    throw new BadRequestError({ message: "Unsupported DNS Made Easy connection method" });
   }
 
   const { apiKey, secretKey } = config.credentials;
