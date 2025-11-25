@@ -32,7 +32,13 @@ type ContentProps = {
 const Content = ({ onComplete }: ContentProps) => {
   const { currentProject } = useProject();
   const { mutateAsync, isPending } = useCreateWsEnvironment();
-  const { control, handleSubmit, setValue } = useForm<FormData>({
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    getValues,
+    formState: { dirtyFields }
+  } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
 
@@ -53,9 +59,10 @@ const Content = ({ onComplete }: ContentProps) => {
     onComplete(env);
   };
 
-  const handleEnvironmentNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
-    setValue("environmentName", value);
+  const handleEnvironmentNameChange = () => {
+    if (dirtyFields.environmentSlug) return;
+
+    const value = getValues("environmentName");
     setValue("environmentSlug", slugify(value, { lowercase: true }));
   };
 
@@ -67,7 +74,13 @@ const Content = ({ onComplete }: ContentProps) => {
         name="environmentName"
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="Environment Name" isError={Boolean(error)} errorText={error?.message}>
-            <Input {...field} onChange={handleEnvironmentNameChange} />
+            <Input
+              {...field}
+              onChange={(e) => {
+                onChange(e);
+                handleEnvironmentNameChange();
+              }}
+            />
           </FormControl>
         )}
       />
