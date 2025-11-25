@@ -2582,6 +2582,15 @@
                 ]
               },
               {
+                "group": "Certificate Alerts",
+                "pages": [
+                  "api-reference/endpoints/pki-alerts/create",
+                  "api-reference/endpoints/pki-alerts/read",
+                  "api-reference/endpoints/pki-alerts/update",
+                  "api-reference/endpoints/pki-alerts/delete"
+                ]
+              },
+              {
                 "group": "Certificate Syncs",
                 "pages": [
                   "api-reference/endpoints/pki/syncs/list",
