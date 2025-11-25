@@ -5,7 +5,7 @@ description: "Learn how to automatically provision and manage TLS certificates i
 
 ## Concept
 
-The Infisical PKI provides ACME (Automated Certificate Management Environment) integration, enabling various ACME clients to issue and renew certificates automatically.
+The Infisical PKI provides [ACME (Automated Certificate Management Environment)](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) integration, enabling various ACME clients to issue and renew certificates automatically.
 In Kubernetes environments, [cert-manager](https://cert-manager.io) is the most popular tool for issuing certificates via ACME.
 The issuer is perfect at obtaining X.509 certificates for Ingresses and other Kubernetes resources and can automatically renew them before expiration.
 
@@ -54,13 +54,13 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     Install cert-manager in your Kubernetes cluster by following the official guide [here](https://cert-manager.io/docs/installation/) or by applying the manifest directly:
 
     ```bash
-    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.19.1/cert-manager.yaml
     ```
 
   </Step>
   <Step title="Create a Kubernetes Secret for the Infisical ACME EAB credentials">
     Create a Kubernetes `Secret` that contains the **EAB Secret (HMAC key)** obtained in step 1.
-    cert-manager uses this secret to authenticate with the Infisical ACME server via External Account Binding (EAB).
+    The cert-manager uses this secret to authenticate with the Infisical ACME server.
 
     <Tabs>
         <Tab title="kubectl command">
@@ -92,7 +92,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     Next, create a cert-manager `Issuer` (or `ClusterIssuer`) by replacing the placeholders `<acme_server_url>`, `<your_email>`, and `<acme_eab_kid>` in the configuration below and applying it.
     This resource configures cert-manager to use your Infisical PKI collection's ACME server for certificate issuance.
 
-    ```yaml infisical-issuer.yaml
+    ```yaml issuer-infisical.yaml
     apiVersion: cert-manager.io/v1
     kind: Issuer
     metadata:
@@ -123,7 +123,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
     ```
 
     ```
-    kubectl apply -f infisical-issuer.yaml
+    kubectl apply -f issuer-infisical.yaml
     ```
 
     You can check that the issuer was created successfully by running the following command:
@@ -157,7 +157,8 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
         name: certificate-by-issuer
         namespace: <namespace_you_want_to_issue_certificates_in>
     spec:
-        commonName: certificate-by-issuer.example.com
+        dnsNames:
+        - certificate-by-issuer.example.com
         # name of the resulting Kubernetes Secret
         secretName: certificate-by-issuer-tls
         # total validity period of the certificate
@@ -170,9 +171,6 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
             size: 256
         issuerRef:
             name: issuer-infisical
-            # use ClusterIssuer if you created a ClusterIssuer instead
-            kind: Issuer
-            group: cert-manager.io
     ```
 
     The above sample configuration file specifies a certificate to be issued with the common name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
