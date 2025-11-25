@@ -424,8 +424,10 @@ export const fnSecretBulkDelete = async ({
     .filter(({ type }) => type === SecretType.Shared)
     .map(({ id }) => ({
       type: CommitType.DELETE,
-      secretVersionId: secretVersions[id].id
-    }));
+      secretVersionId: secretVersions[id]?.id
+    }))
+    .filter((el) => el.secretVersionId);
+
   if (changes.length > 0) {
     if (commitChanges) {
       commitChanges.push(...changes);

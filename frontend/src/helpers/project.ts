@@ -16,11 +16,6 @@ const secretsToBeAdded = [
   },
   {
     secretKey: "DB_PASSWORD",
-    secretValue: "OVERRIDE_THIS",
-    secretComment: "Another secret override"
-  },
-  {
-    secretKey: "DB_PASSWORD",
     secretValue: "example_password"
   },
   {
