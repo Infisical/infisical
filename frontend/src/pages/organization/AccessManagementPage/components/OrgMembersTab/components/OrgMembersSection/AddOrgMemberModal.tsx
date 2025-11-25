@@ -159,7 +159,9 @@ export const AddOrgMemberModal = ({
       )
     );
 
-    setCompleteInviteLinks(data?.completeInviteLinks ?? null);
+    if (data?.completeInviteLinks && data?.completeInviteLinks.length > 0) {
+      setCompleteInviteLinks(data.completeInviteLinks);
+    }
 
     // only show this notification when email is configured.
     // A [completeInviteLink] will not be sent if smtp is configured
