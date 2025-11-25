@@ -10,6 +10,7 @@ infisical login
 ### Description
 
 The CLI uses authentication to verify your identity. You can authenticate using:
+
 - **Browser Login** (default): Opens a browser for authentication
 - **Direct Login**: Provide email and password via flags or environment variables for non-interactive workflows
 - **Interactive CLI Login**: Use the `--interactive` flag to enter credentials via CLI prompts
@@ -24,9 +25,9 @@ If you have added multiple users, you can switch between the users by using the 
       **JWT Token Output:**
       - For **user authentication** with the `--plain --silent` flags: outputs only the JWT access token (useful for scripting)
       - For **machine identity authentication**: an access token is always printed to the console
-      
+
       Use the `--plain` flag to print only the token in plain text and the `--silent` flag to disable update alerts.
-      
+
       Both flags are ideal for capturing the token in environment variables or CI/CD pipelines.
     </Info>
 
@@ -42,29 +43,34 @@ User authentication is designed for individual developers and supports multiple 
 <Accordion title="User">
   The User authentication method allows you to log in with your email and password. This method supports three different login flows:
 
-  - **Browser Login** (default): Opens a browser for authentication
-  - **Direct Login**: Provide credentials via flags or environment variables for CI/CD
-  - **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
+- **Browser Login** (default): Opens a browser for authentication
+- **Direct Login**: Provide credentials via flags or environment variables for CI/CD
+- **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
 
-  <ParamField query="Flags">
-    <Expandable title="properties">
-        <ParamField query="email" type="string" optional>
-          Your email address. Required for direct login along with `--password` and `--organization-id`.
-        </ParamField>
-        <ParamField query="password" type="string" optional>
-          Your password. Required for direct login along with `--email` and `--organization-id`.
-        </ParamField>
-        <ParamField query="organization-id" type="string" optional>
-          Your organization id. Required for direct login along with `--password` and `--email`.
-        </ParamField>
-        <ParamField query="interactive" type="boolean" optional>
-          Force interactive CLI login instead of browser-based authentication.
-        </ParamField>
-        <ParamField query="plain" type="boolean" optional>
-          Output only the JWT token (useful for scripting and CI/CD).
-        </ParamField>
-    </Expandable>
-  </ParamField>
+{" "}
+
+<ParamField query='Flags'>
+  <Expandable title='properties'>
+    <ParamField query='email' type='string' optional>
+      Your email address. Required for direct login along with `--password` and
+      `--organization-id`.
+    </ParamField>
+    <ParamField query='password' type='string' optional>
+      Your password. Required for direct login along with `--email` and
+      `--organization-id`.
+    </ParamField>
+    <ParamField query='organization-id' type='string' optional>
+      Your organization id. Required for direct login along with `--password`
+      and `--email`.
+    </ParamField>
+    <ParamField query='interactive' type='boolean' optional>
+      Force interactive CLI login instead of browser-based authentication.
+    </ParamField>
+    <ParamField query='plain' type='boolean' optional>
+      Output only the JWT token (useful for scripting and CI/CD).
+    </ParamField>
+  </Expandable>
+</ParamField>
 
   <AccordionGroup>
       <Accordion title="Browser Login (Default)">
@@ -291,6 +297,7 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
+
   </Accordion>
 
   <Accordion title="JWT Auth">
@@ -316,6 +323,7 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
+
   </Accordion>
 </AccordionGroup>
 
@@ -501,6 +509,27 @@ The login command supports a number of flags that you can use for different auth
     </Tip>
 
   </Accordion>
+  <Accordion title="--domain">
+    ```bash
+    infisical login --domain=<domain-url> [other-flags]
+    ```
+
+    #### Description
+    Specifies the Infisical API URL for non-US instances (EU Cloud or self-hosted instances). This flag is required when connecting to any instance other than the US Cloud.
+
+    ```bash
+    # Example for EU Cloud
+    infisical login --domain="https://eu.infisical.com" --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
+
+    # Example for self-hosted
+    infisical login --domain="https://your-self-hosted-infisical.com/api" --email user@example.com --password "password"
+    ```
+
+    <Warning>
+      **Critical:** If you use `--domain` during login, you must also include it on **all subsequent CLI commands** (e.g., `infisical secrets`, `infisical export`, etc.). Alternatively, set the `INFISICAL_API_URL` environment variable to avoid having to use `--domain` on every command. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+    </Warning>
+
+  </Accordion>
   </AccordionGroup>
 
 ### User Authentication Examples
@@ -529,8 +558,11 @@ The following examples demonstrate different ways to authenticate as a user with
     # Basic direct login (defaults to US Cloud)
     infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
-    # EU Cloud (Custom domain)
-    infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --domain https://eu.infisical.com
+    # EU Cloud
+    infisical login --domain https://eu.infisical.com --email user@example.com --password "your-password" --organization-id "your-organization-id"
+
+    # Self-hosted instance
+    infisical login --domain https://your-self-hosted-infisical.com/api --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
     # Output only JWT token for scripting
     export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --plain --silent)
@@ -550,6 +582,11 @@ The following examples demonstrate different ways to authenticate as a user with
     # Or with plain output for token capture
     export INFISICAL_TOKEN=$(infisical login --plain --silent)
     ```
+
+    <Warning>
+      **For non-US instances:** If you're using EU Cloud, or a self-hosted instance, you must set `INFISICAL_API_URL` before login, or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+    </Warning>
+
   </Accordion>
 
   <Accordion title="Interactive CLI Login">
@@ -571,7 +608,7 @@ The following examples demonstrate different ways to authenticate as a user with
 </AccordionGroup>
 
 <Tip>
-If you have SSO enabled, we recommend using the default browser login.
+  If you have SSO enabled, we recommend using the default browser login.
 </Tip>
 
 ### Machine Identity Authentication Quick Start
@@ -583,6 +620,10 @@ In this example we'll be using the `universal-auth` method to login to obtain an
         ```bash
           export INFISICAL_TOKEN=$(infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain) # silent and plain is important to ensure only the token itself is printed, so we can easily set it as an environment variable.
         ```
+
+        <Warning>
+          **For non-US instances:** If you're using EU Cloud, or a self-hosted instance, you must set `INFISICAL_API_URL` before login, or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+        </Warning>
 
         Now that we've set the `INFISICAL_TOKEN` environment variable, we can use the CLI to interact with Infisical. The CLI will automatically check for the presence of the `INFISICAL_TOKEN` environment variable and use it for authentication.
 

@@ -131,6 +131,62 @@ For versions prior to v0.4.0, the CLI defaults to the US Cloud. To connect to th
 
 </Note>
 
+<Warning>
+  ## Domain Configuration
+
+**Important:** If you're not using interactive login, you must configure the domain for **all CLI commands**.
+
+The CLI defaults to the US Cloud (https://app.infisical.com). To connect to the **EU Cloud (https://eu.infisical.com)** or a **self-hosted instance**, you can configure the domain in one of the following ways:
+
+- Use the `INFISICAL_API_URL` environment variable
+- Use the `--domain` flag on every command
+
+<Tabs>
+  <Tab title='Use Environment Variable (Recommended)'>
+    The easiest way to ensure all CLI commands use the correct domain is to set
+    the `INFISICAL_API_URL` environment variable. This applies the domain
+    setting globally to all commands:
+
+    ```bash
+    # Linux/MacOS
+    export INFISICAL_API_URL="https://your-domain.infisical.com"
+
+    # Windows PowerShell
+    setx INFISICAL_API_URL "https://your-domain.infisical.com"
+    ```
+
+    Once set, all subsequent CLI commands will automatically use this domain:
+
+    ```bash
+    # Login with the domain
+    infisical login --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain
+
+    # All other commands will also use the same domain automatically
+    infisical secrets --projectId <id> --env dev
+    ```
+
+  </Tab>
+  <Tab title='Use --domain Flag'>
+    The `--domain` flag can be used to set the domain for a single command. This
+    applies the domain setting to the command only:
+
+    ```bash
+    # Login with domain
+    infisical login --domain="https://your-domain.infisical.com" --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain
+
+    # All subsequent commands must also include --domain
+    infisical secrets --domain="https://your-domain.infisical.com" --projectId <id> --env dev
+    ```
+
+    <Note>
+      If you use `--domain` during login but forget to include it on subsequent commands, you may encounter authentication errors.
+    </Note>
+
+  </Tab>
+</Tabs>
+
+</Warning>
+
 <Tip>
   ## Custom Request Headers
 
@@ -186,51 +242,65 @@ For security and privacy concerns, we recommend you to configure your terminal t
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Can I connect the CLI to my self-hosted Infisical instance?">
-    Yes. The CLI is set to connect to Infisical Cloud by default, but if you're running your own instance of Infisical, you can direct the CLI to it using one of the methods provided below.
+  <Accordion title="Can I connect the CLI to my self-hosted Infisical instance or non-US Cloud?">
+    Yes. The CLI is set to connect to Infisical US Cloud by default, but if you're using the EU Cloud, a self-hosted instance, you need to configure the domain for **all CLI commands**.
 
-    #### Method 1: Use the updated CLI
+    #### Method 1:Use the updated CLI (v0.4.0+)
 
-    Beginning with CLI version V0.4.0, it is now possible to choose between logging in through the Infisical cloud or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
+    Beginning with CLI version V0.4.0, you can choose between logging in through the Infisical US Cloud, EU Cloud, or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
 
-    #### Method 2: Export environment variable
+     #### Method 2: Export environment variable
 
     You can point the CLI to the self-hosted Infisical instance by exporting the environment variable `INFISICAL_API_URL` in your terminal.
 
     <Tabs>
     <Tab title="Linux/MacOs">
       ```bash
-      # set backend host
-      export INFISICAL_API_URL="https://your-self-hosted-infisical.com/api"
+      # Set the API URL
+      export INFISICAL_API_URL="https://your-self-hosted-infisical.com"
 
-      # remove backend host
+      # For EU Cloud
+      export INFISICAL_API_URL="https://eu.infisical.com"
+
+      # Remove the setting
       unset INFISICAL_API_URL
       ```
 
     </Tab>
     <Tab title="Windows Powershell">
       ```bash
-      # set backend host
-      setx INFISICAL_API_URL "https://your-self-hosted-infisical.com/api"
+      # Set the API URL
+      setx INFISICAL_API_URL "https://your-self-hosted-infisical.com"
 
-      # remove backend host
+      # For EU Cloud
+      setx INFISICAL_API_URL "https://eu.infisical.com"
+
+      # Remove the setting
       setx INFISICAL_API_URL ""
 
-      # NOTE: Once set or removed, please restart powershell for the change to take effect
+      # NOTE: Once set, please restart powershell for the change to take effect
       ```
 
     </Tab>
 
   </Tabs>
 
-#### Method 3: Set manually on every command
+    #### Method 3: Set manually on every command
 
-Another option to point the CLI to your self-hosted Infisical instance is to set it via a flag on every command you run.
+    If you prefer not to set the environment variable, you must include the `--domain` flag on **every CLI command** you run:
 
-```bash
-# Example
-infisical <any-command> --domain="https://your-self-hosted-infisical.com/api"
-```
+    ```bash
+    # Login with domain
+    infisical login --domain="https://your-domain.infisical.com" --method=oidc-auth --jwt $JWT
+
+    # All subsequent commands must also include --domain
+    infisical secrets --domain="https://your-self-hosted-infisical.com/api" --projectId <id> --env dev
+    infisical export --domain="https://your-self-hosted-infisical.com/api" --format=dotenv-export
+    ```
+
+    <Tip>
+      **Best Practice:** Use `INFISICAL_API_URL` environment variable (Method 2) to avoid having to remember the `--domain` flag on every command. This is especially important in CI/CD pipelines and automation scripts.
+    </Tip>
 
   </Accordion>
   <Accordion title="Can I use the CLI with service tokens?">
