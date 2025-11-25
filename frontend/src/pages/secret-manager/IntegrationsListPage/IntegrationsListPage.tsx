@@ -3,7 +3,15 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
+import {
+  Alert,
+  AlertDescription,
+  PageHeader,
+  Tab,
+  TabList,
+  TabPanel,
+  Tabs
+} from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
@@ -12,6 +20,7 @@ import {
   useProject
 } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
 
@@ -31,6 +40,9 @@ export const IntegrationsListPage = () => {
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.SecretManager.IntegrationsListPage.id
   });
+
+  const { data: integrations } = useGetWorkspaceIntegrations(currentProject.id);
+  const hasNativeIntegrations = Boolean(integrations?.length);
 
   const updateSelectedTab = (tab: string) => {
     navigate({
@@ -65,9 +77,11 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
                 Secret Syncs
               </Tab>
-              <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                Native Integrations
-              </Tab>
+              {hasNativeIntegrations && (
+                <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                  Native Integrations
+                </Tab>
+              )}
               <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </Tab>
@@ -84,15 +98,39 @@ export const IntegrationsListPage = () => {
                 <SecretSyncsTab />
               </ProjectPermissionCan>
             </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
-              <ProjectPermissionCan
-                renderGuardBanner
-                I={ProjectPermissionActions.Read}
-                a={ProjectPermissionSub.Integrations}
-              >
-                <NativeIntegrationsTab />
-              </ProjectPermissionCan>
-            </TabPanel>
+            {hasNativeIntegrations && (
+              <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
+                <Alert variant="warning" className="mb-4" hideTitle>
+                  <AlertDescription>
+                    We&apos;re moving Native Integrations to{" "}
+                    <a
+                      href="https://infisical.com/docs/integrations/secret-syncs/overview"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2 hover:text-mineshaft-100"
+                    >
+                      Secret Syncs
+                    </a>
+                    . If the integration you need isn&apos;t available in the Secret Syncs menu,
+                    please get in touch with us at{" "}
+                    <a
+                      href="mailto:team@infisical.com"
+                      className="underline underline-offset-2 hover:text-mineshaft-100"
+                    >
+                      team@infisical.com
+                    </a>
+                    .
+                  </AlertDescription>
+                </Alert>
+                <ProjectPermissionCan
+                  renderGuardBanner
+                  I={ProjectPermissionActions.Read}
+                  a={ProjectPermissionSub.Integrations}
+                >
+                  <NativeIntegrationsTab />
+                </ProjectPermissionCan>
+              </TabPanel>
+            )}
             <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
               <FrameworkIntegrationTab />
             </TabPanel>

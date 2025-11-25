@@ -3,16 +3,18 @@ import { z } from "zod";
 import { IntegrationsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, INTEGRATION } from "@app/lib/api-docs";
+import { ForbiddenRequestError } from "@app/lib/errors";
 import { removeTrailingSlash, shake } from "@app/lib/fn";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
-import { getTelemetryDistinctId } from "@app/server/lib/telemetry";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { Integrations } from "@app/services/integration-auth/integration-list";
-import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
 
 import {} from "../sanitizedSchemas";
+
+const NATIVE_INTEGRATION_DEPRECATION_MESSAGE =
+  "We're moving Native Integrations to Secret Syncs. Check the documentation at https://infisical.com/docs/integrations/secret-syncs/overview. If the integration you need isn't available in the Secret Syncs, please get in touch with us at team@infisical.com.";
 
 export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -66,52 +68,58 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { integration, integrationAuth } = await server.services.integration.createIntegration({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        ...req.body
+    handler: async (_) => {
+      throw new ForbiddenRequestError({
+        message: NATIVE_INTEGRATION_DEPRECATION_MESSAGE
       });
 
-      const createIntegrationEventProperty = shake({
-        integrationId: integration.id.toString(),
-        integration: integration.integration,
-        environment: req.body.sourceEnvironment,
-        secretPath: req.body.secretPath,
-        url: integration.url,
-        app: integration.app,
-        appId: integration.appId,
-        targetEnvironment: integration.targetEnvironment,
-        targetEnvironmentId: integration.targetEnvironmentId,
-        targetService: integration.targetService,
-        targetServiceId: integration.targetServiceId,
-        path: integration.path,
-        region: integration.region
-      }) as TIntegrationCreatedEvent["properties"];
+      // We are keeping the old response commented out for an easy revert on the API if we need to before the full phase out.
 
-      await server.services.auditLog.createAuditLog({
-        ...req.auditLogInfo,
-        projectId: integrationAuth.projectId,
-        event: {
-          type: EventType.CREATE_INTEGRATION,
-          // eslint-disable-next-line
-          metadata: createIntegrationEventProperty
-        }
-      });
+      // const { integration, integrationAuth } = await server.services.integration.createIntegration({
+      //   actorId: req.permission.id,
+      //   actor: req.permission.type,
+      //   actorAuthMethod: req.permission.authMethod,
+      //   actorOrgId: req.permission.orgId,
+      //   ...req.body
+      // });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.IntegrationCreated,
-        organizationId: req.permission.orgId,
-        distinctId: getTelemetryDistinctId(req),
-        properties: {
-          ...createIntegrationEventProperty,
-          projectId: integrationAuth.projectId,
-          ...req.auditLogInfo
-        }
-      });
-      return { integration };
+      // const createIntegrationEventProperty = shake({
+      //   integrationId: integration.id.toString(),
+      //   integration: integration.integration,
+      //   environment: req.body.sourceEnvironment,
+      //   secretPath: req.body.secretPath,
+      //   url: integration.url,
+      //   app: integration.app,
+      //   appId: integration.appId,
+      //   targetEnvironment: integration.targetEnvironment,
+      //   targetEnvironmentId: integration.targetEnvironmentId,
+      //   targetService: integration.targetService,
+      //   targetServiceId: integration.targetServiceId,
+      //   path: integration.path,
+      //   region: integration.region
+      // }) as TIntegrationCreatedEvent["properties"];
+
+      // await server.services.auditLog.createAuditLog({
+      //   ...req.auditLogInfo,
+      //   projectId: integrationAuth.projectId,
+      //   event: {
+      //     type: EventType.CREATE_INTEGRATION,
+      //     // eslint-disable-next-line
+      //     metadata: createIntegrationEventProperty
+      //   }
+      // });
+
+      // await server.services.telemetry.sendPostHogEvents({
+      //   event: PostHogEventTypes.IntegrationCreated,
+      //   organizationId: req.permission.orgId,
+      //   distinctId: getTelemetryDistinctId(req),
+      //   properties: {
+      //     ...createIntegrationEventProperty,
+      //     projectId: integrationAuth.projectId,
+      //     ...req.auditLogInfo
+      //   }
+      // });
+      // return { integration };
     }
   });
 
