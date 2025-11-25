@@ -82,8 +82,8 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       { leaseId },
       {
         singletonKey: `${leaseId}-retry`, // avoid conflicts with scheduled revocation
-        retryDelay: Math.floor(applyJitter(3_600_000 * 4) / 1000), // retry every 4 hours with 20% +- jitter
-        retryLimit: 20, // we dont want it to ever hit the limit, we want the expireInHours to take effect.
+        retryDelay: Math.floor(applyJitter(3_600_000 * 4) / 1000), // retry every 4 hours with 20% +- jitter (convert ms to seconds for pgboss)
+        retryLimit: 10, // we dont want it to ever hit the limit, we want the expireInHours to take effect.
         expireInHours: 23, // if we set it to 24 hours, pgboss will complain that the expireIn is too high
         deadLetter: QueueName.DynamicSecretRevocationFailedRetry // if all fails, we will send a notification to the user
       }
@@ -192,7 +192,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         });
 
         // if revocation fails, we should stop the job and queue a new job to retry the revocation at a later time.
-        await queueService.stopJobById(QueueName.DynamicSecretRevocation, jobId);
         await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, jobId);
         await queueFailedRevocation(leaseId);
       }
