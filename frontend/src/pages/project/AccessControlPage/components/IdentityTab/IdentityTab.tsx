@@ -158,7 +158,7 @@ export const IdentityTab = withProjectPermission(
         });
 
         createNotification({
-          text: "Successfully deleted project identity",
+          text: "Successfully deleted project machine identity",
           type: "success"
         });
       } else {
@@ -168,7 +168,7 @@ export const IdentityTab = withProjectPermission(
         });
 
         createNotification({
-          text: "Successfully removed identity from project",
+          text: "Successfully removed machine identity from project",
           type: "success"
         });
       }
@@ -197,7 +197,7 @@ export const IdentityTab = withProjectPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Identities</p>
+            <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
           </div>
           <div className="flex items-center">
@@ -212,7 +212,7 @@ export const IdentityTab = withProjectPermission(
                   onClick={() => handlePopUpOpen("createIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Create Identity
+                  Add Machine Identity
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -223,7 +223,7 @@ export const IdentityTab = withProjectPermission(
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search identities by name..."
+          placeholder="Search machine identities by name..."
         />
         <TableContainer>
           <Table>
@@ -454,7 +454,9 @@ export const IdentityTab = withProjectPermission(
                                       });
                                     }}
                                   >
-                                    {identityProjectId ? "Delete Identity" : "Remove From Project"}
+                                    {identityProjectId
+                                      ? "Delete Machine Identity"
+                                      : "Remove From Project"}
                                   </DropdownMenuItem>
                                 )}
                               </ProjectPermissionCan>
@@ -474,7 +476,7 @@ export const IdentityTab = withProjectPermission(
                     <Td colSpan={3}>
                       <Blur
                         className="w-min"
-                        tooltipText="You do not have permission to read this identity."
+                        tooltipText="You do not have permission to view this machine identity."
                       />
                     </Td>
                   </Tr>
@@ -497,8 +499,8 @@ export const IdentityTab = withProjectPermission(
               <EmptyState
                 title={
                   debouncedSearch.trim().length > 0
-                    ? "No identities match search filter"
-                    : "No identities have been added to this project"
+                    ? "No machine identities match search filter"
+                    : "No machine identities have been added to this project"
                 }
                 icon={faServer}
               />
@@ -513,8 +515,8 @@ export const IdentityTab = withProjectPermission(
         >
           <ModalContent
             bodyClassName="overflow-visible"
-            title="Add Project Identity"
-            subTitle="Create a new identity or assign an existing identity"
+            title="Add Project Machine Identity"
+            subTitle="Create a new machine identity or assign an existing one"
           >
             <AnimatePresence mode="wait">
               {wizardStep === WizardSteps.SelectAction && (
@@ -538,11 +540,11 @@ export const IdentityTab = withProjectPermission(
                   >
                     <div className="flex items-center gap-2">
                       <PlusIcon size="1rem" />
-                      <div>Create New Identity</div>
+                      <div>Create Machine Identity</div>
                     </div>
                     <div className="mt-2 text-xs text-mineshaft-300">
-                      Create a new machine identity specifically for this project. This identity
-                      will be managed at the project-level.
+                      Create a new machine identity specifically for this project. This machine
+                      identity will be managed at the project-level.
                     </div>
                   </div>
                   <div
@@ -558,11 +560,11 @@ export const IdentityTab = withProjectPermission(
                   >
                     <div className="flex items-center gap-2">
                       <LinkIcon size="1rem" />
-                      <div>Assign Existing Identity</div>
+                      <div>Assign Existing Machine Identity</div>
                     </div>
                     <div className="mt-2 text-xs text-mineshaft-300">
-                      Assign an existing identity from your organization. The identity will continue
-                      to be managed at its original scope.
+                      Assign an existing machine identity from your organization. The machine
+                      identity will continue to be managed at its original scope.
                     </div>
                   </div>
                 </motion.div>

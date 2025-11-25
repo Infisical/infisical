@@ -164,7 +164,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     createNotification({
-      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} identity`,
+      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} machine identity`,
       type: "success"
     });
 

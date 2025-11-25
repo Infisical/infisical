@@ -29,7 +29,7 @@ export const ResourceOverviewPage = () => {
                 Users
               </Tab>
               <Tab variant="instance" value="tab-identities">
-                Identities
+                Machine Identities
               </Tab>
             </TabList>
             <TabPanel value="tab-organizations">
