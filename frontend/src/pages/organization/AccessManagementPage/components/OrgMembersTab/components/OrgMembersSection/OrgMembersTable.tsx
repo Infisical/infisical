@@ -1,3 +1,4 @@
+import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -16,7 +17,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { UserCogIcon } from "lucide-react";
-import { Dispatch, SetStateAction, useCallback, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";

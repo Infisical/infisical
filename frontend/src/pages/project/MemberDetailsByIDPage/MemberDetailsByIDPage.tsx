@@ -1,9 +1,9 @@
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { formatRelative } from "date-fns";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";

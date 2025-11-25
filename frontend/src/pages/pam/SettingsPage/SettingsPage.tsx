@@ -1,12 +1,12 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
@@ -25,7 +25,7 @@ export const SettingsPage = () => {
           description="Configure your PAM project."
         >
           <Link
-            to={"/organizations/$orgId/settings"}
+            to="/organizations/$orgId/settings"
             params={{
               orgId: currentOrg.id
             }}

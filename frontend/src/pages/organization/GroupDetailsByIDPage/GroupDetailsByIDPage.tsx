@@ -1,8 +1,8 @@
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";

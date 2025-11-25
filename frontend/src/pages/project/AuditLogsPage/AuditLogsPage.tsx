@@ -1,10 +1,10 @@
 import { Helmet } from "react-helmet";
+import { Link } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 
 export const AuditLogsPage = () => {
   const { currentProject } = useProject();
@@ -23,7 +23,7 @@ export const AuditLogsPage = () => {
             description="Audit logs for security and compliance teams to monitor information access."
           >
             <Link
-              to={"/organizations/$orgId/audit-logs"}
+              to="/organizations/$orgId/audit-logs"
               params={{
                 orgId: currentProject.orgId
               }}

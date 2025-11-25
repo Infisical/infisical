@@ -57,7 +57,7 @@ export const OrgGroupsSection = () => {
         <OrgPermissionCan I={OrgPermissionGroupActions.Create} a={OrgPermissionSubjects.Groups}>
           {(isAllowed) => (
             <Button
-              variant={"outline_bg"}
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handleAddGroupModal()}

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -23,7 +24,6 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { UserPlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";

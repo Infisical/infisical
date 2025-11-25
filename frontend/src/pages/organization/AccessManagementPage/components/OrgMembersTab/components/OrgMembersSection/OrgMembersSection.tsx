@@ -1,8 +1,8 @@
+import { useEffect, useState } from "react";
 import { faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { BanIcon, UserPlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -211,7 +211,7 @@ export const OrgMembersSection = () => {
           <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Member}>
             {(isAllowed) => (
               <Button
-                variant={"outline_bg"}
+                variant="outline_bg"
                 type="submit"
                 leftIcon={<UserPlusIcon size={16} />}
                 onClick={() =>

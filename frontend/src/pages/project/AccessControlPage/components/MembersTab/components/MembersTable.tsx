@@ -1,3 +1,4 @@
+import { useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -13,7 +14,6 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";

@@ -1,10 +1,10 @@
+import { createElement } from "react";
 import { ReactNode } from "@tanstack/react-router";
 import { LucideIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { InstanceIcon, OrgIcon, ProjectIcon, SubOrgIcon } from "@app/components/v3";
 import { ProjectType } from "@app/hooks/api/projects/types";
-import { createElement } from "react";
 
 type Props = {
   title: ReactNode;

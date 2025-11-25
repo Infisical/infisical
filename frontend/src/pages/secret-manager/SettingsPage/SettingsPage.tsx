@@ -1,13 +1,13 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 import { EncryptionTab } from "./components/EncryptionTab";
 import { SecretSettingsTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
@@ -49,7 +49,7 @@ export const SettingsPage = () => {
           description="Configure your secret manager's encryption, environments, webhooks and other configurations."
         >
           <Link
-            to={"/organizations/$orgId/settings"}
+            to="/organizations/$orgId/settings"
             params={{
               orgId: currentProject.orgId
             }}

@@ -1,6 +1,6 @@
+import { Helmet } from "react-helmet";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Helmet } from "react-helmet";
 
 import { PageHeader } from "@app/components/v2";
 import { useOrganization } from "@app/context";

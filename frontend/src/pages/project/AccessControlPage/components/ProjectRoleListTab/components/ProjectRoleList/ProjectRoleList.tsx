@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -13,7 +14,6 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { ServerIcon, WrenchIcon } from "lucide-react";
-import { useMemo } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";

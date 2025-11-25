@@ -1,5 +1,7 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -8,8 +10,6 @@ import { ProjectPermissionSecretScanningConfigActions } from "@app/context/Proje
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
-import { Link } from "@tanstack/react-router";
-import { InfoIcon } from "lucide-react";
 import { ProjectScanningConfigTab } from "./components/ProjectScanningConfigTab";
 
 export const SettingsPage = () => {
@@ -28,7 +28,7 @@ export const SettingsPage = () => {
           description="Configure your Secret Scanning product's configurations."
         >
           <Link
-            to={"/organizations/$orgId/settings"}
+            to="/organizations/$orgId/settings"
             params={{
               orgId: currentOrg.id
             }}

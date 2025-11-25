@@ -1,6 +1,7 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
@@ -8,7 +9,6 @@ import { getProjectBaseURL } from "@app/helpers/project";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectAccessControlTabs } from "@app/types/project";
 
-import { InfoIcon } from "lucide-react";
 import {
   GroupsTab,
   IdentityTab,
@@ -48,7 +48,7 @@ const Page = () => {
           description="Manage fine-grained access for users, groups, roles, and machine identities within your project resources."
         >
           <Link
-            to={"/organizations/$orgId/access-management"}
+            to="/organizations/$orgId/access-management"
             params={{
               orgId: currentOrg.id
             }}
