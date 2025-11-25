@@ -92,7 +92,11 @@ export const ProjectSelect = () => {
   }, [projects, projectFavorites, currentWorkspace]);
 
   return (
-    <div className="mr-2 flex items-center gap-1 overflow-hidden">
+    <div className="relative mr-2 flex min-w-16 items-center gap-1 self-end rounded-t-md border-x border-t border-project/10 bg-gradient-to-b from-project/10 to-project/[0.075] pt-1.5 pr-1 pb-2.5 pl-3">
+      {/* scott: the below is used to hide the top border from the org nav bar */}
+      <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
+        <div className="h-full bg-project/[0.075]" />
+      </div>
       <DropdownMenu modal={false}>
         <Link
           to={getProjectHomePage(currentWorkspace.type, currentWorkspace.environments)}
@@ -100,16 +104,12 @@ export const ProjectSelect = () => {
             projectId: currentWorkspace.id,
             orgId: currentWorkspace.orgId
           }}
-          className="group flex cursor-pointer items-center gap-x-1.5 overflow-hidden hover:text-white"
+          className="group flex cursor-pointer items-center gap-x-2 overflow-hidden pt-0.5 text-sm text-white"
         >
-          <p className="inline-block truncate text-mineshaft-200 group-hover:underline">
-            {currentWorkspace?.name}
-          </p>
-          <Badge variant="project">
-            <ProjectIcon />
-            <span className="hidden sm:inline-block">
-              {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
-            </span>
+          <ProjectIcon className="size-[14px] shrink-0 text-project" />
+          <span className="truncate">{currentWorkspace?.name}</span>
+          <Badge variant="project" className="hidden md:inline-flex">
+            {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
           </Badge>
         </Link>
         <DropdownMenuTrigger asChild>
@@ -118,7 +118,7 @@ export const ProjectSelect = () => {
               variant="plain"
               colorSchema="secondary"
               ariaLabel="switch-project"
-              className="px-2 py-1"
+              className="top-px px-2 py-1"
             >
               <FontAwesomeIcon icon={faCaretDown} className="text-xs text-bunker-300" />
             </IconButton>
