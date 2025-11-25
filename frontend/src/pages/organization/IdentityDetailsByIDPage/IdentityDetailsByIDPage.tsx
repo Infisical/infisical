@@ -55,7 +55,7 @@ const Page = () => {
     });
 
     createNotification({
-      text: "Successfully deleted identity",
+      text: "Successfully deleted machine identity",
       type: "success"
     });
 
@@ -82,11 +82,11 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Identities
+            Machine Identities
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
-            description={`${isSubOrganization ? "Sub-" : ""}Organization Identity`}
+            description={`${isSubOrganization ? "Sub-" : ""}Organization Machine Identity`}
             title={data.identity.name}
           >
             <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ const Page = () => {
                         })
                       }
                     >
-                      Unlink Identity
+                      Unlink Machine Identity
                     </Button>
                   )}
                 </OrgPermissionCan>
@@ -142,7 +142,7 @@ const Page = () => {
       >
         <ModalContent
           bodyClassName="overflow-visible"
-          title={`${popUp?.identity?.data ? "Update" : "Create"} Identity`}
+          title={`${popUp?.identity?.data ? "Update" : "Create"} Machine Identity`}
         >
           <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
         </ModalContent>

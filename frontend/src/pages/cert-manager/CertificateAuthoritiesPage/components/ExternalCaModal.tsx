@@ -27,6 +27,10 @@ import {
   TCloudflareZone,
   useCloudflareConnectionListZones
 } from "@app/hooks/api/appConnections/cloudflare";
+import {
+  TDNSMadeEasyZone,
+  useDNSMadeEasyConnectionListZones
+} from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AcmeDnsProvider,
@@ -210,6 +214,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableDNSMadeEasyConnections, isPending: isDNSMadeEasyPending } =
+    useListAvailableAppConnections(AppConnection.DNSMadeEasy, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -219,16 +228,24 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
-    return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
+    return [
+      ...(availableRoute53Connections || []),
+      ...(availableCloudflareConnections || []),
+      ...(availableDNSMadeEasyConnections || [])
+    ];
   }, [
     caType,
     availableRoute53Connections,
     availableCloudflareConnections,
+    availableDNSMadeEasyConnections,
     availableAzureConnections
   ]);
 
   const isPending =
-    isRoute53Pending || isCloudflarePending || (isAzurePending && caType === CaType.AZURE_AD_CS);
+    isRoute53Pending ||
+    isCloudflarePending ||
+    isDNSMadeEasyPending ||
+    (isAzurePending && caType === CaType.AZURE_AD_CS);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -238,6 +255,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: cloudflareZones = [], isPending: isZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
+    });
+
+  const { data: dnsMadeEasyZones = [], isPending: isDNSMadeEasyZonesPending } =
+    useDNSMadeEasyConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.DNSMadeEasy && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -491,6 +513,32 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                           onChange((option as SingleValue<TCloudflareZone>)?.id ?? null);
                         }}
                         options={cloudflareZones}
+                        placeholder="Select a zone..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
+              {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
+                <Controller
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      label="Zone"
+                    >
+                      <FilterableSelect
+                        isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
+                        isDisabled={!dnsAppConnection.id}
+                        value={dnsMadeEasyZones.find((zone) => zone.id === value)}
+                        onChange={(option) => {
+                          onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
+                        }}
+                        options={dnsMadeEasyZones}
                         placeholder="Select a zone..."
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}

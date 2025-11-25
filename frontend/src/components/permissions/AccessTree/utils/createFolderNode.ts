@@ -87,17 +87,24 @@ const shouldShowConditionalAccess = (
   folderPath: string,
   conditionalFields: string[]
 ): boolean => {
-  return actionRuleMap.some((rule) => {
+  // Find all rules that apply to this environment/path
+  const applicableRules = actionRuleMap.filter((rule) => {
     const ruleConditions = rule[action]?.conditions;
     if (!ruleConditions) return false;
-
-    // Check if any of the conditional fields are present
-    const hasConditionalField = conditionalFields.some((field) => ruleConditions[field]);
-    if (!hasConditionalField) return false;
-
-    // Check if base conditions (environment and secretPath) apply
     return doBaseConditionsApply(ruleConditions, environment, folderPath);
   });
+
+  // If no rules apply, don't show conditional
+  if (applicableRules.length === 0) return false;
+
+  // Check if ALL applicable rules have conditional fields and if at least one rule applies without conditional fields, show full access
+  const allRulesHaveConditionalFields = applicableRules.every((rule) => {
+    const ruleConditions = rule[action]?.conditions;
+    if (!ruleConditions) return false;
+    return conditionalFields.some((field) => ruleConditions[field]);
+  });
+
+  return allRulesHaveConditionalFields;
 };
 
 const determineAccessLevel = (
