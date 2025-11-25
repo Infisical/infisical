@@ -173,7 +173,7 @@ The following steps show how to install cert-manager (using `kubectl`) and obtai
             name: issuer-infisical
     ```
 
-    The above sample configuration file specifies a certificate to be issued with the common name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
+    The above sample configuration file specifies a certificate to be issued with the dns name `certificate-by-issuer.example.com` and ECDSA private key using the P-256 curve, valid for 48 hours; the certificate will be automatically renewed by `cert-manager` 12 hours before expiry.
     The certificate is issued by the issuer `issuer-infisical` created in the previous step and the resulting certificate and private key will be stored in a secret named `certificate-by-issuer`.
 
     Note that the full list of the fields supported on the `Certificate` resource can be found in the API reference documentation [here](https://cert-manager.io/docs/reference/api-docs/#cert-manager.io/v1.CertificateSpec).
