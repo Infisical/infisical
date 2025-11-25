@@ -360,7 +360,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:certificateId/renew",
+    url: "/:id/renew",
     config: {
       rateLimit: writeLimit
     },
@@ -368,7 +368,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        certificateId: z.string().uuid()
+        id: z.string().uuid()
       }),
       body: z
         .object({
@@ -393,7 +393,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
-        certificateId: req.params.certificateId,
+        certificateId: req.params.id,
         removeRootsFromChain: req.body?.removeRootsFromChain
       });
 
@@ -403,7 +403,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.RENEW_CERTIFICATE,
           metadata: {
-            originalCertificateId: req.params.certificateId,
+            originalCertificateId: req.params.id,
             newCertificateId: data.certificateId,
             profileName: data.profileName,
             commonName: data.commonName
@@ -417,7 +417,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "PATCH",
-    url: "/:certificateId/config",
+    url: "/:id/config",
     config: {
       rateLimit: writeLimit
     },
@@ -425,7 +425,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.PkiCertificates],
       params: z.object({
-        certificateId: z.string().uuid()
+        id: z.string().uuid()
       }),
       body: z
         .object({
@@ -450,7 +450,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          certificateId: req.params.certificateId
+          certificateId: req.params.id
         });
 
         await server.services.auditLog.createAuditLog({
@@ -459,7 +459,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           event: {
             type: EventType.DISABLE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
-              certificateId: req.params.certificateId,
+              certificateId: req.params.id,
               commonName: data.commonName
             }
           }
@@ -476,7 +476,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          certificateId: req.params.certificateId,
+          certificateId: req.params.id,
           renewBeforeDays: req.body.renewBeforeDays
         });
 
@@ -486,7 +486,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           event: {
             type: EventType.UPDATE_CERTIFICATE_RENEWAL_CONFIG,
             metadata: {
-              certificateId: req.params.certificateId,
+              certificateId: req.params.id,
               renewBeforeDays: req.body.renewBeforeDays.toString(),
               commonName: data.commonName
             }

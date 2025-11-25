@@ -47,7 +47,7 @@ In the following steps, we explore how to issue a X.509 certificate using the AC
     ```bash
     sudo certbot certonly \
       --standalone \
-      --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+      --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
       --eab-kid "your-eab-kid" \
       --eab-hmac-key "your-eab-secret" \
       -d example.infisical.com \
