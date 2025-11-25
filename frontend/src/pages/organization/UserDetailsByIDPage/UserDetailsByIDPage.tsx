@@ -1,8 +1,8 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -34,9 +34,9 @@ import {
 import { usePopUp } from "@app/hooks/usePopUp";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
+import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 import { UserAuditLogsSection } from "./components/UserProjectsSection/UserAuditLogsSection";
 import { UserGroupsSection } from "./components/UserProjectsSection/UserGroupsSection";
-import { UserDetailsSection, UserOrgMembershipModal, UserProjectsSection } from "./components";
 
 const Page = withPermission(
   () => {
@@ -112,7 +112,7 @@ const Page = withPermission(
               className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
             >
               <FontAwesomeIcon icon={faChevronLeft} />
-              Users
+              Organization Users
             </Link>
             <PageHeader
               scope={isSubOrganization ? "namespace" : "org"}

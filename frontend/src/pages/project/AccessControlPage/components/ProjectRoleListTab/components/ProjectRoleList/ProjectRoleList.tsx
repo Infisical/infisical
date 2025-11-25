@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -14,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { ServerIcon, WrenchIcon } from "lucide-react";
+import { useMemo } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -170,13 +170,13 @@ export const ProjectRoleList = () => {
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("role")}
               isDisabled={!isAllowed}
             >
-              Add Role
+              Add Project Role
             </Button>
           )}
         </ProjectPermissionCan>

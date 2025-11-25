@@ -1,6 +1,6 @@
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -57,7 +57,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party services."
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>

@@ -1,4 +1,3 @@
-import { useCallback, useMemo, useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -14,6 +13,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
+import { useCallback, useMemo, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -208,7 +208,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Apply Roles to Filter Users
+                  Filter Project Users by Role
                 </DropdownMenuLabel>
                 {projectRoles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -237,7 +237,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search members..."
+          placeholder="Search project users..."
         />
       </div>
       <TableContainer className="mt-4">
@@ -282,7 +282,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>Role</Th>
+              <Th>Project Role</Th>
               <Th className="w-5" />
             </Tr>
           </THead>
@@ -462,9 +462,7 @@ export const MembersTable = ({ handlePopUpOpen }: Props) => {
         )}
         {!isMembersLoading && !filteredUsers?.length && (
           <EmptyState
-            title={
-              members.length ? "No project members match search..." : "No project members found"
-            }
+            title={members.length ? "No project users match search..." : "No project users found"}
             icon={members.length ? faSearch : faUsers}
           />
         )}

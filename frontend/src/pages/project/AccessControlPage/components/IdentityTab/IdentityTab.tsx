@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { subject } from "@casl/ability";
 import {
   faArrowDown,
@@ -14,6 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { LinkIcon, PlusIcon } from "lucide-react";
+import { useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -197,7 +197,7 @@ export const IdentityTab = withProjectPermission(
       <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-x-2">
-            <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>
+            <p className="text-xl font-medium text-mineshaft-100">Project Machine Identities</p>
             <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
           </div>
           <div className="flex items-center">
@@ -212,7 +212,7 @@ export const IdentityTab = withProjectPermission(
                   onClick={() => handlePopUpOpen("createIdentity")}
                   isDisabled={!isAllowed}
                 >
-                  Add Machine Identity
+                  Add Machine Identity to Project
                 </Button>
               )}
             </ProjectPermissionCan>
@@ -223,7 +223,7 @@ export const IdentityTab = withProjectPermission(
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search machine identities by name..."
+          placeholder="Search project machine identities by name..."
         />
         <TableContainer>
           <Table>
@@ -251,7 +251,7 @@ export const IdentityTab = withProjectPermission(
                     </IconButton>
                   </div>
                 </Th>
-                <Th className="w-1/3">Role</Th>
+                <Th className="w-1/3">Project Role</Th>
                 <Th>Managed by</Th>
                 <Th className="w-5">{isFetching ? <Spinner size="xs" /> : null}</Th>
               </Tr>

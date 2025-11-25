@@ -6,6 +6,8 @@ import { useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
+import { Link } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 import { EncryptionTab } from "./components/EncryptionTab";
 import { SecretSettingsTab } from "./components/ProjectGeneralTab";
 import { WebhooksTab } from "./components/WebhooksTab";
@@ -43,9 +45,19 @@ export const SettingsPage = () => {
       <div className="w-full max-w-8xl">
         <PageHeader
           scope={ProjectType.SecretManager}
-          title="Settings"
+          title="Project Settings"
           description="Configure your secret manager's encryption, environments, webhooks and other configurations."
-        />
+        >
+          <Link
+            to={"/organizations/$orgId/settings"}
+            params={{
+              orgId: currentProject.orgId
+            }}
+            className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
+          >
+            <InfoIcon size={12} /> Looking for organization settings?
+          </Link>
+        </PageHeader>
         <Tabs orientation="vertical" defaultValue={tabs[0].key}>
           <TabList>
             {tabs

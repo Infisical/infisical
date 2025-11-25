@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { useState } from "react";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -18,8 +18,8 @@ import {
 } from "@app/context";
 import { OrgAccessControlTabSections } from "@app/types/org";
 
-import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 import { OrgGroupsTab, OrgIdentityTab, OrgMembersTab, OrgRoleTabSection } from "./components";
+import { UpgradePrivilegeSystemModal } from "./components/UpgradePrivilegeSystemModal/UpgradePrivilegeSystemModal";
 
 export const AccessManagementPage = () => {
   const { t } = useTranslation();
@@ -83,7 +83,7 @@ export const AccessManagementPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
-          title="Access Control"
+          title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
           description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (

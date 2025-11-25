@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useTranslation } from "react-i18next";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
@@ -57,7 +57,7 @@ export const ServiceTokenSection = withProjectPermission(
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   handlePopUpOpen("createAPIToken");

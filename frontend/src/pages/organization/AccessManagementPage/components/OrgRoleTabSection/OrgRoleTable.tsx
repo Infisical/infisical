@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -15,6 +14,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
 import { ServerIcon, WrenchIcon } from "lucide-react";
+import { useMemo } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
@@ -199,7 +199,7 @@ export const OrgRoleTable = () => {
         <OrgPermissionCan I={OrgPermissionActions.Create} a={OrgPermissionSubjects.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => {
@@ -207,7 +207,7 @@ export const OrgRoleTable = () => {
               }}
               isDisabled={!isAllowed}
             >
-              Add Role
+              Add Organization Role
             </Button>
           )}
         </OrgPermissionCan>
@@ -216,7 +216,7 @@ export const OrgRoleTable = () => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search roles..."
+        placeholder="Search organization roles..."
         className="flex-1"
         containerClassName="mb-4"
       />
@@ -441,7 +441,7 @@ export const OrgRoleTable = () => {
           <EmptyState
             title={
               roles?.length
-                ? "No roles match search..."
+                ? "No organization roles match search..."
                 : "This organization does not have any roles"
             }
             icon={roles?.length ? faSearch : undefined}

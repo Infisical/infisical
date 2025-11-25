@@ -1,8 +1,8 @@
 // REFACTOR(akhilmhdh): This file needs to be split into multiple components too complex
+import { Outlet, useMatches } from "@tanstack/react-router";
 import { useState } from "react";
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
-import { Outlet, useMatches } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { NewProjectModal } from "@app/components/projects";
@@ -81,7 +81,7 @@ export const ProjectsPage = () => {
       </Helmet>
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
-        title="Overview"
+        title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit - organized and ready when you need them."
       />
       {projectListView === ProjectListView.MyProjects ? (

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { faGithub, faSlack } from "@fortawesome/free-brands-svg-icons";
 import { faCircleQuestion, faUserCircle } from "@fortawesome/free-regular-svg-icons";
 import {
@@ -24,6 +23,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { UserPlusIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -601,7 +601,7 @@ export const Navbar = () => {
                   }}
                 >
                   <UserPlusIcon className="inline-block size-3.5" />
-                  <span className="ml-2 hidden md:inline-block">Invite Members</span>
+                  <span className="ml-2 hidden md:inline-block">Invite Users</span>
                 </Link>
               ) : null
             }
@@ -705,7 +705,7 @@ export const Navbar = () => {
                   }}
                 >
                   <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
-                    Invite Members
+                    Invite Users
                   </DropdownMenuItem>
                 </Link>
               ) : null

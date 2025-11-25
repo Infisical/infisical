@@ -1,8 +1,8 @@
-import { Helmet } from "react-helmet";
-import { useTranslation } from "react-i18next";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Helmet } from "react-helmet";
+import { useTranslation } from "react-i18next";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -88,7 +88,7 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Groups
+            Organization Groups
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
