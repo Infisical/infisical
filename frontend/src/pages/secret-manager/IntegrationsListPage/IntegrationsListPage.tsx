@@ -77,17 +77,17 @@ export const IntegrationsListPage = () => {
               <Tab variant="project" value={IntegrationsListPageTabs.SecretSyncs}>
                 Secret Syncs
               </Tab>
-              {hasNativeIntegrations && (
-                <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
-                  Native Integrations
-                </Tab>
-              )}
               <Tab variant="project" value={IntegrationsListPageTabs.FrameworkIntegrations}>
                 Framework Integrations
               </Tab>
               <Tab variant="project" value={IntegrationsListPageTabs.InfrastructureIntegrations}>
                 Infrastructure Integrations
               </Tab>
+              {hasNativeIntegrations && (
+                <Tab variant="project" value={IntegrationsListPageTabs.NativeIntegrations}>
+                  Native Integrations
+                </Tab>
+              )}
             </TabList>
             <TabPanel value={IntegrationsListPageTabs.SecretSyncs}>
               <ProjectPermissionCan
@@ -97,6 +97,12 @@ export const IntegrationsListPage = () => {
               >
                 <SecretSyncsTab />
               </ProjectPermissionCan>
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
+              <FrameworkIntegrationTab />
+            </TabPanel>
+            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
+              <InfrastructureIntegrationTab />
             </TabPanel>
             {hasNativeIntegrations && (
               <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
@@ -131,12 +137,6 @@ export const IntegrationsListPage = () => {
                 </ProjectPermissionCan>
               </TabPanel>
             )}
-            <TabPanel value={IntegrationsListPageTabs.FrameworkIntegrations}>
-              <FrameworkIntegrationTab />
-            </TabPanel>
-            <TabPanel value={IntegrationsListPageTabs.InfrastructureIntegrations}>
-              <InfrastructureIntegrationTab />
-            </TabPanel>
           </Tabs>
         </div>
       </div>
