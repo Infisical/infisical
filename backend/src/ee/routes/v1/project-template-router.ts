@@ -72,7 +72,6 @@ const ProjectTemplateEnvironmentsSchema = z
     position: z.number().min(1)
   })
   .array()
-  .min(1)
   .superRefine((environments, ctx) => {
     if (Buffer.byteLength(JSON.stringify(environments)) > MAX_JSON_SIZE_LIMIT_IN_BYTES)
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Size limit exceeded" });
@@ -198,7 +197,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
         type: z.nativeEnum(ProjectType).describe(ProjectTemplates.CREATE.type),
-        environments: ProjectTemplateEnvironmentsSchema.describe(ProjectTemplates.CREATE.environments).optional()
+        environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.CREATE.environments)
       }),
       response: {
         200: z.object({
