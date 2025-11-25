@@ -1,3 +1,4 @@
+import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -22,7 +23,9 @@ export const dnsMadeEasyConnectionService = (getAppConnection: TGetAppConnection
         error,
         `Failed to list DNS Made Easy zones for DNS Made Easy connection [connectionId=${connectionId}]`
       );
-      return [];
+      throw new BadRequestError({
+        message: `Failed to list DNS Made Easy zones: ${error instanceof Error ? error.message : "Unknown error"}`
+      });
     }
   };
 
