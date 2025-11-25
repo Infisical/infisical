@@ -178,7 +178,7 @@ export const dynamicSecretLeaseServiceFactory = ({
       config
     });
 
-    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, expireAt);
+    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
     return { lease: dynamicSecretLease, dynamicSecret: dynamicSecretCfg, data };
   };
 
@@ -272,7 +272,7 @@ export const dynamicSecretLeaseServiceFactory = ({
     );
 
     await dynamicSecretQueueService.unsetLeaseRevocation(dynamicSecretLease.id);
-    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, expireAt);
+    await dynamicSecretQueueService.setLeaseRevocation(dynamicSecretLease.id, dynamicSecretCfg.id, expireAt);
     const updatedDynamicSecretLease = await dynamicSecretLeaseDAL.updateById(dynamicSecretLease.id, {
       expireAt,
       externalEntityId: entityId
@@ -363,7 +363,7 @@ export const dynamicSecretLeaseServiceFactory = ({
         statusDetails: error?.message?.slice(0, 255)
       });
       // queue a job to retry the revocation at a later time
-      await dynamicSecretQueueService.queueFailedRevocation(dynamicSecretLease.id);
+      await dynamicSecretQueueService.queueFailedRevocation(dynamicSecretLease.id, dynamicSecretCfg.id);
       return updatedDynamicSecretLease;
     }
 

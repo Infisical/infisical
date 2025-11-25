@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { subject } from "@casl/ability";
 import { faEdit, faFingerprint, faTrash, faWarning } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,6 +14,7 @@ import {
   Tag,
   Tooltip
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ProjectPermissionDynamicSecretActions, ProjectPermissionSub } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useDeleteDynamicSecret } from "@app/hooks/api";
@@ -36,9 +38,11 @@ type Props = {
   environment: string;
   projectSlug: string;
   secretPath?: string;
+  selectedDynamicSecretId: string | null;
 };
 
 export const DynamicSecretListView = ({
+  selectedDynamicSecretId,
   dynamicSecrets = [],
   environment,
   projectSlug,
@@ -70,6 +74,12 @@ export const DynamicSecretListView = ({
       text: "Successfully deleted dynamic secret"
     });
   };
+
+  useEffect(() => {
+    if (selectedDynamicSecretId) {
+      handlePopUpOpen("dynamicSecretLeases", selectedDynamicSecretId);
+    }
+  }, [selectedDynamicSecretId]);
 
   return (
     <>
@@ -231,7 +241,12 @@ export const DynamicSecretListView = ({
               </div>
             </div>
             <ModalContent
-              title="Dynamic secret leases"
+              title={
+                <div className="flex items-center space-x-2">
+                  <p>Dynamic secret leases</p>
+                  <Badge variant="neutral">{secret.name}</Badge>
+                </div>
+              }
               subTitle="Revoke or renew your secret leases"
               className="max-w-3xl"
             >
