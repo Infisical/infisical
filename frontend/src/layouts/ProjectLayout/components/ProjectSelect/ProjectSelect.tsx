@@ -242,6 +242,7 @@ const ProjectSelectInner = () => {
 export const ProjectSelect = () => {
   const params = useParams({ strict: false });
 
+  // Return null during navigation when projectId is not available
   if (!params.projectId) {
     return null;
   }
