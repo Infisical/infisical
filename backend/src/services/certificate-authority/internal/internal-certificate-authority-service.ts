@@ -1716,12 +1716,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
     const dn = parseDistinguishedName(csrObj.subject);
-    const cn = commonName || dn.commonName;
-
-    if (!cn)
-      throw new BadRequestError({
-        message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
-      });
+    const cn = (commonName || dn.commonName) ?? "";
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,

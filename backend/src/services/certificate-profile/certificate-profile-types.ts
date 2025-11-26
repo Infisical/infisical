@@ -10,16 +10,24 @@ export enum EnrollmentType {
   ACME = "acme"
 }
 
-export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType"> & {
+export enum IssuerType {
+  CA = "ca",
+  SELF_SIGNED = "self-signed"
+}
+
+export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType" | "issuerType"> & {
   enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
 };
 
-export type TCertificateProfileInsert = Omit<TPkiCertificateProfilesInsert, "enrollmentType"> & {
+export type TCertificateProfileInsert = Omit<TPkiCertificateProfilesInsert, "enrollmentType" | "issuerType"> & {
   enrollmentType: EnrollmentType;
+  issuerType: IssuerType;
 };
 
-export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enrollmentType"> & {
+export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enrollmentType" | "issuerType"> & {
   enrollmentType?: EnrollmentType;
+  issuerType?: IssuerType;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase?: string;

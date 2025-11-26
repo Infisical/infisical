@@ -83,7 +83,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
     });
 
     createNotification({
-      text: "Successfully added identity to project",
+      text: "Successfully added machine identity to project",
       type: "success"
     });
 
@@ -114,11 +114,11 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
         control={control}
         name="identity"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Identity" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
             <FilterableSelect
               value={value}
               onChange={onChange}
-              placeholder="Select identity..."
+              placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
               options={filteredIdentityMembershipOrgs.map((membership) => ({
                 name: membership.name,

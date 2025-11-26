@@ -450,8 +450,8 @@ export const licenseServiceFactory = ({
       } = await licenseServerCloudApi.request.post(
         `/api/license-server/v1/customers/${organization.customerId}/billing-details/payment-methods`,
         {
-          success_url: `${envConfig.SITE_URL}/organization/billing`,
-          cancel_url: `${envConfig.SITE_URL}/organization/billing`
+          success_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`,
+          cancel_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`
         }
       );
 
@@ -464,7 +464,7 @@ export const licenseServiceFactory = ({
     } = await licenseServerCloudApi.request.post(
       `/api/license-server/v1/customers/${organization.customerId}/billing-details/billing-portal`,
       {
-        return_url: `${envConfig.SITE_URL}/organization/billing`
+        return_url: `${envConfig.SITE_URL}/organizations/${orgId}/billing`
       }
     );
 

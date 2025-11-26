@@ -26,6 +26,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
+import { useOrganization } from "@app/context";
 import {
   ProjectPermissionSecretScanningDataSourceActions,
   ProjectPermissionSub
@@ -51,6 +52,7 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
   const { id, name, lastScannedAt, lastScanStatus, unresolvedFindings, lastScanStatusMessage } =
     resource;
 
+  const { currentOrg } = useOrganization();
   let isActive: boolean;
 
   switch (dataSource.type) {
@@ -145,8 +147,9 @@ export const SecretScanningResourceRow = ({ resource, dataSource }: Props) => {
                 type="button"
                 onClick={() =>
                   navigate({
-                    to: "/projects/secret-scanning/$projectId/findings",
+                    to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
                     params: {
+                      orgId: currentOrg.id,
                       projectId: dataSource.projectId
                     },
                     search: {

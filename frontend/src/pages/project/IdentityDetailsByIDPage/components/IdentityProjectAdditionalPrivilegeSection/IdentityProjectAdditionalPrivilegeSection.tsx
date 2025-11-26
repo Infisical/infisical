@@ -235,7 +235,10 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
                   </TBody>
                 </Table>
                 {!isPending && !identityProjectPrivileges?.length && (
-                  <EmptyState title="This identity has no additional privileges" icon={faFolder} />
+                  <EmptyState
+                    title="This machine identity has no additional privileges"
+                    icon={faFolder}
+                  />
                 )}
               </TableContainer>
             </div>

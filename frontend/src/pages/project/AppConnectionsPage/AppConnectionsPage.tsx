@@ -25,7 +25,7 @@ export const AppConnectionsPage = withProjectPermission(
             <PageHeader
               scope={currentProject.type}
               className="w-full"
-              title="App Connections"
+              title="Project App Connections"
               description="Manage project App Connections"
             />
 

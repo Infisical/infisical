@@ -61,9 +61,10 @@ export const MachineAuthTemplateUsagesModal = ({
                       key={`usage-${usage.identityId}`}
                       onClick={() =>
                         navigate({
-                          to: "/organization/identities/$identityId",
+                          to: "/organizations/$orgId/identities/$identityId",
                           params: {
-                            identityId: usage.identityId
+                            identityId: usage.identityId,
+                            orgId: organizationId
                           }
                         })
                       }

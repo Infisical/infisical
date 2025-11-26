@@ -159,7 +159,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search groups..."
+        placeholder="Search organization groups..."
       />
       <TableContainer className="mt-4">
         <Table>
@@ -205,7 +205,7 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
               </Th>
               <Th>
                 <div className="flex items-center">
-                  Role
+                  Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === GroupsOrderBy.Role ? "" : "opacity-30"}`}
@@ -235,8 +235,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                     <Tr
                       onClick={() =>
                         navigate({
-                          to: "/organization/groups/$groupId",
+                          to: "/organizations/$orgId/groups/$groupId",
                           params: {
+                            orgId,
                             groupId: id
                           }
                         })
@@ -334,8 +335,9 @@ export const OrgGroupsTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faUserGroup} />}
                                   onClick={() =>
                                     navigate({
-                                      to: "/organization/groups/$groupId",
+                                      to: "/organizations/$orgId/groups/$groupId",
                                       params: {
+                                        orgId,
                                         groupId: id
                                       }
                                     })

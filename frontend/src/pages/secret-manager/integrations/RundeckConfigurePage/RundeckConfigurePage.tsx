@@ -17,7 +17,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -45,6 +45,7 @@ export const RundeckConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync } = useCreateIntegration();
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
 
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.RundeckConfigurePage.id,
@@ -71,8 +72,9 @@ export const RundeckConfigurePage = () => {
       });
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

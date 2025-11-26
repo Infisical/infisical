@@ -45,7 +45,7 @@ const Page = () => {
 
   const { data, isPending } = useGetGroupById(groupId);
 
-  const { isSubOrganization } = useOrganization();
+  const { isSubOrganization, currentOrg } = useOrganization();
 
   const { mutateAsync: deleteMutateAsync } = useDeleteGroup();
 
@@ -63,7 +63,8 @@ const Page = () => {
       type: "success"
     });
     navigate({
-      to: "/organization/access-management" as const,
+      to: "/organizations/$orgId/access-management" as const,
+      params: { orgId: currentOrg.id },
       search: {
         selectedTab: TabSections.Groups
       }
@@ -79,14 +80,15 @@ const Page = () => {
       {data && (
         <div className="mx-auto w-full max-w-8xl">
           <Link
-            to="/organization/access-management"
+            to="/organizations/$orgId/access-management"
+            params={{ orgId: currentOrg.id }}
             search={{
               selectedTab: TabSections.Groups
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Groups
+            Organization Groups
           </Link>
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}

@@ -16,7 +16,7 @@ import {
   Spinner
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   useCreateIntegration,
   useGetIntegrationAuthApps,
@@ -81,7 +81,7 @@ type TFormData = z.infer<typeof formSchema>;
 export const BitbucketConfigurePage = () => {
   const navigate = useNavigate();
   const createIntegration = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const { watch, control, handleSubmit, setValue, reset } = useForm<TFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -147,8 +147,9 @@ export const BitbucketConfigurePage = () => {
       text: "Successfully created integration"
     });
     navigate({
-      to: "/projects/secret-management/$projectId/integrations",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

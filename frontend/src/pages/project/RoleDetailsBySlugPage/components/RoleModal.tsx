@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input, Modal, ModalContent } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import {
   useCreateProjectRole,
@@ -37,6 +37,9 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
   const popupData = popUp?.role?.data as {
     roleSlug: string;
   };
+
+  const { currentOrg } = useOrganization();
+  const orgId = currentOrg?.id || "";
 
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
@@ -93,6 +96,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
         navigate({
           to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
           params: {
+            orgId,
             roleSlug: slug,
             projectId
           }
@@ -111,6 +115,7 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
       navigate({
         to: `${getProjectBaseURL(currentProject.type)}/roles/$roleSlug` as const,
         params: {
+          orgId,
           roleSlug: newRole.slug,
           projectId
         }

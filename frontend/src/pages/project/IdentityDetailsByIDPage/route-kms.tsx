@@ -5,7 +5,7 @@ import { ProjectAccessControlTabs } from "@app/types/project";
 import { IdentityDetailsByIDPage } from "./IdentityDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/kms/$projectId/_kms-layout/identities/$identityId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/kms/$projectId/_kms-layout/identities/$identityId"
 )({
   component: IdentityDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -15,8 +15,9 @@ export const Route = createFileRoute(
         {
           label: "Access Control",
           link: linkOptions({
-            to: "/projects/kms/$projectId/access-management",
+            to: "/organizations/$orgId/projects/kms/$projectId/access-management",
             params: {
+              orgId: params.orgId,
               projectId: params.projectId
             },
             search: {

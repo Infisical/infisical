@@ -22,7 +22,12 @@ import {
   DropdownMenuTrigger,
   PageHeader
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import { useDeleteProjectRole, useGetProjectRoleBySlug } from "@app/hooks/api";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
@@ -40,7 +45,9 @@ const Page = () => {
     select: (el) => el.roleSlug as string
   });
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const projectId = currentProject?.id || "";
+  const orgId = currentOrg?.id || "";
 
   const { data } = useGetProjectRoleBySlug(projectId, roleSlug as string);
 
@@ -68,7 +75,8 @@ const Page = () => {
     navigate({
       to: `${getProjectBaseURL(currentProject.type)}/access-management` as const,
       params: {
-        projectId
+        projectId,
+        orgId
       },
       search: {
         selectedTab: ProjectAccessControlTabs.Roles
@@ -87,7 +95,8 @@ const Page = () => {
           <Link
             to={`${getProjectBaseURL(currentProject.type)}/access-management`}
             params={{
-              projectId
+              projectId,
+              orgId
             }}
             search={{
               selectedTab: ProjectAccessControlTabs.Roles
@@ -95,7 +104,7 @@ const Page = () => {
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
           >
             <FontAwesomeIcon icon={faChevronLeft} />
-            Roles
+            Project Roles
           </Link>
           <PageHeader
             scope={currentProject.type}

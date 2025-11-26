@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { EmptyState } from "@app/components/v2";
-import { useProject, useSubscription } from "@app/context";
+import { useOrganization, useProject, useSubscription } from "@app/context";
 import { EventType } from "@app/hooks/api/auditLogs/enums";
 import { TIntegrationWithEnv } from "@app/hooks/api/integrations/types";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components/LogsSection";
@@ -15,6 +15,7 @@ type Props = {
 
 export const IntegrationAuditLogsSection = ({ integration }: Props) => {
   const { subscription } = useSubscription();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const auditLogsRetentionDays = subscription?.auditLogsRetentionDays ?? 30;
@@ -53,7 +54,12 @@ export const IntegrationAuditLogsSection = ({ integration }: Props) => {
             <p>
               Please{" "}
               {subscription && subscription.slug !== null ? (
-                <Link to="/organization/billing" target="_blank" rel="noopener noreferrer">
+                <Link
+                  to="/organizations/$orgId/billing"
+                  params={{ orgId: currentOrg.id }}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <a
                     className="cursor-pointer font-medium text-primary-500 transition-all hover:text-primary-600"
                     target="_blank"

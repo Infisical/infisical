@@ -5,7 +5,12 @@ import { useNavigate, useSearch } from "@tanstack/react-router";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -19,6 +24,7 @@ import {
 
 export const IntegrationsListPage = () => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { t } = useTranslation();
 
@@ -33,7 +39,8 @@ export const IntegrationsListPage = () => {
         selectedTab: tab as IntegrationsListPageTabs
       },
       params: {
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        orgId: currentOrg.id
       }
     });
   };
@@ -50,7 +57,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party services."
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>

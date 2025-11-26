@@ -9,7 +9,7 @@ import { TSecretSyncForm } from "@app/components/secret-syncs/forms/schemas";
 import { Button, Spinner } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionSecretSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListSecretSyncs } from "@app/hooks/api/secretSyncs";
@@ -26,6 +26,7 @@ export const SecretSyncsTab = () => {
 
   const navigate = useNavigate();
 
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   useEffect(() => {
@@ -35,7 +36,8 @@ export const SecretSyncsTab = () => {
     navigate({
       to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
       params: {
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        orgId: currentOrg.id
       },
       search
     });
@@ -66,6 +68,7 @@ export const SecretSyncsTab = () => {
       navigate({
         to: ROUTE_PATHS.SecretManager.IntegrationsListPage.path,
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search

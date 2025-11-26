@@ -155,7 +155,9 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
           });
 
           const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization ? `?subOrganization=${currentOrg.slug}` : ""}`;
-          window.location.href = url.replace("$projectId", currentProject.id);
+          window.location.assign(
+            url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
+          );
         }
       }
     );

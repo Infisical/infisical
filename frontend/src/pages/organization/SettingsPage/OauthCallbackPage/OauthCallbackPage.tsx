@@ -57,7 +57,8 @@ export const OAuthCallbackPage = () => {
     });
 
     navigate({
-      to: ROUTE_PATHS.Organization.SettingsPage.path
+      to: ROUTE_PATHS.Organization.SettingsPage.path,
+      params: { orgId: currentOrg.id }
     });
   }, []);
 

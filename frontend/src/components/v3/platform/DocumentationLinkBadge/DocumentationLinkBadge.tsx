@@ -1,4 +1,4 @@
-import { BookOpenIcon } from "lucide-react";
+import { ExternalLinkIcon } from "lucide-react";
 
 import { Badge } from "@app/components/v3";
 
@@ -8,10 +8,10 @@ type TDocumentationLinkBadgeProps = {
 
 export function DocumentationLinkBadge({ href }: TDocumentationLinkBadgeProps) {
   return (
-    <Badge variant="neutral" asChild>
+    <Badge variant="info" asChild>
       <a href={href} target="_blank" rel="noopener noreferrer">
-        <BookOpenIcon />
         Documentation
+        <ExternalLinkIcon />
       </a>
     </Badge>
   );

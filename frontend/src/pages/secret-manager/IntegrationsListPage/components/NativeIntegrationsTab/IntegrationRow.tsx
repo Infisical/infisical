@@ -16,7 +16,12 @@ import { twMerge } from "tailwind-merge";
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { IconButton, Td, Tooltip, Tr } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { TCloudIntegration } from "@app/hooks/api/integrations/types";
 import { TIntegration } from "@app/hooks/api/types";
 
@@ -38,6 +43,7 @@ export const IntegrationRow = ({
   cloudIntegration
 }: IProps) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const { id, secretPath, syncMessage, isSynced } = integration;
@@ -60,8 +66,9 @@ export const IntegrationRow = ({
     <Tr
       onClick={() =>
         navigate({
-          to: "/projects/secret-management/$projectId/integrations/$integrationId",
+          to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/$integrationId",
           params: {
+            orgId: currentOrg.id,
             integrationId: integration.id,
             projectId: currentProject.id
           }

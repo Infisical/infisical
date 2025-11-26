@@ -683,6 +683,13 @@ export const pkiAcmeServiceFactory = ({
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
+
+    if (!profile.caId) {
+      throw new BadRequestError({
+        message: "Self-signed certificates are not supported for ACME enrollment"
+      });
+    }
+
     let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -703,9 +710,6 @@ export const pkiAcmeServiceFactory = ({
 
         // Check and validate the CSR
         const certificateRequest = extractCertificateRequestFromCSR(csr);
-        if (!certificateRequest.commonName) {
-          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name is required" });
-        }
         if (
           certificateRequest.subjectAlternativeNames?.some(
             (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
@@ -721,7 +725,7 @@ export const pkiAcmeServiceFactory = ({
         const csrIdentifierValues = new Set(
           (certificateRequest.subjectAlternativeNames ?? [])
             .map((san) => san.value.toLowerCase())
-            .concat([certificateRequest.commonName.toLowerCase()])
+            .concat(certificateRequest.commonName ? [certificateRequest.commonName.toLowerCase()] : [])
         );
         if (
           csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
@@ -732,7 +736,7 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
 
-        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
@@ -772,7 +776,9 @@ export const pkiAcmeServiceFactory = ({
             const cert = await orderCertificate(
               {
                 caId: certificateAuthority!.id,
-                commonName: certificateRequest.commonName!,
+                // It is possible that the CSR does not have a common name, in which case we use an empty string
+                // (more likely than not for a CSR from a modern ACME client like certbot, cert-manager, etc.)
+                commonName: certificateRequest.commonName ?? "",
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
                 csr: Buffer.from(csrPem),
                 // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
