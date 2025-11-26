@@ -1874,7 +1874,12 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     dynamicSecretDAL,
     folderDAL,
-    kmsService
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,
