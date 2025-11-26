@@ -10,7 +10,7 @@ It eliminates the need to modify application logic by enabling clients to decide
 
 ## Key Features
 
-- **Token lifecycle maangement**: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
+- **Token lifecycle management**: Automatically authenticates with Infisical and deposits renewed access tokens at specified path for applications to consume
 - **Templating**: Renders secrets and dynamic secret leases via user provided templates to desired formats for applications to consume
 
 ## Token Renewal
@@ -47,12 +47,12 @@ The secret template functions is what you will use to fetch resources such as st
 
 
 <AccordionGroup>
-  <Accordion title="listSecrets">
+  <Accordion title="secret">
     ```bash
-      listSecrets "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
+      secret "<project-id>" "environment-slug" "<secret-path>" "<optional-modifier>"
     ```
       ```bash example-template-usage-1
-    {{- with listSecrets "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
+    {{- with secret "6553ccb2b7da580d7f6e7260" "dev" "/" `{"recursive": false, "expandSecretReferences": true}` }}
     {{- range . }}
     {{ .Key }}={{ .Value }}
     {{- end }}
@@ -72,7 +72,7 @@ The secret template functions is what you will use to fetch resources such as st
 
     
 
-  **Function name**: listSecrets
+  **Function name**: `secret`
 
   **Description**: This function can be used to render the full list of secrets within a given project, environment and secret path. 
 
@@ -96,7 +96,7 @@ The secret template functions is what you will use to fetch resources such as st
   {{ end }}
   ```
 
-  **Function name**: getSecretByName
+  **Function name**: `getSecretByName`
 
   **Description**: This function can be used to render a single secret by it's name.
 
@@ -116,7 +116,7 @@ The secret template functions is what you will use to fetch resources such as st
 
     ```
 
-    **Function Name**: dynamic_secret
+    **Function Name**: `dynamic_secret`
 
     **Description**: This function can be used to render a dynamic secret lease credentials. The credentials are automatically renewed before they expire, ensuring that the rendered credentials are always up-to-date.
 
@@ -135,13 +135,13 @@ The Infisical Agent supports clientside caching of Dynamic Secret leases. If the
 
 ### Persistent Caching
 
-The Agent currently only supports persistent caching. To utilize persistent caching, you must be within a Kubernetes environment. We recommend using the [Infisical Agent Injector](/integrations/platforms/infisical-agent-injector) to inject the agent into pods within your Kubernetes cluster on demand.
+The Agent currently only supports persistent caching. To utilize persistent caching, you must be within a Kubernetes environment. We recommend using the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) to inject the agent into pods within your Kubernetes cluster on demand.
 
 ### Cache eviction
 
 Cache eviction is the process of removing cached data from the cache. The Agent will automatically evict cached data when the cache is full during a garbage collection cycle which is triggered every 10 minutes.
 
-The cache will automatically evict cached data that has gone stale or is about to go stale. For dynamic resources (such as dynamic secret leases), there's a TTL (Time-to-Live) associated with each lease which is used to determine if the lease is stale or about to go stale.
+The cache will also automatically evict cached data that has gone stale or is about to go stale. For dynamic resources (such as dynamic secret leases), there's a TTL (Time-to-Live) associated with each lease which is used to determine if the lease is stale or about to go stale.
 If a stale dynamic secret lease is detected, it will be automatically evicted from the cache and replaced with a new up-to-date lease.
 
 
@@ -159,7 +159,7 @@ Configuring the cache is done through the agent configuration file. The followin
     </ParamField>
 
     <Note>
-      Persistent caching is only supported within kubernetes environments at the moment. Please refer to the [Infisical Agent Injector](/integrations/platforms/infisical-agent-injector) documentation for more information on how to use persistent caching within Kubernetes environments.
+      Persistent caching is only supported within kubernetes environments at the moment. Please refer to the [Infisical Agent Injector](/integrations/platforms/kubernetes-injector) documentation for more information on how to use persistent caching within Kubernetes environments.
     </Note>
 
   ```yaml example-agent-config-file.yaml

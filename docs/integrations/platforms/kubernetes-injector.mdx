@@ -189,11 +189,11 @@ The Infisical Agent Injector supports the following annotations:
   </Accordion>
 
   <Accordion title="org.infisical.com/agent-limits-ephemeral">
-    The maximum ephemeral storage limit for the agent containers. Doesn't have an explicit default vaule. The default value will conform to the default ephemeral storage limit for the pod.
+    The maximum ephemeral storage limit for the agent containers. Doesn't have an explicit default value. The default value will conform to the default ephemeral storage limit for the pod.
   </Accordion>
 
   <Accordion title="org.infisical.com/agent-requests-ephemeral">
-    The minimum ephemeral storage request for the agent containers. Doesn't have an explicit default vaule. The default value will conform to the default ephemeral storage request for the pod.
+    The minimum ephemeral storage request for the agent containers. Doesn't have an explicit default value. The default value will conform to the default ephemeral storage request for the pod.
   </Accordion>
 
 </AccordionGroup>
@@ -280,7 +280,7 @@ The entire config needs to be of string format and needs to be assigned to the `
 <Accordion title="cache.persistent.service-account-token-path">
   The path to the Kubernetes service account token to use for encrypting the persistent cache. Required when using `kubernetes` cache type. Defaults to `/var/run/secrets/kubernetes.io/serviceaccount/token`.
 
-    <Note>
+  <Note>
     It is recommended to use the annotation `org.infisical.com/agent-cache-enabled: "true"` instead of configuring the cache on the config map. Refer to the [Supported annotations](/integrations/platforms/kubernetes-injector#supported-annotations) documentation for more information on how to configure the cache through annotations.
   </Note>
 </Accordion>

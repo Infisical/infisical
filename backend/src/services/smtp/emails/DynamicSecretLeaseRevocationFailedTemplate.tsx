@@ -37,7 +37,7 @@ export const DynamicSecretLeaseRevocationFailedTemplate = ({
           multiple attempts.
         </Text>
         <Text className="text-black text-[14px] leading-[24px]">
-          Please review the dynamic secret lease and attempt to revoke it again.
+          Please review the dynamic secret leases and attempt to revoke them again.
         </Text>
       </Section>
 

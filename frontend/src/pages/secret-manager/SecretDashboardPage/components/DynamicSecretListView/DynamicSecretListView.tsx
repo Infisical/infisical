@@ -76,7 +76,10 @@ export const DynamicSecretListView = ({
   };
 
   useEffect(() => {
-    if (selectedDynamicSecretId) {
+    if (
+      selectedDynamicSecretId &&
+      dynamicSecrets.find((secret) => secret.id === selectedDynamicSecretId)
+    ) {
       handlePopUpOpen("dynamicSecretLeases", selectedDynamicSecretId);
     }
   }, [selectedDynamicSecretId]);
