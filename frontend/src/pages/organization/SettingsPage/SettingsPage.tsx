@@ -20,7 +20,7 @@ export const SettingsPage = () => {
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
             description="Configure organization-wide settings"
-            title={t("settings.org.title")}
+            title={isSubOrganization ? "Sub-Organization Settings" : "Organization Settings"}
           />
           <OrgTabGroup />
         </div>

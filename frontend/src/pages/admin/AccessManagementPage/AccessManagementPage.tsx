@@ -17,7 +17,7 @@ export const AccessManagementPage = () => {
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <PageHeader
             scope="instance"
-            title="Access Control"
+            title="Server Admin Access Control"
             description="Manage server admins within your Infisical instance."
           />
           <ServerAdminsTable />

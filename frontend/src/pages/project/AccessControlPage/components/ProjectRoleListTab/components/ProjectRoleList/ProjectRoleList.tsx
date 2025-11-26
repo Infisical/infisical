@@ -170,13 +170,13 @@ export const ProjectRoleList = () => {
         <ProjectPermissionCan I={ProjectPermissionActions.Create} a={ProjectPermissionSub.Role}>
           {(isAllowed) => (
             <Button
-              colorSchema="secondary"
+              variant="outline_bg"
               type="submit"
               leftIcon={<FontAwesomeIcon icon={faPlus} />}
               onClick={() => handlePopUpOpen("role")}
               isDisabled={!isAllowed}
             >
-              Add Role
+              Add Project Role
             </Button>
           )}
         </ProjectPermissionCan>

@@ -57,7 +57,7 @@ export const ServiceTokenSection = withProjectPermission(
           >
             {(isAllowed) => (
               <Button
-                colorSchema="secondary"
+                variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => {
                   handlePopUpOpen("createAPIToken");

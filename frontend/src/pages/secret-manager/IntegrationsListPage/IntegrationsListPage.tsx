@@ -69,7 +69,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.SecretManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party services."
           />
           <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>
