@@ -167,7 +167,7 @@ export const IdentityAddToProjectModal = ({ identityId, popUp, handlePopUpToggle
         handlePopUpToggle("addIdentityToProject", isOpen);
       }}
     >
-      <ModalContent bodyClassName="overflow-visible" title="Add Identity to Project">
+      <ModalContent bodyClassName="overflow-visible" title="Add Machine Identity to Project">
         <Content identityId={identityId} handlePopUpToggle={handlePopUpToggle} />
       </ModalContent>
     </Modal>

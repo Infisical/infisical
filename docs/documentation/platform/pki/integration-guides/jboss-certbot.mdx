@@ -1,9 +1,9 @@
 ---
 title: "JBoss/WildFly"
-description: "Learn how to issue SSL/TLS certificates from Infisical using ACME enrollment on JBoss/WildFly with Certbot"
+description: "Learn how to issue TLS certificates from Infisical using ACME enrollment on JBoss/WildFly with Certbot"
 ---
 
-This guide demonstrates how to use Infisical to issue SSL/TLS certificates for your [JBoss](https://www.jboss.org/)/[WildFly](https://wildfly.org/) application server.
+This guide demonstrates how to use Infisical to issue TLS certificates for your [JBoss](https://www.jboss.org/)/[WildFly](https://wildfly.org/) application server.
 
 It uses [Certbot](https://certbot.eff.org/), an installable [ACME](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) client, to request and renew certificates from Infisical using the [ACME enrollment method](/documentation/platform/pki/enrollment-methods/acme) configured on a [certificate profile](/documentation/platform/pki/certificates/profiles). JBoss/WildFly requires certificates in Java keystore format, which this guide addresses through the certificate conversion process.
 
@@ -223,4 +223,5 @@ Before you begin, make sure you have:
             Certbot automatically renews certificates when they are within 30 days of expiration using its built-in systemd timer. The deploy hook above will run after each successful renewal, handling the keystore conversion and service restart automatically. Because JBoss/WildFly requires the standalone authenticator (which stops the service temporarily), plan for brief service interruptions during renewal.
         </Note>
     </Step>
+
 </Steps>

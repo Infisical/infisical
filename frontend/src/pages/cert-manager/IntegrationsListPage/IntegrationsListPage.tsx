@@ -49,7 +49,7 @@ export const IntegrationsListPage = () => {
         <div className="mb-8">
           <PageHeader
             scope={ProjectType.CertificateManager}
-            title="Integrations"
+            title="Project Integrations"
             description="Manage integrations with third-party certificate services."
           />
           <Tabs orientation="vertical" value={currentTab} onValueChange={updateSelectedTab}>

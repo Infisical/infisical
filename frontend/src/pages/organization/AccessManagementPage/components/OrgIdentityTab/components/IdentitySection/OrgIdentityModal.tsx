@@ -164,7 +164,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
 
     createNotification({
-      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} identity`,
+      text: `Successfully ${popUp?.identity?.data ? "updated" : "created"} machine identity`,
       type: "success"
     });
 
@@ -255,9 +255,7 @@ export const OrgIdentityModal = ({ popUp, handlePopUpToggle }: Props) => {
                   />
                 </div>
                 <div className="grow">
-                  {i === 0 && (
-                    <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
-                  )}
+                  {i === 0 && <FormLabel label="Value" className="text-xs text-mineshaft-400" />}
                   <Controller
                     control={control}
                     name={`metadata.${i}.value`}

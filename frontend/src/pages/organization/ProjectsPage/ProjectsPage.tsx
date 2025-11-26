@@ -81,7 +81,7 @@ export const ProjectsPage = () => {
       </Helmet>
       <PageHeader
         scope={isSubOrganization ? "namespace" : "org"}
-        title="Overview"
+        title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Overview`}
         description="Your team's complete security toolkit - organized and ready when you need them."
       />
       {projectListView === ProjectListView.MyProjects ? (

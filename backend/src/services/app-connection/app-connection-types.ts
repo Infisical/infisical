@@ -15,8 +15,8 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
+import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";
@@ -106,6 +106,12 @@ import {
   TDigitalOceanConnectionInput,
   TValidateDigitalOceanCredentialsSchema
 } from "./digital-ocean";
+import {
+  TDNSMadeEasyConnection,
+  TDNSMadeEasyConnectionConfig,
+  TDNSMadeEasyConnectionInput,
+  TValidateDNSMadeEasyConnectionCredentialsSchema
+} from "./dns-made-easy/dns-made-easy-connection-types";
 import {
   TFlyioConnection,
   TFlyioConnectionConfig,
@@ -279,6 +285,7 @@ export type TAppConnection = { id: string } & (
   | TGitLabConnection
   | TCloudflareConnection
   | TBitbucketConnection
+  | TDNSMadeEasyConnection
   | TZabbixConnection
   | TRailwayConnection
   | TChecklyConnection
@@ -328,6 +335,7 @@ export type TAppConnectionInput = { id: string } & (
   | TGitLabConnectionInput
   | TCloudflareConnectionInput
   | TBitbucketConnectionInput
+  | TDNSMadeEasyConnectionInput
   | TZabbixConnectionInput
   | TRailwayConnectionInput
   | TChecklyConnectionInput
@@ -395,6 +403,7 @@ export type TAppConnectionConfig =
   | TGitLabConnectionConfig
   | TCloudflareConnectionConfig
   | TBitbucketConnectionConfig
+  | TDNSMadeEasyConnectionConfig
   | TZabbixConnectionConfig
   | TRailwayConnectionConfig
   | TChecklyConnectionConfig
@@ -439,6 +448,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateGitLabConnectionCredentialsSchema
   | TValidateCloudflareConnectionCredentialsSchema
   | TValidateBitbucketConnectionCredentialsSchema
+  | TValidateDNSMadeEasyConnectionCredentialsSchema
   | TValidateZabbixConnectionCredentialsSchema
   | TValidateRailwayConnectionCredentialsSchema
   | TValidateChecklyConnectionCredentialsSchema
