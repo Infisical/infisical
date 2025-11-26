@@ -8,7 +8,7 @@ import {
   faStar as faSolidStar
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Link, linkOptions } from "@tanstack/react-router";
+import { Link, linkOptions, useParams } from "@tanstack/react-router";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { OrgPermissionCan } from "@app/components/permissions";
@@ -46,7 +46,7 @@ const PROJECT_TYPE_NAME: Record<ProjectType, string> = {
   [ProjectType.SecretScanning]: "Secret Scanning"
 };
 
-export const ProjectSelect = () => {
+const ProjectSelectInner = () => {
   const [searchProject, setSearchProject] = useState("");
   const { currentProject: currentWorkspace } = useProject();
   const { currentOrg } = useOrganization();
@@ -237,4 +237,14 @@ export const ProjectSelect = () => {
       />
     </div>
   );
+};
+
+export const ProjectSelect = () => {
+  const params = useParams({ strict: false });
+
+  if (!params.projectId) {
+    return null;
+  }
+
+  return <ProjectSelectInner />;
 };
