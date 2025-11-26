@@ -118,6 +118,7 @@
                       "integrations/app-connections/cloudflare",
                       "integrations/app-connections/databricks",
                       "integrations/app-connections/digital-ocean",
+                      "integrations/app-connections/dns-made-easy",
                       "integrations/app-connections/flyio",
                       "integrations/app-connections/gcp",
                       "integrations/app-connections/github",
@@ -491,6 +492,10 @@
                   "integrations/platforms/ansible",
                   "integrations/platforms/apache-airflow",
                   {
+                    "group": "AWS",
+                    "pages": ["integrations/platforms/aws/lambda"]
+                  },
+                  {
                     "group": "Kubernetes Operator",
                     "pages": [
                       "integrations/platforms/kubernetes/overview",
@@ -752,7 +757,7 @@
               {
                 "group": "Infrastructure Integrations",
                 "pages": [
-                  "documentation/platform/pki/pki-issuer",
+                  "documentation/platform/pki/k8s-cert-manager",
                   "documentation/platform/pki/integration-guides/gloo-mesh",
                   "documentation/platform/pki/integration-guides/windows-server-acme",
                   "documentation/platform/pki/integration-guides/nginx-certbot",

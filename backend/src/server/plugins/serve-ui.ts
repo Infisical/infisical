@@ -43,7 +43,9 @@ export const registerServeUI = async (
     const frontendPath = path.join(dir, frontendName);
     await server.register(staticServe, {
       root: frontendPath,
-      wildcard: false
+      wildcard: false,
+      maxAge: "30d",
+      immutable: true
     });
 
     server.route({
@@ -58,11 +60,12 @@ export const registerServeUI = async (
           return;
         }
 
-        // This should help avoid caching any chunks (temp fix)
-        void reply.header("Cache-Control", "no-cache, no-store, must-revalidate, private, max-age=0");
-        void reply.header("Pragma", "no-cache");
-        void reply.header("Expires", "0");
-        return reply.sendFile("index.html");
+        return reply.sendFile("index.html", {
+          immutable: false,
+          maxAge: 0,
+          lastModified: false,
+          etag: false
+        });
       }
     });
   }

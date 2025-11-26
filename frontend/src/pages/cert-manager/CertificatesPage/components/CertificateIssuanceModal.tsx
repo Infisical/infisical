@@ -21,7 +21,7 @@ import {
 import { useProject } from "@app/context";
 import { useGetCert } from "@app/hooks/api";
 import { useCreateCertificateV3 } from "@app/hooks/api/ca";
-import { useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
+import { EnrollmentType, useListCertificateProfiles } from "@app/hooks/api/certificateProfiles";
 import { CertExtendedKeyUsage, CertKeyUsage } from "@app/hooks/api/certificates/enums";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -122,7 +122,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
 
   const { data: profilesData } = useListCertificateProfiles({
     projectId: currentProject?.id || "",
-    enrollmentType: "api"
+    enrollmentType: EnrollmentType.API
   });
 
   const { mutateAsync: createCertificate } = useCreateCertificateV3({

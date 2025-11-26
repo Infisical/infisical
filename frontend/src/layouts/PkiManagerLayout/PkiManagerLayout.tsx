@@ -29,8 +29,8 @@ export const PkiManagerLayout = () => {
 
   const location = useLocation();
   return (
-    <div className="dark flex h-full w-full flex-col overflow-x-hidden">
-      <div className="border-b border-mineshaft-600 bg-mineshaft-900">
+    <div className="dark flex h-full w-full flex-col overflow-x-hidden bg-mineshaft-900">
+      <div className="border-y border-t-project/10 border-b-project/5 bg-gradient-to-b from-project/[0.075] to-project/[0.025] px-4 pt-0.5">
         <motion.div
           key="menu-project-items"
           initial={{ x: -150 }}

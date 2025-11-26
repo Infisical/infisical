@@ -43,6 +43,7 @@ import {
   SubOrganizationInvitationTemplate,
   UnlockAccountTemplate
 } from "./emails";
+import DynamicSecretLeaseRevocationFailedTemplate from "./emails/DynamicSecretLeaseRevocationFailedTemplate";
 
 export type TSmtpConfig = SMTPTransport.Options;
 export type TSmtpSendMail = {
@@ -89,7 +90,8 @@ export enum SmtpTemplates {
   SecretScanningV2ScanFailed = "secretScanningV2ScanFailed",
   SecretScanningV2SecretsDetected = "secretScanningV2SecretsDetected",
   AccountDeletionConfirmation = "accountDeletionConfirmation",
-  HealthAlert = "healthAlert"
+  HealthAlert = "healthAlert",
+  DynamicSecretLeaseRevocationFailed = "dynamicSecretLeaseRevocationFailed"
 }
 
 export enum SmtpHost {
@@ -137,7 +139,8 @@ const EmailTemplateMap: Record<SmtpTemplates, React.FC<any>> = {
   [SmtpTemplates.SecretScanningV2ScanFailed]: SecretScanningScanFailedTemplate,
   [SmtpTemplates.SecretScanningV2SecretsDetected]: SecretScanningSecretsDetectedTemplate,
   [SmtpTemplates.AccountDeletionConfirmation]: AccountDeletionConfirmationTemplate,
-  [SmtpTemplates.HealthAlert]: HealthAlertTemplate
+  [SmtpTemplates.HealthAlert]: HealthAlertTemplate,
+  [SmtpTemplates.DynamicSecretLeaseRevocationFailed]: DynamicSecretLeaseRevocationFailedTemplate
 };
 
 export const smtpServiceFactory = (cfg: TSmtpConfig) => {

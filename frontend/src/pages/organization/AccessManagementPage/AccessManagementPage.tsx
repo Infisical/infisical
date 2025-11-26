@@ -58,7 +58,7 @@ export const AccessManagementPage = () => {
     },
     {
       key: OrgAccessControlTabSections.Identities,
-      label: "Identities",
+      label: "Machine Identities",
       isHidden: permission.cannot(
         OrgPermissionIdentityActions.Read,
         OrgPermissionSubjects.Identity
@@ -83,8 +83,8 @@ export const AccessManagementPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
-          title="Access Control"
-          description="Manage fine-grained access for users, groups, roles, and identities within your organization resources."
+          title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
+          description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
           <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">

@@ -1874,7 +1874,12 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     dynamicSecretDAL,
     folderDAL,
-    kmsService
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,
@@ -2219,7 +2224,10 @@ export const registerRoutes = async (
     permissionService,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    kmsService,
+    projectDAL,
+    certificateBodyDAL
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
