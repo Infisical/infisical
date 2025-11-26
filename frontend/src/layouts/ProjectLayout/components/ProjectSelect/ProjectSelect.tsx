@@ -108,7 +108,7 @@ export const ProjectSelect = () => {
         >
           <ProjectIcon className="size-[14px] shrink-0 text-project" />
           <span className="truncate">{currentWorkspace?.name}</span>
-          <Badge variant="project" className="hidden md:inline-flex">
+          <Badge variant="project" className="hidden lg:inline-flex">
             {currentWorkspace.type ? PROJECT_TYPE_NAME[currentWorkspace.type] : "Project"}
           </Badge>
         </Link>

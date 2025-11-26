@@ -327,7 +327,7 @@ export const Navbar = () => {
                     <OrgIcon className={twMerge("size-[14px] shrink-0 text-org")} />
                     <span className="truncate">{currentOrg?.name}</span>
                   </button>
-                  <Badge variant="org" className="hidden md:inline-flex">
+                  <Badge variant="org" className="hidden lg:inline-flex">
                     Organization
                   </Badge>
                   {subscription.cardDeclined && (
