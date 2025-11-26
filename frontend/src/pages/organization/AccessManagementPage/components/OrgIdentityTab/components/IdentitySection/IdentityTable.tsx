@@ -200,7 +200,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Filter Machine Identities by Role
+                  Filter Organization Machine Identities by Role
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -258,7 +258,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </Th>
               <Th>
                 <div className="flex items-center">
-                  Role
+                  Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgIdentityOrderBy.Role ? "" : "opacity-30"}`}

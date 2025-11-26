@@ -83,7 +83,7 @@ export const AccessManagementPage = () => {
       <div className="mx-auto mb-6 w-full max-w-8xl">
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
-          title="Access Control"
+          title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
           description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
         />
         {!currentOrg.shouldUseNewPrivilegeSystem && (
