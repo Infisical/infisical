@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, INTEGRATION_AUTH } from "@app/lib/api-docs";
-import { ForbiddenRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -10,9 +9,6 @@ import { OctopusDeployScope } from "@app/services/integration-auth/integration-a
 import { Integrations } from "@app/services/integration-auth/integration-list";
 
 import { integrationAuthPubSchema } from "../sanitizedSchemas";
-
-const NATIVE_INTEGRATION_DEPRECATION_MESSAGE =
-  "We're moving Native Integrations to Secret Syncs. Check the documentation at https://infisical.com/docs/integrations/secret-syncs/overview. If the integration you need isn't available in the Secret Syncs, please get in touch with us at team@infisical.com.";
 
 export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -337,33 +333,27 @@ export const registerIntegrationAuthRouter = async (server: FastifyZodProvider) 
         })
       }
     },
-    handler: async (_) => {
-      throw new ForbiddenRequestError({
-        message: NATIVE_INTEGRATION_DEPRECATION_MESSAGE
+    handler: async (req) => {
+      const integrationAuth = await server.services.integrationAuth.saveIntegrationToken({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId: req.body.workspaceId,
+        ...req.body
       });
 
-      // We are keeping the old response commented out for an easy revert on the API if we need to before the full phase out.
-
-      // const integrationAuth = await server.services.integrationAuth.saveIntegrationToken({
-      //   actorId: req.permission.id,
-      //   actor: req.permission.type,
-      //   actorAuthMethod: req.permission.authMethod,
-      //   actorOrgId: req.permission.orgId,
-      //   projectId: req.body.workspaceId,
-      //   ...req.body
-      // });
-
-      // await server.services.auditLog.createAuditLog({
-      //   ...req.auditLogInfo,
-      //   projectId: req.body.workspaceId,
-      //   event: {
-      //     type: EventType.AUTHORIZE_INTEGRATION,
-      //     metadata: {
-      //       integration: integrationAuth.integration
-      //     }
-      //   }
-      // });
-      // return { integrationAuth };
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: req.body.workspaceId,
+        event: {
+          type: EventType.AUTHORIZE_INTEGRATION,
+          metadata: {
+            integration: integrationAuth.integration
+          }
+        }
+      });
+      return { integrationAuth };
     }
   });
 
