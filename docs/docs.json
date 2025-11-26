@@ -574,7 +574,6 @@
                 "pages": [
                   "integrations/cicd/aws-amplify",
                   "integrations/cicd/bitbucket",
-                  "integrations/cicd/checkly",
                   "integrations/cicd/githubactions",
                   "integrations/cicd/gitlab",
                   "integrations/cicd/jenkins"

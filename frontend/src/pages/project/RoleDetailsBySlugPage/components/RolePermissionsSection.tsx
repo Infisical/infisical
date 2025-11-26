@@ -11,7 +11,11 @@ import { Button } from "@app/components/v2";
 import { ProjectPermissionSub, useProject } from "@app/context";
 import { ProjectPermissionSet } from "@app/context/ProjectPermissionContext";
 import { evaluatePermissionsAbility } from "@app/helpers/permissions";
-import { useGetProjectRoleBySlug, useUpdateProjectRole } from "@app/hooks/api";
+import {
+  useGetProjectRoleBySlug,
+  useGetWorkspaceIntegrations,
+  useUpdateProjectRole
+} from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
@@ -105,6 +109,8 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
     currentProject?.id ?? "",
     roleSlug as string
   );
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId);
+  const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
 
@@ -198,6 +204,11 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
               {!isPending && <PermissionEmptyState />}
               {(Object.keys(PROJECT_PERMISSION_OBJECT) as ProjectPermissionSub[])
                 .filter((subject) => !EXCLUDED_PERMISSION_SUBS.includes(subject))
+                .filter(
+                  (subject) =>
+                    // Hide Native Integrations policy if project has no integrations
+                    subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
+                )
                 .map((subject) => (
                   <GeneralPermissionPolicies
                     subject={subject}
