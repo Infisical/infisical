@@ -289,7 +289,7 @@
       }
     },
     "project": {
-      "title": "Settings",
+      "title": "Project Settings",
       "description": "These settings only apply to the currently selected Project.",
       "danger-zone": "Danger Zone",
       "delete-project": "Delete Project",

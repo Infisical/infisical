@@ -99,7 +99,9 @@ export const IdentitySection = withPermission(
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Machine Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">
+                Organization Machine Identities
+              </p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
             <div className="flex items-center">
@@ -129,7 +131,9 @@ export const IdentitySection = withPermission(
                     }}
                     isDisabled={!isAllowed}
                   >
-                    Add Machine Identity
+                    {isSubOrganization
+                      ? "Add Machine Identity to Sub-Organization"
+                      : "Create Organization Machine Identity"}
                   </Button>
                 )}
               </OrgPermissionCan>

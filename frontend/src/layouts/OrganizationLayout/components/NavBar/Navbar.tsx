@@ -601,7 +601,7 @@ export const Navbar = () => {
                   }}
                 >
                   <UserPlusIcon className="inline-block size-3.5" />
-                  <span className="ml-2 hidden md:inline-block">Invite Members</span>
+                  <span className="ml-2 hidden md:inline-block">Invite Users</span>
                 </Link>
               ) : null
             }
@@ -705,7 +705,7 @@ export const Navbar = () => {
                   }}
                 >
                   <DropdownMenuItem icon={<FontAwesomeIcon icon={faUserPlus} />}>
-                    Invite Members
+                    Invite Users
                   </DropdownMenuItem>
                 </Link>
               ) : null
