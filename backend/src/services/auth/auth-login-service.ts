@@ -142,6 +142,7 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       organizationId,
+      subOrganizationId,
       authMethod,
       isMfaVerified,
       mfaMethod
@@ -150,6 +151,7 @@ export const authLoginServiceFactory = ({
       ip: string;
       userAgent: string;
       organizationId?: string;
+      subOrganizationId?: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
@@ -193,6 +195,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
         organizationId,
+        subOrganizationId,
         isMfaVerified,
         mfaMethod
       },
@@ -208,6 +211,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
         organizationId,
+        subOrganizationId,
         isMfaVerified,
         mfaMethod
       },
@@ -701,6 +705,141 @@ export const authLoginServiceFactory = ({
     };
   };
 
+  const selectSubOrganization = async ({
+    userAgent,
+    authJwtToken,
+    ipAddress,
+    subOrganizationId
+  }: {
+    userAgent: string | undefined;
+    authJwtToken: string | undefined;
+    ipAddress: string;
+    subOrganizationId: string;
+  }) => {
+    const cfg = getConfig();
+
+    if (!authJwtToken) throw new UnauthorizedError({ name: "Authorization header is required" });
+    if (!userAgent) throw new UnauthorizedError({ name: "User-Agent header is required" });
+
+    // eslint-disable-next-line no-param-reassign
+    authJwtToken = authJwtToken.replace("Bearer ", "");
+
+    const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+    if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
+    if (!decodedToken.organizationId)
+      throw new BadRequestError({ message: "No organization selected in current token" });
+
+    const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
+    if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
+
+    // Fetch the sub-organization
+    const subOrg = await orgDAL.findById(subOrganizationId);
+    if (!subOrg) {
+      throw new BadRequestError({ message: `Sub-organization with ID ${subOrganizationId} not found` });
+    }
+
+    // Verify this is actually a sub-organization of the current root org
+    if (subOrg.rootOrgId !== decodedToken.organizationId && subOrg.id !== decodedToken.organizationId) {
+      throw new ForbiddenRequestError({
+        message: "Sub-organization does not belong to the current organization"
+      });
+    }
+
+    // Check user membership in the sub-organization
+    const orgMembership = await membershipUserDAL.findOne({
+      actorUserId: user.id,
+      scopeOrgId: subOrganizationId,
+      scope: AccessScope.Organization
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({ message: "User is not a member of this sub-organization" });
+    }
+
+    if (!orgMembership.isActive) {
+      throw new ForbiddenRequestError({ message: "User membership in sub-organization is inactive" });
+    }
+
+    // Check MFA requirements for the sub-organization
+    const shouldCheckMfa = subOrg.enforceMfa || user.isMfaEnabled;
+    const orgMfaMethod = subOrg.enforceMfa ? (subOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const mfaMethod = orgMfaMethod ?? userMfaMethod;
+
+    if (shouldCheckMfa && (!decodedToken.isMfaVerified || decodedToken.mfaMethod !== mfaMethod)) {
+      enforceUserLockStatus(Boolean(user.isLocked), user.temporaryLockDateEnd);
+
+      const mfaToken = crypto.jwt().sign(
+        {
+          authMethod: decodedToken.authMethod,
+          authTokenType: AuthTokenType.MFA_TOKEN,
+          userId: user.id
+        },
+        cfg.AUTH_SECRET,
+        {
+          expiresIn: cfg.JWT_MFA_LIFETIME
+        }
+      );
+
+      if (mfaMethod === MfaMethod.EMAIL && user.email) {
+        await sendUserMfaCode({
+          userId: user.id,
+          email: user.email
+        });
+      }
+
+      return { isMfaEnabled: true, mfa: mfaToken, mfaMethod } as const;
+    }
+
+    // Generate tokens scoped to the sub-organization
+    const tokens = await generateUserTokens({
+      authMethod: decodedToken.authMethod,
+      user,
+      userAgent,
+      ip: ipAddress,
+      organizationId: decodedToken.organizationId, // Keep root org ID
+      subOrganizationId, // Add sub-org ID
+      isMfaVerified: decodedToken.isMfaVerified,
+      mfaMethod: decodedToken.mfaMethod
+    });
+
+    // Create audit log for sub-organization selection
+    await auditLogService.createAuditLog({
+      orgId: subOrganizationId,
+      ipAddress,
+      userAgent,
+      userAgentType: getUserAgentType(userAgent),
+      actor: {
+        type: ActorType.USER,
+        metadata: {
+          email: user.email,
+          userId: user.id,
+          username: user.username,
+          authMethod: decodedToken.authMethod
+        }
+      },
+      event: {
+        type: EventType.SELECT_SUB_ORGANIZATION,
+        metadata: {
+          organizationId: subOrganizationId,
+          organizationName: subOrg.name,
+          parentOrganizationId: decodedToken.organizationId
+        }
+      }
+    });
+
+    return {
+      ...tokens,
+      user,
+      isMfaEnabled: false,
+      subOrganization: {
+        id: subOrg.id,
+        name: subOrg.name,
+        slug: subOrg.slug
+      }
+    };
+  };
+
   /*
    * Multi factor authentication re-send code, Get user id from token
    * saved in frontend
@@ -1134,6 +1273,7 @@ export const authLoginServiceFactory = ({
     resendMfaToken,
     verifyMfaToken,
     selectOrganization,
+    selectSubOrganization,
     generateUserTokens,
     login
   };

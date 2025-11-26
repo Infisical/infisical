@@ -107,6 +107,49 @@ export const useSelectOrganization = () => {
   });
 };
 
+export const selectSubOrganization = async (data: {
+  subOrganizationId: string;
+  userAgent?: UserAgentType;
+}) => {
+  const { data: res } = await apiRequest.post<{
+    token: string;
+    isMfaEnabled: boolean;
+    mfaMethod?: MfaMethod;
+    subOrganization?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  }>("/api/v3/auth/select-sub-organization", data);
+  return res;
+};
+
+export const useSelectSubOrganization = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (details: { subOrganizationId: string; userAgent?: UserAgentType }) => {
+      const data = await selectSubOrganization(details);
+
+      // If a custom user agent is set, then this session is meant for another consuming application, not the web application.
+      if (!details.userAgent && !data.isMfaEnabled) {
+        SecurityClient.setToken(data.token);
+        SecurityClient.setProviderAuthToken("");
+      }
+
+      if (data.token && !data.isMfaEnabled) {
+        setAuthToken(data.token);
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [organizationKeys.getUserOrganizations, projectKeys.getAllUserProjects]
+      });
+    }
+  });
+};
+
 export const useLogin2 = () => {
   return useMutation({
     mutationFn: async (details: {

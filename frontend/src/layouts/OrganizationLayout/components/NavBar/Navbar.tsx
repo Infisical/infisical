@@ -196,6 +196,8 @@ export const Navbar = () => {
   const breadcrumbs = matches && "breadcrumbs" in matches ? matches.breadcrumbs : undefined;
 
   const handleOrgChange = async (orgId: string, onSuccess?: () => void | Promise<void>) => {
+    if (orgId === currentOrg.id) return;
+
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
@@ -243,6 +245,8 @@ export const Navbar = () => {
   };
 
   const handleSubOrgChange = async (subOrgId: string) => {
+    if (subOrgId === currentOrg.id) return;
+
     const { token, isMfaEnabled, mfaMethod } = await selectSubOrganization({
       subOrganizationId: subOrgId
     });

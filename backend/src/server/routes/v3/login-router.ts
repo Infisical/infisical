@@ -110,6 +110,74 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
+    url: "/select-sub-organization",
+    config: {
+      rateLimit: authRateLimit
+    },
+    schema: {
+      body: z.object({
+        subOrganizationId: z.string().trim(),
+        userAgent: z.enum(["cli"]).optional()
+      }),
+      response: {
+        200: z.object({
+          token: z.string(),
+          isMfaEnabled: z.boolean(),
+          mfaMethod: z.string().optional(),
+          subOrganization: z
+            .object({
+              id: z.string(),
+              name: z.string(),
+              slug: z.string()
+            })
+            .optional()
+        })
+      }
+    },
+    handler: async (req, res) => {
+      const cfg = getConfig();
+      const result = await server.services.login.selectSubOrganization({
+        userAgent: req.body.userAgent ?? req.headers["user-agent"],
+        authJwtToken: req.headers.authorization,
+        subOrganizationId: req.body.subOrganizationId,
+        ipAddress: req.realIp
+      });
+
+      if (result.isMfaEnabled) {
+        return {
+          token: result.mfa as string,
+          isMfaEnabled: true,
+          mfaMethod: result.mfaMethod
+        };
+      }
+
+      void res.setCookie("jid", result.refresh, {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED
+      });
+
+      addAuthOriginDomainCookie(res);
+
+      void res.cookie("infisical-project-assume-privileges", "", {
+        httpOnly: true,
+        path: "/",
+        sameSite: "strict",
+        secure: cfg.HTTPS_ENABLED,
+        maxAge: 0
+      });
+
+      return {
+        token: result.access,
+        isMfaEnabled: false,
+        subOrganization: result.subOrganization
+      };
+    }
+  });
+
+  server.route({
+    method: "POST",
     url: "/login2",
     config: {
       rateLimit: authRateLimit
