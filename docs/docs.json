@@ -492,6 +492,10 @@
                   "integrations/platforms/ansible",
                   "integrations/platforms/apache-airflow",
                   {
+                    "group": "AWS",
+                    "pages": ["integrations/platforms/aws/lambda"]
+                  },
+                  {
                     "group": "Kubernetes Operator",
                     "pages": [
                       "integrations/platforms/kubernetes/overview",
