@@ -23,7 +23,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate, useRouter } from "@tanstack/react-router";
-import { UserPlusIcon } from "lucide-react";
+import { ChevronRight, UserPlusIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Mfa } from "@app/components/auth/Mfa";
@@ -279,12 +279,12 @@ export const Navbar = () => {
   return (
     <div className="z-10 flex min-h-12 items-center bg-mineshaft-900 px-4">
       <div className="mr-auto flex h-full min-w-34 items-center">
-        <div className="shrink-0">
+        <div className="mt-0.5 shrink-0">
           <Link to="/organizations/$orgId/projects" params={{ orgId: currentOrg.id }}>
             <img alt="infisical logo" src="/images/logotransparent.png" className="h-4" />
           </Link>
         </div>
-        <p className="pr-3 pl-3 text-lg text-mineshaft-400/70">/</p>
+        <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
         {isServerAdminPanel ? (
           <Link
             to="/admin"
@@ -326,10 +326,10 @@ export const Navbar = () => {
                   >
                     <OrgIcon className={twMerge("size-[14px] shrink-0 text-org")} />
                     <span className="truncate">{currentOrg?.name}</span>
+                    <Badge variant="org" className="hidden lg:inline-flex">
+                      Organization
+                    </Badge>
                   </button>
-                  <Badge variant="org" className="hidden lg:inline-flex">
-                    Organization
-                  </Badge>
                   {subscription.cardDeclined && (
                     <Tooltip
                       content={`Your payment could not be processed${subscription.cardDeclinedReason ? `: ${subscription.cardDeclinedReason}` : ""}. Please update your payment method to continue enjoying premium features.`}
@@ -536,7 +536,7 @@ export const Navbar = () => {
             )}
             {isProjectScope && (
               <>
-                <p className="pr-3 pl-3 text-lg text-mineshaft-400/70">/</p>
+                <ChevronRight size={18} className="mx-3 mt-[3px] text-mineshaft-400/70" />
                 <ProjectSelect />
               </>
             )}
