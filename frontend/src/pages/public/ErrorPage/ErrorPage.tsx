@@ -16,13 +16,17 @@ export const ErrorPage = ({ error }: ErrorComponentProps) => {
   const reloadCount = parseInt(sessionStorage.getItem("vitePreloadErrorCount") || "0", 10);
 
   useEffect(() => {
+    let timeout: NodeJS.Timeout | null = null;
     if (isDeploymentSkew && reloadCount <= 3) {
-      const timeout = setTimeout(() => {
-        clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        if (timeout) clearTimeout(timeout);
         sessionStorage.setItem("vitePreloadErrorCount", (reloadCount + 1).toString());
         window.location.reload();
       }, 10000);
     }
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
   }, [isDeploymentSkew]);
 
   if (
