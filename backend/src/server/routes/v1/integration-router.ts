@@ -314,6 +314,7 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         projectId: integration.projectId,
         event: {
           type: EventType.DELETE_INTEGRATION,
+          // eslint-disable-next-line
           metadata: {
             ...deleteIntegrationEventProperty,
             shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
