@@ -100,11 +100,11 @@ export const IntegrationsListPage = () => {
             </TabPanel>
             {hasNativeIntegrations && (
               <TabPanel value={IntegrationsListPageTabs.NativeIntegrations}>
-                <div className="mb-4 flex items-start rounded-md border border-yellow-600 bg-yellow-900/20 px-3 py-2">
+                <div className="mb-4 flex items-start rounded-md border border-yellow-600/75 bg-yellow-900/20 px-3 py-2">
                   <div className="flex text-sm text-yellow-100">
                     <FontAwesomeIcon icon={faWarning} className="mt-1 mr-2 text-yellow-600" />
                     <div>
-                      <p>
+                      <p className="font-medium">
                         We&apos;re moving Native Integrations to{" "}
                         <a
                           href="https://infisical.com/docs/integrations/secret-syncs/overview"
@@ -114,7 +114,10 @@ export const IntegrationsListPage = () => {
                         >
                           Secret Syncs
                         </a>
-                        . If the integration you need isn&apos;t available in the Secret Syncs menu,
+                        .
+                      </p>
+                      <p className="mt-0.5 text-yellow-100/80">
+                        If the integration you need isn&apos;t available in the Secret Syncs menu,
                         please get in touch with us at{" "}
                         <a
                           href="mailto:team@infisical.com"
