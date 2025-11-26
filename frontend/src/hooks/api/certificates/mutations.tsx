@@ -149,10 +149,10 @@ export const useUpdateRenewalConfig = () => {
 
 export const useDownloadCertPkcs12 = () => {
   return useMutation<void, object, TDownloadPkcs12DTO>({
-    mutationFn: async ({ serialNumber, projectSlug, password, alias }) => {
+    mutationFn: async ({ certificateId, projectSlug, password, alias }) => {
       try {
         const response = await apiRequest.post(
-          `/api/v1/cert-manager/certificates/${serialNumber}/pkcs12`,
+          `/api/v1/cert-manager/certificates/${certificateId}/pkcs12`,
           {
             password,
             alias
@@ -168,7 +168,7 @@ export const useDownloadCertPkcs12 = () => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `certificate-${serialNumber}.p12`;
+        link.download = `certificate-${certificateId}.p12`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

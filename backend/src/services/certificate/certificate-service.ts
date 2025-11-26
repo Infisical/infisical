@@ -731,7 +731,7 @@ export const certificateServiceFactory = ({
 
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({
-      serialNumber,
+      id: cert.id,
       actor,
       actorId,
       actorAuthMethod,

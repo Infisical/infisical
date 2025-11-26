@@ -57,7 +57,13 @@ export const CertificatesSection = () => {
 
   const handleCertificateExport = async (
     format: "pem" | "pkcs12",
-    serialNumber: string,
+    {
+      certificateId,
+      serialNumber
+    }: {
+      certificateId: string;
+      serialNumber: string;
+    },
     options?: ExportOptions
   ) => {
     if (format === "pem") {
@@ -75,7 +81,7 @@ export const CertificatesSection = () => {
 
       try {
         await downloadCertPkcs12({
-          serialNumber,
+          certificateId,
           projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias

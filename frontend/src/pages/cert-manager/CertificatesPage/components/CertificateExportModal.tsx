@@ -21,7 +21,13 @@ type Props = {
   ) => void;
   onFormatSelected: (
     format: "pem" | "pkcs12",
-    serialNumber: string,
+    {
+      certificateId,
+      serialNumber
+    }: {
+      certificateId: string;
+      serialNumber: string;
+    },
     options?: ExportOptions
   ) => void;
 };
@@ -42,8 +48,11 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
     alias: ""
   });
 
-  const serialNumber =
-    (popUp?.certificateExport?.data as { serialNumber: string })?.serialNumber || "";
+  const { certificateId, serialNumber } =
+    (popUp?.certificateExport?.data as {
+      certificateId: string;
+      serialNumber: string;
+    }) || {};
 
   // Reset form whenever the modal opens
   useEffect(() => {
@@ -64,14 +73,21 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
   };
 
   const handleExport = () => {
-    if (serialNumber && isFormValid()) {
+    if ((certificateId || serialNumber) && isFormValid()) {
       const options: ExportOptions = {};
 
       if (selectedFormat === "pkcs12") {
         options.pkcs12 = pkcs12Options;
       }
 
-      onFormatSelected(selectedFormat, serialNumber, options);
+      onFormatSelected(
+        selectedFormat,
+        {
+          certificateId,
+          serialNumber
+        },
+        options
+      );
       handlePopUpToggle("certificateExport", false);
     }
   };
@@ -151,7 +167,7 @@ export const CertificateExportModal = ({ popUp, handlePopUpToggle, onFormatSelec
               colorSchema="primary"
               leftIcon={<FontAwesomeIcon icon={faDownload} />}
               onClick={handleExport}
-              disabled={!serialNumber || !isFormValid()}
+              disabled={!(certificateId || serialNumber) || !isFormValid()}
             >
               Export {selectedFormat.toUpperCase()}
             </Button>

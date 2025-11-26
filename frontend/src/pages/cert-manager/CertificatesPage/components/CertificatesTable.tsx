@@ -277,6 +277,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                               onClick={async () =>
                                 handlePopUpOpen("certificateExport", {
+                                  certificateId: certificate.id,
                                   serialNumber: certificate.serialNumber
                                 })
                               }

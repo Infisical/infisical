@@ -74,7 +74,7 @@ export type TUpdateRenewalConfigDTO = {
 };
 
 export type TDownloadPkcs12DTO = {
-  serialNumber: string;
+  certificateId: string;
   projectSlug: string;
   password: string;
   alias: string;
