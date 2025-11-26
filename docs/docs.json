@@ -574,70 +574,13 @@
                 ]
               },
               {
-                "group": "Native Integrations",
-                "pages": [
-                  {
-                    "group": "AWS",
-                    "pages": [
-                      "integrations/cloud/aws-parameter-store",
-                      "integrations/cloud/aws-secret-manager",
-                      "integrations/cloud/aws-amplify"
-                    ]
-                  },
-                  "integrations/cloud/vercel",
-                  "integrations/cloud/azure-key-vault",
-                  "integrations/cloud/azure-app-configuration",
-                  "integrations/cloud/azure-devops",
-                  "integrations/cloud/gcp-secret-manager",
-                  {
-                    "group": "Cloudflare",
-                    "pages": [
-                      "integrations/cloud/cloudflare-pages",
-                      "integrations/cloud/cloudflare-workers"
-                    ]
-                  },
-                  "integrations/cloud/terraform-cloud",
-                  "integrations/cloud/databricks",
-                  {
-                    "group": "View more",
-                    "pages": [
-                      "integrations/cloud/digital-ocean-app-platform",
-                      "integrations/cloud/heroku",
-                      "integrations/cloud/netlify",
-                      "integrations/cloud/flyio",
-                      "integrations/cloud/railway",
-                      "integrations/cloud/render",
-                      "integrations/cloud/laravel-forge",
-                      "integrations/cloud/supabase",
-                      "integrations/cloud/northflank",
-                      "integrations/cloud/hasura-cloud",
-                      "integrations/cloud/qovery",
-                      "integrations/cloud/hashicorp-vault",
-                      "integrations/cloud/cloud-66",
-                      "integrations/cloud/windmill"
-                    ]
-                  }
-                ]
-              },
-              {
                 "group": "CI/CD Integrations",
                 "pages": [
-                  "integrations/cicd/jenkins",
+                  "integrations/cicd/aws-amplify",
+                  "integrations/cicd/bitbucket",
                   "integrations/cicd/githubactions",
                   "integrations/cicd/gitlab",
-                  "integrations/cicd/bitbucket",
-                  "integrations/cloud/teamcity",
-                  {
-                    "group": "View more",
-                    "pages": [
-                      "integrations/cicd/circleci",
-                      "integrations/cicd/travisci",
-                      "integrations/cicd/rundeck",
-                      "integrations/cicd/codefresh",
-                      "integrations/cloud/checkly",
-                      "integrations/cicd/octopus-deploy"
-                    ]
-                  }
+                  "integrations/cicd/jenkins"
                 ]
               },
               {
@@ -889,11 +832,7 @@
             "group": "Overview",
             "pages": [
               "api-reference/overview/introduction",
-              "api-reference/overview/authentication",
-              {
-                "group": "Examples",
-                "pages": ["api-reference/overview/examples/integration"]
-              }
+              "api-reference/overview/authentication"
             ]
           },
           {
@@ -2494,20 +2433,6 @@
                       "api-reference/endpoints/secret-syncs/zabbix/remove-secrets"
                     ]
                   }
-                ]
-              },
-              {
-                "group": "Integrations",
-                "pages": [
-                  "api-reference/endpoints/integrations/create-auth",
-                  "api-reference/endpoints/integrations/list-auth",
-                  "api-reference/endpoints/integrations/find-auth",
-                  "api-reference/endpoints/integrations/delete-auth",
-                  "api-reference/endpoints/integrations/delete-auth-by-id",
-                  "api-reference/endpoints/integrations/create",
-                  "api-reference/endpoints/integrations/update",
-                  "api-reference/endpoints/integrations/delete",
-                  "api-reference/endpoints/integrations/list-project-integrations"
                 ]
               }
             ]

@@ -1329,7 +1329,8 @@ export const registerRoutes = async (
     eventBusService,
     licenseService,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    telemetryService
   });
 
   const projectService = projectServiceFactory({
