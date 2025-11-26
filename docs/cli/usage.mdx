@@ -127,7 +127,7 @@ The CLI is designed for a variety of secret management applications ranging from
 <Note>
   Starting with CLI version v0.4.0, you can now choose to log in via Infisical Cloud (US/EU) or your own self-hosted instance by simply running `infisical login` and following the on-screen instructions — no need to manually set the `INFISICAL_API_URL` environment variable.
 
-For versions prior to v0.4.0, the CLI defaults to the US Cloud. To connect to the EU Cloud or a self-hosted instance, set the `INFISICAL_API_URL` environment variable to `https://eu.infisical.com` or your custom URL.
+For versions prior to v0.4.0, the CLI defaults to US Cloud. To connect to EU Cloud or a self-hosted instance, set the `INFISICAL_API_URL` environment variable to `https://eu.infisical.com` or your custom URL.
 
 </Note>
 
@@ -136,7 +136,7 @@ For versions prior to v0.4.0, the CLI defaults to the US Cloud. To connect to th
 
 **Important:** If you're not using interactive login, you must configure the domain for **all CLI commands**.
 
-The CLI defaults to the US Cloud (https://app.infisical.com). To connect to the **EU Cloud (https://eu.infisical.com)** or a **self-hosted instance**, you can configure the domain in one of the following ways:
+The CLI defaults to US Cloud (https://app.infisical.com). To connect to **EU Cloud (https://eu.infisical.com)** or a **self-hosted instance**, you MUST configure the domain in one of the following ways:
 
 - Use the `INFISICAL_API_URL` environment variable
 - Use the `--domain` flag on every command
@@ -175,7 +175,7 @@ The CLI defaults to the US Cloud (https://app.infisical.com). To connect to the 
     infisical login --domain="https://your-domain.infisical.com" --method=universal-auth --client-id=<client-id> --client-secret=<client-secret> --silent --plain
 
     # All subsequent commands must also include --domain
-    infisical secrets --domain="https://your-domain.infisical.com" --projectId <id> --env dev
+    infisical secrets --domain="https://your-domain.infisical.com" --projectId=<id> --env=dev
     ```
 
     <Note>
@@ -242,12 +242,12 @@ For security and privacy concerns, we recommend you to configure your terminal t
 ## FAQ
 
 <AccordionGroup>
-  <Accordion title="Can I connect the CLI to my self-hosted Infisical instance or non-US Cloud?">
-    Yes. The CLI is set to connect to Infisical US Cloud by default, but if you're using the EU Cloud, a self-hosted instance, you need to configure the domain for **all CLI commands**.
+  <Accordion title="Can I connect the CLI to my self-hosted or non-US Cloud Infisical instance?">
+    Yes. The CLI is set to connect to Infisical US Cloud by default, but if you're using EU Cloud or a self-hosted instance you can to configure the domain for **all CLI commands**.
 
-    #### Method 1:Use the updated CLI (v0.4.0+)
+    #### Method 1: Use the updated CLI (v0.4.0+)
 
-    Beginning with CLI version V0.4.0, you can choose between logging in through the Infisical US Cloud, EU Cloud, or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
+    Beginning with CLI version V0.4.0, you can choose between logging in through Infisical US Cloud, EU Cloud, or your own self-hosted instance. Simply execute the `infisical login` command and follow the on-screen instructions.
 
      #### Method 2: Export environment variable
 
@@ -287,15 +287,15 @@ For security and privacy concerns, we recommend you to configure your terminal t
 
     #### Method 3: Set manually on every command
 
-    If you prefer not to set the environment variable, you must include the `--domain` flag on **every CLI command** you run:
+    If you prefer not to use an environment variable, you must include the `--domain` flag on **every CLI command** you run:
 
     ```bash
     # Login with domain
     infisical login --domain="https://your-domain.infisical.com" --method=oidc-auth --jwt $JWT
 
     # All subsequent commands must also include --domain
-    infisical secrets --domain="https://your-self-hosted-infisical.com/api" --projectId <id> --env dev
-    infisical export --domain="https://your-self-hosted-infisical.com/api" --format=dotenv-export
+    infisical secrets --domain="https://your-self-hosted-infisical.com" --projectId <id> --env dev
+    infisical export --domain="https://your-self-hosted-infisical.com" --format=dotenv-export
     ```
 
     <Tip>

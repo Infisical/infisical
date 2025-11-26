@@ -43,34 +43,29 @@ User authentication is designed for individual developers and supports multiple 
 <Accordion title="User">
   The User authentication method allows you to log in with your email and password. This method supports three different login flows:
 
-- **Browser Login** (default): Opens a browser for authentication
-- **Direct Login**: Provide credentials via flags or environment variables for CI/CD
-- **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
+  - **Browser Login** (default): Opens a browser for authentication
+  - **Direct Login**: Provide credentials via flags or environment variables for CI/CD
+  - **Interactive CLI Login**: Enter credentials via CLI prompts using `--interactive`
 
-{" "}
-
-<ParamField query='Flags'>
-  <Expandable title='properties'>
-    <ParamField query='email' type='string' optional>
-      Your email address. Required for direct login along with `--password` and
-      `--organization-id`.
-    </ParamField>
-    <ParamField query='password' type='string' optional>
-      Your password. Required for direct login along with `--email` and
-      `--organization-id`.
-    </ParamField>
-    <ParamField query='organization-id' type='string' optional>
-      Your organization id. Required for direct login along with `--password`
-      and `--email`.
-    </ParamField>
-    <ParamField query='interactive' type='boolean' optional>
-      Force interactive CLI login instead of browser-based authentication.
-    </ParamField>
-    <ParamField query='plain' type='boolean' optional>
-      Output only the JWT token (useful for scripting and CI/CD).
-    </ParamField>
-  </Expandable>
-</ParamField>
+  <ParamField query="Flags">
+    <Expandable title="properties">
+        <ParamField query="email" type="string" optional>
+          Your email address. Required for direct login along with `--password` and `--organization-id`.
+        </ParamField>
+        <ParamField query="password" type="string" optional>
+          Your password. Required for direct login along with `--email` and `--organization-id`.
+        </ParamField>
+        <ParamField query="organization-id" type="string" optional>
+          Your organization id. Required for direct login along with `--password` and `--email`.
+        </ParamField>
+        <ParamField query="interactive" type="boolean" optional>
+          Force interactive CLI login instead of browser-based authentication.
+        </ParamField>
+        <ParamField query="plain" type="boolean" optional>
+          Output only the JWT token (useful for scripting and CI/CD).
+        </ParamField>
+    </Expandable>
+  </ParamField>
 
   <AccordionGroup>
       <Accordion title="Browser Login (Default)">
@@ -297,7 +292,6 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
-
   </Accordion>
 
   <Accordion title="JWT Auth">
@@ -323,7 +317,6 @@ Machine identity authentication methods are designed for automated systems, serv
       ```
       </Step>
     </Steps>
-
   </Accordion>
 </AccordionGroup>
 
@@ -511,18 +504,21 @@ The login command supports a number of flags that you can use for different auth
   </Accordion>
   <Accordion title="--domain">
     ```bash
-    infisical login --domain=<domain-url> [other-flags]
+    infisical login --domain=<domain-url>
     ```
 
     #### Description
-    Specifies the Infisical API URL for non-US instances (EU Cloud or self-hosted instances). This flag is required when connecting to any instance other than the US Cloud.
+    Specifies the Infisical API URL for non-US Cloud instances. This flag is required when connecting to any instance other than US Cloud (e.g. EU Cloud or self-hosted).
 
     ```bash
     # Example for EU Cloud
-    infisical login --domain="https://eu.infisical.com" --jwt=<jwt-token> --machine-identity-id=<machine-identity-id>
+    infisical login --domain="https://eu.infisical.com"
+
+    # Example for localhost
+    infisical login --domain="http://localhost:8080"
 
     # Example for self-hosted
-    infisical login --domain="https://your-self-hosted-infisical.com/api" --email user@example.com --password "password"
+    infisical login --domain="https://your-self-hosted-infisical.com"
     ```
 
     <Warning>
@@ -558,11 +554,11 @@ The following examples demonstrate different ways to authenticate as a user with
     # Basic direct login (defaults to US Cloud)
     infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
-    # EU Cloud
+    # Basic direct login (EU Cloud)
     infisical login --domain https://eu.infisical.com --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
-    # Self-hosted instance
-    infisical login --domain https://your-self-hosted-infisical.com/api --email user@example.com --password "your-password" --organization-id "your-organization-id"
+    # Basic direct login (Self-hosted Instance)
+    infisical login --domain https://your-self-hosted-infisical.com --email user@example.com --password "your-password" --organization-id "your-organization-id"
 
     # Output only JWT token for scripting
     export INFISICAL_TOKEN=$(infisical login --email user@example.com --password "your-password" --organization-id "your-organization-id" --plain --silent)
@@ -584,7 +580,7 @@ The following examples demonstrate different ways to authenticate as a user with
     ```
 
     <Warning>
-      **For non-US instances:** If you're using EU Cloud, or a self-hosted instance, you must set `INFISICAL_API_URL` before login, or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+      **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
     </Warning>
 
   </Accordion>
@@ -622,7 +618,7 @@ In this example we'll be using the `universal-auth` method to login to obtain an
         ```
 
         <Warning>
-          **For non-US instances:** If you're using EU Cloud, or a self-hosted instance, you must set `INFISICAL_API_URL` before login, or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
+          **For non-US Cloud instances:** If you're using EU Cloud or a self-hosted instance, you must set `INFISICAL_API_URL` before login or use `--domain` on all commands. Refer to the [Domain Configuration](/cli/usage#domain-configuration) section for more details.
         </Warning>
 
         Now that we've set the `INFISICAL_TOKEN` environment variable, we can use the CLI to interact with Infisical. The CLI will automatically check for the presence of the `INFISICAL_TOKEN` environment variable and use it for authentication.
