@@ -1,19 +1,44 @@
+import { useEffect } from "react";
 import { faBugs, faHome } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { ErrorComponentProps, Link } from "@tanstack/react-router";
 import { AxiosError } from "axios";
 
-import { Button } from "@app/components/v2";
+import { Button, Lottie } from "@app/components/v2";
 
 import { ProjectAccessError } from "./components";
 
 export const ErrorPage = ({ error }: ErrorComponentProps) => {
+  const isDeploymentSkew =
+    error instanceof TypeError &&
+    error.message.includes("error loading dynamically imported module");
+
+  const reloadCount = parseInt(sessionStorage.getItem("vitePreloadErrorCount") || "0", 10);
+
+  useEffect(() => {
+    if (isDeploymentSkew && reloadCount <= 3) {
+      const timeout = setTimeout(() => {
+        clearTimeout(timeout);
+        sessionStorage.setItem("vitePreloadErrorCount", (reloadCount + 1).toString());
+        window.location.reload();
+      }, 10000);
+    }
+  }, [isDeploymentSkew]);
+
   if (
     error instanceof AxiosError &&
     error.status === 403 &&
     error.response?.data?.error === "User not a part of the specified project"
   ) {
     return <ProjectAccessError />;
+  }
+
+  if (isDeploymentSkew && reloadCount <= 3) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bunker-800">
+        <Lottie isAutoPlay icon="infisical_loading" className="h-32 w-32" />
+      </div>
+    );
   }
 
   return (

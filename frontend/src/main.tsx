@@ -32,34 +32,6 @@ setWasmUrl(lottieWasmUrl);
 // Create a new router instance
 NProgress.configure({ showSpinner: false });
 
-window.addEventListener("vite:preloadError", async (event) => {
-  event.preventDefault();
-  // Get current count from session storage or initialize to 0
-  const reloadCount = parseInt(sessionStorage.getItem("vitePreloadErrorCount") || "0", 10);
-
-  // Check if we've already tried 3 times
-  if (reloadCount >= 2) {
-    console.warn("Vite preload has failed multiple times. Stopping automatic reload.");
-    // Optionally show a user-facing message here
-    return;
-  }
-
-  try {
-    if ("caches" in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
-    }
-  } catch (cleanupError) {
-    console.error(cleanupError);
-  }
-  //
-  // Increment and save the counter
-  sessionStorage.setItem("vitePreloadErrorCount", (reloadCount + 1).toString());
-
-  console.log(`Reloading page (attempt ${reloadCount + 1} of 2)...`);
-  window.location.reload(); // for example, refresh the page
-});
-
 const router = createRouter({
   routeTree,
   context: { serverConfig: null, queryClient },

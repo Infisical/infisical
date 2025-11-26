@@ -60,6 +60,11 @@ export const registerServeUI = async (
           return;
         }
 
+        if (request.url.startsWith("/assets") && request.url.endsWith(".js")) {
+          reply.callNotFound();
+          return;
+        }
+
         return reply.sendFile("index.html", {
           immutable: false,
           maxAge: 0,
