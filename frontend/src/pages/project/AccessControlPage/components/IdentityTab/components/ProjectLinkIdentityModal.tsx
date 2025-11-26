@@ -159,7 +159,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          Link
+          Assign to Project
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">
