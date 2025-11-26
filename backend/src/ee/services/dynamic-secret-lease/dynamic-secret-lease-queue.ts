@@ -105,6 +105,10 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
   };
 
   const $queueDynamicSecretLeaseRevocationFailedEmail = async (leaseId: string, dynamicSecretId: string) => {
+    const appConfig = getConfig();
+
+    const delay = appConfig.isDevelopmentMode ? 1_000 * 60 : 1_000 * 60 * 15; // 1 minute in development, 15 minutes in production
+
     await queueService.queue(
       QueueName.DynamicSecretLeaseRevocationFailedEmail,
       QueueJobs.DynamicSecretLeaseRevocationFailedEmail,
@@ -113,7 +117,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
       },
       {
         jobId: `dynamic-secret-lease-revocation-failed-email-${dynamicSecretId}`,
-        delay: 1000 * 60 * 10, // 10 minute
+        delay,
         attempts: 3,
         backoff: {
           type: "exponential",
@@ -241,6 +245,13 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
           // if its the last attempt, and the error isn't a DisableRotationErrors error, send an email to the project admins (debounced)
         } else if (isRetry && !(error instanceof DisableRotationErrors)) {
           if (retryCount && retryCount === MAX_REVOCATION_RETRY_COUNT) {
+            // if all retries fail, we should also stop the automatic revocation job.
+            // the ID of the revocation job is set to the leaseId, so we can use that to stop the job
+
+            // we dont have to stop the retry job, because if we hit this point, its the last attempt and the retry job will be stopped by pgboss itself after this point,
+            await queueService.stopJobByIdPg(QueueName.DynamicSecretRevocation, leaseId);
+            await queueService.stopRepeatableJobByJobId(QueueName.DynamicSecretRevocation, leaseId);
+
             await $queueDynamicSecretLeaseRevocationFailedEmail(leaseId, dynamicSecretId);
           }
         }
@@ -273,11 +284,6 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         throw new DisableRotationErrors({ message: "Dynamic secret lease not found" });
       }
 
-      const dynamicSecret = await dynamicSecretDAL.findOne({ id: lease.dynamicSecretId });
-      if (!dynamicSecret) {
-        throw new DisableRotationErrors({ message: "Dynamic secret not found" });
-      }
-
       const folder = await folderDAL.findById(lease.dynamicSecret.folderId);
       if (!folder) throw new NotFoundError({ message: `Failed to find folder with ${lease.dynamicSecret.folderId}` });
 
@@ -293,7 +299,7 @@ export const dynamicSecretLeaseQueueServiceFactory = ({
         template: SmtpTemplates.DynamicSecretLeaseRevocationFailed,
         subjectLine: "Dynamic Secret Lease Revocation Failed",
         substitutions: {
-          dynamicSecretLeaseUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/secrets/${folder.environment.envSlug}?dynamicSecretId=${lease.dynamicSecret.id}&filterBy=dynamic&search=${dynamicSecret.name}`,
+          dynamicSecretLeaseUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/secrets/${folder.environment.envSlug}?dynamicSecretId=${lease.dynamicSecret.id}&filterBy=dynamic&search=${lease.dynamicSecret.name}`,
           dynamicSecretName: lease.dynamicSecret.name,
           projectName: project.name,
           environmentSlug: folder.environment.envSlug,
