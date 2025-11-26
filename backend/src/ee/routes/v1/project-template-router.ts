@@ -197,7 +197,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
         type: z.nativeEnum(ProjectType).describe(ProjectTemplates.CREATE.type),
-        environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.CREATE.environments)
+        environments: ProjectTemplateEnvironmentsSchema.optional().describe(ProjectTemplates.CREATE.environments)
       }),
       response: {
         200: z.object({
