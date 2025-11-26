@@ -1,4 +1,5 @@
 import { TAuditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
+import { TScimServiceFactory } from "@app/ee/services/scim/scim-types";
 import { TSnapshotDALFactory } from "@app/ee/services/secret-snapshot/snapshot-dal";
 import { TKeyValueStoreDALFactory } from "@app/keystore/key-value-store-dal";
 import { getConfig } from "@app/lib/config/env";
@@ -29,6 +30,7 @@ type TDailyResourceCleanUpQueueServiceFactoryDep = {
   orgService: TOrgServiceFactory;
   userNotificationDAL: Pick<TUserNotificationDALFactory, "pruneNotifications">;
   keyValueStoreDAL: Pick<TKeyValueStoreDALFactory, "pruneExpiredKeys">;
+  scimService: Pick<TScimServiceFactory, "notifyExpiringTokens">;
 };
 
 export type TDailyResourceCleanUpQueueServiceFactory = ReturnType<typeof dailyResourceCleanUpQueueServiceFactory>;
@@ -44,6 +46,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
   secretVersionV2DAL,
   identityUniversalAuthClientSecretDAL,
   serviceTokenService,
+  scimService,
   orgService,
   userNotificationDAL,
   keyValueStoreDAL
@@ -86,6 +89,7 @@ export const dailyResourceCleanUpQueueServiceFactory = ({
           await secretVersionV2DAL.pruneExcessVersions();
           await secretFolderVersionDAL.pruneExcessVersions();
           await serviceTokenService.notifyExpiringTokens();
+          await scimService.notifyExpiringTokens();
           await orgService.notifyInvitedUsers();
           await auditLogDAL.pruneAuditLog();
           await userNotificationDAL.pruneNotifications();
