@@ -93,6 +93,9 @@ export const certificateServiceFactory = ({
    */
   const getCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -100,7 +103,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -124,6 +127,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TGetCertPrivateKeyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -131,7 +137,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -158,6 +164,9 @@ export const certificateServiceFactory = ({
    */
   const deleteCert = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -165,7 +174,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -201,6 +210,9 @@ export const certificateServiceFactory = ({
     actorOrgId
   }: TRevokeCertDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     if (!cert.caId) {
       throw new BadRequestError({
@@ -224,7 +236,7 @@ export const certificateServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -292,6 +304,9 @@ export const certificateServiceFactory = ({
    */
   const getCertBody = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -299,7 +314,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -388,7 +403,7 @@ export const certificateServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -586,6 +601,9 @@ export const certificateServiceFactory = ({
    */
   const getCertBundle = async ({ serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBundleDTO) => {
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -593,7 +611,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -701,6 +719,9 @@ export const certificateServiceFactory = ({
       throw new BadRequestError({ message: "Alias is required for PKCS12 keystore generation" });
     }
     const cert = await certificateDAL.findOne({ serialNumber });
+    if (!cert) {
+      throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
+    }
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -708,7 +729,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
+      actionProjectType: ActionProjectType.PkiManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
