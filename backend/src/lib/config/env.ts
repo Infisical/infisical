@@ -119,6 +119,7 @@ const envSchema = z
         })
         .default("{}")
     ),
+    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),

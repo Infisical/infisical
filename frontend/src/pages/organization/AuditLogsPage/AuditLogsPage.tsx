@@ -19,7 +19,7 @@ export const AuditLogsPage = () => {
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
-            title="Audit Logs"
+            title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Audit Logs`}
             description="Audit logs for security and compliance teams to monitor information access."
           />
           <LogsSection pageView />
