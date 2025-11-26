@@ -398,7 +398,7 @@ export const SecretItem = memo(
       const data = await fetchValue();
       if (!data) return;
 
-      navigator.clipboard.writeText((data.valueOverride ?? data.value) as string);
+      navigator.clipboard.writeText(data.valueOverride ?? data.value);
 
       setIsSecValueCopied.on();
     };
