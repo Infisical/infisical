@@ -4,8 +4,7 @@ sidebarTitle: "AWS Lambda"
 description: "How to use Infisical secrets in AWS Lambda"
 ---
 
-Learn how to sync Infisical secrets to AWS Lambda regardless of how you deploy your function.  
-This guide covers the following strategies:
+Learn how to sync Infisical secrets to AWS Lambda regardless of how you deploy your function. This guide covers the following strategies:
 
 - Infisical SDKs
 - AWS Secrets Manager integration
@@ -86,10 +85,10 @@ On success, the updated `Environment.Variables` block will be returned.
 Verify the values in the Lambda console or by invoking the function.
 
 <Tip>
-  Automate this step in CI/CD. Run `infisical export` using an Infisical API
-  Token scoped to your project and environment, and trigger the sync as part of
-  your deployment workflow. Learn more about the [Infisical API
-  Token](/cli/commands/login#user:plain-token-output-useful-for-scripting-and-ci-cd).
+  Automate this step in CI/CD. Run `infisical export` using an Infisical Token
+  scoped to your project and environment, and trigger the sync as part of your
+  deployment workflow. Learn more about the [Infisical
+  Token](/cli/commands/export#infisical-export:infisical-token).
 </Tip>
 
 <Note>
