@@ -103,7 +103,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -137,7 +137,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -174,7 +174,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -236,7 +236,7 @@ export const certificateServiceFactory = ({
       projectId: ca.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -314,7 +314,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -403,7 +403,7 @@ export const certificateServiceFactory = ({
       projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -611,7 +611,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -729,7 +729,7 @@ export const certificateServiceFactory = ({
       projectId: cert.projectId,
       actorAuthMethod,
       actorOrgId,
-      actionProjectType: ActionProjectType.PkiManager
+      actionProjectType: ActionProjectType.CertificateManager
     });
 
     ForbiddenError.from(permission).throwUnlessCan(

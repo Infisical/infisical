@@ -326,8 +326,7 @@ export enum ActionProjectType {
   SecretScanning = ProjectType.SecretScanning,
   PAM = ProjectType.PAM,
   // project operations that happen on all types
-  Any = "any",
-  PkiManager = "PkiManager"
+  Any = "any"
 }
 
 export enum OrganizationActionScope {
