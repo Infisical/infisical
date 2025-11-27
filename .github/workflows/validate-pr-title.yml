@@ -1,0 +1,51 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title Format
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            
+            // Valid PR types based on pull_request_template.md
+            const validTypes = ['Fix', 'Feature', 'Improvement', 'Breaking', 'Docs', 'Chore'];
+            
+            // Regex pattern: Type: Short description
+            // Type must be one of the valid types, followed by colon, space, and description
+            const pattern = new RegExp(`^(${validTypes.join('|')}): .+$`);
+            
+            if (!pattern.test(title)) {
+              const errorMessage = `
+            ❌ **Invalid PR Title Format**
+            
+            Your PR title: \`${title}\`
+            
+            **Expected format:** \`Type: Short description\`
+            
+            **Valid types:**
+            - \`Fix\` - Bug fixes
+            - \`Feature\` - New features
+            - \`Improvement\` - Enhancements to existing features
+            - \`Breaking\` - Breaking changes
+            - \`Docs\` - Documentation updates
+            - \`Chore\` - Maintenance tasks
+            
+            **Examples:**
+            - \`Fix: Prevent crash on sync\`
+            - \`Feature: Add SSO login support\`
+            - \`Docs: Update API reference\`
+            `;
+              
+              core.setFailed(errorMessage);
+            } else {
+              console.log(`✅ PR title is valid: "${title}"`);
+            }
+

@@ -1,23 +1,27 @@
-# Description 📣
+## Context
 
-<!-- Please include a summary of the change and which issue is fixed. Please also include relevant motivation and context. List any dependencies that are required for this change. Here's how we expect a pull request to be : https://infisical.com/docs/contributing/getting-started/pull-requests -->
+<!-- What problem does this solve? What was the behavior before, and what is it now? Add all relevant context. Link related issues/tickets. -->
 
-## Type ✨
+## Screenshots
 
-- [ ] Bug fix
-- [ ] New feature
+<!-- If UI/UX changes, add screenshots or videos. Delete if not applicable. -->
+
+## How to test
+
+<!-- Steps to verify the change. -->
+
+## Type
+
+- [ ] Fix
+- [ ] Feature
 - [ ] Improvement
-- [ ] Breaking change
-- [ ] Documentation
+- [ ] Breaking
+- [ ] Docs
+- [ ] Chore
 
-# Tests 🛠️
+## Checklist
 
-<!-- Please describe the tests that you ran to verify your changes. Provide instructions so we can reproduce. Please also list any relevant details for your test configuration. You may want to add screenshots when relevant and possible -->
-
-```sh
-# Here's some code block to paste some code snippets
-```
-
----
-
-- [ ] I have read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview), agreed and acknowledged the [code of conduct](https://infisical.com/docs/contributing/getting-started/code-of-conduct). 📝
+- [ ] Title follows format: `Type: Short description` (e.g., `Fix: Prevent crash on sync`)
+- [ ] Tested locally
+- [ ] Updated docs (if needed)
+- [ ] Read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview)
