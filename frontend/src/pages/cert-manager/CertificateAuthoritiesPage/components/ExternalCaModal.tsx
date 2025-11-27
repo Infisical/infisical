@@ -14,8 +14,7 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem,
-  Switch
+  SelectItem
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -63,7 +62,6 @@ const baseSchema = z.object({
   name: slugSchema({
     field: "Name"
   }),
-  enableDirectIssuance: z.boolean(),
   status: z.nativeEnum(CaStatus)
 });
 
@@ -171,7 +169,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: CaType.AZURE_AD_CS,
           name: "",
           status: CaStatus.ACTIVE,
-          enableDirectIssuance: false,
           configuration: {
             azureAdcsConnection: {
               id: "",
@@ -184,7 +181,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: CaType.ACME,
           name: "",
           status: CaStatus.ACTIVE,
-          enableDirectIssuance: true,
           configuration: {
             dnsAppConnection: {
               id: "",
@@ -274,7 +270,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: ca.type,
           name: ca.name,
           status: ca.status,
-          enableDirectIssuance: ca.enableDirectIssuance,
           configuration: {
             dnsAppConnection: {
               id: ca.configuration.dnsAppConnectionId,
@@ -299,7 +294,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: ca.type,
           name: ca.name,
           status: ca.status,
-          enableDirectIssuance: false,
           configuration: {
             azureAdcsConnection: {
               id: ca.configuration.azureAdcsConnectionId,
@@ -314,7 +308,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({
     type,
     name,
-    enableDirectIssuance,
     status,
     configuration: formConfiguration
   }: FormData) => {
@@ -346,7 +339,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         name,
         type,
         status,
-        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
         configuration: configPayload
       });
     } else {
@@ -355,7 +347,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         name,
         type,
         status,
-        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
         configuration: configPayload
       });
     }
@@ -646,25 +637,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               )}
               control={control}
               name="configuration.azureAdcsConnection"
-            />
-          )}
-          {caType === CaType.ACME && (
-            <Controller
-              control={control}
-              name="enableDirectIssuance"
-              render={({ field, fieldState: { error } }) => {
-                return (
-                  <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
-                    <Switch
-                      id="is-active"
-                      onCheckedChange={(value) => field.onChange(value)}
-                      isChecked={field.value}
-                    >
-                      <p className="w-full">Enable Direct Issuance</p>
-                    </Switch>
-                  </FormControl>
-                );
-              }}
             />
           )}
           <div className="flex items-center">

@@ -152,10 +152,6 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
               : "-"}
           </p>
         </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Enable Direct Issuance</p>
-          <p className="text-sm text-mineshaft-300">{ca.enableDirectIssuance ? "True" : "False"}</p>
-        </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
             I={ProjectPermissionActions.Edit}

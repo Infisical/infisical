@@ -89,7 +89,7 @@ export const useCreateCertTemplateV2 = () => {
     mutationFn: async (dto) => {
       const { data } = await apiRequest.post<{
         certificateTemplate: TCertificateTemplate;
-      }>("/api/v1/cert-manager/certificate-templates", dto);
+      }>("/api/v2/pki/certificate-templates", dto);
       return data.certificateTemplate;
     },
     onSuccess: (_, { projectId }) => {
@@ -108,7 +108,7 @@ export const useUpdateCertTemplateV2 = () => {
   return useMutation<TCertificateTemplate, object, TUpdateCertificateTemplateV2DTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.patch<{ certificateTemplate: TCertificateTemplate }>(
-        `/api/v1/cert-manager/certificate-templates/${dto.templateName}`,
+        `/api/v2/pki/certificate-templates/${dto.templateName}`,
         dto
       );
 
@@ -130,7 +130,7 @@ export const useDeleteCertTemplateV2 = () => {
   return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateV2DTO>({
     mutationFn: async (dto) => {
       const { data } = await apiRequest.delete<{ certificateTemplate: TCertificateTemplate }>(
-        `/api/v1/cert-manager/certificate-templates/${dto.templateName}`,
+        `/api/v2/pki/certificate-templates/${dto.templateName}`,
         {
           data: {
             projectId: dto.projectId

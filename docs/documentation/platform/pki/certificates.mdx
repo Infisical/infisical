@@ -221,7 +221,7 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/issue-certificate' \
       --header 'Content-Type: application/json' \
       --data-raw '{
           "profileId": "<profile-id>",

@@ -57,7 +57,7 @@ export const useListCertificateTemplates = ({
       const { data } = await apiRequest.get<{
         certificateTemplates: TCertificateTemplateV2[];
         totalCount?: number;
-      }>("/api/v1/pki/certificate-templates", {
+      }>("/api/v2/pki/certificate-templates", {
         params: {
           limit,
           offset,

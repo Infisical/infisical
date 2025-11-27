@@ -66,7 +66,10 @@ export type TUnifiedCertificateAuthority =
   | TAzureAdCsCertificateAuthority
   | TInternalCertificateAuthority;
 
-export type TCreateCertificateAuthorityDTO = Omit<TUnifiedCertificateAuthority, "id">;
+export type TCreateCertificateAuthorityDTO = Omit<
+  TUnifiedCertificateAuthority,
+  "id" | "enableDirectIssuance"
+>;
 export type TUpdateCertificateAuthorityDTO = Partial<TUnifiedCertificateAuthority> & {
   id: string;
   type: CaType;
