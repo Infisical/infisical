@@ -43,10 +43,15 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       rateLimit: authRateLimit
     },
     schema: {
-      body: z.object({
-        organizationId: z.string().trim(),
-        userAgent: z.enum(["cli"]).optional()
-      }),
+      body: z
+        .object({
+          organizationId: z.string().trim().optional(),
+          subOrganizationId: z.string().trim().optional(),
+          userAgent: z.enum(["cli"]).optional()
+        })
+        .refine((body) => Boolean(body.organizationId || body.subOrganizationId), {
+          message: "organizationId or subOrganizationId is required"
+        }),
       response: {
         200: z.object({
           token: z.string(),
@@ -57,12 +62,25 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const cfg = getConfig();
-      const tokens = await server.services.login.selectOrganization({
-        userAgent: req.body.userAgent ?? req.headers["user-agent"],
-        authJwtToken: req.headers.authorization,
-        organizationId: req.body.organizationId,
-        ipAddress: req.realIp
-      });
+      let tokens;
+
+      const targetOrgId = req.body.subOrganizationId ?? req.body.organizationId ?? "";
+
+      if (req.body.subOrganizationId) {
+        tokens = await server.services.login.selectSubOrganization({
+          userAgent: req.body.userAgent ?? req.headers["user-agent"],
+          authJwtToken: req.headers.authorization,
+          subOrganizationId: req.body.subOrganizationId,
+          ipAddress: req.realIp
+        });
+      } else {
+        tokens = await server.services.login.selectOrganization({
+          userAgent: req.body.userAgent ?? req.headers["user-agent"],
+          authJwtToken: req.headers.authorization,
+          organizationId: req.body.organizationId as string,
+          ipAddress: req.realIp
+        });
+      }
 
       if (tokens.isMfaEnabled) {
         return {
@@ -75,7 +93,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       const githubOauthAccessToken = req.cookies[INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN];
       if (githubOauthAccessToken) {
         await server.services.githubOrgSync
-          .syncUserGroups(req.body.organizationId, tokens.user.userId, githubOauthAccessToken)
+          .syncUserGroups(targetOrgId, tokens.user.userId, githubOauthAccessToken)
           .finally(() => {
             void res.setCookie(INFISICAL_PROVIDER_GITHUB_ACCESS_TOKEN, "", {
               httpOnly: true,
@@ -105,74 +123,6 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
       });
 
       return { token: tokens.access, isMfaEnabled: false };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/select-sub-organization",
-    config: {
-      rateLimit: authRateLimit
-    },
-    schema: {
-      body: z.object({
-        subOrganizationId: z.string().trim(),
-        userAgent: z.enum(["cli"]).optional()
-      }),
-      response: {
-        200: z.object({
-          token: z.string(),
-          isMfaEnabled: z.boolean(),
-          mfaMethod: z.string().optional(),
-          subOrganization: z
-            .object({
-              id: z.string(),
-              name: z.string(),
-              slug: z.string()
-            })
-            .optional()
-        })
-      }
-    },
-    handler: async (req, res) => {
-      const cfg = getConfig();
-      const result = await server.services.login.selectSubOrganization({
-        userAgent: req.body.userAgent ?? req.headers["user-agent"],
-        authJwtToken: req.headers.authorization,
-        subOrganizationId: req.body.subOrganizationId,
-        ipAddress: req.realIp
-      });
-
-      if (result.isMfaEnabled) {
-        return {
-          token: result.mfa as string,
-          isMfaEnabled: true,
-          mfaMethod: result.mfaMethod
-        };
-      }
-
-      void res.setCookie("jid", result.refresh, {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: cfg.HTTPS_ENABLED
-      });
-
-      addAuthOriginDomainCookie(res);
-
-      void res.cookie("infisical-project-assume-privileges", "", {
-        httpOnly: true,
-        path: "/",
-        sameSite: "strict",
-        secure: cfg.HTTPS_ENABLED,
-        maxAge: 0
-      });
-
-      return {
-        token: result.access,
-        isMfaEnabled: false,
-        subOrganization: result.subOrganization
-      };
     }
   });
 

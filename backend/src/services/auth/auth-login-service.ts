@@ -725,39 +725,58 @@ export const authLoginServiceFactory = ({
     authJwtToken = authJwtToken.replace("Bearer ", "");
 
     const decodedToken = crypto.jwt().verify(authJwtToken, cfg.AUTH_SECRET) as AuthModeJwtTokenPayload;
+
     if (!decodedToken.authMethod) throw new UnauthorizedError({ name: "Auth method not found on existing token" });
-    if (!decodedToken.organizationId)
-      throw new BadRequestError({ message: "No organization selected in current token" });
 
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
+    // Check user membership in the sub-organization
+    const userSubOrgMembership = await membershipUserDAL.findOne({
+      actorUserId: user.id,
+      scopeOrgId: subOrganizationId,
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
+    });
+
     // Fetch the sub-organization
     const subOrg = await orgDAL.findById(subOrganizationId);
-    if (!subOrg) {
-      throw new BadRequestError({ message: `Sub-organization with ID ${subOrganizationId} not found` });
-    }
 
-    // Verify this is actually a sub-organization of the current root org
-    if (subOrg.rootOrgId !== decodedToken.organizationId && subOrg.id !== decodedToken.organizationId) {
+    if (!userSubOrgMembership) {
       throw new ForbiddenRequestError({
-        message: "Sub-organization does not belong to the current organization"
+        message: `User does not have access to the sub-organization named ${subOrg.name}`
       });
     }
 
-    // Check user membership in the sub-organization
-    const orgMembership = await membershipUserDAL.findOne({
-      actorUserId: user.id,
-      scopeOrgId: subOrganizationId,
-      scope: AccessScope.Organization
-    });
+    const subOrgmembershipRole = await membershipRoleDAL.findOne({ membershipId: userSubOrgMembership.id });
 
-    if (!orgMembership) {
-      throw new ForbiddenRequestError({ message: "User is not a member of this sub-organization" });
+    // Check if authEnforced is true and the current auth method is not an enforced method
+    if (
+      subOrg.authEnforced &&
+      !isAuthMethodSaml(decodedToken.authMethod) &&
+      decodedToken.authMethod !== AuthMethod.OIDC &&
+      !(subOrg.bypassOrgAuthEnabled && subOrgmembershipRole.role === OrgMembershipRole.Admin)
+    ) {
+      throw new BadRequestError({
+        message: "Login with the auth method required by your organization."
+      });
     }
 
-    if (!orgMembership.isActive) {
-      throw new ForbiddenRequestError({ message: "User membership in sub-organization is inactive" });
+    if (subOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+      const canBypass = subOrg.bypassOrgAuthEnabled && subOrgmembershipRole.role === OrgMembershipRole.Admin;
+
+      if (!canBypass) {
+        throw new ForbiddenRequestError({
+          message: "Google SSO is enforced for this organization. Please use Google SSO to login.",
+          error: "GoogleSsoEnforced"
+        });
+      }
+    }
+
+    if (decodedToken.authMethod === AuthMethod.GOOGLE) {
+      await orgDAL.updateById(subOrg.id, {
+        googleSsoAuthLastUsed: new Date()
+      });
     }
 
     // Check MFA requirements for the sub-organization
@@ -797,8 +816,8 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      organizationId: decodedToken.organizationId, // Keep root org ID
-      subOrganizationId, // Add sub-org ID
+      ...(subOrg.rootOrgId && { organizationId: subOrg.rootOrgId }),
+      subOrganizationId,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
     });
@@ -823,7 +842,7 @@ export const authLoginServiceFactory = ({
         metadata: {
           organizationId: subOrganizationId,
           organizationName: subOrg.name,
-          parentOrganizationId: decodedToken.organizationId
+          rootOrganizationId: subOrg.rootOrgId ?? ""
         }
       }
     });
@@ -831,12 +850,7 @@ export const authLoginServiceFactory = ({
     return {
       ...tokens,
       user,
-      isMfaEnabled: false,
-      subOrganization: {
-        id: subOrg.id,
-        name: subOrg.name,
-        slug: subOrg.slug
-      }
+      isMfaEnabled: false
     };
   };
 

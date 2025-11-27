@@ -2693,7 +2693,7 @@ interface SelectSubOrganizationEvent {
   metadata: {
     organizationId: string;
     organizationName: string;
-    parentOrganizationId: string;
+    rootOrganizationId: string;
   };
 }
 

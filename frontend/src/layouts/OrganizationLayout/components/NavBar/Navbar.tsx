@@ -62,7 +62,11 @@ import {
   useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
-import { authKeys, selectOrganization, selectSubOrganization } from "@app/hooks/api/auth/queries";
+import {
+  authKeys,
+  selectOrganization,
+  type SelectOrganizationParams
+} from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
@@ -191,12 +195,26 @@ export const Navbar = () => {
     }
   }, [subscription, isBillingPage, isModalIntrusive]);
 
-  const handleOrgChange = async (orgId: string, onSuccess?: () => void | Promise<void>) => {
-    if (orgId === currentOrg.id) return;
+  const handleOrgSelection = async ({
+    organizationId,
+    subOrganizationId,
+    onSuccess
+  }: {
+    organizationId?: string;
+    subOrganizationId?: string;
+    onSuccess?: () => void | Promise<void>;
+  }) => {
+    if (!organizationId && !subOrganizationId) return;
 
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
-      organizationId: orgId
-    });
+    const targetId = subOrganizationId ?? organizationId;
+
+    if (targetId === currentOrg.id) return;
+
+    const selectionPayload: SelectOrganizationParams = subOrganizationId
+      ? { subOrganizationId }
+      : { organizationId: organizationId as string };
+
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization(selectionPayload);
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
@@ -205,7 +223,7 @@ export const Navbar = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => async () => {
-        await handleOrgChange(orgId, onSuccess);
+        await handleOrgSelection({ organizationId, subOrganizationId, onSuccess });
       });
       return;
     }
@@ -216,7 +234,7 @@ export const Navbar = () => {
     queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
 
     await router.invalidate();
-    await navigateUserToOrg(navigate, orgId);
+    await navigateUserToOrg(navigate, targetId);
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 
     if (onSuccess) {
@@ -234,41 +252,10 @@ export const Navbar = () => {
     };
 
     if (currentOrg.id !== rootOrg.id) {
-      await handleOrgChange(rootOrg.id, navigateToBilling);
+      await handleOrgSelection({ organizationId: rootOrg.id, onSuccess: navigateToBilling });
     } else {
       await navigateToBilling();
     }
-  };
-
-  const handleSubOrgChange = async (subOrgId: string) => {
-    if (subOrgId === currentOrg.id) return;
-
-    const { token, isMfaEnabled, mfaMethod } = await selectSubOrganization({
-      subOrganizationId: subOrgId
-    });
-
-    localStorage.setItem("orgData.id", subOrgId);
-
-    if (isMfaEnabled) {
-      SecurityClient.setMfaToken(token);
-      if (mfaMethod) {
-        setRequiredMfaMethod(mfaMethod);
-      }
-      toggleShowMfa.on();
-      setMfaSuccessCallback(() => () => handleSubOrgChange(subOrgId));
-      return;
-    }
-
-    SecurityClient.setToken(token);
-    SecurityClient.setProviderAuthToken("");
-
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
-    await router.invalidate();
-    navigate({
-      to: "/organizations/$orgId/projects",
-      params: { orgId: subOrgId }
-    });
   };
 
   const { mutateAsync } = useGetOrgTrialUrl();
@@ -340,7 +327,7 @@ export const Navbar = () => {
       return;
     }
 
-    handleOrgChange(org?.id);
+    handleOrgSelection({ organizationId: org?.id });
   };
 
   return (
@@ -465,7 +452,7 @@ export const Navbar = () => {
                             </div>
                             {subOrganizations.map((subOrg) => (
                               <DropdownMenuItem
-                                onClick={() => handleSubOrgChange(subOrg.id)}
+                                onClick={() => handleOrgSelection({ subOrganizationId: subOrg.id })}
                                 className="cursor-pointer font-normal"
                                 key={subOrg.id}
                               >
@@ -563,7 +550,7 @@ export const Navbar = () => {
                     </div>
                     {subOrganizations.map((subOrg) => (
                       <DropdownMenuItem
-                        onClick={() => handleSubOrgChange(subOrg.id)}
+                        onClick={() => handleOrgSelection({ subOrganizationId: subOrg.id })}
                         className="cursor-pointer font-normal"
                         key={subOrg.id}
                       >
