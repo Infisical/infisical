@@ -197,7 +197,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.CREATE.description),
         roles: ProjectTemplateRolesSchema.default([]).describe(ProjectTemplates.CREATE.roles),
         type: z.nativeEnum(ProjectType).describe(ProjectTemplates.CREATE.type),
-        environments: ProjectTemplateEnvironmentsSchema.optional().describe(ProjectTemplates.CREATE.environments)
+        environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.CREATE.environments)
       }),
       response: {
         200: z.object({
@@ -242,7 +242,7 @@ export const registerProjectTemplateRouter = async (server: FastifyZodProvider) 
           .describe(ProjectTemplates.UPDATE.name),
         description: z.string().max(256).trim().optional().describe(ProjectTemplates.UPDATE.description),
         roles: ProjectTemplateRolesSchema.optional().describe(ProjectTemplates.UPDATE.roles),
-        environments: ProjectTemplateEnvironmentsSchema.optional().describe(ProjectTemplates.UPDATE.environments)
+        environments: ProjectTemplateEnvironmentsSchema.nullish().describe(ProjectTemplates.UPDATE.environments)
       }),
       response: {
         200: z.object({
