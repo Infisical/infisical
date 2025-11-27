@@ -36,7 +36,7 @@ You can either call modules by their Fully Qualified Collection Name (FQCN), suc
 
 ### Authentication
 
-The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth) and [OIDC](/documentation/platform/identities/oidc-auth/general) for authenticating against Infisical.
+The Infisical Ansible Collection supports [Universal Auth](/documentation/platform/identities/universal-auth), [OIDC Auth](/documentation/platform/identities/oidc-auth/general), and [Token Auth](/documentation/platform/identities/token-auth) for authenticating against Infisical.
 
 
 <AccordionGroup>
@@ -75,6 +75,26 @@ The Infisical Ansible Collection supports [Universal Auth](/documentation/platfo
     | auth_method     | `INFISICAL_AUTH_METHOD`   |
     | identity_id     | `INFISICAL_IDENTITY_ID`   |
     | jwt             | `INFISICAL_JWT`           |
+
+  </Accordion>
+
+  <Accordion title="Token Auth">
+    Token Auth is the simplest authentication method that allows you to authenticate directly with an access token. This can be either a [Machine Identity Token Auth](/documentation/platform/identities/token-auth) token or a User JWT token.
+
+    <Note>
+      Please note that in order to use Token Auth, you must have `1.1.4` or newer of the `infisicalsdk` package installed.
+    </Note>
+
+    ```yaml
+    lookup('infisical.vault.read_secrets', auth_method="token_auth", token='<your-token>' ...rest)
+    ```
+
+    You can also provide the `auth_method` and `token` parameters through environment variables:
+
+    | Parameter Name | Environment Variable Name |
+    | -------------- | ------------------------- |
+    | auth_method    | `INFISICAL_AUTH_METHOD`   |
+    | token          | `INFISICAL_TOKEN`         |
 
   </Accordion>
 </AccordionGroup>
