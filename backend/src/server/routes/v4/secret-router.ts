@@ -384,119 +384,94 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         }
       ],
       params: z.object({
-        secretName: SecretNameSchema.describe(RAW_SECRETS.CREATE.secretName)
+        secretName: z.string().trim().describe(RAW_SECRETS.CREATE.secretName)
       }),
       body: z.object({
         projectId: z.string().trim().describe(RAW_SECRETS.CREATE.projectId),
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
-        secretPath: z
-          .string()
-          .trim()
-          .default("/")
-          .transform(removeTrailingSlash)
-          .describe(RAW_SECRETS.CREATE.secretPath),
-        secretValue: z
-          .string()
-          .transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim()))
-          .describe(RAW_SECRETS.CREATE.secretValue),
-        secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
-        secretMetadata: ResourceMetadataSchema.optional(),
-        tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
-        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.CREATE.secretPath),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
-        secretReminderRepeatDays: z
-          .number()
-          .optional()
-          .nullable()
-          .describe(RAW_SECRETS.CREATE.secretReminderRepeatDays),
-        secretReminderNote: z
-          .string()
-          .max(1024, "Secret reminder note cannot exceed 1024 characters")
-          .optional()
-          .nullable()
-          .describe(RAW_SECRETS.CREATE.secretReminderNote)
+        secretValue: z.string().describe(RAW_SECRETS.CREATE.secretValue),
+        secretComment: z.string().default("").describe(RAW_SECRETS.CREATE.secretComment),
+        tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
+        secretReminderNote: z.string().nullish().describe(RAW_SECRETS.CREATE.secretReminderNote),
+        secretReminderRepeatDays: z.number().nullish().describe(RAW_SECRETS.CREATE.secretReminderRepeatDays),
+        skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
+        secretMetadata: ResourceMetadataSchema.optional().describe(RAW_SECRETS.CREATE.secretMetadata)
       }),
       response: {
-        200: z.union([
-          z.object({
-            secret: secretRawSchema
-          }),
-          z.object({ approval: SecretApprovalRequestsSchema }).describe("When secret protection policy is enabled")
-        ])
+        200: z.object({
+          secret: secretRawSchema.extend({
+            secretPath: z.string(),
+            tags: SanitizedTagSchema.array().optional(),
+            secretMetadata: ResourceMetadataSchema.optional()
+          })
+        })
       }
     },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.SERVICE_TOKEN, AuthMode.IDENTITY_ACCESS_TOKEN, AuthMode.API_KEY]),
     handler: async (req) => {
-      const secretOperation = await server.services.secret.createSecretRaw({
-        actorId: req.permission.id,
-        actor: req.permission.type,
-        actorOrgId: req.permission.orgId,
-        environment: req.body.environment,
-        actorAuthMethod: req.permission.authMethod,
-        projectId: req.body.projectId,
-        secretPath: req.body.secretPath,
-        secretName: req.params.secretName,
-        type: req.body.type,
-        secretValue: req.body.secretValue,
-        skipMultilineEncoding: req.body.skipMultilineEncoding,
-        secretComment: req.body.secretComment,
-        secretMetadata: req.body.secretMetadata,
-        tagIds: req.body.tagIds,
-        secretReminderNote: req.body.secretReminderNote,
-        secretReminderRepeatDays: req.body.secretReminderRepeatDays
-      });
-      if (secretOperation.type === SecretProtectionType.Approval) {
-        await server.services.auditLog.createAuditLog({
-          projectId: req.body.projectId,
-          ...req.auditLogInfo,
-          event: {
-            type: EventType.SECRET_APPROVAL_REQUEST,
-            metadata: {
-              committedBy: secretOperation.approval.committerUserId,
-              secretApprovalRequestId: secretOperation.approval.id,
-              secretApprovalRequestSlug: secretOperation.approval.slug,
-              secretPath: req.body.secretPath,
-              environment: req.body.environment,
-              secretKey: req.params.secretName,
-              eventType: SecretApprovalEvent.Create
-            }
-          }
+      // Validate projectId exists
+      const { projectId, environment, secretPath } = req.body;
+      
+      if (!projectId) {
+        throw new BadRequestError({ 
+          message: "Missing projectId in request body",
+          name: "CreateSecret" 
         });
-
-        return { approval: secretOperation.approval };
+      }
+      
+      if (!environment) {
+        throw new BadRequestError({ 
+          message: "Missing environment in request body",
+          name: "CreateSecret" 
+        });
       }
 
-      const { secret } = secretOperation;
+      const secret = await server.services.secret.createSecretRaw({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        projectId,
+        environment,
+        path: secretPath,
+        ...req.body,
+        secretKey: req.params.secretName
+      });
+
       await server.services.auditLog.createAuditLog({
-        projectId: req.body.projectId,
+        projectId,
         ...req.auditLogInfo,
         event: {
           type: EventType.CREATE_SECRET,
           metadata: {
-            environment: req.body.environment,
-            secretPath: req.body.secretPath,
+            environment,
+            secretPath,
             secretId: secret.id,
-            secretKey: req.params.secretName,
+            secretKey: secret.secretKey,
             secretVersion: secret.version,
-            secretMetadata: req.body.secretMetadata,
-            secretTags: secret.tags?.map((tag) => tag.name)
+            ...(secret.tags?.length ? { secretTags: secret.tags.map((tag) => tag.name) } : {}),
+            ...(secret.secretMetadata ? { secretMetadata: secret.secretMetadata } : {})
           }
         }
       });
 
-      await server.services.telemetry.sendPostHogEvents({
-        event: PostHogEventTypes.SecretCreated,
-        distinctId: getTelemetryDistinctId(req),
-        organizationId: req.permission.orgId,
-        properties: {
-          numberOfSecrets: 1,
-          projectId: req.body.projectId,
-          environment: req.body.environment,
-          secretPath: req.body.secretPath,
-          channel: getUserAgentType(req.headers["user-agent"]),
-          ...req.auditLogInfo
-        }
-      });
+      if (getUserAgentType(req.headers["user-agent"]) !== UserAgentType.K8_OPERATOR) {
+        await server.services.telemetry.sendPostHogEvents({
+          event: PostHogEventTypes.SecretCreated,
+          distinctId: getTelemetryDistinctId(req),
+          organizationId: req.permission.orgId,
+          properties: {
+            numberOfSecrets: 1,
+            projectId,
+            environment,
+            secretPath,
+            channel: getUserAgentType(req.headers["user-agent"]),
+            ...req.auditLogInfo
+          }
+        });
+      }
 
       return { secret };
     }
@@ -1179,11 +1154,9 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
               committedBy: secretOperation.approval.committerUserId,
               secretApprovalRequestId: secretOperation.approval.id,
               secretApprovalRequestSlug: secretOperation.approval.slug,
-              secretPath,
-              environment,
-              secrets: inputSecrets.map((secret) => ({
-                secretKey: secret.secretKey
-              })),
+              secretPath: req.body.secretPath,
+              environment: req.body.environment,
+              secretKey: req.params.secretName,
               eventType: SecretApprovalEvent.DeleteMany
             }
           }
