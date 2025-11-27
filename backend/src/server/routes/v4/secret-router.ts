@@ -391,13 +391,13 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         environment: z.string().trim().describe(RAW_SECRETS.CREATE.environment),
         secretPath: z.string().trim().default("/").transform(removeTrailingSlash).describe(RAW_SECRETS.CREATE.secretPath),
         type: z.nativeEnum(SecretType).default(SecretType.Shared).describe(RAW_SECRETS.CREATE.type),
-        secretValue: z.string().describe(RAW_SECRETS.CREATE.secretValue),
-        secretComment: z.string().default("").describe(RAW_SECRETS.CREATE.secretComment),
+        secretValue: z.string().transform((val) => (val.at(-1) === "\n" ? `${val.trim()}\n` : val.trim())).describe(RAW_SECRETS.CREATE.secretValue),
+        secretComment: z.string().trim().optional().default("").describe(RAW_SECRETS.CREATE.secretComment),
         tagIds: z.string().array().optional().describe(RAW_SECRETS.CREATE.tagIds),
         secretReminderNote: z.string().nullish().describe(RAW_SECRETS.CREATE.secretReminderNote),
         secretReminderRepeatDays: z.number().nullish().describe(RAW_SECRETS.CREATE.secretReminderRepeatDays),
         skipMultilineEncoding: z.boolean().optional().describe(RAW_SECRETS.CREATE.skipMultilineEncoding),
-        secretMetadata: ResourceMetadataSchema.optional().describe(RAW_SECRETS.CREATE.secretMetadata)
+        secretMetadata: ResourceMetadataSchema.optional(),
       }),
       response: {
         200: z.object({
@@ -413,21 +413,6 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => {
       // Validate projectId exists
       const { projectId, environment, secretPath } = req.body;
-      
-      if (!projectId) {
-        throw new BadRequestError({ 
-          message: "Missing projectId in request body",
-          name: "CreateSecret" 
-        });
-      }
-      
-      if (!environment) {
-        throw new BadRequestError({ 
-          message: "Missing environment in request body",
-          name: "CreateSecret" 
-        });
-      }
-
       const secret = await server.services.secret.createSecretRaw({
         actorId: req.permission.id,
         actor: req.permission.type,
@@ -435,9 +420,16 @@ export const registerSecretRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         projectId,
         environment,
-        path: secretPath,
-        ...req.body,
-        secretKey: req.params.secretName
+        secretPath,
+        secretName: req.params.secretName,
+        type: req.body.type,
+        secretValue: req.body.secretValue,
+        secretComment: req.body.secretComment,
+        skipMultilineEncoding: req.body.skipMultilineEncoding,
+        tagIds: req.body.tagIds,
+        secretReminderNote: req.body.secretReminderNote,
+        secretReminderRepeatDays: req.body.secretReminderRepeatDays,
+        secretMetadata: req.body.secretMetadata
       });
 
       await server.services.auditLog.createAuditLog({
