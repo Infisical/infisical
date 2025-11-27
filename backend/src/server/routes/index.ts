@@ -1329,7 +1329,8 @@ export const registerRoutes = async (
     eventBusService,
     licenseService,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    telemetryService
   });
 
   const projectService = projectServiceFactory({
@@ -1874,7 +1875,12 @@ export const registerRoutes = async (
     dynamicSecretProviders,
     dynamicSecretDAL,
     folderDAL,
-    kmsService
+    kmsService,
+    smtpService,
+    userDAL,
+    identityDAL,
+    projectMembershipDAL,
+    projectDAL
   });
   const dynamicSecretService = dynamicSecretServiceFactory({
     projectDAL,

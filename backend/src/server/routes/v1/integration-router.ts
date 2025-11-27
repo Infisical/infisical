@@ -10,7 +10,12 @@ import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { IntegrationMetadataSchema } from "@app/services/integration/integration-schema";
 import { Integrations } from "@app/services/integration-auth/integration-list";
-import { PostHogEventTypes, TIntegrationCreatedEvent } from "@app/services/telemetry/telemetry-types";
+import {
+  PostHogEventTypes,
+  TIntegrationCreatedEvent,
+  TIntegrationDeletedEvent,
+  TIntegrationSyncedEvent
+} from "@app/services/telemetry/telemetry-types";
 
 import {} from "../sanitizedSchemas";
 
@@ -288,31 +293,47 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
       });
 
+      const deleteIntegrationEventProperty = shake({
+        integrationId: integration.id,
+        integration: integration.integration,
+        environment: integration.environment.slug,
+        secretPath: integration.secretPath,
+        url: integration.url,
+        app: integration.app,
+        appId: integration.appId,
+        targetEnvironment: integration.targetEnvironment,
+        targetEnvironmentId: integration.targetEnvironmentId,
+        targetService: integration.targetService,
+        targetServiceId: integration.targetServiceId,
+        path: integration.path,
+        region: integration.region
+      }) as TIntegrationDeletedEvent["properties"];
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: integration.projectId,
         event: {
           type: EventType.DELETE_INTEGRATION,
           // eslint-disable-next-line
-          metadata: shake({
-            integrationId: integration.id,
-            integration: integration.integration,
-            environment: integration.environment.slug,
-            secretPath: integration.secretPath,
-            url: integration.url,
-            app: integration.app,
-            appId: integration.appId,
-            targetEnvironment: integration.targetEnvironment,
-            targetEnvironmentId: integration.targetEnvironmentId,
-            targetService: integration.targetService,
-            targetServiceId: integration.targetServiceId,
-            path: integration.path,
-            region: integration.region,
+          metadata: {
+            ...deleteIntegrationEventProperty,
             shouldDeleteIntegrationSecrets: req.query.shouldDeleteIntegrationSecrets
             // eslint-disable-next-line
-          }) as any
+          } as any
         }
       });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IntegrationDeleted,
+        organizationId: req.permission.orgId,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          ...deleteIntegrationEventProperty,
+          projectId: integration.projectId,
+          ...req.auditLogInfo
+        }
+      });
+
       return { integration };
     }
   });
@@ -351,28 +372,41 @@ export const registerIntegrationRouter = async (server: FastifyZodProvider) => {
         id: req.params.integrationId
       });
 
+      const syncIntegrationEventProperty = shake({
+        integrationId: integration.id,
+        integration: integration.integration,
+        environment: integration.environment.slug,
+        secretPath: integration.secretPath,
+        url: integration.url,
+        app: integration.app,
+        appId: integration.appId,
+        targetEnvironment: integration.targetEnvironment,
+        targetEnvironmentId: integration.targetEnvironmentId,
+        targetService: integration.targetService,
+        targetServiceId: integration.targetServiceId,
+        path: integration.path,
+        region: integration.region
+      }) as TIntegrationSyncedEvent["properties"];
+
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
         projectId: integration.projectId,
         event: {
           type: EventType.MANUAL_SYNC_INTEGRATION,
           // eslint-disable-next-line
-          metadata: shake({
-            integrationId: integration.id,
-            integration: integration.integration,
-            environment: integration.environment.slug,
-            secretPath: integration.secretPath,
-            url: integration.url,
-            app: integration.app,
-            appId: integration.appId,
-            targetEnvironment: integration.targetEnvironment,
-            targetEnvironmentId: integration.targetEnvironmentId,
-            targetService: integration.targetService,
-            targetServiceId: integration.targetServiceId,
-            path: integration.path,
-            region: integration.region
-            // eslint-disable-next-line
-          }) as any
+          metadata: syncIntegrationEventProperty as any
+        }
+      });
+
+      await server.services.telemetry.sendPostHogEvents({
+        event: PostHogEventTypes.IntegrationSynced,
+        organizationId: req.permission.orgId,
+        distinctId: getTelemetryDistinctId(req),
+        properties: {
+          ...syncIntegrationEventProperty,
+          projectId: integration.projectId,
+          isManualSync: true,
+          ...req.auditLogInfo
         }
       });
 
