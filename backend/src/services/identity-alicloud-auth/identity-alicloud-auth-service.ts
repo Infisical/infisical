@@ -98,7 +98,7 @@ export const identityAliCloudAuthServiceFactory = ({
         const isAccountAllowed = identityAliCloudAuth.allowedArns
           .split(",")
           .some((arn) => {
-            arn = arn.trim();
+            const trimmedArn = arn.trim();
             if (arn.endsWith("*")) {
               return data.Arn.startsWith(arn.slice(0, -1));
             }
