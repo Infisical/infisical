@@ -184,11 +184,7 @@ export const identityAccessTokenServiceFactory = ({
     return { revokedToken };
   };
 
-  const fnValidateIdentityAccessToken = async (
-    token: TIdentityAccessTokenJwtPayload,
-    ipAddress?: string,
-    subOrganizationSelector?: string
-  ) => {
+  const fnValidateIdentityAccessToken = async (token: TIdentityAccessTokenJwtPayload, ipAddress?: string) => {
     const identityAccessToken = await identityAccessTokenDAL.findOne({
       [`${TableName.IdentityAccessToken}.id` as "id"]: token.identityAccessTokenId,
       isAccessTokenRevoked: false
@@ -209,45 +205,31 @@ export const identityAccessTokenServiceFactory = ({
         trustedIps: trustedIps as TIp[]
       });
     }
-    let orgId = "";
-    let orgName = "";
-    let parentOrgId = "";
-    const identityOrgDetails = await orgDAL.findOne({ id: identityAccessToken.identityScopeOrgId });
-    const rootOrgId = identityOrgDetails.rootOrgId || identityOrgDetails.id;
 
-    if (subOrganizationSelector) {
-      const subOrganization = await orgDAL.findOne({ rootOrgId, slug: subOrganizationSelector });
-      if (!subOrganization)
-        throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
+    const scopeOrgId = identityAccessToken.scopeOrgId || identityAccessToken.identityOrgId;
 
-      const identityOrgMembership = await membershipIdentityDAL.findOne({
-        scope: AccessScope.Organization,
-        actorIdentityId: identityAccessToken.identityId,
-        scopeOrgId: subOrganization.id
-      });
+    const identityOrgDetails = await orgDAL.findOne({ id: scopeOrgId });
 
-      if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to this organization" });
-      }
-      orgId = subOrganization.id;
-      orgName = subOrganization.name;
+    const isSubOrg = !!(identityOrgDetails.rootOrgId || identityOrgDetails.parentOrgId);
 
-      parentOrgId = subOrganization.parentOrgId as string;
-    } else {
-      const identityOrgMembership = await membershipIdentityDAL.findOne({
-        scope: AccessScope.Organization,
-        actorIdentityId: identityAccessToken.identityId,
-        scopeOrgId: identityOrgDetails.id
-      });
+    const rootOrgId = isSubOrg
+      ? identityOrgDetails.rootOrgId || identityOrgDetails.parentOrgId || identityOrgDetails.id
+      : identityOrgDetails.id;
 
-      if (!identityOrgMembership) {
-        throw new BadRequestError({ message: "Identity does not belong to this organization" });
-      }
+    // Verify identity membership in the organization
+    const identityOrgMembership = await membershipIdentityDAL.findOne({
+      scope: AccessScope.Organization,
+      actorIdentityId: identityAccessToken.identityId,
+      scopeOrgId: identityOrgDetails.id
+    });
 
-      orgId = identityOrgDetails.id;
-      orgName = identityOrgDetails.name;
-      parentOrgId = rootOrgId;
+    if (!identityOrgMembership) {
+      throw new BadRequestError({ message: "Identity does not belong to this organization" });
     }
+
+    const orgId = identityOrgDetails.id;
+    const orgName = identityOrgDetails.name;
+    const parentOrgId = identityOrgDetails.parentOrgId || rootOrgId;
 
     let { accessTokenNumUses } = identityAccessToken;
     const tokenStatusInCache = await accessTokenQueue.getIdentityTokenDetailsInCache(identityAccessToken.id);
