@@ -95,7 +95,15 @@ export const identityAliCloudAuthServiceFactory = ({
 
       if (identityAliCloudAuth.allowedArns) {
         // In the future we could do partial checks for role ARNs
-        const isAccountAllowed = identityAliCloudAuth.allowedArns.split(",").some((arn) => arn.trim() === data.Arn);
+        const isAccountAllowed = identityAliCloudAuth.allowedArns
+          .split(",")
+          .some((arn) => {
+            arn = arn.trim();
+            if (arn.endsWith("*")) {
+              return data.Arn.startsWith(arn.slice(0, -1));
+            }
+            return arn === data.Arn;
+          });
 
         if (!isAccountAllowed)
           throw new UnauthorizedError({
@@ -108,16 +116,16 @@ export const identityAliCloudAuthServiceFactory = ({
         await membershipIdentityDAL.update(
           identity.projectId
             ? {
-                scope: AccessScope.Project,
-                scopeOrgId: identity.orgId,
-                scopeProjectId: identity.projectId,
-                actorIdentityId: identity.id
-              }
+              scope: AccessScope.Project,
+              scopeOrgId: identity.orgId,
+              scopeProjectId: identity.projectId,
+              actorIdentityId: identity.id
+            }
             : {
-                scope: AccessScope.Organization,
-                scopeOrgId: identity.orgId,
-                actorIdentityId: identity.id
-              },
+              scope: AccessScope.Organization,
+              scopeOrgId: identity.orgId,
+              actorIdentityId: identity.id
+            },
           {
             lastLoginAuthMethod: IdentityAuthMethod.ALICLOUD_AUTH,
             lastLoginTime: new Date()
@@ -149,8 +157,8 @@ export const identityAliCloudAuthServiceFactory = ({
         Number(identityAccessToken.accessTokenTTL) === 0
           ? undefined
           : {
-              expiresIn: Number(identityAccessToken.accessTokenTTL)
-            }
+            expiresIn: Number(identityAccessToken.accessTokenTTL)
+          }
       );
 
       if (appCfg.OTEL_TELEMETRY_COLLECTION_ENABLED) {
@@ -325,7 +333,7 @@ export const identityAliCloudAuthServiceFactory = ({
     if (
       (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL) > 0 &&
       (accessTokenTTL || identityAliCloudAuth.accessTokenTTL) >
-        (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL)
+      (accessTokenMaxTTL || identityAliCloudAuth.accessTokenMaxTTL)
     ) {
       throw new BadRequestError({ message: "Access token TTL cannot be greater than max TTL" });
     }
