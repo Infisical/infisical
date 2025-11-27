@@ -7,6 +7,8 @@ import { BaseEmailWrapper, BaseEmailWrapperProps } from "./BaseEmailWrapper";
 interface ScimTokenExpiryNoticeTemplateProps extends Omit<BaseEmailWrapperProps, "title" | "preview" | "children"> {
   tokenDescription?: string;
   orgName: string;
+  createdOn: Date;
+  expiringOn: Date;
   url: string;
 }
 
@@ -14,8 +16,20 @@ export const ScimTokenExpiryNoticeTemplate = ({
   tokenDescription,
   siteUrl,
   orgName,
-  url
+  url,
+  createdOn,
+  expiringOn
 }: ScimTokenExpiryNoticeTemplateProps) => {
+  const formatDate = (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric"
+    });
+
+  const createdOnDisplay = formatDate(createdOn);
+  const expiringOnDisplay = formatDate(expiringOn);
+
   return (
     <BaseEmailWrapper title="SCIM Token Expiring Soon" preview="A SCIM token is about to expire." siteUrl={siteUrl}>
       <Heading className="text-black text-[18px] leading-[28px] text-center font-normal p-0 mx-0">
@@ -30,7 +44,8 @@ export const ScimTokenExpiryNoticeTemplate = ({
           ) : (
             "One of your SCIM tokens"
           )}{" "}
-          for the organization <strong>{orgName}</strong> will expire within 24 hours.
+          for <strong>{orgName}</strong>, created on <strong>{createdOnDisplay}</strong>, is scheduled to expire on{" "}
+          <strong>{expiringOnDisplay}</strong>.
         </Text>
         <Text>
           If this token is still needed for your external platform sync, please create a new one before it expires to
@@ -50,5 +65,7 @@ ScimTokenExpiryNoticeTemplate.PreviewProps = {
   orgName: "Example Organization",
   siteUrl: "https://infisical.com",
   url: "https://infisical.com",
-  tokenDescription: "Example SCIM Token"
+  tokenDescription: "Example SCIM Token",
+  createdOn: new Date("2025-11-27T00:00:00Z"),
+  expiringOn: new Date("2025-12-27T00:00:00Z")
 } as ScimTokenExpiryNoticeTemplateProps;

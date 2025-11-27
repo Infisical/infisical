@@ -14,44 +14,35 @@ export const scimDALFactory = (db: TDbClient) => {
 
   const findExpiringTokens = async (tx?: Knex, batchSize = 500, offset = 0): Promise<TExpiringScimToken[]> => {
     try {
-      const conn = tx || db.replicaNode();
-
-      const batch = await conn(TableName.ScimToken)
-        .join(TableName.Organization, `${TableName.Organization}.id`, `${TableName.ScimToken}.orgId`)
+      const batch = await (tx || db.replicaNode())(TableName.ScimToken)
+        .leftJoin(TableName.Organization, `${TableName.Organization}.id`, `${TableName.ScimToken}.orgId`)
+        .leftJoin(TableName.Membership, `${TableName.Membership}.scopeOrgId`, `${TableName.ScimToken}.orgId`)
+        .leftJoin(TableName.MembershipRole, `${TableName.MembershipRole}.membershipId`, `${TableName.Membership}.id`)
+        .leftJoin(TableName.Users, `${TableName.Users}.id`, `${TableName.Membership}.actorUserId`)
         .whereRaw(
           `
           (${TableName.ScimToken}."ttlDays" > 0 AND
-           (${TableName.ScimToken}."createdAt" + INTERVAL '1 day' * ${TableName.ScimToken}."ttlDays") < NOW() + INTERVAL '1 day' AND
-           (${TableName.ScimToken}."createdAt" + INTERVAL '1 day' * ${TableName.ScimToken}."ttlDays") > NOW())
+          (${TableName.ScimToken}."createdAt" + INTERVAL '1 day' * ${TableName.ScimToken}."ttlDays") < NOW() + INTERVAL '7 days' AND
+          (${TableName.ScimToken}."createdAt" + INTERVAL '1 day' * ${TableName.ScimToken}."ttlDays") > NOW())
         `
         )
         .where(`${TableName.ScimToken}.expiryNotificationSent`, false)
-        .select<TExpiringScimToken[]>(
-          conn.ref("id").withSchema(TableName.ScimToken),
-          conn.ref("ttlDays").withSchema(TableName.ScimToken),
-          conn.ref("description").withSchema(TableName.ScimToken),
-          conn.ref("orgId").withSchema(TableName.ScimToken),
-          conn.ref("createdAt").withSchema(TableName.ScimToken),
-          conn.ref("name").withSchema(TableName.Organization).as("orgName"),
-          conn.raw(`
-            COALESCE(
-              (
-                SELECT array_agg(${TableName.Users}.email)
-                FROM ${TableName.Membership}
-                JOIN ${TableName.MembershipRole} ON ${TableName.Membership}.id = ${TableName.MembershipRole}."membershipId"
-                JOIN ${TableName.Users} ON ${TableName.Membership}."actorUserId" = ${TableName.Users}.id
-                WHERE ${TableName.Membership}."scopeOrgId" = ${TableName.ScimToken}."orgId"
-                  AND ${TableName.Membership}.scope = '${AccessScope.Organization}'
-                  AND ${TableName.MembershipRole}.role = '${OrgMembershipRole.Admin}'
-                  AND ${TableName.Membership}.status != '${OrgMembershipStatus.Invited}'
-                  AND ${TableName.Membership}."actorUserId" IS NOT NULL
-                  AND ${TableName.Users}."isGhost" = false
-                  AND ${TableName.Users}.email IS NOT NULL
-              ),
-              ARRAY[]::text[]
-            ) as "adminEmails"
-          `)
-        )
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .where(`${TableName.MembershipRole}.role`, OrgMembershipRole.Admin)
+        .whereNot(`${TableName.Membership}.status`, OrgMembershipStatus.Invited)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .where(`${TableName.Users}.isGhost`, false)
+        .whereNotNull(`${TableName.Users}.email`)
+        .groupBy([`${TableName.ScimToken}.id`, `${TableName.Organization}.name`])
+        .select<TExpiringScimToken[]>([
+          db.ref("id").withSchema(TableName.ScimToken),
+          db.ref("ttlDays").withSchema(TableName.ScimToken),
+          db.ref("description").withSchema(TableName.ScimToken),
+          db.ref("orgId").withSchema(TableName.ScimToken),
+          db.ref("createdAt").withSchema(TableName.ScimToken),
+          db.ref("name").withSchema(TableName.Organization).as("orgName"),
+          db.raw(`array_agg(${TableName.Users}."email") as "adminEmails"`)
+        ])
         .limit(batchSize)
         .offset(offset);
 

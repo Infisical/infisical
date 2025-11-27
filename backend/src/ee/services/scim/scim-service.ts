@@ -1266,6 +1266,9 @@ export const scimServiceFactory = ({
               return;
             }
 
+            const createdOn = new Date(token.createdAt);
+            const expiringOn = new Date(createdOn.getTime() + Number(token.ttlDays) * 86400 * 1000);
+
             await smtpService.sendMail({
               recipients: token.adminEmails,
               subjectLine: "SCIM Token Expiry Notice",
@@ -1273,7 +1276,9 @@ export const scimServiceFactory = ({
               substitutions: {
                 tokenDescription: token.description,
                 orgName: token.orgName,
-                url: `${appCfg.SITE_URL}/organizations/${token.orgId}/settings?selectedTab=provisioning-settings`
+                url: `${appCfg.SITE_URL}/organizations/${token.orgId}/settings?selectedTab=provisioning-settings`,
+                createdOn,
+                expiringOn
               }
             });
 
