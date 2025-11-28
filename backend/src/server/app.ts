@@ -16,7 +16,7 @@ import { Cluster, Redis } from "ioredis";
 import { Knex } from "knex";
 
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
-import { TKeyStoreFactory } from "@app/keystore/keystore";
+import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig, IS_PACKAGED, TEnvConfig } from "@app/lib/config/env";
 import { CustomLogger } from "@app/lib/logger/logger";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
@@ -161,10 +161,12 @@ export const main = async ({
 
     await server.register(registerServeUI, {
       standaloneMode: appCfg.STANDALONE_MODE || IS_PACKAGED,
-      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../")
+      dir: path.join(__dirname, IS_PACKAGED ? "../../../" : "../../"),
+      keyStore
     });
 
     await server.ready();
+    await keyStore.setItem(KeyStorePrefixes.InfisicalVersion, appCfg.INFISICAL_PLATFORM_VERSION || "v0.0.1");
     server.swagger();
     return server;
   } catch (err) {
