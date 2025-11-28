@@ -25,3 +25,9 @@ export type TUpdateCertificateAuthorityDTO = Partial<Omit<TCreateCertificateAuth
   type: CaType;
   id: string;
 };
+
+export type TDeprecatedUpdateCertificateAuthorityDTO = Partial<Omit<TCreateCertificateAuthorityDTO, "projectId">> & {
+  type: CaType;
+  caName: string;
+  projectId: string;
+};

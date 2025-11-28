@@ -15,6 +15,7 @@ import { registerGeneralCertificateAuthorityRouter } from "./certificate-authori
 import { registerCertificateProfilesRouter } from "./certificate-profiles-router";
 import { registerCertificateRouter } from "./certificate-router";
 import { registerCertificateTemplateRouter } from "./certificate-template-router";
+import { DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP } from "./deprecated-certificate-authority-routers";
 import { registerDeprecatedCertRouter } from "./deprecated-certificate-router";
 import { registerDeprecatedCertificateTemplateRouter } from "./deprecated-certificate-template-router";
 import { registerDeprecatedIdentityProjectMembershipRouter } from "./deprecated-identity-project-membership-router";
@@ -190,7 +191,7 @@ export const registerV1Routes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCaRouter, { prefix: "/ca" });
       await pkiRouter.register(
         async (caRouter) => {
-          for await (const [caType, router] of Object.entries(CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
+          for await (const [caType, router] of Object.entries(DEPRECATED_CERTIFICATE_AUTHORITY_REGISTER_ROUTER_MAP)) {
             await caRouter.register(router, { prefix: `/${caType}` });
           }
         },
