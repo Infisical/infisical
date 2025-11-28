@@ -748,6 +748,33 @@ export const authLoginServiceFactory = ({
       });
     }
 
+    if (!subOrg.rootOrgId) {
+      throw new BadRequestError({
+        message: "Invalid sub-organization"
+      });
+    }
+
+    const rootOrg = await orgDAL.findById(subOrg.rootOrgId);
+
+    if (!rootOrg) {
+      throw new BadRequestError({
+        message: "Invalid root organization"
+      });
+    }
+
+    const rootOrgMembership = await membershipUserDAL.findOne({
+      actorUserId: user.id,
+      scopeOrgId: rootOrg.id,
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
+    });
+
+    if (!rootOrgMembership) {
+      throw new ForbiddenRequestError({
+        message: "User does not have access to the root organization"
+      });
+    }
+
     const subOrgmembershipRole = await membershipRoleDAL.findOne({ membershipId: userSubOrgMembership.id });
 
     // Check if authEnforced is true and the current auth method is not an enforced method
@@ -816,7 +843,7 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      ...(subOrg.rootOrgId && { organizationId: subOrg.rootOrgId }),
+      organizationId: rootOrg.id,
       subOrganizationId,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod

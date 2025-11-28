@@ -93,7 +93,7 @@ export const identityUaServiceFactory = ({
     const org = await orgDAL.findById(identity.orgId);
     const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
 
-    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+    const rootOrgId = isSubOrg ? org.rootOrgId || "" : org.id;
 
     // Resolve sub-organization if specified
     let scopeOrgId = rootOrgId;
@@ -101,7 +101,7 @@ export const identityUaServiceFactory = ({
       const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
 
       if (subOrg) {
-        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+        if (subOrg.rootOrgId === rootOrgId) {
           // Verify identity has membership in the sub-organization
           const subOrgMembership = await membershipIdentityDAL.findOne({
             scope: AccessScope.Organization,

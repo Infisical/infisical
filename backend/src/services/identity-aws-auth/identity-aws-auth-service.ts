@@ -129,7 +129,7 @@ export const identityAwsAuthServiceFactory = ({
       const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
 
       if (subOrg) {
-        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+        if (subOrg.rootOrgId === rootOrgId) {
           // Verify identity has membership in the sub-organization
           const subOrgMembership = await membershipIdentityDAL.findOne({
             scope: AccessScope.Organization,
