@@ -307,7 +307,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.CREATE_TOKEN.identityId)
       }),
       body: z.object({
-        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name)
+        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name),
+        subOrganizationName: z.string().trim().optional().describe(TOKEN_AUTH.CREATE_TOKEN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -328,7 +329,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
           actorOrgId: req.permission.orgId,
           identityId: req.params.identityId,
           isActorSuperAdmin: isSuperAdmin(req.auth),
-          ...req.body
+          ...req.body,
+          subOrganizationName: req.body.subOrganizationName
         });
 
       await server.services.auditLog.createAuditLog({

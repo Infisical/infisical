@@ -46,7 +46,7 @@ type TIdentityTlsCertAuthServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 const parseSubjectDetails = (data: string) => {
@@ -68,7 +68,11 @@ export const identityTlsCertAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityTlsCertAuthServiceFactoryDep): TIdentityTlsCertAuthServiceFactory => {
-  const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({ identityId, clientCertificate }) => {
+  const login: TIdentityTlsCertAuthServiceFactory["login"] = async ({
+    identityId,
+    clientCertificate,
+    subOrganizationName
+  }) => {
     const appCfg = getConfig();
     const identityTlsCertAuth = await identityTlsCertAuthDAL.findOne({ identityId });
     if (!identityTlsCertAuth) {
@@ -81,6 +85,30 @@ export const identityTlsCertAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
 
     try {
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -157,7 +185,8 @@ export const identityTlsCertAuthServiceFactory = ({
             accessTokenMaxTTL: identityTlsCertAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityTlsCertAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.TLS_CERT_AUTH
+            authMethod: IdentityAuthMethod.TLS_CERT_AUTH,
+            scopeOrgId
           },
           tx
         );

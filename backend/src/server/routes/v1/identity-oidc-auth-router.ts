@@ -47,7 +47,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       description: "Login with OIDC Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
-        jwt: z.string().trim()
+        jwt: z.string().trim(),
+        subOrganizationName: z.string().trim().optional().describe(OIDC_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -62,7 +63,8 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
         await server.services.identityOidcAuth.login({
           identityId: req.body.identityId,
-          jwt: req.body.jwt
+          jwt: req.body.jwt,
+          subOrganizationName: req.body.subOrganizationName
         });
 
       await server.services.auditLog.createAuditLog({

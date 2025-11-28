@@ -99,7 +99,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       description: "Login with JWT Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
-        jwt: z.string().trim()
+        jwt: z.string().trim(),
+        subOrganizationName: z.string().trim().optional().describe(JWT_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -114,7 +115,8 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       const { identityJwtAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityJwtAuth.login({
           identityId: req.body.identityId,
-          jwt: req.body.jwt
+          jwt: req.body.jwt,
+          subOrganizationName: req.body.subOrganizationName
         });
 
       await server.services.auditLog.createAuditLog({

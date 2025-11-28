@@ -41,6 +41,7 @@ import {
   TGetUaClientSecretsDTO,
   TGetUaDTO,
   TGetUniversalAuthClientSecretByIdDTO,
+  TLoginUaDTO,
   TRevokeUaClientSecretDTO,
   TRevokeUaDTO,
   TUpdateUaDTO
@@ -54,7 +55,7 @@ type TIdentityUaServiceFactoryDep = {
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
   keyStore: Pick<
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
@@ -79,7 +80,7 @@ export const identityUaServiceFactory = ({
   keyStore,
   identityDAL
 }: TIdentityUaServiceFactoryDep) => {
-  const login = async (clientId: string, clientSecret: string, ip: string) => {
+  const login = async ({ clientId, clientSecret, ip, subOrganizationName }: TLoginUaDTO) => {
     const appCfg = getConfig();
     const identityUa = await identityUaDAL.findOne({ clientId });
     if (!identityUa) {
@@ -90,6 +91,30 @@ export const identityUaServiceFactory = ({
 
     const identity = await identityDAL.findById(identityUa.identityId);
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
 
     try {
       checkIPAgainstBlocklist({
@@ -259,6 +284,7 @@ export const identityUaServiceFactory = ({
             accessTokenNumUsesLimit: identityUa.accessTokenNumUsesLimit,
             accessTokenPeriod: identityUa.accessTokenPeriod,
             authMethod: IdentityAuthMethod.UNIVERSAL_AUTH,
+            scopeOrgId,
             ...accessTokenTTLParams
           },
           tx

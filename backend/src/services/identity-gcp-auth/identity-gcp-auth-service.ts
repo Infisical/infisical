@@ -47,7 +47,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -61,7 +61,7 @@ export const identityGcpAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
+  const login = async ({ identityId, jwt: gcpJwt, subOrganizationName }: TLoginGcpAuthDTO) => {
     const appCfg = getConfig();
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
     if (!identityGcpAuth) {
@@ -72,6 +72,31 @@ export const identityGcpAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
+
     try {
       let gcpIdentityDetails: TGcpIdentityDetails;
       switch (identityGcpAuth.type) {
@@ -166,7 +191,8 @@ export const identityGcpAuthServiceFactory = ({
             accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.GCP_AUTH
+            authMethod: IdentityAuthMethod.GCP_AUTH,
+            scopeOrgId
           },
           tx
         );

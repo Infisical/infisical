@@ -23,7 +23,8 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       description: "Login with GCP Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId),
-        jwt: z.string()
+        jwt: z.string(),
+        subOrganizationName: z.string().trim().optional().describe(GCP_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -36,7 +37,10 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identityGcpAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityGcpAuth.login(req.body);
+        await server.services.identityGcpAuth.login({
+          ...req.body,
+          subOrganizationName: req.body.subOrganizationName
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

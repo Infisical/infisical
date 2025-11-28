@@ -60,7 +60,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
@@ -75,7 +75,7 @@ export const identityJwtAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: jwtValue }: TLoginJwtAuthDTO) => {
+  const login = async ({ identityId, jwt: jwtValue, subOrganizationName }: TLoginJwtAuthDTO) => {
     const appCfg = getConfig();
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
     if (!identityJwtAuth) {
@@ -86,6 +86,30 @@ export const identityJwtAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
     try {
       const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -246,7 +270,8 @@ export const identityJwtAuthServiceFactory = ({
             accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.JWT_AUTH
+            authMethod: IdentityAuthMethod.JWT_AUTH,
+            scopeOrgId
           },
           tx
         );

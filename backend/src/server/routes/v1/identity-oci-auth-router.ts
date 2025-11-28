@@ -40,7 +40,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
               });
             }
           })
-          .describe(OCI_AUTH.LOGIN.headers)
+          .describe(OCI_AUTH.LOGIN.headers),
+        subOrganizationName: z.string().trim().optional().describe(OCI_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -53,7 +54,10 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identityOciAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityOciAuth.login(req.body);
+        await server.services.identityOciAuth.login({
+          ...req.body,
+          subOrganizationName: req.body.subOrganizationName
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

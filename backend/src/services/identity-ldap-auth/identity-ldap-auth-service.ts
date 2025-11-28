@@ -70,7 +70,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -153,7 +153,7 @@ export const identityLdapAuthServiceFactory = ({
     return { opts, ldapConfig };
   };
 
-  const login = async ({ identityId }: TLoginLdapAuthDTO) => {
+  const login = async ({ identityId, subOrganizationName }: TLoginLdapAuthDTO) => {
     const appCfg = getConfig();
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
@@ -167,6 +167,30 @@ export const identityLdapAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
     const plan = await licenseService.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
@@ -204,7 +228,8 @@ export const identityLdapAuthServiceFactory = ({
             accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.LDAP_AUTH
+            authMethod: IdentityAuthMethod.LDAP_AUTH,
+            scopeOrgId
           },
           tx
         );

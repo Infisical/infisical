@@ -49,7 +49,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
@@ -63,7 +63,7 @@ export const identityAzureAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: azureJwt }: TLoginAzureAuthDTO) => {
+  const login = async ({ identityId, jwt: azureJwt, subOrganizationName }: TLoginAzureAuthDTO) => {
     const appCfg = getConfig();
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
     if (!identityAzureAuth) {
@@ -74,6 +74,32 @@ export const identityAzureAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
 
     try {
       const azureIdentity = await validateAzureIdentity({
@@ -126,7 +152,8 @@ export const identityAzureAuthServiceFactory = ({
             accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AZURE_AUTH
+            authMethod: IdentityAuthMethod.AZURE_AUTH,
+            scopeOrgId
           },
           tx
         );

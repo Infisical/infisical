@@ -78,7 +78,7 @@ type TIdentityKubernetesAuthServiceFactoryDep = {
   gatewayV2Service: TGatewayV2ServiceFactory;
   gatewayDAL: Pick<TGatewayDALFactory, "find">;
   gatewayV2DAL: Pick<TGatewayV2DALFactory, "find">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityKubernetesAuthServiceFactory = ReturnType<typeof identityKubernetesAuthServiceFactory>;
@@ -185,7 +185,7 @@ export const identityKubernetesAuthServiceFactory = ({
     return callbackResult;
   };
 
-  const login = async ({ identityId, jwt: serviceAccountJwt }: TLoginKubernetesAuthDTO) => {
+  const login = async ({ identityId, jwt: serviceAccountJwt, subOrganizationName }: TLoginKubernetesAuthDTO) => {
     const appCfg = getConfig();
     const identityKubernetesAuth = await identityKubernetesAuthDAL.findOne({ identityId });
     if (!identityKubernetesAuth) {
@@ -198,6 +198,30 @@ export const identityKubernetesAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
 
     try {
       const { decryptor } = await kmsService.createCipherPairWithDataKey({
@@ -487,7 +511,8 @@ export const identityKubernetesAuthServiceFactory = ({
             accessTokenMaxTTL: identityKubernetesAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityKubernetesAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.KUBERNETES_AUTH
+            authMethod: IdentityAuthMethod.KUBERNETES_AUTH,
+            scopeOrgId
           },
           tx
         );

@@ -38,6 +38,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             message: "AccessKeyId must be alphanumeric"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
+        subOrganizationName: z.string().trim().optional().describe(ALICLOUD_AUTH.LOGIN.subOrganizationName),
         SignatureMethod: z.enum(["HMAC-SHA1"]).describe(ALICLOUD_AUTH.LOGIN.SignatureMethod),
         Timestamp: z
           .string()
@@ -74,7 +75,10 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
     },
     handler: async (req) => {
       const { identityAliCloudAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityAliCloudAuth.login(req.body);
+        await server.services.identityAliCloudAuth.login({
+          ...req.body,
+          subOrganizationName: req.body.subOrganizationName
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

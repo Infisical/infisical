@@ -28,7 +28,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim().describe(AWS_AUTH.LOGIN.identityId),
         iamHttpRequestMethod: z.string().default("POST").describe(AWS_AUTH.LOGIN.iamHttpRequestMethod),
         iamRequestBody: z.string().describe(AWS_AUTH.LOGIN.iamRequestBody),
-        iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders)
+        iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders),
+        subOrganizationName: z.string().trim().optional().describe(AWS_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -41,7 +42,10 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identityAwsAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityAwsAuth.login(req.body);
+        await server.services.identityAwsAuth.login({
+          ...req.body,
+          subOrganizationName: req.body.subOrganizationName
+        });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

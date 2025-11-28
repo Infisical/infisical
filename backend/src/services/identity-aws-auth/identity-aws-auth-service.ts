@@ -53,7 +53,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
@@ -101,7 +101,13 @@ export const identityAwsAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityAwsAuthServiceFactoryDep) => {
-  const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
+  const login = async ({
+    identityId,
+    iamHttpRequestMethod,
+    iamRequestBody,
+    iamRequestHeaders,
+    subOrganizationName
+  }: TLoginAwsAuthDTO) => {
     const appCfg = getConfig();
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
     if (!identityAwsAuth) {
@@ -112,6 +118,32 @@ export const identityAwsAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
+
     try {
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
       const body: string = Buffer.from(iamRequestBody, "base64").toString();
@@ -207,7 +239,8 @@ export const identityAwsAuthServiceFactory = ({
             accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AWS_AUTH
+            authMethod: IdentityAuthMethod.AWS_AUTH,
+            scopeOrgId
           },
           tx
         );

@@ -35,7 +35,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       description: "Login with Universal Auth for machine identity",
       body: z.object({
         clientId: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientId),
-        clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret)
+        clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret),
+        subOrganizationName: z.string().trim().optional().describe(UNIVERSAL_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -55,7 +56,12 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identity,
         accessTokenTTL,
         accessTokenMaxTTL
-      } = await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
+      } = await server.services.identityUa.login(
+        req.body.clientId,
+        req.body.clientSecret,
+        req.realIp,
+        req.body.subOrganizationName
+      );
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

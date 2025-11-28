@@ -44,7 +44,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       description: "Login with Kubernetes Auth for machine identity",
       body: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
-        jwt: z.string().trim()
+        jwt: z.string().trim(),
+        subOrganizationName: z.string().trim().optional().describe(KUBERNETES_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -59,7 +60,8 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       const { identityKubernetesAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityKubernetesAuth.login({
           identityId: req.body.identityId,
-          jwt: req.body.jwt
+          jwt: req.body.jwt,
+          subOrganizationName: req.body.subOrganizationName
         });
 
       await server.services.auditLog.createAuditLog({

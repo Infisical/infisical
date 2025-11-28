@@ -51,7 +51,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -65,7 +65,7 @@ export const identityOciAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
-  const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
+  const login = async ({ identityId, headers, userOcid, subOrganizationName }: TLoginOciAuthDTO) => {
     const appCfg = getConfig();
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
     if (!identityOciAuth) {
@@ -76,6 +76,30 @@ export const identityOciAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
     try {
       // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
       if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -137,7 +161,8 @@ export const identityOciAuthServiceFactory = ({
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.OCI_AUTH
+            authMethod: IdentityAuthMethod.OCI_AUTH,
+            scopeOrgId
           },
           tx
         );

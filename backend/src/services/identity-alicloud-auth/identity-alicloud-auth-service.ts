@@ -53,7 +53,7 @@ type TIdentityAliCloudAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityAliCloudAuthServiceFactory = ReturnType<typeof identityAliCloudAuthServiceFactory>;
@@ -67,7 +67,7 @@ export const identityAliCloudAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityAliCloudAuthServiceFactoryDep) => {
-  const login = async ({ identityId, ...params }: TLoginAliCloudAuthDTO) => {
+  const login = async ({ identityId, subOrganizationName, ...params }: TLoginAliCloudAuthDTO) => {
     const appCfg = getConfig();
     const identityAliCloudAuth = await identityAliCloudAuthDAL.findOne({ identityId });
     if (!identityAliCloudAuth) {
@@ -80,6 +80,30 @@ export const identityAliCloudAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
 
     try {
       const requestUrl = new URL("https://sts.aliyuncs.com");
@@ -132,7 +156,8 @@ export const identityAliCloudAuthServiceFactory = ({
             accessTokenMaxTTL: identityAliCloudAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityAliCloudAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.ALICLOUD_AUTH
+            authMethod: IdentityAuthMethod.ALICLOUD_AUTH,
+            scopeOrgId
           },
           tx
         );

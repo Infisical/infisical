@@ -124,7 +124,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       body: z.object({
         identityId: z.string().trim().describe(LDAP_AUTH.LOGIN.identityId),
         username: z.string().describe(LDAP_AUTH.LOGIN.username),
-        password: z.string().describe(LDAP_AUTH.LOGIN.password)
+        password: z.string().describe(LDAP_AUTH.LOGIN.password),
+        subOrganizationName: z.string().trim().optional().describe(LDAP_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -163,7 +164,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       const { identityId, user } = req.passportMachineIdentity;
 
       const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
-        identityId
+        identityId,
+        subOrganizationName: req.body.subOrganizationName
       });
 
       await server.services.auditLog.createAuditLog({

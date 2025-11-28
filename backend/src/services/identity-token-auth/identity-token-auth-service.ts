@@ -59,7 +59,7 @@ type TIdentityTokenAuthServiceFactoryDep = {
   >;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityTokenAuthServiceFactory = ReturnType<typeof identityTokenAuthServiceFactory>;
@@ -424,7 +424,8 @@ export const identityTokenAuthServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     name,
-    isActorSuperAdmin
+    isActorSuperAdmin,
+    subOrganizationName
   }: TCreateTokenAuthTokenDTO) => {
     await validateIdentityUpdateForSuperAdminPrivileges(identityId, isActorSuperAdmin);
 
@@ -503,6 +504,32 @@ export const identityTokenAuthServiceFactory = ({
     const identity = await identityDAL.findById(identityTokenAuth.identityId);
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
+    const org = await orgDAL.findById(identity.orgId);
+    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+
+    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+
+    // Resolve sub-organization if specified
+    let scopeOrgId = rootOrgId;
+    if (subOrganizationName) {
+      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+
+      if (subOrg) {
+        if (!isSubOrg || (isSubOrg && subOrg.rootOrgId === rootOrgId)) {
+          // Verify identity has membership in the sub-organization
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (subOrgMembership) {
+            scopeOrgId = subOrg.id;
+          }
+        }
+      }
+    }
+
     const identityAccessToken = await identityTokenAuthDAL.transaction(async (tx) => {
       await membershipIdentityDAL.update(
         identity.projectId
@@ -529,7 +556,8 @@ export const identityTokenAuthServiceFactory = ({
           accessTokenNumUses: 0,
           accessTokenNumUsesLimit: identityTokenAuth.accessTokenNumUsesLimit,
           name,
-          authMethod: IdentityAuthMethod.TOKEN_AUTH
+          authMethod: IdentityAuthMethod.TOKEN_AUTH,
+          scopeOrgId
         },
         tx
       );
