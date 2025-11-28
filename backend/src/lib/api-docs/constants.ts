@@ -312,7 +312,8 @@ export const ALICLOUD_AUTH = {
     Timestamp: "The timestamp of the request in UTC, formatted as 'YYYY-MM-DDTHH:mm:ssZ'.",
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
-    Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
+    Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
+    SecurityToken: "The security token if using temporary credentials from STS."
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",

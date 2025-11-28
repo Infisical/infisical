@@ -25,6 +25,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
       body: z.object({
         identityId: z.string().trim().describe(ALICLOUD_AUTH.LOGIN.identityId),
         Action: z.enum(["GetCallerIdentity"]).describe(ALICLOUD_AUTH.LOGIN.Action),
+        SecurityToken: z.string().trim().optional().describe(ALICLOUD_AUTH.LOGIN.SecurityToken),
         Format: z.enum(["JSON"]).describe(ALICLOUD_AUTH.LOGIN.Format),
         Version: z
           .string()
@@ -34,8 +35,8 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
           .describe(ALICLOUD_AUTH.LOGIN.Version),
         AccessKeyId: z
           .string()
-          .refine((val) => new RE2("^[A-Za-z0-9]+$").test(val), {
-            message: "AccessKeyId must be alphanumeric"
+          .refine((val) => new RE2("^[A-Za-z0-9.]+$").test(val), {
+            message: "AccessKeyId may contain letters, numbers, and dots only"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
         SignatureMethod: z.enum(["HMAC-SHA1"]).describe(ALICLOUD_AUTH.LOGIN.SignatureMethod),
