@@ -82,15 +82,20 @@ import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal"
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
+enum AddIdentityType {
+  CreateNew,
+  AssignExisting
+}
+
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
 
-    const [addMachineIdentityType, setAddMachineIdentityType] = useState<
-      "create-new" | "assign-existing"
-    >("create-new");
+    const [addMachineIdentityType, setAddMachineIdentityType] = useState<AddIdentityType>(
+      AddIdentityType.CreateNew
+    );
 
     const {
       offset,
@@ -517,26 +522,30 @@ export const IdentityTab = withProjectPermission(
                 <Button
                   variant="outline_bg"
                   onClick={() => {
-                    setAddMachineIdentityType("create-new");
+                    setAddMachineIdentityType(AddIdentityType.CreateNew);
                   }}
                   size="xs"
-                  className={`${
-                    addMachineIdentityType === "create-new" ? "bg-mineshaft-500" : "bg-transparent"
-                  } min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600`}
+                  className={twMerge(
+                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                    addMachineIdentityType === AddIdentityType.CreateNew
+                      ? "bg-mineshaft-500"
+                      : "bg-transparent"
+                  )}
                 >
                   Create New
                 </Button>
                 <Button
                   variant="outline_bg"
                   onClick={() => {
-                    setAddMachineIdentityType("assign-existing");
+                    setAddMachineIdentityType(AddIdentityType.AssignExisting);
                   }}
                   size="xs"
-                  className={`${
-                    addMachineIdentityType === "assign-existing"
+                  className={twMerge(
+                    "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                    addMachineIdentityType === AddIdentityType.AssignExisting
                       ? "bg-mineshaft-500"
                       : "bg-transparent"
-                  } min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600`}
+                  )}
                 >
                   Assign Existing
                 </Button>
@@ -574,14 +583,14 @@ export const IdentityTab = withProjectPermission(
                 <InfoIcon size={16} className="text-mineshaft-400" />
               </Tooltip>
             </div>
-            {addMachineIdentityType === "create-new" && (
+            {addMachineIdentityType === AddIdentityType.CreateNew && (
               <ProjectIdentityModal
                 onClose={() => {
                   handlePopUpClose("createIdentity");
                 }}
               />
             )}
-            {addMachineIdentityType === "assign-existing" && (
+            {addMachineIdentityType === AddIdentityType.AssignExisting && (
               <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
             )}
           </ModalContent>
