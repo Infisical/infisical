@@ -99,7 +99,7 @@ export const identityAliCloudAuthServiceFactory = ({
           .some((arn) => {
             const trimmedArn = arn.trim();
             if (trimmedArn.endsWith("*")) {
-              const prefix = arn.slice(0, -1);
+              const prefix = trimmedArn.slice(0, -1);
               if (prefix === "") return false; // Reject bare "*"
               return data.Arn.startsWith(prefix);
             }
