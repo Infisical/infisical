@@ -574,67 +574,6 @@ export const IdentityTab = withProjectPermission(
                 <InfoIcon size={16} className="text-mineshaft-400" />
               </Tooltip>
             </div>
-            {/* <p className="mb-4 text-sm text-bunker-300">
-              {addType === "create-new" ? (
-                <>
-
-                </>
-              ) : (
-                <>
-
-                </>
-              )}
-            </p> */}
-            {/* {addType === WizardSteps.SelectAction && (
-                <motion.div
-                  key="select-type-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
-                >
-                  <div
-                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setAddType(WizardSteps.ProjectIdentity)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setAddType(WizardSteps.ProjectIdentity);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <PlusIcon size="1rem" />
-                      <div>Create Machine Identity</div>
-                    </div>
-                    <div className="mt-2 text-xs text-mineshaft-300">
-                      Create a new machine identity specifically for this project. This machine
-                      identity will be managed at the project-level.
-                    </div>
-                  </div>
-                  <div
-                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setAddType(WizardSteps.LinkIdentity)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setAddType(WizardSteps.LinkIdentity);
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <LinkIcon size="1rem" />
-                      <div>Assign Existing Machine Identity</div>
-                    </div>
-                    <div className="mt-2 text-xs text-mineshaft-300">
-                      Assign an existing machine identity from your organization. The machine
-                      identity will continue to be managed at its original scope.
-                    </div>
-                  </div>
-                </motion.div>
-              )} */}
             {addMachineIdentityType === "create-new" && (
               <ProjectIdentityModal
                 onClose={() => {
