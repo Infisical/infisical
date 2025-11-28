@@ -370,7 +370,7 @@ Feature: External CA
       | {"COMMON_NAME": "localhost"} |
       | {}                           |
 
-  Scenario Outline: Issue a certificate with bad CSR disallowed by the template
+  Scenario Outline: Issue a certificate with bad CSR names disallowed by the template
     Given I create a Cloudflare connection as cloudflare
     Then I memorize cloudflare with jq ".appConnection.id" as app_conn_id
     Given I create a external ACME CA with the following config as ext_ca
