@@ -12,8 +12,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
-import { AnimatePresence, motion } from "framer-motion";
-import { LinkIcon, PlusIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -83,19 +82,15 @@ import { ProjectLinkIdentityModal } from "./components/ProjectLinkIdentityModal"
 
 const MAX_ROLES_TO_BE_SHOWN_IN_TABLE = 2;
 
-enum WizardSteps {
-  SelectAction = "select-action",
-  LinkIdentity = "link-identity",
-  ProjectIdentity = "project-identity"
-}
-
 export const IdentityTab = withProjectPermission(
   () => {
     const { currentProject, projectId } = useProject();
     const navigate = useNavigate();
     const { isSubOrganization, currentOrg } = useOrganization();
 
-    const [wizardStep, setWizardStep] = useState(WizardSteps.SelectAction);
+    const [addMachineIdentityType, setAddMachineIdentityType] = useState<
+      "create-new" | "assign-existing"
+    >("create-new");
 
     const {
       offset,
@@ -510,16 +505,87 @@ export const IdentityTab = withProjectPermission(
           isOpen={popUp.createIdentity.isOpen}
           onOpenChange={(open) => {
             handlePopUpToggle("createIdentity", open);
-            if (!open) setWizardStep(WizardSteps.SelectAction);
           }}
         >
           <ModalContent
             bodyClassName="overflow-visible"
-            title="Add Project Machine Identity"
+            title="Add Machine Identity to Project"
             subTitle="Create a new machine identity or assign an existing one"
           >
-            <AnimatePresence mode="wait">
-              {wizardStep === WizardSteps.SelectAction && (
+            <div className="mb-4 flex items-center justify-center gap-x-2">
+              <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+                <Button
+                  variant="outline_bg"
+                  onClick={() => {
+                    setAddMachineIdentityType("create-new");
+                  }}
+                  size="xs"
+                  className={`${
+                    addMachineIdentityType === "create-new" ? "bg-mineshaft-500" : "bg-transparent"
+                  } min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600`}
+                >
+                  Create New
+                </Button>
+                <Button
+                  variant="outline_bg"
+                  onClick={() => {
+                    setAddMachineIdentityType("assign-existing");
+                  }}
+                  size="xs"
+                  className={`${
+                    addMachineIdentityType === "assign-existing"
+                      ? "bg-mineshaft-500"
+                      : "bg-transparent"
+                  } min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600`}
+                >
+                  Assign Existing
+                </Button>
+              </div>
+              <Tooltip
+                className="max-w-sm"
+                position="right"
+                align="start"
+                content={
+                  <>
+                    <p className="mb-2 text-mineshaft-300">
+                      You can add machine identities to your project in one of two ways:
+                    </p>
+                    <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
+                      <li className="text-mineshaft-200">
+                        <strong className="font-medium text-mineshaft-100">Create New</strong> -
+                        Create a dedicated machine identity managed at the project-level.
+                        <p className="mt-2">
+                          This method is recommended for autonomous teams that need to manage
+                          machine identity authentication.
+                        </p>
+                      </li>
+                      <li>
+                        <strong className="font-medium text-mineshaft-100">Assign Existing</strong>{" "}
+                        - Assign an existing machine identity from your organization.
+                        <p className="mt-2">
+                          This method is recommended for organizations that need to maintain
+                          centralized control.
+                        </p>
+                      </li>
+                    </ul>
+                  </>
+                }
+              >
+                <InfoIcon size={16} className="text-mineshaft-400" />
+              </Tooltip>
+            </div>
+            {/* <p className="mb-4 text-sm text-bunker-300">
+              {addType === "create-new" ? (
+                <>
+
+                </>
+              ) : (
+                <>
+
+                </>
+              )}
+            </p> */}
+            {/* {addType === WizardSteps.SelectAction && (
                 <motion.div
                   key="select-type-step"
                   transition={{ duration: 0.1 }}
@@ -531,10 +597,10 @@ export const IdentityTab = withProjectPermission(
                     className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
                     role="button"
                     tabIndex={0}
-                    onClick={() => setWizardStep(WizardSteps.ProjectIdentity)}
+                    onClick={() => setAddType(WizardSteps.ProjectIdentity)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        setWizardStep(WizardSteps.ProjectIdentity);
+                        setAddType(WizardSteps.ProjectIdentity);
                       }
                     }}
                   >
@@ -551,10 +617,10 @@ export const IdentityTab = withProjectPermission(
                     className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
                     role="button"
                     tabIndex={0}
-                    onClick={() => setWizardStep(WizardSteps.LinkIdentity)}
+                    onClick={() => setAddType(WizardSteps.LinkIdentity)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        setWizardStep(WizardSteps.LinkIdentity);
+                        setAddType(WizardSteps.LinkIdentity);
                       }
                     }}
                   >
@@ -568,35 +634,17 @@ export const IdentityTab = withProjectPermission(
                     </div>
                   </div>
                 </motion.div>
-              )}
-              {wizardStep === WizardSteps.ProjectIdentity && (
-                <motion.div
-                  key="identity-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
-                >
-                  <ProjectIdentityModal
-                    onClose={() => {
-                      handlePopUpClose("createIdentity");
-                      setWizardStep(WizardSteps.SelectAction);
-                    }}
-                  />
-                </motion.div>
-              )}
-              {wizardStep === WizardSteps.LinkIdentity && (
-                <motion.div
-                  key="link-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
-                >
-                  <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+              )} */}
+            {addMachineIdentityType === "create-new" && (
+              <ProjectIdentityModal
+                onClose={() => {
+                  handlePopUpClose("createIdentity");
+                }}
+              />
+            )}
+            {addMachineIdentityType === "assign-existing" && (
+              <ProjectLinkIdentityModal handlePopUpToggle={handlePopUpToggle} />
+            )}
           </ModalContent>
         </Modal>
         <DeleteActionModal
