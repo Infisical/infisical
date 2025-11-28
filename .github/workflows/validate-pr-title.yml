@@ -18,11 +18,11 @@ jobs:
             // Valid PR types based on pull_request_template.md
             const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore'];
             
-            // Regex pattern: type[optional-scope]: Short description
+            // Regex pattern: type(optional-scope): Short description
             // - Type must be one of the valid types
-            // - Scope is optional, must be in brackets, lowercase alphanumeric with hyphens
+            // - Scope is optional, must be in parentheses, lowercase alphanumeric with hyphens
             // - Followed by colon, space, and description
-            const pattern = new RegExp(`^(${validTypes.join('|')})(\\[[a-z0-9-]+\\])?: .+$`);
+            const pattern = new RegExp(`^(${validTypes.join('|')})(\\([a-z0-9-]+\\))?: .+$`);
             
             if (!pattern.test(title)) {
               const errorMessage = `
@@ -30,7 +30,7 @@ jobs:
             
             Your PR title: \`${title}\`
             
-            **Expected format:** \`type[scope]: Short description\`
+            **Expected format:** \`type(scope): Short description\`
             
             **Valid types:**
             - \`fix\` - Bug fixes
@@ -40,12 +40,12 @@ jobs:
             - \`docs\` - Documentation updates
             - \`chore\` - Maintenance tasks
             
-            **Scope:** Optional, short identifier in brackets (e.g., \`[api]\`, \`[auth]\`, \`[ui]\`)
+            **Scope:** Optional, short identifier in parentheses (e.g., \`(api)\`, \`(auth)\`, \`(ui)\`)
             
             **Examples:**
             - \`fix: Prevent crash on sync\`
-            - \`fix[api]: Handle null response from auth endpoint\`
-            - \`docs[cli]: Update installation guide\`
+            - \`fix(api): Handle null response from auth endpoint\`
+            - \`docs(cli): Update installation guide\`
             `;
               
               core.setFailed(errorMessage);
