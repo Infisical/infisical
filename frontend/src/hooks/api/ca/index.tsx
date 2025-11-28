@@ -13,12 +13,12 @@ export {
 export {
   useGetAzureAdcsTemplates,
   useGetCa,
-  useGetCaById,
   useGetCaCert,
   useGetCaCerts,
   useGetCaCertTemplates,
   useGetCaCrls,
   useGetCaCsr,
+  useGetInternalCaById,
   useListCasByProjectId,
   useListCasByTypeAndProjectId,
   useListExternalCasByProjectId

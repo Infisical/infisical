@@ -48,7 +48,6 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
-      enableDirectIssuance: boolean;
     }
   | ({
       isInternal: false;
@@ -66,7 +65,6 @@ export type TCreateCaDTO =
       notAfter?: string;
       maxPathLength?: number | null;
       keyAlgorithm: CertKeyAlgorithm;
-      enableDirectIssuance: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaDTO = {
@@ -79,14 +77,12 @@ export type TUpdateCaDTO =
       caId: string;
       name?: string;
       status?: CaStatus;
-      enableDirectIssuance?: boolean;
     }
   | ({
       isInternal: false;
       caId: string;
       name?: string;
       status?: CaStatus;
-      enableDirectIssuance?: boolean;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TDeleteCaDTO = {

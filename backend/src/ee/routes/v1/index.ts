@@ -110,7 +110,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
       await pkiRouter.register(registerCaCrlRouter, { prefix: "/crl" });
       await pkiRouter.register(registerPkiAcmeRouter, { prefix: "/acme" });
     },
-    { prefix: "/pki" }
+    { prefix: "/cert-manager" }
   );
 
   await server.register(

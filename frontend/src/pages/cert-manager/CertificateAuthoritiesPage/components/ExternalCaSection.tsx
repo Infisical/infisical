@@ -22,10 +22,10 @@ export const ExternalCaSection = () => {
     "caStatus" // enable / disable
   ] as const);
 
-  const onRemoveCaSubmit = async (caName: string, type: CaType) => {
+  const onRemoveCaSubmit = async (id: string, type: CaType) => {
     if (!currentProject?.id) return;
 
-    await deleteCa({ caName, type, projectId: currentProject.id });
+    await deleteCa({ id, type, projectId: currentProject.id });
 
     createNotification({
       text: "Successfully deleted CA",
@@ -36,17 +36,17 @@ export const ExternalCaSection = () => {
   };
 
   const onUpdateCaStatus = async ({
-    name,
+    caId,
     type,
     status
   }: {
-    name: string;
+    caId: string;
     type: CaType;
     status: CaStatus;
   }) => {
     if (!currentProject?.slug) return;
 
-    await updateCa({ caName: name, type, status, projectId: currentProject.id });
+    await updateCa({ id: caId, type, status });
 
     createNotification({
       text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -88,7 +88,7 @@ export const ExternalCaSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCaSubmit(
-            (popUp?.deleteCa?.data as { name: string })?.name,
+            (popUp?.deleteCa?.data as { caId: string })?.caId,
             (popUp?.deleteCa?.data as { type: CaType })?.type
           )
         }
@@ -110,7 +110,7 @@ export const ExternalCaSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onUpdateCaStatus(
-            popUp?.caStatus?.data as { name: string; type: CaType; status: CaStatus }
+            popUp?.caStatus?.data as { caId: string; type: CaType; status: CaStatus }
           )
         }
       />

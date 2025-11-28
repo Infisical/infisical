@@ -154,7 +154,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength,
     keyAlgorithm,
-    enableDirectIssuance,
     name,
     ...dto
   }: TCreateCaDTO) => {
@@ -206,9 +205,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          enableDirectIssuance,
           name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
-          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE
+          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+          enableDirectIssuance: false
         },
         tx
       );
@@ -368,7 +367,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, enableDirectIssuance, name, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, name, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -389,8 +388,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (enableDirectIssuance !== undefined || status !== undefined || name !== undefined) {
-        await certificateAuthorityDAL.updateById(ca.id, { enableDirectIssuance, status, name }, tx);
+      if (status !== undefined || name !== undefined) {
+        await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -985,9 +984,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1347,8 +1346,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -1708,9 +1707,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),

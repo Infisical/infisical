@@ -21,6 +21,7 @@ import {
   TUpdateEstConfigDTO
 } from "./types";
 
+// TODO: DEPRECATE
 export const useCreateCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, object, TCreateCertificateTemplateDTO>({
@@ -40,6 +41,7 @@ export const useCreateCertTemplate = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useUpdateCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, object, TUpdateCertificateTemplateDTO>({
@@ -61,6 +63,7 @@ export const useUpdateCertTemplate = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useDeleteCertTemplate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificateTemplate, object, TDeleteCertificateTemplateDTO>({
@@ -147,6 +150,7 @@ export const useDeleteCertTemplateV2 = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useCreateEstConfig = () => {
   const queryClient = useQueryClient();
   return useMutation<object, object, TCreateEstConfigDTO>({
@@ -165,6 +169,7 @@ export const useCreateEstConfig = () => {
   });
 };
 
+// TODO: DEPRECATE
 export const useUpdateEstConfig = () => {
   const queryClient = useQueryClient();
   return useMutation<object, object, TUpdateEstConfigDTO>({
@@ -193,7 +198,7 @@ export const useCreateCertificateTemplateV2WithPolicies = () => {
     mutationFn: async (data) => {
       const { data: response } = await apiRequest.post<{
         certificateTemplate: TCertificateTemplateV2WithPolicies;
-      }>("/api/v2/certificate-templates", data);
+      }>("/api/v1/cert-manager/certificate-templates", data);
       return response.certificateTemplate;
     },
     onSuccess: (_, { projectId }) => {
@@ -214,7 +219,7 @@ export const useUpdateCertificateTemplateV2WithPolicies = () => {
     mutationFn: async ({ templateId, ...data }) => {
       const { data: response } = await apiRequest.patch<{
         certificateTemplate: TCertificateTemplateV2WithPolicies;
-      }>(`/api/v2/certificate-templates/${templateId}`, data);
+      }>(`/api/v1/cert-manager/certificate-templates/${templateId}`, data);
       return response.certificateTemplate;
     },
     onSuccess: (template, { templateId }) => {
@@ -238,7 +243,7 @@ export const useDeleteCertificateTemplateV2WithPolicies = () => {
     mutationFn: async ({ templateId }) => {
       const { data: response } = await apiRequest.delete<{
         certificateTemplate: TCertificateTemplateV2WithPolicies;
-      }>(`/api/v2/certificate-templates/${templateId}`);
+      }>(`/api/v1/cert-manager/certificate-templates/${templateId}`);
       return response.certificateTemplate;
     },
     onSuccess: (template, { templateId }) => {
