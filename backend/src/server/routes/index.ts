@@ -1329,7 +1329,8 @@ export const registerRoutes = async (
     eventBusService,
     licenseService,
     membershipRoleDAL,
-    membershipUserDAL
+    membershipUserDAL,
+    telemetryService
   });
 
   const projectService = projectServiceFactory({
@@ -1912,6 +1913,7 @@ export const registerRoutes = async (
 
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    scimService,
     auditLogDAL,
     queueService,
     secretVersionDAL,

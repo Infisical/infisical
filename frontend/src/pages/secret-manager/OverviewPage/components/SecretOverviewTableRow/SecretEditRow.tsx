@@ -10,7 +10,6 @@ import {
   faXmark
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useQueryClient } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
@@ -33,11 +32,7 @@ import {
 } from "@app/context";
 import { ProjectPermissionSecretActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
-import {
-  dashboardKeys,
-  fetchSecretValue,
-  useGetSecretValue
-} from "@app/hooks/api/dashboard/queries";
+import { useGetSecretValue } from "@app/hooks/api/dashboard/queries";
 import { ProjectEnv, SecretType, SecretV3RawSanitized } from "@app/hooks/api/types";
 import { hasSecretReadValueOrDescribePermission } from "@app/lib/fn/permission";
 import { CollapsibleSecretImports } from "@app/pages/secret-manager/SecretDashboardPage/components/SecretListView/CollapsibleSecretImports";
@@ -109,8 +104,6 @@ export const SecretEditRow = ({
     "editSecret"
   ] as const);
 
-  const queryClient = useQueryClient();
-
   const { currentProject } = useProject();
 
   const [isFieldFocused, setIsFieldFocused] = useToggle();
@@ -137,19 +130,18 @@ export const SecretEditRow = ({
   const {
     data: secretValueData,
     isPending: isPendingSecretValueData,
-    isError: isErrorFetchingSecretValue
+    isError: isErrorFetchingSecretValue,
+    refetch: refetchSecretValue
   } = useGetSecretValue(fetchSecretValueParams, {
     enabled: canFetchValue && (isVisible || isFieldFocused)
   });
 
   const isFetchingSecretValue = canFetchValue && isPendingSecretValueData;
-  const isSecretValueFetched = Boolean(secretValueData);
 
   const {
     handleSubmit,
     control,
     reset,
-    getValues,
     setValue,
     formState: { isDirty, isSubmitting }
   } = useForm({
@@ -178,34 +170,17 @@ export const SecretEditRow = ({
   };
 
   const handleCopySecretToClipboard = async () => {
-    if (!isSecretValueFetched && !isDirty) {
-      try {
-        const data = await fetchSecretValue(fetchSecretValueParams);
+    try {
+      const { data } = await refetchSecretValue();
 
-        queryClient.setQueryData(dashboardKeys.getSecretValue(fetchSecretValueParams), data);
-
-        await window.navigator.clipboard.writeText(data.valueOverride ?? data.value);
-        createNotification({ type: "success", text: "Copied secret to clipboard" });
-        return;
-      } catch (e) {
-        console.error(e);
-        createNotification({
-          type: "error",
-          text: "Failed to fetch secret value."
-        });
-        return;
-      }
-    }
-
-    const { value } = getValues();
-    if (value) {
-      try {
-        await window.navigator.clipboard.writeText(value);
-        createNotification({ type: "success", text: "Copied secret to clipboard" });
-      } catch (error) {
-        console.log(error);
-        createNotification({ type: "error", text: "Failed to copy secret to clipboard" });
-      }
+      await window.navigator.clipboard.writeText(data?.valueOverride ?? data?.value ?? "");
+      createNotification({ type: "success", text: "Copied secret to clipboard" });
+    } catch (e) {
+      console.error(e);
+      createNotification({
+        type: "error",
+        text: "Failed to fetch secret value."
+      });
     }
   };
 

@@ -123,13 +123,28 @@ export const identityOidcAuthServiceFactory = ({
       }
 
       const requestAgent = new https.Agent({ ca: caCert, rejectUnauthorized: !!caCert });
-      const { data: discoveryDoc } = await axios.get<{ jwks_uri: string }>(
-        `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
-        {
-          httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
-        }
-      );
+
+      let discoveryDoc: { jwks_uri: string };
+      try {
+        const response = await axios.get<{ jwks_uri: string }>(
+          `${identityOidcAuth.oidcDiscoveryUrl}/.well-known/openid-configuration`,
+          {
+            httpsAgent: identityOidcAuth.oidcDiscoveryUrl.includes("https") ? requestAgent : undefined
+          }
+        );
+        discoveryDoc = response.data;
+      } catch (error) {
+        throw new UnauthorizedError({
+          message: `Access denied: Failed to fetch OIDC discovery document from ${identityOidcAuth.oidcDiscoveryUrl}. ${error instanceof Error ? error.message : String(error)}`
+        });
+      }
+
       const jwksUri = discoveryDoc.jwks_uri;
+      if (!jwksUri) {
+        throw new UnauthorizedError({
+          message: `Access denied: OIDC discovery document does not contain a jwks_uri. The identity provider may be misconfigured.`
+        });
+      }
 
       const decodedToken = crypto.jwt().decode(oidcJwt, { complete: true });
       if (!decodedToken) {

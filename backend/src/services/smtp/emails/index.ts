@@ -19,6 +19,7 @@ export * from "./PasswordSetupTemplate";
 export * from "./PkiExpirationAlertTemplate";
 export * from "./ProjectAccessRequestTemplate";
 export * from "./ProjectInvitationTemplate";
+export * from "./ScimTokenExpiryNoticeTemplate";
 export * from "./ScimUserProvisionedTemplate";
 export * from "./SecretApprovalRequestBypassedTemplate";
 export * from "./SecretApprovalRequestNeedsReviewTemplate";
