@@ -410,7 +410,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
 
   server.route({
     method: "GET",
-    url: "/token-auth/identities/:identityId/tokens/:tokenId",
+    url: "/token-auth/tokens/:tokenId",
     config: {
       rateLimit: readLimit
     },
@@ -425,7 +425,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         }
       ],
       params: z.object({
-        identityId: z.string().describe(TOKEN_AUTH.GET_TOKEN.identityId),
         tokenId: z.string().describe(TOKEN_AUTH.GET_TOKEN.tokenId)
       }),
       response: {
@@ -436,7 +435,6 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     handler: async (req) => {
       const { token, identityMembershipOrg } = await server.services.identityTokenAuth.getTokenAuthTokenById({
-        identityId: req.params.identityId,
         tokenId: req.params.tokenId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -451,7 +449,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         event: {
           type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH,
           metadata: {
-            identityId: token.identityId,
+            identityId: identityMembershipOrg.identity.id,
             identityName: identityMembershipOrg.identity.name,
             tokenId: token.id
           }

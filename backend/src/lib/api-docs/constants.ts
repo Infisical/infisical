@@ -595,7 +595,6 @@ export const TOKEN_AUTH = {
     limit: "The number of tokens to return."
   },
   GET_TOKEN: {
-    identityId: "The ID of the machine identity to get the token for.",
     tokenId: "The ID of the token to get metadata for."
   },
   CREATE_TOKEN: {
