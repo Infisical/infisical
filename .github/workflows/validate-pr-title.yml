@@ -16,11 +16,13 @@ jobs:
             const title = context.payload.pull_request.title;
             
             // Valid PR types based on pull_request_template.md
-            const validTypes = ['Fix', 'Feature', 'Improvement', 'Breaking', 'Docs', 'Chore'];
+            const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore'];
             
-            // Regex pattern: Type: Short description
-            // Type must be one of the valid types, followed by colon, space, and description
-            const pattern = new RegExp(`^(${validTypes.join('|')}): .+$`);
+            // Regex pattern: type[optional-scope]: Short description
+            // - Type must be one of the valid types
+            // - Scope is optional, must be in brackets, lowercase alphanumeric with hyphens
+            // - Followed by colon, space, and description
+            const pattern = new RegExp(`^(${validTypes.join('|')})(\\[[a-z0-9-]+\\])?: .+$`);
             
             if (!pattern.test(title)) {
               const errorMessage = `
@@ -28,20 +30,22 @@ jobs:
             
             Your PR title: \`${title}\`
             
-            **Expected format:** \`Type: Short description\`
+            **Expected format:** \`type[scope]: Short description\`
             
             **Valid types:**
-            - \`Fix\` - Bug fixes
-            - \`Feature\` - New features
-            - \`Improvement\` - Enhancements to existing features
-            - \`Breaking\` - Breaking changes
-            - \`Docs\` - Documentation updates
-            - \`Chore\` - Maintenance tasks
+            - \`fix\` - Bug fixes
+            - \`feature\` - New features
+            - \`improvement\` - Enhancements to existing features
+            - \`breaking\` - Breaking changes
+            - \`docs\` - Documentation updates
+            - \`chore\` - Maintenance tasks
+            
+            **Scope:** Optional, short identifier in brackets (e.g., \`[api]\`, \`[auth]\`, \`[ui]\`)
             
             **Examples:**
-            - \`Fix: Prevent crash on sync\`
-            - \`Feature: Add SSO login support\`
-            - \`Docs: Update API reference\`
+            - \`fix: Prevent crash on sync\`
+            - \`fix[api]: Handle null response from auth endpoint\`
+            - \`docs[cli]: Update installation guide\`
             `;
               
               core.setFailed(errorMessage);

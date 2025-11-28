@@ -21,7 +21,7 @@
 
 ## Checklist
 
-- [ ] Title follows format: `Type: Short description` (e.g., `Fix: Prevent crash on sync`)
+- [ ] Title follows format: `type[scope]: Short description` (scope is optional, e.g., `fix: Prevent crash on sync` or `fix[api]: Handle null response`)
 - [ ] Tested locally
 - [ ] Updated docs (if needed)
 - [ ] Read the [contributing guide](https://infisical.com/docs/contributing/getting-started/overview)
