@@ -37,6 +37,8 @@ import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
+import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -101,6 +103,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
+  certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -127,6 +130,7 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
+  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
 };
@@ -140,6 +144,7 @@ export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
   certificateBodyDAL,
   certificateSecretDAL,
+  certificateTemplateV2DAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -149,6 +154,8 @@ export const pkiAcmeServiceFactory = ({
   kmsService,
   licenseService,
   certificateV3Service,
+  certificateTemplateV2Service,
+  acmeChallengeService
   acmeChallengeService,
   pkiAcmeQueueService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
@@ -772,8 +779,18 @@ export const pkiAcmeServiceFactory = ({
             const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
             const csrObj = new x509.Pkcs10CertificateRequest(csr);
             const csrPem = csrObj.toString("pem");
-            // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
-            //       we should check the CSR against the template here
+
+            const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
+            if (!template) {
+              throw new NotFoundError({ message: "Certificate template not found" });
+            }
+            const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+              template.id,
+              certificateRequest
+            );
+            if (!validationResult.isValid) {
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+            }
             // TODO: this is pretty slow, and we are holding the transaction open for a long time,
             //       we should queue the certificate issuance to a background job instead
             const cert = await orderCertificate(
