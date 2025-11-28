@@ -18,11 +18,11 @@ jobs:
             // Valid PR types based on pull_request_template.md
             const validTypes = ['fix', 'feature', 'improvement', 'breaking', 'docs', 'chore'];
             
-            // Regex pattern: type(optional-scope): Short description
+            // Regex pattern: type(optional-scope): short description
             // - Type must be one of the valid types
             // - Scope is optional, must be in parentheses, lowercase alphanumeric with hyphens
-            // - Followed by colon, space, and description
-            const pattern = new RegExp(`^(${validTypes.join('|')})(\\([a-z0-9-]+\\))?: .+$`);
+            // - Followed by colon, space, and description (must start with lowercase letter)
+            const pattern = new RegExp(`^(${validTypes.join('|')})(\\([a-z0-9-]+\\))?: [a-z].+$`);
             
             if (!pattern.test(title)) {
               const errorMessage = `
@@ -30,7 +30,7 @@ jobs:
             
             Your PR title: \`${title}\`
             
-            **Expected format:** \`type(scope): Short description\`
+            **Expected format:** \`type(scope): short description\` (description must start with lowercase)
             
             **Valid types:**
             - \`fix\` - Bug fixes
@@ -43,9 +43,9 @@ jobs:
             **Scope:** Optional, short identifier in parentheses (e.g., \`(api)\`, \`(auth)\`, \`(ui)\`)
             
             **Examples:**
-            - \`fix: Prevent crash on sync\`
-            - \`fix(api): Handle null response from auth endpoint\`
-            - \`docs(cli): Update installation guide\`
+            - \`fix: prevent crash on sync\`
+            - \`fix(api): handle null response from auth endpoint\`
+            - \`docs(cli): update installation guide\`
             `;
               
               core.setFailed(errorMessage);
