@@ -34,8 +34,6 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
-  CertSignatureType,
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
@@ -127,6 +125,22 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
+  const $checkSignature = (caKeyAlg: string, requestedKeyType: string, signatureAlgorithm?: string) => {
+    const isRsaCa = caKeyAlg.startsWith("RSA");
+    const isEcdsaCa = caKeyAlg.startsWith("EC") || caKeyAlg.startsWith("ECDSA");
+
+    // eslint-disable-next-line no-nested-ternary
+    const caSupports = isRsaCa ? "RSA" : isEcdsaCa ? "ECDSA" : "unknown";
+
+    const isRequestValid = (requestedKeyType === "RSA" && isRsaCa) || (requestedKeyType === "ECDSA" && isEcdsaCa);
+
+    if (!isRequestValid) {
+      throw new BadRequestError({
+        message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlg}. CA can only sign with ${caSupports}-based signature algorithms.`
+      });
+    }
+  };
+
   const createCa = async ({
     type,
     friendlyName,
@@ -1302,26 +1316,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0];
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.RSA_2048.split("_")[0]);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.ECDSA_P256.split("_")[0]);
-
-      if (
-        (requestedKeyType === CertSignatureAlgorithm.RSA_SHA256.split("-")[0] && !isRsaCa) ||
-        (requestedKeyType === CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0] && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa
-          ? CertSignatureAlgorithm.RSA_SHA256.split("-")[0]
-          : isEcdsaCa
-            ? CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0]
-            : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     // Determine signing algorithm for certificate signing
@@ -1690,22 +1685,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertSignatureType.RSA);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertSignatureType.ECDSA);
-
-      if (
-        (requestedKeyType === CertSignatureType.RSA && !isRsaCa) ||
-        (requestedKeyType === CertSignatureType.ECDSA && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa ? CertSignatureType.RSA : isEcdsaCa ? CertSignatureType.ECDSA : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
