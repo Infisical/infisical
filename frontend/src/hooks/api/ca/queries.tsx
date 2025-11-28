@@ -4,7 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { TCertificateTemplate } from "../certificateTemplates/types";
 import { CaType } from "./enums";
-import { TAzureAdCsTemplate, TCertificateAuthority, TUnifiedCertificateAuthority } from "./types";
+import {
+  TAzureAdCsTemplate,
+  TInternalCertificateAuthority,
+  TUnifiedCertificateAuthority
+} from "./types";
 
 export const caKeys = {
   getCaById: (caId: string) => [{ caId }, "ca"],
@@ -25,24 +29,16 @@ export const caKeys = {
   ]
 };
 
-export const useGetCa = ({
-  caName,
-  projectId,
-  type
-}: {
-  caName: string;
-  projectId: string;
-  type: CaType;
-}) => {
+export const useGetCa = ({ caId, type }: { caId: string; type: CaType }) => {
   return useQuery({
-    queryKey: caKeys.getCaByNameAndProjectId(caName, projectId),
+    queryKey: caKeys.getCaById(caId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TUnifiedCertificateAuthority>(
-        `/api/v1/pki/ca/${type}/${caName}?projectId=${projectId}`
+        `/api/v1/cert-manager/ca/${type}/${caId}`
       );
       return data;
     },
-    enabled: Boolean(caName && projectId && type)
+    enabled: Boolean(caId && type)
   });
 };
 
@@ -51,7 +47,7 @@ export const useListCasByTypeAndProjectId = (type: CaType, projectId: string) =>
     queryKey: caKeys.listCasByTypeAndProjectId(type, projectId),
     queryFn: async () => {
       const { data } = await apiRequest.get<TUnifiedCertificateAuthority[]>(
-        `/api/v1/pki/ca/${type}?projectId=${projectId}`
+        `/api/v1/cert-manager/ca/${type}?projectId=${projectId}`
       );
 
       return data;
@@ -65,7 +61,7 @@ export const useListCasByProjectId = (projectId: string) => {
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         certificateAuthorities: TUnifiedCertificateAuthority[];
-      }>(`/api/v2/pki/ca?projectId=${projectId}`);
+      }>(`/api/v1/cert-manager/ca?projectId=${projectId}`);
 
       return data.certificateAuthorities;
     }
@@ -78,10 +74,10 @@ export const useListExternalCasByProjectId = (projectId: string) => {
     queryFn: async () => {
       const [acmeResponse, azureAdCsResponse] = await Promise.allSettled([
         apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/pki/ca/${CaType.ACME}?projectId=${projectId}`
+          `/api/v1/cert-manager/ca/${CaType.ACME}?projectId=${projectId}`
         ),
         apiRequest.get<TUnifiedCertificateAuthority[]>(
-          `/api/v1/pki/ca/${CaType.AZURE_AD_CS}?projectId=${projectId}`
+          `/api/v1/cert-manager/ca/${CaType.AZURE_AD_CS}?projectId=${projectId}`
         )
       ]);
 
@@ -100,14 +96,14 @@ export const useListExternalCasByProjectId = (projectId: string) => {
   });
 };
 
-export const useGetCaById = (caId: string) => {
+export const useGetInternalCaById = (caId: string) => {
   return useQuery({
     queryKey: caKeys.getCaById(caId),
     queryFn: async () => {
-      const {
-        data: { ca }
-      } = await apiRequest.get<{ ca: TCertificateAuthority }>(`/api/v1/pki/ca/${caId}`);
-      return ca;
+      const { data } = await apiRequest.get<TInternalCertificateAuthority>(
+        `/api/v1/cert-manager/ca/internal/${caId}`
+      );
+      return data;
     },
     enabled: Boolean(caId)
   });
@@ -124,7 +120,7 @@ export const useGetCaCerts = (caId: string) => {
           serialNumber: string;
           version: number;
         }[]
-      >(`/api/v1/pki/ca/${caId}/ca-certificates`); // TODO: consider updating endpoint structure
+      >(`/api/v1/cert-manager/ca/internal/${caId}/ca-certificates`);
       return data;
     },
     enabled: Boolean(caId)
@@ -139,7 +135,7 @@ export const useGetCaCert = (caId: string) => {
         certificate: string;
         certificateChain: string;
         serialNumber: string;
-      }>(`/api/v1/pki/ca/${caId}/certificate`); // TODO: consider updating endpoint structure
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/certificate`);
       return data;
     },
     enabled: Boolean(caId)
@@ -154,7 +150,7 @@ export const useGetCaCsr = (caId: string) => {
         data: { csr }
       } = await apiRequest.get<{
         csr: string;
-      }>(`/api/v1/pki/ca/${caId}/csr`);
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/csr`);
       return csr;
     },
     enabled: Boolean(caId)
@@ -170,13 +166,14 @@ export const useGetCaCrls = (caId: string) => {
           id: string;
           crl: string;
         }[]
-      >(`/api/v1/pki/ca/${caId}/crls`);
+      >(`/api/v1/cert-manager/ca/internal/${caId}/crls`);
       return data;
     },
     enabled: Boolean(caId)
   });
 };
 
+// TODO: DEPRECATE
 export const useGetCaCertTemplates = (caId: string) => {
   return useQuery({
     queryKey: caKeys.getCaCertTemplates(caId),
@@ -202,7 +199,7 @@ export const useGetAzureAdcsTemplates = ({
     queryFn: async () => {
       const { data } = await apiRequest.get<{
         templates: TAzureAdCsTemplate[];
-      }>(`/api/v1/pki/ca/azure-ad-cs/${caId}/templates?projectId=${projectId}`);
+      }>(`/api/v1/cert-manager/ca/azure-ad-cs/${caId}/templates?projectId=${projectId}`);
       return data;
     },
     enabled: Boolean(caId && projectId)

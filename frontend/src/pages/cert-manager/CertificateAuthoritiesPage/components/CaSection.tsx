@@ -26,10 +26,10 @@ export const CaSection = () => {
     "caStatus" // enable / disable
   ] as const);
 
-  const onRemoveCaSubmit = async (caName: string) => {
+  const onRemoveCaSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL });
+    await deleteCa({ id, projectId: currentProject.id, type: CaType.INTERNAL });
 
     createNotification({
       text: "Successfully deleted CA",
@@ -39,10 +39,10 @@ export const CaSection = () => {
     handlePopUpClose("deleteCa");
   };
 
-  const onUpdateCaStatus = async ({ caName, status }: { caName: string; status: CaStatus }) => {
+  const onUpdateCaStatus = async ({ caId, status }: { caId: string; status: CaStatus }) => {
     if (!currentProject?.slug) return;
 
-    await updateCa({ caName, projectId: currentProject.id, type: CaType.INTERNAL, status });
+    await updateCa({ id: caId, type: CaType.INTERNAL, status });
 
     createNotification({
       text: `Successfully ${status === CaStatus.ACTIVE ? "enabled" : "disabled"} CA`,
@@ -85,9 +85,7 @@ export const CaSection = () => {
         subTitle="This action will delete other CAs and certificates below it in your CA hierarchy."
         onChange={(isOpen) => handlePopUpToggle("deleteCa", isOpen)}
         deleteKey="confirm"
-        onDeleteApproved={() =>
-          onRemoveCaSubmit((popUp?.deleteCa?.data as { caName: string })?.caName)
-        }
+        onDeleteApproved={() => onRemoveCaSubmit((popUp?.deleteCa?.data as { caId: string })?.caId)}
       />
       <DeleteActionModal
         isOpen={popUp.caStatus.isOpen}
@@ -104,7 +102,7 @@ export const CaSection = () => {
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() =>
-          onUpdateCaStatus(popUp?.caStatus?.data as { caName: string; status: CaStatus })
+          onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })
         }
       />
     </div>

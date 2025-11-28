@@ -203,7 +203,11 @@ export const IdentitySection = withPermission(
         >
           <ModalContent
             bodyClassName="overflow-visible"
-            title="Add Machine Identity"
+            title={
+              isSubOrganization
+                ? "Add Machine Identity to Sub-Organization"
+                : "Create Organization Machine Identity"
+            }
             subTitle={
               isSubOrganization
                 ? "Create a new machine identity or assign an existing one"

@@ -2467,21 +2467,16 @@
                       "api-reference/endpoints/certificate-authorities/internal/create",
                       "api-reference/endpoints/certificate-authorities/internal/read",
                       "api-reference/endpoints/certificate-authorities/internal/update",
-                      "api-reference/endpoints/certificate-authorities/internal/delete"
+                      "api-reference/endpoints/certificate-authorities/internal/delete",
+                      "api-reference/endpoints/certificate-authorities/internal/renew",
+                      "api-reference/endpoints/certificate-authorities/internal/list-ca-certs",
+                      "api-reference/endpoints/certificate-authorities/internal/csr",
+                      "api-reference/endpoints/certificate-authorities/internal/cert",
+                      "api-reference/endpoints/certificate-authorities/internal/sign-intermediate",
+                      "api-reference/endpoints/certificate-authorities/internal/import-cert",
+                      "api-reference/endpoints/certificate-authorities/internal/crl"
                     ]
-                  },
-                  "api-reference/endpoints/certificate-authorities/list",
-                  "api-reference/endpoints/certificate-authorities/create",
-                  "api-reference/endpoints/certificate-authorities/read",
-                  "api-reference/endpoints/certificate-authorities/update",
-                  "api-reference/endpoints/certificate-authorities/delete",
-                  "api-reference/endpoints/certificate-authorities/renew",
-                  "api-reference/endpoints/certificate-authorities/list-ca-certs",
-                  "api-reference/endpoints/certificate-authorities/csr",
-                  "api-reference/endpoints/certificate-authorities/cert",
-                  "api-reference/endpoints/certificate-authorities/sign-intermediate",
-                  "api-reference/endpoints/certificate-authorities/import-cert",
-                  "api-reference/endpoints/certificate-authorities/crl"
+                  }
                 ]
               },
               {
@@ -2503,23 +2498,11 @@
               {
                 "group": "Certificate Templates",
                 "pages": [
-                  "api-reference/endpoints/certificate-templates-v2/list",
-                  "api-reference/endpoints/certificate-templates-v2/create",
-                  "api-reference/endpoints/certificate-templates-v2/update",
-                  "api-reference/endpoints/certificate-templates-v2/get-by-id",
-                  "api-reference/endpoints/certificate-templates-v2/delete"
-                ]
-              },
-              {
-                "group": "Certificate Collections",
-                "pages": [
-                  "api-reference/endpoints/pki-collections/create",
-                  "api-reference/endpoints/pki-collections/read",
-                  "api-reference/endpoints/pki-collections/update",
-                  "api-reference/endpoints/pki-collections/delete",
-                  "api-reference/endpoints/pki-collections/add-item",
-                  "api-reference/endpoints/pki-collections/list-items",
-                  "api-reference/endpoints/pki-collections/delete-item"
+                  "api-reference/endpoints/certificate-templates/list",
+                  "api-reference/endpoints/certificate-templates/create",
+                  "api-reference/endpoints/certificate-templates/update",
+                  "api-reference/endpoints/certificate-templates/get-by-id",
+                  "api-reference/endpoints/certificate-templates/delete"
                 ]
               },
               {
@@ -2533,6 +2516,15 @@
                   "api-reference/endpoints/certificate-profiles/delete",
                   "api-reference/endpoints/certificate-profiles/list-certificates",
                   "api-reference/endpoints/certificate-profiles/get-latest-active-bundle"
+                ]
+              },
+              {
+                "group": "Certificate Alerts",
+                "pages": [
+                  "api-reference/endpoints/pki-alerts/create",
+                  "api-reference/endpoints/pki-alerts/read",
+                  "api-reference/endpoints/pki-alerts/update",
+                  "api-reference/endpoints/pki-alerts/delete"
                 ]
               },
               {

@@ -1913,6 +1913,7 @@ export const registerRoutes = async (
 
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
+    scimService,
     auditLogDAL,
     queueService,
     secretVersionDAL,
