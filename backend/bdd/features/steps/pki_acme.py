@@ -993,8 +993,12 @@ def step_impl(context: Context, uri: str, resp_var: str):
 def step_impl(context: Context, var_path: str, finalized_var: str):
     order = eval_var(context, var_path, as_json=False)
     acme_client = context.acme_client
-    finalized_order = acme_client.poll_and_finalize(order)
-    context.vars[finalized_var] = finalized_order
+    try:
+        finalized_order = acme_client.poll_and_finalize(order)
+        context.vars[finalized_var] = finalized_order
+    except Exception as exp:
+        logger.error(f"Failed to finalize order: {exp}", exc_info=True)
+        context.vars["error"] = exp
 
 
 @then("I parse the full-chain certificate from order {order_var_path} as {cert_var}")
