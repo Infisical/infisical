@@ -188,7 +188,7 @@ export const SelectOrganizationSection = () => {
         navigate({ to: "/cli-redirect" });
         // cli page
       } else {
-        navigateUserToOrg(navigate, organization.id);
+        navigateUserToOrg({ navigate, organizationId: organization.id });
       }
     },
     [selectOrg]
@@ -201,7 +201,7 @@ export const SelectOrganizationSection = () => {
       const decodedJwt = jwtDecode(authToken) as any;
 
       if (decodedJwt?.organizationId) {
-        navigateUserToOrg(navigate, decodedJwt.organizationId);
+        navigateUserToOrg({ navigate, organizationId: decodedJwt.organizationId });
       }
     }
 
