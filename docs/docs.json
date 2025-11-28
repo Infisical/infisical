@@ -660,7 +660,8 @@
                     "group": "Concepts",
                     "pages": [
                       "documentation/platform/pki/concepts/certificate-mgmt",
-                      "documentation/platform/pki/concepts/certificate-lifecycle"
+                      "documentation/platform/pki/concepts/certificate-lifecycle",
+                      "documentation/platform/pki/concepts/certificate-components"
                     ]
                   },
                   {

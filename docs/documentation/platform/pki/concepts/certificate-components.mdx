@@ -1,0 +1,26 @@
+---
+title: "Certificate Components"
+description: "Learn the main components for managing certificates with Infisical."
+---
+
+## Core Components
+
+The following resources define how certificates are issued, shaped, and governed in Infisical:
+
+- [Certificate Authority (CA)](/documentation/platform/pki/ca/overview): The trusted entity that issues X.509 certificates. This can be an [Internal CA](/documentation/platform/pki/ca/private-ca) or an [External CA](/documentation/platform/pki/ca/external-ca) in Infisical.
+  The former represents a fully managed CA hierarchy within Infisical, while the latter represents an external CA (e.g. [DigiCert](/documentation/platform/pki/ca/digicert), [Let's Encrypt](/documentation/platform/pki/ca/lets-encrypt), [Microsoft AD CS](/documentation/platform/pki/ca/azure-adcs), etc.) that can be integrated with Infisical.
+
+- [Certificate Template](/documentation/platform/pki/certificates/templates): A policy structure specifying permitted attributes for requested certificates. This includes constraints around subject naming conventions, SAN fields, key usages, and extended key usages.
+
+- [Certificate Profile](/documentation/platform/pki/certificates/profiles): A configuration set specifying how leaf certificates should be issued for a group of end-entities including the issuing CA, a certificate template, and the enrollment method (e.g. [ACME](/platform/pki/enrollment-methods/acme), [EST](/documentation/platform/pki/enrollment-methods/est), [API](/documentation/platform/pki/enrollment-methods/api), etc.) used to enroll certificates.
+
+- [Certificate](/documentation/platform/pki/certificates/certificates): The actual X.509 certificate issued for a profile. Once created, it is tracked in Infisical’s certificate inventory for management, renewal, and lifecycle operations.
+
+## Access Control
+
+Access control defines who (or what) can manage certificate resources and who can issue certificates within a project. Without clear boundaries, [certificate authorities](/documentation/platform/pki/ca/overview) or issuance workflows can be misconfigured or misused.
+
+To manage access to certificates, you assign role-based permissions at the project level. These permissions determine which certificate authorities, certificate templates, certificate profiles, and other related resources a user or machine identity can act on. For example,
+you may want to allow one team to manage your internal CA hierarchy or external CA integration configuration and have a separate team only be able to request certificates from a specific certificate profile.
+
+This model follows the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege) so that each user or machine identity can manage or issue only the certificate resources it is responsible for and nothing more.
