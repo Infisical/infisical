@@ -18,9 +18,13 @@ The following resources define how certificates are issued, shaped, and governed
 
 ## Access Control
 
-Access control defines who (or what) can manage certificate resources and who can issue certificates within a project. Without clear boundaries, [certificate authorities](/documentation/platform/pki/ca/overview) or issuance workflows can be misconfigured or misused.
+Access control defines who (or what) can manage certificate resources and who can issue certificates within a project. Without clear boundaries, [certificate authorities](/documentation/platform/pki/ca/overview) and issuance workflows can be misconfigured or misused.
 
 To manage access to certificates, you assign role-based permissions at the project level. These permissions determine which certificate authorities, certificate templates, certificate profiles, and other related resources a user or machine identity can act on. For example,
-you may want to allow one team to manage your internal CA hierarchy or external CA integration configuration and have a separate team only be able to request certificates from a specific certificate profile.
+you may want to:
+
+- Have specific teams(s) manage your internal CA hierarchy or external CA integration configuration and have separate team(s) configure certificate profiles for requested certificates.
+- Limit which teams can manage policies defined on certificate templates.
+- Have specific end-entities (e.g. servers, devices, users) request certificates from specific certificate profiles.
 
 This model follows the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege) so that each user or machine identity can manage or issue only the certificate resources it is responsible for and nothing more.
