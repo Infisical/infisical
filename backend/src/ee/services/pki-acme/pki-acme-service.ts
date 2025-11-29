@@ -31,7 +31,10 @@ import { orderCertificate } from "@app/services/certificate-authority/acme/acme-
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
-import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
@@ -780,6 +783,19 @@ export const pkiAcmeServiceFactory = ({
             const csrObj = new x509.Pkcs10CertificateRequest(csr);
             const csrPem = csrObj.toString("pem");
 
+            const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+              extractAlgorithmsFromCSR(csr);
+
+            certificateRequest.keyAlgorithm = extractedKeyAlgorithm;
+            certificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
+            if (finalizingOrder.notAfter) {
+              const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
+              const notAfter = new Date(finalizingOrder.notAfter);
+              const diffMs = notAfter.getTime() - notBefore.getTime();
+              const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+              certificateRequest.validity = { ttl: `${diffDays}d` };
+            }
+
             const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
             if (!template) {
               throw new NotFoundError({ message: "Certificate template not found" });
@@ -841,6 +857,8 @@ export const pkiAcmeServiceFactory = ({
           // TODO: audit log the error
           if (exp instanceof BadRequestError) {
             errorToReturn = new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
+          } else if (exp instanceof AcmeError) {
+            errorToReturn = exp;
           } else {
             errorToReturn = new AcmeServerInternalError({ message: "Failed to sign certificate with internal error" });
           }
