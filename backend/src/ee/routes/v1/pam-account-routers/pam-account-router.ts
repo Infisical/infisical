@@ -106,7 +106,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
     schema: {
       description: "Access PAM account",
       body: z.object({
-        accountId: z.string().uuid(),
+        accountPath: z.string().trim(),
+        projectId: z.string().uuid(),
         duration: z
           .string()
           .min(1)
@@ -151,7 +152,9 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           actorIp: req.realIp,
           actorName: `${req.auth.user.firstName ?? ""} ${req.auth.user.lastName ?? ""}`.trim(),
           actorUserAgent: req.auditLogInfo.userAgent ?? "",
-          ...req.body
+          accountPath: req.body.accountPath,
+          projectId: req.body.projectId,
+          duration: req.body.duration
         },
         req.permission
       );
@@ -163,7 +166,8 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         event: {
           type: EventType.PAM_ACCOUNT_ACCESS,
           metadata: {
-            accountId: req.body.accountId,
+            accountId: response.account.id,
+            accountPath: req.body.accountPath,
             accountName: response.account.name,
             duration: req.body.duration ? new Date(req.body.duration).toISOString() : undefined
           }

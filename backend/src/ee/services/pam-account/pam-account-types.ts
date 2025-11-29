@@ -14,7 +14,8 @@ export type TUpdateAccountDTO = Partial<Omit<TCreateAccountDTO, "folderId" | "re
 };
 
 export type TAccessAccountDTO = {
-  accountId: string;
+  accountPath: string;
+  projectId: string;
   actorEmail: string;
   actorIp: string;
   actorName: string;
