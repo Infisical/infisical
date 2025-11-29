@@ -20,6 +20,10 @@ from josepy.jwk import JWKRSA
 from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.types import (
+    CertificateIssuerPrivateKeyTypes,
+)
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
@@ -597,12 +601,57 @@ def step_impl(context: Context, csr_var: str):
     )
 
 
-@then("I create a RSA private key pair as {rsa_key_var}")
-def step_impl(context: Context, rsa_key_var: str):
-    context.vars[rsa_key_var] = rsa.generate_private_key(
-        # TODO: make them configurable if we need to
-        public_exponent=65537,
-        key_size=2048,
+def gen_private_key(key_type: str):
+    if key_type == "RSA-2048" or key_type == "RSA":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+    elif key_type == "RSA-3072":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=3072,
+        )
+    elif key_type == "RSA-4096":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=4096,
+        )
+    elif key_type == "ECDSA-P256":
+        return ec.generate_private_key(curve=ec.SECP256R1())
+    elif key_type == "ECDSA-P384":
+        return ec.generate_private_key(curve=ec.SECP384R1())
+    elif key_type == "ECDSA-P521":
+        return ec.generate_private_key(curve=ec.SECP521R1())
+    else:
+        raise Exception(f"Unknown key type {key_type}")
+
+
+@then("I create a {key_type} private key pair as {rsa_key_var}")
+def step_impl(context: Context, key_type: str, rsa_key_var: str):
+    context.vars[rsa_key_var] = gen_private_key(key_type)
+
+
+def sign_csr(
+    pem: x509.CertificateSigningRequestBuilder,
+    pk: CertificateIssuerPrivateKeyTypes,
+    hash_type: str = "SHA256",
+):
+    return pem.sign(pk, getattr(hashes, hash_type)()).public_bytes(
+        serialization.Encoding.PEM
+    )
+
+
+@then(
+    'I sign the certificate signing request {csr_var} with "{hash_type}" hash and private key {pk_var} and output it as {pem_var} in PEM format'
+)
+def step_impl(
+    context: Context, csr_var: str, hash_type: str, pk_var: str, pem_var: str
+):
+    context.vars[pem_var] = sign_csr(
+        pem=context.vars[csr_var],
+        pk=context.vars[pk_var],
+        hash_type=hash_type,
     )
 
 
@@ -610,10 +659,9 @@ def step_impl(context: Context, rsa_key_var: str):
     "I sign the certificate signing request {csr_var} with private key {pk_var} and output it as {pem_var} in PEM format"
 )
 def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
-    context.vars[pem_var] = (
-        context.vars[csr_var]
-        .sign(context.vars[pk_var], hashes.SHA256())
-        .public_bytes(serialization.Encoding.PEM)
+    context.vars[pem_var] = sign_csr(
+        pem=context.vars[csr_var],
+        pk=context.vars[pk_var],
     )
 
 
