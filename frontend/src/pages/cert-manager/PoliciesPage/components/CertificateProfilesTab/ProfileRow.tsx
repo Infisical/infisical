@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import {
   faCheck,
@@ -49,7 +50,9 @@ export const ProfileRow = ({
 }: Props) => {
   const { permission } = useProjectPermission();
 
-  const { data: caData } = useGetCaById(profile.caId ?? "");
+  const { data: caData } = useGetCaById(
+    profile.certificateAuthority?.isExternal ? "" : (profile.caId ?? "")
+  );
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
@@ -120,11 +123,18 @@ export const ProfileRow = ({
       </Td>
       <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
       <Td className="text-start">
-        <span className="text-sm text-mineshaft-300">
-          {profile.issuerType === IssuerType.SELF_SIGNED
-            ? "Self-signed"
-            : caData?.friendlyName || caData?.commonName || profile.caId}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-mineshaft-300">
+            {profile.issuerType === IssuerType.SELF_SIGNED
+              ? "Self-signed"
+              : profile.certificateAuthority?.isExternal
+                ? profile.certificateAuthority.name
+                : caData?.friendlyName ||
+                  caData?.commonName ||
+                  profile.certificateAuthority?.name ||
+                  profile.caId}
+          </span>
+        </div>
       </Td>
       <Td>
         <span className="text-sm text-mineshaft-300">
@@ -177,7 +187,7 @@ export const ProfileRow = ({
                 }}
                 icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
               >
-                Issue Certificate
+                Request Certificate
               </DropdownMenuItem>
             )}
             {canDeleteProfile && (

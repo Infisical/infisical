@@ -64,6 +64,7 @@ export type TRenewCertificateResponse = {
   serialNumber: string;
   certificateId: string;
   projectId: string;
+  certificateRequestId?: string;
 };
 
 export type TUpdateRenewalConfigDTO = {
@@ -78,4 +79,52 @@ export type TDownloadPkcs12DTO = {
   projectSlug: string;
   password: string;
   alias: string;
+};
+
+export type TUnifiedCertificateIssuanceDTO = {
+  projectSlug: string;
+  projectId: string;
+  profileId?: string;
+  caId?: string;
+  csr?: string;
+  commonName?: string;
+  altNames?: string;
+  keyUsages?: string[];
+  extendedKeyUsages?: string[];
+  notBefore?: Date;
+  notAfter?: Date;
+  keyAlgorithm?: string;
+  signatureAlgorithm?: string;
+  ttl?: string;
+  friendlyName?: string;
+  pkiCollectionId?: string;
+  issuerType?: string;
+};
+
+export type TUnifiedCertificateResponse = {
+  certificate: string;
+  issuingCaCertificate: string;
+  certificateChain: string;
+  privateKey?: string;
+  serialNumber: string;
+  certificateId: string;
+  projectId: string;
+};
+
+export type TCertificateRequestResponse = {
+  certificateRequestId: string;
+  status: "pending" | "issued" | "failed";
+  projectId: string;
+};
+
+export type TUnifiedCertificateIssuanceResponse =
+  | TUnifiedCertificateResponse
+  | TCertificateRequestResponse;
+
+export type TCertificateRequestDetails = {
+  status: "pending" | "issued" | "failed";
+  certificate: TCertificate | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

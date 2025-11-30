@@ -42,7 +42,7 @@ describe("CertificateV3Service", () => {
 
   const mockCertificateDAL: Pick<
     TCertificateDALFactory,
-    "findOne" | "findById" | "updateById" | "transaction" | "create"
+    "findOne" | "findById" | "updateById" | "transaction" | "create" | "find"
   > = {
     findOne: vi.fn(),
     findById: vi.fn(),
@@ -57,7 +57,8 @@ describe("CertificateV3Service", () => {
     transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
       const mockTx = {};
       return callback(mockTx);
-    })
+    }),
+    find: vi.fn().mockResolvedValue([])
   };
 
   const mockCertificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create"> = {
@@ -65,12 +66,24 @@ describe("CertificateV3Service", () => {
     create: vi.fn()
   };
 
-  const mockCertificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa"> = {
-    findByIdWithAssociatedCa: vi.fn()
+  const mockCertificateAuthorityDAL: Pick<
+    TCertificateAuthorityDALFactory,
+    "findByIdWithAssociatedCa" | "create" | "updateById" | "findById" | "transaction" | "findWithAssociatedCa"
+  > = {
+    findByIdWithAssociatedCa: vi.fn(),
+    create: vi.fn().mockResolvedValue({ id: "ca-123" }),
+    updateById: vi.fn().mockResolvedValue({ id: "ca-123" }),
+    findById: vi.fn().mockResolvedValue({ id: "ca-123" }),
+    findWithAssociatedCa: vi.fn().mockResolvedValue([]),
+    transaction: vi.fn().mockImplementation(async (callback: (tx: any) => Promise<unknown>) => {
+      const mockTx = {};
+      return callback(mockTx);
+    })
   };
 
-  const mockCertificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs"> = {
-    findByIdWithConfigs: vi.fn()
+  const mockCertificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithConfigs" | "findById"> = {
+    findByIdWithConfigs: vi.fn(),
+    findById: vi.fn()
   };
 
   const mockCertificateTemplateV2Service: Pick<
@@ -168,7 +181,11 @@ describe("CertificateV3Service", () => {
       kmsService: {
         generateKmsKey: vi.fn().mockResolvedValue("kms-key-123"),
         encryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("encrypted"))),
-        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted")))
+        decryptWithKmsKey: vi.fn().mockResolvedValue(vi.fn().mockResolvedValue(Buffer.from("decrypted"))),
+        createCipherPairWithDataKey: vi.fn().mockResolvedValue({
+          cipherTextBlob: Buffer.from("encrypted"),
+          plainTextKey: Buffer.from("plainkey")
+        })
       },
       projectDAL: {
         findOne: vi.fn().mockResolvedValue({ id: "project-123" }),
@@ -178,7 +195,10 @@ describe("CertificateV3Service", () => {
           const mockTx = {};
           return callback(mockTx);
         })
-      } as any
+      } as any,
+      certificateIssuanceQueue: {
+        queueCertificateIssuance: vi.fn().mockResolvedValue(undefined)
+      }
     });
   });
 

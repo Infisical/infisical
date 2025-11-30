@@ -94,7 +94,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
@@ -776,6 +776,7 @@ export const pkiAcmeServiceFactory = ({
             const cert = await orderCertificate(
               {
                 caId: certificateAuthority!.id,
+                profileId,
                 commonName: certificateRequest.commonName!,
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
                 csr: Buffer.from(csrPem),

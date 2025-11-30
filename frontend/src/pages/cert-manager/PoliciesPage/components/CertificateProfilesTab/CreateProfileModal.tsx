@@ -9,6 +9,7 @@ import { createNotification } from "@app/components/notifications";
 import {
   Button,
   Checkbox,
+  FilterableSelect,
   FormControl,
   Input,
   Modal,
@@ -19,7 +20,8 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { useProject, useSubscription } from "@app/context";
-import { useListCasByProjectId } from "@app/hooks/api/ca/queries";
+import { CaType } from "@app/hooks/api/ca/enums";
+import { useGetAzureAdcsTemplates, useListCasByProjectId } from "@app/hooks/api/ca/queries";
 import {
   EnrollmentType,
   IssuerType,
@@ -77,7 +79,12 @@ const createSchema = z
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
       .optional(),
-    acmeConfig: z.object({}).optional()
+    acmeConfig: z.object({}).optional(),
+    externalConfigs: z
+      .object({
+        template: z.string().min(1, "Azure ADCS template is required")
+      })
+      .optional()
   })
   .refine(
     (data) => {
@@ -212,7 +219,12 @@ const editSchema = z
         renewBeforeDays: z.number().min(1).max(365).optional()
       })
       .optional(),
-    acmeConfig: z.object({}).optional()
+    acmeConfig: z.object({}).optional(),
+    externalConfigs: z
+      .object({
+        template: z.string().optional()
+      })
+      .optional()
   })
   .refine(
     (data) => {
@@ -339,7 +351,7 @@ export const CreateProfileModal = ({
   const { currentProject } = useProject();
   const { subscription } = useSubscription();
 
-  const { data: caData } = useListCasByProjectId(currentProject?.id || "");
+  const { data: allCaData } = useListCasByProjectId(currentProject?.id || "");
   const { data: templateData } = useListCertificateTemplatesV2({
     projectId: currentProject?.id || "",
     limit: 100,
@@ -351,8 +363,22 @@ export const CreateProfileModal = ({
 
   const isEdit = mode === "edit" && profile;
 
-  const certificateAuthorities = caData || [];
+  const certificateAuthorities = (allCaData || []).map((ca) => ({
+    ...ca,
+    groupType: ca.type === "internal" ? "internal" : "external"
+  }));
   const certificateTemplates = templateData?.certificateTemplates || [];
+
+  const getGroupHeaderLabel = (groupType: "internal" | "external") => {
+    switch (groupType) {
+      case "internal":
+        return "Internal CAs";
+      case "external":
+        return "External CAs";
+      default:
+        return "";
+    }
+  };
 
   const { control, handleSubmit, reset, watch, setValue, formState } = useForm<FormData>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
@@ -380,7 +406,17 @@ export const CreateProfileModal = ({
                   renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
                 }
               : undefined,
-          acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined
+          acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined,
+          externalConfigs: profile.externalConfigs
+            ? {
+                template:
+                  typeof profile.externalConfigs === "object" &&
+                  profile.externalConfigs !== null &&
+                  typeof profile.externalConfigs.template === "string"
+                    ? profile.externalConfigs.template
+                    : ""
+              }
+            : undefined
         }
       : {
           slug: "",
@@ -393,14 +429,26 @@ export const CreateProfileModal = ({
             autoRenew: false,
             renewBeforeDays: 30
           },
-          acmeConfig: {}
+          acmeConfig: {},
+          externalConfigs: undefined
         }
   });
 
   const watchedEnrollmentType = watch("enrollmentType");
   const watchedIssuerType = watch("issuerType");
+  const watchedCertificateAuthorityId = watch("certificateAuthorityId");
   const watchedDisableBootstrapValidation = watch("estConfig.disableBootstrapCaValidation");
   const watchedAutoRenew = watch("apiConfig.autoRenew");
+
+  // Get the selected CA to check if it's Azure ADCS
+  const selectedCa = certificateAuthorities.find((ca) => ca.id === watchedCertificateAuthorityId);
+  const isAzureAdcsCa = selectedCa?.type === CaType.AZURE_AD_CS;
+
+  // Fetch Azure ADCS templates if needed
+  const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
+    caId: watchedCertificateAuthorityId || "",
+    projectId: currentProject?.id || ""
+  });
 
   useEffect(() => {
     if (isEdit && profile) {
@@ -427,10 +475,38 @@ export const CreateProfileModal = ({
                 renewBeforeDays: profile.apiConfig?.renewBeforeDays || 30
               }
             : undefined,
-        acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined
+        acmeConfig: profile.enrollmentType === EnrollmentType.ACME ? {} : undefined,
+        externalConfigs: profile.externalConfigs
+          ? {
+              template:
+                typeof profile.externalConfigs === "object" &&
+                profile.externalConfigs !== null &&
+                typeof profile.externalConfigs.template === "string"
+                  ? profile.externalConfigs.template
+                  : ""
+            }
+          : undefined
       });
     }
-  }, [isEdit, profile, reset]);
+  }, [isEdit, profile, reset, allCaData]);
+
+  // Additional effect to reset external configs when Azure ADCS templates are loaded
+  useEffect(() => {
+    if (
+      isEdit &&
+      profile &&
+      isAzureAdcsCa &&
+      azureAdcsTemplatesData?.templates &&
+      profile.externalConfigs &&
+      typeof profile.externalConfigs === "object" &&
+      profile.externalConfigs !== null &&
+      typeof profile.externalConfigs.template === "string"
+    ) {
+      // Re-set the external configs to ensure the template value is properly set
+      // after the Azure ADCS templates have been loaded
+      setValue("externalConfigs.template", profile.externalConfigs.template);
+    }
+  }, [isEdit, profile, isAzureAdcsCa, azureAdcsTemplatesData, setValue]);
 
   const onFormSubmit = async (data: FormData) => {
     if (!isEdit && !subscription?.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
@@ -443,6 +519,18 @@ export const CreateProfileModal = ({
     }
 
     if (!currentProject?.id && !isEdit) return;
+
+    // Validate Azure ADCS template requirement
+    if (
+      isAzureAdcsCa &&
+      (!data.externalConfigs?.template || data.externalConfigs.template.trim() === "")
+    ) {
+      createNotification({
+        text: "Azure ADCS Certificate Authority requires a template to be specified",
+        type: "error"
+      });
+      return;
+    }
 
     if (isEdit) {
       const updateData: TUpdateCertificateProfileDTO = {
@@ -458,6 +546,11 @@ export const CreateProfileModal = ({
         updateData.apiConfig = data.apiConfig;
       } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         updateData.acmeConfig = data.acmeConfig;
+      }
+
+      // Add external configs if present
+      if (data.externalConfigs) {
+        updateData.externalConfigs = data.externalConfigs;
       }
 
       await updateProfile.mutateAsync(updateData);
@@ -489,6 +582,11 @@ export const CreateProfileModal = ({
         createData.apiConfig = data.apiConfig;
       } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         createData.acmeConfig = data.acmeConfig;
+      }
+
+      // Add external configs if present
+      if (data.externalConfigs) {
+        createData.externalConfigs = data.externalConfigs;
       }
 
       await createProfile.mutateAsync(createData);
@@ -587,30 +685,82 @@ export const CreateProfileModal = ({
             <Controller
               control={control}
               name="certificateAuthorityId"
-              render={({ field: { onChange, value, ...field }, fieldState: { error } }) => (
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
                 <FormControl
                   label="Issuing CA"
                   isRequired
                   isError={Boolean(error)}
                   errorText={error?.message}
                 >
-                  <Select
-                    {...field}
-                    value={value || undefined}
-                    onValueChange={onChange}
+                  <FilterableSelect
+                    value={certificateAuthorities.find((ca) => ca.id === value) || null}
+                    onChange={(selectedCaValue) => {
+                      if (Array.isArray(selectedCaValue)) {
+                        onChange(selectedCaValue[0]?.id || "");
+                      } else if (
+                        selectedCaValue &&
+                        typeof selectedCaValue === "object" &&
+                        "id" in selectedCaValue
+                      ) {
+                        onChange(selectedCaValue.id || "");
+                      } else {
+                        onChange("");
+                      }
+                    }}
+                    getOptionLabel={(ca) =>
+                      ca.type === "internal" && ca.configuration.friendlyName
+                        ? ca.configuration.friendlyName
+                        : ca.name
+                    }
+                    getOptionValue={(ca) => ca.id}
+                    options={certificateAuthorities}
+                    groupBy="groupType"
+                    getGroupHeaderLabel={getGroupHeaderLabel}
                     placeholder="Select a certificate authority"
-                    className="w-full"
-                    position="popper"
                     isDisabled={Boolean(isEdit)}
-                  >
-                    {certificateAuthorities.map((ca) => (
-                      <SelectItem key={ca.id} value={ca.id}>
-                        {ca.type === "internal" && ca.configuration.friendlyName
-                          ? ca.configuration.friendlyName
-                          : ca.name}
-                      </SelectItem>
-                    ))}
-                  </Select>
+                    className="w-full"
+                  />
+                </FormControl>
+              )}
+            />
+          )}
+
+          {/* Azure ADCS Template Selection */}
+          {isAzureAdcsCa && (
+            <Controller
+              control={control}
+              name="externalConfigs.template"
+              render={({ field: { onChange, value }, fieldState: { error } }) => (
+                <FormControl
+                  label="Azure ADCS Template"
+                  isRequired
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                >
+                  <FilterableSelect
+                    value={
+                      azureAdcsTemplatesData?.templates.find((template) => template.id === value) ||
+                      null
+                    }
+                    onChange={(selectedTemplate) => {
+                      if (Array.isArray(selectedTemplate)) {
+                        onChange(selectedTemplate[0]?.id || "");
+                      } else if (
+                        selectedTemplate &&
+                        typeof selectedTemplate === "object" &&
+                        "id" in selectedTemplate
+                      ) {
+                        onChange(selectedTemplate.id || "");
+                      } else {
+                        onChange("");
+                      }
+                    }}
+                    getOptionLabel={(template) => template.name}
+                    getOptionValue={(template) => template.id}
+                    options={azureAdcsTemplatesData?.templates || []}
+                    placeholder="Select an Azure ADCS certificate template"
+                    className="w-full"
+                  />
                 </FormControl>
               )}
             />

@@ -63,6 +63,7 @@ export enum QueueName {
   DynamicSecretRevocation = "dynamic-secret-revocation",
   CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
+  CertificateIssuance = "certificate-issuance",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   PkiSync = "pki-sync",
@@ -125,6 +126,7 @@ export enum QueueJobs {
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
@@ -341,6 +343,21 @@ export type TQueueJobTypes = {
     payload: {
       subscriberId: string;
       caType: CaType;
+    };
+  };
+  [QueueName.CertificateIssuance]: {
+    name: QueueJobs.CaIssueCertificateFromProfile;
+    payload: {
+      certificateId: string;
+      profileId: string;
+      caId: string;
+      commonName?: string;
+      altNames?: string[];
+      ttl: string;
+      signatureAlgorithm: string;
+      keyAlgorithm: string;
+      keyUsages?: string[];
+      extendedKeyUsages?: string[];
     };
   };
   [QueueName.DailyReminders]: {

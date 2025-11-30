@@ -21,8 +21,10 @@ import {
   CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertStatus
+  CertStatus,
+  TAltNameType
 } from "@app/services/certificate/certificate-types";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSubscriberProperties } from "@app/services/pki-subscriber/pki-subscriber-types";
@@ -42,6 +44,60 @@ import {
   TUpdateAzureAdCsCertificateAuthorityDTO
 } from "./azure-ad-cs-certificate-authority-types";
 
+const parseTtlToDays = (ttl: string): number => {
+  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
+  if (!match) {
+    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
+  }
+
+  const [, value, unit] = match;
+  const num = parseInt(value, 10);
+
+  switch (unit) {
+    case "d":
+      return num;
+    case "h":
+      return Math.ceil(num / 24);
+    case "m":
+      return Math.ceil(num / (24 * 60));
+    default:
+      throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
+  }
+};
+
+const calculateRenewalThreshold = (
+  profileRenewBeforeDays: number | undefined,
+  certificateTtlInDays: number
+): number | undefined => {
+  if (profileRenewBeforeDays === undefined) {
+    return undefined;
+  }
+
+  if (profileRenewBeforeDays >= certificateTtlInDays) {
+    return Math.max(1, certificateTtlInDays - 1);
+  }
+
+  return profileRenewBeforeDays;
+};
+
+const calculateFinalRenewBeforeDays = (
+  profile: { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } } | undefined,
+  ttl: string
+): number | undefined => {
+  const hasAutoRenewEnabled = profile?.apiConfig?.autoRenew === true;
+  if (!hasAutoRenewEnabled) {
+    return undefined;
+  }
+
+  const profileRenewBeforeDays = profile?.apiConfig?.renewBeforeDays;
+  if (profileRenewBeforeDays !== undefined) {
+    const certificateTtlInDays = parseTtlToDays(ttl);
+    return calculateRenewalThreshold(profileRenewBeforeDays, certificateTtlInDays);
+  }
+
+  return undefined;
+};
+
 type TAzureAdCsCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById" | "updateById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -50,7 +106,7 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -61,6 +117,7 @@ type TAzureAdCsCertificateAuthorityFnsDeps = {
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 
 type AzureCertificateRequest = {
@@ -190,7 +247,7 @@ const buildSubjectDN = (commonName: string, properties?: TPkiSubscriberPropertie
 
 export const castDbEntryToAzureAdCsCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
-): TAzureAdCsCertificateAuthority & { credentials: unknown } => {
+): TAzureAdCsCertificateAuthority & { credentials: Buffer | null | undefined } => {
   if (!ca.externalCa?.id) {
     throw new BadRequestError({ message: "Malformed Active Directory Certificate Service certificate authority" });
   }
@@ -591,7 +648,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
   projectDAL,
   pkiSubscriberDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  certificateProfileDAL
 }: TAzureAdCsCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -1043,6 +1101,384 @@ export const AzureAdCsCertificateAuthorityFns = ({
     };
   };
 
+  const orderCertificateFromProfile = async ({
+    caId,
+    profileId,
+    commonName,
+    altNames = [],
+    keyUsages = [],
+    extendedKeyUsages = [],
+    template,
+    validity,
+    notBefore,
+    notAfter,
+    signatureAlgorithm,
+    keyAlgorithm = CertKeyAlgorithm.RSA_2048,
+    isRenewal,
+    originalCertificateId
+  }: {
+    caId: string;
+    profileId: string;
+    commonName: string;
+    altNames?: string[];
+    keyUsages?: CertKeyUsage[];
+    extendedKeyUsages?: CertExtendedKeyUsage[];
+    template?: string;
+    validity: { ttl: string };
+    notBefore?: Date;
+    notAfter?: Date;
+    signatureAlgorithm?: string;
+    keyAlgorithm?: CertKeyAlgorithm;
+    isRenewal?: boolean;
+    originalCertificateId?: string;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca.externalCa || ca.externalCa.type !== CaType.AZURE_AD_CS) {
+      throw new BadRequestError({ message: "CA is not an Active Directory Certificate Service CA" });
+    }
+
+    const azureCa = castDbEntryToAzureAdCsCertificateAuthority(ca);
+    if (azureCa.status !== CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "CA is disabled" });
+    }
+
+    const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+      projectId: ca.projectId,
+      projectDAL,
+      kmsService
+    });
+
+    const kmsEncryptor = await kmsService.encryptWithKmsKey({
+      kmsId: certificateManagerKmsId
+    });
+
+    const { username, password, adcsUrl, sslRejectUnauthorized, sslCertificate } =
+      await getAzureADCSConnectionCredentials(
+        azureCa.configuration.azureAdcsConnectionId,
+        appConnectionDAL,
+        kmsService
+      );
+
+    const credentials: {
+      username: string;
+      password: string;
+      sslRejectUnauthorized?: boolean;
+      sslCertificate?: string;
+    } = {
+      username,
+      password,
+      sslRejectUnauthorized,
+      sslCertificate
+    };
+
+    let alg;
+    if (signatureAlgorithm) {
+      switch (signatureAlgorithm.toUpperCase()) {
+        case "RSA-SHA256":
+        case "SHA256WITHRSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_2048);
+          break;
+        case "RSA-SHA384":
+        case "SHA384WITHRSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_3072);
+          break;
+        case "RSA-SHA512":
+        case "SHA512WITHRSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.RSA_4096);
+          break;
+        case "ECDSA-SHA256":
+        case "SHA256WITHECDSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.ECDSA_P256);
+          break;
+        case "ECDSA-SHA384":
+        case "SHA384WITHECDSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.ECDSA_P384);
+          break;
+        case "ECDSA-SHA512":
+        case "SHA512WITHECDSA":
+          alg = keyAlgorithmToAlgCfg(CertKeyAlgorithm.ECDSA_P521);
+          break;
+        default:
+          alg = keyAlgorithmToAlgCfg(keyAlgorithm);
+          break;
+      }
+    } else {
+      alg = keyAlgorithmToAlgCfg(keyAlgorithm);
+    }
+
+    const leafKeys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
+    const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+    const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+    const subjectDN = buildSubjectDN(commonName);
+
+    let sanExtension = "";
+    if (altNames && altNames.length > 0) {
+      sanExtension = altNames.join(",");
+    }
+
+    const csrObj = await x509.Pkcs10CertificateRequestGenerator.create({
+      name: subjectDN,
+      keys: leafKeys,
+      signingAlgorithm: alg,
+      ...(sanExtension && {
+        extensions: [
+          new x509.SubjectAlternativeNameExtension(
+            altNames.map((name) => ({ type: "dns" as TAltNameType, value: name })),
+            false
+          )
+        ]
+      })
+    });
+
+    const csrPem = csrObj.toString("pem");
+
+    let templateValue = template;
+    if (!templateValue) {
+      templateValue = "WebServer";
+    }
+
+    const templateInput = templateValue.trim();
+    if (!templateInput || templateInput.length === 0) {
+      throw new BadRequestError({
+        message: "Certificate template name cannot be empty"
+      });
+    }
+
+    let validityPeriod: string | undefined;
+    if (notBefore && notAfter) {
+      if (notAfter <= notBefore) {
+        throw new BadRequestError({
+          message: "Certificate notAfter date must be after notBefore date"
+        });
+      }
+
+      const diffMs = notAfter.getTime() - notBefore.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      validityPeriod = `${diffDays}d`;
+    } else if (notAfter) {
+      const diffMs = notAfter.getTime() - Date.now();
+      if (diffMs <= 0) {
+        throw new BadRequestError({
+          message: "Certificate notAfter date must be in the future"
+        });
+      }
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+      validityPeriod = `${diffDays}d`;
+    } else if (validity.ttl) {
+      validityPeriod = validity.ttl;
+    }
+
+    const certificateRequest: AzureCertificateRequest = {
+      csr: csrPem,
+      template: templateInput,
+      attributes: {
+        subject: subjectDN,
+        ...(sanExtension && { subjectAlternativeName: sanExtension }),
+        ...(validityPeriod && { validityPeriod })
+      }
+    };
+
+    let submissionResponse;
+    const maxOidRetries = 3;
+    let oidRetryCount = 0;
+
+    while (oidRetryCount <= maxOidRetries) {
+      try {
+        submissionResponse = await submitCertificateRequest(credentials, adcsUrl, certificateRequest);
+        break;
+      } catch (error) {
+        const isOidError =
+          error instanceof BadRequestError &&
+          (error.message.includes("OID resolution error") || error.message.includes("Cannot get OID for name type"));
+
+        if (isOidError && oidRetryCount < maxOidRetries) {
+          oidRetryCount += 1;
+
+          const delay = 3000 * oidRetryCount;
+          await new Promise((resolve) => {
+            setTimeout(resolve, delay);
+          });
+          // eslint-disable-next-line no-continue
+          continue;
+        }
+
+        throw error;
+      }
+    }
+
+    if (!submissionResponse) {
+      throw new BadRequestError({
+        message: "Failed to submit certificate request after multiple attempts due to OID resolution issues"
+      });
+    }
+
+    if (submissionResponse.status === "denied") {
+      throw new BadRequestError({ message: "Certificate request was denied by ADCS" });
+    }
+
+    let certificatePem = "";
+
+    if (submissionResponse.status === "issued" && submissionResponse.certificate) {
+      certificatePem = submissionResponse.certificate;
+    } else {
+      const maxRetries = 5;
+      const initialDelay = 2000;
+      let retryCount = 0;
+      let lastError: Error | null = null;
+
+      // eslint-disable-next-line no-await-in-loop
+      while (retryCount < maxRetries) {
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          certificatePem = await retrieveCertificate(credentials, adcsUrl, submissionResponse.certificateId);
+          break;
+        } catch (error) {
+          lastError = error as Error;
+          // eslint-disable-next-line no-plusplus
+          retryCount++;
+
+          if (retryCount < maxRetries) {
+            // Wait with exponential backoff: 2s, 4s, 8s, 16s, 32s
+            const delay = initialDelay * 2 ** (retryCount - 1);
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise((resolve) => {
+              setTimeout(resolve, delay);
+            });
+          }
+        }
+      }
+
+      if (retryCount === maxRetries) {
+        throw new BadRequestError({
+          message: `Certificate request submitted with ID ${submissionResponse.certificateId} but failed to retrieve after ${maxRetries} attempts. The certificate may still be pending approval or processing. Last error: ${lastError?.message || "Unknown error"}.`
+        });
+      }
+    }
+
+    if (!certificatePem) {
+      throw new BadRequestError({
+        message: "Failed to obtain certificate from ADCS. The certificate may still be pending processing."
+      });
+    }
+
+    let cleanedCertificatePem = certificatePem.trim();
+
+    if (!cleanedCertificatePem.includes("-----BEGIN CERTIFICATE-----")) {
+      throw new BadRequestError({
+        message: "Invalid certificate format received from ADCS. Expected PEM format."
+      });
+    }
+
+    cleanedCertificatePem = cleanedCertificatePem
+      .replace(new RE2("\\r\\n", "g"), "\n")
+      .replace(new RE2("\\r", "g"), "\n")
+      .trim();
+
+    if (!cleanedCertificatePem.includes("-----END CERTIFICATE-----")) {
+      throw new BadRequestError({
+        message: "Invalid certificate format received from ADCS. Missing end marker."
+      });
+    }
+
+    let certObj: x509.X509Certificate;
+    try {
+      certObj = new x509.X509Certificate(cleanedCertificatePem);
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Failed to parse certificate from ADCS: ${error instanceof Error ? error.message : "Unknown error"}. Certificate data may be corrupted.`
+      });
+    }
+
+    const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+      plainText: Buffer.from(new Uint8Array(certObj.rawData))
+    });
+
+    const certificateChainPem = submissionResponse.certificateChain || "";
+
+    const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+      plainText: Buffer.from(certificateChainPem)
+    });
+
+    const { cipherTextBlob: encryptedPrivateKey } = await kmsEncryptor({
+      plainText: Buffer.from(skLeaf)
+    });
+
+    let certificateId: string;
+
+    await certificateDAL.transaction(async (tx) => {
+      const cert = await certificateDAL.create(
+        {
+          caId: ca.id,
+          profileId,
+          status: CertStatus.ACTIVE,
+          friendlyName: commonName,
+          commonName,
+          altNames: altNames.join(","),
+          serialNumber: certObj.serialNumber,
+          notBefore: certObj.notBefore,
+          notAfter: certObj.notAfter,
+          keyUsages,
+          extendedKeyUsages,
+          keyAlgorithm,
+          signatureAlgorithm,
+          projectId: ca.projectId,
+          renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
+        },
+        tx
+      );
+
+      certificateId = cert.id;
+
+      if (isRenewal && originalCertificateId) {
+        await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, tx);
+      }
+
+      await certificateBodyDAL.create(
+        {
+          certId: cert.id,
+          encryptedCertificate,
+          encryptedCertificateChain
+        },
+        tx
+      );
+
+      await certificateSecretDAL.create(
+        {
+          certId: cert.id,
+          encryptedPrivateKey
+        },
+        tx
+      );
+
+      if (profileId && validity?.ttl && certificateProfileDAL) {
+        const profile = await certificateProfileDAL.findById(profileId, tx);
+        if (profile) {
+          const finalRenewBeforeDays = calculateFinalRenewBeforeDays(undefined, validity.ttl);
+
+          if (finalRenewBeforeDays !== undefined) {
+            await certificateDAL.updateById(
+              cert.id,
+              {
+                renewBeforeDays: finalRenewBeforeDays
+              },
+              tx
+            );
+          }
+        }
+      }
+    });
+
+    return {
+      certificate: cleanedCertificatePem,
+      certificateChain: certificateChainPem,
+      privateKey: skLeaf,
+      serialNumber: certObj.serialNumber,
+      certificateId: certificateId!,
+      ca: azureCa
+    };
+  };
+
   const getTemplates = async ({ caId, projectId }: { caId: string; projectId: string }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca || ca.projectId !== projectId) {
@@ -1182,6 +1618,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     updateCertificateAuthority,
     listCertificateAuthorities,
     orderSubscriberCertificate,
+    orderCertificateFromProfile,
     getTemplates
   };
 };

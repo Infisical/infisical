@@ -574,6 +574,11 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
+  TCertificateRequests,
+  TCertificateRequestsInsert,
+  TCertificateRequestsUpdate
+} from "@app/db/schemas/certificate-requests";
+import {
   TAccessApprovalPoliciesEnvironments,
   TAccessApprovalPoliciesEnvironmentsInsert,
   TAccessApprovalPoliciesEnvironmentsUpdate
@@ -714,6 +719,11 @@ declare module "knex/types/tables" {
       TExternalCertificateAuthoritiesUpdate
     >;
     [TableName.Certificate]: KnexOriginal.CompositeTableType<TCertificates, TCertificatesInsert, TCertificatesUpdate>;
+    [TableName.CertificateRequests]: KnexOriginal.CompositeTableType<
+      TCertificateRequests,
+      TCertificateRequestsInsert,
+      TCertificateRequestsUpdate
+    >;
     [TableName.CertificateTemplate]: KnexOriginal.CompositeTableType<
       TCertificateTemplates,
       TCertificateTemplatesInsert,

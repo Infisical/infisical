@@ -173,6 +173,7 @@ import { certificateAuthorityDALFactory } from "@app/services/certificate-author
 import { certificateAuthorityQueueFactory } from "@app/services/certificate-authority/certificate-authority-queue";
 import { certificateAuthoritySecretDALFactory } from "@app/services/certificate-authority/certificate-authority-secret-dal";
 import { certificateAuthorityServiceFactory } from "@app/services/certificate-authority/certificate-authority-service";
+import { certificateIssuanceQueueFactory } from "@app/services/certificate-authority/certificate-issuance-queue";
 import { externalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import { internalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-dal";
 import { InternalCertificateAuthorityFns } from "@app/services/certificate-authority/internal/internal-certificate-authority-fns";
@@ -180,6 +181,8 @@ import { internalCertificateAuthorityServiceFactory } from "@app/services/certif
 import { certificateEstV3ServiceFactory } from "@app/services/certificate-est-v3/certificate-est-v3-service";
 import { certificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { certificateProfileServiceFactory } from "@app/services/certificate-profile/certificate-profile-service";
+import { certificateRequestDALFactory } from "@app/services/certificate-request/certificate-request-dal";
+import { certificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
 import { certificateSyncDALFactory } from "@app/services/certificate-sync/certificate-sync-dal";
 import { certificateTemplateDALFactory } from "@app/services/certificate-template/certificate-template-dal";
 import { certificateTemplateEstConfigDALFactory } from "@app/services/certificate-template/certificate-template-est-config-dal";
@@ -1092,6 +1095,7 @@ export const registerRoutes = async (
   const certificateDAL = certificateDALFactory(db);
   const certificateBodyDAL = certificateBodyDALFactory(db);
   const certificateSecretDAL = certificateSecretDALFactory(db);
+  const certificateRequestDAL = certificateRequestDALFactory(db);
   const certificateSyncDAL = certificateSyncDALFactory(db);
 
   const pkiAlertDAL = pkiAlertDALFactory(db);
@@ -1187,7 +1191,7 @@ export const registerRoutes = async (
     certificateBodyDAL,
     certificateSecretDAL,
     certificateAuthorityDAL,
-    certificateAuthorityCertDAL,
+    externalCertificateAuthorityDAL,
     permissionService,
     licenseService,
     kmsService,
@@ -2208,6 +2212,31 @@ export const registerRoutes = async (
     pkiSyncQueue
   });
 
+  const certificateRequestService = certificateRequestServiceFactory({
+    certificateRequestDAL,
+    certificateDAL,
+    certificateService,
+    permissionService
+  });
+
+  const certificateIssuanceQueue = certificateIssuanceQueueFactory({
+    certificateAuthorityDAL,
+    appConnectionDAL,
+    appConnectionService,
+    externalCertificateAuthorityDAL,
+    certificateDAL,
+    projectDAL,
+    kmsService,
+    certificateBodyDAL,
+    certificateSecretDAL,
+    queueService,
+    pkiSubscriberDAL,
+    pkiSyncDAL,
+    pkiSyncQueue,
+    certificateProfileDAL,
+    certificateRequestService
+  });
+
   const certificateV3Service = certificateV3ServiceFactory({
     certificateDAL,
     certificateSecretDAL,
@@ -2222,7 +2251,8 @@ export const registerRoutes = async (
     pkiSyncQueue,
     kmsService,
     projectDAL,
-    certificateBodyDAL
+    certificateBodyDAL,
+    certificateIssuanceQueue
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({
@@ -2448,6 +2478,7 @@ export const registerRoutes = async (
   await pkiSubscriberQueue.startDailyAutoRenewalJob();
   await pkiAlertV2Queue.init();
   await certificateV3Queue.init();
+  await certificateIssuanceQueue.initializeCertificateIssuanceQueue();
   await microsoftTeamsService.start();
   await dynamicSecretQueueService.init();
   await eventBusService.init();
@@ -2513,6 +2544,7 @@ export const registerRoutes = async (
     auditLogStream: auditLogStreamService,
     certificate: certificateService,
     certificateV3: certificateV3Service,
+    certificateRequest: certificateRequestService,
     certificateEstV3: certificateEstV3Service,
     sshCertificateAuthority: sshCertificateAuthorityService,
     sshCertificateTemplate: sshCertificateTemplateService,

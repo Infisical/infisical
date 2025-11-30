@@ -119,7 +119,7 @@ export const CertificatesSection = () => {
                 onClick={() => handlePopUpOpen("issueCertificate")}
                 isDisabled={!isAllowed}
               >
-                Issue
+                Request
               </Button>
             </div>
           )}

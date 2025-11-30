@@ -58,8 +58,10 @@ export type TOrderCertificateFromProfileDTO = {
     notAfter?: Date;
     signatureAlgorithm?: string;
     keyAlgorithm?: string;
+    template?: string;
   };
   removeRootsFromChain?: boolean;
+  certificateRequestId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TCertificateFromProfileResponse = {
@@ -105,6 +107,7 @@ export type TCertificateOrderResponse = {
 export type TRenewCertificateDTO = {
   certificateId: string;
   removeRootsFromChain?: boolean;
+  certificateRequestId?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TUpdateRenewalConfigDTO = {

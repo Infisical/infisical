@@ -46,7 +46,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional(),
-          acmeConfig: z.object({}).optional()
+          acmeConfig: z.object({}).optional(),
+          externalConfigs: z.record(z.unknown()).nullable().optional()
         })
         .refine(
           (data) => {
@@ -149,7 +150,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: z.record(z.unknown()).nullable().optional()
+          })
         })
       }
     },
@@ -204,6 +207,15 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       response: {
         200: z.object({
           certificateProfiles: PkiCertificateProfilesSchema.extend({
+            certificateAuthority: z
+              .object({
+                id: z.string(),
+                status: z.string(),
+                name: z.string(),
+                isExternal: z.boolean().optional(),
+                externalType: z.string().nullable().optional()
+              })
+              .optional(),
             metrics: z
               .object({
                 profileId: z.string(),
@@ -234,7 +246,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 id: z.string(),
                 directoryUrl: z.string()
               })
-              .optional()
+              .optional(),
+            externalConfigs: z.record(z.unknown()).nullable().optional()
           }).array(),
           totalCount: z.number()
         })
@@ -280,12 +293,16 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       response: {
         200: z.object({
           certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: z.record(z.unknown()).nullable().optional()
+          }).extend({
             certificateAuthority: z
               .object({
                 id: z.string(),
-                projectId: z.string(),
+                projectId: z.string().optional(),
                 status: z.string(),
-                name: z.string()
+                name: z.string(),
+                isExternal: z.boolean().optional(),
+                externalType: z.string().nullable().optional()
               })
               .optional(),
             certificateTemplate: z
@@ -310,7 +327,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
                 autoRenew: z.boolean(),
                 renewBeforeDays: z.number().optional()
               })
-              .optional()
+              .optional(),
+            externalConfigs: z.record(z.unknown()).nullable().optional()
           })
         })
       }
@@ -358,7 +376,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: z.record(z.unknown()).nullable().optional()
+          })
         })
       }
     },
@@ -412,7 +432,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               autoRenew: z.boolean().default(false),
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
-            .optional()
+            .optional(),
+          externalConfigs: z.record(z.unknown()).nullable().optional()
         })
         .refine(
           (data) => {
@@ -434,7 +455,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
         ),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: z.record(z.unknown()).nullable().optional()
+          })
         })
       }
     },
@@ -479,7 +502,9 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
       }),
       response: {
         200: z.object({
-          certificateProfile: PkiCertificateProfilesSchema
+          certificateProfile: PkiCertificateProfilesSchema.extend({
+            externalConfigs: z.record(z.unknown()).nullable().optional()
+          })
         })
       }
     },

@@ -1,6 +1,7 @@
 import * as x509 from "@peculiar/x509";
 import acme, { CsrBuffer } from "acme-client";
 import { Knex } from "knex";
+import RE2 from "re2";
 
 import { TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
@@ -23,6 +24,7 @@ import {
   CertKeyUsage,
   CertStatus
 } from "@app/services/certificate/certificate-types";
+import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TPkiSubscriberDALFactory } from "@app/services/pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "@app/services/pki-sync/pki-sync-dal";
@@ -45,6 +47,60 @@ import {
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
+const parseTtlToDays = (ttl: string): number => {
+  const match = ttl.match(new RE2("^(\\d+)([dhm])$"));
+  if (!match) {
+    throw new BadRequestError({ message: `Invalid TTL format: ${ttl}` });
+  }
+
+  const [, value, unit] = match;
+  const num = parseInt(value, 10);
+
+  switch (unit) {
+    case "d":
+      return num;
+    case "h":
+      return Math.ceil(num / 24);
+    case "m":
+      return Math.ceil(num / (24 * 60));
+    default:
+      throw new BadRequestError({ message: `Invalid TTL unit: ${unit}` });
+  }
+};
+
+const calculateRenewalThreshold = (
+  profileRenewBeforeDays: number | undefined,
+  certificateTtlInDays: number
+): number | undefined => {
+  if (profileRenewBeforeDays === undefined) {
+    return undefined;
+  }
+
+  if (profileRenewBeforeDays >= certificateTtlInDays) {
+    return Math.max(1, certificateTtlInDays - 1);
+  }
+
+  return profileRenewBeforeDays;
+};
+
+const calculateFinalRenewBeforeDays = (
+  profile: { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } } | undefined,
+  ttl: string
+): number | undefined => {
+  if (!profile?.apiConfig?.autoRenew || !profile.apiConfig.renewBeforeDays) {
+    return undefined;
+  }
+
+  const certificateTtlInDays = parseTtlToDays(ttl);
+  const renewBeforeDays = calculateRenewalThreshold(profile.apiConfig.renewBeforeDays, certificateTtlInDays);
+
+  if (!renewBeforeDays) {
+    return undefined;
+  }
+
+  return renewBeforeDays;
+};
+
 type TAcmeCertificateAuthorityFnsDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   appConnectionService: Pick<TAppConnectionServiceFactory, "validateAppConnectionUsageById">;
@@ -53,7 +109,7 @@ type TAcmeCertificateAuthorityFnsDeps = {
     "create" | "transaction" | "findByIdWithAssociatedCa" | "updateById" | "findWithAssociatedCa" | "findById"
   >;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "create" | "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -64,13 +120,14 @@ type TAcmeCertificateAuthorityFnsDeps = {
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 
 type TOrderCertificateDeps = {
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -78,6 +135,7 @@ type TOrderCertificateDeps = {
     "encryptWithKmsKey" | "generateKmsKey" | "createCipherPairWithDataKey" | "decryptWithKmsKey"
   >;
   projectDAL: Pick<TProjectDALFactory, "findById" | "findOne" | "updateById" | "transaction">;
+  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 
 type DBConfigurationColumn = {
@@ -91,7 +149,7 @@ type DBConfigurationColumn = {
 
 export const castDbEntryToAcmeCertificateAuthority = (
   ca: Awaited<ReturnType<TCertificateAuthorityDALFactory["findByIdWithAssociatedCa"]>>
-): TAcmeCertificateAuthority & { credentials: unknown } => {
+): TAcmeCertificateAuthority & { credentials: Buffer | null | undefined } => {
   if (!ca.externalCa?.id) {
     throw new BadRequestError({ message: "Malformed ACME certificate authority" });
   }
@@ -123,15 +181,22 @@ export const castDbEntryToAcmeCertificateAuthority = (
 export const orderCertificate = async (
   {
     caId,
+    profileId,
     subscriberId,
     commonName,
     altNames,
     csr,
     csrPrivateKey,
     keyUsages,
-    extendedKeyUsages
+    extendedKeyUsages,
+    ttl,
+    signatureAlgorithm,
+    keyAlgorithm,
+    isRenewal,
+    originalCertificateId
   }: {
     caId: string;
+    profileId?: string;
     subscriberId?: string;
     commonName: string;
     altNames?: string[];
@@ -139,6 +204,11 @@ export const orderCertificate = async (
     csrPrivateKey?: string;
     keyUsages?: CertKeyUsage[];
     extendedKeyUsages?: CertExtendedKeyUsage[];
+    ttl?: string;
+    signatureAlgorithm?: string;
+    keyAlgorithm?: string;
+    isRenewal?: boolean;
+    originalCertificateId?: string;
   },
   deps: TOrderCertificateDeps,
   tx?: Knex
@@ -151,7 +221,8 @@ export const orderCertificate = async (
     certificateBodyDAL,
     certificateSecretDAL,
     kmsService,
-    projectDAL
+    projectDAL,
+    certificateProfileDAL
   } = deps;
 
   const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -181,7 +252,7 @@ export const orderCertificate = async (
   let accountKey: Buffer | undefined;
   if (acmeCa.credentials) {
     const decryptedCredentials = await kmsDecryptor({
-      cipherTextBlob: acmeCa.credentials as Buffer
+      cipherTextBlob: acmeCa.credentials
     });
 
     const parsedCredentials = await AcmeCertificateAuthorityCredentialsSchema.parseAsync(
@@ -322,6 +393,7 @@ export const orderCertificate = async (
       {
         caId: ca.id,
         pkiSubscriberId: subscriberId,
+        profileId,
         status: CertStatus.ACTIVE,
         friendlyName: commonName,
         commonName,
@@ -331,10 +403,17 @@ export const orderCertificate = async (
         notAfter: certObj.notAfter,
         keyUsages,
         extendedKeyUsages,
-        projectId: ca.projectId
+        keyAlgorithm,
+        signatureAlgorithm,
+        projectId: ca.projectId,
+        renewedFromCertificateId: isRenewal && originalCertificateId ? originalCertificateId : null
       },
       innerTx
     );
+
+    if (isRenewal && originalCertificateId) {
+      await certificateDAL.updateById(originalCertificateId, { renewedByCertificateId: cert.id }, innerTx);
+    }
 
     await certificateBodyDAL.create(
       {
@@ -355,6 +434,26 @@ export const orderCertificate = async (
       );
     }
 
+    if (profileId && ttl && certificateProfileDAL) {
+      const profile = await certificateProfileDAL.findById(profileId, innerTx);
+      if (profile) {
+        const finalRenewBeforeDays = calculateFinalRenewBeforeDays(
+          profile as { apiConfig?: { autoRenew?: boolean; renewBeforeDays?: number } },
+          ttl
+        );
+
+        if (finalRenewBeforeDays !== undefined) {
+          await certificateDAL.updateById(
+            cert.id,
+            {
+              renewBeforeDays: finalRenewBeforeDays
+            },
+            innerTx
+          );
+        }
+      }
+    }
+
     return cert;
   });
 };
@@ -371,7 +470,8 @@ export const AcmeCertificateAuthorityFns = ({
   projectDAL,
   pkiSubscriberDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  certificateProfileDAL
 }: TAcmeCertificateAuthorityFnsDeps) => {
   const createCertificateAuthority = async ({
     name,
@@ -616,10 +716,71 @@ export const AcmeCertificateAuthorityFns = ({
     await triggerAutoSyncForSubscriber(subscriber.id, { pkiSyncDAL, pkiSyncQueue });
   };
 
+  const orderCertificateFromProfile = async ({
+    caId,
+    profileId,
+    commonName,
+    altNames = [],
+    csr,
+    csrPrivateKey,
+    keyUsages,
+    extendedKeyUsages,
+    ttl,
+    signatureAlgorithm,
+    keyAlgorithm,
+    isRenewal,
+    originalCertificateId
+  }: {
+    caId: string;
+    profileId?: string;
+    commonName: string;
+    altNames?: string[];
+    csr: CsrBuffer;
+    csrPrivateKey: string;
+    keyUsages?: CertKeyUsage[];
+    extendedKeyUsages?: CertExtendedKeyUsage[];
+    ttl?: string;
+    signatureAlgorithm?: string;
+    keyAlgorithm?: string;
+    isRenewal?: boolean;
+    originalCertificateId?: string;
+  }) => {
+    return orderCertificate(
+      {
+        caId,
+        profileId,
+        subscriberId: undefined,
+        commonName,
+        altNames,
+        csr,
+        csrPrivateKey,
+        keyUsages,
+        extendedKeyUsages,
+        ttl,
+        signatureAlgorithm,
+        keyAlgorithm,
+        isRenewal,
+        originalCertificateId
+      },
+      {
+        appConnectionDAL,
+        certificateAuthorityDAL,
+        externalCertificateAuthorityDAL,
+        certificateDAL,
+        certificateBodyDAL,
+        certificateSecretDAL,
+        kmsService,
+        projectDAL,
+        certificateProfileDAL
+      }
+    );
+  };
+
   return {
     createCertificateAuthority,
     updateCertificateAuthority,
     listCertificateAuthorities,
-    orderSubscriberCertificate
+    orderSubscriberCertificate,
+    orderCertificateFromProfile
   };
 };
