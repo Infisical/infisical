@@ -3,7 +3,8 @@ import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { InfoIcon } from "lucide-react";
 
 import { OrgPermissionGuardBanner } from "@app/components/permissions/OrgPermissionCan";
 import { Button, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
@@ -85,7 +86,19 @@ export const AccessManagementPage = () => {
           scope={isSubOrganization ? "namespace" : "org"}
           title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
           description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
-        />
+        >
+          {isSubOrganization && (
+            <Link
+              to="/organizations/$orgId/access-management"
+              params={{
+                orgId: currentOrg.rootOrgId ?? ""
+              }}
+              className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
+            >
+              <InfoIcon size={12} /> Looking for root organization access control?
+            </Link>
+          )}
+        </PageHeader>
         {!currentOrg.shouldUseNewPrivilegeSystem && (
           <div className="mt-4 mb-4 flex flex-col rounded-r border-l-2 border-l-primary bg-mineshaft-300/5 px-4 py-2.5">
             <div className="mb-1 flex items-center text-sm">

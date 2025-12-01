@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createNotification } from "@app/components/notifications";
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { projectKeys, subOrganizationsQuery, useCreateSubOrganization } from "@app/hooks/api";
 import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { slugSchema } from "@app/lib/schemas";
@@ -23,6 +24,7 @@ const AddOrgSchema = z.object({
 type FormData = z.infer<typeof AddOrgSchema>;
 
 export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
   const createSubOrg = useCreateSubOrganization();
   const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
   const queryClient = useQueryClient();
@@ -42,6 +44,15 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
   const router = useRouter();
 
   const onSubmit = async ({ name }: FormData) => {
+    if (isSubOrganization && currentOrg.rootOrgId) {
+      const { token } = await selectOrganization({
+        organizationId: currentOrg.rootOrgId
+      });
+
+      SecurityClient.setToken(token);
+      SecurityClient.setProviderAuthToken("");
+    }
+
     const { organization } = await createSubOrg.mutateAsync({
       name
     });
@@ -53,7 +64,7 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     onClose();
 
     const { token } = await selectOrganization({
-      subOrganizationId: organization.id
+      organizationId: organization.id
     });
 
     SecurityClient.setToken(token);

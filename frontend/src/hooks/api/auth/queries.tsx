@@ -58,15 +58,10 @@ export const loginLDAPRedirect = async (loginLDAPDetails: LoginLDAPDTO) => {
   return data;
 };
 
-export type SelectOrganizationParams =
-  | {
-      organizationId: string;
-      userAgent?: UserAgentType;
-    }
-  | {
-      subOrganizationId: string;
-      userAgent?: UserAgentType;
-    };
+export type SelectOrganizationParams = {
+  organizationId: string;
+  userAgent?: UserAgentType;
+};
 
 export const selectOrganization = async (data: SelectOrganizationParams) => {
   const { data: res } = await apiRequest.post<{

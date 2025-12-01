@@ -73,6 +73,11 @@ export const Route = createFileRoute("/_authenticate")({
         });
       });
 
-    return { organizationId: data.organizationId as string, isAuthenticated: true, user };
+    const isSubOrganization = !!data.subOrganizationId;
+    return {
+      organizationId: isSubOrganization ? data.subOrganizationId : (data.organizationId as string),
+      isAuthenticated: true,
+      user
+    };
   }
 });

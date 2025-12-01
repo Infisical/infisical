@@ -62,11 +62,7 @@ import {
   useGetOrgTrialUrl,
   useLogoutUser
 } from "@app/hooks/api";
-import {
-  authKeys,
-  selectOrganization,
-  type SelectOrganizationParams
-} from "@app/hooks/api/auth/queries";
+import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { MfaMethod } from "@app/hooks/api/auth/types";
 import { getAuthToken } from "@app/hooks/api/reactQuery";
 import { Organization, SubscriptionPlan } from "@app/hooks/api/types";
@@ -197,26 +193,18 @@ export const Navbar = () => {
 
   const handleOrgSelection = async ({
     organizationId,
-    subOrganizationId,
     navigateTo,
     onSuccess
   }: {
     organizationId?: string;
-    subOrganizationId?: string;
     navigateTo?: string;
     onSuccess?: () => void | Promise<void>;
   }) => {
-    if (!organizationId && !subOrganizationId) return;
+    if (!organizationId) return;
 
-    const targetId = subOrganizationId ?? organizationId;
+    if (organizationId === currentOrg.id) return;
 
-    if (targetId === currentOrg.id) return;
-
-    const selectionPayload: SelectOrganizationParams = subOrganizationId
-      ? { subOrganizationId }
-      : { organizationId: organizationId as string };
-
-    const { token, isMfaEnabled, mfaMethod } = await selectOrganization(selectionPayload);
+    const { token, isMfaEnabled, mfaMethod } = await selectOrganization({ organizationId });
 
     if (isMfaEnabled) {
       SecurityClient.setMfaToken(token);
@@ -225,7 +213,7 @@ export const Navbar = () => {
       }
       toggleShowMfa.on();
       setMfaSuccessCallback(() => async () => {
-        await handleOrgSelection({ organizationId, subOrganizationId, onSuccess });
+        await handleOrgSelection({ organizationId, onSuccess });
       });
       return;
     }
@@ -234,10 +222,11 @@ export const Navbar = () => {
     SecurityClient.setProviderAuthToken("");
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
     queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
-
-    await router.invalidate();
-    await navigateUserToOrg({ navigate, organizationId: targetId, navigateTo });
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+
+    await queryClient.refetchQueries({ queryKey: authKeys.getAuthToken });
+
+    await navigateUserToOrg({ navigate, organizationId, navigateTo });
 
     if (onSuccess) {
       await onSuccess();
@@ -387,14 +376,17 @@ export const Navbar = () => {
                   <button
                     className="flex cursor-pointer items-center gap-x-2 truncate whitespace-nowrap"
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (isSubOrganization) {
-                        handleOrgSelection({ organizationId: currentOrg.rootOrgId as string });
+                        await handleOrgSelection({
+                          organizationId: currentOrg.rootOrgId as string
+                        });
+                      } else {
+                        navigate({
+                          to: "/organizations/$orgId/projects",
+                          params: { orgId: currentOrg.id }
+                        });
                       }
-                      navigate({
-                        to: "/organizations/$orgId/projects",
-                        params: { orgId: currentOrg.id }
-                      });
                     }}
                   >
                     <OrgIcon className={twMerge("size-[14px] shrink-0 text-org")} />
@@ -471,7 +463,7 @@ export const Navbar = () => {
                             </div>
                             {subOrganizations.map((subOrg) => (
                               <DropdownMenuItem
-                                onClick={() => handleOrgSelection({ subOrganizationId: subOrg.id })}
+                                onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
                                 className="cursor-pointer font-normal"
                                 key={subOrg.id}
                               >
@@ -486,18 +478,16 @@ export const Navbar = () => {
                                 </div>
                               </DropdownMenuItem>
                             ))}
-                            {Boolean(subOrganizations.length && !isSubOrganization) && (
+                            {Boolean(subOrganizations.length) && (
                               <div className="mt-1 h-1 border-t border-mineshaft-600" />
                             )}
-                            {!isSubOrganization && (
-                              <DropdownMenuItem
-                                className="cursor-pointer"
-                                icon={<FontAwesomeIcon icon={faPlus} />}
-                                onClick={() => setShowSubOrgForm(true)}
-                              >
-                                New Sub-Organization
-                              </DropdownMenuItem>
-                            )}{" "}
+                            <DropdownMenuItem
+                              className="cursor-pointer"
+                              icon={<FontAwesomeIcon icon={faPlus} />}
+                              onClick={() => setShowSubOrgForm(true)}
+                            >
+                              New Sub-Organization
+                            </DropdownMenuItem>
                           </DropdownSubMenuContent>
                         </DropdownSubMenu>
                       );
@@ -590,7 +580,7 @@ export const Navbar = () => {
                       </div>
                       {subOrganizations.map((subOrg) => (
                         <DropdownMenuItem
-                          onClick={() => handleOrgSelection({ subOrganizationId: subOrg.id })}
+                          onClick={() => handleOrgSelection({ organizationId: subOrg.id })}
                           className="cursor-pointer font-normal"
                           key={subOrg.id}
                         >
@@ -602,18 +592,16 @@ export const Navbar = () => {
                           </div>
                         </DropdownMenuItem>
                       ))}
-                      {Boolean(subOrganizations.length && !isSubOrganization) && (
+                      {Boolean(subOrganizations.length) && (
                         <div className="mt-1 h-1 border-t border-mineshaft-600" />
                       )}
-                      {!isSubOrganization && (
-                        <DropdownMenuItem
-                          className="cursor-pointer"
-                          icon={<FontAwesomeIcon icon={faPlus} />}
-                          onClick={() => setShowSubOrgForm(true)}
-                        >
-                          New Sub-Organization
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem
+                        className="cursor-pointer"
+                        icon={<FontAwesomeIcon icon={faPlus} />}
+                        onClick={() => setShowSubOrgForm(true)}
+                      >
+                        New Sub-Organization
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
