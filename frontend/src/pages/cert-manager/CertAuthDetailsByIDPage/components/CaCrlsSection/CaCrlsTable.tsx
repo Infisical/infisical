@@ -51,7 +51,7 @@ export const CaCrlsTable = ({ caId }: Props) => {
                 <Tr key={`ca-crl-${id}`}>
                   <Td>
                     <div className="flex items-center">
-                      {`${window.origin}/api/v1/pki/crl/${id}`}
+                      {`${window.origin}/api/v1/cert-manager/crl/${id}`}
                     </div>
                   </Td>
                   {/* <Td>{format(new Date(caCrlObj.thisUpdate), "yyyy-MM-dd")}</Td> */}

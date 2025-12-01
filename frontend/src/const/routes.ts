@@ -294,8 +294,8 @@ export const ROUTE_PATHS = Object.freeze({
   },
   CertManager: {
     CertAuthDetailsByIDPage: setRoute(
-      "/organizations/$orgId/projects/cert-management/$projectId/ca/$caName",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName"
+      "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/ca/$caId"
     ),
     SubscribersPage: setRoute(
       "/organizations/$orgId/projects/cert-management/$projectId/subscribers",

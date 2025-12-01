@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
-import { Button, FilterableSelect, FormControl, ModalClose, Spinner } from "@app/components/v2";
+import { Button, FilterableSelect, FormControl, ModalClose } from "@app/components/v2";
 import { useProject } from "@app/context";
 import {
   projectIdentityMembershipQuery,
@@ -83,7 +83,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
     });
 
     createNotification({
-      text: "Successfully added identity to project",
+      text: "Successfully added machine identity to project",
       type: "success"
     });
 
@@ -101,24 +101,18 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
     handlePopUpToggle("createIdentity", false);
   };
 
-  if (isMembershipsLoading || isRolesLoading)
-    return (
-      <div className="flex w-full items-center justify-center py-10">
-        <Spinner className="text-mineshaft-400" />
-      </div>
-    );
-
   return (
     <form onSubmit={handleSubmit(onFormSubmit)}>
       <Controller
         control={control}
         name="identity"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Identity" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
             <FilterableSelect
               value={value}
               onChange={onChange}
-              placeholder="Select identity..."
+              isLoading={isMembershipsLoading}
+              placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
               options={filteredIdentityMembershipOrgs.map((membership) => ({
                 name: membership.name,
@@ -142,6 +136,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
           >
             <FilterableSelect
               value={value}
+              isLoading={isRolesLoading}
               onChange={onChange}
               options={roles}
               placeholder="Select role..."
@@ -159,7 +154,7 @@ export const ProjectLinkIdentityModal = ({ handlePopUpToggle }: Props) => {
           isLoading={isSubmitting}
           isDisabled={isSubmitting}
         >
-          Link
+          Assign to Project
         </Button>
         <ModalClose asChild>
           <Button colorSchema="secondary" variant="plain">

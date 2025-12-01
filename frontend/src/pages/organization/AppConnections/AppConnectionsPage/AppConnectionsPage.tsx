@@ -27,7 +27,7 @@ export const AppConnectionsPage = withPermission(
             <PageHeader
               scope={isSubOrganization ? "namespace" : "org"}
               className="w-full"
-              title="App Connections"
+              title={`${isSubOrganization ? "Sub-Organization" : "Organization"} App Connections`}
               description="Manage organization App Connections"
             />
             <div className="mb-4 flex w-full flex-col rounded-md border border-blue-500/50 bg-blue-500/30 px-4 py-2 text-sm text-blue-200">

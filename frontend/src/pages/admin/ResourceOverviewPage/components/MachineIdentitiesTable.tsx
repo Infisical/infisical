@@ -90,7 +90,7 @@ const IdentityPanelTable = ({
           value={searchIdentityFilter}
           onChange={(e) => setSearchIdentityFilter(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search identities by name..."
+          placeholder="Search machine identities by name..."
           className="flex-1"
         />
       </div>

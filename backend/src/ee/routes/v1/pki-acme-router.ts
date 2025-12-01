@@ -77,7 +77,8 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       done(error, undefined);
     }
   });
-  // GET /api/v1/pki/acme/profiles/<profile_id>/directory
+
+  // GET /api/v1/cert-manager/acme/profiles/<profile_id>/directory
   // Directory (RFC 8555 Section 7.1.1)
   server.route({
     method: "GET",
@@ -99,7 +100,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     handler: async (req) => server.services.pkiAcme.getAcmeDirectory(req.params.profileId)
   });
 
-  // HEAD /api/v1/pki/acme/profiles/<profile_id>/new-nonce
+  // HEAD /api/v1/cert-manager/acme/profiles/<profile_id>/new-nonce
   // New Nonce (RFC 8555 Section 7.2)
   server.route({
     method: "HEAD",
@@ -126,7 +127,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/new-account
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/new-account
   // New Account (RFC 8555 Section 7.3)
   server.route({
     method: "POST",
@@ -163,7 +164,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/accounts/<account_id>
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/accounts/<account_id>
   // Account Deactivation (RFC 8555 Section 7.3.6)
   server.route({
     method: "POST",
@@ -200,7 +201,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/new-order
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/new-order
   // New Certificate Order (RFC 8555 Section 7.4)
   server.route({
     method: "POST",
@@ -235,7 +236,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/orders/<order_id>
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/orders/<order_id>
   // Get Order (RFC 8555 Section 7.1.3)
   server.route({
     method: "POST",
@@ -271,7 +272,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/orders/<order_id>/finalize
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/orders/<order_id>/finalize
   // Applying for Certificate Issuance (RFC 8555 Section 7.4)
   server.route({
     method: "POST",
@@ -308,7 +309,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
       );
     }
   });
-  // POST /api/v1/pki/acme/profiles/<profile_id>/accounts/<account_id>/orders
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/accounts/<account_id>/orders
   // List Orders (RFC 8555 Section 7.1.2.1)
   server.route({
     method: "POST",
@@ -344,7 +345,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/orders/<order_id>/certificate
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/orders/<order_id>/certificate
   // Download Certificate (RFC 8555 Section 7.4.2)
   server.route({
     method: "POST",
@@ -377,7 +378,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/authorizations/<authz_id>
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/authorizations/<authz_id>
   // Identifier Authorization (RFC 8555 Section 7.5)
   server.route({
     method: "POST",
@@ -411,7 +412,7 @@ export const registerPkiAcmeRouter = async (server: FastifyZodProvider) => {
     }
   });
 
-  // POST /api/v1/pki/acme/profiles/<profile_id>/authorizations/<authz_id>/challenges/<challenge_id>
+  // POST /api/v1/cert-manager/acme/profiles/<profile_id>/authorizations/<authz_id>/challenges/<challenge_id>
   // Respond to Challenge (RFC 8555 Section 7.5.1)
   server.route({
     method: "POST",

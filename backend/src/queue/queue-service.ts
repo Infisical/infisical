@@ -61,6 +61,7 @@ export enum QueueName {
   SecretPushEventScan = "secret-push-event-scan",
   UpgradeProjectToGhost = "upgrade-project-to-ghost",
   DynamicSecretRevocation = "dynamic-secret-revocation",
+  DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
   CertificateIssuance = "certificate-issuance",
@@ -121,6 +122,7 @@ export enum QueueJobs {
   SecretRotationV2RotateSecrets = "secret-rotation-v2-rotate-secrets",
   SecretRotationV2SendNotification = "secret-rotation-v2-send-notification",
   CreateFolderTreeCheckpoint = "create-folder-tree-checkpoint",
+  DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   InvalidateCache = "invalidate-cache",
   SecretScanningV2FullScan = "secret-scanning-v2-full-scan",
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
@@ -221,11 +223,19 @@ export type TQueueJobTypes = {
     name: QueueJobs.TelemetryInstanceStats;
     payload: undefined;
   };
+  [QueueName.DynamicSecretLeaseRevocationFailedEmail]: {
+    name: QueueJobs.DynamicSecretLeaseRevocationFailedEmail;
+    payload: {
+      leaseId: string;
+    };
+  };
   [QueueName.DynamicSecretRevocation]:
     | {
         name: QueueJobs.DynamicSecretRevocation;
         payload: {
+          isRetry?: boolean;
           leaseId: string;
+          dynamicSecretId: string;
         };
       }
     | {

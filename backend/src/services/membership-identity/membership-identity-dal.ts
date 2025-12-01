@@ -94,6 +94,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
           db.ref("hasDeleteProtection").withSchema(TableName.Identity).as("identityHasDeleteProtection"),
 
           db.ref("slug").withSchema(TableName.Role).as("roleSlug"),
+          db.ref("name").withSchema(TableName.Role).as("roleName"),
           db.ref("id").withSchema(TableName.MembershipRole).as("membershipRoleId"),
           db.ref("role").withSchema(TableName.MembershipRole).as("membershipRole"),
           db.ref("temporaryMode").withSchema(TableName.MembershipRole).as("membershipRoleTemporaryMode"),
@@ -180,6 +181,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
             label: "roles" as const,
             mapper: ({
               roleSlug,
+              roleName,
               membershipRoleId,
               membershipRole,
               membershipRoleIsTemporary,
@@ -193,6 +195,7 @@ export const membershipIdentityDALFactory = (db: TDbClient) => {
               id: membershipRoleId,
               role: membershipRole,
               customRoleSlug: roleSlug,
+              customRoleName: roleName,
               temporaryRange: membershipRoleTemporaryRange,
               temporaryMode: membershipRoleTemporaryMode,
               temporaryAccessStartTime: membershipRoleTemporaryAccessStartTime,

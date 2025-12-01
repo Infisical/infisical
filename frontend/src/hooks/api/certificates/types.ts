@@ -24,13 +24,13 @@ export type TCertificate = {
 };
 
 export type TDeleteCertDTO = {
+  id: string;
   projectId: string;
-  serialNumber: string;
 };
 
 export type TRevokeCertDTO = {
   projectId: string;
-  serialNumber: string;
+  id: string;
   revocationReason: string;
 };
 
@@ -75,7 +75,7 @@ export type TUpdateRenewalConfigDTO = {
 };
 
 export type TDownloadPkcs12DTO = {
-  serialNumber: string;
+  certificateId: string;
   projectSlug: string;
   password: string;
   alias: string;

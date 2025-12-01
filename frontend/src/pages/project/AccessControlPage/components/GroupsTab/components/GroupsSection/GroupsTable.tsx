@@ -122,7 +122,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
+        placeholder="Search project groups..."
       />
       <TableContainer className="mt-4">
         <Table>
@@ -143,7 +143,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>Role</Th>
+              <Th>Project Role</Th>
               <Th>Added on</Th>
               <Th className="w-5" />
             </Tr>

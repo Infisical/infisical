@@ -1,4 +1,4 @@
-import { registerCertificatesRouter } from "./certificates-router";
+import { registerCertificatesRouter } from "./deprecated-certificates-router";
 import { registerDeprecatedSecretRouter } from "./deprecated-secret-router";
 import { registerExternalMigrationRouter } from "./external-migration-router";
 import { registerLoginRouter } from "./login-router";

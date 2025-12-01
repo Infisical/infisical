@@ -152,7 +152,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
     });
 
     createNotification({
-      text: "Successfully updated identity role",
+      text: "Successfully updated machine identity role",
       type: "success"
     });
   };
@@ -178,7 +178,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <IconButton
-              ariaLabel="Filter Identities"
+              ariaLabel="Filter Machine Identities"
               variant="plain"
               size="sm"
               className={twMerge(
@@ -200,7 +200,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Apply Roles to Filter Identities
+                  Filter Organization Machine Identities by Role
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -229,7 +229,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search identities by name..."
+          placeholder="Search machine identities by name..."
         />
       </div>
       <TableContainer>
@@ -258,7 +258,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </Th>
               <Th>
                 <div className="flex items-center">
-                  Role
+                  Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgIdentityOrderBy.Role ? "" : "opacity-30"}`}
@@ -407,7 +407,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   }}
                                   isDisabled={!isAllowed}
                                 >
-                                  Edit Identity {isSubOrgIdentity ? "" : "Membership"}
+                                  Edit Machine Identity {isSubOrgIdentity ? "" : "Membership"}
                                 </DropdownMenuItem>
                               )}
                             </OrgPermissionCan>
@@ -428,7 +428,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                                   icon={<FontAwesomeIcon icon={faTrash} />}
                                 >
                                   {isSubOrgIdentity
-                                    ? "Delete Identity"
+                                    ? "Delete Machine Identity"
                                     : "Remove From Sub-Organization"}
                                 </DropdownMenuItem>
                               )}
@@ -455,8 +455,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <EmptyState
             title={
               debouncedSearch.trim().length > 0 || filter.roles?.length > 0
-                ? "No identities match search filter"
-                : "No identities have been created in this organization"
+                ? "No machine identities match search filter"
+                : "No machine identities have been created in this organization"
             }
             icon={faServer}
           />

@@ -15,6 +15,7 @@ import { decryptAppConnection } from "@app/services/app-connection/app-connectio
 import { TAppConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
 import { TAwsConnection } from "@app/services/app-connection/aws/aws-connection-types";
 import { TCloudflareConnection } from "@app/services/app-connection/cloudflare/cloudflare-connection-types";
+import { TDNSMadeEasyConnection } from "@app/services/app-connection/dns-made-easy/dns-made-easy-connection-types";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
@@ -45,6 +46,7 @@ import {
   TUpdateAcmeCertificateAuthorityDTO
 } from "./acme-certificate-authority-types";
 import { cloudflareDeleteTxtRecord, cloudflareInsertTxtRecord } from "./dns-providers/cloudflare";
+import { dnsMadeEasyDeleteTxtRecord, dnsMadeEasyInsertTxtRecord } from "./dns-providers/dns-made-easy";
 import { route53DeleteTxtRecord, route53InsertTxtRecord } from "./dns-providers/route54";
 
 const parseTtlToDays = (ttl: string): number => {
@@ -176,6 +178,22 @@ export const castDbEntryToAcmeCertificateAuthority = (
     },
     status: ca.status as CaStatus
   };
+};
+
+const getAcmeChallengeRecord = (
+  provider: AcmeDnsProvider,
+  identifierValue: string,
+  keyAuthorization: string
+): { recordName: string; recordValue: string } => {
+  let recordName: string;
+  if (provider === AcmeDnsProvider.DNSMadeEasy) {
+    // For DNS Made Easy, we don't need to provide the domain name in the record name.
+    recordName = "_acme-challenge";
+  } else {
+    recordName = `_acme-challenge.${identifierValue}`; // e.g., "_acme-challenge.example.com"
+  }
+  const recordValue = `"${keyAuthorization}"`; // must be double quoted
+  return { recordName, recordValue };
 };
 
 export const orderCertificate = async (
@@ -312,8 +330,11 @@ export const orderCertificate = async (
         throw new Error("Unsupported challenge type");
       }
 
-      const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-      const recordValue = `"${keyAuthorization}"`; // must be double quoted
+      const { recordName, recordValue } = getAcmeChallengeRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        authz.identifier.value,
+        keyAuthorization
+      );
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
@@ -334,14 +355,26 @@ export const orderCertificate = async (
           );
           break;
         }
+        case AcmeDnsProvider.DNSMadeEasy: {
+          await dnsMadeEasyInsertTxtRecord(
+            connection as TDNSMadeEasyConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
         default: {
           throw new Error(`Unsupported DNS provider: ${acmeCa.configuration.dnsProviderConfig.provider as string}`);
         }
       }
     },
     challengeRemoveFn: async (authz, challenge, keyAuthorization) => {
-      const recordName = `_acme-challenge.${authz.identifier.value}`; // e.g., "_acme-challenge.example.com"
-      const recordValue = `"${keyAuthorization}"`; // must be double quoted
+      const { recordName, recordValue } = getAcmeChallengeRecord(
+        acmeCa.configuration.dnsProviderConfig.provider,
+        authz.identifier.value,
+        keyAuthorization
+      );
 
       switch (acmeCa.configuration.dnsProviderConfig.provider) {
         case AcmeDnsProvider.Route53: {
@@ -356,6 +389,15 @@ export const orderCertificate = async (
         case AcmeDnsProvider.Cloudflare: {
           await cloudflareDeleteTxtRecord(
             connection as TCloudflareConnection,
+            acmeCa.configuration.dnsProviderConfig.hostedZoneId,
+            recordName,
+            recordValue
+          );
+          break;
+        }
+        case AcmeDnsProvider.DNSMadeEasy: {
+          await dnsMadeEasyDeleteTxtRecord(
+            connection as TDNSMadeEasyConnection,
             acmeCa.configuration.dnsProviderConfig.hostedZoneId,
             recordName,
             recordValue
@@ -477,7 +519,6 @@ export const AcmeCertificateAuthorityFns = ({
     name,
     projectId,
     configuration,
-    enableDirectIssuance,
     actor,
     status
   }: {
@@ -485,7 +526,6 @@ export const AcmeCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAcmeCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
     if (crypto.isFipsModeEnabled()) {
@@ -513,6 +553,12 @@ export const AcmeCertificateAuthorityFns = ({
       });
     }
 
+    if (dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy && appConnection.app !== AppConnection.DNSMadeEasy) {
+      throw new BadRequestError({
+        message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
+      });
+    }
+
     // validates permission to connect
     await appConnectionService.validateAppConnectionUsageById(
       appConnection.app as AppConnection,
@@ -525,7 +571,7 @@ export const AcmeCertificateAuthorityFns = ({
         const ca = await certificateAuthorityDAL.create(
           {
             projectId,
-            enableDirectIssuance,
+            enableDirectIssuance: false,
             name,
             status
           },
@@ -573,14 +619,12 @@ export const AcmeCertificateAuthorityFns = ({
     id,
     status,
     configuration,
-    enableDirectIssuance,
     actor,
     name
   }: {
     id: string;
     status?: CaStatus;
     configuration: TUpdateAcmeCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance?: boolean;
     actor: OrgServiceActor;
     name?: string;
   }) => {
@@ -605,6 +649,15 @@ export const AcmeCertificateAuthorityFns = ({
         ) {
           throw new BadRequestError({
             message: `App connection with ID '${dnsAppConnectionId}' is not a Cloudflare connection`
+          });
+        }
+
+        if (
+          dnsProviderConfig.provider === AcmeDnsProvider.DNSMadeEasy &&
+          appConnection.app !== AppConnection.DNSMadeEasy
+        ) {
+          throw new BadRequestError({
+            message: `App connection with ID '${dnsAppConnectionId}' is not a DNS Made Easy connection`
           });
         }
 
@@ -641,13 +694,12 @@ export const AcmeCertificateAuthorityFns = ({
         );
       }
 
-      if (name || status || enableDirectIssuance) {
+      if (name || status) {
         await certificateAuthorityDAL.updateById(
           id,
           {
             name,
-            status,
-            enableDirectIssuance
+            status
           },
           tx
         );

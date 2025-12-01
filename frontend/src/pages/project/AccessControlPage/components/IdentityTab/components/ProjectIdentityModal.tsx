@@ -138,7 +138,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       }
 
       createNotification({
-        text: `Successfully ${isUpdate ? "updated" : "created"} project identity`,
+        text: `Successfully ${isUpdate ? "updated" : "created"} project machine identity`,
         type: "success"
       });
 
@@ -148,7 +148,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
       const error = err as any;
       const text =
         error?.response?.data?.message ??
-        `Failed to ${isUpdate ? "update" : "create"} project identity`;
+        `Failed to ${isUpdate ? "update" : "create"} project machine identity`;
 
       createNotification({
         text,
@@ -233,9 +233,7 @@ export const ProjectIdentityModal = ({ onClose, identity }: ContentProps) => {
               />
             </div>
             <div className="grow">
-              {i === 0 && (
-                <FormLabel label="Value" className="text-xs text-mineshaft-400" isOptional />
-              )}
+              {i === 0 && <FormLabel label="Value" className="text-xs text-mineshaft-400" />}
               <Controller
                 control={control}
                 name={`metadata.${i}.value`}

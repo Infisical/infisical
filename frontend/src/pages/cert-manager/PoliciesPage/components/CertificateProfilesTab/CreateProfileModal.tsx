@@ -675,7 +675,7 @@ export const CreateProfileModal = ({
                   isDisabled={Boolean(isEdit)}
                 >
                   <SelectItem value="ca">Certificate Authority</SelectItem>
-                  <SelectItem value="self-signed">Self-signed</SelectItem>
+                  <SelectItem value="self-signed">Self-Signed</SelectItem>
                 </Select>
               </FormControl>
             )}

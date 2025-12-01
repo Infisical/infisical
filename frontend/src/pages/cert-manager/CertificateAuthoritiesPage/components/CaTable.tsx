@@ -81,11 +81,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/organizations/$orgId/projects/cert-management/$projectId/ca/$caName",
+                        to: "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
                         params: {
                           orgId: currentOrg.id,
                           projectId: currentProject.id,
-                          caName: ca.name
+                          caId: ca.id
                         }
                       })
                     }
@@ -180,7 +180,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
-                                      caName: ca.name,
+                                      caId: ca.id,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
@@ -207,7 +207,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
-                                    caName: ca.name
+                                    caId: ca.id
                                   });
                                 }}
                                 disabled={!isAllowed}

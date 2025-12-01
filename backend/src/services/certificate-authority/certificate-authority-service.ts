@@ -38,6 +38,7 @@ import { CaType } from "./certificate-authority-enums";
 import {
   TCertificateAuthority,
   TCreateCertificateAuthorityDTO,
+  TDeprecatedUpdateCertificateAuthorityDTO,
   TUpdateCertificateAuthorityDTO
 } from "./certificate-authority-types";
 import { TExternalCertificateAuthorityDALFactory } from "./external-certificate-authority-dal";
@@ -128,7 +129,7 @@ export const certificateAuthorityServiceFactory = ({
   });
 
   const createCertificateAuthority = async (
-    { type, projectId, name, enableDirectIssuance, configuration, status }: TCreateCertificateAuthorityDTO,
+    { type, projectId, name, configuration, status }: TCreateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     const { permission } = await permissionService.getProjectPermission({
@@ -150,7 +151,6 @@ export const certificateAuthorityServiceFactory = ({
         ...(configuration as TCreateInternalCertificateAuthorityDTO["configuration"]),
         isInternal: true,
         projectId,
-        enableDirectIssuance,
         name
       });
 
@@ -176,7 +176,6 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateAcmeCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         status,
         actor
       });
@@ -187,10 +186,66 @@ export const certificateAuthorityServiceFactory = ({
         name,
         projectId,
         configuration: configuration as TCreateAzureAdCsCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         status,
         actor
       });
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
+  };
+
+  const findCertificateAuthorityById = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${id}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: certificateAuthority.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    if (type === CaType.INTERNAL) {
+      if (!certificateAuthority.internalCa?.id) {
+        throw new NotFoundError({
+          message: `Internal certificate authority with id "${id}" not found`
+        });
+      }
+
+      return {
+        id: certificateAuthority.id,
+        type,
+        enableDirectIssuance: certificateAuthority.enableDirectIssuance,
+        name: certificateAuthority.name,
+        projectId: certificateAuthority.projectId,
+        configuration: certificateAuthority.internalCa,
+        status: certificateAuthority.status
+      } as TCertificateAuthority;
+    }
+
+    if (certificateAuthority.externalCa?.type !== type) {
+      throw new NotFoundError({
+        message: `Could not find external certificate authority with id ${id} and type "${type}"`
+      });
+    }
+
+    if (type === CaType.ACME) {
+      return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AZURE_AD_CS) {
+      return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });
@@ -308,7 +363,145 @@ export const certificateAuthorityServiceFactory = ({
   };
 
   const updateCertificateAuthority = async (
-    { caName, type, configuration, enableDirectIssuance, status, name, projectId }: TUpdateCertificateAuthorityDTO,
+    { id, type, configuration, status, name }: TUpdateCertificateAuthorityDTO,
+    actor: OrgServiceActor
+  ) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${id}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: certificateAuthority.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Edit,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    if (type === CaType.INTERNAL) {
+      if (!certificateAuthority.internalCa?.id) {
+        throw new NotFoundError({
+          message: `Internal certificate authority with id "${id}" not found`
+        });
+      }
+
+      const updatedCa = await internalCertificateAuthorityService.updateCaById({
+        isInternal: true,
+        caId: certificateAuthority.id,
+        status,
+        name
+      });
+
+      if (!updatedCa.internalCa) {
+        throw new BadRequestError({
+          message: "Failed to update internal certificate authority"
+        });
+      }
+
+      return {
+        id: updatedCa.id,
+        type,
+        enableDirectIssuance: updatedCa.enableDirectIssuance,
+        name: updatedCa.name,
+        projectId: updatedCa.projectId,
+        configuration: updatedCa.internalCa,
+        status: updatedCa.status
+      } as TCertificateAuthority;
+    }
+
+    if (type === CaType.ACME) {
+      return acmeFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
+    if (type === CaType.AZURE_AD_CS) {
+      return azureAdCsFns.updateCertificateAuthority({
+        id: certificateAuthority.id,
+        configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
+        actor,
+        status,
+        name
+      });
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
+  };
+
+  const deleteCertificateAuthority = async ({ id, type }: { id: string; type: CaType }, actor: OrgServiceActor) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(id);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${id}"`
+      });
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorId: actor.id,
+      projectId: certificateAuthority.projectId,
+      actorAuthMethod: actor.authMethod,
+      actorOrgId: actor.orgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Delete,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
+      throw new BadRequestError({
+        message: "Internal certificate authority cannot be deleted"
+      });
+    }
+
+    if (certificateAuthority.externalCa?.id && certificateAuthority.externalCa.type !== type) {
+      throw new BadRequestError({
+        message: "External certificate authority cannot be deleted"
+      });
+    }
+
+    await certificateAuthorityDAL.deleteById(certificateAuthority.id);
+
+    if (type === CaType.INTERNAL) {
+      return {
+        id: certificateAuthority.id,
+        type,
+        enableDirectIssuance: certificateAuthority.enableDirectIssuance,
+        name: certificateAuthority.name,
+        projectId: certificateAuthority.projectId,
+        configuration: certificateAuthority.internalCa,
+        status: certificateAuthority.status
+      } as TCertificateAuthority;
+    }
+
+    if (type === CaType.ACME) {
+      return castDbEntryToAcmeCertificateAuthority(certificateAuthority);
+    }
+
+    if (type === CaType.AZURE_AD_CS) {
+      return castDbEntryToAzureAdCsCertificateAuthority(certificateAuthority);
+    }
+
+    throw new BadRequestError({ message: "Invalid certificate authority type" });
+  };
+
+  const deprecatedUpdateCertificateAuthority = async (
+    { caName, type, configuration, status, name, projectId }: TDeprecatedUpdateCertificateAuthorityDTO,
     actor: OrgServiceActor
   ) => {
     const certificateAuthority = await certificateAuthorityDAL.findByNameAndProjectIdWithAssociatedCa(
@@ -344,7 +537,6 @@ export const certificateAuthorityServiceFactory = ({
 
       const updatedCa = await internalCertificateAuthorityService.updateCaById({
         isInternal: true,
-        enableDirectIssuance,
         caId: certificateAuthority.id,
         status,
         name
@@ -371,7 +563,6 @@ export const certificateAuthorityServiceFactory = ({
       return acmeFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAcmeCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         actor,
         status,
         name
@@ -382,7 +573,6 @@ export const certificateAuthorityServiceFactory = ({
       return azureAdCsFns.updateCertificateAuthority({
         id: certificateAuthority.id,
         configuration: configuration as TUpdateAzureAdCsCertificateAuthorityDTO["configuration"],
-        enableDirectIssuance,
         actor,
         status,
         name
@@ -392,7 +582,7 @@ export const certificateAuthorityServiceFactory = ({
     throw new BadRequestError({ message: "Invalid certificate authority type" });
   };
 
-  const deleteCertificateAuthority = async (
+  const deprecatedDeleteCertificateAuthority = async (
     { caName, type, projectId }: { caName: string; type: CaType; projectId: string },
     actor: OrgServiceActor
   ) => {
@@ -529,11 +719,14 @@ export const certificateAuthorityServiceFactory = ({
 
   return {
     createCertificateAuthority,
-    findCertificateAuthorityByNameAndProjectId,
+    findCertificateAuthorityById,
     listCertificateAuthoritiesByProjectId,
+    findCertificateAuthorityByNameAndProjectId,
     updateCertificateAuthority,
     deleteCertificateAuthority,
     getAzureAdcsTemplates,
-    getCaById
+    getCaById,
+    deprecatedUpdateCertificateAuthority,
+    deprecatedDeleteCertificateAuthority
   };
 };

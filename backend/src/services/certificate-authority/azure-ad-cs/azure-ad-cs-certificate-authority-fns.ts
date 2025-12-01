@@ -655,7 +655,6 @@ export const AzureAdCsCertificateAuthorityFns = ({
     name,
     projectId,
     configuration,
-    enableDirectIssuance,
     actor,
     status
   }: {
@@ -663,16 +662,8 @@ export const AzureAdCsCertificateAuthorityFns = ({
     name: string;
     projectId: string;
     configuration: TCreateAzureAdCsCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance: boolean;
     actor: OrgServiceActor;
   }) => {
-    // Azure ADCS does not support direct issuance - enforce this restriction
-    if (enableDirectIssuance) {
-      throw new BadRequestError({
-        message: "Azure ADCS Certificate Authorities do not support direct issuance"
-      });
-    }
-
     const { azureAdcsConnectionId } = configuration;
     const appConnection = await appConnectionDAL.findById(azureAdcsConnectionId);
 
@@ -737,24 +728,15 @@ export const AzureAdCsCertificateAuthorityFns = ({
     id,
     status,
     configuration,
-    enableDirectIssuance,
     actor,
     name
   }: {
     id: string;
     status?: CaStatus;
     configuration: TUpdateAzureAdCsCertificateAuthorityDTO["configuration"];
-    enableDirectIssuance?: boolean;
     actor: OrgServiceActor;
     name?: string;
   }) => {
-    // Azure ADCS does not support direct issuance - enforce this restriction
-    if (enableDirectIssuance) {
-      throw new BadRequestError({
-        message: "Azure ADCS Certificate Authorities do not support direct issuance"
-      });
-    }
-
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
       if (configuration) {
         const { azureAdcsConnectionId } = configuration;
@@ -795,13 +777,12 @@ export const AzureAdCsCertificateAuthorityFns = ({
         );
       }
 
-      if (name || status || enableDirectIssuance !== undefined) {
+      if (name || status) {
         await certificateAuthorityDAL.updateById(
           id,
           {
             name,
-            status,
-            enableDirectIssuance: false // Always false for Azure ADCS CAs
+            status
           },
           tx
         );

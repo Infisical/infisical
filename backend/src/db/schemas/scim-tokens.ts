@@ -13,7 +13,8 @@ export const ScimTokensSchema = z.object({
   description: z.string(),
   orgId: z.string().uuid(),
   createdAt: z.date(),
-  updatedAt: z.date()
+  updatedAt: z.date(),
+  expiryNotificationSent: z.boolean().default(false).nullable().optional()
 });
 
 export type TScimTokens = z.infer<typeof ScimTokensSchema>;

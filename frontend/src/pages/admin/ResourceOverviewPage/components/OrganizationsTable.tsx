@@ -350,8 +350,8 @@ const ViewMembersModalContent = ({
             className="my-auto bg-mineshaft-700"
             title={
               members.length
-                ? "No organization members match search..."
-                : "No organization members found"
+                ? "No organization users match search..."
+                : "No organization users found"
             }
             icon={faUsers}
           />

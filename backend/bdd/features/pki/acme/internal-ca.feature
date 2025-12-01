@@ -2,7 +2,7 @@ Feature: Internal CA
 
   Scenario: CSR with SANs only
     Given I have an ACME cert profile as "acme_profile"
-    When I have an ACME client connecting to "{BASE_URL}/api/v1/pki/acme/profiles/{acme_profile.id}/directory"
+    When I have an ACME client connecting to "{BASE_URL}/api/v1/cert-manager/acme/profiles/{acme_profile.id}/directory"
     Then I register a new ACME account with email fangpen@infisical.com and EAB key id "{acme_profile.eab_kid}" with secret "{acme_profile.eab_secret}" as acme_account
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr

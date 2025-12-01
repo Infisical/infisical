@@ -6,7 +6,7 @@ import { DefaultResponseErrorsSchema } from "../routes/sanitizedSchemas";
 const isScimRoutes = (pathname: string) =>
   pathname.startsWith("/api/v1/scim/Users") || pathname.startsWith("/api/v1/scim/Groups");
 
-const isAcmeRoutes = (pathname: string) => pathname.startsWith("/api/v1/pki/acme/");
+const isAcmeRoutes = (pathname: string) => pathname.startsWith("/api/v1/cert-manager/acme/");
 
 export const addErrorsToResponseSchemas = fp(async (server) => {
   server.addHook("onRoute", (routeOptions) => {
