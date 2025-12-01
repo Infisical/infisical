@@ -31,7 +31,7 @@ export const pkiAcmeChallengeServiceFactory = ({
   acmeChallengeDAL
 }: TPkiAcmeChallengeServiceFactoryDep): TPkiAcmeChallengeServiceFactory => {
   const appCfg = getConfig();
-  const markChallengeAsyReady = async (challengeId: string): Promise<TPkiAcmeChallenges> => {
+  const markChallengeAsReady = async (challengeId: string): Promise<TPkiAcmeChallenges> => {
     return acmeChallengeDAL.transaction(async (tx) => {
       logger.info({ challengeId }, "Validating ACME challenge response");
       const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId, tx);
@@ -65,8 +65,8 @@ export const pkiAcmeChallengeServiceFactory = ({
     });
   };
 
-  const validateChallengeResponse = async (challengeId: string): Promise<void> => {
-    logger.info({ challengeId }, "Validating ACME challenge response");
+  const validateChallengeResponse = async (challengeId: string, retryCount: number): Promise<void> => {
+    logger.info({ challengeId, retryCount }, "Validating ACME challenge response");
     const challenge = await acmeChallengeDAL.findByIdForChallengeValidation(challengeId);
     if (!challenge) {
       throw new NotFoundError({ message: "ACME challenge not found" });
@@ -93,7 +93,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       //         a long running operation for long time. But assuming we are not performing a tons of
       //         challenge validation at the same time, it should be fine.
       const challengeResponse = await axios.get<string>(challengeUrl.toString(), {
-        // In case if we override the host in the development mode, still provide the original host in the header
+        // In case if we override the hos2 in the development mode, still provide the original host in the header
         // to help the upstream server to validate the request
         headers: { Host: challenge.auth.identifierValue },
         timeout: timeoutMs,
@@ -113,8 +113,10 @@ export const pkiAcmeChallengeServiceFactory = ({
       }
       await acmeChallengeDAL.markAsValidCascadeById(challengeId);
     } catch (exp) {
-      // TODO: we should retry the challenge validation a few times, but let's keep it simple for now
-      await acmeChallengeDAL.markAsInvalidCascadeById(challengeId);
+      if (retryCount >= 2) {
+        // This is the last attempt to validate the challenge response, if it fails, we mark the challenge as invalid
+        await acmeChallengeDAL.markAsInvalidCascadeById(challengeId);
+      }
       // Properly type and inspect the error
       if (axios.isAxiosError(exp)) {
         const axiosError = exp as AxiosError;
@@ -143,5 +145,5 @@ export const pkiAcmeChallengeServiceFactory = ({
     }
   };
 
-  return { markChallengeAsyReady, validateChallengeResponse };
+  return { markChallengeAsReady, validateChallengeResponse };
 };

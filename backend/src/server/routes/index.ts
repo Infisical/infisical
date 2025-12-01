@@ -374,6 +374,7 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
+import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -2254,6 +2255,12 @@ export const registerRoutes = async (
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
     acmeChallengeDAL
   });
+
+  const pkiAcmeQueueService = pkiAcmeQueueServiceFactory({
+    queueService,
+    acmeChallengeService
+  });
+
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
     appConnectionDAL,
@@ -2272,7 +2279,8 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     certificateV3Service,
-    acmeChallengeService
+    acmeChallengeService,
+    pkiAcmeQueueService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({

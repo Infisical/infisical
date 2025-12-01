@@ -178,6 +178,6 @@ export type TPkiAcmeServiceFactory = {
 };
 
 export type TPkiAcmeChallengeServiceFactory = {
-  markChallengeAsyReady: (challengeId: string) => Promise<TPkiAcmeChallenges>;
-  validateChallengeResponse: (challengeId: string) => Promise<void>;
+  markChallengeAsReady: (challengeId: string) => Promise<TPkiAcmeChallenges>;
+  validateChallengeResponse: (challengeId: string, retryCount: number) => Promise<void>;
 };
