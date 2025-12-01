@@ -5,7 +5,7 @@ import { z } from "zod";
 import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
 
 export const rotateAccountFieldsSchema = z.object({
-  rotationEnabled: z.boolean(),
+  rotationEnabled: z.boolean().default(false),
   rotationIntervalSeconds: z.number().nullable().optional()
 });
 
