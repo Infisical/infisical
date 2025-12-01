@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	defaultErrors "errors"
@@ -104,6 +105,20 @@ func (r *InfisicalSecretReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		errMessage := "InfisicalSecret CRD cannot have both managedSecretReference and managedKubeSecretReferences"
 		logger.Error(defaultErrors.New(errMessage), errMessage)
 		return ctrl.Result{}, defaultErrors.New(errMessage)
+	}
+
+	for _, managedSecretRef := range managedKubeSecretReferences {
+		namespaces := strings.Split(managedSecretRef.SecretNamespace, ",")
+		if len(namespaces) > 1 && managedSecretRef.CreationPolicy == "Owner" {
+			for _, ns := range namespaces {
+				trimmedNs := strings.TrimSpace(ns)
+				if trimmedNs != infisicalSecretCRD.Namespace {
+					errMessage := fmt.Sprintf("Owner creation policy is not supported for cross-namespace secrets. Secret namespace '%s' differs from CRD namespace '%s'", trimmedNs, infisicalSecretCRD.Namespace)
+					logger.Error(defaultErrors.New(errMessage), errMessage)
+					return ctrl.Result{}, defaultErrors.New(errMessage)
+				}
+			}
+		}
 	}
 
 	if infisicalSecretCRD.Spec.ManagedSecretReference.SecretName != "" {

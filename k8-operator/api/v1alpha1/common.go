@@ -103,7 +103,8 @@ type ManagedKubeSecretConfig struct {
 	// +kubebuilder:validation:Required
 	SecretName string `json:"secretName"`
 
-	// The name space where the Kubernetes Secret is located
+	// The namespace(s) where the Kubernetes Secret should be created
+	// Supports single namespace or comma-separated list (e.g., "default" or "ns1,ns2,ns3")
 	// +kubebuilder:validation:Required
 	SecretNamespace string `json:"secretNamespace"`
 
@@ -130,6 +131,8 @@ type ManagedKubeConfigMapConfig struct {
 	// +kubebuilder:validation:Required
 	ConfigMapName string `json:"configMapName"`
 
+	ConfigMapNamespace string `json:"configMapNamespace"`
+
 	// The Kubernetes ConfigMap creation policy.
 	// Enum with values: 'Owner', 'Orphan'.
 	// Owner creates the config map and sets .metadata.ownerReferences of the InfisicalSecret CRD that created it.
@@ -137,10 +140,6 @@ type ManagedKubeConfigMapConfig struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=Orphan
 	CreationPolicy string `json:"creationPolicy"`
-
-	// The namespace where the Kubernetes ConfigMap is located
-	// +kubebuilder:validation:Required
-	ConfigMapNamespace string `json:"configMapNamespace"`
 
 	// The template to transform the secret data
 	// +kubebuilder:validation:Optional

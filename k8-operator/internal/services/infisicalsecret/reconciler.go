@@ -116,6 +116,18 @@ func convertBinaryToStringMap(binaryMap map[string][]byte) map[string]string {
 	return stringMap
 }
 
+func parseNamespaces(namespaceStr string) []string {
+	namespaces := strings.Split(namespaceStr, ",")
+	result := make([]string, 0, len(namespaces))
+	for _, ns := range namespaces {
+		trimmed := strings.TrimSpace(ns)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
 func (r *InfisicalSecretReconciler) createInfisicalManagedKubeResource(ctx context.Context, logger logr.Logger, infisicalSecret v1alpha1.InfisicalSecret, managedSecretReferenceInterface interface{}, secretsFromAPI []model.SingleEnvironmentVariable, ETag string, resourceType constants.ManagedKubeResourceType) error {
 	plainProcessedSecrets := make(map[string][]byte)
 
@@ -183,32 +195,39 @@ func (r *InfisicalSecretReconciler) createInfisicalManagedKubeResource(ctx conte
 		managedSecretReference := managedSecretReferenceInterface.(v1alpha1.ManagedKubeSecretConfig)
 
 		annotations[constants.SECRET_VERSION_ANNOTATION] = ETag
-		// create a new secret as specified by the managed secret spec of CRD
-		newKubeSecretInstance := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        managedSecretReference.SecretName,
-				Namespace:   managedSecretReference.SecretNamespace,
-				Annotations: annotations,
-				Labels:      labels,
-			},
-			Type: corev1.SecretType(managedSecretReference.SecretType),
-			Data: plainProcessedSecrets,
-		}
-
-		if managedSecretReference.CreationPolicy == "Owner" {
-			// Set InfisicalSecret instance as the owner and controller of the managed secret
-			err := ctrl.SetControllerReference(&infisicalSecret, newKubeSecretInstance, r.Scheme)
-			if err != nil {
-				return err
+		
+		targetNamespaces := parseNamespaces(managedSecretReference.SecretNamespace)
+		
+		for _, namespace := range targetNamespaces {
+			newKubeSecretInstance := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        managedSecretReference.SecretName,
+					Namespace:   namespace,
+					Annotations: annotations,
+					Labels:      labels,
+				},
+				Type: corev1.SecretType(managedSecretReference.SecretType),
+				Data: plainProcessedSecrets,
 			}
-		}
 
-		err := r.Client.Create(ctx, newKubeSecretInstance)
-		if err != nil {
-			return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
+			if managedSecretReference.CreationPolicy == "Owner" {
+				if namespace == infisicalSecret.Namespace {
+					err := ctrl.SetControllerReference(&infisicalSecret, newKubeSecretInstance, r.Scheme)
+					if err != nil {
+						logger.Error(err, "failed to set controller reference for secret", "namespace", namespace)
+						return err
+					}
+				} else {
+					logger.Info("Skipping owner reference for cross-namespace secret", "secretNamespace", namespace, "crdNamespace", infisicalSecret.Namespace)
+				}
+			}
+			
+			err := r.Client.Create(ctx, newKubeSecretInstance)
+			if err != nil {
+				return fmt.Errorf("unable to create the managed Kubernetes secret : %w", err)
+			}
+			logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s", managedSecretReference.SecretType))
 		}
-		logger.Info(fmt.Sprintf("Successfully created a managed Kubernetes secret with your Infisical secrets. Type: %s", managedSecretReference.SecretType))
-		return nil
 	} else if resourceType == constants.MANAGED_KUBE_RESOURCE_TYPE_CONFIG_MAP {
 
 		managedSecretReference := managedSecretReferenceInterface.(v1alpha1.ManagedKubeConfigMapConfig)
