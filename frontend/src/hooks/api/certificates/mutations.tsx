@@ -19,11 +19,11 @@ import {
 export const useDeleteCert = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificate, object, TDeleteCertDTO>({
-    mutationFn: async ({ serialNumber }) => {
+    mutationFn: async ({ id }) => {
       const {
         data: { certificate }
       } = await apiRequest.delete<{ certificate: TCertificate }>(
-        `/api/v1/pki/certificates/${serialNumber}`
+        `/api/v1/cert-manager/certificates/${id}`
       );
       return certificate;
     },
@@ -47,11 +47,11 @@ export const useDeleteCert = () => {
 export const useRevokeCert = () => {
   const queryClient = useQueryClient();
   return useMutation<TCertificate, object, TRevokeCertDTO>({
-    mutationFn: async ({ serialNumber, revocationReason }) => {
+    mutationFn: async ({ id, revocationReason }) => {
       const {
         data: { certificate }
       } = await apiRequest.post<{ certificate: TCertificate }>(
-        `/api/v1/pki/certificates/${serialNumber}/revoke`,
+        `/api/v1/cert-manager/certificates/${id}/revoke`,
         {
           revocationReason
         }
@@ -80,7 +80,7 @@ export const useImportCertificate = () => {
   return useMutation<TImportCertificateResponse, object, TImportCertificateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TImportCertificateResponse>(
-        "/api/v1/pki/certificates/import-certificate",
+        "/api/v1/cert-manager/certificates/import-certificate",
         body
       );
       return data;
@@ -98,7 +98,7 @@ export const useRenewCertificate = () => {
   return useMutation<TRenewCertificateResponse, object, TRenewCertificateDTO>({
     mutationFn: async ({ certificateId }) => {
       const { data } = await apiRequest.post<TRenewCertificateResponse>(
-        `/api/v3/pki/certificates/${certificateId}/renew`,
+        `/api/v1/cert-manager/certificates/${certificateId}/renew`,
         {}
       );
       return data;
@@ -131,7 +131,7 @@ export const useUpdateRenewalConfig = () => {
   >({
     mutationFn: async ({ certificateId, renewBeforeDays, enableAutoRenewal }) => {
       const { data } = await apiRequest.patch<{ message: string; renewBeforeDays?: number }>(
-        `/api/v3/pki/certificates/${certificateId}/config`,
+        `/api/v1/cert-manager/certificates/${certificateId}/config`,
         { renewBeforeDays, enableAutoRenewal }
       );
       return data;
@@ -149,10 +149,10 @@ export const useUpdateRenewalConfig = () => {
 
 export const useDownloadCertPkcs12 = () => {
   return useMutation<void, object, TDownloadPkcs12DTO>({
-    mutationFn: async ({ serialNumber, projectSlug, password, alias }) => {
+    mutationFn: async ({ certificateId, projectSlug, password, alias }) => {
       try {
         const response = await apiRequest.post(
-          `/api/v1/pki/certificates/${serialNumber}/pkcs12`,
+          `/api/v1/cert-manager/certificates/${certificateId}/pkcs12`,
           {
             password,
             alias
@@ -168,7 +168,7 @@ export const useDownloadCertPkcs12 = () => {
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = `certificate-${serialNumber}.p12`;
+        link.download = `certificate-${certificateId}.p12`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

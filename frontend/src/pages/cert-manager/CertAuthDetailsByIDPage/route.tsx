@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { CertAuthDetailsByIDPage } from "./CertAuthDetailsByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/ca/$caName"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/cert-management/$projectId/_cert-manager-layout/ca/$caId"
 )({
   component: CertAuthDetailsByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -21,7 +21,7 @@ export const Route = createFileRoute(
           })
         },
         {
-          label: params.caName
+          label: params.caId
         }
       ]
     };

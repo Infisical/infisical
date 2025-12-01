@@ -46,7 +46,6 @@ const schema = z
     name: slugSchema({
       field: "Name"
     }),
-    enableDirectIssuance: z.boolean(),
     status: z.nativeEnum(CaStatus),
     configuration: z
       .object({
@@ -80,8 +79,7 @@ const caTypes = [
 export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
   const { data: ca } = useGetCa({
-    caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentProject?.id || "",
+    caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: CaType.INTERNAL
   });
 
@@ -100,7 +98,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
       type: CaType.INTERNAL,
       name: "",
       status: CaStatus.ACTIVE,
-      enableDirectIssuance: true,
       configuration: {
         type: InternalCaType.ROOT,
         organization: "",
@@ -124,7 +121,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: ca.type,
         name: ca.name,
         status: ca.status,
-        enableDirectIssuance: ca.enableDirectIssuance,
         configuration: {
           type: ca.configuration.type,
           organization: ca.configuration.organization,
@@ -151,7 +147,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         type: CaType.INTERNAL,
         name: "",
         status: CaStatus.ACTIVE,
-        enableDirectIssuance: false,
         configuration: {
           type: InternalCaType.ROOT,
           organization: "",
@@ -168,24 +163,16 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
     }
   }, [ca]);
 
-  const onFormSubmit = async ({
-    type,
-    name,
-    enableDirectIssuance,
-    status,
-    configuration
-  }: FormData) => {
+  const onFormSubmit = async ({ type, name, status, configuration }: FormData) => {
     if (!currentProject?.slug) return;
 
     if (ca) {
       // update
       await updateMutateAsync({
-        caName: ca.name,
-        projectId: currentProject.id,
+        id: ca.id,
         name,
         type: CaType.INTERNAL,
-        status,
-        enableDirectIssuance
+        status
       });
     } else {
       // create
@@ -194,7 +181,6 @@ export const CaModal = ({ popUp, handlePopUpToggle }: Props) => {
         name,
         type,
         status,
-        enableDirectIssuance,
         configuration: {
           ...configuration,
           maxPathLength: Number(configuration.maxPathLength)

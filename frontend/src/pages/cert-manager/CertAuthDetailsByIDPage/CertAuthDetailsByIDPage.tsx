@@ -44,10 +44,9 @@ const Page = () => {
   const params = useParams({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
-  const { caName } = params as { caName: string };
+  const { caId } = params as { caId: string };
   const { data } = useGetCa({
-    caName,
-    projectId: currentProject?.id || "",
+    caId,
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
 
@@ -66,7 +65,7 @@ const Page = () => {
     if (!currentProject?.slug) return;
 
     await deleteCa({
-      caName,
+      id: data.id,
       projectId: currentProject.id,
       type: CaType.INTERNAL
     });
@@ -138,7 +137,7 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
-              <CaDetailsSection caName={data.name} handlePopUpOpen={handlePopUpOpen} />
+              <CaDetailsSection caId={data.id} handlePopUpOpen={handlePopUpOpen} />
             </div>
             <div className="w-full">
               <CaCertificatesSection caId={data.id} />

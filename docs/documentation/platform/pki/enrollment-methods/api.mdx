@@ -61,7 +61,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificate-profiles' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificate-profiles' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
@@ -105,7 +105,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/issue-certificate' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{
@@ -151,7 +151,7 @@ Here, select the certificate profile from step 1 that will be used to issue the 
      ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v3/pki/certificates/sign-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/sign-certificate' \
       --header 'Authorization: Bearer <access-token>' \
       --header 'Content-Type: application/json' \
       --data-raw '{

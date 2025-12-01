@@ -8,7 +8,7 @@ import { AcmeAccountDoesNotExistError } from "./pki-acme-errors";
 export const buildUrl = (profileId: string, path: string): string => {
   const appCfg = getConfig();
   const baseUrl = appCfg.SITE_URL ?? "";
-  return `${baseUrl}/api/v1/pki/acme/profiles/${profileId}${path}`;
+  return `${baseUrl}/api/v1/cert-manager/acme/profiles/${profileId}${path}`;
 };
 
 export const extractAccountIdFromKid = (kid: string, profileId: string): string => {
