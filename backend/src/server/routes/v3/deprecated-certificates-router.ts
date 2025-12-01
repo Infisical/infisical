@@ -5,7 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
-import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import {
@@ -14,7 +14,6 @@ import {
   CertKeyAlgorithm,
   CertSignatureAlgorithm
 } from "@app/services/certificate/certificate-types";
-import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
@@ -61,398 +60,7 @@ const validateDateOrder = (data: { notBefore?: string; notAfter?: string }) => {
   return true;
 };
 
-const validateCertificateRequestFlow = (data: {
-  csr?: string;
-  subjectAlternativeNames?: Array<{ type: ACMESANType; value: string }>;
-  commonName?: string;
-  altNames?: Array<{ type: CertSubjectAlternativeNameType; value: string }>;
-}) => {
-  const hasCSR = !!data.csr;
-  const hasSANs = !!data.subjectAlternativeNames?.length;
-  const hasStandardFields = !!(data.commonName || data.altNames?.length);
-
-  const flowCount = Number(hasCSR) + Number(hasSANs) + Number(hasStandardFields);
-  return flowCount === 1;
-};
-
 export const registerCertificatesRouter = async (server: FastifyZodProvider) => {
-  server.route({
-    method: "POST",
-    url: "/",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiCertificates],
-      body: z
-        .object({
-          profileId: z.string().uuid(),
-          projectId: z.string().uuid(),
-          commonName: validateTemplateRegexField.optional(),
-          keyUsages: z.nativeEnum(CertKeyUsageType).array().optional(),
-          extendedKeyUsages: z.nativeEnum(CertExtendedKeyUsageType).array().optional(),
-          altNames: z
-            .array(
-              z.object({
-                type: z.nativeEnum(CertSubjectAlternativeNameType),
-                value: z.string().min(1, "SAN value cannot be empty")
-              })
-            )
-            .optional(),
-          signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm),
-          keyAlgorithm: z.nativeEnum(CertKeyAlgorithm),
-          csr: z
-            .string()
-            .trim()
-            .min(1, "CSR cannot be empty")
-            .max(4096, "CSR cannot exceed 4096 characters")
-            .optional(),
-          subjectAlternativeNames: z
-            .array(
-              z.object({
-                type: z.nativeEnum(ACMESANType),
-                value: z
-                  .string()
-                  .trim()
-                  .min(1, "SAN value cannot be empty")
-                  .max(255, "SAN value must be less than 255 characters")
-              })
-            )
-            .optional(),
-          ttl: z
-            .string()
-            .trim()
-            .min(1, "TTL cannot be empty")
-            .refine((val) => ms(val) > 0, "TTL must be a positive number"),
-          notBefore: validateCaDateField.optional(),
-          notAfter: validateCaDateField.optional(),
-          removeRootsFromChain: booleanSchema.default(false).optional()
-        })
-        .refine(validateTtlAndDateFields, {
-          message:
-            "Cannot specify both TTL and notBefore/notAfter. Use either TTL for duration-based validity or notBefore/notAfter for explicit date range."
-        })
-        .refine(validateDateOrder, {
-          message: "notBefore must be earlier than notAfter"
-        })
-        .refine(validateCertificateRequestFlow, {
-          message:
-            "Must specify exactly one of: csr (for signing), subjectAlternativeNames (for ACME), or commonName/altNames (for issuance)"
-        }),
-      response: {
-        200: z.union([
-          z.object({
-            certificate: z.string().trim(),
-            issuingCaCertificate: z.string().trim(),
-            certificateChain: z.string().trim(),
-            privateKey: z.string().trim().optional(),
-            serialNumber: z.string().trim(),
-            certificateId: z.string(),
-            certificateRequestId: z.string()
-          }),
-          z.object({
-            certificateRequestId: z.string(),
-            status: z.string(),
-            orderId: z.string().optional(),
-            subjectAlternativeNames: z
-              .array(
-                z.object({
-                  type: z.nativeEnum(ACMESANType),
-                  value: z.string(),
-                  status: z.nativeEnum(CertificateOrderStatus)
-                })
-              )
-              .optional(),
-            authorizations: z
-              .array(
-                z.object({
-                  identifier: z.object({
-                    type: z.nativeEnum(ACMESANType),
-                    value: z.string()
-                  }),
-                  status: z.nativeEnum(CertificateOrderStatus),
-                  expires: z.string().optional(),
-                  challenges: z.array(
-                    z.object({
-                      type: z.string(),
-                      status: z.nativeEnum(CertificateOrderStatus),
-                      url: z.string(),
-                      token: z.string()
-                    })
-                  )
-                })
-              )
-              .optional(),
-            finalize: z.string().optional()
-          })
-        ])
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { csr, subjectAlternativeNames, ...requestBody } = req.body;
-
-      const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: req.body.projectId,
-        profileId: requestBody.profileId,
-        csr,
-        commonName: requestBody.commonName,
-        altNames: requestBody.altNames ? JSON.stringify(requestBody.altNames) : undefined,
-        keyUsages: requestBody.keyUsages,
-        extendedKeyUsages: requestBody.extendedKeyUsages,
-        notBefore: requestBody.notBefore ? new Date(requestBody.notBefore) : undefined,
-        notAfter: requestBody.notAfter ? new Date(requestBody.notAfter) : undefined,
-        keyAlgorithm: requestBody.keyAlgorithm,
-        signatureAlgorithm: requestBody.signatureAlgorithm,
-        metadata: JSON.stringify({
-          ttl: requestBody.ttl,
-          removeRootsFromChain: requestBody.removeRootsFromChain,
-          subjectAlternativeNames
-        })
-      });
-
-      try {
-        if (csr) {
-          const extractedCsrData = extractCertificateRequestFromCSR(csr);
-
-          const data = await server.services.certificateV3.signCertificateFromProfile({
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            profileId: requestBody.profileId,
-            csr,
-            validity: { ttl: requestBody.ttl },
-            notBefore: requestBody.notBefore ? new Date(requestBody.notBefore) : undefined,
-            notAfter: requestBody.notAfter ? new Date(requestBody.notAfter) : undefined,
-            enrollmentType: EnrollmentType.API,
-            removeRootsFromChain: requestBody.removeRootsFromChain
-          });
-
-          await server.services.certificateRequest.attachCertificateToRequest({
-            certificateRequestId: certificateRequest.id,
-            certificateId: data.certificateId
-          });
-
-          await server.services.auditLog.createAuditLog({
-            ...req.auditLogInfo,
-            projectId: data.projectId,
-            event: {
-              type: EventType.SIGN_CERTIFICATE_FROM_PROFILE,
-              metadata: {
-                certificateProfileId: requestBody.profileId,
-                certificateId: data.certificateId,
-                profileName: data.profileName,
-                commonName: extractedCsrData.commonName || ""
-              }
-            }
-          });
-
-          return {
-            ...data,
-            certificateRequestId: certificateRequest.id
-          };
-        }
-
-        const profile = await server.services.certificateProfile.getProfileById({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          profileId: requestBody.profileId
-        });
-
-        let useOrderFlow = false;
-        if (profile?.caId) {
-          const ca = await server.services.certificateAuthority.getCaById({
-            caId: profile.caId,
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId
-          });
-          const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
-          useOrderFlow = caType !== CaType.INTERNAL;
-        }
-
-        if (subjectAlternativeNames?.length || useOrderFlow) {
-          let acmeAltNames = subjectAlternativeNames;
-          if (useOrderFlow && !subjectAlternativeNames && requestBody.altNames?.length) {
-            acmeAltNames = requestBody.altNames.map((alt) => ({
-              type: (alt.type === CertSubjectAlternativeNameType.DNS_NAME
-                ? ACMESANType.DNS
-                : ACMESANType.IP) as ACMESANType,
-              value: alt.value
-            }));
-          }
-
-          const certificateOrderObject = {
-            altNames: acmeAltNames || [],
-            validity: { ttl: requestBody.ttl },
-            commonName: requestBody.commonName,
-            keyUsages: requestBody.keyUsages,
-            extendedKeyUsages: requestBody.extendedKeyUsages,
-            notBefore: requestBody.notBefore ? new Date(requestBody.notBefore) : undefined,
-            notAfter: requestBody.notAfter ? new Date(requestBody.notAfter) : undefined,
-            signatureAlgorithm: requestBody.signatureAlgorithm,
-            keyAlgorithm: requestBody.keyAlgorithm
-          };
-
-          const data = await server.services.certificateV3.orderCertificateFromProfile({
-            actor: req.permission.type,
-            actorId: req.permission.id,
-            actorAuthMethod: req.permission.authMethod,
-            actorOrgId: req.permission.orgId,
-            profileId: requestBody.profileId,
-            certificateOrder: certificateOrderObject,
-            removeRootsFromChain: requestBody.removeRootsFromChain,
-            certificateRequestId: certificateRequest.id
-          });
-
-          await server.services.certificateRequest.updateCertificateRequestStatus({
-            certificateRequestId: certificateRequest.id,
-            status: CertificateRequestStatus.PENDING,
-            errorMessage: undefined
-          });
-
-          await server.services.auditLog.createAuditLog({
-            ...req.auditLogInfo,
-            projectId: data.projectId,
-            event: {
-              type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
-              metadata: {
-                certificateProfileId: requestBody.profileId,
-                orderId: data.orderId,
-                profileName: data.profileName
-              }
-            }
-          });
-
-          return {
-            certificateRequestId: certificateRequest.id,
-            ...data
-          };
-        }
-        const certificateRequestForService: CertificateRequestForService = {
-          commonName: requestBody.commonName,
-          keyUsages: requestBody.keyUsages,
-          extendedKeyUsages: requestBody.extendedKeyUsages,
-          altNames: requestBody.altNames,
-          validity: { ttl: requestBody.ttl },
-          notBefore: requestBody.notBefore ? new Date(requestBody.notBefore) : undefined,
-          notAfter: requestBody.notAfter ? new Date(requestBody.notAfter) : undefined,
-          signatureAlgorithm: requestBody.signatureAlgorithm,
-          keyAlgorithm: requestBody.keyAlgorithm
-        };
-
-        const mappedCertificateRequest = mapEnumsForValidation(certificateRequestForService);
-
-        const data = await server.services.certificateV3.issueCertificateFromProfile({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          profileId: requestBody.profileId,
-          certificateRequest: mappedCertificateRequest,
-          removeRootsFromChain: requestBody.removeRootsFromChain
-        });
-
-        await server.services.certificateRequest.attachCertificateToRequest({
-          certificateRequestId: certificateRequest.id,
-          certificateId: data.certificateId
-        });
-
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId: data.projectId,
-          event: {
-            type: EventType.ISSUE_CERTIFICATE_FROM_PROFILE,
-            metadata: {
-              certificateProfileId: requestBody.profileId,
-              certificateId: data.certificateId,
-              commonName: requestBody.commonName || "",
-              profileName: data.profileName
-            }
-          }
-        });
-
-        return {
-          ...data,
-          certificateRequestId: certificateRequest.id
-        };
-      } catch (error) {
-        await server.services.certificateRequest.updateCertificateRequestStatus({
-          certificateRequestId: certificateRequest.id,
-          status: CertificateRequestStatus.FAILED,
-          errorMessage: error instanceof Error ? error.message : "Unknown error"
-        });
-        throw error;
-      }
-    }
-  });
-
-  server.route({
-    method: "GET",
-    url: "/certificate-requests/:certificateRequestId/certificate",
-    config: {
-      rateLimit: readLimit
-    },
-    schema: {
-      hide: false,
-      tags: [ApiDocsTags.PkiCertificates],
-      params: z.object({
-        certificateRequestId: z.string().uuid()
-      }),
-      query: z.object({
-        projectId: z.string().uuid()
-      }),
-      response: {
-        200: z.object({
-          status: z.nativeEnum(CertificateRequestStatus),
-          certificate: z.string().nullable(),
-          privateKey: z.string().nullable(),
-          serialNumber: z.string().nullable(),
-          errorMessage: z.string().nullable(),
-          createdAt: z.date(),
-          updatedAt: z.date()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const data = await server.services.certificateRequest.getCertificateFromRequest({
-        actor: req.permission.type,
-        actorId: req.permission.id,
-        actorAuthMethod: req.permission.authMethod,
-        actorOrgId: req.permission.orgId,
-        projectId: (req.query as { projectId: string }).projectId,
-        certificateRequestId: req.params.certificateRequestId
-      });
-
-      if (data.certificate && data.serialNumber) {
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId: (req.query as { projectId: string }).projectId,
-          event: {
-            type: EventType.GET_CERT,
-            metadata: {
-              certId: req.params.certificateRequestId,
-              cn: "",
-              serialNumber: data.serialNumber || ""
-            }
-          }
-        });
-      }
-
-      return data;
-    }
-  });
-
   server.route({
     method: "POST",
     url: "/issue-certificate",
@@ -463,7 +71,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       hide: true,
       deprecated: true,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "⚠️ DEPRECATED: Use POST /certificates instead. This endpoint will be removed in a future version.",
+      description: "This endpoint will be removed in a future version.",
       body: z
         .object({
           profileId: z.string().uuid(),
@@ -586,10 +194,10 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
-      hide: true, // Hide deprecated endpoint from docs
+      hide: true,
       deprecated: true,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "⚠️ DEPRECATED: Use POST /certificates instead. This endpoint will be removed in a future version.",
+      description: "This endpoint will be removed in a future version.",
       body: z
         .object({
           profileId: z.string().uuid(),
@@ -692,10 +300,10 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       rateLimit: writeLimit
     },
     schema: {
-      hide: true, // Hide deprecated endpoint from docs
+      hide: true,
       deprecated: true,
       tags: [ApiDocsTags.PkiCertificates],
-      description: "⚠️ DEPRECATED: Use POST /certificates instead. This endpoint will be removed in a future version.",
+      description: "This endpoint will be removed in a future version.",
       body: z
         .object({
           profileId: z.string().uuid(),
@@ -867,7 +475,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
           actorOrgId: req.permission.orgId,
-          serialNumber: req.params.certificateId
+          id: req.params.certificateId
         });
         if (!originalCertificate) {
           throw new NotFoundError({ message: "Original certificate not found" });

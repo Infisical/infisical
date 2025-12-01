@@ -194,7 +194,7 @@ export const useUnifiedCertificateIssuance = () => {
     mutationFn: async (body) => {
       const { projectSlug, ...requestData } = body;
       const { data } = await apiRequest.post<TUnifiedCertificateIssuanceResponse>(
-        "/api/v3/pki/certificates",
+        "/api/v1/cert-manager/certificates",
         requestData,
         {
           params: { projectSlug }
