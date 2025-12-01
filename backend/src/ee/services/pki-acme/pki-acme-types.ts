@@ -1,6 +1,8 @@
 import { JWSHeaderParameters } from "jose";
 import { z } from "zod";
 
+import { TPkiAcmeChallenges } from "@app/db/schemas/pki-acme-challenges";
+
 import {
   AcmeOrderResourceSchema,
   CreateAcmeAccountBodySchema,
@@ -176,5 +178,6 @@ export type TPkiAcmeServiceFactory = {
 };
 
 export type TPkiAcmeChallengeServiceFactory = {
+  markChallengeAsyReady: (challengeId: string) => Promise<TPkiAcmeChallenges>;
   validateChallengeResponse: (challengeId: string) => Promise<void>;
 };
