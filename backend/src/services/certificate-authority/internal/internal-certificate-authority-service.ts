@@ -34,8 +34,6 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
-  CertSignatureType,
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
@@ -127,6 +125,22 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
+  const $checkSignature = (caKeyAlg: string, requestedKeyType: string, signatureAlgorithm?: string) => {
+    const isRsaCa = caKeyAlg.startsWith("RSA");
+    const isEcdsaCa = caKeyAlg.startsWith("EC") || caKeyAlg.startsWith("ECDSA");
+
+    // eslint-disable-next-line no-nested-ternary
+    const caSupports = isRsaCa ? "RSA" : isEcdsaCa ? "ECDSA" : "unknown";
+
+    const isRequestValid = (requestedKeyType === "RSA" && isRsaCa) || (requestedKeyType === "ECDSA" && isEcdsaCa);
+
+    if (!isRequestValid) {
+      throw new BadRequestError({
+        message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlg}. CA can only sign with ${caSupports}-based signature algorithms.`
+      });
+    }
+  };
+
   const createCa = async ({
     type,
     friendlyName,
@@ -140,7 +154,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength,
     keyAlgorithm,
-    enableDirectIssuance,
     name,
     ...dto
   }: TCreateCaDTO) => {
@@ -192,9 +205,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          enableDirectIssuance,
           name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
-          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE
+          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+          enableDirectIssuance: false
         },
         tx
       );
@@ -354,7 +367,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, enableDirectIssuance, name, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, name, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -375,8 +388,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (enableDirectIssuance !== undefined || status !== undefined || name !== undefined) {
-        await certificateAuthorityDAL.updateById(ca.id, { enableDirectIssuance, status, name }, tx);
+      if (status !== undefined || name !== undefined) {
+        await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -971,9 +984,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1302,26 +1315,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0];
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.RSA_2048.split("_")[0]);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.ECDSA_P256.split("_")[0]);
-
-      if (
-        (requestedKeyType === CertSignatureAlgorithm.RSA_SHA256.split("-")[0] && !isRsaCa) ||
-        (requestedKeyType === CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0] && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa
-          ? CertSignatureAlgorithm.RSA_SHA256.split("-")[0]
-          : isEcdsaCa
-            ? CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0]
-            : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     // Determine signing algorithm for certificate signing
@@ -1352,8 +1346,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -1690,22 +1684,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertSignatureType.RSA);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertSignatureType.ECDSA);
-
-      if (
-        (requestedKeyType === CertSignatureType.RSA && !isRsaCa) ||
-        (requestedKeyType === CertSignatureType.ECDSA && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa ? CertSignatureType.RSA : isEcdsaCa ? CertSignatureType.ECDSA : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
@@ -1728,9 +1707,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),

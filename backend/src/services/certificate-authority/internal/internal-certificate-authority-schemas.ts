@@ -11,7 +11,7 @@ import {
 } from "../certificate-authority-schemas";
 import { validateCaDateField } from "../certificate-authority-validators";
 
-const InternalCertificateAuthorityConfigurationSchema = z
+export const InternalCertificateAuthorityConfigurationSchema = z
   .object({
     type: z.nativeEnum(InternalCaType).describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.type),
     friendlyName: z.string().optional().describe(CertificateAuthorities.CONFIGURATIONS.INTERNAL.friendlyName),

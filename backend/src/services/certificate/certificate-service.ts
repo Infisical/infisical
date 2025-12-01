@@ -52,7 +52,10 @@ import {
 } from "./certificate-types";
 
 type TCertificateServiceFactoryDep = {
-  certificateDAL: Pick<TCertificateDALFactory, "findOne" | "deleteById" | "update" | "find" | "transaction" | "create">;
+  certificateDAL: Pick<
+    TCertificateDALFactory,
+    "findOne" | "deleteById" | "update" | "find" | "transaction" | "create" | "findById"
+  >;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById" | "findByIdWithAssociatedCa">;
@@ -96,6 +99,8 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+  const getCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -120,6 +125,7 @@ export const certificateServiceFactory = ({
    * Get certificate private key.
    */
   const getCertPrivateKey = async ({
+    id,
     serialNumber,
     actorId,
     actorAuthMethod,
@@ -130,6 +136,7 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -167,6 +174,8 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+  const deleteCert = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TDeleteCertDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -202,6 +211,7 @@ export const certificateServiceFactory = ({
    * of its issuing CA
    */
   const revokeCert = async ({
+    id,
     serialNumber,
     revocationReason,
     actorId,
@@ -213,6 +223,7 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     if (!cert.caId) {
       throw new BadRequestError({
@@ -307,6 +318,8 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+  const getCertBody = async ({ id, serialNumber, actorId, actorAuthMethod, actor, actorOrgId }: TGetCertBodyDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -604,6 +617,15 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+  const getCertBundle = async ({
+    id,
+    serialNumber,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGetCertBundleDTO) => {
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -691,12 +713,13 @@ export const certificateServiceFactory = ({
       certificate,
       certificateChain,
       privateKey,
-      serialNumber,
+      serialNumber: cert.serialNumber,
       cert
     };
   };
 
   const getCertPkcs12 = async ({
+    id,
     serialNumber,
     password,
     alias,
@@ -722,6 +745,7 @@ export const certificateServiceFactory = ({
     if (!cert) {
       throw new NotFoundError({ message: `Certificate with serial number '${serialNumber}' not found` });
     }
+    const cert = id ? await certificateDAL.findById(id) : await certificateDAL.findOne({ serialNumber });
 
     const { permission } = await permissionService.getProjectPermission({
       actor,
@@ -739,7 +763,7 @@ export const certificateServiceFactory = ({
 
     // Get certificate bundle (certificate, chain, private key)
     const { certificate, certificateChain, privateKey } = await getCertBundle({
-      serialNumber,
+      id: cert.id,
       actor,
       actorId,
       actorAuthMethod,

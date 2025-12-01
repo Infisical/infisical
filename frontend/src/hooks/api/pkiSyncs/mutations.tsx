@@ -17,7 +17,10 @@ export const useCreatePkiSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ destination, ...params }: TCreatePkiSyncDTO) => {
-      const { data } = await apiRequest.post<TPkiSync>(`/api/v1/pki/syncs/${destination}`, params);
+      const { data } = await apiRequest.post<TPkiSync>(
+        `/api/v1/cert-manager/syncs/${destination}`,
+        params
+      );
 
       return data;
     },
@@ -31,7 +34,7 @@ export const useUpdatePkiSync = () => {
   return useMutation({
     mutationFn: async ({ syncId, projectId, destination, ...params }: TUpdatePkiSyncDTO) => {
       const { data } = await apiRequest.patch<TPkiSync>(
-        `/api/v1/pki/syncs/${destination}/${syncId}`,
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}`,
         params,
         { params: { projectId } }
       );
@@ -49,9 +52,12 @@ export const useDeletePkiSync = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ syncId, projectId, destination }: TDeletePkiSyncDTO) => {
-      const { data } = await apiRequest.delete(`/api/v1/pki/syncs/${destination}/${syncId}`, {
-        params: { projectId }
-      });
+      const { data } = await apiRequest.delete(
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}`,
+        {
+          params: { projectId }
+        }
+      );
 
       return data;
     },
@@ -66,7 +72,9 @@ export const useTriggerPkiSyncSyncCertificates = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncSyncCertificatesDTO) => {
-      const { data } = await apiRequest.post(`/api/v1/pki/syncs/${destination}/${syncId}/sync`);
+      const { data } = await apiRequest.post(
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/sync`
+      );
 
       return data;
     },
@@ -111,7 +119,9 @@ export const useTriggerPkiSyncImportCertificates = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncImportCertificatesDTO) => {
-      const { data } = await apiRequest.post(`/api/v1/pki/syncs/${destination}/${syncId}/import`);
+      const { data } = await apiRequest.post(
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/import`
+      );
 
       return data;
     },
@@ -157,7 +167,7 @@ export const useTriggerPkiSyncRemoveCertificates = () => {
   return useMutation({
     mutationFn: async ({ syncId, destination }: TTriggerPkiSyncRemoveCertificatesDTO) => {
       const { data } = await apiRequest.post(
-        `/api/v1/pki/syncs/${destination}/${syncId}/remove-certificates`
+        `/api/v1/cert-manager/syncs/${destination}/${syncId}/remove-certificates`
       );
 
       return data;
@@ -209,9 +219,12 @@ export const useAddCertificatesToPkiSync = () => {
       pkiSyncId: string;
       certificateIds: string[];
     }) => {
-      const { data } = await apiRequest.post(`/api/v1/pki/syncs/${pkiSyncId}/certificates`, {
-        certificateIds
-      });
+      const { data } = await apiRequest.post(
+        `/api/v1/cert-manager/syncs/${pkiSyncId}/certificates`,
+        {
+          certificateIds
+        }
+      );
 
       return data;
     },
@@ -231,9 +244,12 @@ export const useRemoveCertificatesFromPkiSync = () => {
       pkiSyncId: string;
       certificateIds: string[];
     }) => {
-      const { data } = await apiRequest.delete(`/api/v1/pki/syncs/${pkiSyncId}/certificates`, {
-        data: { certificateIds }
-      });
+      const { data } = await apiRequest.delete(
+        `/api/v1/cert-manager/syncs/${pkiSyncId}/certificates`,
+        {
+          data: { certificateIds }
+        }
+      );
 
       return data;
     },

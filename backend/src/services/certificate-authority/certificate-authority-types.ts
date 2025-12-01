@@ -19,9 +19,14 @@ export type TCertificateAuthorityInput =
   | TAcmeCertificateAuthorityInput
   | TCreateAzureAdCsCertificateAuthorityDTO;
 
-export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id">;
+export type TCreateCertificateAuthorityDTO = Omit<TCertificateAuthority, "id" | "enableDirectIssuance">;
 
 export type TUpdateCertificateAuthorityDTO = Partial<Omit<TCreateCertificateAuthorityDTO, "projectId">> & {
+  type: CaType;
+  id: string;
+};
+
+export type TDeprecatedUpdateCertificateAuthorityDTO = Partial<Omit<TCreateCertificateAuthorityDTO, "projectId">> & {
   type: CaType;
   caName: string;
   projectId: string;

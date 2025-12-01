@@ -622,7 +622,7 @@ export const samlConfigServiceFactory = ({
           const uniqueUsername = await normalizeUsername(`${firstName ?? ""}-${lastName ?? ""}`, userDAL);
           newUser = await userDAL.create(
             {
-              username: serverCfg.trustSamlEmails ? email : uniqueUsername,
+              username: serverCfg.trustSamlEmails ? email.toLowerCase() : uniqueUsername,
               email,
               isEmailVerified: serverCfg.trustSamlEmails,
               firstName,
@@ -639,7 +639,7 @@ export const samlConfigServiceFactory = ({
             userId: newUser.id,
             aliasType: UserAliasType.SAML,
             externalId,
-            emails: email ? [email] : [],
+            emails: email ? [email.toLowerCase()] : [],
             orgId,
             isEmailVerified: serverCfg.trustSamlEmails
           },

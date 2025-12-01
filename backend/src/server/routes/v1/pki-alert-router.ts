@@ -1,12 +1,18 @@
 import { z } from "zod";
 
-import { PkiAlertsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
-import { ALERTS, ApiDocsTags } from "@app/lib/api-docs";
+import { ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { PkiAlertEventType } from "@app/services/pki-alert-v2/pki-alert-v2-types";
+import {
+  CreatePkiAlertV2Schema,
+  createSecureAlertBeforeValidator,
+  PkiAlertChannelType,
+  PkiAlertEventType,
+  PkiFilterRuleSchema,
+  UpdatePkiAlertV2Schema
+} from "@app/services/pki-alert-v2/pki-alert-v2-types";
 
 export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -17,25 +23,41 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      description: "Create a new PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
-      description: "Create PKI alert",
-      body: z.object({
-        projectId: z.string().trim().describe(ALERTS.CREATE.projectId),
-        pkiCollectionId: z.string().trim().describe(ALERTS.CREATE.pkiCollectionId),
-        name: z.string().trim().describe(ALERTS.CREATE.name),
-        alertBeforeDays: z.number().describe(ALERTS.CREATE.alertBeforeDays),
-        emails: z
-          .array(z.string().trim().email({ message: "Invalid email address" }))
-          .min(1, { message: "You must specify at least 1 email" })
-          .max(5, { message: "You can specify a maximum of 5 emails" })
-          .describe(ALERTS.CREATE.emails)
+      body: CreatePkiAlertV2Schema.extend({
+        projectId: z.string().uuid().describe("Project ID")
       }),
       response: {
-        200: PkiAlertsSchema
+        200: z.object({
+          alert: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable(),
+            eventType: z.nativeEnum(PkiAlertEventType),
+            alertBefore: z.string(),
+            filters: z.array(PkiFilterRuleSchema),
+            enabled: z.boolean(),
+            projectId: z.string().uuid(),
+            channels: z.array(
+              z.object({
+                id: z.string().uuid(),
+                channelType: z.nativeEnum(PkiAlertChannelType),
+                config: z.record(z.any()),
+                enabled: z.boolean(),
+                createdAt: z.date(),
+                updatedAt: z.date()
+              })
+            ),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlert.createPkiAlert({
+      const alert = await server.services.pkiAlertV2.createAlert({
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -45,21 +67,80 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,
-        projectId: alert.projectId,
+        projectId: req.body.projectId,
         event: {
           type: EventType.CREATE_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            pkiCollectionId: alert.pkiCollectionId,
             name: alert.name,
-            alertBefore: alert.alertBeforeDays.toString(),
-            eventType: PkiAlertEventType.EXPIRATION,
-            recipientEmails: alert.recipientEmails
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore
           }
         }
       });
 
-      return alert;
+      return { alert };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      description: "List PKI alerts for a project",
+      tags: [ApiDocsTags.PkiAlerting],
+      querystring: z.object({
+        projectId: z.string().uuid(),
+        search: z.string().optional(),
+        eventType: z.nativeEnum(PkiAlertEventType).optional(),
+        enabled: z.coerce.boolean().optional(),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          alerts: z.array(
+            z.object({
+              id: z.string().uuid(),
+              name: z.string(),
+              description: z.string().nullable(),
+              eventType: z.nativeEnum(PkiAlertEventType),
+              alertBefore: z.string(),
+              filters: z.array(PkiFilterRuleSchema),
+              enabled: z.boolean(),
+              channels: z.array(
+                z.object({
+                  id: z.string().uuid(),
+                  channelType: z.nativeEnum(PkiAlertChannelType),
+                  config: z.record(z.any()),
+                  enabled: z.boolean(),
+                  createdAt: z.date(),
+                  updatedAt: z.date()
+                })
+              ),
+              createdAt: z.date(),
+              updatedAt: z.date()
+            })
+          ),
+          total: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const alerts = await server.services.pkiAlertV2.listAlerts({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return alerts;
     }
   });
 
@@ -71,17 +152,41 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      description: "Get a PKI alert by ID",
       tags: [ApiDocsTags.PkiAlerting],
-      description: "Get PKI alert",
       params: z.object({
-        alertId: z.string().trim().describe(ALERTS.GET.alertId)
+        alertId: z.string().uuid().describe("Alert ID")
       }),
       response: {
-        200: PkiAlertsSchema
+        200: z.object({
+          alert: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable(),
+            eventType: z.nativeEnum(PkiAlertEventType),
+            alertBefore: z.string(),
+            filters: z.array(PkiFilterRuleSchema),
+            enabled: z.boolean(),
+            projectId: z.string().uuid(),
+            channels: z.array(
+              z.object({
+                id: z.string().uuid(),
+                channelType: z.nativeEnum(PkiAlertChannelType),
+                config: z.record(z.any()),
+                enabled: z.boolean(),
+                createdAt: z.date(),
+                updatedAt: z.date()
+              })
+            ),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlert.getPkiAlertById({
+      const alert = await server.services.pkiAlertV2.getAlertById({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -100,7 +205,7 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return alert;
+      return { alert };
     }
   });
 
@@ -108,32 +213,46 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     method: "PATCH",
     url: "/:alertId",
     config: {
-      rateLimit: readLimit
+      rateLimit: writeLimit
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      description: "Update a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
-      description: "Update PKI alert",
       params: z.object({
-        alertId: z.string().trim().describe(ALERTS.UPDATE.alertId)
+        alertId: z.string().uuid().describe("Alert ID")
       }),
-      body: z.object({
-        name: z.string().trim().optional().describe(ALERTS.UPDATE.name),
-        alertBeforeDays: z.number().optional().describe(ALERTS.UPDATE.alertBeforeDays),
-        pkiCollectionId: z.string().trim().optional().describe(ALERTS.UPDATE.pkiCollectionId),
-        emails: z
-          .array(z.string().trim().email({ message: "Invalid email address" }))
-          .min(1, { message: "You must specify at least 1 email" })
-          .max(5, { message: "You can specify a maximum of 5 emails" })
-          .optional()
-          .describe(ALERTS.UPDATE.emails)
-      }),
+      body: UpdatePkiAlertV2Schema,
       response: {
-        200: PkiAlertsSchema
+        200: z.object({
+          alert: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable(),
+            eventType: z.nativeEnum(PkiAlertEventType),
+            alertBefore: z.string(),
+            filters: z.array(PkiFilterRuleSchema),
+            enabled: z.boolean(),
+            projectId: z.string().uuid(),
+            channels: z.array(
+              z.object({
+                id: z.string().uuid(),
+                channelType: z.nativeEnum(PkiAlertChannelType),
+                config: z.record(z.any()),
+                enabled: z.boolean(),
+                createdAt: z.date(),
+                updatedAt: z.date()
+              })
+            ),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlert.updatePkiAlert({
+      const alert = await server.services.pkiAlertV2.updateAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -149,16 +268,14 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
           type: EventType.UPDATE_PKI_ALERT,
           metadata: {
             pkiAlertId: alert.id,
-            pkiCollectionId: alert.pkiCollectionId,
             name: alert.name,
-            alertBefore: alert.alertBeforeDays.toString(),
-            eventType: PkiAlertEventType.EXPIRATION,
-            recipientEmails: alert.recipientEmails
+            eventType: alert.eventType,
+            alertBefore: alert.alertBefore
           }
         }
       });
 
-      return alert;
+      return { alert };
     }
   });
 
@@ -170,17 +287,41 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
+      hide: false,
+      description: "Delete a PKI alert",
       tags: [ApiDocsTags.PkiAlerting],
-      description: "Delete PKI alert",
       params: z.object({
-        alertId: z.string().trim().describe(ALERTS.DELETE.alertId)
+        alertId: z.string().uuid().describe("Alert ID")
       }),
       response: {
-        200: PkiAlertsSchema
+        200: z.object({
+          alert: z.object({
+            id: z.string().uuid(),
+            name: z.string(),
+            description: z.string().nullable(),
+            eventType: z.nativeEnum(PkiAlertEventType),
+            alertBefore: z.string(),
+            filters: z.array(PkiFilterRuleSchema),
+            enabled: z.boolean(),
+            projectId: z.string().uuid(),
+            channels: z.array(
+              z.object({
+                id: z.string().uuid(),
+                channelType: z.nativeEnum(PkiAlertChannelType),
+                config: z.record(z.any()),
+                enabled: z.boolean(),
+                createdAt: z.date(),
+                updatedAt: z.date()
+              })
+            ),
+            createdAt: z.date(),
+            updatedAt: z.date()
+          })
+        })
       }
     },
     handler: async (req) => {
-      const alert = await server.services.pkiAlert.deletePkiAlert({
+      const alert = await server.services.pkiAlertV2.deleteAlert({
         alertId: req.params.alertId,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -199,7 +340,111 @@ export const registerPkiAlertRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return alert;
+      return { alert };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:alertId/certificates",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      description: "List certificates that match an alert's filter rules",
+      tags: [ApiDocsTags.PkiAlerting],
+      params: z.object({
+        alertId: z.string().uuid().describe("Alert ID")
+      }),
+      querystring: z.object({
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            z.object({
+              id: z.string().uuid(),
+              serialNumber: z.string(),
+              commonName: z.string(),
+              san: z.array(z.string()),
+              profileName: z.string().nullable(),
+              enrollmentType: z.string().nullable(),
+              notBefore: z.date(),
+              notAfter: z.date(),
+              status: z.string()
+            })
+          ),
+          total: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.listMatchingCertificates({
+        alertId: req.params.alertId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return result;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/preview/certificates",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      description: "Preview certificates that would match the given filter rules",
+      tags: [ApiDocsTags.PkiAlerting],
+      body: z.object({
+        projectId: z.string().uuid().describe("Project ID"),
+        filters: z.array(PkiFilterRuleSchema),
+        alertBefore: z
+          .string()
+          .refine(createSecureAlertBeforeValidator(), "Must be in format like '30d', '1w', '3m', '1y'")
+          .describe("Alert timing (e.g., '30d', '1w')"),
+        limit: z.coerce.number().min(1).max(100).default(20),
+        offset: z.coerce.number().min(0).default(0)
+      }),
+      response: {
+        200: z.object({
+          certificates: z.array(
+            z.object({
+              id: z.string().uuid(),
+              serialNumber: z.string(),
+              commonName: z.string(),
+              san: z.array(z.string()),
+              profileName: z.string().nullable(),
+              enrollmentType: z.string().nullable(),
+              notBefore: z.date(),
+              notAfter: z.date(),
+              status: z.string()
+            })
+          ),
+          total: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const result = await server.services.pkiAlertV2.listCurrentMatchingCertificates({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.body
+      });
+
+      return result;
     }
   });
 };

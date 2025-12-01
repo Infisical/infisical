@@ -222,7 +222,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request POST 'https://app.infisical.com/api/v1/pki/certificates/<cert-serial-number>/revoke' \
+        curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/<cert-id>/revoke' \
           --header 'Authorization: Bearer <access-token>' \
           --header 'Content-Type: application/json' \
           --data-raw '{
@@ -247,7 +247,7 @@ openssl verify -verbose -crl_check -crl_download -CAfile chain.pem cert.pem
         ### Sample request
 
         ```bash Request
-        curl --location --request GET 'https://app.infisical.com/api/v1/pki/ca/<ca-id>/crls' \
+        curl --location --request GET 'https://app.infisical.com/api/v1/cert-manager/ca/internal/<ca-id>/crls' \
           --header 'Authorization: Bearer <access-token>'
         ```
 

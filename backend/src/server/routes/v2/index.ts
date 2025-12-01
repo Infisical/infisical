@@ -1,5 +1,5 @@
 import { registerCaRouter } from "./certificate-authority-router";
-import { registerCertificateTemplatesV2Router } from "./certificate-templates-v2-router";
+import { registerCertificateTemplatesV2Router } from "./deprecated-certificate-templates-v2-router";
 import { registerDeprecatedGroupProjectRouter } from "./deprecated-group-project-router";
 import { registerDeprecatedIdentityProjectRouter } from "./deprecated-identity-project-router";
 import { registerDeprecatedProjectMembershipRouter } from "./deprecated-project-membership-router";
