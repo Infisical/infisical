@@ -532,7 +532,7 @@ export const Navbar = () => {
                   {/* scott: the below is used to hide the top border from the org nav bar */}
                   {!isProjectScope && isSubOrganization && (
                     <div className="absolute -bottom-px left-0 h-px w-full bg-mineshaft-900">
-                      <div className="h-full bg-org/[0.075]" />
+                      <div className="h-full bg-sub-org/[0.075]" />
                     </div>
                   )}
                   <DropdownMenu modal={false}>
