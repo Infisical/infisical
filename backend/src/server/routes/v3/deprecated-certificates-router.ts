@@ -7,7 +7,7 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { ACMESANType, CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
@@ -305,7 +305,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           profileId: z.string().uuid(),
           subjectAlternativeNames: z.array(
             z.object({
-              type: z.nativeEnum(ACMESANType),
+              type: z.nativeEnum(CertSubjectAlternativeNameType),
               value: z
                 .string()
                 .trim()

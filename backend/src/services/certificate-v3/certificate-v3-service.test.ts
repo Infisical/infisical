@@ -11,7 +11,7 @@ import { TPkiAcmeAccountDALFactory } from "@app/ee/services/pki-acme/pki-acme-ac
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import { ACMESANType, CertStatus } from "@app/services/certificate/certificate-types";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaStatus } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TInternalCertificateAuthorityServiceFactory } from "@app/services/certificate-authority/internal/internal-certificate-authority-service";
@@ -19,7 +19,8 @@ import {
   CertExtendedKeyUsageType,
   CertIncludeType,
   CertKeyUsageType,
-  CertSubjectAttributeType
+  CertSubjectAttributeType,
+  CertSubjectAlternativeNameType
 } from "@app/services/certificate-common/certificate-constants";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { EnrollmentType, IssuerType } from "@app/services/certificate-profile/certificate-profile-types";
@@ -853,7 +854,7 @@ describe("CertificateV3Service", () => {
 
   describe("orderCertificateFromProfile", () => {
     const mockCertificateOrder = {
-      altNames: [{ type: ACMESANType.DNS, value: "example.com" }],
+      altNames: [{ type: CertSubjectAlternativeNameType.DNS_NAME, value: "example.com" }],
       validity: { ttl: "30d" },
       commonName: "example.com",
       keyUsages: [CertKeyUsageType.DIGITAL_SIGNATURE],

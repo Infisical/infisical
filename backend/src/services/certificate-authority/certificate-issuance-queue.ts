@@ -208,7 +208,7 @@ export const certificateIssuanceQueueFactory = ({
 
           const [, generatedCsr] = await acme.crypto.createCsr(
             {
-              altNames: altNames || [],
+              altNames: altNames ? [...altNames] : [],
               commonName: commonName || ""
             },
             skLeaf

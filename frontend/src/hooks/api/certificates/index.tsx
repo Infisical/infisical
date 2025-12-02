@@ -7,4 +7,4 @@ export {
   useRevokeCert,
   useUpdateRenewalConfig
 } from "./mutations";
-export { useGetCert, useGetCertBody, useGetCertificateRequest } from "./queries";
+export { useGetCert, useGetCertBody } from "./queries";

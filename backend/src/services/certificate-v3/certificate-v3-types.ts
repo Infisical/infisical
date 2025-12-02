@@ -1,6 +1,5 @@
 import { TProjectPermission } from "@app/lib/types";
 
-import { ACMESANType } from "../certificate/certificate-types";
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
@@ -45,7 +44,7 @@ export type TOrderCertificateFromProfileDTO = {
   profileId: string;
   certificateOrder: {
     altNames: Array<{
-      type: ACMESANType;
+      type: CertSubjectAlternativeNameType;
       value: string;
     }>;
     validity: {

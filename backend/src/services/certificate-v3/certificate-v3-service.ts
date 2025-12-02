@@ -1054,7 +1054,7 @@ export const certificateV3ServiceFactory = ({
         tx
       });
 
-      const certificateRecord = await certificateDAL.findById(certResult.certificateId);
+      const certificateRecord = await certificateDAL.findById(certResult.certificateId, tx);
       if (!certificateRecord) {
         throw new NotFoundError({ message: "Certificate was issued but could not be found in database" });
       }
@@ -1307,25 +1307,7 @@ export const certificateV3ServiceFactory = ({
         commonName: certificateOrder.commonName,
         keyUsages: certificateOrder.keyUsages,
         extendedKeyUsages: certificateOrder.extendedKeyUsages,
-        subjectAlternativeNames: certificateOrder.altNames?.map((san) => {
-          let certType: CertSubjectAlternativeNameType;
-          switch (san.type) {
-            case "dns":
-              certType = CertSubjectAlternativeNameType.DNS_NAME;
-              break;
-            case "ip":
-              certType = CertSubjectAlternativeNameType.IP_ADDRESS;
-              break;
-            default:
-              throw new BadRequestError({
-                message: `Unsupported Subject Alternative Name type: ${san.type as string}`
-              });
-          }
-          return {
-            type: certType,
-            value: san.value
-          };
-        }),
+        subjectAlternativeNames: certificateOrder.altNames,
         validity: certificateOrder.validity,
         notBefore: certificateOrder.notBefore,
         notAfter: certificateOrder.notAfter,

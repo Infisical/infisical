@@ -11,12 +11,7 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { addNoCacheHeaders } from "@app/server/lib/caching";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  ACMESANType,
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm,
-  CrlReason
-} from "@app/services/certificate/certificate-types";
+import { CertKeyAlgorithm, CertSignatureAlgorithm, CrlReason } from "@app/services/certificate/certificate-types";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
@@ -129,18 +124,6 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
                 .optional(),
               signatureAlgorithm: z.nativeEnum(CertSignatureAlgorithm).optional(),
               keyAlgorithm: z.nativeEnum(CertKeyAlgorithm).optional(),
-              subjectAlternativeNames: z
-                .array(
-                  z.object({
-                    type: z.nativeEnum(ACMESANType),
-                    value: z
-                      .string()
-                      .trim()
-                      .min(1, "SAN value cannot be empty")
-                      .max(255, "SAN value must be less than 255 characters")
-                  })
-                )
-                .optional(),
               ttl: z
                 .string()
                 .trim()
@@ -199,19 +182,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         useOrderFlow = caType !== CaType.INTERNAL;
       }
 
-      if (attributes?.subjectAlternativeNames?.length || useOrderFlow) {
-        let acmeAltNames: Array<{ type: ACMESANType; value: string }> | undefined = attributes?.subjectAlternativeNames;
-        if (useOrderFlow && !attributes?.subjectAlternativeNames && attributes?.altNames?.length) {
-          acmeAltNames = attributes.altNames.map((alt: { type: CertSubjectAlternativeNameType; value: string }) => ({
-            type: (alt.type === CertSubjectAlternativeNameType.DNS_NAME
-              ? ACMESANType.DNS
-              : ACMESANType.IP) as ACMESANType,
-            value: alt.value
-          }));
-        }
-
+      if (useOrderFlow) {
         const certificateOrderObject = {
-          altNames: acmeAltNames || [],
+          altNames: attributes?.altNames || [],
           validity: { ttl: attributes?.ttl || "" },
           commonName: attributes?.commonName,
           keyUsages: attributes?.keyUsages,
@@ -579,7 +552,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           profileId: z.string().uuid(),
           subjectAlternativeNames: z.array(
             z.object({
-              type: z.nativeEnum(ACMESANType),
+              type: z.nativeEnum(CertSubjectAlternativeNameType),
               value: z
                 .string()
                 .trim()
