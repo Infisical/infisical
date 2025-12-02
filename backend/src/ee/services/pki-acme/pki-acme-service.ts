@@ -158,7 +158,6 @@ export const pkiAcmeServiceFactory = ({
   licenseService,
   certificateV3Service,
   certificateTemplateV2Service,
-  acmeChallengeService
   acmeChallengeService,
   pkiAcmeQueueService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
