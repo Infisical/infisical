@@ -797,21 +797,25 @@ def select_challenge(
     return challenges[0]
 
 
-def serve_challenge(
+def serve_challenges(
     context: Context,
-    challenge: messages.ChallengeBody,
+    challenges: list[messages.ChallengeBody],
 ):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
 
-    response, validation = challenge.response_and_validation(
-        context.acme_client.net.key
-    )
-    resource = standalone.HTTP01RequestHandler.HTTP01Resource(
-        chall=challenge.chall, response=response, validation=validation
-    )
+    resources = set()
+    for challenge in challenges:
+        response, validation = challenge.response_and_validation(
+            context.acme_client.net.key
+        )
+        resources.add(
+            standalone.HTTP01RequestHandler.HTTP01Resource(
+                chall=challenge.chall, response=response, validation=validation
+            )
+        )
     # TODO: make port configurable
-    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
+    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resources)
     servers.serve_forever()
     context.web_server = servers
 
@@ -865,6 +869,7 @@ def step_impl(
             f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
         )
 
+    challenges = {}
     for domain in order.body.identifiers:
         logger.info(
             "Selecting challenge for domain %s with type %s ...",
@@ -877,6 +882,7 @@ def step_impl(
             domain=domain.value,
             order_var_path=order_var_path,
         )
+        print("@" * 20, domain, challenge.chall.path)
         logger.info(
             "Found challenge for domain %s with type %s, challenge=%s",
             domain.value,
@@ -889,8 +895,10 @@ def step_impl(
             domain.value,
             challenge_type,
         )
-        serve_challenge(context=context, challenge=challenge)
+        challenges[domain] = challenge
 
+    serve_challenges(context=context, challenges=list(challenges.values()))
+    for domain, challenge in challenges.items():
         logger.info(
             "Notifying challenge for domain %s with type %s ...", domain, challenge_type
         )
@@ -900,7 +908,7 @@ def step_impl(
 @then("I serve challenge response for {var_path} at {hostname}")
 def step_impl(context: Context, var_path: str, hostname: str):
     challenge = eval_var(context, var_path, as_json=False)
-    serve_challenge(context=context, challenge=challenge)
+    serve_challenges(context=context, challenges=[challenge])
 
 
 @then("I tell ACME server that {var_path} is ready to be verified")

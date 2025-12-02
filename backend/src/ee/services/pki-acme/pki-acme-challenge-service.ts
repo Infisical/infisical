@@ -111,6 +111,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       if (challengeResponseBody.trimEnd() !== expectedChallengeResponseBody) {
         throw new AcmeIncorrectResponseError({ message: "ACME challenge response is not correct" });
       }
+      logger.info({ challengeId }, "ACME challenge response is correct, marking challenge as valid");
       await acmeChallengeDAL.markAsValidCascadeById(challengeId);
     } catch (exp) {
       if (retryCount >= 2) {
