@@ -93,7 +93,7 @@ export const pkiAcmeChallengeServiceFactory = ({
       //         a long running operation for long time. But assuming we are not performing a tons of
       //         challenge validation at the same time, it should be fine.
       const challengeResponse = await axios.get<string>(challengeUrl.toString(), {
-        // In case if we override the hos2 in the development mode, still provide the original host in the header
+        // In case if we override the host in the development mode, still provide the original host in the header
         // to help the upstream server to validate the request
         headers: { Host: challenge.auth.identifierValue },
         timeout: timeoutMs,
