@@ -81,6 +81,7 @@ import { pkiAcmeChallengeDALFactory } from "@app/ee/services/pki-acme/pki-acme-c
 import { pkiAcmeChallengeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-service";
 import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
+import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
@@ -2254,6 +2255,12 @@ export const registerRoutes = async (
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
     acmeChallengeDAL
   });
+
+  const pkiAcmeQueueService = await pkiAcmeQueueServiceFactory({
+    queueService,
+    acmeChallengeService
+  });
+
   const pkiAcmeService = pkiAcmeServiceFactory({
     projectDAL,
     appConnectionDAL,
@@ -2272,7 +2279,8 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     certificateV3Service,
-    acmeChallengeService
+    acmeChallengeService,
+    pkiAcmeQueueService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({
