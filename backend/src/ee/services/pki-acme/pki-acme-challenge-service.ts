@@ -129,6 +129,9 @@ export const pkiAcmeChallengeServiceFactory = ({
         if (errorCode === "ENOTFOUND" || errorMessage.includes("ENOTFOUND")) {
           throw new AcmeDnsFailureError({ message: "Hostname could not be resolved (DNS failure)" });
         }
+        if (errorCode === "ECONNRESET" || errorMessage.includes("ECONNRESET")) {
+          throw new AcmeConnectionError({ message: "Connection reset by peer" });
+        }
         if (errorCode === "ECONNABORTED" || errorMessage.includes("timeout")) {
           logger.error(exp, "Connection timed out while validating ACME challenge response");
           throw new AcmeConnectionError({ message: "Connection timed out" });
