@@ -920,7 +920,7 @@ def step_impl(
 
 
 @then(
-    "I wait {wait_time} seconds before serve challenge response for {var_path} at {hostname}"
+    "I wait {wait_time} seconds and serve challenge response for {var_path} at {hostname}"
 )
 def step_impl(context: Context, wait_time: str, var_path: str, hostname: str):
     challenge = eval_var(context, var_path, as_json=False)
