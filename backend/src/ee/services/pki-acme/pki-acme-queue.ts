@@ -55,7 +55,7 @@ export const pkiAcmeQueueServiceFactory = async ({
       { challengeId },
       {
         retryLimit: 3,
-        retryDelay: 30 * 1000, // Base delay of 30 seconds
+        retryDelay: 30, // Base delay of 30 seconds
         retryBackoff: true // Exponential backoff: 30s, 60s, 120s
       }
     );
