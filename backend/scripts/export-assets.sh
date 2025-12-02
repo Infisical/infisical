@@ -14,7 +14,7 @@ show_help() {
 Export frontend static assets for CDN deployment.
 
 USAGE:
-    docker run --rm infisical/infisical npm run assets:export [-- OPTIONS] [PATH]
+    docker run --rm infisical/infisical npm run --silent assets:export [-- OPTIONS] [PATH]
 
 OPTIONS:
     --help, -h    Show this help message
@@ -23,17 +23,15 @@ ARGUMENTS:
     PATH          Directory to export assets to. If not provided, outputs
                   a tar archive to stdout.
 
+NOTE:
+    Use --silent flag to suppress npm output when piping to stdout.
+
 EXAMPLES:
     # Export as tar to local file
-    docker run --rm infisical/infisical npm run assets:export > assets.tar
+    docker run --rm infisical/infisical npm run --silent assets:export > assets.tar
 
     # Extract to local directory
-    docker run --rm -v $(pwd)/cdn-assets:/output infisical/infisical npm run assets:export /output
-
-    # Pipe directly to S3 (using aws cli on host)
-    docker run --rm infisical/infisical npm run assets:export | \
-        tar -xf - -C ./tmp-assets && \
-        aws s3 sync ./tmp-assets s3://my-bucket/assets
+    docker run --rm -v $(pwd)/cdn-assets:/output infisical/infisical npm run --silent assets:export /output
 
 EOF
     exit 0

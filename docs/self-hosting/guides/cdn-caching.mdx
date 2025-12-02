@@ -58,7 +58,7 @@ Infisical provides a built-in command to export frontend assets from the Docker 
 
 ```bash
 # Export as tar archive to stdout
-docker run --rm infisical/infisical npm run assets:export > assets.tar
+docker run --rm infisical/infisical npm run --silent assets:export > assets.tar
 
 # Extract the archive
 tar -xf assets.tar
@@ -69,7 +69,7 @@ Or export directly to a mounted directory:
 
 ```bash
 docker run --rm -v $(pwd)/cdn-assets:/output \
-  infisical/infisical npm run assets:export /output
+  infisical/infisical npm run --silent assets:export /output
 ```
 
 ### What Gets Exported
@@ -93,7 +93,7 @@ The general deployment flow should be:
 
 ```bash
 # Example: Export and upload to S3
-docker run --rm infisical/infisical:$VERSION npm run assets:export > assets.tar
+docker run --rm infisical/infisical:$VERSION npm run --silent assets:export > assets.tar
 tar -xf assets.tar
 aws s3 sync assets s3://your-bucket/assets --cache-control "public, max-age=2592000"
 
