@@ -85,13 +85,12 @@ Feature: Challenge
     When I create certificate signing request as csr
     Then I add names to certificate signing request csr
       """
-      {
-        "COMMON_NAME": "localhost"
-      }
+      {}
       """
     And I add subject alternative name to certificate signing request csr
       """
       [
+        "localhost",
         "infisical.com"
       ]
       """
@@ -104,56 +103,19 @@ Feature: Challenge
 
     # the localhost auth should be valid
     And I memorize order with jq ".authorizations | map(select(.body.identifier.value == "localhost")) | first | .uri" as localhost_auth
-    And I peak and memorize the next nonce as nonce
-    When I send a raw ACME request to "{localhost_auth}"
-      """
-      {
-        "protected": {
-          "alg": "RS256",
-          "nonce": "{nonce}",
-          "url": "{localhost_auth}",
-          "kid": "{acme_account.uri}"
-        }
-      }
-      """
-    Then the value response.status_code should be equal to 200
-    And the value response with jq ".status" should be equal to "valid"
+    And I wait until the status of authorization localhost_auth becomes valid
 
     # the infisical.com auth should still be pending
     And I memorize order with jq ".authorizations | map(select(.body.identifier.value == "infisical.com")) | first | .uri" as infisical_auth
-    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
-    When I send a raw ACME request to "{infisical_auth}"
-      """
-      {
-        "protected": {
-          "alg": "RS256",
-          "nonce": "{nonce}",
-          "url": "{infisical_auth}",
-          "kid": "{acme_account.uri}"
-        }
-      }
-      """
-    Then the value response.status_code should be equal to 200
-    And the value response with jq ".status" should be equal to "pending"
+    And I post-as-get {infisical_auth} as infisical_auth_resp
+    And the value infisical_auth_resp with jq ".status" should be equal to "pending"
 
     # the order should be pending as well
-    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
-    When I send a raw ACME request to "{order.uri}"
-      """
-      {
-        "protected": {
-          "alg": "RS256",
-          "nonce": "{nonce}",
-          "url": "{order.uri}",
-          "kid": "{acme_account.uri}"
-        }
-      }
-      """
-    Then the value response.status_code should be equal to 200
-    And the value response with jq ".status" should be equal to "pending"
+    And I post-as-get {order.uri} as order_resp
+    And the value order_resp with jq ".status" should be equal to "pending"
 
     # finalize should not be allowed when all auths are not valid yet
-    And I memorize response.headers with jq ".["replay-nonce"]" as nonce
+    And I get a new-nonce as nonce
     When I send a raw ACME request to "{order.body.finalize}"
       """
       {

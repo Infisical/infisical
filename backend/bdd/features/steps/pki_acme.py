@@ -726,6 +726,15 @@ def step_impl(context: Context, var_path: str, jq_query, var_name: str):
     context.vars[var_name] = value
 
 
+@then("I get a new-nonce as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    nonce = acme_client.net._get_nonce(
+        url=None, new_nonce_url=acme_client.directory.newNonce
+    )
+    context.vars[var_name] = json_util.encode_b64jose(nonce)
+
+
 @then("I peak and memorize the next nonce as {var_name}")
 def step_impl(context: Context, var_name: str):
     acme_client = context.acme_client
@@ -951,9 +960,33 @@ def step_impl(context: Context, order_var: str, status: str):
         order = messages.Order.from_json(response.json())
         if order.status.name == status:
             return
-        acme_client -= 1
+        attempt_count -= 1
         time.sleep(10)
     raise TimeoutError(f"The status of order doesn't become {status} before timeout")
+
+
+@then("I wait until the status of authorization {auth_var} becomes {status}")
+def step_impl(context: Context, auth_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        auth = eval_var(context, auth_var, as_json=False)
+        response = acme_client._post_as_get(
+            auth.uri if isinstance(auth, messages.Authorization) else auth
+        )
+        auth = messages.Authorization.from_json(response.json())
+        if auth.status.name == status:
+            return
+        attempt_count -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of auth doesn't become {status} before timeout")
+
+
+@then("I post-as-get {uri} as {resp_var}")
+def step_impl(context: Context, uri: str, resp_var: str):
+    acme_client = context.acme_client
+    response = acme_client._post_as_get(replace_vars(uri, vars=context.vars))
+    context.vars[resp_var] = response.json()
 
 
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")
