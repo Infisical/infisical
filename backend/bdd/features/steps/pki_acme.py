@@ -939,6 +939,23 @@ def step_impl(context: Context, var_path: str):
     notify_challenge_ready(context=context, challenge=challenge)
 
 
+@then("I wait until the status of order {order_var} becomes {status}")
+def step_impl(context: Context, order_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        order = eval_var(context, order_var, as_json=False)
+        response = acme_client._post_as_get(
+            order.uri if isinstance(order, messages.OrderResource) else order
+        )
+        order = messages.Order.from_json(response.json())
+        if order.status.name == status:
+            return
+        acme_client -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of order doesn't become {status} before timeout")
+
+
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")
 def step_impl(context: Context, var_path: str, finalized_var: str):
     order = eval_var(context, var_path, as_json=False)

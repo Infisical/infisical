@@ -207,8 +207,10 @@ Feature: Challenge
     Then the value response.status_code should be equal to 201
     And I memorize response with jq ".finalize" as finalize_url
     And I memorize response.headers with jq ".["replay-nonce"]" as nonce
+    And I memorize response.headers with jq ".["location"]" as order_uri
     And I memorize response as order
     And I pass all challenges with type http-01 for order in order
+    And I wait until the status of order order_uri becomes ready
     And I encode CSR csr_pem as JOSE Base-64 DER as base64_csr_der
     When I send a raw ACME request to "{finalize_url}"
       """
