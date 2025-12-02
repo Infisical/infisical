@@ -9,6 +9,8 @@ type TPkiAcmeQueueServiceFactoryDep = {
   acmeChallengeService: TPkiAcmeChallengeServiceFactory;
 };
 
+export type TPkiAcmeQueueServiceFactory = Awaited<ReturnType<typeof pkiAcmeQueueServiceFactory>>;
+
 export const pkiAcmeQueueServiceFactory = async ({
   queueService,
   acmeChallengeService
@@ -63,5 +65,3 @@ export const pkiAcmeQueueServiceFactory = async ({
     queueChallengeValidation
   };
 };
-
-export type TPkiAcmeQueueServiceFactory = Awaited<ReturnType<typeof pkiAcmeQueueServiceFactory>>;

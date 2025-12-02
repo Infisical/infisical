@@ -81,6 +81,7 @@ import { pkiAcmeChallengeDALFactory } from "@app/ee/services/pki-acme/pki-acme-c
 import { pkiAcmeChallengeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-challenge-service";
 import { pkiAcmeOrderAuthDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-auth-dal";
 import { pkiAcmeOrderDALFactory } from "@app/ee/services/pki-acme/pki-acme-order-dal";
+import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 import { pkiAcmeServiceFactory } from "@app/ee/services/pki-acme/pki-acme-service";
 import { projectTemplateDALFactory } from "@app/ee/services/project-template/project-template-dal";
 import { projectTemplateServiceFactory } from "@app/ee/services/project-template/project-template-service";
@@ -374,7 +375,6 @@ import { initializeOauthConfigSync } from "./v1/sso-router";
 import { registerV2Routes } from "./v2";
 import { registerV3Routes } from "./v3";
 import { registerV4Routes } from "./v4";
-import { pkiAcmeQueueServiceFactory } from "@app/ee/services/pki-acme/pki-acme-queue";
 
 const histogram = monitorEventLoopDelay({ resolution: 20 });
 histogram.enable();
@@ -2256,7 +2256,7 @@ export const registerRoutes = async (
     acmeChallengeDAL
   });
 
-  const pkiAcmeQueueService = pkiAcmeQueueServiceFactory({
+  const pkiAcmeQueueService = await pkiAcmeQueueServiceFactory({
     queueService,
     acmeChallengeService
   });
