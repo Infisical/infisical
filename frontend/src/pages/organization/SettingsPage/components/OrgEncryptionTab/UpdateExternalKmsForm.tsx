@@ -8,11 +8,12 @@ import { GcpKmsForm } from "./GcpKmsForm";
 type Props = {
   isOpen: boolean;
   kmsId: string;
+  provider: ExternalKmsProvider;
   onOpenChange: (state: boolean) => void;
 };
 
-export const UpdateExternalKmsForm = ({ isOpen, kmsId, onOpenChange }: Props) => {
-  const { data: externalKms, isPending } = useGetExternalKmsById(kmsId);
+export const UpdateExternalKmsForm = ({ isOpen, kmsId, provider, onOpenChange }: Props) => {
+  const { data: externalKms, isPending } = useGetExternalKmsById({ kmsId, provider });
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent title="Edit configuration" bodyClassName="overflow-visible">

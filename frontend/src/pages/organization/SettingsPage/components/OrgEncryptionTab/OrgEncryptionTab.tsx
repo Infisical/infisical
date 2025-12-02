@@ -25,6 +25,7 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
+import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AddExternalKmsForm } from "./AddExternalKmsForm";
 import { ExternalKmsItem } from "./ExternalKmsItem";
@@ -47,11 +48,12 @@ export const OrgEncryptionTab = withPermission(
     const { mutateAsync: removeExternalKms } = useRemoveExternalKms(currentOrg.id);
 
     const handleRemoveExternalKms = async () => {
-      const { kmsId } = popUp?.removeExternalKms?.data as {
+      const { kmsId, provider } = popUp?.removeExternalKms?.data as {
         kmsId: string;
+        provider: ExternalKmsProvider;
       };
 
-      await removeExternalKms(kmsId);
+      await removeExternalKms({ kmsId, provider });
 
       createNotification({
         text: "Successfully deleted external KMS",
@@ -131,6 +133,7 @@ export const OrgEncryptionTab = withPermission(
         <UpdateExternalKmsForm
           isOpen={popUp.editExternalKms.isOpen}
           kmsId={(popUp.editExternalKms.data as { kmsId: string })?.kmsId}
+          provider={(popUp.editExternalKms.data as { provider: ExternalKmsProvider })?.provider}
           onOpenChange={(state) => handlePopUpToggle("editExternalKms", state)}
         />
         <DeleteActionModal

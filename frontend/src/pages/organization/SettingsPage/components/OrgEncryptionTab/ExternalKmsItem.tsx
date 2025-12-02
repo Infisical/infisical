@@ -119,7 +119,8 @@ export const ExternalKmsItem = ({ kms, handlePopUpOpen, subscription }: Props) =
                     }
 
                     handlePopUpOpen("editExternalKms", {
-                      kmsId: kms.id
+                      kmsId: kms.id,
+                      provider: kms.externalKms.provider
                     });
                   }}
                 >
