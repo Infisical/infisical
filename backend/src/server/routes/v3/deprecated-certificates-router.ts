@@ -17,6 +17,7 @@ import {
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
 import { booleanSchema } from "../sanitizedSchemas";
@@ -138,6 +139,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       });
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
+        status: CertificateRequestStatus.ISSUED,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
@@ -244,6 +246,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
         actor: req.permission.type,
+        status: CertificateRequestStatus.ISSUED,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId,
@@ -365,6 +368,7 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
       });
 
       const certificateRequest = await server.services.certificateRequest.createCertificateRequest({
+        status: CertificateRequestStatus.PENDING,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,

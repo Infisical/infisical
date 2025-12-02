@@ -19,6 +19,8 @@ export type TCreateCertificateRequestDTO = TProjectPermission & {
   keyAlgorithm?: string;
   signatureAlgorithm?: string;
   metadata?: string;
+  status: CertificateRequestStatus;
+  certificateId?: string;
 };
 
 export type TGetCertificateRequestDTO = TProjectPermission & {

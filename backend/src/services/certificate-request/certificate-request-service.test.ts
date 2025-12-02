@@ -71,7 +71,8 @@ describe("CertificateRequestService", () => {
       actorOrgId: "550e8400-e29b-41d4-a716-446655440002",
       projectId: "550e8400-e29b-41d4-a716-446655440003",
       profileId: "550e8400-e29b-41d4-a716-446655440004",
-      commonName: "test.example.com"
+      commonName: "test.example.com",
+      status: CertificateRequestStatus.PENDING
     };
 
     it("should create certificate request successfully", async () => {
@@ -105,12 +106,13 @@ describe("CertificateRequestService", () => {
         actionProjectType: ActionProjectType.CertificateManager
       });
       expect(mockCertificateRequestDAL.create).toHaveBeenCalledWith(
-        expect.objectContaining({
+        {
           status: CertificateRequestStatus.PENDING,
           projectId: "550e8400-e29b-41d4-a716-446655440003",
           profileId: "550e8400-e29b-41d4-a716-446655440004",
           commonName: "test.example.com"
-        })
+        },
+        undefined
       );
       expect(result).toEqual(mockCreatedRequest);
     });

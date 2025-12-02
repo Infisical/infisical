@@ -298,7 +298,6 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           const formattedSans = formatSubjectAltNames(subjectAltNames);
           if (formattedSans && formattedSans.length > 0) {
             request.attributes.altNames = formattedSans;
-            request.attributes.subjectAlternativeNames = formattedSans;
           }
         }
 
@@ -325,7 +324,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
         } else {
           // Certificate request - async processing
           createNotification({
-            text: `Certificate request submitted successfully. This may take a few minutes to process. Request ID: ${response.certificateRequestId}`,
+            text: `Certificate request submitted successfully. This may take a few minutes to process. Certificate Request ID: ${response.certificateRequestId}`,
             type: "success"
           });
           handlePopUpToggle("issueCertificate", false);

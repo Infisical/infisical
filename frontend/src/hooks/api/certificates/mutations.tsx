@@ -195,10 +195,7 @@ export const useUnifiedCertificateIssuance = () => {
       const { projectSlug, ...requestData } = body;
       const { data } = await apiRequest.post<TUnifiedCertificateIssuanceResponse>(
         "/api/v1/cert-manager/certificates",
-        requestData,
-        {
-          params: { projectSlug }
-        }
+        requestData
       );
       return data;
     },

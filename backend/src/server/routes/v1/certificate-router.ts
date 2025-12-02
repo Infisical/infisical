@@ -170,8 +170,7 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
               serialNumber: z.string().trim(),
               certificateId: z.string()
             })
-            .nullable()
-            .optional(),
+            .nullable(),
           certificateRequestId: z.string()
         })
       }
@@ -373,11 +372,9 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
         ...req.auditLogInfo,
         projectId: (req.query as { projectId: string }).projectId,
         event: {
-          type: EventType.GET_CERT,
+          type: EventType.GET_CERTIFICATE_REQUEST,
           metadata: {
-            certId: req.params.requestId,
-            cn: "",
-            serialNumber: data.serialNumber || ""
+            certificateRequestId: req.params.requestId
           }
         }
       });

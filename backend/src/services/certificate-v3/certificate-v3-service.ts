@@ -19,10 +19,8 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
-  CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyType,
-  CertKeyUsage,
   CertSignatureAlgorithm,
   CertStatus
 } from "@app/services/certificate/certificate-types";
@@ -58,15 +56,14 @@ import {
   bufferToString,
   buildCertificateSubjectFromTemplate,
   buildSubjectAlternativeNamesFromTemplate,
-  convertExtendedKeyUsageArrayFromLegacy,
   convertExtendedKeyUsageArrayToLegacy,
-  convertKeyUsageArrayFromLegacy,
   convertKeyUsageArrayToLegacy,
   mapEnumsForValidation,
   normalizeDateForApi,
   removeRootCaFromChain
 } from "../certificate-common/certificate-utils";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
+import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TCertificateSyncDALFactory } from "../certificate-sync/certificate-sync-dal";
 import { TCertificateRequest } from "../certificate-template-v2/certificate-template-v2-types";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -307,14 +304,15 @@ const extractCertificateFromBuffer = (certData: Buffer | { rawData: Buffer } | s
   return bufferToString(certData as unknown as Buffer);
 };
 
-const parseKeyUsages = (keyUsages: unknown): CertKeyUsage[] => {
+const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
   if (!keyUsages) return [];
 
-  const validKeyUsages = Object.values(CertKeyUsage);
+  const validKeyUsages = Object.values(CertKeyUsageType);
 
   if (Array.isArray(keyUsages)) {
     return keyUsages.filter(
-      (usage): usage is CertKeyUsage => typeof usage === "string" && validKeyUsages.includes(usage as CertKeyUsage)
+      (usage): usage is CertKeyUsageType =>
+        typeof usage === "string" && validKeyUsages.includes(usage as CertKeyUsageType)
     );
   }
 
@@ -322,21 +320,21 @@ const parseKeyUsages = (keyUsages: unknown): CertKeyUsage[] => {
     return keyUsages
       .split(",")
       .map((usage) => usage.trim())
-      .filter((usage): usage is CertKeyUsage => validKeyUsages.includes(usage as CertKeyUsage));
+      .filter((usage): usage is CertKeyUsageType => validKeyUsages.includes(usage as CertKeyUsageType));
   }
 
   return [];
 };
 
-const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsage[] => {
+const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsageType[] => {
   if (!extendedKeyUsages) return [];
 
-  const validExtendedKeyUsages = Object.values(CertExtendedKeyUsage);
+  const validExtendedKeyUsages = Object.values(CertExtendedKeyUsageType);
 
   if (Array.isArray(extendedKeyUsages)) {
     return extendedKeyUsages.filter(
-      (usage): usage is CertExtendedKeyUsage =>
-        typeof usage === "string" && validExtendedKeyUsages.includes(usage as CertExtendedKeyUsage)
+      (usage): usage is CertExtendedKeyUsageType =>
+        typeof usage === "string" && validExtendedKeyUsages.includes(usage as CertExtendedKeyUsageType)
     );
   }
 
@@ -344,7 +342,9 @@ const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsag
     return extendedKeyUsages
       .split(",")
       .map((usage) => usage.trim())
-      .filter((usage): usage is CertExtendedKeyUsage => validExtendedKeyUsages.includes(usage as CertExtendedKeyUsage));
+      .filter((usage): usage is CertExtendedKeyUsageType =>
+        validExtendedKeyUsages.includes(usage as CertExtendedKeyUsageType)
+      );
   }
 
   return [];
@@ -972,7 +972,9 @@ export const certificateV3ServiceFactory = ({
           notBefore: certificateRequest.notBefore,
           notAfter: certificateRequest.notAfter,
           keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: effectiveSignatureAlgorithm
+          signatureAlgorithm: effectiveSignatureAlgorithm,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: selfSignedResult.certificateData.id
         });
 
         return { ...selfSignedResult, certificateRequestId: certRequestResult.id };
@@ -1048,7 +1050,8 @@ export const certificateV3ServiceFactory = ({
         actorId,
         actorAuthMethod,
         actorOrgId,
-        isFromProfile: true
+        isFromProfile: true,
+        tx
       });
 
       const certificateRecord = await certificateDAL.findById(certResult.certificateId);
@@ -1066,7 +1069,7 @@ export const certificateV3ServiceFactory = ({
       if (finalRenewBeforeDays !== undefined) {
         updateData.renewBeforeDays = finalRenewBeforeDays;
       }
-      await certificateDAL.updateById(certificateRecord.id, updateData);
+      await certificateDAL.updateById(certificateRecord.id, updateData, tx);
 
       const certRequestResult = await certificateRequestService.createCertificateRequest({
         actor,
@@ -1075,6 +1078,7 @@ export const certificateV3ServiceFactory = ({
         actorOrgId,
         projectId: profile.projectId,
         tx,
+        caId: ca.id,
         profileId: profile.id,
         commonName: certificateRequest.commonName,
         altNames: certificateRequest.altNames?.map((san) => san.value).join(","),
@@ -1083,7 +1087,9 @@ export const certificateV3ServiceFactory = ({
         notBefore: certificateRequest.notBefore,
         notAfter: certificateRequest.notAfter,
         keyAlgorithm: effectiveKeyAlgorithm,
-        signatureAlgorithm: effectiveSignatureAlgorithm
+        signatureAlgorithm: effectiveSignatureAlgorithm,
+        status: CertificateRequestStatus.ISSUED,
+        certificateId: certResult.certificateId
       });
 
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
@@ -1197,7 +1203,8 @@ export const certificateV3ServiceFactory = ({
           notAfter: normalizeDateForApi(notAfter),
           signatureAlgorithm: effectiveSignatureAlgorithm,
           keyAlgorithm: effectiveKeyAlgorithm,
-          isFromProfile: true
+          isFromProfile: true,
+          tx
         });
 
         const signedCertRecord = await certificateDAL.findById(certResult.certificateId);
@@ -1215,7 +1222,7 @@ export const certificateV3ServiceFactory = ({
         if (finalRenewBeforeDays !== undefined) {
           updateData.renewBeforeDays = finalRenewBeforeDays;
         }
-        await certificateDAL.updateById(signedCertRecord.id, updateData);
+        await certificateDAL.updateById(signedCertRecord.id, updateData, tx);
 
         const certRequestResult = await certificateRequestService.createCertificateRequest({
           actor,
@@ -1224,6 +1231,7 @@ export const certificateV3ServiceFactory = ({
           actorOrgId,
           projectId: profile.projectId,
           tx,
+          caId: ca.id,
           profileId: profile.id,
           csr,
           commonName: mappedCertificateRequest.commonName,
@@ -1233,7 +1241,9 @@ export const certificateV3ServiceFactory = ({
           notBefore,
           notAfter,
           keyAlgorithm: effectiveKeyAlgorithm,
-          signatureAlgorithm: effectiveSignatureAlgorithm
+          signatureAlgorithm: effectiveSignatureAlgorithm,
+          status: CertificateRequestStatus.ISSUED,
+          certificateId: certResult.certificateId
         });
 
         return { ...certResult, cert: signedCertRecord, certificateRequestId: certRequestResult.id };
@@ -1370,6 +1380,7 @@ export const certificateV3ServiceFactory = ({
         actorAuthMethod,
         actorOrgId,
         projectId: profile.projectId,
+        caId: ca.id,
         profileId: profile.id,
         commonName: certificateOrder.commonName || "",
         keyUsages: certificateOrder.keyUsages ? convertEnumsToStringArray(certificateOrder.keyUsages) : [],
@@ -1380,7 +1391,8 @@ export const certificateV3ServiceFactory = ({
         signatureAlgorithm: certificateOrder.signatureAlgorithm || "",
         altNames: certificateOrder.altNames?.map((san) => san.value).join(",") || "",
         notBefore: certificateOrder.notBefore,
-        notAfter: certificateOrder.notAfter
+        notAfter: certificateOrder.notAfter,
+        status: CertificateRequestStatus.PENDING
       });
 
       await certificateIssuanceQueue.queueCertificateIssuance({
@@ -1554,10 +1566,8 @@ export const certificateV3ServiceFactory = ({
 
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
-        keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
-        extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(
-          parseExtendedKeyUsages(originalCert.extendedKeyUsages)
-        ),
+        keyUsages: parseKeyUsages(originalCert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         subjectAlternativeNames: originalCert.altNames
           ? originalCert.altNames.split(",").map((san) => detectSanType(san.trim()))
           : [],
@@ -1622,8 +1632,10 @@ export const certificateV3ServiceFactory = ({
             ttl,
             notBefore: normalizeDateForApi(notBefore),
             notAfter: normalizeDateForApi(notAfter),
-            keyUsages: parseKeyUsages(originalCert.keyUsages),
-            extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
+            keyUsages: convertKeyUsageArrayToLegacy(parseKeyUsages(originalCert.keyUsages)),
+            extendedKeyUsages: convertExtendedKeyUsageArrayToLegacy(
+              parseExtendedKeyUsages(originalCert.extendedKeyUsages)
+            ),
             signatureAlgorithm: originalSignatureAlgorithm,
             keyAlgorithm: originalKeyAlgorithm,
             isFromProfile: true,
@@ -1736,18 +1748,19 @@ export const certificateV3ServiceFactory = ({
         actorOrgId,
         projectId: originalCert.projectId,
         tx,
+        caId: ca?.id || originalCert.caId || undefined,
         profileId: originalCert.profileId || undefined,
         commonName: originalCert.commonName || undefined,
         altNames: originalCert.altNames || undefined,
-        keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
-        extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(
-          parseExtendedKeyUsages(originalCert.extendedKeyUsages)
-        ),
+        keyUsages: parseKeyUsages(originalCert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         notBefore: new Date(newCert.notBefore),
         notAfter: new Date(newCert.notAfter),
         keyAlgorithm: originalKeyAlgorithm,
         signatureAlgorithm: originalSignatureAlgorithm,
-        metadata: `Renewed from certificate ID: ${originalCert.id}`
+        metadata: `Renewed from certificate ID: ${originalCert.id}`,
+        status: CertificateRequestStatus.ISSUED,
+        certificateId: newCert.id
       });
 
       return {
@@ -1783,13 +1796,12 @@ export const certificateV3ServiceFactory = ({
         caId: ca.id,
         commonName: originalCert.commonName || undefined,
         altNames: originalCert.altNames || undefined,
-        keyUsages: convertKeyUsageArrayFromLegacy(parseKeyUsages(originalCert.keyUsages)),
-        extendedKeyUsages: convertExtendedKeyUsageArrayFromLegacy(
-          parseExtendedKeyUsages(originalCert.extendedKeyUsages)
-        ),
+        keyUsages: parseKeyUsages(originalCert.keyUsages),
+        extendedKeyUsages: parseExtendedKeyUsages(originalCert.extendedKeyUsages),
         keyAlgorithm: originalKeyAlgorithm,
         signatureAlgorithm: originalSignatureAlgorithm,
-        metadata: `Renewed from certificate ID: ${originalCert.id}`
+        metadata: `Renewed from certificate ID: ${originalCert.id}`,
+        status: CertificateRequestStatus.PENDING
       });
 
       certificateRequestId = certificateRequest.id;

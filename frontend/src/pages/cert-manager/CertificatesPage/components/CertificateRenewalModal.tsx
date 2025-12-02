@@ -25,7 +25,7 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
     });
 
     const notificationText = result.certificateRequestId
-      ? `Certificate renewal initiated successfully. Request ID: ${result.certificateRequestId}`
+      ? `Certificate renewal initiated successfully. Certificate Request ID: ${result.certificateRequestId}`
       : "Certificate renewed successfully";
 
     createNotification({

@@ -12,6 +12,7 @@ import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
 
+import { ActorType } from "../auth/auth-type";
 import { TCertificateRequestDALFactory } from "./certificate-request-dal";
 import {
   CertificateRequestStatus,
@@ -44,7 +45,8 @@ const certificateRequestDataSchema = z
     notAfter: z.date().optional(),
     keyAlgorithm: z.string().max(100).optional(),
     signatureAlgorithm: z.string().max(100).optional(),
-    metadata: z.string().max(2000).optional()
+    metadata: z.string().max(2000).optional(),
+    certificateId: z.string().optional()
   })
   .refine(
     (data) => {
@@ -94,39 +96,36 @@ export const certificateRequestServiceFactory = ({
     actorOrgId,
     projectId,
     tx,
+    status,
     ...requestData
   }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (actor !== ActorType.ACME_ACCOUNT) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Create,
-      ProjectPermissionSub.Certificates
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateActions.Create,
+        ProjectPermissionSub.Certificates
+      );
+    }
 
     // Validate input data before creating the request
     const validatedData = validateCertificateRequestData(requestData);
 
-    const certificateRequest = tx
-      ? await certificateRequestDAL.create(
-          {
-            status: CertificateRequestStatus.PENDING,
-            projectId,
-            ...validatedData
-          },
-          tx
-        )
-      : await certificateRequestDAL.create({
-          status: CertificateRequestStatus.PENDING,
-          projectId,
-          ...validatedData
-        });
+    const certificateRequest = await certificateRequestDAL.create(
+      {
+        status,
+        projectId,
+        ...validatedData
+      },
+      tx
+    );
 
     return certificateRequest;
   };

@@ -71,7 +71,9 @@ export const CertificateRequestTracker = ({ requestId, onCertificateIssued }: Pr
     <div className="space-y-4">
       <div className="flex items-center space-x-2">
         {getStatusIcon()}
-        <span className="text-sm font-medium text-mineshaft-300">Request ID: {requestId}</span>
+        <span className="text-sm font-medium text-mineshaft-300">
+          Certificate Request ID: {requestId}
+        </span>
       </div>
 
       <div className="text-sm text-mineshaft-400">

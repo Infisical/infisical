@@ -1575,15 +1575,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       keyUsages,
       extendedKeyUsages,
       signatureAlgorithm,
-      keyAlgorithm
+      keyAlgorithm,
+      tx
     } = dto;
 
     let collectionId = pkiCollectionId;
 
     if (caId) {
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     } else if (certificateTemplateId) {
-      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId, tx);
       if (!certificateTemplate) {
         throw new NotFoundError({
           message: `Certificate template with ID '${certificateTemplateId}' not found`
@@ -1591,7 +1592,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
 
       collectionId = certificateTemplate.pkiCollectionId as string;
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId, tx);
     }
 
     if (!ca) {
@@ -1640,7 +1641,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check PKI collection
     if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId, tx);
       if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
@@ -1909,7 +1910,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    const cert = await certificateDAL.transaction(async (tx) => {
+    const createSignedCert = async (transaction: Knex) => {
       const newCert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
@@ -1928,7 +1929,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm: keyAlgorithm || ca!.internalCa!.keyAlgorithm,
           signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm
         },
-        tx
+        transaction
       );
 
       await certificateBodyDAL.create(
@@ -1937,7 +1938,7 @@ export const internalCertificateAuthorityServiceFactory = ({
           encryptedCertificate,
           encryptedCertificateChain
         },
-        tx
+        transaction
       );
 
       if (collectionId) {
@@ -1946,12 +1947,19 @@ export const internalCertificateAuthorityServiceFactory = ({
             pkiCollectionId: collectionId,
             certId: newCert.id
           },
-          tx
+          transaction
         );
       }
 
       return newCert;
-    });
+    };
+
+    let cert;
+    if (tx) {
+      cert = await createSignedCert(tx);
+    } else {
+      cert = await certificateDAL.transaction(createSignedCert);
+    }
 
     return {
       certificate: leafCert,

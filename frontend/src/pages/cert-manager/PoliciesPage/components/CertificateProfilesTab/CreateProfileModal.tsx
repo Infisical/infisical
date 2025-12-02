@@ -447,7 +447,8 @@ export const CreateProfileModal = ({
   // Fetch Azure ADCS templates if needed
   const { data: azureAdcsTemplatesData } = useGetAzureAdcsTemplates({
     caId: watchedCertificateAuthorityId || "",
-    projectId: currentProject?.id || ""
+    projectId: currentProject?.id || "",
+    isAzureAdcsCa
   });
 
   useEffect(() => {
@@ -732,7 +733,7 @@ export const CreateProfileModal = ({
               name="externalConfigs.template"
               render={({ field: { onChange, value }, fieldState: { error } }) => (
                 <FormControl
-                  label="Azure ADCS Template"
+                  label="Windows ADCS Template"
                   isRequired
                   isError={Boolean(error)}
                   errorText={error?.message}
