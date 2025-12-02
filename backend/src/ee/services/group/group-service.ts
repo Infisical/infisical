@@ -21,11 +21,13 @@ import { constructPermissionErrorMessage, validatePrivilegeChangeOperation } fro
 import { TPermissionServiceFactory } from "../permission/permission-service-types";
 import { TGroupDALFactory } from "./group-dal";
 import {
+  addIdentitiesToGroup,
   addUsersToGroupByUserIds,
-  removeIdentitiesFromGroupByIdentityIds,
+  removeIdentitiesFromGroup,
   removeUsersFromGroupByUserIds
 } from "./group-fns";
 import {
+  TAddIdentityToGroupDTO,
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
@@ -43,7 +45,7 @@ type TGroupServiceFactoryDep = {
   userDAL: Pick<TUserDALFactory, "find" | "findUserEncKeyByUserIdsBatch" | "transaction" | "findUserByUsername">;
   identityDAL: Pick<TIdentityDALFactory, "findOne" | "find" | "transaction">;
   identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
-  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete" | "insertMany">;
   groupDAL: Pick<
     TGroupDALFactory,
     | "create"
@@ -518,6 +520,80 @@ export const groupServiceFactory = ({
     return users[0];
   };
 
+  const addIdentityToGroup = async ({
+    id,
+    identityId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TAddIdentityToGroupDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Edit, OrgPermissionSubjects.Groups);
+
+    // check if group with slug exists
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const [rolePermissionDetails] = await permissionService.getOrgPermissionByRoles([group.role], actorOrgId);
+    const { shouldUseNewPrivilegeSystem } = await orgDAL.findById(actorOrgId);
+
+    // check if user has broader or equal to privileges than group
+    const permissionBoundary = validatePrivilegeChangeOperation(
+      shouldUseNewPrivilegeSystem,
+      OrgPermissionGroupActions.AddIdentities,
+      OrgPermissionSubjects.Groups,
+      permission,
+      rolePermissionDetails.permission
+    );
+
+    if (!permissionBoundary.isValid)
+      throw new PermissionBoundaryError({
+        message: constructPermissionErrorMessage(
+          "Failed to add identity to more privileged group",
+          shouldUseNewPrivilegeSystem,
+          OrgPermissionGroupActions.AddIdentities,
+          OrgPermissionSubjects.Groups
+        ),
+        details: { missingPermissions: permissionBoundary.missingPermissions }
+      });
+
+    const identity = await identityDAL.findOne({
+      orgId: actorOrgId,
+      id: identityId
+    });
+
+    if (!identity) {
+      throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+    }
+
+    const identities = await addIdentitiesToGroup({
+      group,
+      identityIds: [identity.id],
+      identityDAL,
+      identityOrgMembershipDAL,
+      identityGroupMembershipDAL
+    });
+
+    return identities[0];
+  };
+
   const removeUserFromGroup = async ({
     id,
     username,
@@ -663,7 +739,7 @@ export const groupServiceFactory = ({
         message: `Failed to find identity with ID ${identityId}`
       });
 
-    const identities = await removeIdentitiesFromGroupByIdentityIds({
+    const identities = await removeIdentitiesFromGroup({
       group,
       identityIds: [identity.id],
       identityDAL,
@@ -681,6 +757,7 @@ export const groupServiceFactory = ({
     listGroupUsers,
     listGroupProjects,
     addUserToGroup,
+    addIdentityToGroup,
     removeUserFromGroup,
     removeIdentityFromGroup,
     getGroupById

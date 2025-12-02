@@ -65,6 +65,11 @@ export type TAddUserToGroupDTO = {
   username: string;
 } & TGenericPermission;
 
+export type TAddIdentityToGroupDTO = {
+  id: string;
+  identityId: string;
+} & TGenericPermission;
+
 export type TRemoveUserFromGroupDTO = {
   id: string;
   username: string;
@@ -102,6 +107,14 @@ export type TAddUsersToGroupByUserIds = {
   tx?: Knex;
 };
 
+export type TAddIdentitiesToGroup = {
+  group: TGroups;
+  identityIds: string[];
+  identityDAL: Pick<TIdentityDALFactory, "transaction">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "insertMany">;
+};
+
 export type TRemoveUsersFromGroupByUserIds = {
   group: TGroups;
   userIds: string[];
@@ -112,7 +125,7 @@ export type TRemoveUsersFromGroupByUserIds = {
   tx?: Knex;
 };
 
-export type TRemoveIdentitiesFromGroupByIdentityIds = {
+export type TRemoveIdentitiesFromGroup = {
   group: TGroups;
   identityIds: string[];
   identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;

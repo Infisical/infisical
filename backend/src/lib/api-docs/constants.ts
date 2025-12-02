@@ -120,6 +120,10 @@ export const GROUPS = {
     id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
+  ADD_IDENTITY: {
+    id: "The ID of the group to add the identity to.",
+    identityId: "The ID of the identity to add to the group."
+  },
   GET_BY_ID: {
     id: "The ID of the group to fetch."
   },

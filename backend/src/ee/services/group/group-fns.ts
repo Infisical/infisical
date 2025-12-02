@@ -5,10 +5,11 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, ForbiddenRequestError, NotFoundError, ScimRequestError } from "@app/lib/errors";
 
 import {
+  TAddIdentitiesToGroup,
   TAddUsersToGroup,
   TAddUsersToGroupByUserIds,
   TConvertPendingGroupAdditionsToGroupMemberships,
-  TRemoveIdentitiesFromGroupByIdentityIds,
+  TRemoveIdentitiesFromGroup,
   TRemoveUsersFromGroupByUserIds
 } from "./group-types";
 
@@ -287,6 +288,67 @@ export const addUsersToGroupByUserIds = async ({
 };
 
 /**
+ * Add identities with identity ids [identityIds] to group [group].
+ * @param {group} group - group to add identity(s) to
+ * @param {string[]} identityIds - id(s) of organization scoped identity(s) to add to group
+ */
+export const addIdentitiesToGroup = async ({
+  group,
+  identityIds,
+  identityDAL,
+  identityOrgMembershipDAL,
+  identityGroupMembershipDAL
+}: TAddIdentitiesToGroup) => {
+  const processAddition = async (tx: Knex) => {
+    const identityIdsSet = new Set(identityIds);
+    const identityIdsArray = Array.from(identityIdsSet);
+
+    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, tx);
+
+    const existingIdentityOrgMembershipsIdentityIdsSet = new Set(foundIdentities.map((u) => u.id));
+
+    identityIdsArray.forEach((identityId) => {
+      if (!existingIdentityOrgMembershipsIdentityIdsSet.has(identityId)) {
+        throw new ForbiddenRequestError({
+          message: `Identity with id ${identityId} is not part of the organization`
+        });
+      }
+    });
+
+    // check if identity group membership already exists
+    const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find(
+      {
+        groupId: group.id,
+        $in: {
+          identityId: identityIdsArray
+        }
+      },
+      { tx }
+    );
+
+    if (existingIdentityGroupMemberships.length) {
+      throw new BadRequestError({
+        message: `${identityIdsArray.length > 1 ? `Identities are` : `Identity is`} already part of the group ${group.slug}`
+      });
+    }
+
+    await identityGroupMembershipDAL.insertMany(
+      foundIdentities.map((identity) => ({
+        identityId: identity.id,
+        groupId: group.id
+      })),
+      tx
+    );
+
+    return foundIdentities;
+  };
+
+  return identityDAL.transaction(async (tx) => {
+    return processAddition(tx);
+  });
+};
+
+/**
  * Remove users with user ids [userIds] from group [group].
  * - Users may be part of the group (non-pending + pending);
  * this function will handle both cases.
@@ -422,13 +484,18 @@ export const removeUsersFromGroupByUserIds = async ({
   });
 };
 
-export const removeIdentitiesFromGroupByIdentityIds = async ({
+/**
+ * Remove identities with identity ids [identityIds] from group [group].
+ * @param {group} group - group to remove identity(s) from
+ * @param {string[]} identityIds - id(s) of identity(s) to remove from group
+ */
+export const removeIdentitiesFromGroup = async ({
   group,
   identityIds,
   identityDAL,
   identityOrgMembershipDAL,
   identityGroupMembershipDAL
-}: TRemoveIdentitiesFromGroupByIdentityIds) => {
+}: TRemoveIdentitiesFromGroup) => {
   const processRemoval = async (tx: Knex) => {
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
