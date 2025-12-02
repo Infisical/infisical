@@ -330,6 +330,7 @@
                   "self-hosting/guides/custom-certificates",
                   "self-hosting/guides/automated-bootstrapping",
                   "self-hosting/guides/production-hardening",
+                  "self-hosting/guides/cdn-caching",
                   "self-hosting/guides/monitoring-telemetry"
                 ]
               },
