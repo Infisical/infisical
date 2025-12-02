@@ -2,6 +2,8 @@ import json
 import logging
 import re
 import urllib.parse
+import time
+import threading
 
 import acme.client
 import jq
@@ -800,6 +802,7 @@ def select_challenge(
 def serve_challenges(
     context: Context,
     challenges: list[messages.ChallengeBody],
+    wait_time: int | None = None,
 ):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
@@ -816,7 +819,19 @@ def serve_challenges(
         )
     # TODO: make port configurable
     servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resources)
-    servers.serve_forever()
+    if wait_time is None:
+        servers.serve_forever()
+    else:
+
+        def wait_and_start():
+            logger.info("Waiting %s seconds before we start serving.", wait_time)
+            time.sleep(wait_time)
+            logger.info("Start server now")
+            servers.serve_forever()
+
+        thread = threading.Thread(target=wait_and_start)
+        thread.daemon = True
+        thread.start()
     context.web_server = servers
 
 
@@ -882,7 +897,6 @@ def step_impl(
             domain=domain.value,
             order_var_path=order_var_path,
         )
-        print("@" * 20, domain, challenge.chall.path)
         logger.info(
             "Found challenge for domain %s with type %s, challenge=%s",
             domain.value,
@@ -903,6 +917,14 @@ def step_impl(
             "Notifying challenge for domain %s with type %s ...", domain, challenge_type
         )
         notify_challenge_ready(context=context, challenge=challenge)
+
+
+@then(
+    "I wait {wait_time} seconds before serve challenge response for {var_path} at {hostname}"
+)
+def step_impl(context: Context, wait_time: str, var_path: str, hostname: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    serve_challenges(context=context, challenges=[challenge], wait_time=int(wait_time))
 
 
 @then("I serve challenge response for {var_path} at {hostname}")
