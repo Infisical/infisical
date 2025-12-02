@@ -114,6 +114,10 @@ export const pkiAcmeChallengeServiceFactory = ({
       await acmeChallengeDAL.markAsValidCascadeById(challengeId);
     } catch (exp) {
       if (retryCount >= 2) {
+        logger.error(
+          exp,
+          `Last attempt to validate ACME challenge response failed, marking ${challengeId} challenge as invalid`
+        );
         // This is the last attempt to validate the challenge response, if it fails, we mark the challenge as invalid
         await acmeChallengeDAL.markAsInvalidCascadeById(challengeId);
       }
