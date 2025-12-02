@@ -126,6 +126,10 @@ export const GROUPS = {
   DELETE_USER: {
     id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
+  },
+  DELETE_IDENTITY: {
+    id: "The ID of the group to remove the identity from.",
+    identityId: "The ID of the identity to remove from the group."
   }
 } as const;
 

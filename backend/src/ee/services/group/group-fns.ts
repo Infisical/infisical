@@ -8,6 +8,7 @@ import {
   TAddUsersToGroup,
   TAddUsersToGroupByUserIds,
   TConvertPendingGroupAdditionsToGroupMemberships,
+  TRemoveIdentitiesFromGroupByIdentityIds,
   TRemoveUsersFromGroupByUserIds
 } from "./group-types";
 
@@ -417,6 +418,65 @@ export const removeUsersFromGroupByUserIds = async ({
     return processRemoval(outerTx);
   }
   return userDAL.transaction(async (tx) => {
+    return processRemoval(tx);
+  });
+};
+
+export const removeIdentitiesFromGroupByIdentityIds = async ({
+  group,
+  identityIds,
+  identityDAL,
+  identityOrgMembershipDAL,
+  identityGroupMembershipDAL
+}: TRemoveIdentitiesFromGroupByIdentityIds) => {
+  const processRemoval = async (tx: Knex) => {
+    const identityIdsSet = new Set(identityIds);
+    const identityIdsArray = Array.from(identityIdsSet);
+
+    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, tx);
+
+    if (foundIdentities.length !== identityIdsArray.length) {
+      throw new NotFoundError({
+        message: `Identities not found`
+      });
+    }
+
+    const existingIdentityGroupMemberships = await identityGroupMembershipDAL.find(
+      {
+        groupId: group.id,
+        $in: {
+          identityId: identityIdsArray
+        }
+      },
+      { tx }
+    );
+
+    const existingIdentityGroupMembershipsIdentityIdsSet = new Set(
+      existingIdentityGroupMemberships.map((u) => u.identityId)
+    );
+
+    identityIdsArray.forEach((identityId) => {
+      if (!existingIdentityGroupMembershipsIdentityIdsSet.has(identityId)) {
+        throw new ForbiddenRequestError({
+          message: `Identities are not part of the group ${group.slug}`
+        });
+      }
+    });
+
+    await identityGroupMembershipDAL.delete(
+      {
+        groupId: group.id,
+        $in: {
+          identityId: identityIdsArray
+        }
+      },
+      tx
+    );
+
+    return foundIdentities;
+  };
+
+  return identityDAL.transaction(async (tx) => {
     return processRemoval(tx);
   });
 };

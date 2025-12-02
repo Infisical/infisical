@@ -3,12 +3,16 @@ import { Knex } from "knex";
 import { TGroups } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { OrderByDirection, TGenericPermission } from "@app/lib/types";
+import { TIdentityDALFactory } from "@app/services/identity/identity-dal";
+import { TIdentityOrgDALFactory } from "@app/services/identity/identity-org-dal";
 import { TMembershipGroupDALFactory } from "@app/services/membership-group/membership-group-dal";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TProjectBotDALFactory } from "@app/services/project-bot/project-bot-dal";
 import { TProjectKeyDALFactory } from "@app/services/project-key/project-key-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
+
+import { TIdentityGroupMembershipDALFactory } from "./identity-group-membership-dal";
 
 export type TCreateGroupDTO = {
   name: string;
@@ -66,6 +70,11 @@ export type TRemoveUserFromGroupDTO = {
   username: string;
 } & TGenericPermission;
 
+export type TRemoveIdentityFromGroupDTO = {
+  id: string;
+  identityId: string;
+} & TGenericPermission;
+
 // group fns types
 
 export type TAddUsersToGroup = {
@@ -101,6 +110,14 @@ export type TRemoveUsersFromGroupByUserIds = {
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "delete">;
   tx?: Knex;
+};
+
+export type TRemoveIdentitiesFromGroupByIdentityIds = {
+  group: TGroups;
+  identityIds: string[];
+  identityDAL: Pick<TIdentityDALFactory, "find" | "transaction">;
+  identityOrgMembershipDAL: Pick<TIdentityOrgDALFactory, "findByIds">;
+  identityGroupMembershipDAL: Pick<TIdentityGroupMembershipDALFactory, "find" | "delete">;
 };
 
 export type TConvertPendingGroupAdditionsToGroupMemberships = {

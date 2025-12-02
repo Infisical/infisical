@@ -46,6 +46,7 @@ import { githubOrgSyncDALFactory } from "@app/ee/services/github-org-sync/github
 import { githubOrgSyncServiceFactory } from "@app/ee/services/github-org-sync/github-org-sync-service";
 import { groupDALFactory } from "@app/ee/services/group/group-dal";
 import { groupServiceFactory } from "@app/ee/services/group/group-service";
+import { identityGroupMembershipDALFactory } from "@app/ee/services/group/identity-group-membership-dal";
 import { userGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { isHsmActiveAndEnabled } from "@app/ee/services/hsm/hsm-fns";
 import { THsmServiceFactory } from "@app/ee/services/hsm/hsm-service";
@@ -452,6 +453,7 @@ export const registerRoutes = async (
   const identityMetadataDAL = identityMetadataDALFactory(db);
   const identityAccessTokenDAL = identityAccessTokenDALFactory(db);
   const identityOrgMembershipDAL = identityOrgDALFactory(db);
+  const identityGroupMembershipDAL = identityGroupMembershipDALFactory(db);
   const identityProjectDAL = identityProjectDALFactory(db);
   const identityAuthTemplateDAL = identityAuthTemplateDALFactory(db);
 
@@ -736,6 +738,9 @@ export const registerRoutes = async (
     membershipGroupDAL
   });
   const groupService = groupServiceFactory({
+    identityDAL,
+    identityOrgMembershipDAL,
+    identityGroupMembershipDAL,
     userDAL,
     groupDAL,
     orgDAL,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { GroupsSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
+import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
   EFilterReturnedProjects,
   EFilterReturnedUsers,
@@ -360,6 +360,41 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return user;
+    }
+  });
+
+  server.route({
+    method: "DELETE",
+    url: "/:id/identities/:identityId",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.DELETE_IDENTITY.id),
+        identityId: z.string().trim().describe(GROUPS.DELETE_IDENTITY.identityId)
+      }),
+      response: {
+        200: IdentitiesSchema.pick({
+          id: true,
+          name: true
+        })
+      }
+    },
+    handler: async (req) => {
+      const identity = await server.services.group.removeIdentityFromGroup({
+        id: req.params.id,
+        identityId: req.params.identityId,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId
+      });
+
+      return identity;
     }
   });
 };

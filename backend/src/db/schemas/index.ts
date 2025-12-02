@@ -46,6 +46,7 @@ export * from "./identity-alicloud-auths";
 export * from "./identity-aws-auths";
 export * from "./identity-azure-auths";
 export * from "./identity-gcp-auths";
+export * from "./identity-group-membership";
 export * from "./identity-jwt-auths";
 export * from "./identity-kubernetes-auths";
 export * from "./identity-metadata";
