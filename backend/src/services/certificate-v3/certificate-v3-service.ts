@@ -1207,7 +1207,7 @@ export const certificateV3ServiceFactory = ({
           tx
         });
 
-        const signedCertRecord = await certificateDAL.findById(certResult.certificateId);
+        const signedCertRecord = await certificateDAL.findById(certResult.certificateId, tx);
         if (!signedCertRecord) {
           throw new NotFoundError({ message: "Certificate was signed but could not be found in database" });
         }
