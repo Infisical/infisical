@@ -41,6 +41,7 @@ export enum TableName {
   GroupProjectMembershipRole = "group_project_membership_roles",
   ExternalGroupOrgRoleMapping = "external_group_org_role_mappings",
   UserGroupMembership = "user_group_membership",
+  IdentityGroupMembership = "identity_group_membership",
   UserAliases = "user_aliases",
   UserEncryptionKey = "user_encryption_keys",
   AuthTokens = "auth_tokens",
