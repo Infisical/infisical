@@ -2259,7 +2259,8 @@ export const registerRoutes = async (
     kmsService,
     projectDAL,
     certificateBodyDAL,
-    certificateIssuanceQueue
+    certificateIssuanceQueue,
+    certificateRequestService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

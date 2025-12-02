@@ -299,7 +299,7 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             certificateAuthority: z
               .object({
                 id: z.string(),
-                projectId: z.string().optional(),
+                projectId: z.string(),
                 status: z.string(),
                 name: z.string(),
                 isExternal: z.boolean().optional(),

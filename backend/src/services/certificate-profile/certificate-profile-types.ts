@@ -56,7 +56,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
   };
   certificateAuthority?: {
     id: string;
-    projectId?: string;
+    projectId: string;
     status: string;
     name: string;
     isExternal?: boolean;

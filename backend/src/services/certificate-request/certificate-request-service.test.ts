@@ -13,7 +13,7 @@ import {
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { ActorType, AuthMethod } from "@app/services/auth/auth-type";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateServiceFactory } from "@app/services/certificate/certificate-service";
@@ -202,7 +202,7 @@ describe("CertificateRequestService", () => {
       (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
       (mockCertificateRequestDAL.findById as any).mockResolvedValue(mockRequest);
 
-      await expect(service.getCertificateRequest(mockGetData)).rejects.toThrow(BadRequestError);
+      await expect(service.getCertificateRequest(mockGetData)).rejects.toThrow(NotFoundError);
     });
   });
 
@@ -257,14 +257,14 @@ describe("CertificateRequestService", () => {
         "550e8400-e29b-41d4-a716-446655440005"
       );
       expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
-        serialNumber: "123456",
+        id: "550e8400-e29b-41d4-a716-446655440006",
         actor: ActorType.USER,
         actorId: "550e8400-e29b-41d4-a716-446655440001",
         actorAuthMethod: AuthMethod.EMAIL,
         actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
       });
       expect(mockCertificateService.getCertPrivateKey).toHaveBeenCalledWith({
-        serialNumber: "123456",
+        id: "550e8400-e29b-41d4-a716-446655440006",
         actor: ActorType.USER,
         actorId: "550e8400-e29b-41d4-a716-446655440001",
         actorAuthMethod: AuthMethod.EMAIL,
@@ -354,14 +354,14 @@ describe("CertificateRequestService", () => {
         "550e8400-e29b-41d4-a716-446655440005"
       );
       expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
-        serialNumber: "123456",
+        id: "550e8400-e29b-41d4-a716-446655440008",
         actor: ActorType.USER,
         actorId: "550e8400-e29b-41d4-a716-446655440001",
         actorAuthMethod: AuthMethod.EMAIL,
         actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
       });
       expect(mockCertificateService.getCertPrivateKey).toHaveBeenCalledWith({
-        serialNumber: "123456",
+        id: "550e8400-e29b-41d4-a716-446655440008",
         actor: ActorType.USER,
         actorId: "550e8400-e29b-41d4-a716-446655440001",
         actorAuthMethod: AuthMethod.EMAIL,

@@ -1,36 +1,12 @@
+import { Knex } from "knex";
+
 import { TDbClient } from "@app/db";
-import { TableName, TCertificateRequests } from "@app/db/schemas";
+import { TableName, TCertificateRequests, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
-import { ormify } from "@app/lib/knex";
-
-type TCertificateRequestWithCertificateFlat = TCertificateRequests & {
-  certificateId?: string | null;
-  certificateSerialNumber?: string | null;
-  certificateFriendlyName?: string | null;
-  certificateCommonName?: string | null;
-  certificateAltNames?: string | null;
-  certificateStatus?: string | null;
-  certificateNotBefore?: Date | null;
-  certificateNotAfter?: Date | null;
-  certificateKeyUsages?: string[] | null;
-  certificateExtendedKeyUsages?: string[] | null;
-};
-
-type TCertificateInfo = {
-  id: string;
-  serialNumber: string;
-  friendlyName: string | null;
-  commonName: string;
-  altNames: string | null;
-  status: string;
-  notBefore: Date;
-  notAfter: Date;
-  keyUsages: string[] | null;
-  extendedKeyUsages: string[] | null;
-};
+import { ormify, selectAllTableCols } from "@app/lib/knex";
 
 type TCertificateRequestWithCertificate = TCertificateRequests & {
-  certificate: TCertificateInfo | null;
+  certificate: TCertificates | null;
 };
 
 export type TCertificateRequestDALFactory = ReturnType<typeof certificateRequestDALFactory>;
@@ -40,61 +16,24 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
 
   const findByIdWithCertificate = async (id: string): Promise<TCertificateRequestWithCertificate | null> => {
     try {
-      const certificateRequest = (await db(TableName.CertificateRequests)
-        .leftJoin(
-          TableName.Certificate,
-          `${TableName.CertificateRequests}.certificateId`,
-          `${TableName.Certificate}.id`
-        )
-        .where(`${TableName.CertificateRequests}.id`, id)
-        .select(
-          `${TableName.CertificateRequests}.*`,
-          `${TableName.Certificate}.id as certificateId`,
-          `${TableName.Certificate}.serialNumber as certificateSerialNumber`,
-          `${TableName.Certificate}.friendlyName as certificateFriendlyName`,
-          `${TableName.Certificate}.commonName as certificateCommonName`,
-          `${TableName.Certificate}.altNames as certificateAltNames`,
-          `${TableName.Certificate}.status as certificateStatus`,
-          `${TableName.Certificate}.notBefore as certificateNotBefore`,
-          `${TableName.Certificate}.notAfter as certificateNotAfter`,
-          `${TableName.Certificate}.keyUsages as certificateKeyUsages`,
-          `${TableName.Certificate}.extendedKeyUsages as certificateExtendedKeyUsages`
-        )
-        .first()) as TCertificateRequestWithCertificateFlat | undefined;
-
+      const certificateRequest = await certificateRequestOrm.findById(id);
       if (!certificateRequest) return null;
 
-      // Transform the flat result into nested structure
-      const {
-        certificateId,
-        certificateSerialNumber,
-        certificateFriendlyName,
-        certificateCommonName,
-        certificateAltNames,
-        certificateStatus,
-        certificateNotBefore,
-        certificateNotAfter,
-        certificateKeyUsages,
-        certificateExtendedKeyUsages,
-        ...certificateRequestData
-      } = certificateRequest;
+      if (!certificateRequest.certificateId) {
+        return {
+          ...certificateRequest,
+          certificate: null
+        };
+      }
+
+      const certificate = await db(TableName.Certificate)
+        .where("id", certificateRequest.certificateId)
+        .select(selectAllTableCols(TableName.Certificate))
+        .first();
 
       return {
-        ...certificateRequestData,
-        certificate: certificateId
-          ? {
-              id: certificateId,
-              serialNumber: certificateSerialNumber as string,
-              friendlyName: certificateFriendlyName || null,
-              commonName: certificateCommonName as string,
-              altNames: certificateAltNames || null,
-              status: certificateStatus as string,
-              notBefore: certificateNotBefore as Date,
-              notAfter: certificateNotAfter as Date,
-              keyUsages: certificateKeyUsages || null,
-              extendedKeyUsages: certificateExtendedKeyUsages || null
-            }
-          : null
+        ...certificateRequest,
+        certificate: certificate || null
       };
     } catch (error) {
       throw new DatabaseError({ error, name: "Find certificate request by ID with certificate" });
@@ -111,24 +50,33 @@ export const certificateRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  const updateStatus = async (id: string, status: string, errorMessage?: string): Promise<TCertificateRequests> => {
+  const updateStatus = async (
+    id: string,
+    status: string,
+    errorMessage?: string,
+    tx?: Knex
+  ): Promise<TCertificateRequests> => {
     try {
       const updateData: Partial<TCertificateRequests> = { status };
       if (errorMessage !== undefined) {
         updateData.errorMessage = errorMessage;
       }
-      return await certificateRequestOrm.updateById(id, updateData);
+      return await certificateRequestOrm.updateById(id, updateData, tx);
     } catch (error) {
       throw new DatabaseError({ error, name: "Update certificate request status" });
     }
   };
 
-  const attachCertificate = async (id: string, certificateId: string): Promise<TCertificateRequests> => {
+  const attachCertificate = async (id: string, certificateId: string, tx?: Knex): Promise<TCertificateRequests> => {
     try {
-      return await certificateRequestOrm.updateById(id, {
-        certificateId,
-        status: "issued"
-      });
+      return await certificateRequestOrm.updateById(
+        id,
+        {
+          certificateId,
+          status: "issued"
+        },
+        tx
+      );
     } catch (error) {
       throw new DatabaseError({ error, name: "Attach certificate to request" });
     }

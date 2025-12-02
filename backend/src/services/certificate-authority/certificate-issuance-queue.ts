@@ -1,12 +1,11 @@
 import acme from "acme-client";
 
-import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
-import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { QueueJobs, TQueueServiceFactory } from "@app/queue";
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { CertExtendedKeyUsage, CertKeyAlgorithm, CertKeyUsage } from "@app/services/certificate/certificate-types";
+import { CertExtendedKeyUsage, CertKeyUsage } from "@app/services/certificate/certificate-types";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -15,6 +14,7 @@ import { TAppConnectionDALFactory } from "../app-connection/app-connection-dal";
 import { TAppConnectionServiceFactory } from "../app-connection/app-connection-service";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { CertKeyAlgorithm } from "../certificate-common/certificate-constants";
 import { TCertificateRequestServiceFactory } from "../certificate-request/certificate-request-service";
 import { CertificateRequestStatus } from "../certificate-request/certificate-request-types";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
@@ -41,6 +41,7 @@ export type TIssueCertificateFromProfileJobData = {
   isRenewal?: boolean;
   originalCertificateId?: string;
   certificateRequestId?: string;
+  csr?: string;
 };
 
 type TCertificateIssuanceQueueFactoryDep = {
@@ -86,40 +87,6 @@ export const certificateIssuanceQueueFactory = ({
   certificateProfileDAL,
   certificateRequestService
 }: TCertificateIssuanceQueueFactoryDep) => {
-  const validateKeyUsages = (keyUsages: unknown): CertKeyUsage[] => {
-    if (!keyUsages) return [];
-    const validKeyUsages = Object.values(CertKeyUsage);
-
-    if (Array.isArray(keyUsages)) {
-      return keyUsages.filter(
-        (usage): usage is CertKeyUsage => typeof usage === "string" && validKeyUsages.includes(usage as CertKeyUsage)
-      );
-    }
-
-    return [];
-  };
-
-  const validateExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsage[] => {
-    if (!extendedKeyUsages) return [];
-    const validExtendedKeyUsages = Object.values(CertExtendedKeyUsage);
-
-    if (Array.isArray(extendedKeyUsages)) {
-      return extendedKeyUsages.filter(
-        (usage): usage is CertExtendedKeyUsage =>
-          typeof usage === "string" && validExtendedKeyUsages.includes(usage as CertExtendedKeyUsage)
-      );
-    }
-
-    return [];
-  };
-
-  const validateKeyAlgorithm = (keyAlgorithm: unknown): CertKeyAlgorithm | undefined => {
-    if (typeof keyAlgorithm !== "string") return undefined;
-    const validKeyAlgorithms = Object.values(CertKeyAlgorithm);
-    return validKeyAlgorithms.includes(keyAlgorithm as CertKeyAlgorithm)
-      ? (keyAlgorithm as CertKeyAlgorithm)
-      : undefined;
-  };
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
     appConnectionService,
@@ -168,7 +135,8 @@ export const certificateIssuanceQueueFactory = ({
     extendedKeyUsages,
     isRenewal,
     originalCertificateId,
-    certificateRequestId
+    certificateRequestId,
+    csr
   }: TIssueCertificateFromProfileJobData) => {
     const jobData: TIssueCertificateFromProfileJobData = {
       certificateId,
@@ -183,7 +151,8 @@ export const certificateIssuanceQueueFactory = ({
       extendedKeyUsages,
       isRenewal,
       originalCertificateId,
-      certificateRequestId
+      certificateRequestId,
+      csr
     };
 
     await queueService.queuePg(QueueJobs.CaIssueCertificateFromProfile, jobData, {
@@ -210,7 +179,8 @@ export const certificateIssuanceQueueFactory = ({
       extendedKeyUsages,
       isRenewal,
       originalCertificateId,
-      certificateRequestId
+      certificateRequestId,
+      csr
     } = data;
 
     try {
@@ -225,32 +195,36 @@ export const certificateIssuanceQueueFactory = ({
       const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
 
       if (ca.externalCa?.type === CaType.ACME) {
-        const validatedKeyAlgorithm = validateKeyAlgorithm(keyAlgorithm);
-        if (!validatedKeyAlgorithm) {
-          throw new BadRequestError({ message: `Invalid key algorithm: ${keyAlgorithm}` });
-        }
-        const keyAlg = keyAlgorithmToAlgCfg(validatedKeyAlgorithm);
-        const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyAlg, true, ["sign", "verify"]);
-        const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
-        const skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+        let certificateCsr: string;
+        let skLeaf: string = "";
 
-        const [, certificateCsr] = await acme.crypto.createCsr(
-          {
-            altNames: altNames || [],
-            commonName: commonName || ""
-          },
-          skLeaf
-        );
+        if (csr) {
+          certificateCsr = csr;
+        } else {
+          const keyAlg = keyAlgorithmToAlgCfg(keyAlgorithm as CertKeyAlgorithm);
+          const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyAlg, true, ["sign", "verify"]);
+          const skLeafObj = crypto.nativeCrypto.KeyObject.from(leafKeys.privateKey);
+          skLeaf = skLeafObj.export({ format: "pem", type: "pkcs8" }) as string;
+
+          const [, generatedCsr] = await acme.crypto.createCsr(
+            {
+              altNames: altNames || [],
+              commonName: commonName || ""
+            },
+            skLeaf
+          );
+          certificateCsr = generatedCsr.toString();
+        }
 
         const acmeResult = await acmeFns.orderCertificateFromProfile({
           caId,
           profileId,
           commonName: commonName || "",
           altNames: altNames || [],
-          csr: certificateCsr,
+          csr: Buffer.from(certificateCsr),
           csrPrivateKey: skLeaf,
-          keyUsages: validateKeyUsages(keyUsages),
-          extendedKeyUsages: validateExtendedKeyUsages(extendedKeyUsages),
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           ttl,
           signatureAlgorithm,
           keyAlgorithm,
@@ -306,24 +280,20 @@ export const certificateIssuanceQueueFactory = ({
           }
         }
 
-        const validatedKeyAlgorithm = validateKeyAlgorithm(keyAlgorithm);
-        if (!validatedKeyAlgorithm) {
-          throw new BadRequestError({ message: `Invalid key algorithm: ${keyAlgorithm}` });
-        }
-
         const azureParams = {
           caId,
           profileId,
           commonName: commonName || "",
           altNames: altNames || [],
-          keyUsages: validateKeyUsages(keyUsages),
-          extendedKeyUsages: validateExtendedKeyUsages(extendedKeyUsages),
+          keyUsages: keyUsages as CertKeyUsage[],
+          extendedKeyUsages: extendedKeyUsages as CertExtendedKeyUsage[],
           validity: { ttl },
           signatureAlgorithm,
-          keyAlgorithm: validatedKeyAlgorithm,
+          keyAlgorithm: keyAlgorithm as CertKeyAlgorithm,
           isRenewal,
           originalCertificateId,
-          template
+          template,
+          ...(csr && { csr })
         };
 
         const azureResult = await azureAdCsFns.orderCertificateFromProfile(azureParams);
@@ -383,8 +353,6 @@ export const certificateIssuanceQueueFactory = ({
   };
 
   const initializeCertificateIssuanceQueue = async () => {
-    const appCfg = getConfig();
-
     await queueService.startPg(
       QueueJobs.CaIssueCertificateFromProfile,
       async ([job]) => {
@@ -392,8 +360,9 @@ export const certificateIssuanceQueueFactory = ({
         await processCertificateIssuanceJobs(data);
       },
       {
-        workerCount: appCfg.NODE_ENV === "production" ? 3 : 1,
-        batchSize: 1
+        workerCount: 2,
+        batchSize: 1,
+        pollingIntervalSeconds: 1
       }
     );
 

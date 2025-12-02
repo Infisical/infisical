@@ -1,4 +1,5 @@
 import { ForbiddenError } from "@casl/ability";
+import { Knex } from "knex";
 import { z } from "zod";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -30,13 +31,12 @@ type TCertificateRequestServiceFactoryDep = {
 
 export type TCertificateRequestServiceFactory = ReturnType<typeof certificateRequestServiceFactory>;
 
-// Input validation schemas
 const certificateRequestDataSchema = z
   .object({
     profileId: z.string().uuid().optional(),
     caId: z.string().uuid().optional(),
     csr: z.string().min(1).optional(),
-    commonName: z.string().min(1).max(255).optional(),
+    commonName: z.string().max(255).optional(),
     altNames: z.string().max(1000).optional(),
     keyUsages: z.array(z.string()).max(20).optional(),
     extendedKeyUsages: z.array(z.string()).max(20).optional(),
@@ -93,8 +93,9 @@ export const certificateRequestServiceFactory = ({
     actorAuthMethod,
     actorOrgId,
     projectId,
+    tx,
     ...requestData
-  }: TCreateCertificateRequestDTO) => {
+  }: TCreateCertificateRequestDTO & { tx?: Knex }) => {
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -112,11 +113,20 @@ export const certificateRequestServiceFactory = ({
     // Validate input data before creating the request
     const validatedData = validateCertificateRequestData(requestData);
 
-    const certificateRequest = await certificateRequestDAL.create({
-      status: CertificateRequestStatus.PENDING,
-      projectId,
-      ...validatedData
-    });
+    const certificateRequest = tx
+      ? await certificateRequestDAL.create(
+          {
+            status: CertificateRequestStatus.PENDING,
+            projectId,
+            ...validatedData
+          },
+          tx
+        )
+      : await certificateRequestDAL.create({
+          status: CertificateRequestStatus.PENDING,
+          projectId,
+          ...validatedData
+        });
 
     return certificateRequest;
   };
@@ -149,7 +159,7 @@ export const certificateRequestServiceFactory = ({
     }
 
     if (certificateRequest.projectId !== projectId) {
-      throw new BadRequestError({ message: "Certificate request does not belong to this project" });
+      throw new NotFoundError({ message: "Certificate request not found" });
     }
 
     return certificateRequest;
@@ -183,7 +193,7 @@ export const certificateRequestServiceFactory = ({
     }
 
     if (certificateRequest.projectId !== projectId) {
-      throw new BadRequestError({ message: "Certificate request does not belong to this project" });
+      throw new NotFoundError({ message: "Certificate request not found" });
     }
 
     // If no certificate is attached, return basic info
@@ -201,7 +211,7 @@ export const certificateRequestServiceFactory = ({
 
     // Get certificate body (PEM data)
     const certBody = await certificateService.getCertBody({
-      serialNumber: certificateRequest.certificate.serialNumber,
+      id: certificateRequest.certificate.id,
       actor,
       actorId,
       actorAuthMethod,
@@ -212,7 +222,7 @@ export const certificateRequestServiceFactory = ({
     let privateKey: string | null = null;
     try {
       const certPrivateKey = await certificateService.getCertPrivateKey({
-        serialNumber: certificateRequest.certificate.serialNumber,
+        id: certificateRequest.certificate.id,
         actor,
         actorId,
         actorAuthMethod,

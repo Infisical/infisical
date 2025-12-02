@@ -107,6 +107,7 @@ type TCertificateDetails = {
   certificate?: string;
   certificateChain?: string;
   privateKey?: string;
+  issuingCaCertificate?: string;
 };
 
 export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }: Props) => {
@@ -280,41 +281,42 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
           profileId: formProfileId,
           projectSlug: currentProject.slug,
           projectId: currentProject.id,
-          ttl,
-          keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
-          extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+          attributes: {
+            ttl,
+            signatureAlgorithm: signatureAlgorithm || "",
+            keyAlgorithm: keyAlgorithm || "",
+            keyUsages: filterUsages(keyUsages) as CertKeyUsage[],
+            extendedKeyUsages: filterUsages(extendedKeyUsages) as CertExtendedKeyUsage[]
+          }
         };
 
         if (constraints.shouldShowSubjectSection && commonName) {
-          request.commonName = commonName;
-        }
-
-        if (signatureAlgorithm) {
-          request.signatureAlgorithm = signatureAlgorithm;
-        }
-
-        if (keyAlgorithm) {
-          request.keyAlgorithm = keyAlgorithm;
+          request.attributes.commonName = commonName;
         }
 
         if (constraints.shouldShowSanSection && subjectAltNames && subjectAltNames.length > 0) {
           const formattedSans = formatSubjectAltNames(subjectAltNames);
           if (formattedSans && formattedSans.length > 0) {
-            request.altNames = formattedSans;
+            request.attributes.altNames = formattedSans;
+            request.attributes.subjectAlternativeNames = formattedSans;
           }
         }
 
         const response = await issueCertificate(request);
 
         // Handle certificate issuance response
-        if ("certificate" in response) {
-          // Immediate certificate issuance
-          setCertificateDetails({
-            serialNumber: response.serialNumber,
-            certificate: response.certificate,
-            certificateChain: response.certificateChain,
-            privateKey: response.privateKey
-          });
+
+        if ("certificate" in response && response.certificate) {
+          const certData = response.certificate;
+          const certificateDetailsToSet = {
+            serialNumber: certData.serialNumber || "",
+            certificate: certData.certificate || "",
+            certificateChain: certData.certificateChain || "",
+            privateKey: certData.privateKey || "",
+            issuingCaCertificate: certData.issuingCaCertificate || ""
+          };
+
+          setCertificateDetails(certificateDetailsToSet);
 
           createNotification({
             text: "Successfully created certificate",

@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { TCertificateRequests } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags } from "@app/lib/api-docs";
 import { NotFoundError } from "@app/lib/errors";
@@ -8,12 +7,7 @@ import { ms } from "@app/lib/ms";
 import { writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
-import {
-  ACMESANType,
-  CertificateOrderStatus,
-  CertKeyAlgorithm,
-  CertSignatureAlgorithm
-} from "@app/services/certificate/certificate-types";
+import { ACMESANType, CertKeyAlgorithm, CertSignatureAlgorithm } from "@app/services/certificate/certificate-types";
 import { validateCaDateField } from "@app/services/certificate-authority/certificate-authority-validators";
 import {
   CertExtendedKeyUsageType,
@@ -23,7 +17,6 @@ import {
 import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
 import { mapEnumsForValidation } from "@app/services/certificate-common/certificate-utils";
 import { EnrollmentType } from "@app/services/certificate-profile/certificate-profile-types";
-import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { validateTemplateRegexField } from "@app/services/certificate-template/certificate-template-validators";
 
 import { booleanSchema } from "../sanitizedSchemas";
@@ -340,34 +333,6 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
         }),
       response: {
         200: z.object({
-          orderId: z.string(),
-          status: z.nativeEnum(CertificateOrderStatus),
-          subjectAlternativeNames: z.array(
-            z.object({
-              type: z.nativeEnum(ACMESANType),
-              value: z.string(),
-              status: z.nativeEnum(CertificateOrderStatus)
-            })
-          ),
-          authorizations: z.array(
-            z.object({
-              identifier: z.object({
-                type: z.nativeEnum(ACMESANType),
-                value: z.string()
-              }),
-              status: z.nativeEnum(CertificateOrderStatus),
-              expires: z.string().optional(),
-              challenges: z.array(
-                z.object({
-                  type: z.string(),
-                  status: z.nativeEnum(CertificateOrderStatus),
-                  url: z.string(),
-                  token: z.string()
-                })
-              )
-            })
-          ),
-          finalize: z.string(),
           certificate: z.string().optional(),
           certificateRequestId: z.string()
         })
@@ -423,7 +388,6 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
           type: EventType.ORDER_CERTIFICATE_FROM_PROFILE,
           metadata: {
             certificateProfileId: req.body.profileId,
-            orderId: data.orderId,
             profileName: data.profileName
           }
         }
@@ -467,80 +431,41 @@ export const registerCertificatesRouter = async (server: FastifyZodProvider) => 
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      let certificateRequest: TCertificateRequests | undefined;
-
-      try {
-        const originalCertificate = await server.services.certificate.getCert({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          id: req.params.certificateId
-        });
-        if (!originalCertificate) {
-          throw new NotFoundError({ message: "Original certificate not found" });
-        }
-
-        certificateRequest = await server.services.certificateRequest.createCertificateRequest({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          projectId: originalCertificate.cert.projectId,
-          profileId: originalCertificate.cert.profileId || undefined,
-          caId: originalCertificate.cert.caId ?? undefined,
-          metadata: JSON.stringify({
-            operation: "renewal",
-            originalCertificateId: req.params.certificateId,
-            removeRootsFromChain: req.body?.removeRootsFromChain
-          })
-        });
-
-        const data = await server.services.certificateV3.renewCertificate({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          certificateId: req.params.certificateId,
-          removeRootsFromChain: req.body?.removeRootsFromChain,
-          certificateRequestId: certificateRequest.id
-        });
-
-        if (data.certificate && data.certificate.trim() !== "") {
-          await server.services.certificateRequest.attachCertificateToRequest({
-            certificateRequestId: certificateRequest.id,
-            certificateId: data.certificateId
-          });
-        }
-
-        await server.services.auditLog.createAuditLog({
-          ...req.auditLogInfo,
-          projectId: data.projectId,
-          event: {
-            type: EventType.RENEW_CERTIFICATE,
-            metadata: {
-              originalCertificateId: req.params.certificateId,
-              newCertificateId: data.certificateId,
-              profileName: data.profileName,
-              commonName: data.commonName
-            }
-          }
-        });
-
-        return {
-          ...data,
-          certificateRequestId: certificateRequest.id
-        };
-      } catch (error) {
-        if (certificateRequest) {
-          await server.services.certificateRequest.updateCertificateRequestStatus({
-            certificateRequestId: certificateRequest.id,
-            status: CertificateRequestStatus.FAILED,
-            errorMessage: error instanceof Error ? error.message : "Unknown error during certificate renewal"
-          });
-        }
-        throw error;
+      const originalCertificate = await server.services.certificate.getCert({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        id: req.params.certificateId
+      });
+      if (!originalCertificate) {
+        throw new NotFoundError({ message: "Original certificate not found" });
       }
+
+      const data = await server.services.certificateV3.renewCertificate({
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        certificateId: req.params.certificateId,
+        removeRootsFromChain: req.body?.removeRootsFromChain
+      });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: data.projectId,
+        event: {
+          type: EventType.RENEW_CERTIFICATE,
+          metadata: {
+            originalCertificateId: req.params.certificateId,
+            newCertificateId: data.certificateId,
+            profileName: data.profileName,
+            commonName: data.commonName
+          }
+        }
+      });
+
+      return data;
     }
   });
 

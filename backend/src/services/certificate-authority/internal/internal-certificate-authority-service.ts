@@ -67,6 +67,7 @@ import {
   TGetCaDTO,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
+  TIssueCertFromCaResponse,
   TRenewCaCertDTO,
   TSignCertFromCaDTO,
   TSignIntermediateDTO,
@@ -1198,7 +1199,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     isFromProfile,
     internal = false,
     tx
-  }: TIssueCertFromCaDTO) => {
+  }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
     let collectionId = pkiCollectionId;
@@ -1532,10 +1533,11 @@ export const internalCertificateAuthorityServiceFactory = ({
       return cert;
     };
 
+    let cert;
     if (tx) {
-      await executeIssueCertOperations(tx);
+      cert = await executeIssueCertOperations(tx);
     } else {
-      await certificateDAL.transaction(executeIssueCertOperations);
+      cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
     return {
@@ -1544,6 +1546,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       issuingCaCertificate,
       privateKey: skLeaf,
       serialNumber,
+      certificateId: cert.id,
+      commonName,
       ca: expandInternalCa(ca)
     };
   };
@@ -1905,8 +1909,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    await certificateDAL.transaction(async (tx) => {
-      const cert = await certificateDAL.create(
+    const cert = await certificateDAL.transaction(async (tx) => {
+      const newCert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
@@ -1929,7 +1933,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
       await certificateBodyDAL.create(
         {
-          certId: cert.id,
+          certId: newCert.id,
           encryptedCertificate,
           encryptedCertificateChain
         },
@@ -1940,13 +1944,13 @@ export const internalCertificateAuthorityServiceFactory = ({
         await pkiCollectionItemDAL.create(
           {
             pkiCollectionId: collectionId,
-            certId: cert.id
+            certId: newCert.id
           },
           tx
         );
       }
 
-      return cert;
+      return newCert;
     });
 
     return {
@@ -1954,6 +1958,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
+      certificateId: cert.id,
       ca: expandInternalCa(ca),
       commonName: cn
     };

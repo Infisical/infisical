@@ -83,32 +83,40 @@ export type TDownloadPkcs12DTO = {
 
 export type TUnifiedCertificateIssuanceDTO = {
   projectSlug: string;
+  profileId: string;
   projectId: string;
-  profileId?: string;
-  caId?: string;
   csr?: string;
-  commonName?: string;
-  altNames?: string;
-  keyUsages?: string[];
-  extendedKeyUsages?: string[];
-  notBefore?: Date;
-  notAfter?: Date;
-  keyAlgorithm?: string;
-  signatureAlgorithm?: string;
-  ttl?: string;
-  friendlyName?: string;
-  pkiCollectionId?: string;
-  issuerType?: string;
+  attributes?: {
+    commonName?: string;
+    keyUsages?: string[];
+    extendedKeyUsages?: string[];
+    altNames?: Array<{
+      type: string;
+      value: string;
+    }>;
+    signatureAlgorithm: string;
+    keyAlgorithm: string;
+    subjectAlternativeNames?: Array<{
+      type: string;
+      value: string;
+    }>;
+    ttl: string;
+    notBefore?: string;
+    notAfter?: string;
+  };
+  removeRootsFromChain?: boolean;
 };
 
 export type TUnifiedCertificateResponse = {
-  certificate: string;
-  issuingCaCertificate: string;
-  certificateChain: string;
-  privateKey?: string;
-  serialNumber: string;
-  certificateId: string;
-  projectId: string;
+  certificate: {
+    certificate: string;
+    issuingCaCertificate: string;
+    certificateChain: string;
+    privateKey?: string;
+    serialNumber: string;
+    certificateId: string;
+  };
+  certificateRequestId: string;
 };
 
 export type TCertificateRequestResponse = {
