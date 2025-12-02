@@ -621,7 +621,6 @@ export const identityTokenAuthServiceFactory = ({
 
   const getTokenAuthTokenById = async ({
     tokenId,
-    isActorSuperAdmin,
     actorId,
     actor,
     actorAuthMethod,
@@ -643,8 +642,6 @@ export const identityTokenAuthServiceFactory = ({
     if (!identityMembershipOrg) {
       throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
     }
-
-    await validateIdentityUpdateForSuperAdminPrivileges(foundToken.identityId, isActorSuperAdmin);
 
     if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
       throw new BadRequestError({

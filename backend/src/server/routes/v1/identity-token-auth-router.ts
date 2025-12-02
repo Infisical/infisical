@@ -417,7 +417,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     schema: {
-      hide: false,
+      hide: true,
       tags: [ApiDocsTags.TokenAuth],
       description: "Get token for machine identity with Token Auth",
       security: [
@@ -441,8 +441,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        isActorSuperAdmin: isSuperAdmin(req.auth)
+        actorAuthMethod: req.permission.authMethod
       });
 
       await server.services.auditLog.createAuditLog({
@@ -493,8 +492,7 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         actor: req.permission.type,
         actorId: req.permission.id,
         actorOrgId: req.permission.orgId,
-        actorAuthMethod: req.permission.authMethod,
-        isActorSuperAdmin: isSuperAdmin(req.auth)
+        actorAuthMethod: req.permission.authMethod
       });
 
       await server.services.auditLog.createAuditLog({
