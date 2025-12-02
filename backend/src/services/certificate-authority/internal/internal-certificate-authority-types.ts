@@ -160,6 +160,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      tx?: Knex;
     }
   | ({
       isInternal: false;
@@ -179,6 +180,7 @@ export type TSignCertFromCaDTO =
       keyAlgorithm?: string;
       isFromProfile?: boolean;
       profileId?: string;
+      tx?: Knex;
     } & Omit<TProjectPermission, "projectId">);
 
 export type TGetCaCertificateTemplatesDTO = {
@@ -247,4 +249,21 @@ export type TIssueCertWithTemplateDTO = {
   notAfter?: string;
   keyUsages?: CertKeyUsage[];
   extendedKeyUsages?: CertExtendedKeyUsage[];
+};
+
+type TCaReference = {
+  id: string;
+  projectId: string;
+  dn: string;
+};
+
+export type TIssueCertFromCaResponse = {
+  certificate: string;
+  certificateChain: string;
+  issuingCaCertificate: string;
+  privateKey: string;
+  serialNumber: string;
+  certificateId: string;
+  ca: TCaReference;
+  commonName: string;
 };

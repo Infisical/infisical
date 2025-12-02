@@ -95,7 +95,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;

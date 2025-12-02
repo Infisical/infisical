@@ -20,12 +20,16 @@ export const CertificateRenewalModal = ({ popUp, handlePopUpToggle }: Props) => 
   const onRenewConfirm = async () => {
     const { certificateId } = popUp.renewCertificate.data as { certificateId: string };
 
-    await renewCertificate({
+    const result = await renewCertificate({
       certificateId
     });
 
+    const notificationText = result.certificateRequestId
+      ? `Certificate renewal initiated successfully. Certificate Request ID: ${result.certificateRequestId}`
+      : "Certificate renewed successfully";
+
     createNotification({
-      text: "Certificate renewed successfully",
+      text: notificationText,
       type: "success"
     });
 

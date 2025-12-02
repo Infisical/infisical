@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import {
   faCheck,
@@ -123,9 +124,11 @@ export const ProfileRow = ({
         <span className="text-sm text-mineshaft-300">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
-            : caData?.configuration.friendlyName ||
-              caData?.configuration.commonName ||
-              profile.caId}
+            : profile.certificateAuthority?.isExternal
+              ? profile.certificateAuthority.name
+              : caData?.configuration.friendlyName ||
+                caData?.configuration.commonName ||
+                profile.caId}
         </span>
       </Td>
       <Td>
@@ -179,7 +182,7 @@ export const ProfileRow = ({
                 }}
                 icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
               >
-                Issue Certificate
+                Request Certificate
               </DropdownMenuItem>
             )}
             {canDeleteProfile && (
