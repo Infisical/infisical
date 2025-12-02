@@ -574,13 +574,10 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const identity = await identityDAL.findOne({
-      orgId: actorOrgId,
-      id: identityId
-    });
+    const [identity] = await identityOrgMembershipDAL.findByIds([identityId]);
 
     if (!identity) {
-      throw new NotFoundError({ message: `Failed to find identity with ID ${identityId}` });
+      throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
     }
 
     const identities = await addIdentitiesToGroup({
@@ -729,15 +726,10 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const identity = await identityDAL.findOne({
-      orgId: actorOrgId,
-      id: identityId
-    });
+    const [identity] = await identityOrgMembershipDAL.findByIds([identityId]);
 
     if (!identity)
-      throw new NotFoundError({
-        message: `Failed to find identity with ID ${identityId}`
-      });
+      throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
 
     const identities = await removeIdentitiesFromGroup({
       group,
