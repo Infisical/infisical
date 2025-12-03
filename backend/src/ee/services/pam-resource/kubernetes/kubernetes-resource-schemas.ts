@@ -24,7 +24,7 @@ export const KubernetesResourceListItemSchema = z.object({
 export const KubernetesResourceConnectionDetailsSchema = z.object({
   url: z.string().url().trim().max(500),
   namespace: z.string().trim().max(255),
-  skipTLSVerify: z.boolean().optional().default(false),
+  skipTLSVerify: z.boolean(),
   caCertificate: z.string().trim().max(10000).optional()
 });
 

@@ -2,8 +2,10 @@ import axios, { AxiosError } from "axios";
 import https from "https";
 
 import { BadRequestError } from "@app/lib/errors";
-import { GatewayProxyProtocol, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { GatewayProxyProtocol } from "@app/lib/gateway/types";
+import { withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
 import { logger } from "@app/lib/logger";
+
 import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
 import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
 import { PamResource } from "../pam-resource-enums";
@@ -29,7 +31,15 @@ export const executeWithGateway = async <T>(
   const { connectionDetails, gatewayId } = config;
   const url = new URL(connectionDetails.url);
   const [targetHost] = await verifyHostInputValidity(url.hostname, true);
-  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+
+  let targetPort: number;
+  if (url.port) {
+    targetPort = Number(url.port);
+  } else if (url.protocol === "https:") {
+    targetPort = 443;
+  } else {
+    targetPort = 80;
+  }
 
   const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
     gatewayId,
@@ -60,7 +70,7 @@ export const executeWithGateway = async <T>(
       return operation(baseUrl, httpsAgent);
     },
     {
-      protocol: GatewayProxyProtocol.Tcp,
+      protocol: GatewayProxyProtocol.Http,
       relayHost: platformConnectionDetails.relayHost,
       gateway: platformConnectionDetails.gateway,
       relay: platformConnectionDetails.relay,
@@ -126,7 +136,8 @@ export const kubernetesResourceFactory: TPamResourceFactory<
         { connectionDetails, gatewayId, resourceType },
         gatewayV2Service,
         async (baseUrl, httpsAgent) => {
-          if (credentials.authMethod === KubernetesAuthMethod.ServiceAccountToken) {
+          const { authMethod } = credentials;
+          if (authMethod === KubernetesAuthMethod.ServiceAccountToken) {
             // Validate service account token by making an authenticated API call
             try {
               await axios.get(`${baseUrl}/api/v1/namespaces/${connectionDetails.namespace}`, {
@@ -159,7 +170,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
             }
           } else {
             throw new BadRequestError({
-              message: `Unsupported Kubernetes auth method: ${(credentials as TKubernetesAccountCredentials).authMethod}`
+              message: `Unsupported Kubernetes auth method: ${authMethod as string}`
             });
           }
         }
