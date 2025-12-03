@@ -2,6 +2,12 @@ import { OrderByDirection, TProjectPermission } from "@app/lib/types";
 
 import { TGatewayV2ServiceFactory } from "../gateway-v2/gateway-v2-service";
 import {
+  TKubernetesAccount,
+  TKubernetesAccountCredentials,
+  TKubernetesResource,
+  TKubernetesResourceConnectionDetails
+} from "./kubernetes/kubernetes-resource-types";
+import {
   TMySQLAccount,
   TMySQLAccountCredentials,
   TMySQLResource,
@@ -22,16 +28,21 @@ import {
 } from "./ssh/ssh-resource-types";
 
 // Resource types
-export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource | TKubernetesResource;
 export type TPamResourceConnectionDetails =
   | TPostgresResourceConnectionDetails
   | TMySQLResourceConnectionDetails
-  | TSSHResourceConnectionDetails;
+  | TSSHResourceConnectionDetails
+  | TKubernetesResourceConnectionDetails;
 
 // Account types
-export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TKubernetesAccount;
 // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
-export type TPamAccountCredentials = TPostgresAccountCredentials | TMySQLAccountCredentials | TSSHAccountCredentials;
+export type TPamAccountCredentials =
+  | TPostgresAccountCredentials
+  | TMySQLAccountCredentials
+  | TSSHAccountCredentials
+  | TKubernetesAccountCredentials;
 
 // Resource DTOs
 export type TCreateResourceDTO = Pick<

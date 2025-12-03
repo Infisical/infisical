@@ -1,0 +1,215 @@
+import axios, { AxiosError } from "axios";
+import https from "https";
+
+import { BadRequestError } from "@app/lib/errors";
+import { GatewayProxyProtocol, withGatewayV2Proxy } from "@app/lib/gateway-v2/gateway-v2";
+import { logger } from "@app/lib/logger";
+import { verifyHostInputValidity } from "../../dynamic-secret/dynamic-secret-fns";
+import { TGatewayV2ServiceFactory } from "../../gateway-v2/gateway-v2-service";
+import { PamResource } from "../pam-resource-enums";
+import {
+  TPamResourceFactory,
+  TPamResourceFactoryRotateAccountCredentials,
+  TPamResourceFactoryValidateAccountCredentials
+} from "../pam-resource-types";
+import { KubernetesAuthMethod } from "./kubernetes-resource-enums";
+import { TKubernetesAccountCredentials, TKubernetesResourceConnectionDetails } from "./kubernetes-resource-types";
+
+const EXTERNAL_REQUEST_TIMEOUT = 10 * 1000;
+
+export const executeWithGateway = async <T>(
+  config: {
+    connectionDetails: TKubernetesResourceConnectionDetails;
+    resourceType: PamResource;
+    gatewayId: string;
+  },
+  gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
+  operation: (baseUrl: string, httpsAgent?: https.Agent) => Promise<T>
+): Promise<T> => {
+  const { connectionDetails, gatewayId } = config;
+  const url = new URL(connectionDetails.url);
+  const [targetHost] = await verifyHostInputValidity(url.hostname, true);
+  const targetPort = url.port ? Number(url.port) : url.protocol === "https:" ? 443 : 80;
+
+  const platformConnectionDetails = await gatewayV2Service.getPlatformConnectionDetailsByGatewayId({
+    gatewayId,
+    targetHost,
+    targetPort
+  });
+
+  if (!platformConnectionDetails) {
+    throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
+  }
+
+  let httpsAgent: https.Agent | undefined;
+  if (connectionDetails.caCertificate) {
+    httpsAgent = new https.Agent({
+      ca: connectionDetails.caCertificate,
+      rejectUnauthorized: !connectionDetails.skipTLSVerify
+    });
+  } else if (!connectionDetails.skipTLSVerify) {
+    httpsAgent = new https.Agent({
+      rejectUnauthorized: true
+    });
+  }
+
+  return withGatewayV2Proxy(
+    async (proxyPort) => {
+      const protocol = url.protocol === "https:" ? "https" : "http";
+      const baseUrl = `${protocol}://localhost:${proxyPort}`;
+      return operation(baseUrl, httpsAgent);
+    },
+    {
+      protocol: GatewayProxyProtocol.Tcp,
+      relayHost: platformConnectionDetails.relayHost,
+      gateway: platformConnectionDetails.gateway,
+      relay: platformConnectionDetails.relay,
+      httpsAgent
+    }
+  );
+};
+
+export const kubernetesResourceFactory: TPamResourceFactory<
+  TKubernetesResourceConnectionDetails,
+  TKubernetesAccountCredentials
+> = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
+  const validateConnection = async () => {
+    try {
+      await executeWithGateway(
+        { connectionDetails, gatewayId, resourceType },
+        gatewayV2Service,
+        async (baseUrl, httpsAgent) => {
+          // Validate connection by checking API server version
+          try {
+            await axios.get(`${baseUrl}/version`, {
+              headers: {
+                "Content-Type": "application/json"
+              },
+              ...(httpsAgent ? { httpsAgent } : {}),
+              signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+              timeout: EXTERNAL_REQUEST_TIMEOUT
+            });
+          } catch (error) {
+            if (error instanceof AxiosError) {
+              // If we get a 401/403, it means we reached the API server but need auth - that's fine for connection validation
+              if (error.response?.status === 401 || error.response?.status === 403) {
+                logger.info(
+                  { status: error.response.status },
+                  "[Kubernetes Resource Factory] Kubernetes connection validation succeeded (auth required)"
+                );
+                return connectionDetails;
+              }
+              throw new BadRequestError({
+                message: `Unable to connect to Kubernetes API server: ${error.response?.statusText || error.message}`
+              });
+            }
+            throw error;
+          }
+
+          logger.info("[Kubernetes Resource Factory] Kubernetes connection validation succeeded");
+          return connectionDetails;
+        }
+      );
+      return connectionDetails;
+    } catch (error) {
+      throw new BadRequestError({
+        message: `Unable to validate connection to ${resourceType}: ${(error as Error).message || String(error)}`
+      });
+    }
+  };
+
+  const validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<
+    TKubernetesAccountCredentials
+  > = async (credentials) => {
+    try {
+      await executeWithGateway(
+        { connectionDetails, gatewayId, resourceType },
+        gatewayV2Service,
+        async (baseUrl, httpsAgent) => {
+          if (credentials.authMethod === KubernetesAuthMethod.ServiceAccountToken) {
+            // Validate service account token by making an authenticated API call
+            try {
+              await axios.get(`${baseUrl}/api/v1/namespaces/${connectionDetails.namespace}`, {
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${credentials.serviceAccountToken}`
+                },
+                ...(httpsAgent ? { httpsAgent } : {}),
+                signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+                timeout: EXTERNAL_REQUEST_TIMEOUT
+              });
+
+              logger.info(
+                { serviceAccountName: credentials.serviceAccountName, namespace: connectionDetails.namespace },
+                "[Kubernetes Resource Factory] Kubernetes service account token authentication successful"
+              );
+            } catch (error) {
+              if (error instanceof AxiosError) {
+                if (error.response?.status === 401 || error.response?.status === 403) {
+                  throw new BadRequestError({
+                    message:
+                      "Account credentials invalid. Service account token is not valid or does not have required permissions."
+                  });
+                }
+                throw new BadRequestError({
+                  message: `Unable to validate account credentials: ${error.response?.statusText || error.message}`
+                });
+              }
+              throw error;
+            }
+          } else {
+            throw new BadRequestError({
+              message: `Unsupported Kubernetes auth method: ${(credentials as TKubernetesAccountCredentials).authMethod}`
+            });
+          }
+        }
+      );
+      return credentials;
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+      throw new BadRequestError({
+        message: `Unable to validate account credentials for ${resourceType}: ${(error as Error).message || String(error)}`
+      });
+    }
+  };
+
+  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<TKubernetesAccountCredentials> = async (
+    rotationAccountCredentials
+  ) => {
+    // For Kubernetes, rotation would typically involve creating a new service account token
+    // This is a placeholder - actual rotation logic would need to be implemented based on requirements
+    return rotationAccountCredentials;
+  };
+
+  const handleOverwritePreventionForCensoredValues = async (
+    updatedAccountCredentials: TKubernetesAccountCredentials,
+    currentCredentials: TKubernetesAccountCredentials
+  ) => {
+    if (updatedAccountCredentials.authMethod !== currentCredentials.authMethod) {
+      return updatedAccountCredentials;
+    }
+
+    if (
+      updatedAccountCredentials.authMethod === KubernetesAuthMethod.ServiceAccountToken &&
+      currentCredentials.authMethod === KubernetesAuthMethod.ServiceAccountToken
+    ) {
+      if (updatedAccountCredentials.serviceAccountToken === "__INFISICAL_UNCHANGED__") {
+        return {
+          ...updatedAccountCredentials,
+          serviceAccountToken: currentCredentials.serviceAccountToken
+        };
+      }
+    }
+
+    return updatedAccountCredentials;
+  };
+
+  return {
+    validateConnection,
+    validateAccountCredentials,
+    rotateAccountCredentials,
+    handleOverwritePreventionForCensoredValues
+  };
+};
