@@ -26,7 +26,7 @@ export const KubernetesResourceFields = () => {
           )}
         />
         <Controller
-          name="connectionDetails.caCertificate"
+          name="connectionDetails.sslCertificate"
           control={control}
           render={({ field, fieldState: { error } }) => (
             <FormControl
