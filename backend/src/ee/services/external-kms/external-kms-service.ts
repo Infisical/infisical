@@ -91,6 +91,14 @@ export const externalKmsServiceFactory = ({
             sanitizedProviderInput = JSON.stringify(newProviderInput);
 
             await externalKms.validateConnection();
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              throw error;
+            }
+
+            throw new BadRequestError({
+              message: error instanceof Error ? `AWS error: ${error.message}` : "Failed to validate AWS connection"
+            });
           } finally {
             await externalKms.cleanup();
           }
@@ -102,6 +110,14 @@ export const externalKmsServiceFactory = ({
           try {
             await externalKms.validateConnection();
             sanitizedProviderInput = JSON.stringify(provider.inputs);
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              throw error;
+            }
+
+            throw new BadRequestError({
+              message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to validate GCP connection"
+            });
           } finally {
             await externalKms.cleanup();
           }
@@ -200,6 +216,14 @@ export const externalKmsServiceFactory = ({
             try {
               await externalKms.validateConnection();
               sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } catch (error) {
+              if (error instanceof BadRequestError) {
+                throw error;
+              }
+
+              throw new BadRequestError({
+                message: error instanceof Error ? `AWS error: ${error.message}` : "Failed to validate AWS connection"
+              });
             } finally {
               await externalKms.cleanup();
             }
@@ -215,6 +239,14 @@ export const externalKmsServiceFactory = ({
             try {
               await externalKms.validateConnection();
               sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } catch (error) {
+              if (error instanceof BadRequestError) {
+                throw error;
+              }
+
+              throw new BadRequestError({
+                message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to validate GCP connection"
+              });
             } finally {
               await externalKms.cleanup();
             }
@@ -393,6 +425,14 @@ export const externalKmsServiceFactory = ({
     const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName: "" } });
     try {
       return await externalKms.getKeysList();
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+
+      throw new BadRequestError({
+        message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to fetch GCP keys"
+      });
     } finally {
       await externalKms.cleanup();
     }
