@@ -32,6 +32,7 @@ import {
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
+  TListGroupIdentitiesDTO,
   TListGroupProjectsDTO,
   TListGroupUsersDTO,
   TRemoveIdentityFromGroupDTO,
@@ -53,6 +54,7 @@ type TGroupServiceFactoryDep = {
     | "update"
     | "delete"
     | "findAllGroupPossibleMembers"
+    | "findAllGroupPossibleIdentities"
     | "findById"
     | "transaction"
     | "findAllGroupProjects"
@@ -389,6 +391,51 @@ export const groupServiceFactory = ({
     });
 
     return { users: members, totalCount };
+  };
+
+  const listGroupIdentities = async ({
+    id,
+    offset,
+    limit,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    search,
+    filter
+  }: TListGroupIdentitiesDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { identities, totalCount } = await groupDAL.findAllGroupPossibleIdentities({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      filter
+    });
+
+    return { identities, totalCount };
   };
 
   const listGroupProjects = async ({
@@ -747,6 +794,7 @@ export const groupServiceFactory = ({
     updateGroup,
     deleteGroup,
     listGroupUsers,
+    listGroupIdentities,
     listGroupProjects,
     addUserToGroup,
     addIdentityToGroup,

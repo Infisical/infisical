@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
+  EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
   EGroupProjectsOrderBy
@@ -224,6 +225,56 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return { users, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/identities",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.LIST_IDENTITIES.id)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_IDENTITIES.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_IDENTITIES.limit),
+        search: z.string().trim().optional().describe(GROUPS.LIST_IDENTITIES.search),
+        filter: z.nativeEnum(EFilterReturnedIdentities).optional().describe(GROUPS.LIST_IDENTITIES.filterIdentities)
+      }),
+      response: {
+        200: z.object({
+          identities: IdentitiesSchema.pick({
+            id: true,
+            name: true
+          })
+            .merge(
+              z.object({
+                isPartOfGroup: z.boolean(),
+                joinedGroupAt: z.date().nullable()
+              })
+            )
+            .array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { identities, totalCount } = await server.services.group.listGroupIdentities({
+        id: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return { identities, totalCount };
     }
   });
 

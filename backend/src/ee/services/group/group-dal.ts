@@ -6,7 +6,12 @@ import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } from "@app/lib/knex";
 import { OrderByDirection } from "@app/lib/types";
 
-import { EFilterReturnedProjects, EFilterReturnedUsers, EGroupProjectsOrderBy } from "./group-types";
+import {
+  EFilterReturnedIdentities,
+  EFilterReturnedProjects,
+  EFilterReturnedUsers,
+  EGroupProjectsOrderBy
+} from "./group-types";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
 
@@ -167,6 +172,82 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllGroupPossibleIdentities = async ({
+    orgId,
+    groupId,
+    offset = 0,
+    limit,
+    search,
+    filter
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    search?: string;
+    filter?: EFilterReturnedIdentities;
+  }) => {
+    try {
+      const query = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.IdentityGroupMembership, (bd) => {
+          bd.on(`${TableName.IdentityGroupMembership}.identityId`, "=", `${TableName.Identity}.id`).andOn(
+            `${TableName.IdentityGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .select(
+          db.ref("id").withSchema(TableName.Membership),
+          db.ref("groupId").withSchema(TableName.IdentityGroupMembership),
+          db.ref("createdAt").withSchema(TableName.IdentityGroupMembership).as("joinedGroupAt"),
+          db.ref("name").withSchema(TableName.Identity),
+          db.ref("id").withSchema(TableName.Identity).as("identityId"),
+          db.raw(`count(*) OVER() as total_count`)
+        )
+        .offset(offset)
+        .orderBy("name", "asc");
+
+      if (limit) {
+        void query.limit(limit);
+      }
+
+      if (search) {
+        void query.andWhereRaw(`LOWER("${TableName.Identity}"."name") ilike ?`, `%${search}%`);
+      }
+
+      switch (filter) {
+        case EFilterReturnedIdentities.ASSIGNED_IDENTITIES:
+          void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is not", null);
+          break;
+        case EFilterReturnedIdentities.NON_ASSIGNED_IDENTITIES:
+          void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is", null);
+          break;
+        default:
+          break;
+      }
+
+      const identities = await query;
+
+      return {
+        identities: identities.map(({ name, identityId, joinedGroupAt }) => ({
+          id: identityId,
+          name,
+          isPartOfGroup: !!groupId,
+          joinedGroupAt
+        })),
+        // @ts-expect-error col select is raw and not strongly typed
+        totalCount: Number(identities?.[0]?.total_count ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all group identities" });
+    }
+  };
+
   const findAllGroupProjects = async ({
     orgId,
     groupId,
@@ -314,6 +395,7 @@ export const groupDALFactory = (db: TDbClient) => {
     findGroups,
     findByOrgId,
     findAllGroupPossibleMembers,
+    findAllGroupPossibleIdentities,
     findAllGroupProjects,
     findGroupsByProjectId,
     findById,

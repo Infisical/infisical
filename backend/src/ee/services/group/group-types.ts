@@ -46,6 +46,14 @@ export type TListGroupUsersDTO = {
   filter?: EFilterReturnedUsers;
 } & TGenericPermission;
 
+export type TListGroupIdentitiesDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  filter?: EFilterReturnedIdentities;
+} & TGenericPermission;
+
 export type TListGroupProjectsDTO = {
   id: string;
   offset: number;
@@ -150,6 +158,11 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
 export enum EFilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
+}
+
+export enum EFilterReturnedIdentities {
+  ASSIGNED_IDENTITIES = "assignedIdentities",
+  NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
 }
 
 export enum EFilterReturnedProjects {
