@@ -4,7 +4,6 @@ import { z } from "zod";
 
 import { Button, ModalClose } from "@app/components/v2";
 import { KubernetesAuthMethod, PamResourceType, TKubernetesResource } from "@app/hooks/api/pam";
-import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { KubernetesResourceFields } from "./shared/KubernetesResourceFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
@@ -16,7 +15,6 @@ type Props = {
 
 const KubernetesConnectionDetailsSchema = z.object({
   url: z.string().url().trim().max(500),
-  namespace: z.string().trim().max(255),
   sslRejectUnauthorized: z.boolean(),
   sslCertificate: z.string().trim().max(10000).optional()
 });
@@ -39,25 +37,14 @@ export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: resource
-      ? {
-          ...resource,
-          rotationAccountCredentials: resource.rotationAccountCredentials
-            ? {
-                ...resource.rotationAccountCredentials,
-                serviceAccountToken: UNCHANGED_PASSWORD_SENTINEL
-              }
-            : resource.rotationAccountCredentials
-        }
-      : {
-          resourceType: PamResourceType.Kubernetes,
-          connectionDetails: {
-            url: "",
-            namespace: "default",
-            sslRejectUnauthorized: true,
-            sslCertificate: undefined
-          }
-        }
+    defaultValues: resource ?? {
+      resourceType: PamResourceType.Kubernetes,
+      connectionDetails: {
+        url: "",
+        sslRejectUnauthorized: true,
+        sslCertificate: undefined
+      }
+    }
   });
 
   const {
