@@ -536,6 +536,20 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
+    // Check user membership in the sub-organization
+    const orgMembership = await membershipUserDAL.findOne({
+      actorUserId: user.id,
+      scopeOrgId: organizationId,
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
+    });
+
+    if (!orgMembership) {
+      throw new ForbiddenRequestError({
+        message: `User does not have access to the organization with ID ${organizationId}`
+      });
+    }
+
     const selectedOrg = await orgDAL.findById(organizationId);
     if (!selectedOrg) {
       throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
@@ -549,20 +563,6 @@ export const authLoginServiceFactory = ({
       if (!selectedOrg.rootOrgId) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
-        });
-      }
-
-      // Check user membership in the sub-organization
-      const orgMembership = await membershipUserDAL.findOne({
-        actorUserId: user.id,
-        scopeOrgId: organizationId,
-        scope: AccessScope.Organization,
-        status: OrgMembershipStatus.Accepted
-      });
-
-      if (!orgMembership) {
-        throw new ForbiddenRequestError({
-          message: `User does not have access to the sub-organization named ${selectedOrg.name}`
         });
       }
 
