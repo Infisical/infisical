@@ -67,7 +67,6 @@ export const executeWithGateway = async <T>(
     async (proxyPort) => {
       const protocol = url.protocol === "https:" ? "https" : "http";
       const baseUrl = `${protocol}://localhost:${proxyPort}`;
-      // const baseUrl = `http://localhost:${proxyPort}`;
       return operation(baseUrl, httpsAgent);
     },
     {
@@ -149,7 +148,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
               });
 
               logger.info(
-                { serviceAccountName: credentials.serviceAccountName, namespace: connectionDetails.namespace },
+                { namespace: connectionDetails.namespace },
                 "[Kubernetes Resource Factory] Kubernetes service account token authentication successful"
               );
             } catch (error) {

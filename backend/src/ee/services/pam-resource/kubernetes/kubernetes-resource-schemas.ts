@@ -30,7 +30,6 @@ export const KubernetesResourceConnectionDetailsSchema = z.object({
 
 export const KubernetesServiceAccountTokenCredentialsSchema = z.object({
   authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken),
-  serviceAccountName: z.string().trim().max(255),
   serviceAccountToken: z.string().trim().max(10000)
 });
 
@@ -48,8 +47,7 @@ export const SanitizedKubernetesResourceSchema = BaseKubernetesResourceSchema.ex
   rotationAccountCredentials: z
     .discriminatedUnion("authMethod", [
       z.object({
-        authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken),
-        serviceAccountName: z.string()
+        authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken)
       })
     ])
     .nullable()
@@ -82,8 +80,7 @@ export const UpdateKubernetesAccountSchema = BaseUpdatePamAccountSchema.extend({
 export const SanitizedKubernetesAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
   credentials: z.discriminatedUnion("authMethod", [
     z.object({
-      authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken),
-      serviceAccountName: z.string()
+      authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken)
     })
   ])
 });

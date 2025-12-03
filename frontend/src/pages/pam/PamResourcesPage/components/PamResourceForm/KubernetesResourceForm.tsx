@@ -7,7 +7,6 @@ import { KubernetesAuthMethod, PamResourceType, TKubernetesResource } from "@app
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { KubernetesResourceFields } from "./shared/KubernetesResourceFields";
-import { KubernetesRotateAccountFields } from "./shared/KubernetesRotateAccountFields";
 import { GenericResourceFields, genericResourceFieldsSchema } from "./GenericResourceFields";
 
 type Props = {
@@ -24,7 +23,6 @@ const KubernetesConnectionDetailsSchema = z.object({
 
 const KubernetesServiceAccountTokenCredentialsSchema = z.object({
   authMethod: z.literal(KubernetesAuthMethod.ServiceAccountToken),
-  serviceAccountName: z.string().trim().max(255),
   serviceAccountToken: z.string().trim().max(10000)
 });
 
@@ -72,7 +70,6 @@ export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
       <form onSubmit={handleSubmit(onSubmit)}>
         <GenericResourceFields />
         <KubernetesResourceFields />
-        <KubernetesRotateAccountFields isUpdate={isUpdate} />
         <div className="mt-6 flex items-center">
           <Button
             className="mr-4"
