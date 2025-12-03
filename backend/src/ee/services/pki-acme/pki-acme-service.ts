@@ -62,6 +62,7 @@ import {
 import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
+import { TPkiAcmeQueueServiceFactory } from "./pki-acme-queue";
 import {
   AcmeAuthStatus,
   AcmeChallengeStatus,
@@ -94,7 +95,7 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
@@ -126,7 +127,8 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
-  acmeChallengeService: TPkiAcmeChallengeServiceFactory;
+  acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
+  pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -147,7 +149,8 @@ export const pkiAcmeServiceFactory = ({
   kmsService,
   licenseService,
   certificateV3Service,
-  acmeChallengeService
+  acmeChallengeService,
+  pkiAcmeQueueService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -975,7 +978,8 @@ export const pkiAcmeServiceFactory = ({
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
     }
-    await acmeChallengeService.validateChallengeResponse(challengeId);
+    await acmeChallengeService.markChallengeAsReady(challengeId);
+    await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
     return {
       status: 200,

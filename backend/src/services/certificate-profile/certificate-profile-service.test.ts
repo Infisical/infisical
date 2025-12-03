@@ -12,8 +12,8 @@ import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/
 import { ActorType, AuthMethod } from "../auth/auth-type";
 import type { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import type { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import type { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import type { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import type { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import type { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import type { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -100,6 +100,7 @@ describe("CertificateProfileService", () => {
     certificateTemplateId: "template-123",
     apiConfigId: "api-config-123",
     estConfigId: null,
+    externalConfigs: null,
     createdAt: new Date(),
     updatedAt: new Date()
   };
@@ -229,17 +230,10 @@ describe("CertificateProfileService", () => {
     delete: vi.fn()
   } as unknown as TCertificateAuthorityDALFactory;
 
-  const mockCertificateAuthorityCertDAL = {
-    create: vi.fn(),
+  const mockExternalCertificateAuthorityDAL = {
     findById: vi.fn(),
-    updateById: vi.fn(),
-    deleteById: vi.fn(),
-    transaction: vi.fn(),
-    find: vi.fn(),
-    findOne: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn()
-  } as unknown as TCertificateAuthorityCertDALFactory;
+    findOne: vi.fn()
+  } as unknown as Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
 
   beforeEach(() => {
     vi.spyOn(ForbiddenError, "from").mockReturnValue({
@@ -261,7 +255,7 @@ describe("CertificateProfileService", () => {
       certificateBodyDAL: mockCertificateBodyDAL,
       certificateSecretDAL: mockCertificateSecretDAL,
       certificateAuthorityDAL: mockCertificateAuthorityDAL,
-      certificateAuthorityCertDAL: mockCertificateAuthorityCertDAL,
+      externalCertificateAuthorityDAL: mockExternalCertificateAuthorityDAL,
       permissionService: mockPermissionService,
       licenseService: mockLicenseService,
       kmsService: mockKmsService,

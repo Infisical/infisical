@@ -2,6 +2,8 @@ import json
 import logging
 import re
 import urllib.parse
+import time
+import threading
 
 import acme.client
 import jq
@@ -724,6 +726,15 @@ def step_impl(context: Context, var_path: str, jq_query, var_name: str):
     context.vars[var_name] = value
 
 
+@then("I get a new-nonce as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    nonce = acme_client.net._get_nonce(
+        url=None, new_nonce_url=acme_client.directory.newNonce
+    )
+    context.vars[var_name] = json_util.encode_b64jose(nonce)
+
+
 @then("I peak and memorize the next nonce as {var_name}")
 def step_impl(context: Context, var_name: str):
     acme_client = context.acme_client
@@ -797,22 +808,39 @@ def select_challenge(
     return challenges[0]
 
 
-def serve_challenge(
+def serve_challenges(
     context: Context,
-    challenge: messages.ChallengeBody,
+    challenges: list[messages.ChallengeBody],
+    wait_time: int | None = None,
 ):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
 
-    response, validation = challenge.response_and_validation(
-        context.acme_client.net.key
-    )
-    resource = standalone.HTTP01RequestHandler.HTTP01Resource(
-        chall=challenge.chall, response=response, validation=validation
-    )
+    resources = set()
+    for challenge in challenges:
+        response, validation = challenge.response_and_validation(
+            context.acme_client.net.key
+        )
+        resources.add(
+            standalone.HTTP01RequestHandler.HTTP01Resource(
+                chall=challenge.chall, response=response, validation=validation
+            )
+        )
     # TODO: make port configurable
-    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
-    servers.serve_forever()
+    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resources)
+    if wait_time is None:
+        servers.serve_forever()
+    else:
+
+        def wait_and_start():
+            logger.info("Waiting %s seconds before we start serving.", wait_time)
+            time.sleep(wait_time)
+            logger.info("Start server now")
+            servers.serve_forever()
+
+        thread = threading.Thread(target=wait_and_start)
+        thread.daemon = True
+        thread.start()
     context.web_server = servers
 
 
@@ -865,6 +893,7 @@ def step_impl(
             f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
         )
 
+    challenges = {}
     for domain in order.body.identifiers:
         logger.info(
             "Selecting challenge for domain %s with type %s ...",
@@ -889,24 +918,75 @@ def step_impl(
             domain.value,
             challenge_type,
         )
-        serve_challenge(context=context, challenge=challenge)
+        challenges[domain] = challenge
 
+    serve_challenges(context=context, challenges=list(challenges.values()))
+    for domain, challenge in challenges.items():
         logger.info(
             "Notifying challenge for domain %s with type %s ...", domain, challenge_type
         )
         notify_challenge_ready(context=context, challenge=challenge)
 
 
+@then(
+    "I wait {wait_time} seconds and serve challenge response for {var_path} at {hostname}"
+)
+def step_impl(context: Context, wait_time: str, var_path: str, hostname: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    serve_challenges(context=context, challenges=[challenge], wait_time=int(wait_time))
+
+
 @then("I serve challenge response for {var_path} at {hostname}")
 def step_impl(context: Context, var_path: str, hostname: str):
     challenge = eval_var(context, var_path, as_json=False)
-    serve_challenge(context=context, challenge=challenge)
+    serve_challenges(context=context, challenges=[challenge])
 
 
 @then("I tell ACME server that {var_path} is ready to be verified")
 def step_impl(context: Context, var_path: str):
     challenge = eval_var(context, var_path, as_json=False)
     notify_challenge_ready(context=context, challenge=challenge)
+
+
+@then("I wait until the status of order {order_var} becomes {status}")
+def step_impl(context: Context, order_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        order = eval_var(context, order_var, as_json=False)
+        response = acme_client._post_as_get(
+            order.uri if isinstance(order, messages.OrderResource) else order
+        )
+        order = messages.Order.from_json(response.json())
+        if order.status.name == status:
+            return
+        attempt_count -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of order doesn't become {status} before timeout")
+
+
+@then("I wait until the status of authorization {auth_var} becomes {status}")
+def step_impl(context: Context, auth_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        auth = eval_var(context, auth_var, as_json=False)
+        response = acme_client._post_as_get(
+            auth.uri if isinstance(auth, messages.Authorization) else auth
+        )
+        auth = messages.Authorization.from_json(response.json())
+        if auth.status.name == status:
+            return
+        attempt_count -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of auth doesn't become {status} before timeout")
+
+
+@then("I post-as-get {uri} as {resp_var}")
+def step_impl(context: Context, uri: str, resp_var: str):
+    acme_client = context.acme_client
+    response = acme_client._post_as_get(replace_vars(uri, vars=context.vars))
+    context.vars[resp_var] = response.json()
 
 
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")

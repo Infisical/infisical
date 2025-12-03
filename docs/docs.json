@@ -775,7 +775,23 @@
                 "group": "Infisical PAM",
                 "pages": [
                   "documentation/platform/pam/overview",
-                  "documentation/platform/pam/session-recording"
+                  {
+                    "group": "Getting Started",
+                    "pages": [
+                      "documentation/platform/pam/getting-started/setup",
+                      "documentation/platform/pam/getting-started/resources",
+                      "documentation/platform/pam/getting-started/accounts"
+                    ]
+                  },
+                  "documentation/platform/pam/architecture"
+                ]
+              },
+              {
+                "group": "Product Reference",
+                "pages": [
+                  "documentation/platform/pam/product-reference/auditing",
+                  "documentation/platform/pam/product-reference/session-recording",
+                  "documentation/platform/pam/product-reference/credential-rotation"
                 ]
               }
             ]

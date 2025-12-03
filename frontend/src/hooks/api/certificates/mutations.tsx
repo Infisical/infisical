@@ -13,6 +13,8 @@ import {
   TRenewCertificateDTO,
   TRenewCertificateResponse,
   TRevokeCertDTO,
+  TUnifiedCertificateIssuanceDTO,
+  TUnifiedCertificateIssuanceResponse,
   TUpdateRenewalConfigDTO
 } from "./types";
 
@@ -182,6 +184,34 @@ export const useDownloadCertPkcs12 = () => {
         }
         throw error;
       }
+    }
+  });
+};
+
+export const useUnifiedCertificateIssuance = () => {
+  const queryClient = useQueryClient();
+  return useMutation<TUnifiedCertificateIssuanceResponse, object, TUnifiedCertificateIssuanceDTO>({
+    mutationFn: async (body) => {
+      const { projectSlug, ...requestData } = body;
+      const { data } = await apiRequest.post<TUnifiedCertificateIssuanceResponse>(
+        "/api/v1/cert-manager/certificates",
+        requestData
+      );
+      return data;
+    },
+    onSuccess: (_, { projectSlug }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["certificate-profiles", "list"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: pkiSubscriberKeys.allPkiSubscriberCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.allProjectCertificates()
+      });
+      queryClient.invalidateQueries({
+        queryKey: projectKeys.forProjectCertificates(projectSlug)
+      });
     }
   });
 };

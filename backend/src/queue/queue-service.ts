@@ -64,6 +64,7 @@ export enum QueueName {
   DynamicSecretLeaseRevocationFailedEmail = "dynamic-secret-lease-revocation-failed-email",
   CaCrlRotation = "ca-crl-rotation",
   CaLifecycle = "ca-lifecycle", // parent queue to ca-order-certificate-for-subscriber
+  CertificateIssuance = "certificate-issuance",
   SecretReplication = "secret-replication",
   SecretSync = "secret-sync", // parent queue to push integration sync, webhook, and secret replication
   PkiSync = "pki-sync",
@@ -81,7 +82,8 @@ export enum QueueName {
   UserNotification = "user-notification",
   HealthAlert = "health-alert",
   CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
-  PamAccountRotation = "pam-account-rotation"
+  PamAccountRotation = "pam-account-rotation",
+  PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
 }
 
 export enum QueueJobs {
@@ -127,6 +129,7 @@ export enum QueueJobs {
   SecretScanningV2DiffScan = "secret-scanning-v2-diff-scan",
   SecretScanningV2SendNotification = "secret-scanning-v2-notification",
   CaOrderCertificateForSubscriber = "ca-order-certificate-for-subscriber",
+  CaIssueCertificateFromProfile = "ca-issue-certificate-from-profile",
   PkiSubscriberDailyAutoRenewal = "pki-subscriber-daily-auto-renewal",
   TelemetryAggregatedEvents = "telemetry-aggregated-events",
   DailyReminders = "daily-reminders",
@@ -134,7 +137,8 @@ export enum QueueJobs {
   UserNotification = "user-notification-job",
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
-  PamAccountRotation = "pam-account-rotation"
+  PamAccountRotation = "pam-account-rotation",
+  PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
 }
 
 export type TQueueJobTypes = {
@@ -353,6 +357,21 @@ export type TQueueJobTypes = {
       caType: CaType;
     };
   };
+  [QueueName.CertificateIssuance]: {
+    name: QueueJobs.CaIssueCertificateFromProfile;
+    payload: {
+      certificateId: string;
+      profileId: string;
+      caId: string;
+      commonName?: string;
+      altNames?: string[];
+      ttl: string;
+      signatureAlgorithm: string;
+      keyAlgorithm: string;
+      keyUsages?: string[];
+      extendedKeyUsages?: string[];
+    };
+  };
   [QueueName.DailyReminders]: {
     name: QueueJobs.DailyReminders;
     payload: undefined;
@@ -384,6 +403,10 @@ export type TQueueJobTypes = {
   [QueueName.PamAccountRotation]: {
     name: QueueJobs.PamAccountRotation;
     payload: undefined;
+  };
+  [QueueName.PkiAcmeChallengeValidation]: {
+    name: QueueJobs.PkiAcmeChallengeValidation;
+    payload: { challengeId: string };
   };
 };
 
