@@ -13,10 +13,15 @@ import { DatabaseErrorCode } from "@app/lib/error-codes";
 import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import { ActorType } from "@app/services/auth/auth-type";
+import { ActorType, MfaMethod } from "@app/services/auth/auth-type";
+import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TMfaSessionServiceFactory } from "@app/services/mfa-session/mfa-session-service";
+import { MfaSessionStatus } from "@app/services/mfa-session/mfa-session-types";
+import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
+import { TSmtpService } from "@app/services/smtp/smtp-service";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
 import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
@@ -41,7 +46,9 @@ type TPamAccountServiceFactoryDep = {
   pamSessionDAL: TPamSessionDALFactory;
   pamAccountDAL: TPamAccountDALFactory;
   pamFolderDAL: TPamFolderDALFactory;
+  mfaSessionService: TMfaSessionServiceFactory;
   projectDAL: TProjectDALFactory;
+  orgDAL: TOrgDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -51,6 +58,8 @@ type TPamAccountServiceFactoryDep = {
   >;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser" | "validateTokenForUser">;
+  smtpService: Pick<TSmtpService, "sendMail">;
 };
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
@@ -60,8 +69,10 @@ export const pamAccountServiceFactory = ({
   pamResourceDAL,
   pamSessionDAL,
   pamAccountDAL,
+  mfaSessionService,
   pamFolderDAL,
   projectDAL,
+  orgDAL,
   userDAL,
   permissionService,
   licenseService,
@@ -77,7 +88,8 @@ export const pamAccountServiceFactory = ({
       description,
       folderId,
       rotationEnabled,
-      rotationIntervalSeconds
+      rotationIntervalSeconds,
+      requireMfa
     }: TCreateAccountDTO,
     actor: OrgServiceActor
   ) => {
@@ -154,7 +166,8 @@ export const pamAccountServiceFactory = ({
         description,
         folderId,
         rotationEnabled,
-        rotationIntervalSeconds
+        rotationIntervalSeconds,
+        requireMfa
       });
 
       return {
@@ -178,7 +191,15 @@ export const pamAccountServiceFactory = ({
   };
 
   const updateById = async (
-    { accountId, credentials, description, name, rotationEnabled, rotationIntervalSeconds }: TUpdateAccountDTO,
+    {
+      accountId,
+      credentials,
+      description,
+      name,
+      rotationEnabled,
+      rotationIntervalSeconds,
+      requireMfa
+    }: TUpdateAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -222,6 +243,10 @@ export const pamAccountServiceFactory = ({
 
     if (name !== undefined) {
       updateDoc.name = name;
+    }
+
+    if (requireMfa !== undefined) {
+      updateDoc.requireMfa = requireMfa;
     }
 
     if (description !== undefined) {
@@ -487,7 +512,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const access = async (
-    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
+    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration, mfaSessionId }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -502,6 +527,9 @@ export const pamAccountServiceFactory = ({
 
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
+
+    const project = await projectDAL.findById(account.projectId);
+    if (!project) throw new NotFoundError({ message: `Project with ID '${account.projectId}' not found` });
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -527,6 +555,77 @@ export const pamAccountServiceFactory = ({
       })
     );
 
+    const actorUser = await userDAL.findById(actor.id);
+    if (!actorUser) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
+
+    // If no mfaSessionId is provided, create a new MFA session
+    if (!mfaSessionId && account.requireMfa) {
+      // Get organization to check if MFA is enforced at org level
+      const org = await orgDAL.findOrgById(project.orgId);
+      if (!org) throw new NotFoundError({ message: `Organization with ID '${project.orgId}' not found` });
+
+      // Determine which MFA method to use
+      // Priority: org-enforced > user-selected > email as fallback
+      const orgMfaMethod = org.enforceMfa
+        ? ((org.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
+        : undefined;
+      const userMfaMethod = actorUser.isMfaEnabled
+        ? ((actorUser.selectedMfaMethod as MfaMethod | null) ?? MfaMethod.EMAIL)
+        : undefined;
+      const mfaMethod = (orgMfaMethod ?? userMfaMethod ?? MfaMethod.EMAIL) as MfaMethod;
+
+      // Create MFA session
+      const newMfaSessionId = await mfaSessionService.createMfaSession(actorUser.id, accountId, mfaMethod);
+
+      // If MFA method is email, send the code immediately
+      if (mfaMethod === MfaMethod.EMAIL && actorUser.email) {
+        await mfaSessionService.sendMfaCode(actorUser.id, actorUser.email);
+      }
+
+      // Throw an error with the mfaSessionId to signal that MFA is required
+      throw new BadRequestError({
+        message: "MFA verification required to access PAM account",
+        name: "SESSION_MFA_REQUIRED",
+        details: {
+          mfaSessionId: newMfaSessionId,
+          mfaMethod
+        }
+      });
+    }
+
+    if (mfaSessionId && account.requireMfa) {
+      const mfaSession = await mfaSessionService.getMfaSession(mfaSessionId);
+      if (!mfaSession) {
+        throw new BadRequestError({
+          message: "MFA session not found or expired"
+        });
+      }
+
+      // Verify the session belongs to the current user
+      if (mfaSession.userId !== actor.id) {
+        throw new BadRequestError({
+          message: "MFA session does not belong to current user"
+        });
+      }
+
+      // Verify the session is for the same account
+      if (mfaSession.resourceId !== accountId) {
+        throw new BadRequestError({
+          message: "MFA session is for a different resource"
+        });
+      }
+
+      // Check if MFA session is active
+      if (mfaSession.status !== MfaSessionStatus.ACTIVE) {
+        throw new BadRequestError({
+          message: "MFA session is not active. Please complete MFA verification first."
+        });
+      }
+
+      // MFA verified successfully, delete the session and proceed with access
+      await mfaSessionService.deleteMfaSession(mfaSessionId);
+    }
+
     const session = await pamSessionDAL.create({
       accountName: account.name,
       actorEmail,
@@ -548,9 +647,6 @@ export const pamAccountServiceFactory = ({
       kmsService
     );
 
-    const user = await userDAL.findById(actor.id);
-    if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
-
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
@@ -561,7 +657,7 @@ export const pamAccountServiceFactory = ({
       actorMetadata: {
         id: actor.id,
         type: actor.type,
-        name: user.email ?? ""
+        name: actorUser.email ?? ""
       }
     });
 

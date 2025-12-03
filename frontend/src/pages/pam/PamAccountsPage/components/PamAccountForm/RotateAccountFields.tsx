@@ -1,5 +1,4 @@
 import { Controller, useFormContext } from "react-hook-form";
-import { twMerge } from "tailwind-merge";
 import { z } from "zod";
 
 import { FormControl, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
@@ -9,11 +8,7 @@ export const rotateAccountFieldsSchema = z.object({
   rotationIntervalSeconds: z.number().nullable().optional()
 });
 
-export const RotateAccountFields = ({
-  rotationCredentialsConfigured
-}: {
-  rotationCredentialsConfigured: boolean;
-}) => {
+export const RotateAccountFields = () => {
   const { control, watch } = useFormContext<{
     rotationEnabled: boolean;
     rotationIntervalSeconds?: number | null;
@@ -22,16 +17,8 @@ export const RotateAccountFields = ({
   const rotationEnabled = watch("rotationEnabled");
 
   return (
-    <Tooltip
-      isDisabled={rotationCredentialsConfigured}
-      content="The resource which owns this account does not have rotation credentials configured."
-    >
-      <div
-        className={twMerge(
-          "flex h-9 w-fit items-center gap-3",
-          !rotationCredentialsConfigured && "opacity-50"
-        )}
-      >
+    <Tooltip content="The resource which owns this account does not have rotation credentials configured.">
+      <div className="flex h-9 w-fit items-center gap-3">
         <Controller
           control={control}
           name="rotationEnabled"
@@ -44,7 +31,6 @@ export const RotateAccountFields = ({
                 thumbClassName="bg-mineshaft-800"
                 onCheckedChange={onChange}
                 isChecked={value}
-                isDisabled={!rotationCredentialsConfigured}
               />
             </FormControl>
           )}
@@ -68,7 +54,7 @@ export const RotateAccountFields = ({
                 position="popper"
                 placeholder="Select an interval..."
                 dropdownContainerClassName="max-w-none"
-                isDisabled={!rotationEnabled || !rotationCredentialsConfigured}
+                isDisabled={!rotationEnabled}
                 dropdownContainerStyle={{
                   width: "130px"
                 }}
