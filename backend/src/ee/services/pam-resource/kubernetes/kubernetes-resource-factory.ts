@@ -26,7 +26,7 @@ export const executeWithGateway = async <T>(
     gatewayId: string;
   },
   gatewayV2Service: Pick<TGatewayV2ServiceFactory, "getPlatformConnectionDetailsByGatewayId">,
-  operation: (baseUrl: string, httpsAgent?: https.Agent) => Promise<T>
+  operation: (baseUrl: string, httpsAgent: https.Agent) => Promise<T>
 ): Promise<T> => {
   const { connectionDetails, gatewayId } = config;
   const url = new URL(connectionDetails.url);
@@ -46,23 +46,13 @@ export const executeWithGateway = async <T>(
     targetHost,
     targetPort
   });
-
   if (!platformConnectionDetails) {
     throw new BadRequestError({ message: "Unable to connect to gateway, no platform connection details found" });
   }
-
-  let httpsAgent: https.Agent | undefined;
-  if (connectionDetails.caCertificate) {
-    httpsAgent = new https.Agent({
-      ca: connectionDetails.caCertificate,
-      rejectUnauthorized: !connectionDetails.skipTLSVerify
-    });
-  } else if (!connectionDetails.skipTLSVerify) {
-    httpsAgent = new https.Agent({
-      rejectUnauthorized: true
-    });
-  }
-
+  const httpsAgent = new https.Agent({
+    ca: connectionDetails.sslCertificate,
+    rejectUnauthorized: connectionDetails.sslRejectUnauthorized
+  });
   return withGatewayV2Proxy(
     async (proxyPort) => {
       const protocol = url.protocol === "https:" ? "https" : "http";
