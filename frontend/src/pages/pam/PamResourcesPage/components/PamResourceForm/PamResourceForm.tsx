@@ -9,6 +9,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
+import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 import { SSHResourceForm } from "./SSHResourceForm";
@@ -54,6 +55,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <MySQLResourceForm onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -84,6 +87,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${(resource as any).resourceType}`);
   }

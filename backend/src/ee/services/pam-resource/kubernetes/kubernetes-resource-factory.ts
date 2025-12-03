@@ -67,10 +67,11 @@ export const executeWithGateway = async <T>(
     async (proxyPort) => {
       const protocol = url.protocol === "https:" ? "https" : "http";
       const baseUrl = `${protocol}://localhost:${proxyPort}`;
+      // const baseUrl = `http://localhost:${proxyPort}`;
       return operation(baseUrl, httpsAgent);
     },
     {
-      protocol: GatewayProxyProtocol.Http,
+      protocol: GatewayProxyProtocol.Tcp,
       relayHost: platformConnectionDetails.relayHost,
       gateway: platformConnectionDetails.gateway,
       relay: platformConnectionDetails.relay,
@@ -92,9 +93,6 @@ export const kubernetesResourceFactory: TPamResourceFactory<
           // Validate connection by checking API server version
           try {
             await axios.get(`${baseUrl}/version`, {
-              headers: {
-                "Content-Type": "application/json"
-              },
               ...(httpsAgent ? { httpsAgent } : {}),
               signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
               timeout: EXTERNAL_REQUEST_TIMEOUT
