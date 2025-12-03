@@ -682,6 +682,8 @@ export const identityOrgDALFactory = (db: TDbClient) => {
         .whereNotNull(`${TableName.Membership}.actorIdentityId`)
         .whereNull(`${TableName.Identity}.projectId`)
         .whereIn(`${TableName.Identity}.id`, identityIds)
+        .distinctOn(`${TableName.Identity}.id`)
+        .orderBy(`${TableName.Identity}.id`)
         .select(selectAllTableCols(TableName.Identity));
 
       return identities;
