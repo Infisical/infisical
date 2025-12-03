@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @source not "../public";
 
@@ -39,7 +40,7 @@
 
   /* Colors v2 */
   --color-background: #19191c;
-  --color-foreground: white;
+  --color-foreground: #ebebeb;
   --color-success: #2ecc71;
   --color-info: #63b0bd;
   --color-warning: #f1c40f;
@@ -48,6 +49,14 @@
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
   --color-neutral: #adaeb0;
+  --color-border: #323439;
+  --color-label: #adaeb0;
+  --color-muted: #707174;
+  --color-popover: #111419;
+  --color-ring: #2d2f33;
+  --color-container: #16181a;
+  --color-accent: #7d7f80;
+  --color-muted-foreground: ;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

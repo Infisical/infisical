@@ -1,14 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Link } from "@tanstack/react-router";
 import {
-  AlertTriangleIcon,
   AsteriskIcon,
   BanIcon,
   CheckIcon,
-  ChevronsUpDownIcon,
   CircleXIcon,
   ExternalLinkIcon,
-  GlobeIcon,
   InfoIcon,
   RadarIcon,
   TriangleAlertIcon,
@@ -16,17 +12,16 @@ import {
 } from "lucide-react";
 
 import { OrgIcon, ProjectIcon, SubOrgIcon } from "../../platform";
-import { UnstableButtonGroup } from "../ButtonGroup";
-import { Badge } from "./Badge";
+import { UnstableButton } from "./Button";
 
 /**
- * Badges act as an indicator that can optionally be made interactable.
- * You can place text and icons inside a badge.
- * Badges are often used for the indication of a status, state or scope.
+ * Buttons act as an indicator that can optionally be made interactable.
+ * You can place text and icons inside a Button.
+ * Buttons are often used for the indication of a status, state or scope.
  */
 const meta = {
-  title: "Generic/Badge",
-  component: Badge,
+  title: "Generic/Button",
+  component: UnstableButton,
   parameters: {
     layout: "centered"
   },
@@ -47,22 +42,20 @@ const meta = {
         "sub-org"
       ]
     },
-    isTruncatable: {
-      table: {
-        disable: true
-      }
+    size: {
+      control: "select",
+      options: ["xs", "sm", "md", "lg"]
+    },
+    isPending: {
+      control: "boolean"
     },
     isFullWidth: {
-      table: {
-        disable: true
-      }
+      control: "boolean"
     },
-    isSquare: {
-      table: {
-        disable: true
-      }
+    isDisabled: {
+      control: "boolean"
     },
-    asChild: {
+    as: {
       table: {
         disable: true
       }
@@ -73,8 +66,8 @@ const meta = {
       }
     }
   },
-  args: { children: "Badge", isTruncatable: false }
-} satisfies Meta<typeof Badge>;
+  args: { children: "Button", isPending: false, isDisabled: false, isFullWidth: false, size: "md" }
+} satisfies Meta<typeof UnstableButton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -89,7 +82,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          "Use this variant when other badge variants are not applicable or as the key when displaying key-value pairs with ButtonGroup."
+          "Use this variant when other Button variants are not applicable or as the key when displaying key-value pairs with ButtonGroup."
       }
     }
   }
@@ -105,7 +98,7 @@ export const Outline: Story = {
     docs: {
       description: {
         story:
-          "Use this variant when other badge variants are not applicable or as the value when displaying key-value pairs with ButtonGroup."
+          "Use this variant when other Button variants are not applicable or as the value when displaying key-value pairs with ButtonGroup."
       }
     }
   }
@@ -297,17 +290,18 @@ export const AsExternalLink: Story = {
   name: "Example: As External Link",
   args: {
     variant: "info",
-    asChild: true,
+    as: "a",
+    href: "https://www.infisical.com",
     children: (
-      <a target="_blank" rel="noopener noreferrer" href="https://infisical.com/">
+      <>
         Link <ExternalLinkIcon />
-      </a>
+      </>
     )
   },
   parameters: {
     docs: {
       description: {
-        story: "Use the `asChild` prop with an `a` tag to use a badge as an external link."
+        story: 'Use the `as="a"` prop to use a Button as an external `a` tag component.'
       }
     }
   }
@@ -317,85 +311,18 @@ export const AsRouterLink: Story = {
   name: "Example: As Router Link",
   args: {
     variant: "project",
-    asChild: true,
-    children: (
-      <Link to=".">
-        <RadarIcon />
-        Secret Scanning
-      </Link>
-    )
-  },
-  parameters: {
-    docs: {
-      description: {
-        story: "Use the `asChild` prop with a `Link` component to use a badge as an internal link."
-      }
-    }
-  }
-};
-
-export const AsButton: Story = {
-  name: "Example: As Button",
-  args: {
-    variant: "org",
-    asChild: true,
-    children: (
-      <button type="button" onClick={() => console.log("click")}>
-        <GlobeIcon />
-        Organization
-        <ChevronsUpDownIcon />
-      </button>
-    )
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use the `asChild` prop with a `button` tag to use a badge as a button. Do not use a styled `Button` component."
-      }
-    }
-  }
-};
-
-export const IsTruncatable: Story = {
-  name: "Example: isTruncatable",
-  args: {
-    variant: "org",
-    isTruncatable: true,
+    as: "link",
     children: (
       <>
-        <OrgIcon />
-        <span>Infisical Infrastructure</span>
+        <RadarIcon />
+        Secret Scanning
       </>
     )
   },
   parameters: {
     docs: {
       description: {
-        story:
-          "Use the `isTruncatable` prop with a `span` tag wrapping the text content to support truncation. Parent `div` should have a fixed width and `flex` class."
-      }
-    }
-  },
-  decorators: (Story) => (
-    <div className="flex w-32">
-      <Story />
-    </div>
-  )
-};
-
-export const IsSquare: Story = {
-  name: "Example: isSquare",
-  args: {
-    variant: "danger",
-    isSquare: true,
-    children: <AlertTriangleIcon />
-  },
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use the `isSquare` prop when displaying a squared badge with 1-2 character text or only an icon."
+        story: 'Use the `as="link"` prop to use a Button as an internal `Link` component.'
       }
     }
   }
@@ -418,7 +345,7 @@ export const IsFullWidth: Story = {
     docs: {
       description: {
         story:
-          "Use the `isFullWidth` prop to expand the badges width to fill it's parent container."
+          "Use the `isFullWidth` prop to expand the Buttons width to fill it's parent container."
       }
     }
   },
@@ -426,24 +353,5 @@ export const IsFullWidth: Story = {
     <div className="w-32">
       <Story />
     </div>
-  )
-};
-
-export const KeyValuePair: Story = {
-  name: "Example: Key-Value Pair",
-  args: {},
-  parameters: {
-    docs: {
-      description: {
-        story:
-          "Use a default and outline badge in conjunction with the `<ButtonGroup />` component to display key-value pairs."
-      }
-    }
-  },
-  decorators: () => (
-    <UnstableButtonGroup>
-      <Badge>Key</Badge>
-      <Badge variant="outline">Value</Badge>
-    </UnstableButtonGroup>
   )
 };

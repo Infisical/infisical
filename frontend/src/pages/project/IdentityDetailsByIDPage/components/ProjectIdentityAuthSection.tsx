@@ -1,12 +1,31 @@
 import { subject } from "@casl/ability";
-import { faPlus } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { LockIcon, SettingsIcon } from "lucide-react";
+import { EllipsisIcon, LockIcon, PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Button, Tooltip } from "@app/components/v2";
-import { Badge } from "@app/components/v3";
+import { Tooltip } from "@app/components/v2";
+import {
+  Badge,
+  UnstableButton,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
 import { IdentityAuthMethod, identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
@@ -25,76 +44,126 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
     "upgradePlan"
   ]);
 
+  const hasAuthMethods = Boolean(identity.authMethods.length);
+
   return (
-    <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Authentication</h3>
-      </div>
-      {identity.authMethods.length > 0 ? (
-        <div className="flex flex-col divide-y divide-mineshaft-400/50">
-          {identity.authMethods.map((authMethod) => (
-            <button
-              key={authMethod}
-              onClick={() =>
-                handlePopUpOpen("viewAuthMethod", {
-                  authMethod,
-                  lockedOut: identity.activeLockoutAuthMethods?.includes(authMethod) ?? false,
-                  refetchIdentity
-                })
-              }
-              type="button"
-              className="flex w-full items-center justify-between bg-mineshaft-900 px-4 py-2 text-sm hover:bg-mineshaft-700 data-[state=open]:bg-mineshaft-600"
-            >
-              <span>{identityAuthToNameMap[authMethod]}</span>
-              <div className="flex items-center gap-2">
-                {identity.activeLockoutAuthMethods?.includes(authMethod) && (
-                  <Tooltip content="Auth method has active lockouts">
-                    <Badge isSquare variant="danger">
-                      <LockIcon />
-                    </Badge>
-                  </Tooltip>
-                )}
-                <SettingsIcon className="size-4 text-neutral" />
-              </div>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="w-full space-y-2 pt-2">
-          <p className="text-sm text-mineshaft-300">
-            No authentication methods configured. Get started by creating a new auth method.
-          </p>
-        </div>
-      )}
-      {!Object.values(IdentityAuthMethod).every((method) =>
-        identity.authMethods.includes(method)
-      ) && (
-        <ProjectPermissionCan
-          I={ProjectPermissionIdentityActions.Edit}
-          a={subject(ProjectPermissionSub.Identity, {
-            identityId: identity.id
-          })}
-        >
-          {(isAllowed) => (
-            <Button
-              isDisabled={!isAllowed}
-              onClick={() => {
-                handlePopUpOpen("identityAuthMethod", {
-                  identityId: identity.id,
-                  name: identity.name,
-                  allAuthMethods: identity.authMethods
-                });
-              }}
-              variant="outline_bg"
-              className="mt-3 w-full"
-              size="xs"
-              leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            >
-              {identity.authMethods.length ? "Add" : "Create"} Auth Method
-            </Button>
+    <>
+      <UnstableCard>
+        <UnstableCardHeader className="border-b">
+          <UnstableCardTitle>Authentication</UnstableCardTitle>
+          <UnstableCardDescription>Configure authentication methods</UnstableCardDescription>
+          {hasAuthMethods &&
+            !Object.values(IdentityAuthMethod).every((method) =>
+              identity.authMethods.includes(method)
+            ) && (
+              <UnstableCardAction>
+                <ProjectPermissionCan
+                  I={ProjectPermissionIdentityActions.Edit}
+                  a={subject(ProjectPermissionSub.Identity, {
+                    identityId: identity.id
+                  })}
+                >
+                  {(isAllowed) => (
+                    <UnstableButton
+                      variant="project"
+                      isFullWidth
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      onClick={() => {
+                        handlePopUpOpen("identityAuthMethod", {
+                          identityId: identity.id,
+                          name: identity.name,
+                          allAuthMethods: identity.authMethods
+                        });
+                      }}
+                    >
+                      <PlusIcon />
+                      Add Auth Method
+                    </UnstableButton>
+                  )}
+                </ProjectPermissionCan>
+              </UnstableCardAction>
+            )}
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          {identity.authMethods.length > 0 ? (
+            <UnstableTable>
+              <UnstableTableHeader>
+                <UnstableTableHead className="w-full">Method</UnstableTableHead>
+                <UnstableTableHead className="w-5" />
+              </UnstableTableHeader>
+              <UnstableTableBody>
+                {identity.authMethods.map((authMethod) => (
+                  <UnstableTableRow
+                    key={authMethod}
+                    className="cursor-pointer"
+                    onClick={() =>
+                      handlePopUpOpen("viewAuthMethod", {
+                        authMethod,
+                        lockedOut: identity.activeLockoutAuthMethods?.includes(authMethod) ?? false,
+                        refetchIdentity
+                      })
+                    }
+                  >
+                    <UnstableTableCell>{identityAuthToNameMap[authMethod]}</UnstableTableCell>
+                    <UnstableTableCell>
+                      <div className="flex items-center gap-2">
+                        {identity.activeLockoutAuthMethods?.includes(authMethod) && (
+                          <Tooltip content="Auth method has active lockouts">
+                            <Badge isSquare variant="danger">
+                              <LockIcon />
+                            </Badge>
+                          </Tooltip>
+                        )}
+                        <UnstableIconButton variant="ghost" size="xs">
+                          <EllipsisIcon />
+                        </UnstableIconButton>
+                      </div>
+                    </UnstableTableCell>
+                  </UnstableTableRow>
+                ))}
+              </UnstableTableBody>
+            </UnstableTable>
+          ) : (
+            <UnstableEmpty className="rounded-sm border bg-mineshaft-800/50">
+              <UnstableEmptyHeader>
+                <UnstableEmptyTitle>
+                  This machine identity has no auth methods configured
+                </UnstableEmptyTitle>
+                <UnstableEmptyDescription>
+                  Add an auth method to use this machine identity
+                </UnstableEmptyDescription>
+              </UnstableEmptyHeader>
+              <UnstableEmptyContent>
+                <ProjectPermissionCan
+                  I={ProjectPermissionIdentityActions.Edit}
+                  a={subject(ProjectPermissionSub.Identity, {
+                    identityId: identity.id
+                  })}
+                >
+                  {(isAllowed) => (
+                    <UnstableButton
+                      variant="project"
+                      size="xs"
+                      isDisabled={!isAllowed}
+                      onClick={() => {
+                        handlePopUpOpen("identityAuthMethod", {
+                          identityId: identity.id,
+                          name: identity.name,
+                          allAuthMethods: identity.authMethods
+                        });
+                      }}
+                    >
+                      <PlusIcon />
+                      Add Auth Method
+                    </UnstableButton>
+                  )}
+                </ProjectPermissionCan>
+              </UnstableEmptyContent>
+            </UnstableEmpty>
           )}
-        </ProjectPermissionCan>
-      )}
+        </UnstableCardContent>
+      </UnstableCard>
       <IdentityAuthMethodModal
         popUp={popUp}
         handlePopUpOpen={handlePopUpOpen}
@@ -114,6 +183,6 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         identityId={identity.id}
         onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
       />
-    </div>
+    </>
   );
 };

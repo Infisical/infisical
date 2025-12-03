@@ -1,28 +1,36 @@
 import { subject } from "@casl/ability";
-import { faFolder, faPencil, faTrash } from "@fortawesome/free-solid-svg-icons";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format, formatDistance } from "date-fns";
-import { twMerge } from "tailwind-merge";
+import { ClockAlertIcon, ClockIcon, EllipsisIcon, PencilIcon } from "lucide-react";
 
 import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
+import { DeleteActionModal, Lottie, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
-  DeleteActionModal,
-  EmptyState,
-  IconButton,
-  Modal,
-  ModalContent,
-  Table,
-  TableContainer,
-  TableSkeleton,
-  Tag,
-  TBody,
-  Td,
-  Th,
-  THead,
-  Tooltip,
-  Tr
-} from "@app/components/v2";
+  Badge,
+  UnstableButton,
+  UnstableCard,
+  UnstableCardAction,
+  UnstableCardContent,
+  UnstableCardDescription,
+  UnstableCardHeader,
+  UnstableCardTitle,
+  UnstableDropdownMenu,
+  UnstableDropdownMenuContent,
+  UnstableDropdownMenuItem,
+  UnstableDropdownMenuTrigger,
+  UnstableEmpty,
+  UnstableEmptyContent,
+  UnstableEmptyDescription,
+  UnstableEmptyHeader,
+  UnstableEmptyTitle,
+  UnstableIconButton,
+  UnstableTable,
+  UnstableTableBody,
+  UnstableTableCell,
+  UnstableTableHead,
+  UnstableTableHeader,
+  UnstableTableRow
+} from "@app/components/v3";
 import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
 import { formatProjectRoleName } from "@app/helpers/roles";
 import { usePopUp } from "@app/hooks";
@@ -83,133 +91,186 @@ export const IdentityRoleDetailsSection = ({
     handlePopUpClose("deleteRole");
   };
 
+  const hasRoles = Boolean(identityMembershipDetails?.roles.length);
+
   return (
-    <div className="mb-4 w-full rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Project Roles</h3>
-        <ProjectPermissionCan
-          I={ProjectPermissionActions.Edit}
-          a={subject(ProjectPermissionSub.Identity, {
-            identityId: identityMembershipDetails.identity.id
-          })}
-          renderTooltip
-          allowedLabel="Edit Role(s)"
-        >
-          {(isAllowed) => (
-            <IconButton
-              ariaLabel="copy icon"
-              variant="plain"
-              className="group relative"
-              onClick={() => {
-                handlePopUpOpen("modifyRole");
-              }}
-              isDisabled={!isAllowed}
-            >
-              <FontAwesomeIcon icon={faPencil} />
-            </IconButton>
-          )}
-        </ProjectPermissionCan>
-      </div>
-      <div className="py-4">
-        <TableContainer>
-          <Table>
-            <THead>
-              <Tr>
-                <Th>Role</Th>
-                <Th>Duration</Th>
-                <Th className="w-5" />
-              </Tr>
-            </THead>
-            <TBody>
-              {isMembershipDetailsLoading && (
-                <TableSkeleton columns={3} innerKey="user-project-identities" />
-              )}
-              {!isMembershipDetailsLoading &&
-                identityMembershipDetails?.roles?.map((roleDetails) => {
-                  const isTemporary = roleDetails?.isTemporary;
-                  const isExpired =
-                    roleDetails.isTemporary &&
-                    new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
-
-                  let text = "Permanent";
-                  let toolTipText = "Non-Expiring Access";
-                  if (roleDetails.isTemporary) {
-                    if (isExpired) {
-                      text = "Access Expired";
-                      toolTipText = "Timed Access Expired";
-                    } else {
-                      text = formatDistance(
-                        new Date(roleDetails.temporaryAccessEndTime || ""),
-                        new Date()
-                      );
-                      toolTipText = `Until ${format(
-                        new Date(roleDetails.temporaryAccessEndTime || ""),
-                        "yyyy-MM-dd hh:mm:ss aaa"
-                      )}`;
-                    }
-                  }
-
-                  return (
-                    <Tr className="group h-10" key={`user-project-identity-${roleDetails?.id}`}>
-                      <Td className="capitalize">
-                        {roleDetails.role === "custom"
-                          ? roleDetails.customRoleName
-                          : formatProjectRoleName(roleDetails.role)}
-                      </Td>
-                      <Td>
-                        <Tooltip asChild={false} content={toolTipText}>
-                          <Tag
-                            className={twMerge(
-                              "capitalize",
-                              isTemporary && "text-primary",
-                              isExpired && "text-red-600"
-                            )}
-                          >
-                            {text}
-                          </Tag>
-                        </Tooltip>
-                      </Td>
-                      <Td>
-                        <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                          <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={subject(ProjectPermissionSub.Identity, {
-                              identityId: identityMembershipDetails.identity.id
-                            })}
-                            renderTooltip
-                            allowedLabel="Remove Role"
-                          >
-                            {(isAllowed) => (
-                              <IconButton
-                                colorSchema="danger"
-                                ariaLabel="copy icon"
-                                variant="plain"
-                                className="group relative"
-                                isDisabled={!isAllowed}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handlePopUpOpen("deleteRole", {
-                                    id: roleDetails?.id,
-                                    slug: roleDetails?.customRoleName || roleDetails?.role
-                                  });
-                                }}
-                              >
-                                <FontAwesomeIcon icon={faTrash} />
-                              </IconButton>
-                            )}
-                          </ProjectPermissionCan>
-                        </div>
-                      </Td>
-                    </Tr>
-                  );
+    <>
+      <UnstableCard>
+        <UnstableCardHeader className="border-b">
+          <UnstableCardTitle>Project Roles</UnstableCardTitle>
+          <UnstableCardDescription>
+            Manage roles assigned to this machine identity
+          </UnstableCardDescription>
+          {hasRoles && (
+            <UnstableCardAction>
+              <ProjectPermissionCan
+                I={ProjectPermissionActions.Edit}
+                a={subject(ProjectPermissionSub.Identity, {
+                  identityId: identityMembershipDetails.identity.id
                 })}
-            </TBody>
-          </Table>
-          {!isMembershipDetailsLoading && !identityMembershipDetails?.roles?.length && (
-            <EmptyState title="This user has no roles" icon={faFolder} />
+              >
+                {(isAllowed) => (
+                  <UnstableButton
+                    size="xs"
+                    variant="project"
+                    onClick={() => {
+                      handlePopUpOpen("modifyRole");
+                    }}
+                    isDisabled={!isAllowed}
+                  >
+                    <PencilIcon />
+                    Edit Roles
+                  </UnstableButton>
+                )}
+              </ProjectPermissionCan>
+            </UnstableCardAction>
           )}
-        </TableContainer>
-      </div>
+        </UnstableCardHeader>
+        <UnstableCardContent>
+          {
+            /* eslint-disable-next-line no-nested-ternary */
+            isMembershipDetailsLoading ? (
+              // scott: todo proper loader
+              <div className="flex h-40 w-full items-center justify-center">
+                <Lottie icon="infisical_loading_white" isAutoPlay className="w-16" />
+              </div>
+            ) : hasRoles ? (
+              <UnstableTable>
+                <UnstableTableHeader>
+                  <UnstableTableRow>
+                    <UnstableTableHead className="w-1/2">Role</UnstableTableHead>
+                    <UnstableTableHead className="w-1/2">Duration</UnstableTableHead>
+                    <UnstableTableHead className="w-5" />
+                  </UnstableTableRow>
+                </UnstableTableHeader>
+                <UnstableTableBody>
+                  {identityMembershipDetails?.roles?.map((roleDetails) => {
+                    const isTemporary = roleDetails?.isTemporary;
+                    const isExpired =
+                      roleDetails.isTemporary &&
+                      new Date() > new Date(roleDetails.temporaryAccessEndTime || "");
+
+                    let text = "Permanent";
+                    let toolTipText = "Non-Expiring Access";
+                    if (roleDetails.isTemporary) {
+                      if (isExpired) {
+                        text = "Access Expired";
+                        toolTipText = "Timed Access Expired";
+                      } else {
+                        text = formatDistance(
+                          new Date(roleDetails.temporaryAccessEndTime || ""),
+                          new Date()
+                        );
+                        toolTipText = `Until ${format(
+                          new Date(roleDetails.temporaryAccessEndTime || ""),
+                          "yyyy-MM-dd hh:mm:ss aaa"
+                        )}`;
+                      }
+                    }
+
+                    return (
+                      <UnstableTableRow
+                        className="group h-10"
+                        key={`user-project-identity-${roleDetails?.id}`}
+                      >
+                        <UnstableTableCell className="max-w-0 truncate">
+                          {roleDetails.role === "custom"
+                            ? roleDetails.customRoleName
+                            : formatProjectRoleName(roleDetails.role)}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          {isTemporary ? (
+                            <Tooltip content={toolTipText}>
+                              <Badge
+                                className="capitalize"
+                                variant={isExpired ? "danger" : "warning"}
+                              >
+                                {isExpired ? <ClockAlertIcon /> : <ClockIcon />}
+                                {text}
+                              </Badge>
+                            </Tooltip>
+                          ) : (
+                            text
+                          )}
+                        </UnstableTableCell>
+                        <UnstableTableCell>
+                          <UnstableDropdownMenu>
+                            <UnstableDropdownMenuTrigger asChild>
+                              <UnstableIconButton size="xs" variant="ghost">
+                                <EllipsisIcon />
+                              </UnstableIconButton>
+                            </UnstableDropdownMenuTrigger>
+                            <UnstableDropdownMenuContent align="end">
+                              <ProjectPermissionCan
+                                I={ProjectPermissionActions.Edit}
+                                a={subject(ProjectPermissionSub.Identity, {
+                                  identityId: identityMembershipDetails.identity.id
+                                })}
+                                renderTooltip
+                                allowedLabel="Remove Role"
+                              >
+                                {(isAllowed) => (
+                                  <UnstableDropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePopUpOpen("deleteRole", {
+                                        id: roleDetails?.id,
+                                        slug: roleDetails?.customRoleName || roleDetails?.role
+                                      });
+                                    }}
+                                    isDisabled={!isAllowed}
+                                    variant="danger"
+                                  >
+                                    {/* <TrashIcon /> */}
+                                    Remove Role
+                                  </UnstableDropdownMenuItem>
+                                )}
+                              </ProjectPermissionCan>
+                            </UnstableDropdownMenuContent>
+                          </UnstableDropdownMenu>
+                        </UnstableTableCell>
+                      </UnstableTableRow>
+                    );
+                  })}
+                </UnstableTableBody>
+              </UnstableTable>
+            ) : (
+              <UnstableEmpty className="border">
+                <UnstableEmptyHeader>
+                  <UnstableEmptyTitle>
+                    This machine identity doesn&nbsp;t have any roles
+                  </UnstableEmptyTitle>
+                  <UnstableEmptyDescription>
+                    Give this machine identity one or more roles
+                  </UnstableEmptyDescription>
+                </UnstableEmptyHeader>
+                <UnstableEmptyContent>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionActions.Edit}
+                    a={subject(ProjectPermissionSub.Identity, {
+                      identityId: identityMembershipDetails.identity.id
+                    })}
+                  >
+                    {(isAllowed) => (
+                      <UnstableButton
+                        variant="project"
+                        size="xs"
+                        onClick={() => {
+                          handlePopUpOpen("modifyRole");
+                        }}
+                        isDisabled={!isAllowed}
+                      >
+                        <PencilIcon />
+                        Edit Roles
+                      </UnstableButton>
+                    )}
+                  </ProjectPermissionCan>
+                </UnstableEmptyContent>
+              </UnstableEmpty>
+            )
+          }
+        </UnstableCardContent>
+      </UnstableCard>
       <DeleteActionModal
         isOpen={popUp.deleteRole.isOpen}
         deleteKey="remove"
@@ -228,6 +289,6 @@ export const IdentityRoleDetailsSection = ({
           <IdentityRoleModify identityProjectMembership={identityMembershipDetails} />
         </ModalContent>
       </Modal>
-    </div>
+    </>
   );
 };
