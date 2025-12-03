@@ -2301,6 +2301,7 @@ export const registerRoutes = async (
     certificateProfileDAL,
     certificateBodyDAL,
     certificateSecretDAL,
+    certificateTemplateV2DAL,
     acmeAccountDAL,
     acmeOrderDAL,
     acmeAuthDAL,
@@ -2310,6 +2311,7 @@ export const registerRoutes = async (
     kmsService,
     licenseService,
     certificateV3Service,
+    certificateTemplateV2Service,
     acmeChallengeService,
     pkiAcmeQueueService
   });
