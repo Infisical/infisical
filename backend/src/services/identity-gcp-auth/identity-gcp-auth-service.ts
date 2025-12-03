@@ -72,26 +72,23 @@ export const identityGcpAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
-    const isSubOrg = Boolean(org.rootOrgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
 
-    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    // Resolve sub-organization if specified
-    let scopeOrgId = rootOrgId;
     if (subOrganizationName) {
-      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+      if (!isSubOrgIdentity) {
+        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
 
-      if (subOrg) {
-        if (subOrg.rootOrgId === rootOrgId) {
-          // Verify identity has membership in the sub-organization
+        if (subOrg) {
           const subOrgMembership = await membershipIdentityDAL.findOne({
             scope: AccessScope.Organization,
             actorIdentityId: identity.id,
             scopeOrgId: subOrg.id
           });
-
           if (subOrgMembership) {
-            scopeOrgId = subOrg.id;
+            subOrganizationId = subOrg.id;
           }
         }
       }
@@ -192,7 +189,7 @@ export const identityGcpAuthServiceFactory = ({
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
             authMethod: IdentityAuthMethod.GCP_AUTH,
-            scopeOrgId
+            subOrganizationId
           },
           tx
         );

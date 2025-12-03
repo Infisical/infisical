@@ -206,7 +206,7 @@ export const identityAccessTokenServiceFactory = ({
       });
     }
 
-    const scopeOrgId = identityAccessToken.scopeOrgId || identityAccessToken.identityOrgId;
+    const scopeOrgId = identityAccessToken.subOrganizationId || identityAccessToken.identityOrgId;
 
     const identityOrgDetails = await orgDAL.findOne({ id: scopeOrgId });
 

@@ -76,30 +76,28 @@ export const identityOciAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
-    const isSubOrg = Boolean(org.rootOrgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
 
-    const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    // Resolve sub-organization if specified
-    let scopeOrgId = rootOrgId;
     if (subOrganizationName) {
-      const subOrg = await orgDAL.findOne({ slug: subOrganizationName });
+      if (!isSubOrgIdentity) {
+        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
 
-      if (subOrg) {
-        if (subOrg.rootOrgId === rootOrgId) {
-          // Verify identity has membership in the sub-organization
+        if (subOrg) {
           const subOrgMembership = await membershipIdentityDAL.findOne({
             scope: AccessScope.Organization,
             actorIdentityId: identity.id,
             scopeOrgId: subOrg.id
           });
-
           if (subOrgMembership) {
-            scopeOrgId = subOrg.id;
+            subOrganizationId = subOrg.id;
           }
         }
       }
     }
+
     try {
       // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
       if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -162,7 +160,7 @@ export const identityOciAuthServiceFactory = ({
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
             authMethod: IdentityAuthMethod.OCI_AUTH,
-            scopeOrgId
+            subOrganizationId
           },
           tx
         );

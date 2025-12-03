@@ -23,7 +23,7 @@ export const IdentityAccessTokensSchema = z.object({
   name: z.string().nullable().optional(),
   authMethod: z.string(),
   accessTokenPeriod: z.coerce.number().default(0),
-  scopeOrgId: z.string().uuid().nullable().optional()
+  subOrganizationId: z.string().uuid().nullable().optional()
 });
 
 export type TIdentityAccessTokens = z.infer<typeof IdentityAccessTokensSchema>;
