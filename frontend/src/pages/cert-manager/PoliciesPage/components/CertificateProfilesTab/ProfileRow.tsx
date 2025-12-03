@@ -105,8 +105,8 @@ export const ProfileRow = ({
             : profile.certificateAuthority?.isExternal
               ? profile.certificateAuthority.name
               : caData?.configuration.friendlyName ||
-              caData?.configuration.commonName ||
-              profile.caId}
+                caData?.configuration.commonName ||
+                profile.caId}
         </span>
       </Td>
       <Td>

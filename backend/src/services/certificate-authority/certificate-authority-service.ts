@@ -723,7 +723,7 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
 
