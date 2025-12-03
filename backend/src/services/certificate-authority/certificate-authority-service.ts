@@ -1,8 +1,11 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ProjectPermissionActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -137,8 +140,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Create,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name })
     );
 
     if (type === CaType.INTERNAL) {
@@ -207,8 +210,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
     );
 
     if (type === CaType.INTERNAL) {
@@ -222,6 +225,7 @@ export const certificateAuthorityServiceFactory = ({
         id: certificateAuthority.id,
         type,
         enableDirectIssuance: certificateAuthority.enableDirectIssuance,
+        subject: ProjectPermissionSub.CertificateAuthorities,
         name: certificateAuthority.name,
         projectId: certificateAuthority.projectId,
         configuration: certificateAuthority.internalCa,
@@ -270,8 +274,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: caName })
     );
 
     if (type === CaType.INTERNAL) {
@@ -323,8 +327,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: "*" })
     );
 
     if (type === CaType.INTERNAL) {
@@ -378,8 +382,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
     );
 
     if (type === CaType.INTERNAL) {
@@ -454,8 +458,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Delete,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
     );
 
     if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
@@ -519,8 +523,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Edit,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
     );
 
     if (type === CaType.INTERNAL) {
@@ -601,8 +605,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Delete,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: certificateAuthority.name })
     );
 
     if (!certificateAuthority.internalCa?.id && type === CaType.INTERNAL) {
@@ -657,6 +661,13 @@ export const certificateAuthorityServiceFactory = ({
     actorAuthMethod: OrgServiceActor["authMethod"];
     actorOrgId?: string;
   }) => {
+    const certificateAuthority = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+
+    if (!certificateAuthority)
+      throw new NotFoundError({
+        message: `Could not find certificate authority with id "${caId}"`
+      });
+
     const { permission } = await permissionService.getProjectPermission({
       actor,
       actorId,
@@ -667,8 +678,10 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, {
+        name: certificateAuthority.name
+      })
     );
 
     return azureAdCsFns.getTemplates({

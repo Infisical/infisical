@@ -7,6 +7,7 @@ import { IconButton } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({
@@ -34,8 +35,12 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
     syncOptions: { canRemoveCertificates }
   } = pkiSync;
 
+  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
+
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: pkiSync.subscriberId || ""
+    subscriberId: pkiSync.subscriberId || "",
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (

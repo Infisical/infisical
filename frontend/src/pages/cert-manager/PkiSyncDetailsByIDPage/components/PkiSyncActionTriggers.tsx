@@ -112,7 +112,9 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   }, [updatePkiSyncMutation, id, projectId, pkiSync.isAutoSyncEnabled]);
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberId: subscriberId || "",
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import {
   faBan,
   faCertificate,
@@ -268,7 +269,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                       <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateActions.Read}
-                          a={ProjectPermissionSub.Certificates}
+                          a={subject(ProjectPermissionSub.Certificates, {
+                            commonName: certificate.commonName,
+                            altNames: certificate.altNames,
+                            serialNumber: certificate.serialNumber,
+                            friendlyName: certificate.friendlyName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
@@ -291,7 +297,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {isLegacyTemplatesEnabled && (
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateActions.Read}
-                            a={ProjectPermissionSub.Certificates}
+                            a={subject(ProjectPermissionSub.Certificates, {
+                              commonName: certificate.commonName,
+                              altNames: certificate.altNames,
+                              serialNumber: certificate.serialNumber,
+                              friendlyName: certificate.friendlyName
+                            })}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -327,7 +338,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => {
                                 return (
@@ -391,7 +407,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -428,7 +449,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -456,7 +482,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           !certificate.renewedByCertificateId && (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -492,7 +523,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Delete}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -516,7 +552,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         })()}
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateActions.Delete}
-                          a={ProjectPermissionSub.Certificates}
+                          a={subject(ProjectPermissionSub.Certificates, {
+                            commonName: certificate.commonName,
+                            altNames: certificate.altNames,
+                            serialNumber: certificate.serialNumber,
+                            friendlyName: certificate.friendlyName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem

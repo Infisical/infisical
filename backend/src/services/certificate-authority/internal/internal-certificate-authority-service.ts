@@ -7,8 +7,8 @@ import { Knex } from "knex";
 import { ActionProjectType, TableName, TCertificateAuthorities, TCertificateTemplates } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
@@ -173,8 +173,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Create,
-        ProjectPermissionSub.CertificateAuthorities
+        ProjectPermissionCertificateAuthorityActions.Create,
+        subject(ProjectPermissionSub.CertificateAuthorities, { name: commonName })
       );
     } else {
       projectId = dto.projectId;
@@ -356,8 +356,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     return expandInternalCa(ca);
@@ -382,8 +382,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionActions.Edit,
-        ProjectPermissionSub.CertificateAuthorities
+        ProjectPermissionCertificateAuthorityActions.Edit,
+        subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
       );
     }
 
@@ -415,8 +415,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Delete,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Delete,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     await certificateAuthorityDAL.deleteById(ca.id);
@@ -441,8 +441,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Create,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     if (ca.internalCa.type === InternalCaType.ROOT)
@@ -505,8 +505,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Renew,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
@@ -792,8 +792,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     const caCertChains = await getCaCertChains({
@@ -829,8 +829,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Read,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     const { caCert, caCertChain, serialNumber } = await getCaCertChain({
@@ -910,8 +910,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.SignIntermediate,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     if (ca.status === CaStatus.DISABLED) throw new BadRequestError({ message: "CA is disabled" });
@@ -1058,8 +1058,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Create,
-      ProjectPermissionSub.CertificateAuthorities
+      ProjectPermissionCertificateAuthorityActions.Create,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
     );
 
     if (ca.internalCa.parentCaId) {

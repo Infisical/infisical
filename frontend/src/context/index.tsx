@@ -15,6 +15,7 @@ export {
   ProjectPermissionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionDynamicSecretActions,

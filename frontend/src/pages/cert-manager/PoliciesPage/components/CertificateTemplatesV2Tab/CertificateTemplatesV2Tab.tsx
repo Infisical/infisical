@@ -3,8 +3,8 @@ import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
-import { useProjectPermission } from "@app/context";
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
@@ -16,8 +16,6 @@ import { CreateTemplateModal } from "./CreateTemplateModal";
 import { TemplateList } from "./TemplateList";
 
 export const CertificateTemplatesV2Tab = () => {
-  const { permission } = useProjectPermission();
-
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -25,11 +23,6 @@ export const CertificateTemplatesV2Tab = () => {
     useState<TCertificateTemplateV2WithPolicies | null>(null);
 
   const deleteTemplateV2 = useDeleteCertificateTemplateV2WithPolicies();
-
-  const canCreateTemplate = permission.can(
-    ProjectPermissionPkiTemplateActions.Create,
-    ProjectPermissionSub.CertificateTemplates
-  );
 
   const handleCreateTemplate = () => {
     setIsCreateModalOpen(true);
@@ -70,16 +63,22 @@ export const CertificateTemplatesV2Tab = () => {
           </p>
         </div>
 
-        {canCreateTemplate && (
-          <Button
-            colorSchema="primary"
-            type="button"
-            leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={handleCreateTemplate}
-          >
-            Create Template
-          </Button>
-        )}
+        <ProjectPermissionCan
+          I={ProjectPermissionPkiTemplateActions.Create}
+          a={ProjectPermissionSub.CertificateTemplates}
+        >
+          {(isAllowed) => (
+            <Button
+              isDisabled={!isAllowed}
+              colorSchema="primary"
+              type="button"
+              leftIcon={<FontAwesomeIcon icon={faPlus} />}
+              onClick={handleCreateTemplate}
+            >
+              Create Template
+            </Button>
+          )}
+        </ProjectPermissionCan>
       </div>
 
       <TemplateList onEditTemplate={handleEditTemplate} onDeleteTemplate={handleDeleteTemplate} />

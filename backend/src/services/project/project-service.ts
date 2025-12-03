@@ -20,6 +20,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
@@ -911,7 +912,7 @@ export const projectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionCertificateAuthorityActions.List,
       ProjectPermissionSub.CertificateAuthorities
     );
 
@@ -959,7 +960,7 @@ export const projectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionCertificateActions.List,
       ProjectPermissionSub.Certificates
     );
 

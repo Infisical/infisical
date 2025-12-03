@@ -55,7 +55,9 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
   }
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberId: subscriberId || "",
+    subscriberName: destinationDetails.name,
+    name: pkiSync.name
   });
 
   return (

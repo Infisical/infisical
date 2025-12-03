@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
@@ -155,7 +155,9 @@ const validateProfileAndPermissions = async (
 
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionCertificateProfileActions.IssueCert,
-    ProjectPermissionSub.CertificateProfiles
+    subject(ProjectPermissionSub.CertificateProfiles, {
+      slug: profile.slug
+    })
   );
 
   return profile;
@@ -1275,7 +1277,7 @@ export const certificateV3ServiceFactory = ({
 
         ForbiddenError.from(permission).throwUnlessCan(
           ProjectPermissionCertificateProfileActions.IssueCert,
-          ProjectPermissionSub.CertificateProfiles
+          subject(ProjectPermissionSub.CertificateProfiles, { slug: profile?.slug || "*" })
         );
       }
 
@@ -1568,7 +1570,11 @@ export const certificateV3ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames ?? undefined,
+        serialNumber: certificate.serialNumber
+      })
     );
 
     if (!certificate.profileId) {
@@ -1671,7 +1677,11 @@ export const certificateV3ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames ?? undefined,
+        serialNumber: certificate.serialNumber
+      })
     );
 
     if (!certificate.profileId) {

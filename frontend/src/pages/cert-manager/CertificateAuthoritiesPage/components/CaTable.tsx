@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import { faBan, faCertificate, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useNavigate } from "@tanstack/react-router";
@@ -23,10 +24,11 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import {
-  ProjectPermissionActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub,
   useOrganization,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
@@ -53,6 +55,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentProject.id);
   const cas = data as TInternalCertificateAuthority[];
 
@@ -75,11 +78,24 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
               cas &&
               cas.length > 0 &&
               cas.map((ca) => {
+                const canReadCa = permission.can(
+                  ProjectPermissionCertificateAuthorityActions.Read,
+                  subject(ProjectPermissionSub.CertificateAuthorities, {
+                    caId: ca.id,
+                    name: ca.name
+                  })
+                );
+
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className={twMerge(
+                      "h-10 transition-colors duration-100",
+                      canReadCa && "cursor-pointer hover:bg-mineshaft-700",
+                      !canReadCa && "cursor-not-allowed opacity-60"
+                    )}
                     key={`ca-${ca.id}`}
                     onClick={() =>
+                      canReadCa &&
                       navigate({
                         to: "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
                         params: {
@@ -118,8 +134,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                         <DropdownMenuContent align="start" className="p-1">
                           {ca.status === CaStatus.PENDING_CERTIFICATE && (
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Create}
-                              a={ProjectPermissionSub.CertificateAuthorities}
+                              I={ProjectPermissionCertificateAuthorityActions.Create}
+                              a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                                caId: ca.id,
+                                name: ca.name
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -143,8 +162,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                           )}
                           {ca.status !== CaStatus.PENDING_CERTIFICATE && (
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Read}
-                              a={ProjectPermissionSub.CertificateAuthorities}
+                              I={ProjectPermissionCertificateAuthorityActions.Read}
+                              a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                                caId: ca.id,
+                                name: ca.name
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -168,8 +190,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                           )}
                           {(ca.status === CaStatus.ACTIVE || ca.status === CaStatus.DISABLED) && (
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
-                              a={ProjectPermissionSub.CertificateAuthorities}
+                              I={ProjectPermissionCertificateAuthorityActions.Edit}
+                              a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                                caId: ca.id,
+                                name: ca.name
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -196,8 +221,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                             </ProjectPermissionCan>
                           )}
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
-                            a={ProjectPermissionSub.CertificateAuthorities}
+                            I={ProjectPermissionCertificateAuthorityActions.Delete}
+                            a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                              caId: ca.id,
+                              name: ca.name
+                            })}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem

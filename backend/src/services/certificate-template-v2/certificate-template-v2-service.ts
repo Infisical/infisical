@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import slugify from "@sindresorhus/slugify";
 import RE2 from "re2";
 
@@ -77,12 +77,12 @@ export const certificateTemplateV2ServiceFactory = ({
   };
 
   const validateSubjectAttributePolicy = (
-    subject: Array<{ type: string; allowed?: string[]; required?: string[]; denied?: string[] }>
+    subjectAttributes: Array<{ type: string; allowed?: string[]; required?: string[]; denied?: string[] }>
   ) => {
-    if (!subject || subject.length === 0) return;
+    if (!subjectAttributes || subjectAttributes.length === 0) return;
 
     // Validate each subject attribute policy
-    for (const attr of subject) {
+    for (const attr of subjectAttributes) {
       // Ensure at least one field is provided
       if (!attr.allowed && !attr.required && !attr.denied) {
         throw new ForbiddenRequestError({
@@ -634,7 +634,9 @@ export const certificateTemplateV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiTemplateActions.Create,
-      ProjectPermissionSub.CertificateTemplates
+      subject(ProjectPermissionSub.CertificateTemplates, {
+        name: data.name
+      })
     );
 
     if (!data) {
@@ -711,7 +713,9 @@ export const certificateTemplateV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiTemplateActions.Edit,
-      ProjectPermissionSub.CertificateTemplates
+      subject(ProjectPermissionSub.CertificateTemplates, {
+        name: existingTemplate.name
+      })
     );
 
     const consolidatedData = {
@@ -784,7 +788,9 @@ export const certificateTemplateV2ServiceFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionPkiTemplateActions.Read,
-        ProjectPermissionSub.CertificateTemplates
+        subject(ProjectPermissionSub.CertificateTemplates, {
+          name: template.name
+        })
       );
     }
 
@@ -815,16 +821,17 @@ export const certificateTemplateV2ServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPkiTemplateActions.Read,
-      ProjectPermissionSub.CertificateTemplates
-    );
-
     const template = await certificateTemplateV2DAL.findByNameAndProjectId(slug, projectId);
     if (!template) {
       throw new NotFoundError({ message: "Certificate template not found" });
     }
 
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionPkiTemplateActions.Read,
+      subject(ProjectPermissionSub.CertificateTemplates, {
+        name: template.name
+      })
+    );
     return template;
   };
 
@@ -907,7 +914,9 @@ export const certificateTemplateV2ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionPkiTemplateActions.Delete,
-      ProjectPermissionSub.CertificateTemplates
+      subject(ProjectPermissionSub.CertificateTemplates, {
+        name: template.name
+      })
     );
 
     const isInUse = await certificateTemplateV2DAL.isTemplateInUse(templateId);

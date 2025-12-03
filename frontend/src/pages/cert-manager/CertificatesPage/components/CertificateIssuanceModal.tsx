@@ -321,13 +321,13 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
   const getModalTitle = () => {
     if (certificateDetails) return "Certificate Created Successfully";
     if (cert) return "Certificate Details";
-    return "Issue New Certificate";
+    return "Request New Certificate";
   };
 
   const getModalSubTitle = () => {
     if (certificateDetails) return "Certificate has been successfully created and is ready for use";
     if (cert) return "View certificate information";
-    return "Issue a new certificate using a certificate profile";
+    return "Request a new certificate using a certificate profile";
   };
 
   return (
@@ -498,7 +498,7 @@ export const CertificateIssuanceModal = ({ popUp, handlePopUpToggle, profileId }
                 isLoading={isSubmitting}
                 isDisabled={isSubmitting || (!actualSelectedProfile && !profileId)}
               >
-                {cert ? "Update" : "Issue Certificate"}
+                {cert ? "Update" : "Request Certificate"}
               </Button>
               <Button
                 colorSchema="secondary"

@@ -9,6 +9,7 @@ import { IconButton, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -26,8 +27,12 @@ type Props = {
 export const PkiSyncSourceSection = ({ pkiSync, onEditSource }: Props) => {
   const { subscriberId, subscriber } = pkiSync;
 
+  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
+
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberId: subscriberId || "",
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (

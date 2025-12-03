@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { subject } from "@casl/ability";
 import {
   faCheck,
   faCircleInfo,
@@ -12,6 +13,7 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,9 +24,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useProjectPermission } from "@app/context";
 import {
-  ProjectPermissionActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
@@ -47,8 +47,6 @@ export const ProfileRow = ({
   onRevealProfileAcmeEabSecret,
   onDeleteProfile
 }: Props) => {
-  const { permission } = useProjectPermission();
-
   const { data: caData } = useGetInternalCaById(profile.caId ?? "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
@@ -70,26 +68,6 @@ export const ProfileRow = ({
   const { data: templateData } = useGetCertificateTemplateV2ById({
     templateId: profile.certificateTemplateId
   });
-
-  const canEditProfile = permission.can(
-    ProjectPermissionActions.Edit,
-    ProjectPermissionSub.CertificateAuthorities
-  );
-
-  const canRevealProfileAcmeEabSecret = permission.can(
-    ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
-    ProjectPermissionSub.CertificateProfiles
-  );
-
-  const canIssueCertificate = permission.can(
-    ProjectPermissionCertificateProfileActions.IssueCert,
-    ProjectPermissionSub.CertificateProfiles
-  );
-
-  const canDeleteProfile = permission.can(
-    ProjectPermissionActions.Delete,
-    ProjectPermissionSub.CertificateAuthorities
-  );
 
   const getEnrollmentTypeBadge = (enrollmentType: string) => {
     const config = {
@@ -149,50 +127,82 @@ export const ProfileRow = ({
             >
               Copy Profile ID
             </DropdownMenuItem>
-            {canEditProfile && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEditProfile(profile);
-                }}
-                icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateProfileActions.Edit}
+              a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
+            >
+              {(isAllowed) =>
+                isAllowed && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEditProfile(profile);
+                    }}
+                    icon={<FontAwesomeIcon icon={faEdit} className="w-3" />}
+                  >
+                    Edit Profile
+                  </DropdownMenuItem>
+                )
+              }
+            </ProjectPermissionCan>
+            {profile.enrollmentType === "acme" && (
+              <ProjectPermissionCan
+                I={ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret}
+                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
               >
-                Edit Profile
-              </DropdownMenuItem>
+                {(isAllowed) =>
+                  isAllowed && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRevealProfileAcmeEabSecret(profile);
+                      }}
+                      icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
+                    >
+                      Reveal ACME EAB
+                    </DropdownMenuItem>
+                  )
+                }
+              </ProjectPermissionCan>
             )}
-            {canRevealProfileAcmeEabSecret && profile.enrollmentType === "acme" && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRevealProfileAcmeEabSecret(profile);
-                }}
-                icon={<FontAwesomeIcon icon={faEye} className="w-3" />}
+            {profile.enrollmentType === "api" && (
+              <ProjectPermissionCan
+                I={ProjectPermissionCertificateProfileActions.IssueCert}
+                a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
               >
-                Reveal ACME EAB
-              </DropdownMenuItem>
+                {(isAllowed) =>
+                  isAllowed && (
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePopUpToggle("issueCertificate");
+                      }}
+                      icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
+                    >
+                      Request Certificate
+                    </DropdownMenuItem>
+                  )
+                }
+              </ProjectPermissionCan>
             )}
-            {canIssueCertificate && profile.enrollmentType === "api" && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePopUpToggle("issueCertificate");
-                }}
-                icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
-              >
-                Issue Certificate
-              </DropdownMenuItem>
-            )}
-            {canDeleteProfile && (
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteProfile(profile);
-                }}
-                icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
-              >
-                Delete Profile
-              </DropdownMenuItem>
-            )}
+            <ProjectPermissionCan
+              I={ProjectPermissionCertificateProfileActions.Delete}
+              a={subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })}
+            >
+              {(isAllowed) =>
+                isAllowed && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteProfile(profile);
+                    }}
+                    icon={<FontAwesomeIcon icon={faTrash} className="w-3" />}
+                  >
+                    Delete Profile
+                  </DropdownMenuItem>
+                )
+              }
+            </ProjectPermissionCan>
           </DropdownMenuContent>
         </DropdownMenu>
         <CertificateIssuanceModal

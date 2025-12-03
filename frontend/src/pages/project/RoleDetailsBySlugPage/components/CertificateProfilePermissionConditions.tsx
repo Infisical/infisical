@@ -7,13 +7,13 @@ type Props = {
   isDisabled?: boolean;
 };
 
-export const PkiSyncPermissionConditions = ({ position = 0, isDisabled }: Props) => {
+export const CertificateProfilePermissionConditions = ({ position = 0, isDisabled }: Props) => {
   return (
     <ConditionsFields
       isDisabled={isDisabled}
-      subject={ProjectPermissionSub.PkiSyncs}
+      subject={ProjectPermissionSub.CertificateProfiles}
       position={position}
-      selectOptions={[{ value: "name", label: "Sync Name" }]}
+      selectOptions={[{ value: "slug", label: "Name" }]}
     />
   );
 };
