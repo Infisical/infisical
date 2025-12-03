@@ -641,7 +641,7 @@ export const superAdminServiceFactory = ({
           accessTokenNumUsesLimit: tokenAuth.accessTokenNumUsesLimit,
           name: "Instance Admin Token",
           authMethod: IdentityAuthMethod.TOKEN_AUTH,
-          scopeOrgId: organization.id
+          subOrganizationId: organization.id
         },
         tx
       );
