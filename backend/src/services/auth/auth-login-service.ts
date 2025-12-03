@@ -557,7 +557,7 @@ export const authLoginServiceFactory = ({
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
-    let membershipRole;
+    const membershipRole = (await membershipRoleDAL.findOne({ membershipId: orgMembership.id })).role;
 
     if (isSubOrganization) {
       if (!selectedOrg.rootOrgId) {
@@ -579,19 +579,6 @@ export const authLoginServiceFactory = ({
           message: "User does not have access to the root organization"
         });
       }
-
-      membershipRole = (await membershipRoleDAL.findOne({ membershipId: orgMembership.id })).role;
-    } else {
-      // For root organizations, check membership using the existing method
-      const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
-      const selectedOrgMembership = userOrgs.find((org) => org.id === organizationId && org.userStatus !== "invited");
-
-      if (!selectedOrgMembership) {
-        throw new ForbiddenRequestError({
-          message: `User does not have access to the organization named ${selectedOrg.name}`
-        });
-      }
-      membershipRole = selectedOrgMembership.userRole;
     }
 
     if (
