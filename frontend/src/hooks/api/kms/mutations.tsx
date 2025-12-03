@@ -20,7 +20,7 @@ export const useAddExternalKms = (orgId: string) => {
       const { data } = await apiRequest.post(`/api/v1/external-kms/${providerPath}`, {
         name,
         description,
-        provider: provider.inputs
+        configuration: provider.inputs
       });
 
       return data;
@@ -46,7 +46,7 @@ export const useUpdateExternalKms = (orgId: string) => {
       const { data } = await apiRequest.patch(`/api/v1/external-kms/${providerPath}/${kmsId}`, {
         name,
         description,
-        provider: provider.inputs
+        configuration: provider.inputs
       });
 
       return data;

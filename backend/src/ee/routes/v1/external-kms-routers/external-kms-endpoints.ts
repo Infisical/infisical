@@ -9,6 +9,7 @@ import {
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -75,7 +76,9 @@ export const registerExternalKmsEndpoints = <
 
       // Validate that the KMS is of the expected provider type
       if (externalKms.external.provider !== provider) {
-        throw new Error(`KMS provider mismatch. Expected ${provider}, got ${externalKms.external.provider}`);
+        throw new BadRequestError({
+          message: `KMS provider mismatch. Expected ${provider}, got ${externalKms.external.provider}`
+        });
       }
 
       await server.services.auditLog.createAuditLog({
@@ -104,7 +107,7 @@ export const registerExternalKmsEndpoints = <
       body: z.object({
         name: z.string().min(1).trim().toLowerCase(),
         description: z.string().trim().optional(),
-        provider: createSchema
+        configuration: createSchema
       }),
       response: {
         200: z.object({
@@ -114,19 +117,15 @@ export const registerExternalKmsEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        name,
-        description,
-        provider: providerInputs
-      } = req.body as {
+      const { name, description, configuration } = req.body as {
         name: string;
         description?: string;
-        provider: T["inputs"];
+        configuration: T["inputs"];
       };
 
       const providerInput = {
         type: provider,
-        inputs: providerInputs
+        inputs: configuration
       } as TExternalKmsInputSchema;
 
       const externalKms = await server.services.externalKms.create({
@@ -170,7 +169,7 @@ export const registerExternalKmsEndpoints = <
       body: z.object({
         name: z.string().min(1).trim().toLowerCase().optional(),
         description: z.string().trim().optional(),
-        provider: updateSchema
+        configuration: updateSchema
       }),
       response: {
         200: z.object({
@@ -180,19 +179,15 @@ export const registerExternalKmsEndpoints = <
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
     handler: async (req) => {
-      const {
-        name,
-        description,
-        provider: providerInputs
-      } = req.body as {
+      const { name, description, configuration } = req.body as {
         name?: string;
         description?: string;
-        provider: Partial<T["inputs"]>;
+        configuration: Partial<T["inputs"]>;
       };
 
       const providerInput = {
         type: provider,
-        inputs: providerInputs
+        inputs: configuration
       } as TExternalKmsInputUpdateSchema;
 
       const externalKms = await server.services.externalKms.updateById({
@@ -252,7 +247,9 @@ export const registerExternalKmsEndpoints = <
 
       // Validate that the KMS is of the expected provider type
       if (externalKms.external.provider !== provider) {
-        throw new Error(`KMS provider mismatch. Expected ${provider}, got ${externalKms.external.provider}`);
+        throw new BadRequestError({
+          message: `KMS provider mismatch. Expected ${provider}, got ${externalKms.external.provider}`
+        });
       }
 
       await server.services.auditLog.createAuditLog({
