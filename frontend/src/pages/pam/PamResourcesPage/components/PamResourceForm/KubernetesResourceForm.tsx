@@ -17,8 +17,8 @@ type Props = {
 const KubernetesConnectionDetailsSchema = z.object({
   url: z.string().url().trim().max(500),
   namespace: z.string().trim().max(255),
-  skipTLSVerify: z.boolean(),
-  caCertificate: z.string().trim().max(10000).optional()
+  sslRejectUnauthorized: z.boolean(),
+  sslCertificate: z.string().trim().max(10000).optional()
 });
 
 const KubernetesServiceAccountTokenCredentialsSchema = z.object({
@@ -54,8 +54,8 @@ export const KubernetesResourceForm = ({ resource, onSubmit }: Props) => {
           connectionDetails: {
             url: "",
             namespace: "default",
-            skipTLSVerify: false,
-            caCertificate: undefined
+            sslRejectUnauthorized: true,
+            sslCertificate: undefined
           }
         }
   });
