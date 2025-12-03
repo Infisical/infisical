@@ -19,8 +19,9 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -66,6 +67,55 @@ const validateIssuerTypeConstraints = (
       });
     }
   }
+};
+
+const validateTemplateByExternalCaType = (
+  externalCaType: CaType | undefined,
+  externalConfigs: Record<string, unknown> | null | undefined
+) => {
+  if (!externalCaType) return;
+
+  switch (externalCaType) {
+    case CaType.AZURE_AD_CS:
+      if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
+        throw new ForbiddenRequestError({
+          message: "Azure ADCS Certificate Authority requires a template to be specified in external configs"
+        });
+      }
+      break;
+    default:
+      break;
+  }
+};
+
+const validateExternalConfigs = async (
+  externalConfigs: Record<string, unknown> | null | undefined,
+  caId: string | null,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">,
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">
+) => {
+  if (!externalConfigs) return;
+
+  if (!caId) {
+    throw new ForbiddenRequestError({
+      message: "External configs can only be specified when a Certificate Authority is selected"
+    });
+  }
+
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) {
+    throw new NotFoundError({ message: "Certificate Authority not found" });
+  }
+
+  const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
+
+  if (!externalCa) {
+    throw new ForbiddenRequestError({
+      message: "External configs can only be specified for external Certificate Authorities"
+    });
+  }
+
+  validateTemplateByExternalCaType(externalCa.type as CaType, externalConfigs);
 };
 
 const generateAndEncryptAcmeEabSecret = async (
@@ -180,7 +230,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -190,10 +240,22 @@ type TCertificateProfileServiceFactoryDep = {
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
 
 const convertDalToService = (dalResult: Record<string, unknown>): TCertificateProfile => {
+  let parsedExternalConfigs: Record<string, unknown> | null = null;
+  if (dalResult.externalConfigs && typeof dalResult.externalConfigs === "string") {
+    try {
+      parsedExternalConfigs = JSON.parse(dalResult.externalConfigs) as Record<string, unknown>;
+    } catch {
+      parsedExternalConfigs = null;
+    }
+  } else if (dalResult.externalConfigs && typeof dalResult.externalConfigs === "object") {
+    parsedExternalConfigs = dalResult.externalConfigs as Record<string, unknown>;
+  }
+
   return {
     ...dalResult,
     enrollmentType: dalResult.enrollmentType as EnrollmentType,
-    issuerType: dalResult.issuerType as IssuerType
+    issuerType: dalResult.issuerType as IssuerType,
+    externalConfigs: parsedExternalConfigs
   } as TCertificateProfile;
 };
 
@@ -205,6 +267,8 @@ export const certificateProfileServiceFactory = ({
   acmeEnrollmentConfigDAL,
   certificateBodyDAL,
   certificateSecretDAL,
+  certificateAuthorityDAL,
+  externalCertificateAuthorityDAL,
   permissionService,
   licenseService,
   kmsService,
@@ -271,6 +335,14 @@ export const certificateProfileServiceFactory = ({
     }
 
     validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
+
+    // Validate external configs
+    await validateExternalConfigs(
+      data.externalConfigs,
+      data.caId ?? null,
+      certificateAuthorityDAL,
+      externalCertificateAuthorityDAL
+    );
 
     // Validate enrollment configuration requirements
     if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
@@ -340,7 +412,8 @@ export const certificateProfileServiceFactory = ({
           projectId,
           estConfigId,
           apiConfigId,
-          acmeConfigId
+          acmeConfigId,
+          externalConfigs: data.externalConfigs
         },
         tx
       );
@@ -413,6 +486,16 @@ export const certificateProfileServiceFactory = ({
     const finalCaId = data.caId !== undefined ? data.caId : existingProfile.caId;
 
     validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
+
+    // Validate external configs only if they are provided in the update
+    if (data.externalConfigs !== undefined) {
+      await validateExternalConfigs(
+        data.externalConfigs,
+        finalCaId ?? null,
+        certificateAuthorityDAL,
+        externalCertificateAuthorityDAL
+      );
+    }
 
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
@@ -558,9 +641,24 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
+    // Parse externalConfigs from JSON string to object if it exists
+    let parsedExternalConfigs: Record<string, unknown> | null = null;
+    if (profile.externalConfigs && typeof profile.externalConfigs === "string") {
+      try {
+        parsedExternalConfigs = JSON.parse(profile.externalConfigs) as Record<string, unknown>;
+      } catch {
+        // If parsing fails, leave as null
+        parsedExternalConfigs = null;
+      }
+    } else if (profile.externalConfigs && typeof profile.externalConfigs === "object") {
+      // Already an object, use as-is
+      parsedExternalConfigs = profile.externalConfigs;
+    }
+
     return {
       ...profile,
-      enrollmentType: profile.enrollmentType as EnrollmentType
+      enrollmentType: profile.enrollmentType as EnrollmentType,
+      externalConfigs: parsedExternalConfigs
     };
   };
 
