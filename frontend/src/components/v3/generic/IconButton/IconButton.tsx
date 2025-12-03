@@ -5,7 +5,6 @@ import { cva, type VariantProps } from "cva";
 import { twMerge } from "tailwind-merge";
 
 import { Lottie } from "@app/components/v2";
-import { UnstableButton } from "@app/components/v3/generic";
 import { cn } from "@app/components/v3/utils";
 
 const iconButtonVariants = cva(
@@ -107,6 +106,6 @@ const UnstableIconButton = forwardRef<HTMLButtonElement, UnstableIconButtonProps
   }
 );
 
-UnstableButton.displayName = "IconButton";
+UnstableIconButton.displayName = "IconButton";
 
 export { iconButtonVariants, UnstableIconButton, type UnstableIconButtonProps };
