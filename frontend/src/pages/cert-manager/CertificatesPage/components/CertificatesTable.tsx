@@ -277,6 +277,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                               onClick={async () =>
                                 handlePopUpOpen("certificateExport", {
+                                  certificateId: certificate.id,
                                   serialNumber: certificate.serialNumber
                                 })
                               }
@@ -416,7 +417,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {/* Manual renewal action for profile-issued certificates that are not revoked/expired (including failed ones) */}
                         {(() => {
                           const canRenew =
-                            certificate.profileId &&
+                            (certificate.profileId || certificate.caId) &&
                             certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&
@@ -501,7 +502,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   )}
                                   onClick={async () =>
                                     handlePopUpOpen("revokeCertificate", {
-                                      serialNumber: certificate.serialNumber
+                                      certificateId: certificate.id
                                     })
                                   }
                                   disabled={!isAllowed}
@@ -524,7 +525,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                               onClick={async () =>
                                 handlePopUpOpen("deleteCertificate", {
-                                  serialNumber: certificate.serialNumber,
+                                  certificateId: certificate.id,
                                   commonName: certificate.commonName
                                 })
                               }

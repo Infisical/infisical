@@ -88,6 +88,11 @@ import {
   getDigitalOceanConnectionListItem,
   validateDigitalOceanConnectionCredentials
 } from "./digital-ocean";
+import { DNSMadeEasyConnectionMethod } from "./dns-made-easy/dns-made-easy-connection-enum";
+import {
+  getDNSMadeEasyConnectionListItem,
+  validateDNSMadeEasyConnectionCredentials
+} from "./dns-made-easy/dns-made-easy-connection-fns";
 import { FlyioConnectionMethod, getFlyioConnectionListItem, validateFlyioConnectionCredentials } from "./flyio";
 import { GcpConnectionMethod, getGcpConnectionListItem, validateGcpConnectionCredentials } from "./gcp";
 import { getGitHubConnectionListItem, GitHubConnectionMethod, validateGitHubConnectionCredentials } from "./github";
@@ -172,7 +177,8 @@ const PKI_APP_CONNECTIONS = [
   AppConnection.Cloudflare,
   AppConnection.AzureADCS,
   AppConnection.AzureKeyVault,
-  AppConnection.Chef
+  AppConnection.Chef,
+  AppConnection.DNSMadeEasy
 ];
 
 export const listAppConnectionOptions = (projectType?: ProjectType) => {
@@ -208,6 +214,7 @@ export const listAppConnectionOptions = (projectType?: ProjectType) => {
     getFlyioConnectionListItem(),
     getGitLabConnectionListItem(),
     getCloudflareConnectionListItem(),
+    getDNSMadeEasyConnectionListItem(),
     getZabbixConnectionListItem(),
     getRailwayConnectionListItem(),
     getBitbucketConnectionListItem(),
@@ -341,6 +348,7 @@ export const validateAppConnectionCredentials = async (
     [AppConnection.Flyio]: validateFlyioConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.GitLab]: validateGitLabConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Cloudflare]: validateCloudflareConnectionCredentials as TAppConnectionCredentialsValidator,
+    [AppConnection.DNSMadeEasy]: validateDNSMadeEasyConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Zabbix]: validateZabbixConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Railway]: validateRailwayConnectionCredentials as TAppConnectionCredentialsValidator,
     [AppConnection.Bitbucket]: validateBitbucketConnectionCredentials as TAppConnectionCredentialsValidator,
@@ -398,6 +406,8 @@ export const getAppConnectionMethodName = (method: TAppConnection["method"]) => 
     case OktaConnectionMethod.ApiToken:
     case LaravelForgeConnectionMethod.ApiToken:
       return "API Token";
+    case DNSMadeEasyConnectionMethod.APIKeySecret:
+      return "API Key & Secret";
     case PostgresConnectionMethod.UsernameAndPassword:
     case MsSqlConnectionMethod.UsernameAndPassword:
     case MySqlConnectionMethod.UsernameAndPassword:
@@ -487,6 +497,7 @@ export const TRANSITION_CONNECTION_CREDENTIALS_TO_PLATFORM: Record<
   [AppConnection.Flyio]: platformManagedCredentialsNotSupported,
   [AppConnection.GitLab]: platformManagedCredentialsNotSupported,
   [AppConnection.Cloudflare]: platformManagedCredentialsNotSupported,
+  [AppConnection.DNSMadeEasy]: platformManagedCredentialsNotSupported,
   [AppConnection.Zabbix]: platformManagedCredentialsNotSupported,
   [AppConnection.Railway]: platformManagedCredentialsNotSupported,
   [AppConnection.Bitbucket]: platformManagedCredentialsNotSupported,

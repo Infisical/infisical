@@ -87,14 +87,13 @@ def bootstrap_infisical(context: Context):
 
         ca_slug = faker.slug()
         resp = client.post(
-            "/api/v1/pki/ca/internal",
+            "/api/v1/cert-manager/ca/internal",
             headers=headers,
             json={
                 "projectId": project["id"],
                 "name": ca_slug,
                 "type": "internal",
                 "status": "active",
-                "enableDirectIssuance": True,
                 "configuration": {
                     "type": "root",
                     "organization": "Infisican Inc",
@@ -115,7 +114,7 @@ def bootstrap_infisical(context: Context):
 
         cert_template_slug = faker.slug()
         resp = client.post(
-            "/api/v2/certificate-templates",
+            "/api/v1/cert-manager/certificate-templates",
             headers=headers,
             json={
                 "projectId": project["id"],

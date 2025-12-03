@@ -26,7 +26,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
@@ -58,7 +58,7 @@ export const GcpSecretManagerConfigurePage = () => {
   const { popUp, handlePopUpOpen, handlePopUpToggle, handlePopUpClose } = usePopUp([
     "confirmIntegration"
   ] as const);
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -151,8 +151,9 @@ export const GcpSecretManagerConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

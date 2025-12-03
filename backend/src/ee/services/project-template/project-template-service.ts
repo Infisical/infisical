@@ -189,11 +189,15 @@ export const projectTemplateServiceFactory = ({
         message: `A project template with the name "${params.name}" already exists.`
       });
 
+    const projectTemplateEnvironments =
+      type === ProjectType.SecretManager && environments === undefined
+        ? ProjectTemplateDefaultEnvironments
+        : environments;
+
     const projectTemplate = await projectTemplateDAL.create({
       ...params,
       roles: JSON.stringify(roles.map((role) => ({ ...role, permissions: packRules(role.permissions) }))),
-      environments:
-        type === ProjectType.SecretManager ? JSON.stringify(environments ?? ProjectTemplateDefaultEnvironments) : null,
+      environments: JSON.stringify(projectTemplateEnvironments),
       orgId: actor.orgId,
       type
     });

@@ -8,7 +8,7 @@ import { CreatePkiSyncModal } from "@app/components/pki-syncs";
 import { Button, Spinner } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionSub, useOrganization, useProject } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp } from "@app/hooks";
 import { useListPkiSyncs } from "@app/hooks/api/pkiSyncs";
@@ -26,18 +26,19 @@ export const PkiSyncsTab = () => {
   const navigate = useNavigate();
 
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const memoizedSearch = useMemo(() => search, [search]);
 
   const navigateToBase = useCallback(() => {
     navigate({
       to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
       params: {
-        projectId: currentProject?.id
+        projectId: currentProject?.id,
+        orgId: currentOrg.id
       },
       search: memoizedSearch
     });
-  }, [navigate, currentProject?.id, memoizedSearch]);
+  }, [navigate, currentProject?.id, currentOrg.id, memoizedSearch]);
 
   useEffect(() => {
     if (!addSync) return;
@@ -59,7 +60,7 @@ export const PkiSyncsTab = () => {
           handlePopUpOpen("addSync", { destination: parsedData.destination, initialData });
           navigate({
             to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
-            params: { projectId: currentProject?.id },
+            params: { projectId: currentProject?.id, orgId: currentOrg.id },
             search: { selectedTab: IntegrationsListPageTabs.PkiSyncs },
             replace: true
           });
@@ -79,7 +80,8 @@ export const PkiSyncsTab = () => {
     connectionId,
     connectionName,
     navigate,
-    currentProject?.id
+    currentProject?.id,
+    currentOrg.id
   ]);
 
   const { data: pkiSyncs = [], isPending: isPkiSyncsPending } = useListPkiSyncs(

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { AppConnectionsPage } from "./AppConnectionsPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/organization/app-connections/"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/app-connections/"
 )({
   component: AppConnectionsPage,
   validateSearch: z.object({

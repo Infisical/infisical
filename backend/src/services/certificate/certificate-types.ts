@@ -84,20 +84,24 @@ export enum CrlReason {
 }
 
 export type TGetCertDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TDeleteCertDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TRevokeCertDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
   revocationReason: CrlReason;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertBodyDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TImportCertDTO = {
@@ -112,15 +116,18 @@ export type TImportCertDTO = {
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPrivateKeyDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertBundleDTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
 } & Omit<TProjectPermission, "projectId">;
 
 export type TGetCertPkcs12DTO = {
-  serialNumber: string;
+  id?: string;
+  serialNumber?: string;
   password: string;
   alias: string;
 } & Omit<TProjectPermission, "projectId">;

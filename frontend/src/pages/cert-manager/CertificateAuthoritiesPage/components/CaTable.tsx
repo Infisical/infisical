@@ -22,7 +22,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { CaStatus, CaType, useListCasByTypeAndProjectId } from "@app/hooks/api";
 import {
   caStatusToNameMap,
@@ -46,6 +51,7 @@ type Props = {
 
 export const CaTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListCasByTypeAndProjectId(CaType.INTERNAL, currentProject.id);
   const cas = data as TInternalCertificateAuthority[];
@@ -75,10 +81,11 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                     key={`ca-${ca.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/projects/cert-management/$projectId/ca/$caName",
+                        to: "/organizations/$orgId/projects/cert-management/$projectId/ca/$caId",
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
-                          caName: ca.name
+                          caId: ca.id
                         }
                       })
                     }
@@ -173,7 +180,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handlePopUpOpen("caStatus", {
-                                      caName: ca.name,
+                                      caId: ca.id,
                                       status:
                                         ca.status === CaStatus.ACTIVE
                                           ? CaStatus.DISABLED
@@ -200,7 +207,7 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handlePopUpOpen("deleteCa", {
-                                    caName: ca.name
+                                    caId: ca.id
                                   });
                                 }}
                                 disabled={!isAllowed}

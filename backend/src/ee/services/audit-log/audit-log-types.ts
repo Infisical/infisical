@@ -388,6 +388,9 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
+  CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
+  GET_CERTIFICATE_REQUEST = "get-certificate-request",
+  GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -2787,6 +2790,7 @@ interface CreateCertificateProfile {
     name: string;
     projectId: string;
     enrollmentType: string;
+    issuerType: string;
   };
 }
 
@@ -2845,7 +2849,6 @@ interface OrderCertificateFromProfile {
   type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
   metadata: {
     certificateProfileId: string;
-    orderId: string;
     profileName: string;
   };
 }
@@ -4195,6 +4198,31 @@ interface DisableCertificateRenewalConfigEvent {
   };
 }
 
+interface CreateCertificateRequestEvent {
+  type: EventType.CREATE_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    profileId?: string;
+    caId?: string;
+    commonName?: string;
+  };
+}
+
+interface GetCertificateRequestEvent {
+  type: EventType.GET_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+  };
+}
+
+interface GetCertificateFromRequestEvent {
+  type: EventType.GET_CERTIFICATE_FROM_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    certificateId?: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4574,6 +4602,9 @@ export type Event =
   | PamResourceDeleteEvent
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
+  | CreateCertificateRequestEvent
+  | GetCertificateRequestEvent
+  | GetCertificateFromRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent

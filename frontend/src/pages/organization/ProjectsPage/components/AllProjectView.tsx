@@ -30,7 +30,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { OrgPermissionActions, OrgPermissionSubjects } from "@app/context";
+import { OrgPermissionActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { OrgPermissionAdminConsoleAction } from "@app/context/OrgPermissionContext/types";
 import { getProjectHomePage, getProjectLottieIcon, getProjectTitle } from "@app/helpers/project";
 import {
@@ -62,6 +62,7 @@ export const AllProjectView = ({
   onProjectListViewChange
 }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const [searchFilter, setSearchFilter] = useState("");
   const [debouncedSearch] = useDebounce(searchFilter);
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType>();
@@ -100,7 +101,8 @@ export const AllProjectView = ({
   const handleAccessProject = async (
     type: ProjectType,
     projectId: string,
-    environments: ProjectEnv[]
+    environments: ProjectEnv[],
+    orgId: string
   ) => {
     await orgAdminAccessProject.mutateAsync({
       projectId
@@ -108,6 +110,7 @@ export const AllProjectView = ({
     await navigate({
       to: getProjectHomePage(type, environments),
       params: {
+        orgId,
         projectId
       }
     });
@@ -263,6 +266,7 @@ export const AllProjectView = ({
                   navigate({
                     to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
+                      orgId: currentOrg?.id || "",
                       projectId: workspace.id
                     }
                   });
@@ -273,6 +277,7 @@ export const AllProjectView = ({
                   navigate({
                     to: getProjectHomePage(workspace.type, workspace.environments),
                     params: {
+                      orgId: currentOrg?.id || "",
                       projectId: workspace.id
                     }
                   });
@@ -317,7 +322,12 @@ export const AllProjectView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           e.preventDefault();
-                          handleAccessProject(workspace.type, workspace.id, workspace.environments);
+                          handleAccessProject(
+                            workspace.type,
+                            workspace.id,
+                            workspace.environments,
+                            workspace.orgId
+                          );
                         }}
                         disabled={
                           orgAdminAccessProject.variables?.projectId === workspace.id &&

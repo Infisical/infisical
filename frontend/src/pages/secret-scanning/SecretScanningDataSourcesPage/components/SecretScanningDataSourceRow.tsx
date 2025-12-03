@@ -32,7 +32,7 @@ import {
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useOrganization } from "@app/context";
 import { ProjectPermissionSecretScanningDataSourceActions } from "@app/context/ProjectPermissionContext/types";
 import {
   RESOURCE_DESCRIPTION_HELPER,
@@ -74,7 +74,7 @@ export const SecretScanningDataSourceRow = ({
     lastScanStatusMessage,
     isDisconnected
   } = dataSource;
-
+  const { currentOrg } = useOrganization();
   const sourceDetails = SECRET_SCANNING_DATA_SOURCE_MAP[type];
 
   const [isIdCopied, setIsIdCopied] = useToggle(false);
@@ -102,6 +102,7 @@ export const SecretScanningDataSourceRow = ({
         navigate({
           to: ROUTE_PATHS.SecretScanning.DataSourceByIdPage.path,
           params: {
+            orgId: currentOrg.id,
             dataSourceId: id,
             type,
             projectId
@@ -151,8 +152,9 @@ export const SecretScanningDataSourceRow = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate({
-                    to: "/projects/secret-scanning/$projectId/findings",
+                    to: "/organizations/$orgId/projects/secret-scanning/$projectId/findings",
                     params: {
+                      orgId: currentOrg.id,
                       projectId
                     },
                     search: {

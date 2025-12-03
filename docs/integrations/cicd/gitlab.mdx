@@ -3,41 +3,13 @@ title: "GitLab"
 description: "How to sync secrets from Infisical to GitLab"
 ---
 
-<Tabs>
-  <Tab title="Usage">
+
     Prerequisites:
-    - Set up and add envars to [Infisical Cloud](https://app.infisical.com)
+    - Set up and add envars to [Infisical Cloud](https://app.infisical.com).
 
     <AccordionGroup>
       <Accordion title="Standard">
-        <Steps>
-          <Step title="Authorize Infisical for GitLab">
-            Navigate to your project's integrations tab in Infisical.
-
-            ![integrations](../../images/integrations.png)
-
-            Press on the GitLab tile and grant Infisical access to your GitLab account.
-
-            ![integrations gitlab authorization](../../images/integrations/gitlab/integrations-gitlab-auth.png)
-
-          </Step>
-          <Step title="Start integration">
-            Select which Infisical environment secrets you want to sync to which GitLab repository and press create integration to start syncing secrets to GitLab.
-
-            ![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab-create.png)
-
-            Note that the GitLab integration supports a few options in the **Options** tab:
-
-            - Secret Prefix: If inputted, the prefix is appended to the front of every secret name prior to being synced.
-            - Secret Suffix: If inputted, the suffix to appended to the back of every name of every secret prior to being synced.
-
-            Setting a secret prefix or suffix ensures that existing secrets in GitLab are not overwritten during the sync. As part of this process, Infisical abstains from mutating any secrets in GitLab without the specified prefix or suffix.
-
-            ![integrations gitlab options](../../images/integrations/gitlab/integrations-gitlab-create-options.png)
-
-            ![integrations gitlab](../../images/integrations/gitlab/integrations-gitlab.png)
-          </Step>
-        </Steps>
+        Use our [GitLab Secret Syncs](../secret-syncs/gitlab)
       </Accordion>
       <Accordion title="Pipeline">
         <Steps>
@@ -71,41 +43,3 @@ description: "How to sync secrets from Infisical to GitLab"
         </Steps>
       </Accordion>
     </AccordionGroup>
-
-  </Tab>
-  <Tab title="Self-Hosted Setup">
-    Using the GitLab integration on a self-hosted instance of Infisical requires configuring an application in GitLab
-    and registering your instance with it.
-    <Tip>If you're self-hosting Gitlab with custom certificates, you will have to configure your Infisical instance to trust these certificates. To learn how, please follow [this guide](../../self-hosting/guides/custom-certificates).</Tip>
-    <Steps>
-      <Step title="Create an OAuth application in GitLab">
-        Navigate to your user Settings > Applications to create a new GitLab application.
-      
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-edit-profile.png) 
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app.png) 
-        
-        Create the application. As part of the form, set the **Redirect URI** to `https://your-domain.com/integrations/gitlab/oauth2/callback`.
-
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-new-app-form.png)
-
-        <Note>
-          If you have a GitLab group, you can create an OAuth application under it
-          in your group Settings > Applications.
-        </Note>
-      </Step>
-      <Step title="Add your OAuth application credentials to Infisical">
-        Obtain the **Application ID** and **Secret** for your GitLab application.
-
-        ![integrations gitlab config](../../images/integrations/gitlab/integrations-gitlab-config-credentials.png)
-
-        Back in your Infisical instance, add two new environment variables for the credentials of your GitLab application:
-
-        - `CLIENT_ID_GITLAB`: The **Client ID** of your GitLab application.
-        - `CLIENT_SECRET_GITLAB`: The **Secret** of your GitLab application.
-
-        Once added, restart your Infisical instance and use the GitLab integration.
-      </Step>
-    </Steps>
-
-  </Tab>
-</Tabs>

@@ -21,6 +21,8 @@ export enum PostHogEventTypes {
   SecretScannerPush = "cloud secret scan",
   ProjectCreated = "Project Created",
   IntegrationCreated = "Integration Created",
+  IntegrationSynced = "Integration Synced",
+  IntegrationDeleted = "Integration Deleted",
   MachineIdentityCreated = "Machine Identity Created",
   UserOrgInvitation = "User Org Invitation",
   TelemetryInstanceStats = "Self Hosted Instance Stats",
@@ -112,6 +114,47 @@ export type TIntegrationCreatedEvent = {
     projectId: string;
     integrationId: string;
     integration: string; // TODO: fix type
+    environment: string;
+    secretPath: string;
+    url?: string;
+    app?: string;
+    appId?: string;
+    targetEnvironment?: string;
+    targetEnvironmentId?: string;
+    targetService?: string;
+    targetServiceId?: string;
+    path?: string;
+    region?: string;
+  };
+};
+
+export type TIntegrationSyncedEvent = {
+  event: PostHogEventTypes.IntegrationSynced;
+  properties: {
+    projectId: string;
+    integrationId: string;
+    integration: string;
+    environment: string;
+    secretPath: string;
+    isManualSync: boolean;
+    url?: string;
+    app?: string;
+    appId?: string;
+    targetEnvironment?: string;
+    targetEnvironmentId?: string;
+    targetService?: string;
+    targetServiceId?: string;
+    path?: string;
+    region?: string;
+  };
+};
+
+export type TIntegrationDeletedEvent = {
+  event: PostHogEventTypes.IntegrationDeleted;
+  properties: {
+    projectId: string;
+    integrationId: string;
+    integration: string;
     environment: string;
     secretPath: string;
     url?: string;
@@ -249,6 +292,8 @@ export type TPostHogEvent = { distinctId: string; organizationId?: string } & (
   | TUserOrgInvitedEvent
   | TMachineIdentityCreatedEvent
   | TIntegrationCreatedEvent
+  | TIntegrationSyncedEvent
+  | TIntegrationDeletedEvent
   | TProjectCreateEvent
   | TTelemetryInstanceStatsEvent
   | TSecretRequestCreatedEvent

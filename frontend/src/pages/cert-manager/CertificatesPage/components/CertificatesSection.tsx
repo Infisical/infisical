@@ -39,11 +39,11 @@ export const CertificatesSection = () => {
     "managePkiSyncs"
   ] as const);
 
-  const onRemoveCertificateSubmit = async (serialNumber: string) => {
+  const onRemoveCertificateSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
     await deleteCert({
-      serialNumber,
+      id,
       projectId: currentProject.id
     });
 
@@ -57,7 +57,13 @@ export const CertificatesSection = () => {
 
   const handleCertificateExport = async (
     format: "pem" | "pkcs12",
-    serialNumber: string,
+    {
+      certificateId,
+      serialNumber
+    }: {
+      certificateId: string;
+      serialNumber: string;
+    },
     options?: ExportOptions
   ) => {
     if (format === "pem") {
@@ -75,7 +81,7 @@ export const CertificatesSection = () => {
 
       try {
         await downloadCertPkcs12({
-          serialNumber,
+          certificateId,
           projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
@@ -119,7 +125,7 @@ export const CertificatesSection = () => {
                 onClick={() => handlePopUpOpen("issueCertificate")}
                 isDisabled={!isAllowed}
               >
-                Issue
+                Request
               </Button>
             </div>
           )}
@@ -150,7 +156,7 @@ export const CertificatesSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { serialNumber: string })?.serialNumber
+            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
           )
         }
       />

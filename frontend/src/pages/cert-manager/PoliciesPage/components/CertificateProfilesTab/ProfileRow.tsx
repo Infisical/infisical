@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import {
   faCheck,
@@ -29,8 +30,8 @@ import {
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
 import { usePopUp, useToggle } from "@app/hooks";
-import { useGetCaById } from "@app/hooks/api/ca/queries";
-import { TCertificateProfile } from "@app/hooks/api/certificateProfiles";
+import { useGetInternalCaById } from "@app/hooks/api/ca/queries";
+import { IssuerType, TCertificateProfile } from "@app/hooks/api/certificateProfiles";
 import { useGetCertificateTemplateV2ById } from "@app/hooks/api/certificateTemplates/queries";
 import { CertificateIssuanceModal } from "@app/pages/cert-manager/CertificatesPage/components/CertificateIssuanceModal";
 
@@ -49,7 +50,7 @@ export const ProfileRow = ({
 }: Props) => {
   const { permission } = useProjectPermission();
 
-  const { data: caData } = useGetCaById(profile.caId);
+  const { data: caData } = useGetInternalCaById(profile.caId ?? "");
 
   const { popUp, handlePopUpToggle } = usePopUp(["issueCertificate"] as const);
 
@@ -121,7 +122,13 @@ export const ProfileRow = ({
       <Td className="text-start">{getEnrollmentTypeBadge(profile.enrollmentType)}</Td>
       <Td className="text-start">
         <span className="text-sm text-mineshaft-300">
-          {caData?.friendlyName || caData?.commonName || profile.caId}
+          {profile.issuerType === IssuerType.SELF_SIGNED
+            ? "Self-signed"
+            : profile.certificateAuthority?.isExternal
+              ? profile.certificateAuthority.name
+              : caData?.configuration.friendlyName ||
+                caData?.configuration.commonName ||
+                profile.caId}
         </span>
       </Td>
       <Td>
@@ -175,7 +182,7 @@ export const ProfileRow = ({
                 }}
                 icon={<FontAwesomeIcon icon={faPlus} className="w-3" />}
               >
-                Issue Certificate
+                Request Certificate
               </DropdownMenuItem>
             )}
             {canDeleteProfile && (

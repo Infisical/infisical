@@ -14,8 +14,7 @@ import {
   Modal,
   ModalContent,
   Select,
-  SelectItem,
-  Switch
+  SelectItem
 } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { APP_CONNECTION_MAP } from "@app/helpers/appConnections";
@@ -27,6 +26,10 @@ import {
   TCloudflareZone,
   useCloudflareConnectionListZones
 } from "@app/hooks/api/appConnections/cloudflare";
+import {
+  TDNSMadeEasyZone,
+  useDNSMadeEasyConnectionListZones
+} from "@app/hooks/api/appConnections/dns-made-easy";
 import { AppConnection } from "@app/hooks/api/appConnections/enums";
 import {
   AcmeDnsProvider,
@@ -59,7 +62,6 @@ const baseSchema = z.object({
   name: slugSchema({
     field: "Name"
   }),
-  enableDirectIssuance: z.boolean(),
   status: z.nativeEnum(CaStatus)
 });
 
@@ -131,8 +133,7 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { currentProject } = useProject();
 
   const { data: ca, isLoading: isCaLoading } = useGetCa({
-    caName: (popUp?.ca?.data as { name: string })?.name || "",
-    projectId: currentProject?.id || "",
+    caId: (popUp?.ca?.data as { caId: string })?.caId || "",
     type: (popUp?.ca?.data as { type: CaType })?.type || ""
   });
 
@@ -168,7 +169,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: CaType.AZURE_AD_CS,
           name: "",
           status: CaStatus.ACTIVE,
-          enableDirectIssuance: false,
           configuration: {
             azureAdcsConnection: {
               id: "",
@@ -181,7 +181,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: CaType.ACME,
           name: "",
           status: CaStatus.ACTIVE,
-          enableDirectIssuance: true,
           configuration: {
             dnsAppConnection: {
               id: "",
@@ -211,6 +210,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
       enabled: caType === CaType.ACME
     });
 
+  const { data: availableDNSMadeEasyConnections, isPending: isDNSMadeEasyPending } =
+    useListAvailableAppConnections(AppConnection.DNSMadeEasy, currentProject.id, {
+      enabled: caType === CaType.ACME
+    });
+
   const { data: availableAzureConnections, isPending: isAzurePending } =
     useListAvailableAppConnections(AppConnection.AzureADCS, currentProject.id, {
       enabled: caType === CaType.AZURE_AD_CS
@@ -220,16 +224,24 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (caType === CaType.AZURE_AD_CS) {
       return availableAzureConnections || [];
     }
-    return [...(availableRoute53Connections || []), ...(availableCloudflareConnections || [])];
+    return [
+      ...(availableRoute53Connections || []),
+      ...(availableCloudflareConnections || []),
+      ...(availableDNSMadeEasyConnections || [])
+    ];
   }, [
     caType,
     availableRoute53Connections,
     availableCloudflareConnections,
+    availableDNSMadeEasyConnections,
     availableAzureConnections
   ]);
 
   const isPending =
-    isRoute53Pending || isCloudflarePending || (isAzurePending && caType === CaType.AZURE_AD_CS);
+    isRoute53Pending ||
+    isCloudflarePending ||
+    isDNSMadeEasyPending ||
+    (isAzurePending && caType === CaType.AZURE_AD_CS);
 
   const dnsAppConnection =
     caType === CaType.ACME && configuration && "dnsAppConnection" in configuration
@@ -239,6 +251,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const { data: cloudflareZones = [], isPending: isZonesPending } =
     useCloudflareConnectionListZones(dnsAppConnection.id, {
       enabled: dnsProvider === AcmeDnsProvider.Cloudflare && !!dnsAppConnection.id
+    });
+
+  const { data: dnsMadeEasyZones = [], isPending: isDNSMadeEasyZonesPending } =
+    useDNSMadeEasyConnectionListZones(dnsAppConnection.id, {
+      enabled: dnsProvider === AcmeDnsProvider.DNSMadeEasy && !!dnsAppConnection.id
     });
 
   // Populate form with CA data when editing
@@ -253,7 +270,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: ca.type,
           name: ca.name,
           status: ca.status,
-          enableDirectIssuance: ca.enableDirectIssuance,
           configuration: {
             dnsAppConnection: {
               id: ca.configuration.dnsAppConnectionId,
@@ -278,7 +294,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
           type: ca.type,
           name: ca.name,
           status: ca.status,
-          enableDirectIssuance: false,
           configuration: {
             azureAdcsConnection: {
               id: ca.configuration.azureAdcsConnectionId,
@@ -293,7 +308,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
   const onFormSubmit = async ({
     type,
     name,
-    enableDirectIssuance,
     status,
     configuration: formConfiguration
   }: FormData) => {
@@ -320,12 +334,11 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
 
     if (ca) {
       await updateMutateAsync({
-        caName: ca.name,
+        id: ca.id,
         projectId: currentProject.id,
         name,
         type,
         status,
-        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
         configuration: configPayload
       });
     } else {
@@ -334,7 +347,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
         name,
         type,
         status,
-        enableDirectIssuance: type === CaType.AZURE_AD_CS ? false : enableDirectIssuance,
         configuration: configPayload
       });
     }
@@ -500,6 +512,32 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
                   )}
                 />
               )}
+              {dnsProvider === AcmeDnsProvider.DNSMadeEasy && (
+                <Controller
+                  name="configuration.dnsProviderConfig.hostedZoneId"
+                  control={control}
+                  render={({ field: { value, onChange }, fieldState: { error } }) => (
+                    <FormControl
+                      errorText={error?.message}
+                      isError={Boolean(error?.message)}
+                      label="Zone"
+                    >
+                      <FilterableSelect
+                        isLoading={isDNSMadeEasyZonesPending && !!dnsAppConnection.id}
+                        isDisabled={!dnsAppConnection.id}
+                        value={dnsMadeEasyZones.find((zone) => zone.id === value)}
+                        onChange={(option) => {
+                          onChange((option as SingleValue<TDNSMadeEasyZone>)?.id ?? null);
+                        }}
+                        options={dnsMadeEasyZones}
+                        placeholder="Select a zone..."
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                      />
+                    </FormControl>
+                  )}
+                />
+              )}
               <Controller
                 control={control}
                 defaultValue=""
@@ -599,25 +637,6 @@ export const ExternalCaModal = ({ popUp, handlePopUpToggle }: Props) => {
               )}
               control={control}
               name="configuration.azureAdcsConnection"
-            />
-          )}
-          {caType === CaType.ACME && (
-            <Controller
-              control={control}
-              name="enableDirectIssuance"
-              render={({ field, fieldState: { error } }) => {
-                return (
-                  <FormControl isError={Boolean(error)} errorText={error?.message} className="my-8">
-                    <Switch
-                      id="is-active"
-                      onCheckedChange={(value) => field.onChange(value)}
-                      isChecked={field.value}
-                    >
-                      <p className="w-full">Enable Direct Issuance</p>
-                    </Switch>
-                  </FormControl>
-                );
-              }}
             />
           )}
           <div className="flex items-center">

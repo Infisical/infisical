@@ -156,7 +156,7 @@ export const secretRotationV2QueueServiceFactory = async ({
 
         const rotationType = SECRET_ROTATION_NAME_MAP[type as SecretRotation];
 
-        const rotationPath = `/projects/secret-management/${projectId}/secrets/${environment.slug}`;
+        const rotationPath = `/organizations/${project.orgId}/projects/secret-management/${projectId}/secrets/${environment.slug}`;
 
         await notificationService.createUserNotifications(
           projectAdmins.map((admin) => ({

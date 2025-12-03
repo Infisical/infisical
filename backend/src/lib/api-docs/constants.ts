@@ -1962,9 +1962,11 @@ export const CERTIFICATE_AUTHORITIES = {
 
 export const CERTIFICATES = {
   GET: {
+    id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
+    id: "The ID of the certificate to revoke.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -1972,9 +1974,11 @@ export const CERTIFICATES = {
     serialNumberRes: "The serial number of the revoked certificate."
   },
   DELETE: {
+    id: "The ID of the certificate to delete.",
     serialNumber: "The serial number of the certificate to delete."
   },
   GET_CERT: {
+    id: "The ID of the certificate to get the certificate body and certificate chain for.",
     serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",

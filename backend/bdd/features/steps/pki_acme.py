@@ -2,6 +2,8 @@ import json
 import logging
 import re
 import urllib.parse
+import time
+import threading
 
 import acme.client
 import jq
@@ -18,6 +20,10 @@ from josepy.jwk import JWKRSA
 from josepy import json_util
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.types import (
+    CertificateIssuerPrivateKeyTypes,
+)
 from cryptography import x509
 from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes
@@ -56,7 +62,7 @@ def step_impl(context: Context, profile_var: str):
         profile_slug = faker.slug()
         jwt_token = context.vars["AUTH_TOKEN"]
         response = context.http_client.post(
-            "/api/v1/pki/certificate-profiles",
+            "/api/v1/cert-manager/certificate-profiles",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
             json={
                 "projectId": context.vars["PROJECT_ID"],
@@ -74,7 +80,7 @@ def step_impl(context: Context, profile_var: str):
         kid = profile_id
 
         response = context.http_client.get(
-            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
         )
         response.raise_for_status()
@@ -147,13 +153,47 @@ def step_impl(context: Context, var_name: str):
     context.vars[var_name] = response
 
 
+@given("I create a DNS Made Easy connection as {var_name}")
+def step_impl(context: Context, var_name: str):
+    jwt_token = context.vars["AUTH_TOKEN"]
+    conn_slug = faker.slug()
+    with with_nocks(
+        context,
+        definitions=[
+            {
+                "scope": "https://api.dnsmadeeasy.com:443",
+                "method": "GET",
+                "path": "/V2.0/dns/managed/",
+                "status": 200,
+                "response": {"totalRecords": 0, "totalPages": 1, "data": [], "page": 0},
+                "responseIsBinary": False,
+            }
+        ],
+    ):
+        response = context.http_client.post(
+            "/api/v1/app-connections/dns-made-easy",
+            headers=dict(authorization="Bearer {}".format(jwt_token)),
+            json={
+                "name": conn_slug,
+                "description": "",
+                "method": "api-key-secret",
+                "credentials": {
+                    "apiKey": "MOCK_API_KEY",
+                    "secretKey": "MOCK_SECRET_KEY",
+                },
+            },
+        )
+    response.raise_for_status()
+    context.vars[var_name] = response
+
+
 @given("I create a external ACME CA with the following config as {var_name}")
 def step_impl(context: Context, var_name: str):
     jwt_token = context.vars["AUTH_TOKEN"]
     ca_slug = faker.slug()
     config = replace_vars(json.loads(context.text), context.vars)
     response = context.http_client.post(
-        "/api/v1/pki/ca/acme",
+        "/api/v1/cert-manager/ca/acme",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -174,7 +214,7 @@ def step_impl(context: Context, var_name: str):
     template_slug = faker.slug()
     config = replace_vars(json.loads(context.text), context.vars)
     response = context.http_client.post(
-        "/api/v2/certificate-templates",
+        "/api/v1/cert-manager/certificate-templates",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -194,7 +234,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
     profile_slug = faker.slug()
     jwt_token = context.vars["AUTH_TOKEN"]
     response = context.http_client.post(
-        "/api/v1/pki/certificate-profiles",
+        "/api/v1/cert-manager/certificate-profiles",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
         json={
             "projectId": context.vars["PROJECT_ID"],
@@ -212,7 +252,7 @@ def step_impl(context: Context, ca_id: str, template_id: str, profile_var: str):
     kid = profile_id
 
     response = context.http_client.get(
-        f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+        f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
         headers=dict(authorization="Bearer {}".format(jwt_token)),
     )
     response.raise_for_status()
@@ -236,7 +276,7 @@ def step_impl(context: Context, profile_var: str):
         profile_slug = faker.slug()
         jwt_token = context.vars["AUTH_TOKEN"]
         response = context.http_client.post(
-            "/api/v1/pki/certificate-profiles",
+            "/api/v1/cert-manager/certificate-profiles",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
             json={
                 "projectId": context.vars["PROJECT_ID"],
@@ -254,7 +294,7 @@ def step_impl(context: Context, profile_var: str):
         kid = profile_id
 
         response = context.http_client.get(
-            f"/api/v1/pki/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
+            f"/api/v1/cert-manager/certificate-profiles/{profile_id}/acme/eab-secret/reveal",
             headers=dict(authorization="Bearer {}".format(jwt_token)),
         )
         response.raise_for_status()
@@ -561,12 +601,57 @@ def step_impl(context: Context, csr_var: str):
     )
 
 
-@then("I create a RSA private key pair as {rsa_key_var}")
-def step_impl(context: Context, rsa_key_var: str):
-    context.vars[rsa_key_var] = rsa.generate_private_key(
-        # TODO: make them configurable if we need to
-        public_exponent=65537,
-        key_size=2048,
+def gen_private_key(key_type: str):
+    if key_type == "RSA-2048" or key_type == "RSA":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+        )
+    elif key_type == "RSA-3072":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=3072,
+        )
+    elif key_type == "RSA-4096":
+        return rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=4096,
+        )
+    elif key_type == "ECDSA-P256":
+        return ec.generate_private_key(curve=ec.SECP256R1())
+    elif key_type == "ECDSA-P384":
+        return ec.generate_private_key(curve=ec.SECP384R1())
+    elif key_type == "ECDSA-P521":
+        return ec.generate_private_key(curve=ec.SECP521R1())
+    else:
+        raise Exception(f"Unknown key type {key_type}")
+
+
+@then("I create a {key_type} private key pair as {rsa_key_var}")
+def step_impl(context: Context, key_type: str, rsa_key_var: str):
+    context.vars[rsa_key_var] = gen_private_key(key_type)
+
+
+def sign_csr(
+    pem: x509.CertificateSigningRequestBuilder,
+    pk: CertificateIssuerPrivateKeyTypes,
+    hash_type: str = "SHA256",
+):
+    return pem.sign(pk, getattr(hashes, hash_type)()).public_bytes(
+        serialization.Encoding.PEM
+    )
+
+
+@then(
+    'I sign the certificate signing request {csr_var} with "{hash_type}" hash and private key {pk_var} and output it as {pem_var} in PEM format'
+)
+def step_impl(
+    context: Context, csr_var: str, hash_type: str, pk_var: str, pem_var: str
+):
+    context.vars[pem_var] = sign_csr(
+        pem=context.vars[csr_var],
+        pk=context.vars[pk_var],
+        hash_type=hash_type,
     )
 
 
@@ -574,10 +659,9 @@ def step_impl(context: Context, rsa_key_var: str):
     "I sign the certificate signing request {csr_var} with private key {pk_var} and output it as {pem_var} in PEM format"
 )
 def step_impl(context: Context, csr_var: str, pk_var: str, pem_var: str):
-    context.vars[pem_var] = (
-        context.vars[csr_var]
-        .sign(context.vars[pk_var], hashes.SHA256())
-        .public_bytes(serialization.Encoding.PEM)
+    context.vars[pem_var] = sign_csr(
+        pem=context.vars[csr_var],
+        pk=context.vars[pk_var],
     )
 
 
@@ -690,6 +774,15 @@ def step_impl(context: Context, var_path: str, jq_query, var_name: str):
     context.vars[var_name] = value
 
 
+@then("I get a new-nonce as {var_name}")
+def step_impl(context: Context, var_name: str):
+    acme_client = context.acme_client
+    nonce = acme_client.net._get_nonce(
+        url=None, new_nonce_url=acme_client.directory.newNonce
+    )
+    context.vars[var_name] = json_util.encode_b64jose(nonce)
+
+
 @then("I peak and memorize the next nonce as {var_name}")
 def step_impl(context: Context, var_name: str):
     acme_client = context.acme_client
@@ -763,22 +856,39 @@ def select_challenge(
     return challenges[0]
 
 
-def serve_challenge(
+def serve_challenges(
     context: Context,
-    challenge: messages.ChallengeBody,
+    challenges: list[messages.ChallengeBody],
+    wait_time: int | None = None,
 ):
     if hasattr(context, "web_server"):
         context.web_server.shutdown_and_server_close()
 
-    response, validation = challenge.response_and_validation(
-        context.acme_client.net.key
-    )
-    resource = standalone.HTTP01RequestHandler.HTTP01Resource(
-        chall=challenge.chall, response=response, validation=validation
-    )
+    resources = set()
+    for challenge in challenges:
+        response, validation = challenge.response_and_validation(
+            context.acme_client.net.key
+        )
+        resources.add(
+            standalone.HTTP01RequestHandler.HTTP01Resource(
+                chall=challenge.chall, response=response, validation=validation
+            )
+        )
     # TODO: make port configurable
-    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), {resource})
-    servers.serve_forever()
+    servers = standalone.HTTP01DualNetworkedServers(("0.0.0.0", 8087), resources)
+    if wait_time is None:
+        servers.serve_forever()
+    else:
+
+        def wait_and_start():
+            logger.info("Waiting %s seconds before we start serving.", wait_time)
+            time.sleep(wait_time)
+            logger.info("Start server now")
+            servers.serve_forever()
+
+        thread = threading.Thread(target=wait_and_start)
+        thread.daemon = True
+        thread.start()
     context.web_server = servers
 
 
@@ -831,6 +941,7 @@ def step_impl(
             f"Expected OrderResource but got {type(order)!r} at {order_var_path!r}"
         )
 
+    challenges = {}
     for domain in order.body.identifiers:
         logger.info(
             "Selecting challenge for domain %s with type %s ...",
@@ -855,18 +966,28 @@ def step_impl(
             domain.value,
             challenge_type,
         )
-        serve_challenge(context=context, challenge=challenge)
+        challenges[domain] = challenge
 
+    serve_challenges(context=context, challenges=list(challenges.values()))
+    for domain, challenge in challenges.items():
         logger.info(
             "Notifying challenge for domain %s with type %s ...", domain, challenge_type
         )
         notify_challenge_ready(context=context, challenge=challenge)
 
 
+@then(
+    "I wait {wait_time} seconds and serve challenge response for {var_path} at {hostname}"
+)
+def step_impl(context: Context, wait_time: str, var_path: str, hostname: str):
+    challenge = eval_var(context, var_path, as_json=False)
+    serve_challenges(context=context, challenges=[challenge], wait_time=int(wait_time))
+
+
 @then("I serve challenge response for {var_path} at {hostname}")
 def step_impl(context: Context, var_path: str, hostname: str):
     challenge = eval_var(context, var_path, as_json=False)
-    serve_challenge(context=context, challenge=challenge)
+    serve_challenges(context=context, challenges=[challenge])
 
 
 @then("I tell ACME server that {var_path} is ready to be verified")
@@ -875,12 +996,57 @@ def step_impl(context: Context, var_path: str):
     notify_challenge_ready(context=context, challenge=challenge)
 
 
+@then("I wait until the status of order {order_var} becomes {status}")
+def step_impl(context: Context, order_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        order = eval_var(context, order_var, as_json=False)
+        response = acme_client._post_as_get(
+            order.uri if isinstance(order, messages.OrderResource) else order
+        )
+        order = messages.Order.from_json(response.json())
+        if order.status.name == status:
+            return
+        attempt_count -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of order doesn't become {status} before timeout")
+
+
+@then("I wait until the status of authorization {auth_var} becomes {status}")
+def step_impl(context: Context, auth_var: str, status: str):
+    acme_client = context.acme_client
+    attempt_count = 6
+    while attempt_count:
+        auth = eval_var(context, auth_var, as_json=False)
+        response = acme_client._post_as_get(
+            auth.uri if isinstance(auth, messages.Authorization) else auth
+        )
+        auth = messages.Authorization.from_json(response.json())
+        if auth.status.name == status:
+            return
+        attempt_count -= 1
+        time.sleep(10)
+    raise TimeoutError(f"The status of auth doesn't become {status} before timeout")
+
+
+@then("I post-as-get {uri} as {resp_var}")
+def step_impl(context: Context, uri: str, resp_var: str):
+    acme_client = context.acme_client
+    response = acme_client._post_as_get(replace_vars(uri, vars=context.vars))
+    context.vars[resp_var] = response.json()
+
+
 @then("I poll and finalize the ACME order {var_path} as {finalized_var}")
 def step_impl(context: Context, var_path: str, finalized_var: str):
     order = eval_var(context, var_path, as_json=False)
     acme_client = context.acme_client
-    finalized_order = acme_client.poll_and_finalize(order)
-    context.vars[finalized_var] = finalized_order
+    try:
+        finalized_order = acme_client.poll_and_finalize(order)
+        context.vars[finalized_var] = finalized_order
+    except Exception as exp:
+        logger.error(f"Failed to finalize order: {exp}", exc_info=True)
+        context.vars["error"] = exp
 
 
 @then("I parse the full-chain certificate from order {order_var_path} as {cert_var}")

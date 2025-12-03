@@ -34,8 +34,6 @@ import {
   CertExtendedKeyUsageOIDToName,
   CertKeyAlgorithm,
   CertKeyUsage,
-  CertSignatureAlgorithm,
-  CertSignatureType,
   CertStatus,
   TAltNameMapping
 } from "../../certificate/certificate-types";
@@ -69,6 +67,7 @@ import {
   TGetCaDTO,
   TImportCertToCaDTO,
   TIssueCertFromCaDTO,
+  TIssueCertFromCaResponse,
   TRenewCaCertDTO,
   TSignCertFromCaDTO,
   TSignIntermediateDTO,
@@ -127,6 +126,22 @@ export const internalCertificateAuthorityServiceFactory = ({
   kmsService,
   permissionService
 }: TInternalCertificateAuthorityServiceFactoryDep) => {
+  const $checkSignature = (caKeyAlg: string, requestedKeyType: string, signatureAlgorithm?: string) => {
+    const isRsaCa = caKeyAlg.startsWith("RSA");
+    const isEcdsaCa = caKeyAlg.startsWith("EC") || caKeyAlg.startsWith("ECDSA");
+
+    // eslint-disable-next-line no-nested-ternary
+    const caSupports = isRsaCa ? "RSA" : isEcdsaCa ? "ECDSA" : "unknown";
+
+    const isRequestValid = (requestedKeyType === "RSA" && isRsaCa) || (requestedKeyType === "ECDSA" && isEcdsaCa);
+
+    if (!isRequestValid) {
+      throw new BadRequestError({
+        message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlg}. CA can only sign with ${caSupports}-based signature algorithms.`
+      });
+    }
+  };
+
   const createCa = async ({
     type,
     friendlyName,
@@ -140,7 +155,6 @@ export const internalCertificateAuthorityServiceFactory = ({
     notAfter,
     maxPathLength,
     keyAlgorithm,
-    enableDirectIssuance,
     name,
     ...dto
   }: TCreateCaDTO) => {
@@ -192,9 +206,9 @@ export const internalCertificateAuthorityServiceFactory = ({
       const ca = await certificateAuthorityDAL.create(
         {
           projectId,
-          enableDirectIssuance,
           name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
-          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE
+          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+          enableDirectIssuance: false
         },
         tx
       );
@@ -354,7 +368,7 @@ export const internalCertificateAuthorityServiceFactory = ({
    * Update CA with id [caId].
    * Note: Used to enable/disable CA
    */
-  const updateCaById = async ({ caId, status, enableDirectIssuance, name, ...dto }: TUpdateCaDTO) => {
+  const updateCaById = async ({ caId, status, name, ...dto }: TUpdateCaDTO) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
 
@@ -375,8 +389,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     const updatedCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      if (enableDirectIssuance !== undefined || status !== undefined || name !== undefined) {
-        await certificateAuthorityDAL.updateById(ca.id, { enableDirectIssuance, status, name }, tx);
+      if (status !== undefined || name !== undefined) {
+        await certificateAuthorityDAL.updateById(ca.id, { status, name }, tx);
       }
 
       return certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -971,9 +985,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     const serialNumber = createSerialNumber();
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const intermediateCert = await x509.X509CertificateGenerator.create({
       serialNumber,
       subject: csrObj.subject,
@@ -1185,7 +1199,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     isFromProfile,
     internal = false,
     tx
-  }: TIssueCertFromCaDTO) => {
+  }: TIssueCertFromCaDTO): Promise<TIssueCertFromCaResponse> => {
     let ca: TCertificateAuthorityWithAssociatedCa | undefined;
     let certificateTemplate: TCertificateTemplates | undefined;
     let collectionId = pkiCollectionId;
@@ -1302,26 +1316,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const leafKeys = await crypto.nativeCrypto.subtle.generateKey(keyGenAlg, true, ["sign", "verify"]);
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0];
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.RSA_2048.split("_")[0]);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertKeyAlgorithm.ECDSA_P256.split("_")[0]);
-
-      if (
-        (requestedKeyType === CertSignatureAlgorithm.RSA_SHA256.split("-")[0] && !isRsaCa) ||
-        (requestedKeyType === CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0] && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa
-          ? CertSignatureAlgorithm.RSA_SHA256.split("-")[0]
-          : isEcdsaCa
-            ? CertSignatureAlgorithm.ECDSA_SHA256.split("-")[0]
-            : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     // Determine signing algorithm for certificate signing
@@ -1352,8 +1347,8 @@ export const internalCertificateAuthorityServiceFactory = ({
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
     const appCfg = getConfig();
 
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
 
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
@@ -1538,10 +1533,11 @@ export const internalCertificateAuthorityServiceFactory = ({
       return cert;
     };
 
+    let cert;
     if (tx) {
-      await executeIssueCertOperations(tx);
+      cert = await executeIssueCertOperations(tx);
     } else {
-      await certificateDAL.transaction(executeIssueCertOperations);
+      cert = await certificateDAL.transaction(executeIssueCertOperations);
     }
 
     return {
@@ -1550,6 +1546,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       issuingCaCertificate,
       privateKey: skLeaf,
       serialNumber,
+      certificateId: cert.id,
+      commonName,
       ca: expandInternalCa(ca)
     };
   };
@@ -1577,15 +1575,16 @@ export const internalCertificateAuthorityServiceFactory = ({
       keyUsages,
       extendedKeyUsages,
       signatureAlgorithm,
-      keyAlgorithm
+      keyAlgorithm,
+      tx
     } = dto;
 
     let collectionId = pkiCollectionId;
 
     if (caId) {
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
     } else if (certificateTemplateId) {
-      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId);
+      certificateTemplate = await certificateTemplateDAL.getById(certificateTemplateId, tx);
       if (!certificateTemplate) {
         throw new NotFoundError({
           message: `Certificate template with ID '${certificateTemplateId}' not found`
@@ -1593,7 +1592,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       }
 
       collectionId = certificateTemplate.pkiCollectionId as string;
-      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId);
+      ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(certificateTemplate.caId, tx);
     }
 
     if (!ca) {
@@ -1642,7 +1641,7 @@ export const internalCertificateAuthorityServiceFactory = ({
 
     // check PKI collection
     if (pkiCollectionId) {
-      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId);
+      const pkiCollection = await pkiCollectionDAL.findById(pkiCollectionId, tx);
       if (!pkiCollection) throw new NotFoundError({ message: `PKI collection with ID '${pkiCollectionId}' not found` });
       if (pkiCollection.projectId !== ca.projectId) throw new BadRequestError({ message: "Invalid PKI collection" });
     }
@@ -1690,22 +1689,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     }
 
     if (signatureAlgorithm) {
-      const caKeyAlgorithm = ca.internalCa.keyAlgorithm;
-      const requestedKeyType = signatureAlgorithm.split("-")[0]; // Get the first part (RSA, ECDSA)
-
-      const isRsaCa = caKeyAlgorithm.startsWith(CertSignatureType.RSA);
-      const isEcdsaCa = caKeyAlgorithm.startsWith(CertSignatureType.ECDSA);
-
-      if (
-        (requestedKeyType === CertSignatureType.RSA && !isRsaCa) ||
-        (requestedKeyType === CertSignatureType.ECDSA && !isEcdsaCa)
-      ) {
-        // eslint-disable-next-line no-nested-ternary
-        const supportedType = isRsaCa ? CertSignatureType.RSA : isEcdsaCa ? CertSignatureType.ECDSA : "unknown";
-        throw new BadRequestError({
-          message: `Requested signature algorithm ${signatureAlgorithm} is not compatible with CA key algorithm ${caKeyAlgorithm}. CA can only sign with ${supportedType}-based signature algorithms.`
-        });
-      }
+      $checkSignature(ca.internalCa.keyAlgorithm, signatureAlgorithm.split("-")[0], signatureAlgorithm);
     }
 
     const effectiveKeyAlgorithm = (keyAlgorithm || ca.internalCa.keyAlgorithm) as CertKeyAlgorithm;
@@ -1716,12 +1700,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
 
     const dn = parseDistinguishedName(csrObj.subject);
-    const cn = commonName || dn.commonName;
-
-    if (!cn)
-      throw new BadRequestError({
-        message: "A common name (CN) is required in the CSR or as a parameter to this endpoint"
-      });
+    const cn = (commonName || dn.commonName) ?? "";
 
     const { caPrivateKey, caSecret } = await getCaCredentials({
       caId: ca.id,
@@ -1733,9 +1712,9 @@ export const internalCertificateAuthorityServiceFactory = ({
     });
 
     const caCrl = await certificateAuthorityCrlDAL.findOne({ caSecretId: caSecret.id });
-    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/pki/crl/${caCrl.id}/der`;
+    const distributionPointUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/crl/${caCrl.id}/der`;
 
-    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/pki/ca/${ca.id}/certificates/${caCert.id}/der`;
+    const caIssuerUrl = `${appCfg.SITE_URL}/api/v1/cert-manager/ca/internal/${ca.id}/certificates/${caCert.id}/der`;
     const extensions: x509.Extension[] = [
       new x509.BasicConstraintsExtension(false),
       await x509.AuthorityKeyIdentifierExtension.create(caCertObj, false),
@@ -1931,8 +1910,8 @@ export const internalCertificateAuthorityServiceFactory = ({
       plainText: Buffer.from(certificateChainPem)
     });
 
-    await certificateDAL.transaction(async (tx) => {
-      const cert = await certificateDAL.create(
+    const createSignedCert = async (transaction: Knex) => {
+      const newCert = await certificateDAL.create(
         {
           caId: (ca as TCertificateAuthorities).id,
           caCertId: caCert.id,
@@ -1950,36 +1929,44 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm: keyAlgorithm || ca!.internalCa!.keyAlgorithm,
           signatureAlgorithm: signatureAlgorithm || ca!.internalCa!.keyAlgorithm
         },
-        tx
+        transaction
       );
 
       await certificateBodyDAL.create(
         {
-          certId: cert.id,
+          certId: newCert.id,
           encryptedCertificate,
           encryptedCertificateChain
         },
-        tx
+        transaction
       );
 
       if (collectionId) {
         await pkiCollectionItemDAL.create(
           {
             pkiCollectionId: collectionId,
-            certId: cert.id
+            certId: newCert.id
           },
-          tx
+          transaction
         );
       }
 
-      return cert;
-    });
+      return newCert;
+    };
+
+    let cert;
+    if (tx) {
+      cert = await createSignedCert(tx);
+    } else {
+      cert = await certificateDAL.transaction(createSignedCert);
+    }
 
     return {
       certificate: leafCert,
       certificateChain: certificateChainPem,
       issuingCaCertificate,
       serialNumber,
+      certificateId: cert.id,
       ca: expandInternalCa(ca),
       commonName: cn
     };

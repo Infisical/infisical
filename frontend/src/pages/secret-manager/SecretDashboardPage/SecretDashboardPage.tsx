@@ -30,6 +30,7 @@ import {
   ProjectPermissionActions,
   ProjectPermissionDynamicSecretActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -101,6 +102,7 @@ const LOADER_TEXT = [
 ];
 
 const Page = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.path
@@ -119,6 +121,9 @@ const Page = () => {
   const tableRef = useRef<HTMLTableElement>(null);
 
   const [isVisible, setIsVisible] = useState(false);
+  const [selectedDynamicSecretId, setSelectedDynamicSecretId] = useState<string | null>(
+    routerQueryParams.dynamicSecretId || ""
+  );
   const { isBatchMode, pendingChanges } = useBatchMode();
   const { loadPendingChanges, setExistingKeys } = useBatchModeActions();
 
@@ -162,6 +167,28 @@ const Page = () => {
   useEffect(() => {
     if (isVisible) setIsVisible(false);
   }, [environment]);
+
+  useEffect(() => {
+    if (routerQueryParams.dynamicSecretId !== null) {
+      setSelectedDynamicSecretId(routerQueryParams.dynamicSecretId);
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          dynamicSecretId: undefined
+        })
+      });
+
+      // if any of the router query params are changed, we have to clear the selected dynamic secret id to avoid re-rendering the lease modal when it suddendly becomes available
+    } else {
+      setSelectedDynamicSecretId(null);
+    }
+  }, [
+    routerQueryParams.filterBy,
+    routerQueryParams.search,
+    routerQueryParams.secretPath,
+    routerQueryParams.tags
+  ]);
 
   const canReadSecret = hasSecretReadValueOrDescribePermission(
     permission,
@@ -267,8 +294,9 @@ const Page = () => {
         type: "error"
       });
       navigate({
-        to: "/projects/secret-management/$projectId/overview",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/overview",
         params: {
+          orgId: currentOrg.id,
           projectId
         }
       });
@@ -444,8 +472,9 @@ const Page = () => {
   const handleOnClickRollbackMode = () => {
     if (isPITEnabled) {
       navigate({
-        to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
         params: {
+          orgId: currentOrg.id,
           projectId,
           folderId,
           environment
@@ -807,8 +836,9 @@ const Page = () => {
   return (
     <div className="mx-auto flex max-w-8xl flex-col text-mineshaft-50 dark:scheme-dark">
       <Link
-        to="/projects/secret-management/$projectId/overview"
+        to="/organizations/$orgId/projects/secret-management/$projectId/overview"
         params={{
+          orgId: currentOrg.id,
           projectId
         }}
         className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
@@ -1034,6 +1064,7 @@ const Page = () => {
               )}
               {canReadDynamicSecret && Boolean(dynamicSecrets?.length) && (
                 <DynamicSecretListView
+                  selectedDynamicSecretId={selectedDynamicSecretId}
                   environment={environment}
                   projectSlug={projectSlug}
                   secretPath={secretPath}

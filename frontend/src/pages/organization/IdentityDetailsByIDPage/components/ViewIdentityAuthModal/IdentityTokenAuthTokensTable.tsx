@@ -22,6 +22,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { CopyButton } from "@app/components/v2/CopyButton";
 import {
   OrgPermissionIdentityActions,
   OrgPermissionSubjects,
@@ -153,6 +154,7 @@ export const IdentityTokenAuthTokensTable = ({ tokens, identityId }: Props) => {
                       </Td>
                       <Td>
                         <div className="flex items-center gap-2">
+                          <CopyButton value={id} size="xs" variant="plain" name="Token ID" />
                           <VariablePermissionCan
                             type={projectId ? "project" : "org"}
                             I={

@@ -25,6 +25,7 @@
     "outputPath": "binary"
   },
   "scripts": {
+    "assets:export": "./scripts/export-assets.sh",
     "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports",
     "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target host .",
     "binary:babel-backend": " babel ./dist -d ./dist",

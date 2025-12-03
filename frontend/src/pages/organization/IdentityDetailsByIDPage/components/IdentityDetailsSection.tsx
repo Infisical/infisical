@@ -45,7 +45,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
   return data ? (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Identity Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -86,7 +86,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   }}
                   disabled={!isAllowed}
                 >
-                  {isOrgIdentity ? "Edit Identity" : "Edit Identity Role"}
+                  {isOrgIdentity ? "Edit Machine Identity" : "Edit Machine Identity Role"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
@@ -110,7 +110,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
                   icon={<FontAwesomeIcon icon={faTrash} />}
                   disabled={!isAllowed}
                 >
-                  {!isOrgIdentity ? "Remove From Sub-Organization" : "Delete Identity"}
+                  {!isOrgIdentity ? "Remove From Sub-Organization" : "Delete Machine Identity"}
                 </DropdownMenuItem>
               )}
             </OrgPermissionCan>
@@ -119,7 +119,7 @@ export const IdentityDetailsSection = ({ identityId, handlePopUpOpen, isOrgIdent
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Identity ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">Machine Identity ID</p>
           <div className="group flex align-top">
             <p className="text-sm text-mineshaft-300">{data.identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">

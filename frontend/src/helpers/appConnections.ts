@@ -50,6 +50,7 @@ import { BitbucketConnectionMethod } from "@app/hooks/api/appConnections/types/b
 import { ChecklyConnectionMethod } from "@app/hooks/api/appConnections/types/checkly-connection";
 import { ChefConnectionMethod } from "@app/hooks/api/appConnections/types/chef-connection";
 import { DigitalOceanConnectionMethod } from "@app/hooks/api/appConnections/types/digital-ocean";
+import { DNSMadeEasyConnectionMethod } from "@app/hooks/api/appConnections/types/dns-made-easy-connection";
 import { HerokuConnectionMethod } from "@app/hooks/api/appConnections/types/heroku-connection";
 import { LaravelForgeConnectionMethod } from "@app/hooks/api/appConnections/types/laravel-forge-connection";
 import { NetlifyConnectionMethod } from "@app/hooks/api/appConnections/types/netlify-connection";
@@ -112,6 +113,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Flyio]: { name: "Fly.io", image: "Flyio.svg" },
   [AppConnection.GitLab]: { name: "GitLab", image: "GitLab.png" },
   [AppConnection.Cloudflare]: { name: "Cloudflare", image: "Cloudflare.png" },
+  [AppConnection.DNSMadeEasy]: { name: "DNS Made Easy", image: "DNSMadeEasy.svg", size: 120 },
   [AppConnection.Zabbix]: { name: "Zabbix", image: "Zabbix.png" },
   [AppConnection.Railway]: { name: "Railway", image: "Railway.png" },
   [AppConnection.Bitbucket]: { name: "Bitbucket", image: "Bitbucket.png" },
@@ -217,6 +219,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Client Secret", icon: faKey };
     case AzureClientSecretsConnectionMethod.Certificate:
       return { name: "Certificate", icon: faCertificate };
+    case DNSMadeEasyConnectionMethod.APIKeySecret:
+      return { name: "API Key & Secret", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

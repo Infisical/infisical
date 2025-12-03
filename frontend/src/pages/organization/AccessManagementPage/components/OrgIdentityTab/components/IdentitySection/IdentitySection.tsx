@@ -73,7 +73,7 @@ export const IdentitySection = withPermission(
       });
 
       createNotification({
-        text: "Successfully deleted identity",
+        text: "Successfully deleted machine identity",
         type: "success"
       });
 
@@ -99,7 +99,9 @@ export const IdentitySection = withPermission(
         <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Identities</p>
+              <p className="text-xl font-medium text-mineshaft-100">
+                Organization Machine Identities
+              </p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
             <div className="flex items-center">
@@ -116,7 +118,7 @@ export const IdentitySection = withPermission(
                       if (!isMoreIdentitiesAllowed && !isEnterprise) {
                         handlePopUpOpen("upgradePlan", {
                           description:
-                            "You can add more identities if you upgrade your Infisical Pro plan."
+                            "You can add more machine identities if you upgrade your Infisical Pro plan."
                         });
                         return;
                       }
@@ -129,7 +131,9 @@ export const IdentitySection = withPermission(
                     }}
                     isDisabled={!isAllowed}
                   >
-                    Create Identity
+                    {isSubOrganization
+                      ? "Add Machine Identity to Sub-Organization"
+                      : "Create Organization Machine Identity"}
                   </Button>
                 )}
               </OrgPermissionCan>
@@ -141,7 +145,9 @@ export const IdentitySection = withPermission(
         <div className="mt-4 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-x-2">
-              <p className="text-xl font-medium text-mineshaft-100">Identity Auth Templates</p>
+              <p className="text-xl font-medium text-mineshaft-100">
+                Machine Identity Auth Templates
+              </p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/auth-templates" />
             </div>
             <OrgPermissionCan
@@ -150,14 +156,14 @@ export const IdentitySection = withPermission(
             >
               {(isAllowed) => (
                 <Button
-                  colorSchema="secondary"
+                  variant="outline_bg"
                   type="submit"
                   leftIcon={<FontAwesomeIcon icon={faPlus} />}
                   onClick={() => {
                     if (subscription && !subscription.machineIdentityAuthTemplates) {
                       handlePopUpOpen("upgradePlan", {
                         isEnterpriseFeature: true,
-                        text: "Your current plan does not include access to creating Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
+                        text: "Your current plan does not include access to creating Machine Identity Auth Templates. To unlock this feature, please upgrade to Infisical Enterprise plan."
                       });
                       return;
                     }
@@ -197,9 +203,15 @@ export const IdentitySection = withPermission(
         >
           <ModalContent
             bodyClassName="overflow-visible"
-            title="Add Identity"
+            title={
+              isSubOrganization
+                ? "Add Machine Identity to Sub-Organization"
+                : "Create Organization Machine Identity"
+            }
             subTitle={
-              isSubOrganization ? "Create a new identity or assign an existing identity" : undefined
+              isSubOrganization
+                ? "Create a new machine identity or assign an existing one"
+                : undefined
             }
           >
             <AnimatePresence mode="wait">
@@ -224,11 +236,11 @@ export const IdentitySection = withPermission(
                   >
                     <div className="flex items-center gap-2">
                       <PlusIcon size="1rem" />
-                      <div>Create New Identity</div>
+                      <div>Create Machine Identity</div>
                     </div>
                     <div className="mt-2 text-xs text-mineshaft-300">
                       Create a new machine identity specifically for this sub-organization. This
-                      identity will be managed at the sub-organization level.
+                      machine identity will be managed at the sub-organization level.
                     </div>
                   </div>
                   <div
@@ -244,11 +256,11 @@ export const IdentitySection = withPermission(
                   >
                     <div className="flex items-center gap-2">
                       <LinkIcon size="1rem" />
-                      <div>Assign Existing Identity</div>
+                      <div>Assign Existing Machine Identity</div>
                     </div>
                     <div className="mt-2 text-xs text-mineshaft-300">
-                      Assign an existing identity from your parent organization. The identity will
-                      continue to be managed at its original scope.
+                      Assign an existing machine identity from your parent organization. The machine
+                      identity will continue to be managed at its original scope.
                     </div>
                   </div>
                 </motion.div>

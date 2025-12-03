@@ -17,7 +17,12 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { CaType, useDeleteCa, useGetCa } from "@app/hooks/api";
 import { TInternalCertificateAuthority } from "@app/hooks/api/ca/types";
 import { ProjectType } from "@app/hooks/api/projects/types";
@@ -34,14 +39,14 @@ import {
 
 const Page = () => {
   const { currentProject } = useProject();
+  const { currentOrg } = useOrganization();
   const navigate = useNavigate();
   const params = useParams({
     from: ROUTE_PATHS.CertManager.CertAuthDetailsByIDPage.id
   });
-  const { caName } = params as { caName: string };
+  const { caId } = params as { caId: string };
   const { data } = useGetCa({
-    caName,
-    projectId: currentProject?.id || "",
+    caId,
     type: CaType.INTERNAL
   }) as { data: TInternalCertificateAuthority };
 
@@ -60,7 +65,7 @@ const Page = () => {
     if (!currentProject?.slug) return;
 
     await deleteCa({
-      caName,
+      id: data.id,
       projectId: currentProject.id,
       type: CaType.INTERNAL
     });
@@ -72,8 +77,9 @@ const Page = () => {
 
     handlePopUpClose("deleteCa");
     navigate({
-      to: "/projects/cert-management/$projectId/certificate-authorities",
+      to: "/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities",
       params: {
+        orgId: currentOrg.id,
         projectId
       }
     });
@@ -84,8 +90,9 @@ const Page = () => {
       {data && (
         <div className="mx-auto mb-6 w-full max-w-8xl">
           <Link
-            to="/projects/cert-management/$projectId/certificate-authorities"
+            to="/organizations/$orgId/projects/cert-management/$projectId/certificate-authorities"
             params={{
+              orgId: currentOrg.id,
               projectId
             }}
             className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
@@ -130,7 +137,7 @@ const Page = () => {
           </PageHeader>
           <div className="flex">
             <div className="mr-4 w-96">
-              <CaDetailsSection caName={data.name} handlePopUpOpen={handlePopUpOpen} />
+              <CaDetailsSection caId={data.id} handlePopUpOpen={handlePopUpOpen} />
             </div>
             <div className="w-full">
               <CaCertificatesSection caId={data.id} />

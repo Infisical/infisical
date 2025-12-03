@@ -28,7 +28,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { useListWorkspaceSshHostGroups } from "@app/hooks/api";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
@@ -41,6 +46,7 @@ type Props = {
 
 export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
   const navigate = useNavigate();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { data, isPending } = useListWorkspaceSshHostGroups(currentProject?.id || "");
   return (
@@ -67,8 +73,9 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                     key={`ssh-host-group-${group.id}`}
                     onClick={() =>
                       navigate({
-                        to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
+                        to: "/organizations/$orgId/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                         params: {
+                          orgId: currentOrg.id,
                           projectId: currentProject.id,
                           sshHostGroupId: group.id
                         }
@@ -168,8 +175,9 @@ export const SshHostGroupsTable = ({ handlePopUpOpen }: Props) => {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate({
-                                    to: "/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
+                                    to: "/organizations/$orgId/projects/ssh/$projectId/ssh-host-groups/$sshHostGroupId",
                                     params: {
+                                      orgId: currentOrg.id,
                                       projectId: currentProject.id,
                                       sshHostGroupId: group.id
                                     }

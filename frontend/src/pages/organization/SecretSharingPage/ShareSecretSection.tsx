@@ -17,7 +17,7 @@ enum SecretSharingPageTabs {
 
 export const ShareSecretSection = () => {
   const navigate = useNavigate();
-  const { isSubOrganization } = useOrganization();
+  const { isSubOrganization, currentOrg } = useOrganization();
 
   const { selectedTab } = useSearch({
     from: ROUTE_PATHS.Organization.SecretSharing.id
@@ -26,6 +26,7 @@ export const ShareSecretSection = () => {
   const updateSelectedTab = (tab: string) => {
     navigate({
       to: ROUTE_PATHS.Organization.SecretSharing.path,
+      params: { orgId: currentOrg.id },
       search: (prev) => ({ ...prev, selectedTab: tab as SecretSharingPageTabs })
     });
   };

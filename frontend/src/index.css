@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-@import "@fontsource/inter/400.css" layer(base);
-@import "@fontsource/inter/500.css" layer(base);
-@import "@fontsource/inter/700.css" layer(base);
-
 @source not "../public";
 
 /*
@@ -29,11 +25,11 @@
 }
 
 :root {
-    font-family: var(--font-inter);
-    --foreground: oklch(0.985 0 0);
-    --background: oklch(0.145 0 0);
+  font-family: var(--font-inter);
+  --foreground: oklch(0.985 0 0);
+  --background: oklch(0.145 0 0);
 
-    --toastify-color-dark: var(--color-mineshaft-700);
+  --toastify-color-dark: var(--color-mineshaft-700);
 }
 
 @theme {
@@ -45,16 +41,16 @@
   --color-background: #19191c;
   --color-foreground: white;
   --color-success: #2ecc71;
-  --color-info: #34c2db;
+  --color-info: #63b0bd;
   --color-warning: #f1c40f;
   --color-danger: #e74c3c;
-  --color-org: #30B3FF;
+  --color-org: #30b3ff;
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
   --color-neutral: #adaeb0;
 
   /*legacy color schema */
-  --color-org-v1: #30B3FF;
+  --color-org-v1: #30b3ff;
   --color-namespace-v1: #96ff59;
 
   /* Primary */
@@ -418,15 +414,15 @@
 }
 
 .Toastify__toast {
-    @apply rounded-md;
+  @apply rounded-md;
 }
 
 .Toastify__toast-body {
-    @apply items-start;
+  @apply items-start;
 }
 
 .Toastify__toast-icon {
-    @apply w-4 pt-1;
+  @apply w-4 pt-1;
 }
 
 .tags-conic-bg {

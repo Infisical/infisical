@@ -5,7 +5,7 @@ sidebarTitle: "ACME"
 
 ## Concept
 
-The ACME enrollment method allows you to issue and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
+The ACME enrollment method allows Infisical to act as an ACME server. It lets you request and manage certificates against a specific [certificate profile](/documentation/platform/pki/certificates/profiles) using the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment).
 This method is suitable for web servers, load balancers, and other general-purpose servers that can run an [ACME client](https://letsencrypt.org/docs/client-options/) for automated certificate management.
 
 Infisical's ACME enrollment method is based on [RFC 8555](https://datatracker.ietf.org/doc/html/rfc8555/).
@@ -47,7 +47,7 @@ In the following steps, we explore how to issue a X.509 certificate using the AC
     ```bash
     sudo certbot certonly \
       --standalone \
-      --server "https://your-infisical-instance.com/api/v1/pki/certificate-profiles/{profile-id}/acme/directory" \
+      --server "https://your-infisical-instance.com/api/v1/cert-manager/certificate-profiles/{profile-id}/acme/directory" \
       --eab-kid "your-eab-kid" \
       --eab-hmac-key "your-eab-secret" \
       -d example.infisical.com \

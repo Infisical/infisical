@@ -54,7 +54,7 @@ export const ProfileList = ({
           </THead>
           <TBody>
             <Tr>
-              <Td colSpan={6}>
+              <Td colSpan={5}>
                 <EmptyState title="No Project Selected" />
               </Td>
             </Tr>
@@ -77,10 +77,10 @@ export const ProfileList = ({
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={6} innerKey="certificate-profiles" />}
+          {isLoading && <TableSkeleton columns={5} innerKey="certificate-profiles" />}
           {!isLoading && (!profiles || profiles.length === 0) && (
             <Tr>
-              <Td colSpan={6}>
+              <Td colSpan={5}>
                 <EmptyState title="No Certificate Profiles" />
               </Td>
             </Tr>

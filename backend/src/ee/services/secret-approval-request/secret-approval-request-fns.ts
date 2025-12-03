@@ -37,7 +37,7 @@ export const sendApprovalEmailsFn = async ({
       type: NotificationType.SECRET_CHANGE_REQUEST,
       title: "Secret Change Request",
       body: `You have a new secret change request pending your review for the project **${project.name}** in the organization **${project.organization.name}**.`,
-      link: `/projects/secret-management/${project.id}/approval`
+      link: `/organizations/${project.orgId}/projects/secret-management/${project.id}/approval`
     }))
   );
 
@@ -51,7 +51,7 @@ export const sendApprovalEmailsFn = async ({
         firstName: reviewerUser.firstName,
         projectName: project.name,
         organizationName: project.organization.name,
-        approvalUrl: `${cfg.SITE_URL}/projects/secret-management/${project.id}/approval}`
+        approvalUrl: `${cfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/approval}`
       },
       template: SmtpTemplates.SecretApprovalRequestNeedsReview
     });

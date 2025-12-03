@@ -6,6 +6,7 @@ import { Tab, TabList, Tabs } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useProjectPermission
 } from "@app/context";
@@ -13,13 +14,14 @@ import {
 import { AssumePrivilegeModeBanner } from "../ProjectLayout/components/AssumePrivilegeModeBanner";
 
 export const SshLayout = () => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { assumedPrivilegeDetails } = useProjectPermission();
   const location = useLocation();
 
   return (
-    <div className="dark flex h-full w-full flex-col overflow-x-hidden">
-      <div className="border-b border-mineshaft-600 bg-mineshaft-900">
+    <div className="dark flex h-full w-full flex-col overflow-x-hidden bg-mineshaft-900">
+      <div className="border-y border-t-project/10 border-b-project/5 bg-gradient-to-b from-project/[0.075] to-project/[0.025] px-4 pt-0.5">
         <motion.div
           key="menu-project-items"
           initial={{ x: -150 }}
@@ -32,8 +34,9 @@ export const SshLayout = () => {
             <Tabs value="selected">
               <TabList className="border-b-0">
                 <Link
-                  to="/projects/ssh/$projectId/overview"
+                  to="/organizations/$orgId/projects/ssh/$projectId/overview"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -54,8 +57,9 @@ export const SshLayout = () => {
                   {(isAllowed) =>
                     isAllowed && (
                       <Link
-                        to="/projects/ssh/$projectId/cas"
+                        to="/organizations/$orgId/projects/ssh/$projectId/cas"
                         params={{
+                          orgId: currentOrg.id,
                           projectId: currentProject.id
                         }}
                       >
@@ -71,8 +75,9 @@ export const SshLayout = () => {
                   }
                 </ProjectPermissionCan>
                 <Link
-                  to="/projects/ssh/$projectId/access-management"
+                  to="/organizations/$orgId/projects/ssh/$projectId/access-management"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
@@ -90,16 +95,18 @@ export const SshLayout = () => {
                   )}
                 </Link>
                 <Link
-                  to="/projects/ssh/$projectId/audit-logs"
+                  to="/organizations/$orgId/projects/ssh/$projectId/audit-logs"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >
                   {({ isActive }) => <Tab value={isActive ? "selected" : ""}>Audit Logs</Tab>}
                 </Link>
                 <Link
-                  to="/projects/ssh/$projectId/settings"
+                  to="/organizations/$orgId/projects/ssh/$projectId/settings"
                   params={{
+                    orgId: currentOrg.id,
                     projectId: currentProject.id
                   }}
                 >

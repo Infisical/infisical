@@ -24,6 +24,7 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import {
   ProjectPermissionActions,
   ProjectPermissionSub,
+  useOrganization,
   useProject,
   useSubscription
 } from "@app/context";
@@ -45,6 +46,7 @@ type Props = {
 const TABS_TO_SHOW = 5;
 
 export const EnvironmentTabs = ({ secretPath }: Props) => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const currentEnv = useParams({
     from: ROUTE_PATHS.SecretManager.SecretDashboardPage.id,
@@ -96,7 +98,8 @@ export const EnvironmentTabs = ({ secretPath }: Props) => {
       to: ROUTE_PATHS.SecretManager.SecretDashboardPage.path,
       params: {
         envSlug,
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        orgId: currentOrg.id
       },
       search: (prev) => prev
     });
