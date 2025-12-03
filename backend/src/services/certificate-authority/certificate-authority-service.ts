@@ -14,6 +14,7 @@ import { TAppConnectionServiceFactory } from "../app-connection/app-connection-s
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { TCertificateDALFactory } from "../certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
+import { TCertificateProfileDALFactory } from "../certificate-profile/certificate-profile-dal";
 import { TKmsServiceFactory } from "../kms/kms-service";
 import { TPkiSubscriberDALFactory } from "../pki-subscriber/pki-subscriber-dal";
 import { TPkiSyncDALFactory } from "../pki-sync/pki-sync-dal";
@@ -66,7 +67,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   internalCertificateAuthorityService: TInternalCertificateAuthorityServiceFactory;
   projectDAL: Pick<TProjectDALFactory, "findProjectBySlug" | "findOne" | "updateById" | "findById" | "transaction">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "create">;
   kmsService: Pick<
@@ -76,6 +77,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSubscriberDAL: Pick<TPkiSubscriberDALFactory, "findById">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -94,7 +96,8 @@ export const certificateAuthorityServiceFactory = ({
   kmsService,
   pkiSubscriberDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  certificateProfileDAL
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -108,7 +111,8 @@ export const certificateAuthorityServiceFactory = ({
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    certificateProfileDAL
   });
 
   const azureAdCsFns = AzureAdCsCertificateAuthorityFns({
@@ -123,7 +127,8 @@ export const certificateAuthorityServiceFactory = ({
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    certificateProfileDAL
   });
 
   const createCertificateAuthority = async (
@@ -690,6 +695,41 @@ export const certificateAuthorityServiceFactory = ({
     });
   };
 
+  const getCaById = async ({
+    caId,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: {
+    caId: string;
+    actor: OrgServiceActor["type"];
+    actorId: string;
+    actorAuthMethod: OrgServiceActor["authMethod"];
+    actorOrgId?: string;
+  }) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca) {
+      throw new NotFoundError({ message: "CA not found" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    return ca;
+  };
+
   return {
     createCertificateAuthority,
     findCertificateAuthorityById,
@@ -698,6 +738,7 @@ export const certificateAuthorityServiceFactory = ({
     updateCertificateAuthority,
     deleteCertificateAuthority,
     getAzureAdcsTemplates,
+    getCaById,
     deprecatedUpdateCertificateAuthority,
     deprecatedDeleteCertificateAuthority
   };

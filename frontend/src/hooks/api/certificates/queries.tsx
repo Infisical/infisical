@@ -7,7 +7,11 @@ import { TCertificate } from "./types";
 export const certKeys = {
   getCertById: (serialNumber: string) => [{ serialNumber }, "cert"],
   getCertBody: (serialNumber: string) => [{ serialNumber }, "certBody"],
-  getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"]
+  getCertBundle: (serialNumber: string) => [{ serialNumber }, "certBundle"],
+  getCertificateRequest: (requestId: string, projectSlug: string) => [
+    { requestId, projectSlug },
+    "certificateRequest"
+  ]
 };
 
 export const useGetCert = (serialNumber: string) => {

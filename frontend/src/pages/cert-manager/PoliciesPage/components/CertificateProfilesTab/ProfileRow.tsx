@@ -1,3 +1,4 @@
+/* eslint-disable no-nested-ternary */
 import { useCallback } from "react";
 import { subject } from "@casl/ability";
 import {
@@ -101,7 +102,9 @@ export const ProfileRow = ({
         <span className="text-sm text-mineshaft-300">
           {profile.issuerType === IssuerType.SELF_SIGNED
             ? "Self-signed"
-            : caData?.configuration.friendlyName ||
+            : profile.certificateAuthority?.isExternal
+              ? profile.certificateAuthority.name
+              : caData?.configuration.friendlyName ||
               caData?.configuration.commonName ||
               profile.caId}
         </span>
