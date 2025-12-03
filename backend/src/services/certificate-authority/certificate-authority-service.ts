@@ -332,8 +332,8 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, { name: "*" })
+      ProjectPermissionCertificateAuthorityActions.List,
+      ProjectPermissionSub.CertificateAuthorities
     );
 
     if (type === CaType.INTERNAL) {
@@ -724,7 +724,10 @@ export const certificateAuthorityServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateAuthorityActions.Read,
-      ProjectPermissionSub.CertificateAuthorities
+      subject(ProjectPermissionSub.CertificateAuthorities, {
+        caId: ca.id,
+        name: ca.name
+      })
     );
 
     return ca;

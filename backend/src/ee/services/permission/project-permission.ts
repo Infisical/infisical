@@ -307,6 +307,7 @@ export type SecretSyncSubjectFields = {
 };
 
 export type PkiSyncSubjectFields = {
+  subscriberName?: string;
   name: string;
 };
 
