@@ -103,14 +103,11 @@ export const renderConditionalComponents = (
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id || "";
+  const { currentProject, projectId } = useProject();
+
   const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
-  const { data: role, isPending } = useGetProjectRoleBySlug(
-    currentProject?.id ?? "",
-    roleSlug as string
-  );
+  const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
   const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
     enabled: isSecretManagerProject,
     refetchInterval: false
