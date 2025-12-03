@@ -105,11 +105,16 @@ export const renderConditionalComponents = (
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
+  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
+
   const { data: role, isPending } = useGetProjectRoleBySlug(
     currentProject?.id ?? "",
     roleSlug as string
   );
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId);
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
+    enabled: isSecretManagerProject,
+    refetchInterval: false
+  });
   const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
@@ -141,8 +146,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (role?.slug ?? "") as ProjectMembershipRole
   );
-
-  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
   const permissions = form.watch("permissions");
 

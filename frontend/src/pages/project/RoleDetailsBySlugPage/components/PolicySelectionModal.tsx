@@ -48,7 +48,11 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const [search, setSearch] = useState("");
   const { currentProject } = useProject();
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(currentProject?.id ?? "");
+  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(currentProject?.id ?? "", {
+    enabled: isSecretManagerProject,
+    refetchInterval: false
+  });
 
   const {
     control,
