@@ -52,6 +52,13 @@ export type TGroupUser = {
   joinedGroupAt: Date;
 };
 
+export type TGroupIdentity = {
+  id: string;
+  name: string;
+  isPartOfGroup: boolean;
+  joinedGroupAt: Date;
+};
+
 export type TGroupProject = {
   id: string;
   name: string;
@@ -64,6 +71,11 @@ export type TGroupProject = {
 export enum EFilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
+}
+
+export enum EFilterReturnedIdentities {
+  ASSIGNED_IDENTITIES = "assignedIdentities",
+  NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
 }
 
 export enum EFilterReturnedProjects {

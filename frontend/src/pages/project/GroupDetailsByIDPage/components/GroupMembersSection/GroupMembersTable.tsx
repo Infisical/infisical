@@ -35,7 +35,7 @@ import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { useAssumeProjectPrivileges } from "@app/hooks/api";
 import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { useListProjectGroupUsers } from "@app/hooks/api/groups/queries";
+import { useListGroupUsers } from "@app/hooks/api/groups/queries";
 import { EFilterReturnedUsers, TGroupMembership } from "@app/hooks/api/groups/types";
 
 import { GroupMembershipRow } from "./GroupMembershipRow";
@@ -89,10 +89,9 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
   const { isSubOrganization, currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
-  const { data: groupMemberships, isPending } = useListProjectGroupUsers({
+  const { data: groupMemberships, isPending } = useListGroupUsers({
     id: groupMembership.group.id,
     groupSlug: groupMembership.group.slug,
-    projectId: currentProject.id,
     offset,
     limit: perPage,
     search,

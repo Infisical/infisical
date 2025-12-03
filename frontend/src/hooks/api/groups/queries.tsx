@@ -4,9 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { OrderByDirection } from "../generic/types";
 import {
+  EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
   TGroup,
+  TGroupIdentity,
   TGroupProject,
   TGroupUser
 } from "./types";
@@ -29,8 +31,10 @@ export const groupKeys = {
     search: string;
     filter?: EFilterReturnedUsers;
   }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, search, filter }] as const,
-  specificProjectGroupUserMemberships: ({
-    projectId,
+  allGroupIdentitiesMemberships: () => ["group-identities-memberships"] as const,
+  forGroupIdentitiesMemberships: (slug: string) =>
+    [...groupKeys.allGroupIdentitiesMemberships(), slug] as const,
+  specificGroupIdentitiesMemberships: ({
     slug,
     offset,
     limit,
@@ -38,17 +42,12 @@ export const groupKeys = {
     filter
   }: {
     slug: string;
-    projectId: string;
     offset: number;
     limit: number;
     search: string;
-    filter?: EFilterReturnedUsers;
+    filter?: EFilterReturnedIdentities;
   }) =>
-    [
-      ...groupKeys.forGroupUserMemberships(slug),
-      projectId,
-      { offset, limit, search, filter }
-    ] as const,
+    [...groupKeys.forGroupIdentitiesMemberships(slug), { offset, limit, search, filter }] as const,
   allGroupProjects: () => ["group-projects"] as const,
   forGroupProjects: (groupId: string) => [...groupKeys.allGroupProjects(), groupId] as const,
   specificGroupProjects: ({
@@ -131,9 +130,8 @@ export const useListGroupUsers = ({
   });
 };
 
-export const useListProjectGroupUsers = ({
+export const useListGroupIdentities = ({
   id,
-  projectId,
   groupSlug,
   offset = 0,
   limit = 10,
@@ -142,16 +140,14 @@ export const useListProjectGroupUsers = ({
 }: {
   id: string;
   groupSlug: string;
-  projectId: string;
   offset: number;
   limit: number;
   search: string;
-  filter?: EFilterReturnedUsers;
+  filter?: EFilterReturnedIdentities;
 }) => {
   return useQuery({
-    queryKey: groupKeys.specificProjectGroupUserMemberships({
+    queryKey: groupKeys.specificGroupIdentitiesMemberships({
       slug: groupSlug,
-      projectId,
       offset,
       limit,
       search,
@@ -167,8 +163,8 @@ export const useListProjectGroupUsers = ({
         ...(filter && { filter })
       });
 
-      const { data } = await apiRequest.get<{ users: TGroupUser[]; totalCount: number }>(
-        `/api/v1/projects/${projectId}/groups/${id}/users`,
+      const { data } = await apiRequest.get<{ identities: TGroupIdentity[]; totalCount: number }>(
+        `/api/v1/groups/${id}/identities`,
         {
           params
         }

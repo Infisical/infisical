@@ -347,6 +347,7 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     }
   });
 
+  // Deprecated: Duplicate of /groups/:id/users, will be removed in the future
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId/users",
