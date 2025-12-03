@@ -4,6 +4,7 @@ import { IdentityJwtAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, JWT_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -100,7 +101,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
       body: z.object({
         identityId: z.string().trim().describe(JWT_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: z.string().trim().optional().describe(JWT_AUTH.LOGIN.subOrganizationName)
+        subOrganizationName: slugSchema().optional().describe(JWT_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -113,11 +114,7 @@ export const registerIdentityJwtAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identityJwtAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityJwtAuth.login({
-          identityId: req.body.identityId,
-          jwt: req.body.jwt,
-          subOrganizationName: req.body.subOrganizationName
-        });
+        await server.services.identityJwtAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

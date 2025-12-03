@@ -4,6 +4,7 @@ import { IdentityOidcAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OIDC_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -48,7 +49,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
       body: z.object({
         identityId: z.string().trim().describe(OIDC_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: z.string().trim().optional().describe(OIDC_AUTH.LOGIN.subOrganizationName)
+        subOrganizationName: slugSchema().optional().describe(OIDC_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -61,11 +62,7 @@ export const registerIdentityOidcAuthRouter = async (server: FastifyZodProvider)
     },
     handler: async (req) => {
       const { identityOidcAuth, accessToken, identityAccessToken, identity, oidcTokenData } =
-        await server.services.identityOidcAuth.login({
-          identityId: req.body.identityId,
-          jwt: req.body.jwt,
-          subOrganizationName: req.body.subOrganizationName
-        });
+        await server.services.identityOidcAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

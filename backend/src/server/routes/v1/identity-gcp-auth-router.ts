@@ -4,6 +4,7 @@ import { IdentityGcpAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, GCP_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -24,7 +25,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
       body: z.object({
         identityId: z.string().trim().describe(GCP_AUTH.LOGIN.identityId),
         jwt: z.string(),
-        subOrganizationName: z.string().trim().optional().describe(GCP_AUTH.LOGIN.subOrganizationName)
+        subOrganizationName: slugSchema().optional().describe(GCP_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -37,10 +38,7 @@ export const registerIdentityGcpAuthRouter = async (server: FastifyZodProvider) 
     },
     handler: async (req) => {
       const { identityGcpAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityGcpAuth.login({
-          ...req.body,
-          subOrganizationName: req.body.subOrganizationName
-        });
+        await server.services.identityGcpAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

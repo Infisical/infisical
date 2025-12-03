@@ -210,11 +210,9 @@ export const identityAccessTokenServiceFactory = ({
 
     const identityOrgDetails = await orgDAL.findOne({ id: scopeOrgId });
 
-    const isSubOrg = !!(identityOrgDetails.rootOrgId || identityOrgDetails.parentOrgId);
+    const isSubOrg = Boolean(identityOrgDetails.rootOrgId);
 
-    const rootOrgId = isSubOrg
-      ? identityOrgDetails.rootOrgId || identityOrgDetails.parentOrgId || identityOrgDetails.id
-      : identityOrgDetails.id;
+    const rootOrgId = isSubOrg ? identityOrgDetails.rootOrgId || identityOrgDetails.id : identityOrgDetails.id;
 
     // Verify identity membership in the organization
     const identityOrgMembership = await membershipIdentityDAL.findOne({

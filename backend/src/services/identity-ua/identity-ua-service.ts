@@ -91,7 +91,7 @@ export const identityUaServiceFactory = ({
 
     const identity = await identityDAL.findById(identityUa.identityId);
     const org = await orgDAL.findById(identity.orgId);
-    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+    const isSubOrg = Boolean(org.rootOrgId);
 
     const rootOrgId = isSubOrg ? org.rootOrgId || "" : org.id;
 

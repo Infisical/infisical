@@ -170,7 +170,7 @@ export const IDENTITIES = {
   }
 } as const;
 
-const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization slug to scope the token to";
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
 
 export const UNIVERSAL_AUTH = {
   LOGIN: {
@@ -612,7 +612,7 @@ export const TOKEN_AUTH = {
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
     name: "The name of the token to create.",
-    subOrganizationName: "The sub organization slug to scope the token to."
+    subOrganizationName: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",

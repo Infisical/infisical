@@ -543,20 +543,12 @@ export const authLoginServiceFactory = ({
 
     const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
 
-    let rootOrg = selectedOrg;
     let membershipRole;
 
     if (isSubOrganization) {
       if (!selectedOrg.rootOrgId) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
-        });
-      }
-
-      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
-      if (!rootOrg) {
-        throw new BadRequestError({
-          message: "Invalid root organization"
         });
       }
 
@@ -577,7 +569,7 @@ export const authLoginServiceFactory = ({
       // Check user membership in the root organization
       const rootOrgMembership = await membershipUserDAL.findOne({
         actorUserId: user.id,
-        scopeOrgId: rootOrg.id,
+        scopeOrgId: selectedOrg.rootOrgId,
         scope: AccessScope.Organization,
         status: OrgMembershipStatus.Accepted
       });
@@ -665,7 +657,7 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      organizationId: isSubOrganization ? rootOrg.id : organizationId,
+      organizationId: isSubOrganization ? selectedOrg.rootOrgId || "" : organizationId,
       subOrganizationId: isSubOrganization ? organizationId : undefined,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
@@ -755,7 +747,7 @@ export const authLoginServiceFactory = ({
           metadata: {
             organizationId,
             organizationName: selectedOrg.name,
-            rootOrganizationId: rootOrg.id
+            rootOrganizationId: selectedOrg.rootOrgId || ""
           }
         }
       });

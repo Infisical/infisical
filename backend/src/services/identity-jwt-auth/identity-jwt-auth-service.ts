@@ -86,7 +86,7 @@ export const identityJwtAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
-    const isSubOrg = !!(org.rootOrgId || org.parentOrgId);
+    const isSubOrg = Boolean(org.rootOrgId);
 
     const rootOrgId = isSubOrg ? org.rootOrgId || org.id : org.id;
 

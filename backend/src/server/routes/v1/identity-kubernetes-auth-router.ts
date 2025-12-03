@@ -5,6 +5,7 @@ import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, KUBERNETES_AUTH } from "@app/lib/api-docs";
 import { CharacterType, characterValidator } from "@app/lib/validator/validate-string";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -45,7 +46,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
       body: z.object({
         identityId: z.string().trim().describe(KUBERNETES_AUTH.LOGIN.identityId),
         jwt: z.string().trim(),
-        subOrganizationName: z.string().trim().optional().describe(KUBERNETES_AUTH.LOGIN.subOrganizationName)
+        subOrganizationName: slugSchema().optional().describe(KUBERNETES_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -58,11 +59,7 @@ export const registerIdentityKubernetesRouter = async (server: FastifyZodProvide
     },
     handler: async (req) => {
       const { identityKubernetesAuth, accessToken, identityAccessToken, identity } =
-        await server.services.identityKubernetesAuth.login({
-          identityId: req.body.identityId,
-          jwt: req.body.jwt,
-          subOrganizationName: req.body.subOrganizationName
-        });
+        await server.services.identityKubernetesAuth.login(req.body);
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

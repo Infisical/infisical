@@ -355,15 +355,13 @@ export const licenseServiceFactory = ({
     projectId,
     refreshCache
   }: TOrgPlanDTO) => {
-    const isChildOrg = rootOrgId !== actorOrgId;
-
     await permissionService.getOrgPermission({
       actorId,
       actor,
       orgId,
       actorOrgId,
       actorAuthMethod,
-      scope: isChildOrg ? OrganizationActionScope.ChildOrganization : OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
     if (refreshCache) {
       await refreshPlan(rootOrgId);

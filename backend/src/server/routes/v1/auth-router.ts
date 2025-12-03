@@ -92,28 +92,15 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
 
       if (decodedToken.organizationId) {
-        if (decodedToken.subOrganizationId) {
-          const subOrg = await server.services.org.findOrganizationById({
-            userId: decodedToken.userId,
-            orgId: decodedToken.subOrganizationId,
-            actorAuthMethod: decodedToken.authMethod,
-            actorOrgId: decodedToken.subOrganizationId,
-            rootOrgId: decodedToken.organizationId
-          });
-          if (subOrg && subOrg.userTokenExpiration) {
-            expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, subOrg.userTokenExpiration);
-          }
-        } else {
-          const org = await server.services.org.findOrganizationById({
-            userId: decodedToken.userId,
-            orgId: decodedToken.organizationId,
-            actorAuthMethod: decodedToken.authMethod,
-            actorOrgId: decodedToken.organizationId,
-            rootOrgId: decodedToken.organizationId
-          });
-          if (org && org.userTokenExpiration) {
-            expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
-          }
+        const org = await server.services.org.findOrganizationById({
+          userId: decodedToken.userId,
+          orgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
+          actorAuthMethod: decodedToken.authMethod,
+          actorOrgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
+          rootOrgId: decodedToken.organizationId
+        });
+        if (org && org.userTokenExpiration) {
+          expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
         }
       }
 
