@@ -47,7 +47,7 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
   // Helper function to create MongoDB client with given credentials
   const $createMongoClient = async (
     authCredentials: { username: string; password: string },
-    options?: { validateConnection?: boolean; requireTlsForSrv?: boolean }
+    options?: { validateConnection?: boolean }
   ): Promise<MongoClient> => {
     let normalizedHost = connection.credentials.host.trim();
     const srvRegex = new RE2("^mongodb\\+srv:\\/\\/");
@@ -120,7 +120,7 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
           username: credentials.username,
           password: credentials.password
         },
-        { validateConnection: true, requireTlsForSrv: true }
+        { validateConnection: true }
       );
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));
