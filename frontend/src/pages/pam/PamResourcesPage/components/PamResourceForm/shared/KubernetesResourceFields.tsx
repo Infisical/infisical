@@ -1,6 +1,8 @@
 import { Controller, useFormContext } from "react-hook-form";
+import { faQuestionCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
-import { FormControl, Input, Switch, TextArea } from "@app/components/v2";
+import { FormControl, Input, Switch, TextArea, Tooltip } from "@app/components/v2";
 
 export const KubernetesResourceFields = () => {
   const { control, watch } = useFormContext();
@@ -24,36 +26,6 @@ export const KubernetesResourceFields = () => {
           )}
         />
         <Controller
-          name="connectionDetails.namespace"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              errorText={error?.message}
-              isError={Boolean(error?.message)}
-              label="Namespace"
-            >
-              <Input placeholder="default" {...field} />
-            </FormControl>
-          )}
-        />
-        <Controller
-          name="connectionDetails.skipTLSVerify"
-          control={control}
-          render={({ field: { value, onChange }, fieldState: { error } }) => (
-            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
-              <Switch
-                className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                id="skip-tls-verify"
-                thumbClassName="bg-mineshaft-800"
-                isChecked={value}
-                onCheckedChange={onChange}
-              >
-                Skip TLS Verification
-              </Switch>
-            </FormControl>
-          )}
-        />
-        <Controller
           name="connectionDetails.caCertificate"
           control={control}
           render={({ field, fieldState: { error } }) => (
@@ -70,6 +42,36 @@ export const KubernetesResourceFields = () => {
                 isDisabled={skipTLSVerify}
                 placeholder="-----BEGIN CERTIFICATE-----..."
               />
+            </FormControl>
+          )}
+        />
+        <Controller
+          name="connectionDetails.sslRejectUnauthorized"
+          control={control}
+          render={({ field: { value, onChange }, fieldState: { error } }) => (
+            <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
+              <Switch
+                className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
+                id="ssl-reject-unauthorized"
+                thumbClassName="bg-mineshaft-800"
+                isChecked={value}
+                onCheckedChange={onChange}
+              >
+                <p className="w-38">
+                  Reject Unauthorized
+                  <Tooltip
+                    className="max-w-md"
+                    content={
+                      <p>
+                        If enabled, Infisical will only connect to the server if it has a valid,
+                        trusted SSL certificate.
+                      </p>
+                    }
+                  >
+                    <FontAwesomeIcon icon={faQuestionCircle} size="sm" className="ml-1" />
+                  </Tooltip>
+                </p>
+              </Switch>
             </FormControl>
           )}
         />
