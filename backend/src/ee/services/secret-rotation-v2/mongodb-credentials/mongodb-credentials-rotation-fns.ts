@@ -81,13 +81,9 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
       directConnection: !isSrv
     };
 
-    // SSL is enabled if explicitly enabled OR if using SRV (which requires TLS) and requireTlsForSrv is true
-    if (connection.credentials.sslEnabled) {
+    if (connection.credentials.sslCertificate) {
       clientOptions.tls = true;
-      clientOptions.tlsInsecure = !connection.credentials.sslRejectUnauthorized;
-      if (connection.credentials.sslCertificate) {
-        clientOptions.ca = connection.credentials.sslCertificate;
-      }
+      clientOptions.ca = connection.credentials.sslCertificate;
     }
 
     const client = new MongoClient(uri, clientOptions);
