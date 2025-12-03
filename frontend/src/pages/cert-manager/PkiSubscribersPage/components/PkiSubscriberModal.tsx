@@ -213,7 +213,8 @@ export const PkiSubscriberModal = ({ popUp, handlePopUpToggle }: Props) => {
   // Fetch Azure ADCS templates when Azure CA is selected
   const { data: azureTemplates } = useGetAzureAdcsTemplates({
     caId: selectedCa?.type === CaType.AZURE_AD_CS ? selectedCaId : "",
-    projectId
+    projectId,
+    isAzureAdcsCa: true
   });
 
   // Initialize form with ALL subscriber data including template

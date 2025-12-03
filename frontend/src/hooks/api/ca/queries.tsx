@@ -189,10 +189,12 @@ export const useGetCaCertTemplates = (caId: string) => {
 
 export const useGetAzureAdcsTemplates = ({
   caId,
-  projectId
+  projectId,
+  isAzureAdcsCa
 }: {
   caId: string;
   projectId: string;
+  isAzureAdcsCa: boolean;
 }) => {
   return useQuery({
     queryKey: caKeys.getAzureAdcsTemplates(caId, projectId),
@@ -202,6 +204,6 @@ export const useGetAzureAdcsTemplates = ({
       }>(`/api/v1/cert-manager/ca/azure-ad-cs/${caId}/templates?projectId=${projectId}`);
       return data;
     },
-    enabled: Boolean(caId && projectId)
+    enabled: Boolean(caId && projectId && isAzureAdcsCa)
   });
 };

@@ -15,19 +15,28 @@ export enum IssuerType {
   SELF_SIGNED = "self-signed"
 }
 
-export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType" | "issuerType"> & {
+export type TCertificateProfile = Omit<TPkiCertificateProfiles, "enrollmentType" | "issuerType" | "externalConfigs"> & {
   enrollmentType: EnrollmentType;
   issuerType: IssuerType;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
-export type TCertificateProfileInsert = Omit<TPkiCertificateProfilesInsert, "enrollmentType" | "issuerType"> & {
+export type TCertificateProfileInsert = Omit<
+  TPkiCertificateProfilesInsert,
+  "enrollmentType" | "issuerType" | "externalConfigs"
+> & {
   enrollmentType: EnrollmentType;
   issuerType: IssuerType;
+  externalConfigs?: Record<string, unknown> | null;
 };
 
-export type TCertificateProfileUpdate = Omit<TPkiCertificateProfilesUpdate, "enrollmentType" | "issuerType"> & {
+export type TCertificateProfileUpdate = Omit<
+  TPkiCertificateProfilesUpdate,
+  "enrollmentType" | "issuerType" | "externalConfigs"
+> & {
   enrollmentType?: EnrollmentType;
   issuerType?: IssuerType;
+  externalConfigs?: Record<string, unknown> | null;
   estConfig?: {
     disableBootstrapCaValidation?: boolean;
     passphrase?: string;
@@ -50,6 +59,8 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     projectId: string;
     status: string;
     name: string;
+    isExternal?: boolean;
+    externalType?: string;
   };
   certificateTemplate?: {
     id: string;

@@ -21,6 +21,7 @@ export enum TableName {
   CertificateAuthorityCrl = "certificate_authority_crl",
   Certificate = "certificates",
   CertificateBody = "certificate_bodies",
+  CertificateRequests = "certificate_requests",
   CertificateSecret = "certificate_secrets",
   CertificateTemplate = "certificate_templates",
   PkiCertificateTemplateV2 = "pki_certificate_templates_v2",

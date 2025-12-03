@@ -44,7 +44,6 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Settings,
     ProjectPermissionSub.Environments,
     ProjectPermissionSub.Tags,
-    ProjectPermissionSub.AuditLogs,
     ProjectPermissionSub.IpAllowList,
     ProjectPermissionSub.CertificateAuthorities,
     ProjectPermissionSub.PkiAlerts,
@@ -66,6 +65,8 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
 
   can(
     [
