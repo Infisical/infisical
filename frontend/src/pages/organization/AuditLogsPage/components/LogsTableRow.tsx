@@ -29,7 +29,7 @@ const Tag = ({ label, value }: TagProps) => {
         <Tooltip
           side="right"
           className="max-w-sm"
-          content="This endpoint doesn't require authentication, so the requesting actor cannot be identified."
+          content="This action doesn't require authentication, so the requesting actor cannot be identified."
         >
           <InfoIcon size={14} className="text-mineshaft-300" />
         </Tooltip>
