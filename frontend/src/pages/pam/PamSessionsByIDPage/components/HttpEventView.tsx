@@ -222,7 +222,7 @@ export const HttpEventView = ({ events }: Props) => {
                     </div>
                   )}
 
-                  {isRequest && event.body && (
+                  {event.body && (
                     <div className="mt-2 pt-2 border-t border-mineshaft-700">
                       <button
                         type="button"

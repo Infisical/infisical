@@ -51,6 +51,7 @@ export type THttpRequestEvent = {
   headers: Record<string, string[]>;
   method: string;
   url: string;
+  body?: string;
 };
 
 export type THttpResponseEvent = {
@@ -59,6 +60,7 @@ export type THttpResponseEvent = {
   eventType: "response";
   headers: Record<string, string[]>;
   status: string;
+  body?: string;
 };
 
 export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
