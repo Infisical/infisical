@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
+import { faChevronDown, faChevronUp, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { Input } from "@app/components/v2";
@@ -12,6 +12,9 @@ type Props = {
 
 export const HttpEventView = ({ events }: Props) => {
   const [search, setSearch] = useState("");
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, { headers: boolean; body: boolean }>
+  >({});
 
   const filteredEvents = useMemo(
     () =>
@@ -48,6 +51,25 @@ export const HttpEventView = ({ events }: Props) => {
       .join("\n");
   };
 
+  const getKubectlCommand = (headers: Record<string, string[]>) => {
+    const headerKey = Object.keys(headers).find((key) => key.toLowerCase() === "kubectl-command");
+    return headerKey ? headers[headerKey]?.[0] : undefined;
+  };
+
+  const toggleSection = (eventKey: string, section: "headers" | "body") => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [eventKey]: {
+        ...prev[eventKey],
+        [section]: !prev[eventKey]?.[section]
+      }
+    }));
+  };
+
+  const isSectionExpanded = (eventKey: string, section: "headers" | "body") => {
+    return expandedSections[eventKey]?.[section] ?? false;
+  };
+
   return (
     <>
       <div className="flex gap-2">
@@ -66,6 +88,7 @@ export const HttpEventView = ({ events }: Props) => {
           filteredEvents.map((event, index) => {
             const eventKey = `${event.timestamp}-${event.requestId}-${index}`;
             const isRequest = event.eventType === "request";
+            const kubectlCommand = getKubectlCommand(event.headers);
 
             return (
               <div
@@ -83,6 +106,14 @@ export const HttpEventView = ({ events }: Props) => {
                     >
                       {isRequest ? "REQUEST" : "RESPONSE"}
                     </span>
+                    {kubectlCommand && (
+                      <span
+                        className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400"
+                        title="Kubectl Command"
+                      >
+                        kubectl: {kubectlCommand}
+                      </span>
+                    )}
                     <span>{new Date(event.timestamp).toLocaleString()}</span>
                     <span className="text-bunker-500">•</span>
                     <span className="font-mono text-xs">{event.requestId}</span>
@@ -104,12 +135,49 @@ export const HttpEventView = ({ events }: Props) => {
 
                   {Object.keys(event.headers).length > 0 && (
                     <div className="mt-2 pt-2 border-t border-mineshaft-700">
-                      <div className="text-bunker-400 text-xs mb-1">Headers:</div>
-                      <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
-                        <HighlightText text={formatHeaders(event.headers)} highlight={search} />
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(eventKey, "headers")}
+                        className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                      >
+                        <FontAwesomeIcon
+                          icon={
+                            isSectionExpanded(eventKey, "headers") ? faChevronUp : faChevronDown
+                          }
+                          className="text-xs"
+                        />
+                        <span>Headers:</span>
+                      </button>
+                      {isSectionExpanded(eventKey, "headers") && (
+                        <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                          <HighlightText text={formatHeaders(event.headers)} highlight={search} />
+                        </div>
+                      )}
                     </div>
                   )}
+
+                  <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(eventKey, "body")}
+                      className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                    >
+                      <FontAwesomeIcon
+                        icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
+                        className="text-xs"
+                      />
+                      <span>Body:</span>
+                    </button>
+                    {isSectionExpanded(eventKey, "body") && (
+                      <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                        <div className="text-bunker-500 italic">
+                          {isRequest
+                            ? "Request body content will be displayed here when available."
+                            : "Response body content will be displayed here when available."}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
