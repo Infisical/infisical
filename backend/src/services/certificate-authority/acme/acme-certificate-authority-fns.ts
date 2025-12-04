@@ -7,6 +7,7 @@ import { TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
+import { PermissionFilters } from "@app/lib/knex/permission-filter-utils";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -720,7 +721,7 @@ export const AcmeCertificateAuthorityFns = ({
     permissionFilters
   }: {
     projectId: string;
-    permissionFilters?: import("@app/lib/knex/permission-filter-utils").PermissionFilters;
+    permissionFilters?: PermissionFilters;
   }) => {
     const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {

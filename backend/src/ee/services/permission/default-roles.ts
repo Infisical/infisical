@@ -109,8 +109,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.Create,
       ProjectPermissionCertificateActions.Delete,
       ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionCertificateActions.Import,
-      ProjectPermissionCertificateActions.Read
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
@@ -484,8 +483,7 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCertificateActions.Edit,
       ProjectPermissionCertificateActions.Create,
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionCertificateActions.Import,
-      ProjectPermissionCertificateActions.Read
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
