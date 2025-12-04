@@ -104,6 +104,7 @@ export const CaSection = () => {
             : "This action will prevent the CA from issuing new certificates."
         }
         onChange={(isOpen) => handlePopUpToggle("caStatus", isOpen)}
+        buttonText="Confirm"
         deleteKey="confirm"
         onDeleteApproved={() =>
           onUpdateCaStatus(popUp?.caStatus?.data as { caId: string; status: CaStatus })

@@ -6,6 +6,7 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -332,15 +333,25 @@ export const certificateAuthorityServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.List,
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionSub.CertificateAuthorities
+    );
+
+    const permissionFilters = getPermissionFiltersForAbility(
+      permission,
+      ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
 
     if (type === CaType.INTERNAL) {
-      const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-        $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"]
-      });
+      const cas = await certificateAuthorityDAL.findWithAssociatedCa(
+        {
+          [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+          $notNull: [`${TableName.InternalCertificateAuthority}.id` as "id"]
+        },
+        {},
+        permissionFilters
+      );
 
       return cas
         .filter((ca): ca is typeof ca & { internalCa: NonNullable<typeof ca.internalCa> } => Boolean(ca.internalCa))
@@ -356,11 +367,11 @@ export const certificateAuthorityServiceFactory = ({
     }
 
     if (type === CaType.ACME) {
-      return acmeFns.listCertificateAuthorities({ projectId });
+      return acmeFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     if (type === CaType.AZURE_AD_CS) {
-      return azureAdCsFns.listCertificateAuthorities({ projectId });
+      return azureAdCsFns.listCertificateAuthorities({ projectId, permissionFilters });
     }
 
     throw new BadRequestError({ message: "Invalid certificate authority type" });

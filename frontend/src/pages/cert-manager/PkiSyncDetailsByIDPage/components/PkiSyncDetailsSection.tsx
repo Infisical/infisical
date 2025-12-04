@@ -34,8 +34,7 @@ type Props = {
 };
 
 export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
-  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriberId, subscriber } =
-    pkiSync;
+  const { syncStatus, lastSyncMessage, lastSyncedAt, name, description, subscriber } = pkiSync;
 
   const failureMessage = useMemo(() => {
     if (syncStatus === PkiSyncStatus.Failed) {
@@ -54,7 +53,6 @@ export const PkiSyncDetailsSection = ({ pkiSync, onEditDetails }: Props) => {
   const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriber?.id || subscriberId || "",
     subscriberName: destinationName,
     name: pkiSync.name
   });

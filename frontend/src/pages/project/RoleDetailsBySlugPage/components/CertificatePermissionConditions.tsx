@@ -14,7 +14,6 @@ export const CertificatePermissionConditions = ({ position = 0, isDisabled }: Pr
       subject={ProjectPermissionSub.Certificates}
       position={position}
       selectOptions={[
-        { value: "id", label: "Certificate ID" },
         { value: "commonName", label: "Common Name" },
         { value: "altNames", label: "Subject Alternative Names" },
         { value: "serialNumber", label: "Serial Number" }

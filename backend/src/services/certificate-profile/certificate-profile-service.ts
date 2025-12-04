@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -745,25 +746,39 @@ export const certificateProfileServiceFactory = ({
       actionProjectType: ActionProjectType.CertificateManager
     });
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateProfileActions.List,
+      ProjectPermissionCertificateProfileActions.Read,
       ProjectPermissionSub.CertificateProfiles
     );
 
-    const profiles = await certificateProfileDAL.findByProjectId(projectId, {
-      offset,
-      limit,
-      search,
-      enrollmentType,
-      issuerType,
-      caId
-    });
+    const permissionFilters = getPermissionFiltersForAbility(
+      permission,
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionSub.CertificateProfiles
+    );
 
-    const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
-      search,
-      enrollmentType,
-      issuerType,
-      caId
-    });
+    const profiles = await certificateProfileDAL.findByProjectId(
+      projectId,
+      {
+        offset,
+        limit,
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      permissionFilters
+    );
+
+    const totalCount = await certificateProfileDAL.countByProjectId(
+      projectId,
+      {
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      permissionFilters
+    );
 
     const convertedProfiles = await Promise.all(
       profiles.map(async (profile) => {

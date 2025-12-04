@@ -28,7 +28,6 @@ export enum ProjectPermissionCertificateAuthorityActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  List = "list",
   Renew = "renew",
   SignIntermediate = "sign-intermediate"
 }
@@ -38,7 +37,6 @@ export enum ProjectPermissionCertificateActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  List = "list",
   ReadPrivateKey = "read-private-key",
   Import = "import"
 }
@@ -129,7 +127,6 @@ export enum ProjectPermissionPkiSubscriberActions {
 
 export enum ProjectPermissionCertificateProfileActions {
   Read = "read",
-  List = "list",
   Create = "create",
   Edit = "edit",
   Delete = "delete",
@@ -153,7 +150,6 @@ export enum ProjectPermissionPkiSyncActions {
   Create = "create",
   Edit = "edit",
   Delete = "delete",
-  List = "list",
   SyncCertificates = "sync-certificates",
   ImportCertificates = "import-certificates",
   RemoveCertificates = "remove-certificates"
@@ -256,7 +252,6 @@ export enum ProjectPermissionSub {
   CertificateAuthorities = "certificate-authorities",
   Certificates = "certificates",
   CertificateTemplates = "certificate-templates",
-  CertificateTemplatesV2 = "certificate-templates-v2",
   SshCertificateAuthorities = "ssh-certificate-authorities",
   SshCertificates = "ssh-certificates",
   SshCertificateTemplates = "ssh-certificate-templates",
@@ -453,13 +448,6 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificateTemplates> & PkiTemplateSubjectFields)
       )
     ]
-  | [
-      ProjectPermissionActions,
-      (
-        | ProjectPermissionSub.CertificateTemplatesV2
-        | (ForcedSubject<ProjectPermissionSub.CertificateTemplatesV2> & CertificateTemplateV2SubjectFields)
-      )
-    ]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateAuthorities]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificates]
   | [ProjectPermissionActions, ProjectPermissionSub.SshCertificateTemplates]
@@ -640,6 +628,17 @@ const PkiSyncConditionSchema = z
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
+    ]),
+    subscriberName: z.union([
+      z.string(),
+      z
+        .object({
+          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
+        })
+        .partial()
     ])
   })
   .partial();
@@ -756,6 +755,7 @@ const PkiTemplateConditionSchema = z
       z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
+          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
           [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB],
           [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
         })
@@ -875,7 +875,8 @@ const CertificateConditionSchema = z
         .object({
           [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
           [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN]
+          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
+          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
         })
         .partial()
     ])
@@ -885,22 +886,6 @@ const CertificateConditionSchema = z
 const CertificateProfileConditionSchema = z
   .object({
     slug: z.union([
-      z.string(),
-      z
-        .object({
-          [PermissionConditionOperators.$EQ]: PermissionConditionSchema[PermissionConditionOperators.$EQ],
-          [PermissionConditionOperators.$NEQ]: PermissionConditionSchema[PermissionConditionOperators.$NEQ],
-          [PermissionConditionOperators.$IN]: PermissionConditionSchema[PermissionConditionOperators.$IN],
-          [PermissionConditionOperators.$GLOB]: PermissionConditionSchema[PermissionConditionOperators.$GLOB]
-        })
-        .partial()
-    ])
-  })
-  .partial();
-
-const CertificateTemplateV2ConditionSchema = z
-  .object({
-    name: z.union([
       z.string(),
       z
         .object({
@@ -1305,16 +1290,6 @@ export const ProjectPermissionV2Schema = z.discriminatedUnion("subject", [
       "Describe what action an entity can take."
     ),
     conditions: CertificateConditionSchema.describe(
-      "When specified, only matching conditions will be allowed to access given resource."
-    ).optional()
-  }),
-  z.object({
-    subject: z.literal(ProjectPermissionSub.CertificateTemplatesV2).describe("The entity this permission pertains to."),
-    inverted: z.boolean().optional().describe("Whether rule allows or forbids."),
-    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionActions).describe(
-      "Describe what action an entity can take."
-    ),
-    conditions: CertificateTemplateV2ConditionSchema.describe(
       "When specified, only matching conditions will be allowed to access given resource."
     ).optional()
   }),

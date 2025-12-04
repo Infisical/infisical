@@ -42,7 +42,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         <h3 className="text-lg font-medium text-mineshaft-100">CA Details</h3>
         <ProjectPermissionCan
           I={ProjectPermissionCertificateAuthorityActions.Edit}
-          a={subject(ProjectPermissionSub.CertificateAuthorities, { caId: ca.id, name: ca.name })}
+          a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
         >
           {(isAllowed) => {
             return (
@@ -159,7 +159,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
             I={ProjectPermissionCertificateAuthorityActions.Renew}
-            a={subject(ProjectPermissionSub.CertificateAuthorities, { caId: ca.id, name: ca.name })}
+            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
               return (
@@ -195,7 +195,7 @@ export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
         {ca.status === CaStatus.PENDING_CERTIFICATE && (
           <ProjectPermissionCan
             I={ProjectPermissionCertificateAuthorityActions.Create}
-            a={subject(ProjectPermissionSub.CertificateAuthorities, { caId: ca.id, name: ca.name })}
+            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
               return (

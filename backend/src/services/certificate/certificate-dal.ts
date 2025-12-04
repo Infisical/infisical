@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TCertificates } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
 
 import { CertStatus } from "./certificate-types";
 
@@ -140,7 +141,8 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const findActiveCertificatesForSync = async (
     filter: Partial<TCertificates & { friendlyName?: string; commonName?: string }>,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number },
+    permissionFilters?: PermissionFilters
   ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
     try {
       let query = db
@@ -162,6 +164,10 @@ export const certificateDALFactory = (db: TDbClient) => {
           }
         }
       });
+
+      if (permissionFilters) {
+        query = applyPermissionFiltersToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
+      }
 
       if (options?.offset) {
         query = query.offset(options.offset);
@@ -267,7 +273,8 @@ export const certificateDALFactory = (db: TDbClient) => {
 
   const findWithPrivateKeyInfo = async (
     filter: Partial<TCertificates & { friendlyName?: string; commonName?: string }>,
-    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] }
+    options?: { offset?: number; limit?: number; sort?: [string, "asc" | "desc"][] },
+    permissionFilters?: PermissionFilters
   ): Promise<(TCertificates & { hasPrivateKey: boolean })[]> => {
     try {
       let query = db
@@ -286,6 +293,10 @@ export const certificateDALFactory = (db: TDbClient) => {
           }
         }
       });
+
+      if (permissionFilters) {
+        query = applyPermissionFiltersToQuery(query, TableName.Certificate, permissionFilters) as typeof query;
+      }
 
       if (options?.offset) {
         query = query.offset(options.offset);

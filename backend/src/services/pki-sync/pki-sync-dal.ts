@@ -4,6 +4,7 @@ import { TDbClient } from "@app/db";
 import { TableName, TPkiSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
+import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
 
 import { PkiSync } from "./pki-sync-enums";
 
@@ -45,13 +46,15 @@ const basePkiSyncQuery = ({ filter, db, tx }: { db: TDbClient; filter?: PkiSyncF
 const basePkiSyncWithSubscriberQuery = ({
   filter,
   db,
-  tx
+  tx,
+  permissionFilters
 }: {
   db: TDbClient;
   filter?: PkiSyncFindFilter;
   tx?: Knex;
+  permissionFilters?: PermissionFilters;
 }) => {
-  const query = (tx || db.replicaNode())(TableName.PkiSync)
+  let query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
     .leftJoin(TableName.PkiSubscriber, `${TableName.PkiSync}.subscriberId`, `${TableName.PkiSubscriber}.id`)
     .select(selectAllTableCols(TableName.PkiSync))
@@ -80,6 +83,10 @@ const basePkiSyncWithSubscriberQuery = ({
   if (filter) {
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.PkiSync, filter)));
+  }
+
+  if (permissionFilters) {
+    query = applyPermissionFiltersToQuery(query, TableName.PkiSync, permissionFilters) as typeof query;
   }
 
   return query;
@@ -184,9 +191,18 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
     }
   };
 
-  const findByProjectIdWithSubscribers = async (projectId: string, tx?: Knex) => {
+  const findByProjectIdWithSubscribers = async (
+    projectId: string,
+    permissionFilters?: PermissionFilters,
+    tx?: Knex
+  ) => {
     try {
-      const pkiSyncs = await basePkiSyncWithSubscriberQuery({ filter: { projectId }, db, tx });
+      const pkiSyncs = await basePkiSyncWithSubscriberQuery({
+        filter: { projectId },
+        db,
+        tx,
+        permissionFilters
+      });
       return pkiSyncs.map(expandPkiSyncWithSubscriber);
     } catch (error) {
       throw new DatabaseError({ error, name: "Find By Project ID With Subscribers - PKI Sync" });

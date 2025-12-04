@@ -67,7 +67,6 @@ export const PkiSyncRow = ({
   const navigate = useNavigate();
   const {
     id,
-    subscriberId,
     lastSyncMessage,
     destination,
     lastSyncedAt,
@@ -117,7 +116,6 @@ export const PkiSyncRow = ({
   const destinationDetails = PKI_SYNC_MAP[destination];
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || "",
     subscriberName: destinationName,
     name
   });

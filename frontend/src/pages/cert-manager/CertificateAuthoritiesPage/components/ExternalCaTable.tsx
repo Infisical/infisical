@@ -75,7 +75,6 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                 const canReadCa = permission.can(
                   ProjectPermissionCertificateAuthorityActions.Read,
                   subject(ProjectPermissionSub.CertificateAuthorities, {
-                    caId: ca.id,
                     name: ca.name
                   })
                 );
@@ -117,7 +116,6 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateAuthorityActions.Edit}
                             a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                              caId: ca.id,
                               name: ca.name
                             })}
                           >
@@ -145,7 +143,6 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateAuthorityActions.Edit}
                               a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                                caId: ca.id,
                                 name: ca.name
                               })}
                             >
@@ -177,7 +174,6 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateAuthorityActions.Delete}
                             a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                              caId: ca.id,
                               name: ca.name
                             })}
                           >

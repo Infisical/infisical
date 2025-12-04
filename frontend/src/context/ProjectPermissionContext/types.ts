@@ -391,8 +391,6 @@ export type CertificateSubjectFields = {
   commonName?: string;
   altNames?: string;
   serialNumber?: string;
-  friendlyName?: string;
-  status?: string;
 };
 
 export type CertificateProfileSubjectFields = {

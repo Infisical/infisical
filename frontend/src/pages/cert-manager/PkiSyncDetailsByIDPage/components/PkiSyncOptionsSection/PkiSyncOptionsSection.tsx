@@ -38,7 +38,6 @@ export const PkiSyncOptionsSection = ({ pkiSync, onEditOptions }: Props) => {
   const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: pkiSync.subscriberId || "",
     subscriberName: destinationName,
     name: pkiSync.name
   });

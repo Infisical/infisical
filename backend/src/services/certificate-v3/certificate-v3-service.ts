@@ -1491,10 +1491,12 @@ export const certificateV3ServiceFactory = ({
           actionProjectType: ActionProjectType.CertificateManager
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.IssueCert,
-          subject(ProjectPermissionSub.CertificateProfiles, { slug: profile?.slug || "*" })
-        );
+        if (profile) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionCertificateProfileActions.IssueCert,
+            subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+          );
+        }
       }
 
       const issuerType = profile?.issuerType || (originalCert.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);

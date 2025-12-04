@@ -93,7 +93,6 @@ const Page = () => {
         <ProjectPermissionCan
           I={ProjectPermissionCertificateAuthorityActions.Read}
           a={subject(ProjectPermissionSub.CertificateAuthorities, {
-            caId: data.id,
             name: data.name
           })}
         >
@@ -128,7 +127,6 @@ const Page = () => {
                       <ProjectPermissionCan
                         I={ProjectPermissionCertificateAuthorityActions.Delete}
                         a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                          caId: data.id,
                           name: data.name
                         })}
                       >

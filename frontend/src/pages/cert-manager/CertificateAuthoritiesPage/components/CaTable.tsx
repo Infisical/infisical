@@ -81,7 +81,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                 const canReadCa = permission.can(
                   ProjectPermissionCertificateAuthorityActions.Read,
                   subject(ProjectPermissionSub.CertificateAuthorities, {
-                    caId: ca.id,
                     name: ca.name
                   })
                 );
@@ -136,7 +135,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateAuthorityActions.Create}
                               a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                                caId: ca.id,
                                 name: ca.name
                               })}
                             >
@@ -164,7 +162,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateAuthorityActions.Read}
                               a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                                caId: ca.id,
                                 name: ca.name
                               })}
                             >
@@ -192,7 +189,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateAuthorityActions.Edit}
                               a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                                caId: ca.id,
                                 name: ca.name
                               })}
                             >
@@ -223,7 +219,6 @@ export const CaTable = ({ handlePopUpOpen }: Props) => {
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateAuthorityActions.Delete}
                             a={subject(ProjectPermissionSub.CertificateAuthorities, {
-                              caId: ca.id,
                               name: ca.name
                             })}
                           >

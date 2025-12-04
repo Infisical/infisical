@@ -40,6 +40,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { buildPermissionFiltersFromConditions, getDbFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -912,7 +913,7 @@ export const projectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.List,
+      ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
 
@@ -960,39 +961,44 @@ export const projectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.List,
+      ProjectPermissionCertificateActions.Read,
       ProjectPermissionSub.Certificates
     );
 
+    const filters = getDbFiltersForAbility(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
+    const regularFilters = {
+      projectId,
+      ...(friendlyName && { friendlyName }),
+      ...(commonName && { commonName })
+    };
+    const permissionFilters = buildPermissionFiltersFromConditions(filters || {});
+
     const certificates = forPkiSync
-      ? await certificateDAL.findActiveCertificatesForSync(
-          {
-            projectId,
-            ...(friendlyName && { friendlyName }),
-            ...(commonName && { commonName })
-          },
-          { offset, limit }
-        )
+      ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
       : await certificateDAL.findWithPrivateKeyInfo(
+          regularFilters,
           {
-            projectId,
-            ...(friendlyName && { friendlyName }),
-            ...(commonName && { commonName })
+            offset,
+            limit,
+            sort: [["notAfter", "desc"]]
           },
-          { offset, limit, sort: [["notAfter", "desc"]] }
+          permissionFilters
         );
 
+    const countFilter = {
+      projectId,
+      ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
+      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) })
+    };
+
     const count = forPkiSync
-      ? await certificateDAL.countActiveCertificatesForSync({
-          projectId,
-          friendlyName,
-          commonName
-        })
-      : await certificateDAL.countCertificatesInProject({
-          projectId,
-          friendlyName,
-          commonName
-        });
+      ? await certificateDAL.countActiveCertificatesForSync(countFilter)
+      : await certificateDAL.countCertificatesInProject(countFilter);
 
     return {
       certificates,

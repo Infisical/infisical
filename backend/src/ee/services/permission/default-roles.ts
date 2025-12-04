@@ -74,7 +74,6 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateAuthorityActions.Create,
       ProjectPermissionCertificateAuthorityActions.Edit,
       ProjectPermissionCertificateAuthorityActions.Delete,
-      ProjectPermissionCertificateAuthorityActions.List,
       ProjectPermissionCertificateAuthorityActions.Renew,
       ProjectPermissionCertificateAuthorityActions.SignIntermediate
     ],
@@ -111,7 +110,7 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.Delete,
       ProjectPermissionCertificateActions.ReadPrivateKey,
       ProjectPermissionCertificateActions.Import,
-      ProjectPermissionCertificateActions.List
+      ProjectPermissionCertificateActions.Read
     ],
     ProjectPermissionSub.Certificates
   );
@@ -119,7 +118,6 @@ const buildAdminPermissionRules = () => {
   can(
     [
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionCertificateProfileActions.List,
       ProjectPermissionCertificateProfileActions.Edit,
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionCertificateProfileActions.Delete,
@@ -487,7 +485,7 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCertificateActions.Create,
       ProjectPermissionCertificateActions.Delete,
       ProjectPermissionCertificateActions.Import,
-      ProjectPermissionCertificateActions.List
+      ProjectPermissionCertificateActions.Read
     ],
     ProjectPermissionSub.Certificates
   );
@@ -495,7 +493,6 @@ const buildMemberPermissionRules = () => {
   can(
     [
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionCertificateProfileActions.List,
       ProjectPermissionCertificateProfileActions.Edit,
       ProjectPermissionCertificateProfileActions.Create,
       ProjectPermissionCertificateProfileActions.Delete
@@ -621,7 +618,6 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
   can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
-  can(ProjectPermissionCertificateActions.List, ProjectPermissionSub.Certificates);
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.SshCertificates);

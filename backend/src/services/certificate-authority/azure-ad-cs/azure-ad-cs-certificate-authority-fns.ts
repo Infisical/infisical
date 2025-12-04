@@ -798,11 +798,21 @@ export const AzureAdCsCertificateAuthorityFns = ({
     return castDbEntryToAzureAdCsCertificateAuthority(updatedCa);
   };
 
-  const listCertificateAuthorities = async ({ projectId }: { projectId: string }) => {
-    const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-      [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-      [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.AZURE_AD_CS
-    });
+  const listCertificateAuthorities = async ({
+    projectId,
+    permissionFilters
+  }: {
+    projectId: string;
+    permissionFilters?: import("@app/lib/knex/permission-filter-utils").PermissionFilters;
+  }) => {
+    const cas = await certificateAuthorityDAL.findWithAssociatedCa(
+      {
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.AZURE_AD_CS
+      },
+      {},
+      permissionFilters
+    );
 
     return cas.map(castDbEntryToAzureAdCsCertificateAuthority);
   };

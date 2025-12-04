@@ -8,6 +8,7 @@ import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
+import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
 import { ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { alphaNumericNanoId } from "@app/lib/nanoid";
 
@@ -871,13 +872,18 @@ export const certificateTemplateV2ServiceFactory = ({
       ProjectPermissionSub.CertificateTemplates
     );
 
-    const templates = await certificateTemplateV2DAL.findByProjectId(projectId, {
-      offset,
-      limit,
-      search
-    });
+    const permissionFilters = getPermissionFiltersForAbility(
+      permission,
+      ProjectPermissionPkiTemplateActions.Read,
+      ProjectPermissionSub.CertificateTemplates
+    );
+    const templates = await certificateTemplateV2DAL.findByProjectId(
+      projectId,
+      { offset, limit, search },
+      permissionFilters
+    );
 
-    const totalCount = await certificateTemplateV2DAL.countByProjectId(projectId, { search });
+    const totalCount = await certificateTemplateV2DAL.countByProjectId(projectId, { search }, permissionFilters);
 
     return {
       templates,

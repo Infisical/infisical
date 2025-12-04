@@ -715,11 +715,21 @@ export const AcmeCertificateAuthorityFns = ({
     return castDbEntryToAcmeCertificateAuthority(updatedCa);
   };
 
-  const listCertificateAuthorities = async ({ projectId }: { projectId: string }) => {
-    const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-      [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-      [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.ACME
-    });
+  const listCertificateAuthorities = async ({
+    projectId,
+    permissionFilters
+  }: {
+    projectId: string;
+    permissionFilters?: import("@app/lib/knex/permission-filter-utils").PermissionFilters;
+  }) => {
+    const cas = await certificateAuthorityDAL.findWithAssociatedCa(
+      {
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.ACME
+      },
+      {},
+      permissionFilters
+    );
 
     return cas.map(castDbEntryToAcmeCertificateAuthority);
   };
