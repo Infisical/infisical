@@ -7,6 +7,7 @@ import { MySQLSessionCredentialsSchema } from "@app/ee/services/pam-resource/mys
 import { PostgresSessionCredentialsSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
 import { SSHSessionCredentialsSchema } from "@app/ee/services/pam-resource/ssh/ssh-resource-schemas";
 import {
+  HttpEventSchema,
   PamSessionCommandLogSchema,
   SanitizedSessionSchema,
   TerminalEventSchema
@@ -91,7 +92,7 @@ export const registerPamSessionRouter = async (server: FastifyZodProvider) => {
         sessionId: z.string().uuid()
       }),
       body: z.object({
-        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema]))
+        logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
       }),
       response: {
         200: z.object({
