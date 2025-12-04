@@ -24,20 +24,22 @@ export const HttpBaseEventSchema = z.object({
   timestamp: z.coerce.date(),
   requestId: z.string(),
   eventType: TerminalEventTypeSchema,
-  headers: z.record(z.string(), z.string())
+  headers: z.record(z.string(), z.array(z.string()))
 });
 
 export const HttpRequestEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.request),
   method: z.string(),
   url: z.string(),
-  body: z.string()
+  // TODO: optional for now
+  body: z.string().optional()
 });
 
 export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.response),
   status: z.string(),
-  body: z.string()
+  // TODO: optional for now
+  body: z.string().optional()
 });
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);
@@ -45,5 +47,5 @@ export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEve
 export const SanitizedSessionSchema = PamSessionsSchema.omit({
   encryptedLogsBlob: true
 }).extend({
-  logs: z.array(z.union([PamSessionCommandLogSchema, TerminalEventSchema, HttpEventSchema]))
+  logs: z.array(z.union([PamSessionCommandLogSchema, HttpEventSchema, TerminalEventSchema]))
 });
