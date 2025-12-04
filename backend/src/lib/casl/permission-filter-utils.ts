@@ -41,7 +41,7 @@ interface MongoGlobFilter {
  * @param isInverted - Whether this rule is inverted (forbidden)
  * @returns Record of field names to arrays of filter configurations
  */
-export const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted = false): PermissionFilters => {
+const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isInverted = false): PermissionFilters => {
   const permissionFilters: PermissionFilters = {};
 
   function addFilterToField(key: string, operator: string, value: unknown, isPattern: boolean) {
@@ -185,83 +185,6 @@ export const buildPermissionFiltersFromConditions = (conditions: MongoQuery, isI
 };
 
 /**
- * Convert CASL condition object to MongoDB-compatible database filter
- * @param condition - CASL condition object
- * @returns MongoDB filter object
- */
-export function convertConditionToDbFilter(condition: Record<string, unknown>): Record<string, unknown> {
-  const dbFilter: Record<string, unknown> = {};
-
-  for (const key in condition) {
-    if (Object.prototype.hasOwnProperty.call(condition, key)) {
-      const value = condition[key];
-
-      if (value && typeof value === "object" && !Array.isArray(value)) {
-        const operator = Object.keys(value)[0];
-        const opValue = (value as Record<string, unknown>)[operator];
-
-        switch (operator) {
-          case "$glob": {
-            // Convert "*.es" glob → regex /^.*\.es$/i
-            const regex = new RE2(`^${String(opValue).replace(/\*/g, ".*")}$`, "i");
-            dbFilter[key] = { $regex: regex };
-            break;
-          }
-
-          case "$in":
-            dbFilter[key] = { $in: opValue };
-            break;
-
-          case "$eq":
-            dbFilter[key] = { $eq: opValue };
-            break;
-
-          default:
-            dbFilter[key] = value;
-            break;
-        }
-      } else {
-        dbFilter[key] = { $eq: value };
-      }
-    }
-  }
-
-  return dbFilter;
-}
-
-/**
- * Extract ALL conditions for a subject and action,
- * converting them into DB-safe filter objects.
- * @param ability - CASL MongoAbility instance
- * @param action - Permission action to filter for
- * @param subjectName - Permission subject to filter for
- * @returns MongoDB filter object with $or conditions
- */
-export function getDbFiltersForAbility(
-  ability: MongoAbility,
-  action: string,
-  subjectName: string
-): Record<string, unknown> {
-  const matchingRules = ability.rules.filter((rule: RawRuleOf<MongoAbility>) => {
-    const actionMatches = Array.isArray(rule.action) ? rule.action.includes(action) : rule.action === action;
-    const subjectMatches = Array.isArray(rule.subject)
-      ? rule.subject.includes(subjectName)
-      : rule.subject === subjectName;
-    return actionMatches && subjectMatches && rule.conditions;
-  });
-
-  const converted = matchingRules.map((rule: RawRuleOf<MongoAbility>) =>
-    convertConditionToDbFilter(rule.conditions as Record<string, unknown>)
-  );
-
-  if (converted.length === 0) {
-    return {};
-  }
-
-  return { $or: converted };
-}
-
-/**
  * Extract permission filters for a subject and action,
  * converting them into ProcessedPermissionRules format for use with Knex queries.
  * @param ability - CASL MongoAbility instance
@@ -299,43 +222,4 @@ export function getProcessedPermissionRules(
   });
 
   return { allowRules, forbidRules };
-}
-
-/**
- * Extract permission filters for a subject and action,
- * converting them into PermissionFilters format for use with Knex queries.
- * This is a simplified version that maintains backward compatibility.
- * @param ability - CASL MongoAbility instance
- * @param action - Permission action to filter for
- * @param subjectName - Permission subject to filter for
- * @returns PermissionFilters object for use with applyPermissionFiltersToQuery
- */
-export function getPermissionFiltersForAbility(
-  ability: MongoAbility,
-  action: string,
-  subjectName: string
-): PermissionFilters {
-  const processedRules = getProcessedPermissionRules(ability, action, subjectName);
-
-  const mergedFilters: PermissionFilters = {};
-
-  processedRules.allowRules.forEach((rule) => {
-    Object.entries(rule).forEach(([key, filterConfigs]) => {
-      if (!mergedFilters[key]) {
-        mergedFilters[key] = [];
-      }
-      mergedFilters[key].push(...filterConfigs);
-    });
-  });
-
-  processedRules.forbidRules.forEach((rule) => {
-    Object.entries(rule).forEach(([key, filterConfigs]) => {
-      if (!mergedFilters[key]) {
-        mergedFilters[key] = [];
-      }
-      mergedFilters[key].push(...filterConfigs);
-    });
-  });
-
-  return mergedFilters;
 }

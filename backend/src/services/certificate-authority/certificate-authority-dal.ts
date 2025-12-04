@@ -4,7 +4,10 @@ import { TDbClient } from "@app/db";
 import { CertificateAuthoritiesSchema, TableName, TCertificateAuthorities } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, selectAllTableCols, TFindOpt } from "@app/lib/knex";
-import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 export type TCertificateAuthorityDALFactory = ReturnType<typeof certificateAuthorityDALFactory>;
 
@@ -221,7 +224,7 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
   const findWithAssociatedCa = async (
     filter: Parameters<(typeof caOrm)["find"]>[0] & { dn?: string; type?: string; serialNumber?: string },
     { offset, limit, sort = [["createdAt", "desc"]] }: TFindOpt<TCertificateAuthorities> = {},
-    permissionFilters?: PermissionFilters,
+    permissionFilters?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -271,7 +274,11 @@ export const certificateAuthorityDALFactory = (db: TDbClient) => {
         );
 
       if (permissionFilters) {
-        query = applyPermissionFiltersToQuery(query, TableName.CertificateAuthority, permissionFilters) as typeof query;
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.CertificateAuthority,
+          permissionFilters
+        ) as typeof query;
       }
 
       if (limit) void query.limit(limit);

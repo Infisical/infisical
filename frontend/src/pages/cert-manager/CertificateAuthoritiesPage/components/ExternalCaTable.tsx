@@ -72,8 +72,8 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
               data &&
               data.length > 0 &&
               data.map((ca) => {
-                const canReadCa = permission.can(
-                  ProjectPermissionCertificateAuthorityActions.Read,
+                const canEditCa = permission.can(
+                  ProjectPermissionCertificateAuthorityActions.Edit,
                   subject(ProjectPermissionSub.CertificateAuthorities, {
                     name: ca.name
                   })
@@ -83,12 +83,12 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                   <Tr
                     className={twMerge(
                       "h-10 transition-colors duration-100",
-                      canReadCa && "cursor-pointer hover:bg-mineshaft-700",
-                      !canReadCa && "cursor-not-allowed opacity-60"
+                      canEditCa && "cursor-pointer hover:bg-mineshaft-700",
+                      !canEditCa && "cursor-not-allowed opacity-60"
                     )}
                     key={`ca-${ca.id}`}
                     onClick={() =>
-                      canReadCa &&
+                      canEditCa &&
                       handlePopUpOpen("ca", {
                         caId: ca.id,
                         name: ca.name,

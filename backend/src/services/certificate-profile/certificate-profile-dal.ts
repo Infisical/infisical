@@ -4,7 +4,10 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
-import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import {
   EnrollmentType,
@@ -277,7 +280,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
-    permissionFilters?: PermissionFilters,
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
@@ -356,11 +359,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
         );
 
-      if (permissionFilters) {
-        query = applyPermissionFiltersToQuery(
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
           query,
           TableName.PkiCertificateProfile,
-          permissionFilters
+          processedRules
         ) as typeof query;
       }
 
@@ -442,7 +445,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
-    permissionFilters?: PermissionFilters,
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
@@ -470,11 +473,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         query = query.where({ issuerType });
       }
 
-      if (permissionFilters) {
-        query = applyPermissionFiltersToQuery(
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
           query,
           TableName.PkiCertificateProfile,
-          permissionFilters
+          processedRules
         ) as typeof query;
       }
 

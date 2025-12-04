@@ -609,7 +609,7 @@ describe("CertificateProfileService", () => {
           caId: undefined,
           issuerType: undefined
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
     });
 
@@ -634,7 +634,7 @@ describe("CertificateProfileService", () => {
           caId: "ca-123",
           issuerType: undefined
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
     });
   });

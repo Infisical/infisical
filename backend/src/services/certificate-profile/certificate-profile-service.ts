@@ -10,7 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
-import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -750,7 +750,7 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
-    const permissionFilters = getPermissionFiltersForAbility(
+    const processedRules = getProcessedPermissionRules(
       permission,
       ProjectPermissionCertificateProfileActions.Read,
       ProjectPermissionSub.CertificateProfiles
@@ -766,7 +766,7 @@ export const certificateProfileServiceFactory = ({
         issuerType,
         caId
       },
-      permissionFilters
+      processedRules
     );
 
     const totalCount = await certificateProfileDAL.countByProjectId(
@@ -777,7 +777,7 @@ export const certificateProfileServiceFactory = ({
         issuerType,
         caId
       },
-      permissionFilters
+      processedRules
     );
 
     const convertedProfiles = await Promise.all(

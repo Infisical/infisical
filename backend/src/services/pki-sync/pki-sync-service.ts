@@ -4,7 +4,7 @@ import { ActionProjectType, TCertificateSyncs } from "@app/db/schemas";
 import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { ProjectPermissionPkiSyncActions, ProjectPermissionSub } from "@app/ee/services/permission/project-permission";
-import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, DatabaseError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 import { AppConnection } from "@app/services/app-connection/app-connection-enums";
@@ -358,13 +358,13 @@ export const pkiSyncServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(ProjectPermissionPkiSyncActions.Read, ProjectPermissionSub.PkiSyncs);
 
-    const permissionFilters = getPermissionFiltersForAbility(
+    const processedRules = getProcessedPermissionRules(
       permission,
       ProjectPermissionPkiSyncActions.Read,
       ProjectPermissionSub.PkiSyncs
     );
 
-    const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId, permissionFilters);
+    const pkiSyncsWithSubscribers = await pkiSyncDAL.findByProjectIdWithSubscribers(projectId, processedRules);
 
     if (certificateId) {
       const syncsWithCertificateInfo = await Promise.all(

@@ -5,7 +5,10 @@ import { TableName } from "@app/db/schemas";
 import { TPkiCertificateTemplatesV2Insert } from "@app/db/schemas/pki-certificate-templates-v2";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
-import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import {
   TCertificateTemplateV2,
@@ -134,7 +137,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       limit?: number;
       search?: string;
     } = {},
-    permissionFilters?: PermissionFilters,
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -148,11 +151,11 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
         });
       }
 
-      if (permissionFilters) {
-        query = applyPermissionFiltersToQuery(
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
           query,
           TableName.PkiCertificateTemplateV2,
-          permissionFilters
+          processedRules
         ) as typeof query;
       }
 
@@ -169,7 +172,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     options: {
       search?: string;
     } = {},
-    permissionFilters?: PermissionFilters,
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -183,11 +186,11 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
         });
       }
 
-      if (permissionFilters) {
-        query = applyPermissionFiltersToQuery(
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
           query,
           TableName.PkiCertificateTemplateV2,
-          permissionFilters
+          processedRules
         ) as typeof query;
       }
 

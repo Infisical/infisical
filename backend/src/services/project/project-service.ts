@@ -40,7 +40,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
-import { buildPermissionFiltersFromConditions, getDbFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -965,18 +965,16 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
-    const filters = getDbFiltersForAbility(
-      permission,
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
-
     const regularFilters = {
       projectId,
       ...(friendlyName && { friendlyName }),
       ...(commonName && { commonName })
     };
-    const permissionFilters = buildPermissionFiltersFromConditions(filters || {});
+    const permissionFilters = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
 
     const certificates = forPkiSync
       ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)

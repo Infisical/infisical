@@ -16,86 +16,6 @@ export interface ProcessedPermissionRules {
 }
 
 /**
- * Applies permission filters to a Knex query for any table
- * @param query - The Knex query builder instance
- * @param tableName - The name of the table to apply filters to
- * @param permissionFilters - Record of field names to arrays of filter configurations
- * @returns The modified query builder with permission filters applied
- */
-export const applyPermissionFiltersToQuery = (
-  originalQuery: Knex.QueryBuilder,
-  tableName: string,
-  permissionFilters?: PermissionFilters
-): Knex.QueryBuilder => {
-  if (!permissionFilters) {
-    return originalQuery;
-  }
-
-  let query = originalQuery;
-
-  Object.entries(permissionFilters).forEach(([key, filterConfigs]) => {
-    filterConfigs.forEach((filterConfig) => {
-      if (filterConfig.value !== undefined && filterConfig.value !== null) {
-        const { operator, value, isPattern } = filterConfig;
-        const fieldName = `${tableName}.${key}`;
-
-        switch (operator) {
-          case "=":
-            query = query.andWhere(fieldName, "=", value as string | number);
-            break;
-          case "!=":
-            query = query.andWhere(fieldName, "!=", value as string | number);
-            break;
-          case "LIKE": {
-            const likePattern = isPattern ? String(value).replace(new RE2("\\*", "g"), "%") : String(value);
-            query = query.andWhere(fieldName, "like", likePattern);
-            break;
-          }
-          case "NOT LIKE": {
-            const notLikePattern = isPattern ? String(value).replace(new RE2("\\*", "g"), "%") : String(value);
-            query = query.andWhere(fieldName, "not like", notLikePattern);
-            break;
-          }
-          case "IN": {
-            const inValues = Array.isArray(value) ? value : [value];
-            query = query.andWhere(fieldName, "in", inValues as (string | number)[]);
-            break;
-          }
-          case "NOT IN": {
-            const notInValues = Array.isArray(value) ? value : [value];
-            query = query.andWhere(fieldName, "not in", notInValues as (string | number)[]);
-            break;
-          }
-          case ">":
-            query = query.andWhere(fieldName, ">", value as string | number);
-            break;
-          case ">=":
-            query = query.andWhere(fieldName, ">=", value as string | number);
-            break;
-          case "<":
-            query = query.andWhere(fieldName, "<", value as string | number);
-            break;
-          case "<=":
-            query = query.andWhere(fieldName, "<=", value as string | number);
-            break;
-          case "IS NULL":
-            query = query.andWhere(fieldName, "is", null);
-            break;
-          case "IS NOT NULL":
-            query = query.andWhere(fieldName, "is not", null);
-            break;
-          default:
-            query = query.andWhere(fieldName, "=", value as string | number);
-            break;
-        }
-      }
-    });
-  });
-
-  return query;
-};
-
-/**
  * Applies a single filter configuration to a query
  * @param query - The Knex query builder instance
  * @param tableName - The name of the table to apply filters to
@@ -204,65 +124,9 @@ export const applyProcessedPermissionRulesToQuery = (
 
   if (processedRules.forbidRules.length > 0) {
     processedRules.forbidRules.forEach((forbidRule) => {
-      query = query.andWhere((forbidBuilder) => {
-        let hasConditions = false;
-        Object.entries(forbidRule).forEach(([key, filterConfigs]) => {
-          filterConfigs.forEach((filterConfig) => {
-            const negatedConfig = { ...filterConfig };
-
-            switch (filterConfig.operator) {
-              case "=":
-                negatedConfig.operator = "!=";
-                break;
-              case "!=":
-                negatedConfig.operator = "=";
-                break;
-              case "LIKE":
-                negatedConfig.operator = "NOT LIKE";
-                break;
-              case "NOT LIKE":
-                negatedConfig.operator = "LIKE";
-                break;
-              case "IN":
-                negatedConfig.operator = "NOT IN";
-                break;
-              case "NOT IN":
-                negatedConfig.operator = "IN";
-                break;
-              case ">":
-                negatedConfig.operator = "<=";
-                break;
-              case ">=":
-                negatedConfig.operator = "<";
-                break;
-              case "<":
-                negatedConfig.operator = ">=";
-                break;
-              case "<=":
-                negatedConfig.operator = ">";
-                break;
-              case "IS NULL":
-                negatedConfig.operator = "IS NOT NULL";
-                break;
-              case "IS NOT NULL":
-                negatedConfig.operator = "IS NULL";
-                break;
-              default:
-                negatedConfig.operator = "!=";
-                break;
-            }
-
-            if (hasConditions) {
-              void forbidBuilder.orWhere((subBuilder) => {
-                applySingleFilter(subBuilder, tableName, key, negatedConfig);
-              });
-            } else {
-              void forbidBuilder.where((subBuilder) => {
-                applySingleFilter(subBuilder, tableName, key, negatedConfig);
-              });
-              hasConditions = true;
-            }
-          });
+      Object.entries(forbidRule).forEach(([key, filterConfigs]) => {
+        filterConfigs.forEach((filterConfig) => {
+          applySingleFilter(query, tableName, key, filterConfig);
         });
       });
     });

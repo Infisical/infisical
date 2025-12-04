@@ -6,7 +6,7 @@ import {
   ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
-import { getPermissionFiltersForAbility } from "@app/lib/casl/permission-filter-utils";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
 
@@ -337,7 +337,7 @@ export const certificateAuthorityServiceFactory = ({
       ProjectPermissionSub.CertificateAuthorities
     );
 
-    const permissionFilters = getPermissionFiltersForAbility(
+    const permissionFilters = getProcessedPermissionRules(
       permission,
       ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
@@ -711,34 +711,38 @@ export const certificateAuthorityServiceFactory = ({
     actor,
     actorId,
     actorAuthMethod,
-    actorOrgId
+    actorOrgId,
+    isInternal
   }: {
     caId: string;
     actor: OrgServiceActor["type"];
     actorId: string;
     actorAuthMethod: OrgServiceActor["authMethod"];
     actorOrgId?: string;
+    isInternal?: boolean;
   }) => {
     const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
     if (!ca) {
       throw new NotFoundError({ message: "CA not found" });
     }
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor,
-      actorId,
-      projectId: ca.projectId,
-      actorAuthMethod,
-      actorOrgId,
-      actionProjectType: ActionProjectType.CertificateManager
-    });
+    if (!isInternal) {
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: ca.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateAuthorityActions.Read,
-      subject(ProjectPermissionSub.CertificateAuthorities, {
-        name: ca.name
-      })
-    );
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionCertificateAuthorityActions.Read,
+        subject(ProjectPermissionSub.CertificateAuthorities, {
+          name: ca.name
+        })
+      );
+    }
 
     return ca;
   };

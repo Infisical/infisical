@@ -274,14 +274,14 @@ describe("CertificateTemplateV2Service", () => {
           limit: 20,
           search: undefined
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
       expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: undefined
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
       expect(result).toEqual({ templates, totalCount });
     });
@@ -306,14 +306,14 @@ describe("CertificateTemplateV2Service", () => {
           limit: 20,
           search: "web server"
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
       expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
         "project-123",
         {
           search: "web server"
         },
-        {}
+        { allowRules: [], forbidRules: [] }
       );
     });
   });

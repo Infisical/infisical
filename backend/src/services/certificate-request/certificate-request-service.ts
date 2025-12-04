@@ -6,6 +6,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -110,8 +111,8 @@ export const certificateRequestServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Create,
-        ProjectPermissionSub.Certificates
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        ProjectPermissionSub.CertificateProfiles
       );
     }
 

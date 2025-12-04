@@ -10,6 +10,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -79,8 +80,8 @@ describe("CertificateRequestService", () => {
       const mockPermission = {
         permission: createMongoAbility<ProjectPermissionSet>([
           {
-            action: ProjectPermissionCertificateActions.Create,
-            subject: ProjectPermissionSub.Certificates
+            action: ProjectPermissionCertificateProfileActions.IssueCert,
+            subject: ProjectPermissionSub.CertificateProfiles
           }
         ])
       };

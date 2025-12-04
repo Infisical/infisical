@@ -5,7 +5,7 @@ import RE2 from "re2";
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
-import { PermissionFilters } from "@app/lib/knex/permission-filter-utils";
+import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -804,7 +804,7 @@ export const AzureAdCsCertificateAuthorityFns = ({
     permissionFilters
   }: {
     projectId: string;
-    permissionFilters?: PermissionFilters;
+    permissionFilters?: ProcessedPermissionRules;
   }) => {
     const cas = await certificateAuthorityDAL.findWithAssociatedCa(
       {

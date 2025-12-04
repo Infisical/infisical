@@ -4,7 +4,10 @@ import { TDbClient } from "@app/db";
 import { TableName, TPkiSyncs } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { buildFindFilter, ormify, prependTableNameToFindFilter, selectAllTableCols } from "@app/lib/knex";
-import { applyPermissionFiltersToQuery, type PermissionFilters } from "@app/lib/knex/permission-filter-utils";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import { PkiSync } from "./pki-sync-enums";
 
@@ -47,12 +50,12 @@ const basePkiSyncWithSubscriberQuery = ({
   filter,
   db,
   tx,
-  permissionFilters
+  processedRules
 }: {
   db: TDbClient;
   filter?: PkiSyncFindFilter;
   tx?: Knex;
-  permissionFilters?: PermissionFilters;
+  processedRules?: ProcessedPermissionRules;
 }) => {
   let query = (tx || db.replicaNode())(TableName.PkiSync)
     .leftJoin(TableName.AppConnection, `${TableName.PkiSync}.connectionId`, `${TableName.AppConnection}.id`)
@@ -85,8 +88,8 @@ const basePkiSyncWithSubscriberQuery = ({
     void query.where(buildFindFilter(prependTableNameToFindFilter(TableName.PkiSync, filter)));
   }
 
-  if (permissionFilters) {
-    query = applyPermissionFiltersToQuery(query, TableName.PkiSync, permissionFilters) as typeof query;
+  if (processedRules) {
+    query = applyProcessedPermissionRulesToQuery(query, TableName.PkiSync, processedRules) as typeof query;
   }
 
   return query;
@@ -193,7 +196,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
 
   const findByProjectIdWithSubscribers = async (
     projectId: string,
-    permissionFilters?: PermissionFilters,
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -201,7 +204,7 @@ export const pkiSyncDALFactory = (db: TDbClient) => {
         filter: { projectId },
         db,
         tx,
-        permissionFilters
+        processedRules
       });
       return pkiSyncs.map(expandPkiSyncWithSubscriber);
     } catch (error) {
