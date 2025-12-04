@@ -17,6 +17,8 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
+import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
@@ -2397,6 +2399,7 @@ export const registerRoutes = async (
   const pamResourceDAL = pamResourceDALFactory(db);
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
+  const aiMcpServerDAL = aiMcpServerDALFactory(db);
 
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
@@ -2437,6 +2440,12 @@ export const registerRoutes = async (
     permissionService,
     licenseService,
     kmsService
+  });
+
+  const aiMcpServerService = aiMcpServerServiceFactory({
+    aiMcpServerDAL,
+    kmsService,
+    keyStore
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2630,7 +2639,8 @@ export const registerRoutes = async (
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
     convertor: convertorService,
-    pkiAlertV2: pkiAlertV2Service
+    pkiAlertV2: pkiAlertV2Service,
+    aiMcpServer: aiMcpServerService
   });
 
   const cronJobs: CronJob[] = [];

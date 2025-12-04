@@ -133,6 +133,10 @@ export const injectIdentity = fp(
         return;
       }
 
+      if (req.url === "/api/v1/ai/mcp-servers/oauth/callback") {
+        return;
+      }
+
       // Authentication is handled on a route-level
       if (req.url === "/api/v1/relays/register-instance-relay") {
         return;

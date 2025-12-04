@@ -299,6 +299,19 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/
   ])
 ]);
 
+const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
+  layout("ai-layout", "ai/layout.tsx", [
+    route("/overview", "ai/MCPPage/route.tsx"),
+    route("/settings", "ai/SettingsPage/route.tsx"),
+    route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),
+    route("/access-management", "project/AccessControlPage/route-ai.tsx"),
+    route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-ai.tsx"),
+    route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-ai.tsx"),
+    route("/members/$membershipId", "project/MemberDetailsByIDPage/route-ai.tsx"),
+    route("/groups/$groupId", "project/GroupDetailsByIDPage/route-ai.tsx")
+  ])
+]);
+
 const kmsRoutes = route("/organizations/$orgId/projects/kms/$projectId", [
   layout("kms-layout", "kms/layout.tsx", [
     route("/overview", "kms/OverviewPage/route.tsx"),
@@ -445,7 +458,8 @@ export const routes = rootRoute("root.tsx", [
         kmsRoutes,
         sshRoutes,
         secretScanningRoutes,
-        pamRoutes
+        pamRoutes,
+        aiRoutes
       ])
     ])
   ])
