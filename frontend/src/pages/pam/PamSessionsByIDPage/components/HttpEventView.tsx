@@ -16,6 +16,45 @@ export const HttpEventView = ({ events }: Props) => {
     Record<string, { headers: boolean; body: boolean }>
   >({});
 
+  const getContentType = (headers: Record<string, string[]>): string | undefined => {
+    const contentTypeKey = Object.keys(headers).find((key) => key.toLowerCase() === "content-type");
+    return contentTypeKey ? headers[contentTypeKey]?.[0] : undefined;
+  };
+
+  const decodeBase64Body = (body: string): string => {
+    try {
+      return atob(body);
+    } catch {
+      // If base64 decoding fails, return original body
+      return body;
+    }
+  };
+
+  const parseBodyForSearch = (
+    body: string | undefined,
+    headers: Record<string, string[]>
+  ): string => {
+    if (!body) return "";
+
+    // Decode base64 first
+    const decodedBody = decodeBase64Body(body);
+
+    const contentType = getContentType(headers);
+    const isJson = contentType?.toLowerCase().includes("application/json");
+
+    if (isJson) {
+      try {
+        const parsed = JSON.parse(decodedBody);
+        return JSON.stringify(parsed);
+      } catch {
+        // If JSON parsing fails, fall back to decoded body
+        return decodedBody;
+      }
+    }
+
+    return decodedBody;
+  };
+
   const filteredEvents = useMemo(
     () =>
       events.filter((event) => {
@@ -23,6 +62,7 @@ export const HttpEventView = ({ events }: Props) => {
         if (!searchValue) return true;
 
         if (event.eventType === "request") {
+          const bodyForSearch = parseBodyForSearch(event.body, event.headers);
           return (
             event.method.toLowerCase().includes(searchValue) ||
             event.url.toLowerCase().includes(searchValue) ||
@@ -30,7 +70,8 @@ export const HttpEventView = ({ events }: Props) => {
             Object.keys(event.headers).some((key) => key.toLowerCase().includes(searchValue)) ||
             Object.values(event.headers).some((values) =>
               values.some((value) => value.toLowerCase().includes(searchValue))
-            )
+            ) ||
+            bodyForSearch.toLowerCase().includes(searchValue)
           );
         }
         return (
@@ -49,6 +90,31 @@ export const HttpEventView = ({ events }: Props) => {
     return Object.entries(headers)
       .map(([key, values]) => `${key}: ${values.join(", ")}`)
       .join("\n");
+  };
+
+  const formatBody = (body: string | undefined, headers: Record<string, string[]>): string => {
+    if (!body) {
+      return "";
+    }
+
+    // Decode base64 first
+    const decodedBody = decodeBase64Body(body);
+
+    const contentType = getContentType(headers);
+    const isJson = contentType?.toLowerCase().includes("application/json");
+
+    if (isJson) {
+      try {
+        const parsed = JSON.parse(decodedBody);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        // If JSON parsing fails, return decoded body
+        return decodedBody;
+      }
+    }
+
+    // For non-JSON content, return decoded body
+    return decodedBody;
   };
 
   const getKubectlCommand = (headers: Record<string, string[]>) => {
@@ -156,28 +222,29 @@ export const HttpEventView = ({ events }: Props) => {
                     </div>
                   )}
 
-                  <div className="mt-2 pt-2 border-t border-mineshaft-700">
-                    <button
-                      type="button"
-                      onClick={() => toggleSection(eventKey, "body")}
-                      className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
-                    >
-                      <FontAwesomeIcon
-                        icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
-                        className="text-xs"
-                      />
-                      <span>Body:</span>
-                    </button>
-                    {isSectionExpanded(eventKey, "body") && (
-                      <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
-                        <div className="text-bunker-500 italic">
-                          {isRequest
-                            ? "Request body content will be displayed here when available."
-                            : "Response body content will be displayed here when available."}
+                  {isRequest && event.body && (
+                    <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(eventKey, "body")}
+                        className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                      >
+                        <FontAwesomeIcon
+                          icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
+                          className="text-xs"
+                        />
+                        <span>Body:</span>
+                      </button>
+                      {isSectionExpanded(eventKey, "body") && (
+                        <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                          <HighlightText
+                            text={formatBody(event.body, event.headers)}
+                            highlight={search}
+                          />
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

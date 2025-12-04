@@ -24,20 +24,19 @@ export const HttpBaseEventSchema = z.object({
   timestamp: z.coerce.date(),
   requestId: z.string(),
   eventType: TerminalEventTypeSchema,
-  headers: z.record(z.string(), z.array(z.string()))
+  headers: z.record(z.string(), z.array(z.string())),
+  body: z.string().optional()
 });
 
 export const HttpRequestEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.request),
   method: z.string(),
   url: z.string()
-  // TODO: optional for now
 });
 
 export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.response),
   status: z.string()
-  // TODO: optional for now
 });
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);
