@@ -5,6 +5,7 @@ import {
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
+  EGroupMembersOrderBy,
   EGroupProjectsOrderBy
 } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
@@ -275,6 +276,75 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       });
 
       return { identities, totalCount };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:id/members",
+    config: {
+      rateLimit: readLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.Groups],
+      params: z.object({
+        id: z.string().trim().describe(GROUPS.LIST_MEMBERS.id)
+      }),
+      querystring: z.object({
+        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MEMBERS.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_MEMBERS.limit),
+        search: z.string().trim().optional().describe(GROUPS.LIST_MEMBERS.search),
+        orderBy: z
+          .nativeEnum(EGroupMembersOrderBy)
+          .default(EGroupMembersOrderBy.Name)
+          .optional()
+          .describe(GROUPS.LIST_MEMBERS.orderBy),
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MEMBERS.orderDirection)
+      }),
+      response: {
+        200: z.object({
+          members: z
+            .union([
+              UsersSchema.pick({
+                email: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+                id: true
+              }).merge(
+                z.object({
+                  joinedGroupAt: z.date().nullable(),
+                  memberType: z.literal("user")
+                })
+              ),
+              IdentitiesSchema.pick({
+                id: true,
+                name: true
+              }).merge(
+                z.object({
+                  joinedGroupAt: z.date().nullable(),
+                  memberType: z.literal("identity")
+                })
+              )
+            ])
+            .array(),
+          totalCount: z.number()
+        })
+      }
+    },
+    handler: async (req) => {
+      const { members, totalCount } = await server.services.group.listGroupMembers({
+        id: req.params.id,
+        actor: req.permission.type,
+        actorId: req.permission.id,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        ...req.query
+      });
+
+      return { members, totalCount };
     }
   });
 

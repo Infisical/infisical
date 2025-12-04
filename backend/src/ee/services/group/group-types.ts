@@ -54,6 +54,15 @@ export type TListGroupIdentitiesDTO = {
   filter?: EFilterReturnedIdentities;
 } & TGenericPermission;
 
+export type TListGroupMembersDTO = {
+  id: string;
+  offset: number;
+  limit: number;
+  search?: string;
+  orderBy?: EGroupMembersOrderBy;
+  orderDirection?: OrderByDirection;
+} & TGenericPermission;
+
 export type TListGroupProjectsDTO = {
   id: string;
   offset: number;
@@ -171,5 +180,9 @@ export enum EFilterReturnedProjects {
 }
 
 export enum EGroupProjectsOrderBy {
+  Name = "name"
+}
+
+export enum EGroupMembersOrderBy {
   Name = "name"
 }

@@ -10,6 +10,7 @@ import {
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
+  EGroupMembersOrderBy,
   EGroupProjectsOrderBy
 } from "./group-types";
 
@@ -75,7 +76,7 @@ export const groupDALFactory = (db: TDbClient) => {
   };
 
   // special query
-  const findAllGroupPossibleMembers = async ({
+  const findAllGroupPossibleUsers = async ({
     orgId,
     groupId,
     offset = 0,
@@ -249,6 +250,162 @@ export const groupDALFactory = (db: TDbClient) => {
     }
   };
 
+  const findAllGroupPossibleMembers = async ({
+    orgId,
+    groupId,
+    offset = 0,
+    limit,
+    search,
+    orderBy = EGroupMembersOrderBy.Name,
+    orderDirection = OrderByDirection.ASC
+  }: {
+    orgId: string;
+    groupId: string;
+    offset?: number;
+    limit?: number;
+    search?: string;
+    orderBy?: EGroupMembersOrderBy;
+    orderDirection?: OrderByDirection;
+  }) => {
+    try {
+      // Query for users - subquery for UNION
+      const usersSubquery = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorUserId`)
+        .join(TableName.Users, `${TableName.Membership}.actorUserId`, `${TableName.Users}.id`)
+        .leftJoin(TableName.UserGroupMembership, (bd) => {
+          bd.on(`${TableName.UserGroupMembership}.userId`, "=", `${TableName.Users}.id`).andOn(
+            `${TableName.UserGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .andWhere(`${TableName.UserGroupMembership}.createdAt`, "is not", null)
+        .select(
+          db.ref("createdAt").withSchema(TableName.UserGroupMembership).as("joinedGroupAt"),
+          db.ref("email").withSchema(TableName.Users),
+          db.ref("username").withSchema(TableName.Users),
+          db.ref("firstName").withSchema(TableName.Users),
+          db.ref("lastName").withSchema(TableName.Users),
+          db.raw(`"${TableName.Users}"."id"::text as "userId"`),
+          db.raw('NULL::text as "identityId"'),
+          db.raw('NULL::text as "identityName"'),
+          db.raw("'user' as member_type"),
+          db.raw(
+            `COALESCE(NULLIF(TRIM(CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName")), ''), "${TableName.Users}"."username", "${TableName.Users}"."email") as "sortName"`
+          )
+        )
+        .where(`${TableName.Users}.isGhost`, false);
+
+      if (search) {
+        void usersSubquery.andWhereRaw(
+          `CONCAT_WS(' ', "${TableName.Users}"."firstName", "${TableName.Users}"."lastName", lower("${TableName.Users}"."username")) ilike ?`,
+          [`%${search}%`]
+        );
+      }
+
+      // Query for identities - subquery for UNION
+      const identitiesSubquery = db
+        .replicaNode()(TableName.Membership)
+        .where(`${TableName.Membership}.scopeOrgId`, orgId)
+        .where(`${TableName.Membership}.scope`, AccessScope.Organization)
+        .whereNotNull(`${TableName.Membership}.actorIdentityId`)
+        .whereNull(`${TableName.Identity}.projectId`)
+        .join(TableName.Identity, `${TableName.Membership}.actorIdentityId`, `${TableName.Identity}.id`)
+        .leftJoin(TableName.IdentityGroupMembership, (bd) => {
+          bd.on(`${TableName.IdentityGroupMembership}.identityId`, "=", `${TableName.Identity}.id`).andOn(
+            `${TableName.IdentityGroupMembership}.groupId`,
+            "=",
+            db.raw("?", [groupId])
+          );
+        })
+        .andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is not", null)
+        .select(
+          db.ref("createdAt").withSchema(TableName.IdentityGroupMembership).as("joinedGroupAt"),
+          db.raw('NULL::text as "email"'),
+          db.raw('NULL::text as "username"'),
+          db.raw('NULL::text as "firstName"'),
+          db.raw('NULL::text as "lastName"'),
+          db.raw('NULL::text as "userId"'),
+          db.raw(`"${TableName.Identity}"."id"::text as "identityId"`),
+          db.raw(`"${TableName.Identity}"."name" as "identityName"`),
+          db.raw("'identity' as member_type"),
+          db.raw(`"${TableName.Identity}"."name" as "sortName"`)
+        );
+
+      if (search) {
+        void identitiesSubquery.andWhereRaw(`LOWER("${TableName.Identity}"."name") ilike ?`, [`%${search}%`]);
+      }
+
+      const unionQuery = db.raw("(? UNION ALL ?)", [usersSubquery, identitiesSubquery]);
+
+      const combinedQuery = db
+        .replicaNode()
+        .select("*")
+        .select(db.raw(`count(*) OVER() as total_count`))
+        .from(db.raw("(?) as combined_members", [unionQuery]));
+
+      if (orderBy) {
+        if (orderBy === EGroupMembersOrderBy.Name) {
+          const orderDirectionClause = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
+          void combinedQuery.orderByRaw(`LOWER("sortName") ${orderDirectionClause}`);
+        }
+      }
+
+      if (offset) {
+        void combinedQuery.offset(offset);
+      }
+
+      if (limit) {
+        void combinedQuery.limit(limit);
+      }
+
+      const results = (await combinedQuery) as {
+        email: string;
+        username: string;
+        firstName: string;
+        lastName: string;
+        userId: string;
+        identityId: string;
+        identityName: string;
+        member_type: "user" | "identity";
+        joinedGroupAt: Date;
+        total_count: string;
+      }[];
+
+      const members = results.map(
+        ({ email, username, firstName, lastName, userId, identityId, identityName, member_type, joinedGroupAt }) => {
+          if (member_type === "user") {
+            return {
+              id: userId,
+              email,
+              username,
+              firstName,
+              lastName,
+              joinedGroupAt,
+              memberType: "user" as const
+            };
+          }
+          return {
+            id: identityId,
+            name: identityName,
+            joinedGroupAt,
+            memberType: "identity" as const
+          };
+        }
+      );
+
+      return {
+        members,
+        totalCount: Number(results?.[0]?.total_count ?? 0)
+      };
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Find all group possible members" });
+    }
+  };
+
   const findAllGroupProjects = async ({
     orgId,
     groupId,
@@ -395,8 +552,9 @@ export const groupDALFactory = (db: TDbClient) => {
     ...groupOrm,
     findGroups,
     findByOrgId,
-    findAllGroupPossibleMembers,
+    findAllGroupPossibleUsers,
     findAllGroupPossibleIdentities,
+    findAllGroupPossibleMembers,
     findAllGroupProjects,
     findGroupsByProjectId,
     findById,

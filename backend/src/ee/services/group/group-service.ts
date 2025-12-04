@@ -33,6 +33,7 @@ import {
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
   TListGroupIdentitiesDTO,
+  TListGroupMembersDTO,
   TListGroupProjectsDTO,
   TListGroupUsersDTO,
   TRemoveIdentityFromGroupDTO,
@@ -53,8 +54,9 @@ type TGroupServiceFactoryDep = {
     | "findOne"
     | "update"
     | "delete"
-    | "findAllGroupPossibleMembers"
+    | "findAllGroupPossibleUsers"
     | "findAllGroupPossibleIdentities"
+    | "findAllGroupPossibleMembers"
     | "findById"
     | "transaction"
     | "findAllGroupProjects"
@@ -380,7 +382,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleUsers({
       orgId: group.orgId,
       groupId: group.id,
       offset,
@@ -436,6 +438,53 @@ export const groupServiceFactory = ({
     });
 
     return { identities, totalCount };
+  };
+
+  const listGroupMembers = async ({
+    id,
+    offset,
+    limit,
+    search,
+    orderBy,
+    orderDirection,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId
+  }: TListGroupMembersDTO) => {
+    if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
+
+    const { permission } = await permissionService.getOrgPermission({
+      scope: OrganizationActionScope.Any,
+      actor,
+      actorId,
+      orgId: actorOrgId,
+      actorAuthMethod,
+      actorOrgId
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionGroupActions.Read, OrgPermissionSubjects.Groups);
+
+    const group = await groupDAL.findOne({
+      orgId: actorOrgId,
+      id
+    });
+
+    if (!group)
+      throw new NotFoundError({
+        message: `Failed to find group with ID ${id}`
+      });
+
+    const { members, totalCount } = await groupDAL.findAllGroupPossibleMembers({
+      orgId: group.orgId,
+      groupId: group.id,
+      offset,
+      limit,
+      search,
+      orderBy,
+      orderDirection
+    });
+
+    return { members, totalCount };
   };
 
   const listGroupProjects = async ({
@@ -795,6 +844,7 @@ export const groupServiceFactory = ({
     deleteGroup,
     listGroupUsers,
     listGroupIdentities,
+    listGroupMembers,
     listGroupProjects,
     addUserToGroup,
     addIdentityToGroup,

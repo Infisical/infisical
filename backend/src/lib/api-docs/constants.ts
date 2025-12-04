@@ -114,6 +114,14 @@ export const GROUPS = {
     filterIdentities:
       "Whether to filter the list of returned identities. 'assignedIdentities' will only return identities assigned to the group, 'nonAssignedIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization."
   },
+  LIST_MEMBERS: {
+    id: "The ID of the group to list members for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th member.",
+    limit: "The number of members to return.",
+    search: "The text string that member email(in case of users) or name(in case of identities) will be filtered by.",
+    orderBy: "The column to order members by.",
+    orderDirection: "The direction to order members in."
+  },
   LIST_PROJECTS: {
     id: "The ID of the group to list projects for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th project.",

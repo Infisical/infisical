@@ -1,5 +1,6 @@
 import { faEllipsisV, faUserMinus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { ServerIcon } from "lucide-react";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
@@ -12,35 +13,29 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
-import { TGroupUser } from "@app/hooks/api/groups/types";
+import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
+import { EGroupMemberType, TGroupMemberIdentity } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  user: TGroupUser;
+  identity: TGroupMemberIdentity;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
   ) => void;
 };
 
-export const GroupMembershipRow = ({
-  user: { firstName, lastName, username, joinedGroupAt, email, id },
+export const GroupMembershipIdentityRow = ({
+  identity: { name, joinedGroupAt, id },
   handlePopUpOpen
 }: Props) => {
-  const { currentOrg } = useOrganization();
-
-  const { data: isOidcManageGroupMembershipsEnabled = false } =
-    useOidcManageGroupMembershipsEnabled(currentOrg.id);
-
   return (
     <Tr className="items-center" key={`group-user-${id}`}>
       <Td>
-        <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
+        <ServerIcon className="h-4 w-4" />
       </Td>
       <Td>
-        <p>{email}</p>
+        <p>{name}</p>
       </Td>
       <Td>
         <Tooltip content={new Date(joinedGroupAt).toLocaleString()}>
@@ -64,24 +59,21 @@ export const GroupMembershipRow = ({
               <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
                 {(isAllowed) => {
                   return (
-                    <Tooltip
-                      content={
-                        isOidcManageGroupMembershipsEnabled
-                          ? "OIDC Group Membership Mapping Enabled. Remove user from this group in your OIDC provider."
-                          : undefined
-                      }
-                      position="left"
-                    >
-                      <div>
-                        <DropdownMenuItem
-                          icon={<FontAwesomeIcon icon={faUserMinus} />}
-                          onClick={() => handlePopUpOpen("removeMemberFromGroup", { username })}
-                          isDisabled={!isAllowed || isOidcManageGroupMembershipsEnabled}
-                        >
-                          Remove User From Group
-                        </DropdownMenuItem>
-                      </div>
-                    </Tooltip>
+                    <div>
+                      <DropdownMenuItem
+                        icon={<FontAwesomeIcon icon={faUserMinus} />}
+                        onClick={() =>
+                          handlePopUpOpen("removeMemberFromGroup", {
+                            memberType: EGroupMemberType.IDENTITY,
+                            identityId: id,
+                            name
+                          })
+                        }
+                        isDisabled={!isAllowed}
+                      >
+                        Remove Identity From Group
+                      </DropdownMenuItem>
+                    </div>
                   );
                 }}
               </OrgPermissionCan>

@@ -5,7 +5,12 @@ import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, IconButton } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
-import { useOidcManageGroupMembershipsEnabled, useRemoveUserFromGroup } from "@app/hooks/api";
+import {
+  useOidcManageGroupMembershipsEnabled,
+  useRemoveIdentityFromGroup,
+  useRemoveUserFromGroup
+} from "@app/hooks/api";
+import { EGroupMemberType } from "@app/hooks/api/groups/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddGroupMembersModal } from "../AddGroupMemberModal";
@@ -15,6 +20,10 @@ type Props = {
   groupId: string;
   groupSlug: string;
 };
+
+type RemoveMemberData =
+  | { memberType: EGroupMemberType.USER; username: string }
+  | { memberType: EGroupMemberType.IDENTITY; identityId: string; name: string };
 
 export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -28,19 +37,42 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
     useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
   const { mutateAsync: removeUserFromGroupMutateAsync } = useRemoveUserFromGroup();
-  const handleRemoveUserFromGroup = async (username: string) => {
-    await removeUserFromGroupMutateAsync({
-      groupId,
-      username,
-      slug: groupSlug
-    });
+  const { mutateAsync: removeIdentityFromGroupMutateAsync } = useRemoveIdentityFromGroup();
 
-    createNotification({
-      text: `Successfully removed user ${username} from the group`,
-      type: "success"
-    });
+  const handleRemoveMemberFromGroup = async (memberData: RemoveMemberData) => {
+    if (memberData.memberType === EGroupMemberType.USER) {
+      await removeUserFromGroupMutateAsync({
+        groupId,
+        username: memberData.username,
+        slug: groupSlug
+      });
+
+      createNotification({
+        text: `Successfully removed user ${memberData.username} from the group`,
+        type: "success"
+      });
+    } else {
+      await removeIdentityFromGroupMutateAsync({
+        groupId,
+        identityId: memberData.identityId,
+        slug: groupSlug
+      });
+
+      createNotification({
+        text: `Successfully removed identity ${memberData.name} from the group`,
+        type: "success"
+      });
+    }
 
     handlePopUpToggle("removeMemberFromGroup", false);
+  };
+
+  const getMemberName = (memberData: RemoveMemberData) => {
+    if (!memberData) return "";
+    if (memberData.memberType === EGroupMemberType.USER) {
+      return memberData.username;
+    }
+    return memberData.name;
   };
 
   return (
@@ -82,18 +114,12 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
       />
       <DeleteActionModal
         isOpen={popUp.removeMemberFromGroup.isOpen}
-        title={`Are you sure you want to remove ${
-          (popUp?.removeMemberFromGroup?.data as { username: string })?.username || ""
-        } from the group?`}
+        title={`Are you sure you want to remove ${getMemberName(popUp?.removeMemberFromGroup?.data)} from the group?`}
         onChange={(isOpen) => handlePopUpToggle("removeMemberFromGroup", isOpen)}
         deleteKey="confirm"
         onDeleteApproved={() => {
-          const userData = popUp?.removeMemberFromGroup?.data as {
-            username: string;
-            id: string;
-          };
-
-          return handleRemoveUserFromGroup(userData.username);
+          const memberData = popUp?.removeMemberFromGroup?.data as RemoveMemberData;
+          return handleRemoveMemberFromGroup(memberData);
         }}
       />
     </div>

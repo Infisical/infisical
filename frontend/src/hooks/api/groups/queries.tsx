@@ -7,8 +7,10 @@ import {
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
+  EGroupMembersOrderBy,
   TGroup,
   TGroupIdentity,
+  TGroupMember,
   TGroupProject,
   TGroupUser
 } from "./types";
@@ -48,6 +50,27 @@ export const groupKeys = {
     filter?: EFilterReturnedIdentities;
   }) =>
     [...groupKeys.forGroupIdentitiesMemberships(slug), { offset, limit, search, filter }] as const,
+  allGroupMembers: () => ["group-members"] as const,
+  forGroupMembers: (slug: string) => [...groupKeys.allGroupMembers(), slug] as const,
+  specificGroupMembers: ({
+    slug,
+    offset,
+    limit,
+    search,
+    orderBy,
+    orderDirection
+  }: {
+    slug: string;
+    offset: number;
+    limit: number;
+    search: string;
+    orderBy?: EGroupMembersOrderBy;
+    orderDirection?: OrderByDirection;
+  }) =>
+    [
+      ...groupKeys.forGroupMembers(slug),
+      { offset, limit, search, orderBy, orderDirection }
+    ] as const,
   allGroupProjects: () => ["group-projects"] as const,
   forGroupProjects: (groupId: string) => [...groupKeys.allGroupProjects(), groupId] as const,
   specificGroupProjects: ({
@@ -120,6 +143,55 @@ export const useListGroupUsers = ({
 
       const { data } = await apiRequest.get<{ users: TGroupUser[]; totalCount: number }>(
         `/api/v1/groups/${id}/users`,
+        {
+          params
+        }
+      );
+
+      return data;
+    }
+  });
+};
+
+export const useListGroupMembers = ({
+  id,
+  groupSlug,
+  offset = 0,
+  limit = 10,
+  search,
+  orderBy,
+  orderDirection
+}: {
+  id: string;
+  groupSlug: string;
+  offset: number;
+  limit: number;
+  search: string;
+  orderBy?: EGroupMembersOrderBy;
+  orderDirection?: OrderByDirection;
+}) => {
+  return useQuery({
+    queryKey: groupKeys.specificGroupMembers({
+      slug: groupSlug,
+      offset,
+      limit,
+      search,
+      orderBy,
+      orderDirection
+    }),
+    enabled: Boolean(groupSlug),
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(limit),
+        search,
+        ...(orderBy && { orderBy: orderBy.toString() }),
+        ...(orderDirection && { orderDirection })
+      });
+
+      const { data } = await apiRequest.get<{ members: TGroupMember[]; totalCount: number }>(
+        `/api/v1/groups/${id}/members`,
         {
           params
         }

@@ -48,14 +48,31 @@ export type TGroupUser = {
   username: string;
   firstName: string;
   lastName: string;
-  isPartOfGroup: boolean;
   joinedGroupAt: Date;
 };
+
+export enum EGroupMemberType {
+  USER = "user",
+  IDENTITY = "identity"
+}
+
+export type TGroupMemberUser = TGroupUser & {
+  memberType: EGroupMemberType.USER;
+};
+
+export type TGroupMemberIdentity = TGroupIdentity & {
+  memberType: EGroupMemberType.IDENTITY;
+};
+
+export enum EGroupMembersOrderBy {
+  Name = "name"
+}
+
+export type TGroupMember = TGroupMemberUser | TGroupMemberIdentity;
 
 export type TGroupIdentity = {
   id: string;
   name: string;
-  isPartOfGroup: boolean;
   joinedGroupAt: Date;
 };
 

@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   faArrowDown,
   faArrowUp,
@@ -31,12 +30,14 @@ import {
   setUserTablePreference
 } from "@app/helpers/userTablePreferences";
 import { usePagination, useResetPageHelper } from "@app/hooks";
-import { useListGroupUsers, useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
+import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
+import { useListGroupMembers } from "@app/hooks/api/groups/queries";
+import { EGroupMembersOrderBy, EGroupMemberType } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
-import { GroupMembershipRow } from "./GroupMembershipRow";
+import { GroupMembershipIdentityRow } from "./GroupMembershipIdentityRow";
+import { GroupMembershipUserRow } from "./GroupMembershipUserRow";
 
 type Props = {
   groupId: string;
@@ -46,10 +47,6 @@ type Props = {
     data?: object
   ) => void;
 };
-
-enum GroupMembersOrderBy {
-  Name = "name"
-}
 
 export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props) => {
   const {
@@ -61,8 +58,9 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     setPerPage,
     offset,
     orderDirection,
-    toggleOrderDirection
-  } = usePagination(GroupMembersOrderBy.Name, {
+    toggleOrderDirection,
+    orderBy
+  } = usePagination(EGroupMembersOrderBy.Name, {
     initPerPage: getUserTablePreference("groupMembersTable", PreferenceKey.PerPage, 20)
   });
 
@@ -76,49 +74,20 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
   const { data: isOidcManageGroupMembershipsEnabled = false } =
     useOidcManageGroupMembershipsEnabled(currentOrg.id);
 
-  const { data: groupMemberships, isPending } = useListGroupUsers({
+  const { data: groupMemberships, isPending } = useListGroupMembers({
     id: groupId,
     groupSlug,
     offset,
     limit: perPage,
     search,
-    filter: EFilterReturnedUsers.EXISTING_MEMBERS
+    orderBy,
+    orderDirection
   });
 
-  const filteredGroupMemberships = useMemo(() => {
-    return groupMemberships && groupMemberships?.users
-      ? groupMemberships?.users
-          ?.filter((membership) => {
-            const userSearchString = `${membership.firstName && membership.firstName} ${
-              membership.lastName && membership.lastName
-            } ${membership.email && membership.email} ${
-              membership.username && membership.username
-            }`;
-            return userSearchString.toLowerCase().includes(search.trim().toLowerCase());
-          })
-          .sort((a, b) => {
-            const [membershipOne, membershipTwo] =
-              orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-            const membershipOneComparisonString = membershipOne.firstName
-              ? membershipOne.firstName
-              : membershipOne.email;
-
-            const membershipTwoComparisonString = membershipTwo.firstName
-              ? membershipTwo.firstName
-              : membershipTwo.email;
-
-            const comparison = membershipOneComparisonString
-              .toLowerCase()
-              .localeCompare(membershipTwoComparisonString.toLowerCase());
-
-            return comparison;
-          })
-      : [];
-  }, [groupMemberships, orderDirection, search]);
+  const { members = [], totalCount = 0 } = groupMemberships ?? {};
 
   useResetPageHelper({
-    totalCount: filteredGroupMemberships?.length,
+    totalCount,
     offset,
     setPage
   });
@@ -129,12 +98,13 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search users..."
+        placeholder="Search members..."
       />
       <TableContainer className="mt-4">
         <Table>
           <THead>
             <Tr>
+              <Th className="w-5" />
               <Th className="w-1/3">
                 <div className="flex items-center">
                   Name
@@ -150,7 +120,6 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
                   </IconButton>
                 </div>
               </Th>
-              <Th>Email</Th>
               <Th>Added On</Th>
               <Th className="w-5" />
             </Tr>
@@ -158,37 +127,43 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
           <TBody>
             {isPending && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
             {!isPending &&
-              filteredGroupMemberships.slice(offset, perPage * page).map((userGroupMembership) => {
-                return (
-                  <GroupMembershipRow
+              groupMemberships?.members?.map((userGroupMembership) => {
+                return userGroupMembership.memberType === EGroupMemberType.USER ? (
+                  <GroupMembershipUserRow
                     key={`user-group-membership-${userGroupMembership.id}`}
                     user={userGroupMembership}
+                    handlePopUpOpen={handlePopUpOpen}
+                  />
+                ) : (
+                  <GroupMembershipIdentityRow
+                    key={`identity-group-membership-${userGroupMembership.id}`}
+                    identity={userGroupMembership}
                     handlePopUpOpen={handlePopUpOpen}
                   />
                 );
               })}
           </TBody>
         </Table>
-        {Boolean(filteredGroupMemberships.length) && (
+        {Boolean(totalCount) && (
           <Pagination
-            count={filteredGroupMemberships.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
             onChangePage={setPage}
             onChangePerPage={handlePerPageChange}
           />
         )}
-        {!isPending && !filteredGroupMemberships?.length && (
+        {!isPending && !members.length && (
           <EmptyState
             title={
-              groupMemberships?.users.length
-                ? "No users match this search..."
+              groupMemberships?.members.length
+                ? "No members match this search..."
                 : "This group does not have any members yet"
             }
-            icon={groupMemberships?.users.length ? faSearch : faFolder}
+            icon={groupMemberships?.members.length ? faSearch : faFolder}
           />
         )}
-        {!groupMemberships?.users.length && (
+        {!groupMemberships?.members.length && (
           <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
             {(isAllowed) => (
               <Tooltip
