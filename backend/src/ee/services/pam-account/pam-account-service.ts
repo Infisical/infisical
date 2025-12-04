@@ -628,7 +628,11 @@ export const pamAccountServiceFactory = ({
         break;
       case PamResource.Kubernetes:
         {
-          // TODO: provide metadata for Kubernetes if we need it
+          metadata = {
+            resourceName: resource.name,
+            accountName: account.name,
+            accountPath
+          };
         }
         break;
       default:
