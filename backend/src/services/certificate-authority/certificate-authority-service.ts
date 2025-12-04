@@ -736,7 +736,6 @@ export const certificateAuthorityServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateAuthorityActions.Read,
       subject(ProjectPermissionSub.CertificateAuthorities, {
-        caId: ca.id,
         name: ca.name
       })
     );
