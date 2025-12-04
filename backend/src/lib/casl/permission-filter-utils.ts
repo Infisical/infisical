@@ -203,7 +203,7 @@ export function convertConditionToDbFilter(condition: Record<string, unknown>): 
         switch (operator) {
           case "$glob": {
             // Convert "*.es" glob → regex /^.*\.es$/i
-            const regex = new RegExp(`^${String(opValue).replace(/\*/g, ".*")}$`, "i");
+            const regex = new RE2(`^${String(opValue).replace(/\*/g, ".*")}$`, "i");
             dbFilter[key] = { $regex: regex };
             break;
           }

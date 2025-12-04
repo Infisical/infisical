@@ -169,7 +169,8 @@ describe("CertificateProfileService", () => {
   const mockPermissionService = {
     getProjectPermission: vi.fn().mockResolvedValue({
       permission: {
-        throwUnlessCan: vi.fn()
+        throwUnlessCan: vi.fn(),
+        rules: []
       }
     })
   } as unknown as Pick<TPermissionServiceFactory, "getProjectPermission">;
@@ -598,13 +599,18 @@ describe("CertificateProfileService", () => {
 
       expect(result.profiles).toEqual(mockProfiles);
       expect(result.totalCount).toBe(1);
-      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith("project-123", {
-        offset: 0,
-        limit: 20,
-        search: undefined,
-        enrollmentType: undefined,
-        caId: undefined
-      });
+      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          offset: 0,
+          limit: 20,
+          search: undefined,
+          enrollmentType: undefined,
+          caId: undefined,
+          issuerType: undefined
+        },
+        {}
+      );
     });
 
     it("should list profiles with filters", async () => {
@@ -618,13 +624,18 @@ describe("CertificateProfileService", () => {
         caId: "ca-123"
       });
 
-      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith("project-123", {
-        offset: 10,
-        limit: 5,
-        search: "test",
-        enrollmentType: EnrollmentType.API,
-        caId: "ca-123"
-      });
+      expect(mockCertificateProfileDAL.findByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          offset: 10,
+          limit: 5,
+          search: "test",
+          enrollmentType: EnrollmentType.API,
+          caId: "ca-123",
+          issuerType: undefined
+        },
+        {}
+      );
     });
   });
 

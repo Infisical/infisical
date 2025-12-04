@@ -267,14 +267,22 @@ describe("CertificateTemplateV2Service", () => {
         limit: 20
       });
 
-      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith("project-123", {
-        offset: 0,
-        limit: 20,
-        search: undefined
-      });
-      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith("project-123", {
-        search: undefined
-      });
+      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          offset: 0,
+          limit: 20,
+          search: undefined
+        },
+        {}
+      );
+      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          search: undefined
+        },
+        {}
+      );
       expect(result).toEqual({ templates, totalCount });
     });
 
@@ -291,14 +299,22 @@ describe("CertificateTemplateV2Service", () => {
         search: "web server"
       });
 
-      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith("project-123", {
-        offset: 0,
-        limit: 20,
-        search: "web server"
-      });
-      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith("project-123", {
-        search: "web server"
-      });
+      expect(mockCertificateTemplateV2DAL.findByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          offset: 0,
+          limit: 20,
+          search: "web server"
+        },
+        {}
+      );
+      expect(mockCertificateTemplateV2DAL.countByProjectId).toHaveBeenCalledWith(
+        "project-123",
+        {
+          search: "web server"
+        },
+        {}
+      );
     });
   });
 
