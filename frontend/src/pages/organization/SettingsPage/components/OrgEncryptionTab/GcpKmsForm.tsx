@@ -24,6 +24,7 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   kms?: Kms;
+  mode?: "full" | "credentials";
 };
 
 const GCP_REGIONS = [
@@ -76,7 +77,7 @@ const formatOptionLabel = ({ value, label }: { value: string; label: string }) =
   </div>
 );
 
-export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
+export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props) => {
   const [isCredentialValid, setIsCredentialValid] = useState<boolean>(false);
   const [keys, setKeys] = useState<{ value: string; label: string }[]>([]);
 
@@ -98,9 +99,9 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       gcpRegion: kms
         ? {
             label:
-              GCP_REGIONS.find((r) => r.value === kms.external.providerInput.gcpRegion)?.label ??
+              GCP_REGIONS.find((r) => r.value === kms.externalKms.configuration.gcpRegion)?.label ??
               "",
-            value: kms.external.providerInput.gcpRegion
+            value: kms.externalKms.configuration.gcpRegion
           }
         : undefined,
       keyObject: undefined
@@ -109,7 +110,10 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
   const { currentOrg } = useOrganization();
   const { mutateAsync: addGcpExternalKms } = useAddExternalKms(currentOrg.id);
-  const { mutateAsync: updateGcpExternalKms } = useUpdateExternalKms(currentOrg.id);
+  const { mutateAsync: updateGcpExternalKms } = useUpdateExternalKms(
+    currentOrg.id,
+    ExternalKmsProvider.Gcp
+  );
   const { mutateAsync: fetchGcpKeys, isPending: isFetchGcpKeysLoading } =
     useExternalKmsFetchGcpKeys(currentOrg?.id);
 
@@ -152,21 +156,39 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
     try {
       if (kms) {
-        await updateGcpExternalKms({
-          kmsId: kms.id,
-          name,
-          description,
-          provider: {
-            type: ExternalKmsProvider.Gcp,
-            inputs: {
-              gcpRegion,
-              keyName: keyObject?.value
+        if (mode === "credentials") {
+          await updateGcpExternalKms({
+            kmsId: kms.id,
+            name: kms.name,
+            description: kms.description,
+            configuration: {
+              type: ExternalKmsProvider.Gcp,
+              inputs: {
+                gcpRegion,
+                keyName: keyObject?.value
+              }
             }
-          }
-        });
+          });
+        } else {
+          await updateGcpExternalKms({
+            kmsId: kms.id,
+            name,
+            description,
+            configuration: {
+              type: ExternalKmsProvider.Gcp,
+              inputs: {
+                gcpRegion,
+                keyName: keyObject?.value
+              }
+            }
+          });
+        }
 
         createNotification({
-          text: "Successfully updated GCP External KMS",
+          text:
+            mode === "credentials"
+              ? "Successfully updated GCP External KMS configuration"
+              : "Successfully updated GCP External KMS",
           type: "success"
         });
       } else {
@@ -177,7 +199,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         await addGcpExternalKms({
           name,
           description,
-          provider: {
+          configuration: {
             type: ExternalKmsProvider.Gcp,
             inputs: {
               gcpRegion,
@@ -231,7 +253,9 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
     setKeys(returnedKeys);
     if (kms) {
-      const existingKey = returnedKeys.find((k) => k.value === kms.external.providerInput.keyName);
+      const existingKey = returnedKeys.find(
+        (k) => k.value === kms.externalKms.configuration.keyName
+      );
       if (existingKey) {
         setValue("keyObject", existingKey);
       }
@@ -260,24 +284,28 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(handleGcpKmsFormSubmit)} autoComplete="off">
-      <Controller
-        control={control}
-        name="name"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="description"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
-        )}
-      />
+      {mode === "full" && (
+        <>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
+                <Input placeholder="" {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="description"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
+                <Input placeholder="" {...field} />
+              </FormControl>
+            )}
+          />
+        </>
+      )}
       <Controller
         control={control}
         name="gcpRegion"
@@ -350,7 +378,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       )}
       <div className="mt-6 flex items-center space-x-4">
         <Button type="submit" isLoading={isSubmitting}>
-          Save
+          {mode === "credentials" ? "Update Configuration" : "Save"}
         </Button>
         <Button variant="outline_bg" onClick={onCancel}>
           Cancel

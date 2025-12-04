@@ -50,9 +50,10 @@ type Props = {
   onCompleted: () => void;
   onCancel: () => void;
   kms?: Kms;
+  mode?: "full" | "credentials";
 };
 
-export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
+export const AwsKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props) => {
   const {
     control,
     handleSubmit,
@@ -64,20 +65,20 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
     defaultValues: {
       name: kms?.name,
       description: kms?.description ?? "",
-      provider: {
+      configuration: {
         type: ExternalKmsProvider.Aws,
         inputs: {
           credential: {
-            type: kms?.external?.providerInput?.credential?.type,
+            type: kms?.externalKms?.configuration?.credential?.type,
             data: {
-              accessKey: kms?.external?.providerInput?.credential?.data?.accessKey,
-              secretKey: kms?.external?.providerInput?.credential?.data?.secretKey,
-              assumeRoleArn: kms?.external?.providerInput?.credential?.data?.assumeRoleArn,
-              externalId: kms?.external?.providerInput?.credential?.data?.externalId
+              accessKey: kms?.externalKms?.configuration?.credential?.data?.accessKey,
+              secretKey: kms?.externalKms?.configuration?.credential?.data?.secretKey,
+              assumeRoleArn: kms?.externalKms?.configuration?.credential?.data?.assumeRoleArn,
+              externalId: kms?.externalKms?.configuration?.credential?.data?.externalId
             }
           },
-          awsRegion: kms?.external?.providerInput?.awsRegion,
-          kmsKeyId: kms?.external?.providerInput?.kmsKeyId
+          awsRegion: kms?.externalKms?.configuration?.awsRegion,
+          kmsKeyId: kms?.externalKms?.configuration?.kmsKeyId
         }
       }
     }
@@ -85,30 +86,42 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
   const { currentOrg } = useOrganization();
   const { mutateAsync: addAwsExternalKms } = useAddExternalKms(currentOrg.id);
-  const { mutateAsync: updateAwsExternalKms } = useUpdateExternalKms(currentOrg.id);
+  const { mutateAsync: updateAwsExternalKms } = useUpdateExternalKms(
+    currentOrg.id,
+    ExternalKmsProvider.Aws
+  );
 
-  const selectedAwsAuthType = watch("provider.inputs.credential.type");
+  const selectedAwsAuthType = watch("configuration.inputs.credential.type");
 
   const handleAwsKmsFormSubmit = async (data: AddExternalKmsType) => {
-    const { name, description, provider } = data;
+    const { name, description, configuration } = data;
     try {
       if (kms) {
-        await updateAwsExternalKms({
-          kmsId: kms.id,
-          name,
-          description,
-          provider
-        });
+        if (mode === "credentials") {
+          await updateAwsExternalKms({
+            kmsId: kms.id,
+            configuration
+          });
+        } else {
+          await updateAwsExternalKms({
+            kmsId: kms.id,
+            name,
+            description
+          });
+        }
 
         createNotification({
-          text: "Successfully updated AWS External KMS",
+          text:
+            mode === "credentials"
+              ? "Successfully updated AWS External KMS credentials"
+              : "Successfully updated AWS External KMS",
           type: "success"
         });
       } else {
         await addAwsExternalKms({
           name,
           description,
-          provider
+          configuration
         });
 
         createNotification({
@@ -125,27 +138,31 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
 
   return (
     <form onSubmit={handleSubmit(handleAwsKmsFormSubmit)} autoComplete="off">
+      {mode === "full" && (
+        <>
+          <Controller
+            control={control}
+            name="name"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
+                <Input placeholder="" {...field} />
+              </FormControl>
+            )}
+          />
+          <Controller
+            control={control}
+            name="description"
+            render={({ field, fieldState: { error } }) => (
+              <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
+                <Input placeholder="" {...field} />
+              </FormControl>
+            )}
+          />
+        </>
+      )}
       <Controller
         control={control}
-        name="name"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Alias" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="description"
-        render={({ field, fieldState: { error } }) => (
-          <FormControl label="Description" errorText={error?.message} isError={Boolean(error)}>
-            <Input placeholder="" {...field} />
-          </FormControl>
-        )}
-      />
-      <Controller
-        control={control}
-        name="provider.inputs.credential.type"
+        name="configuration.inputs.credential.type"
         defaultValue={KmsAwsCredentialType.AssumeRole}
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl
@@ -157,10 +174,10 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
               defaultValue={field.value}
               {...field}
               onValueChange={(e) => {
-                setValue("provider.inputs.credential.data.accessKey", "");
-                setValue("provider.inputs.credential.data.secretKey", "");
-                setValue("provider.inputs.credential.data.assumeRoleArn", "");
-                setValue("provider.inputs.credential.data.externalId", "");
+                setValue("configuration.inputs.credential.data.accessKey", "");
+                setValue("configuration.inputs.credential.data.secretKey", "");
+                setValue("configuration.inputs.credential.data.assumeRoleArn", "");
+                setValue("configuration.inputs.credential.data.externalId", "");
 
                 onChange(e);
               }}
@@ -177,7 +194,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         <>
           <Controller
             control={control}
-            name="provider.inputs.credential.data.accessKey"
+            name="configuration.inputs.credential.data.accessKey"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Access Key ID"
@@ -190,7 +207,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           />
           <Controller
             control={control}
-            name="provider.inputs.credential.data.secretKey"
+            name="configuration.inputs.credential.data.secretKey"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Secret Access Key"
@@ -206,7 +223,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
         <>
           <Controller
             control={control}
-            name="provider.inputs.credential.data.assumeRoleArn"
+            name="configuration.inputs.credential.data.assumeRoleArn"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="IAM Role ARN For Role Assumption"
@@ -219,7 +236,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
           />
           <Controller
             control={control}
-            name="provider.inputs.credential.data.externalId"
+            name="configuration.inputs.credential.data.externalId"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Assume Role External ID"
@@ -234,7 +251,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       )}
       <Controller
         control={control}
-        name="provider.inputs.awsRegion"
+        name="configuration.inputs.awsRegion"
         render={({ field: { onChange, ...field }, fieldState: { error } }) => (
           <FormControl label="AWS Region" errorText={error?.message} isError={Boolean(error)}>
             <Select
@@ -254,7 +271,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       />
       <Controller
         control={control}
-        name="provider.inputs.kmsKeyId"
+        name="configuration.inputs.kmsKeyId"
         render={({ field, fieldState: { error } }) => (
           <FormControl label="AWS KMS Key ID" errorText={error?.message} isError={Boolean(error)}>
             <Input placeholder="" {...field} />
@@ -263,7 +280,7 @@ export const AwsKmsForm = ({ onCompleted, onCancel, kms }: Props) => {
       />
       <div className="mt-6 flex items-center space-x-4">
         <Button type="submit" isLoading={isSubmitting}>
-          Save
+          {mode === "credentials" ? "Update Credentials" : "Save"}
         </Button>
         <Button variant="outline_bg" onClick={onCancel}>
           Cancel

@@ -12,22 +12,33 @@ type Props = {
   onOpenChange: (state: boolean) => void;
 };
 
-export const UpdateExternalKmsForm = ({ isOpen, kmsId, provider, onOpenChange }: Props) => {
+export const EditExternalKmsCredentialsModal = ({
+  isOpen,
+  kmsId,
+  provider,
+  onOpenChange
+}: Props) => {
   const { data: externalKms, isPending } = useGetExternalKmsById({ kmsId, provider });
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent title="Edit configuration" bodyClassName="overflow-visible">
+      <ModalContent
+        title="Edit Credentials"
+        subTitle="Update the credentials for this KMS."
+        bodyClassName="overflow-visible"
+      >
         {isPending && <ContentLoader />}
-        {externalKms?.external?.provider === ExternalKmsProvider.Aws && (
+        {externalKms?.externalKms?.provider === ExternalKmsProvider.Aws && (
           <AwsKmsForm
             kms={externalKms}
+            mode="credentials"
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
           />
         )}
-        {externalKms?.external?.provider === ExternalKmsProvider.Gcp && (
+        {externalKms?.externalKms?.provider === ExternalKmsProvider.Gcp && (
           <GcpKmsForm
             kms={externalKms}
+            mode="credentials"
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
           />

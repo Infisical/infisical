@@ -15,12 +15,12 @@ import {
 export const useAddExternalKms = (orgId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, description, provider }: AddExternalKmsType) => {
-      const providerPath = provider.type === ExternalKmsProvider.Aws ? "aws" : "gcp";
+    mutationFn: async ({ name, description, configuration }: AddExternalKmsType) => {
+      const providerPath = configuration.type === ExternalKmsProvider.Aws ? "aws" : "gcp";
       const { data } = await apiRequest.post(`/api/v1/external-kms/${providerPath}`, {
         name,
         description,
-        configuration: provider.inputs
+        configuration: configuration.inputs
       });
 
       return data;
@@ -31,22 +31,21 @@ export const useAddExternalKms = (orgId: string) => {
   });
 };
 
-export const useUpdateExternalKms = (orgId: string) => {
+export const useUpdateExternalKms = (orgId: string, provider: ExternalKmsProvider) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       kmsId,
       name,
       description,
-      provider
+      configuration
     }: {
       kmsId: string;
     } & UpdateExternalKmsType) => {
-      const providerPath = provider.type === ExternalKmsProvider.Aws ? "aws" : "gcp";
-      const { data } = await apiRequest.patch(`/api/v1/external-kms/${providerPath}/${kmsId}`, {
+      const { data } = await apiRequest.patch(`/api/v1/external-kms/${provider}/${kmsId}`, {
         name,
         description,
-        configuration: provider.inputs
+        configuration: configuration?.inputs
       });
 
       return data;

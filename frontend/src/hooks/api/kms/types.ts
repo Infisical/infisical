@@ -8,12 +8,13 @@ export type Kms = {
   description: string;
   orgId: string;
   name: string;
-  external: {
+  externalKms: {
     id: string;
     status: string;
     statusDetails: string;
     provider: string;
-    providerInput: Record<string, any>;
+    configuration: Record<string, any>;
+    credentialsHash?: string;
   };
 };
 
@@ -123,7 +124,7 @@ export const ExternalKmsInputSchema = z.discriminatedUnion("type", [
 export const AddExternalKmsSchema = z.object({
   name: slugSchema({ min: 1, field: "Alias" }),
   description: z.string().trim().optional(),
-  provider: ExternalKmsInputSchema
+  configuration: ExternalKmsInputSchema
 });
 
 export type AddExternalKmsType = z.infer<typeof AddExternalKmsSchema>;
@@ -144,9 +145,10 @@ export const UpdateExternalKmsSchema = z.object({
     .min(1)
     .refine((v) => slugify(v) === v, {
       message: "Alias must be a valid slug"
-    }),
+    })
+    .optional(),
   description: z.string().trim().optional(),
-  provider: ExternalKmsUpdateInputSchema
+  configuration: ExternalKmsUpdateInputSchema.optional()
 });
 
 export type UpdateExternalKmsType = z.infer<typeof UpdateExternalKmsSchema>;

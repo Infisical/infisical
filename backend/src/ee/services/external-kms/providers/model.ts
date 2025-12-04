@@ -19,27 +19,31 @@ export enum KmsGcpKeyFetchAuthType {
   Kms = "kmsId"
 }
 
+const AwsConnectionAssumeRoleCredentialsSchema = z.object({
+  assumeRoleArn: z.string().trim().min(1).describe("AWS user role to be assumed by infisical"),
+  externalId: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("AWS assume role external id for furthur security in authentication")
+});
+
+const AwsConnectionAccessTokenCredentialsSchema = z.object({
+  accessKey: z.string().trim().min(1).describe("AWS user account access key"),
+  secretKey: z.string().trim().min(1).describe("AWS user account secret key")
+});
+
 export const ExternalKmsAwsSchema = z.object({
   credential: z
     .discriminatedUnion("type", [
       z.object({
         type: z.literal(KmsAwsCredentialType.AccessKey),
-        data: z.object({
-          accessKey: z.string().trim().min(1).describe("AWS user account access key"),
-          secretKey: z.string().trim().min(1).describe("AWS user account secret key")
-        })
+        data: AwsConnectionAccessTokenCredentialsSchema
       }),
       z.object({
         type: z.literal(KmsAwsCredentialType.AssumeRole),
-        data: z.object({
-          assumeRoleArn: z.string().trim().min(1).describe("AWS user role to be assumed by infisical"),
-          externalId: z
-            .string()
-            .trim()
-            .min(1)
-            .optional()
-            .describe("AWS assume role external id for furthur security in authentication")
-        })
+        data: AwsConnectionAssumeRoleCredentialsSchema
       })
     ])
     .describe("AWS credential information to connect"),
@@ -51,6 +55,19 @@ export const ExternalKmsAwsSchema = z.object({
     .describe("A pre existing AWS KMS key id to be used for encryption. If not provided a kms key will be generated.")
 });
 export type TExternalKmsAwsSchema = z.infer<typeof ExternalKmsAwsSchema>;
+
+export const SanitizedExternalKmsAwsSchema = ExternalKmsAwsSchema.extend({
+  credential: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal(KmsAwsCredentialType.AccessKey),
+      data: AwsConnectionAccessTokenCredentialsSchema.pick({ accessKey: true })
+    }),
+    z.object({
+      type: z.literal(KmsAwsCredentialType.AssumeRole),
+      data: AwsConnectionAssumeRoleCredentialsSchema.pick({})
+    })
+  ])
+});
 
 export const ExternalKmsGcpCredentialSchema = z.object({
   type: z.literal(KmsGcpCredentialType.ServiceAccount),
@@ -74,6 +91,8 @@ export const ExternalKmsGcpSchema = z.object({
   keyName: z.string().trim().describe("GCP key name")
 });
 export type TExternalKmsGcpSchema = z.infer<typeof ExternalKmsGcpSchema>;
+
+export const SanitizedExternalKmsGcpSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true });
 
 const ExternalKmsGcpClientSchema = ExternalKmsGcpSchema.pick({ gcpRegion: true }).extend({
   credential: ExternalKmsGcpCredentialSchema

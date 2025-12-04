@@ -3,35 +3,27 @@ import { z } from "zod";
 import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
-  ExternalKmsAwsSchema,
-  ExternalKmsGcpSchema,
   KmsProviders,
+  SanitizedExternalKmsAwsSchema,
+  SanitizedExternalKmsGcpSchema,
   TExternalKmsInputSchema,
   TExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
+import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 
 const sanitizedExternalSchema = KmsKeysSchema.extend({
-  external: ExternalKmsSchema.pick({
-    id: true,
-    status: true,
-    statusDetails: true,
-    provider: true
-  })
-});
-
-const sanitizedExternalSchemaForGetById = KmsKeysSchema.extend({
-  external: ExternalKmsSchema.pick({
+  externalKms: ExternalKmsSchema.pick({
     id: true,
     status: true,
     statusDetails: true,
     provider: true
   }).extend({
-    // for GCP, we don't return the credential object as it is sensitive data that should not be exposed
-    providerInput: z.union([ExternalKmsAwsSchema, ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })])
+    configuration: z.union([SanitizedExternalKmsAwsSchema, SanitizedExternalKmsGcpSchema]),
+    credentialsHash: z.string().optional()
   })
 });
 
@@ -59,9 +51,7 @@ export const registerExternalKmsEndpoints = <
         id: z.string().trim().min(1)
       }),
       response: {
-        200: z.object({
-          externalKms: sanitizedExternalSchemaForGetById
-        })
+        200: sanitizedExternalSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -93,7 +83,16 @@ export const registerExternalKmsEndpoints = <
         }
       });
 
-      return { externalKms };
+      const {
+        external: { providerInput: configuration, ...externalKmsData },
+        ...rest
+      } = externalKms;
+
+      const credentialsHash = crypto.nativeCrypto
+        .createHash("sha256")
+        .update(externalKmsData.encryptedProviderInputs)
+        .digest("hex");
+      return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
     }
   });
 
@@ -110,9 +109,7 @@ export const registerExternalKmsEndpoints = <
         configuration: createSchema
       }),
       response: {
-        200: z.object({
-          externalKms: sanitizedExternalSchema
-        })
+        200: sanitizedExternalSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -152,7 +149,15 @@ export const registerExternalKmsEndpoints = <
         }
       });
 
-      return { externalKms };
+      const {
+        external: { providerInput: externalKmsConfiguration, ...externalKmsData },
+        ...rest
+      } = externalKms;
+      const credentialsHash = crypto.nativeCrypto
+        .createHash("sha256")
+        .update(externalKmsData.encryptedProviderInputs)
+        .digest("hex");
+      return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
   });
 
@@ -169,12 +174,10 @@ export const registerExternalKmsEndpoints = <
       body: z.object({
         name: z.string().min(1).trim().toLowerCase().optional(),
         description: z.string().trim().optional(),
-        configuration: updateSchema
+        configuration: updateSchema.optional()
       }),
       response: {
-        200: z.object({
-          externalKms: sanitizedExternalSchema
-        })
+        200: sanitizedExternalSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -215,7 +218,15 @@ export const registerExternalKmsEndpoints = <
         }
       });
 
-      return { externalKms };
+      const {
+        external: { providerInput: externalKmsConfiguration, ...externalKmsData },
+        ...rest
+      } = externalKms;
+      const credentialsHash = crypto.nativeCrypto
+        .createHash("sha256")
+        .update(externalKmsData.encryptedProviderInputs)
+        .digest("hex");
+      return { ...rest, externalKms: { ...externalKmsData, configuration: externalKmsConfiguration, credentialsHash } };
     }
   });
 
@@ -230,9 +241,7 @@ export const registerExternalKmsEndpoints = <
         id: z.string().trim().min(1)
       }),
       response: {
-        200: z.object({
-          externalKms: sanitizedExternalSchema
-        })
+        200: sanitizedExternalSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
@@ -264,7 +273,16 @@ export const registerExternalKmsEndpoints = <
         }
       });
 
-      return { externalKms };
+      const {
+        external: { providerInput: configuration, ...externalKmsData },
+        ...rest
+      } = externalKms;
+      const credentialsHash = crypto.nativeCrypto
+        .createHash("sha256")
+        .update(externalKmsData.encryptedProviderInputs)
+        .digest("hex");
+
+      return { ...rest, externalKms: { ...externalKmsData, configuration, credentialsHash } };
     }
   });
 };

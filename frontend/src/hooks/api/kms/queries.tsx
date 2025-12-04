@@ -34,10 +34,8 @@ export const useGetExternalKmsById = ({
     queryKey: kmsKeys.getExternalKmsById(kmsId),
     enabled: Boolean(kmsId),
     queryFn: async () => {
-      const {
-        data: { externalKms }
-      } = await apiRequest.get<{ externalKms: Kms }>(`/api/v1/external-kms/${provider}/${kmsId}`);
-      return externalKms;
+      const { data } = await apiRequest.get<Kms>(`/api/v1/external-kms/${provider}/${kmsId}`);
+      return data;
     }
   });
 };
