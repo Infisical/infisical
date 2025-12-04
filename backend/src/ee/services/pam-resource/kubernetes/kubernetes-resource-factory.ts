@@ -127,7 +127,10 @@ export const kubernetesResourceFactory: TPamResourceFactory<
           if (authMethod === KubernetesAuthMethod.ServiceAccountToken) {
             // Validate service account token by making an authenticated API call
             try {
-              await axios.get(`${baseUrl}/api/v1/namespaces/${connectionDetails.namespace}`, {
+              // TODO: is this the best API endpoint to use for validation?
+              //       the SA may not have access to list ns
+              //       maybe we should use a more specific API endpoint?
+              await axios.get(`${baseUrl}/api/v1/namespaces`, {
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${credentials.serviceAccountToken}`
@@ -137,10 +140,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
                 timeout: EXTERNAL_REQUEST_TIMEOUT
               });
 
-              logger.info(
-                { namespace: connectionDetails.namespace },
-                "[Kubernetes Resource Factory] Kubernetes service account token authentication successful"
-              );
+              logger.info("[Kubernetes Resource Factory] Kubernetes service account token authentication successful");
             } catch (error) {
               if (error instanceof AxiosError) {
                 if (error.response?.status === 401 || error.response?.status === 403) {
