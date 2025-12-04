@@ -30,16 +30,14 @@ export const HttpBaseEventSchema = z.object({
 export const HttpRequestEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.request),
   method: z.string(),
-  url: z.string(),
+  url: z.string()
   // TODO: optional for now
-  body: z.string().optional()
 });
 
 export const HttpResponseEventSchema = HttpBaseEventSchema.extend({
   eventType: z.literal(HttpEventTypeSchema.Values.response),
-  status: z.string(),
+  status: z.string()
   // TODO: optional for now
-  body: z.string().optional()
 });
 
 export const HttpEventSchema = z.discriminatedUnion("eventType", [HttpRequestEventSchema, HttpResponseEventSchema]);

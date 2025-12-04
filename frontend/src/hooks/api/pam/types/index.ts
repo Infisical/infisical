@@ -44,7 +44,26 @@ export type TTerminalEvent = {
   elapsedTime: number; // Seconds since session start (for replay)
 };
 
-export type TPamSessionLog = TPamCommandLog | TTerminalEvent;
+export type THttpRequestEvent = {
+  timestamp: string;
+  requestId: string;
+  eventType: "request";
+  headers: Record<string, string[]>;
+  method: string;
+  url: string;
+};
+
+export type THttpResponseEvent = {
+  timestamp: string;
+  requestId: string;
+  eventType: "response";
+  headers: Record<string, string[]>;
+  status: string;
+};
+
+export type THttpEvent = THttpRequestEvent | THttpResponseEvent;
+
+export type TPamSessionLog = TPamCommandLog | TTerminalEvent | THttpEvent;
 
 export type TPamSession = {
   id: string;
