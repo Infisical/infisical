@@ -1001,11 +1001,27 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      const canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        ProjectPermissionSub.Certificates
+      );
+
+      const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
+
       return {
         certificate: selfSignedResult.certificate.toString("utf8"),
         issuingCaCertificate: "",
         certificateChain: selfSignedResult.certificate.toString("utf8"),
-        privateKey: selfSignedResult.privateKey.toString("utf8"),
+        privateKey: privateKeyForResponse,
         serialNumber: selfSignedResult.serialNumber,
         certificateId: certificateData.id,
         certificateRequestId,
@@ -1102,11 +1118,28 @@ export const certificateV3ServiceFactory = ({
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
 
+    // Check if user has permission to read private key
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    const canReadPrivateKey = permission.can(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
+
     return {
       certificate: bufferToString(certificate),
       issuingCaCertificate: bufferToString(issuingCaCertificate),
       certificateChain: finalCertificateChain,
-      privateKey: bufferToString(privateKey),
+      privateKey: privateKeyForResponse,
       serialNumber,
       certificateId: cert.id,
       certificateRequestId,
