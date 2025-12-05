@@ -12,6 +12,7 @@ type Props = {
 
 export const HttpEventView = ({ events }: Props) => {
   const [search, setSearch] = useState("");
+  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
   const [expandedSections, setExpandedSections] = useState<
     Record<string, { headers: boolean; body: boolean }>
   >({});
@@ -122,6 +123,24 @@ export const HttpEventView = ({ events }: Props) => {
     return headerKey ? headers[headerKey]?.[0] : undefined;
   };
 
+  const toggleEvent = (eventKey: string) => {
+    const willBeExpanded = !expandedEvents[eventKey];
+    setExpandedEvents((prev) => ({
+      ...prev,
+      [eventKey]: willBeExpanded
+    }));
+    // When expanding, show headers by default (but keep body collapsed)
+    if (willBeExpanded) {
+      setExpandedSections((prev) => ({
+        ...prev,
+        [eventKey]: {
+          headers: true,
+          body: prev[eventKey]?.body ?? false
+        }
+      }));
+    }
+  };
+
   const toggleSection = (eventKey: string, section: "headers" | "body") => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -130,6 +149,10 @@ export const HttpEventView = ({ events }: Props) => {
         [section]: !prev[eventKey]?.[section]
       }
     }));
+  };
+
+  const isEventExpanded = (eventKey: string) => {
+    return expandedEvents[eventKey] ?? false;
   };
 
   const isSectionExpanded = (eventKey: string, section: "headers" | "body") => {
@@ -156,13 +179,23 @@ export const HttpEventView = ({ events }: Props) => {
             const isRequest = event.eventType === "request";
             const kubectlCommand = getKubectlCommand(event.headers);
 
+            const isExpanded = isEventExpanded(eventKey);
+
             return (
               <div
                 key={eventKey}
                 className="flex w-full flex-col rounded-md border border-mineshaft-700 bg-mineshaft-800 p-3"
               >
-                <div className="flex items-center justify-between text-bunker-400">
+                <button
+                  type="button"
+                  onClick={() => toggleEvent(eventKey)}
+                  className="flex items-center justify-between text-bunker-400 hover:text-bunker-300 transition-colors"
+                >
                   <div className="flex items-center gap-2 text-xs">
+                    <FontAwesomeIcon
+                      icon={isExpanded ? faChevronUp : faChevronDown}
+                      className="text-xs"
+                    />
                     <span
                       className={`px-2 py-0.5 rounded ${
                         isRequest
@@ -184,68 +217,70 @@ export const HttpEventView = ({ events }: Props) => {
                     <span className="text-bunker-500">•</span>
                     <span className="font-mono text-xs">{event.requestId}</span>
                   </div>
-                </div>
+                </button>
 
-                <div className="mt-2 space-y-2">
-                  {isRequest ? (
-                    <div className="font-mono text-bunker-100">
-                      <span className="font-semibold text-bunker-200">{event.method}</span>{" "}
-                      <HighlightText text={event.url} highlight={search} />
-                    </div>
-                  ) : (
-                    <div className="font-mono text-bunker-100">
-                      <span className="font-semibold text-bunker-200">Status:</span>{" "}
-                      <HighlightText text={event.status} highlight={search} />
-                    </div>
-                  )}
+                {isExpanded && (
+                  <div className="mt-2 space-y-2">
+                    {isRequest ? (
+                      <div className="font-mono text-bunker-100">
+                        <span className="font-semibold text-bunker-200">{event.method}</span>{" "}
+                        <HighlightText text={event.url} highlight={search} />
+                      </div>
+                    ) : (
+                      <div className="font-mono text-bunker-100">
+                        <span className="font-semibold text-bunker-200">Status:</span>{" "}
+                        <HighlightText text={event.status} highlight={search} />
+                      </div>
+                    )}
 
-                  {Object.keys(event.headers).length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-mineshaft-700">
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(eventKey, "headers")}
-                        className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
-                      >
-                        <FontAwesomeIcon
-                          icon={
-                            isSectionExpanded(eventKey, "headers") ? faChevronUp : faChevronDown
-                          }
-                          className="text-xs"
-                        />
-                        <span>Headers:</span>
-                      </button>
-                      {isSectionExpanded(eventKey, "headers") && (
-                        <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
-                          <HighlightText text={formatHeaders(event.headers)} highlight={search} />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {event.body && (
-                    <div className="mt-2 pt-2 border-t border-mineshaft-700">
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(eventKey, "body")}
-                        className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
-                      >
-                        <FontAwesomeIcon
-                          icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
-                          className="text-xs"
-                        />
-                        <span>Body:</span>
-                      </button>
-                      {isSectionExpanded(eventKey, "body") && (
-                        <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
-                          <HighlightText
-                            text={formatBody(event.body, event.headers)}
-                            highlight={search}
+                    {Object.keys(event.headers).length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(eventKey, "headers")}
+                          className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                        >
+                          <FontAwesomeIcon
+                            icon={
+                              isSectionExpanded(eventKey, "headers") ? faChevronUp : faChevronDown
+                            }
+                            className="text-xs"
                           />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                          <span>Headers:</span>
+                        </button>
+                        {isSectionExpanded(eventKey, "headers") && (
+                          <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                            <HighlightText text={formatHeaders(event.headers)} highlight={search} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {event.body && (
+                      <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                        <button
+                          type="button"
+                          onClick={() => toggleSection(eventKey, "body")}
+                          className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                        >
+                          <FontAwesomeIcon
+                            icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
+                            className="text-xs"
+                          />
+                          <span>Body:</span>
+                        </button>
+                        {isSectionExpanded(eventKey, "body") && (
+                          <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                            <HighlightText
+                              text={formatBody(event.body, event.headers)}
+                              highlight={search}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
