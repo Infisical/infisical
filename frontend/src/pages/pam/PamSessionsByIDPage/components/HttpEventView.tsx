@@ -189,7 +189,7 @@ export const HttpEventView = ({ events }: Props) => {
                 <button
                   type="button"
                   onClick={() => toggleEvent(eventKey)}
-                  className="flex items-center justify-between text-bunker-400 hover:text-bunker-300 transition-colors"
+                  className="flex items-center justify-between text-bunker-400 transition-colors hover:text-bunker-300"
                 >
                   <div className="flex items-center gap-2 text-xs">
                     <FontAwesomeIcon
@@ -197,7 +197,7 @@ export const HttpEventView = ({ events }: Props) => {
                       className="text-xs"
                     />
                     <span
-                      className={`px-2 py-0.5 rounded ${
+                      className={`rounded px-2 py-0.5 ${
                         isRequest
                           ? "bg-blue-500/20 text-blue-400"
                           : "bg-green-500/20 text-green-400"
@@ -207,7 +207,7 @@ export const HttpEventView = ({ events }: Props) => {
                     </span>
                     {kubectlCommand && (
                       <span
-                        className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400"
+                        className="rounded bg-purple-500/20 px-2 py-0.5 text-purple-400"
                         title="Kubectl Command"
                       >
                         kubectl: {kubectlCommand}
@@ -234,13 +234,13 @@ export const HttpEventView = ({ events }: Props) => {
                 </div>
 
                 {isExpanded && (
-                  <div className="mt-2 ml-4 pl-3 border-l-2 border-mineshaft-600 space-y-2">
+                  <div className="mt-2 ml-4 space-y-2 border-l-2 border-mineshaft-600 pl-3">
                     {Object.keys(event.headers).length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                      <div className="mt-2 border-t border-mineshaft-700 pt-2">
                         <button
                           type="button"
                           onClick={() => toggleSection(eventKey, "headers")}
-                          className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                          className="mb-1 flex w-full items-center gap-2 text-left text-xs text-bunker-400 transition-colors hover:text-bunker-300"
                         >
                           <FontAwesomeIcon
                             icon={
@@ -251,7 +251,7 @@ export const HttpEventView = ({ events }: Props) => {
                           <span>Headers:</span>
                         </button>
                         {isSectionExpanded(eventKey, "headers") && (
-                          <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                          <div className="font-mono text-xs whitespace-pre-wrap text-bunker-300">
                             <HighlightText text={formatHeaders(event.headers)} highlight={search} />
                           </div>
                         )}
@@ -259,11 +259,11 @@ export const HttpEventView = ({ events }: Props) => {
                     )}
 
                     {event.body && (
-                      <div className="mt-2 pt-2 border-t border-mineshaft-700">
+                      <div className="mt-2 border-t border-mineshaft-700 pt-2">
                         <button
                           type="button"
                           onClick={() => toggleSection(eventKey, "body")}
-                          className="flex items-center gap-2 w-full text-left text-bunker-400 text-xs mb-1 hover:text-bunker-300 transition-colors"
+                          className="mb-1 flex w-full items-center gap-2 text-left text-xs text-bunker-400 transition-colors hover:text-bunker-300"
                         >
                           <FontAwesomeIcon
                             icon={isSectionExpanded(eventKey, "body") ? faChevronUp : faChevronDown}
@@ -272,7 +272,7 @@ export const HttpEventView = ({ events }: Props) => {
                           <span>Body:</span>
                         </button>
                         {isSectionExpanded(eventKey, "body") && (
-                          <div className="font-mono whitespace-pre-wrap text-bunker-300 text-xs">
+                          <div className="font-mono text-xs whitespace-pre-wrap text-bunker-300">
                             <HighlightText
                               text={formatBody(event.body, event.headers)}
                               highlight={search}
