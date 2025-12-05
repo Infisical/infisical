@@ -466,6 +466,12 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data}
+        accountPath={
+          popUp.accessAccount.data?.folderId
+            ? folderPaths[popUp.accessAccount.data.folderId]
+            : undefined
+        }
+        projectId={projectId}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}
