@@ -130,6 +130,7 @@ export const kubernetesResourceFactory: TPamResourceFactory<
               // TODO: is this the best API endpoint to use for validation?
               //       the SA may not have access to list ns
               //       maybe we should use a more specific API endpoint?
+              //       use /apis/authentication.k8s.io/v1/selfsubjectreviews instead?
               await axios.get(`${baseUrl}/api/v1/namespaces`, {
                 headers: {
                   "Content-Type": "application/json",
@@ -173,12 +174,12 @@ export const kubernetesResourceFactory: TPamResourceFactory<
     }
   };
 
-  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<TKubernetesAccountCredentials> = async (
-    rotationAccountCredentials
-  ) => {
-    // For Kubernetes, rotation would typically involve creating a new service account token
-    // This is a placeholder - actual rotation logic would need to be implemented based on requirements
-    return rotationAccountCredentials;
+  const rotateAccountCredentials: TPamResourceFactoryRotateAccountCredentials<
+    TKubernetesAccountCredentials
+  > = async () => {
+    throw new BadRequestError({
+      message: `Unable to rotate account credentials for ${resourceType}: not implemented`
+    });
   };
 
   const handleOverwritePreventionForCensoredValues = async (
