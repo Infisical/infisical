@@ -241,7 +241,7 @@ export const CertificateModal = ({ popUp, handlePopUpToggle, preselectedTemplate
         setCertificateDetails(null);
       }}
     >
-      <ModalContent title={`${cert ? "View" : "Issue"} Certificate`}>
+      <ModalContent title={`${cert ? "View" : "Request"} Certificate`}>
         {!certificateDetails ? (
           <form onSubmit={handleSubmit(onFormSubmit)}>
             <Controller

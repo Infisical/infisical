@@ -18,8 +18,10 @@ import { PamResourceType, TPamAccount, useAccessPamAccount } from "@app/hooks/ap
 
 type Props = {
   account?: TPamAccount;
+  accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  projectId: string;
 };
 
 const AwsIamAccessContent = ({
@@ -119,11 +121,22 @@ const AwsIamAccessContent = ({
 
 const CliAccessContent = ({
   account,
-  onOpenChange
+  onOpenChange,
+  projectId,
+  accountPath
 }: {
   account: TPamAccount;
   onOpenChange: (isOpen: boolean) => void;
+  projectId: string;
+  accountPath?: string;
 }) => {
+  let fullAccountPath = account?.name;
+  if (accountPath) {
+    let path = accountPath;
+    if (path.startsWith("/")) path = path.slice(1);
+    fullAccountPath = `${path}/${account?.name}`;
+  }
+
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
@@ -177,9 +190,9 @@ const CliAccessContent = ({
     switch (account.resource.resourceType) {
       case PamResourceType.Postgres:
       case PamResourceType.MySQL:
-        return `infisical pam db access-account ${account.id} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam db access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.SSH:
-        return `infisical pam ssh access-account ${account.id} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }
@@ -232,7 +245,13 @@ const CliAccessContent = ({
   );
 };
 
-export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
+export const PamAccessAccountModal = ({
+  isOpen,
+  onOpenChange,
+  account,
+  projectId,
+  accountPath
+}: Props) => {
   if (!account) return null;
 
   const isAwsIam = account.resource.resourceType === PamResourceType.AwsIam;
@@ -251,7 +270,12 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
         {isAwsIam ? (
           <AwsIamAccessContent account={account} onOpenChange={onOpenChange} />
         ) : (
-          <CliAccessContent account={account} onOpenChange={onOpenChange} />
+          <CliAccessContent
+            account={account}
+            onOpenChange={onOpenChange}
+            projectId={projectId}
+            accountPath={accountPath}
+          />
         )}
       </ModalContent>
     </Modal>

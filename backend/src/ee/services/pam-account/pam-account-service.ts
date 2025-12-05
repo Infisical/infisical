@@ -508,7 +508,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const access = async (
-    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
+    { accountPath, projectId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -518,8 +518,36 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    const account = await pamAccountDAL.findById(accountId);
-    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    const pathSegments: string[] = accountPath.split("/").filter(Boolean);
+    if (pathSegments.length === 0) {
+      throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
+    }
+
+    const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
+    const folderPathSegments: string[] = pathSegments.slice(0, -1);
+
+    const folderPath: string = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
+
+    let folderId: string | null = null;
+    if (folderPath !== "/") {
+      const folder = await pamFolderDAL.findByPath(projectId, folderPath);
+      if (!folder) {
+        throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
+      }
+      folderId = folder.id;
+    }
+
+    const account = await pamAccountDAL.findOne({
+      projectId,
+      folderId,
+      name: accountName
+    });
+
+    if (!account) {
+      throw new NotFoundError({
+        message: `Account with name '${accountName}' not found at path '${accountPath}'`
+      });
+    }
 
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
@@ -529,14 +557,8 @@ export const pamAccountServiceFactory = ({
       actorAuthMethod: actor.authMethod,
       actorId: actor.id,
       actorOrgId: actor.orgId,
-      projectId: account.projectId,
+      projectId,
       actionProjectType: ActionProjectType.PAM
-    });
-
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -544,7 +566,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
-        accountPath
+        accountPath: folderPath
       })
     );
 
@@ -613,7 +635,7 @@ export const pamAccountServiceFactory = ({
       actorIp,
       actorName,
       actorUserAgent,
-      projectId: account.projectId,
+      projectId,
       resourceName: resource.name,
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
@@ -621,6 +643,7 @@ export const pamAccountServiceFactory = ({
       userId: actor.id,
       expiresAt: new Date(Date.now() + duration)
     });
+
     if (!gatewayId) {
       throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
     }
@@ -652,20 +675,20 @@ export const pamAccountServiceFactory = ({
           const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
             kmsService,
-            projectId: account.projectId
+            projectId
           })) as TSqlResourceConnectionDetails;
 
           const credentials = (await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
-            projectId: account.projectId
+            projectId
           })) as TSqlAccountCredentials;
 
           metadata = {
             username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
-            accountPath
+            accountPath: folderPath
           };
         }
         break;
@@ -674,7 +697,7 @@ export const pamAccountServiceFactory = ({
           const credentials = (await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
-            projectId: account.projectId
+            projectId
           })) as TSSHAccountCredentials;
 
           metadata = {
@@ -696,7 +719,7 @@ export const pamAccountServiceFactory = ({
       gatewayClientPrivateKey: gatewayConnectionDetails.gateway.clientPrivateKey,
       gatewayServerCertificateChain: gatewayConnectionDetails.gateway.serverCertificateChain,
       relayHost: gatewayConnectionDetails.relayHost,
-      projectId: account.projectId,
+      projectId,
       account,
       metadata
     };
