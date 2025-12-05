@@ -24,7 +24,7 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/;
+const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
 
 const AwsIamCredentialsSchema = z.object({
   targetRoleArn: z

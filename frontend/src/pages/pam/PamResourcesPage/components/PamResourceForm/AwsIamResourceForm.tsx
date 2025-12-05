@@ -21,7 +21,7 @@ type Props = {
   onSubmit: (formData: FormData) => Promise<void>;
 };
 
-const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@-]+$/;
+const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
 
 const AwsIamConnectionDetailsSchema = z.object({
   region: z.string().trim().min(1, "Region is required"),

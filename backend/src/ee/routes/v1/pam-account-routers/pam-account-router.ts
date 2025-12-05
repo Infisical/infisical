@@ -126,11 +126,37 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           })
       }),
       response: {
-        200: z.union([
-          // Gateway-based resources (Postgres, MySQL, SSH)
+        200: z.discriminatedUnion("resourceType", [
+          // Gateway-based resources (Postgres)
           z.object({
             sessionId: z.string(),
-            resourceType: z.nativeEnum(PamResource),
+            resourceType: z.literal(PamResource.Postgres),
+            relayClientCertificate: z.string(),
+            relayClientPrivateKey: z.string(),
+            relayServerCertificateChain: z.string(),
+            gatewayClientCertificate: z.string(),
+            gatewayClientPrivateKey: z.string(),
+            gatewayServerCertificateChain: z.string(),
+            relayHost: z.string(),
+            metadata: z.record(z.string(), z.string().optional()).optional()
+          }),
+          // Gateway-based resources (MySQL)
+          z.object({
+            sessionId: z.string(),
+            resourceType: z.literal(PamResource.MySQL),
+            relayClientCertificate: z.string(),
+            relayClientPrivateKey: z.string(),
+            relayServerCertificateChain: z.string(),
+            gatewayClientCertificate: z.string(),
+            gatewayClientPrivateKey: z.string(),
+            gatewayServerCertificateChain: z.string(),
+            relayHost: z.string(),
+            metadata: z.record(z.string(), z.string().optional()).optional()
+          }),
+          // Gateway-based resources (SSH)
+          z.object({
+            sessionId: z.string(),
+            resourceType: z.literal(PamResource.SSH),
             relayClientCertificate: z.string(),
             relayClientPrivateKey: z.string(),
             relayServerCertificateChain: z.string(),
@@ -145,7 +171,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
             sessionId: z.string(),
             resourceType: z.literal(PamResource.AwsIam),
             consoleUrl: z.string().url(),
-            projectId: z.string(),
+            projectId: z.string().uuid(),
             metadata: z.record(z.string(), z.string().optional()).optional()
           })
         ])

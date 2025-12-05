@@ -204,6 +204,6 @@ export const generateConsoleFederationUrl = async ({
 
   return {
     consoleUrl,
-    expiresAt: Expiration
+    expiresAt: Expiration ?? new Date(Date.now() + sessionDuration * 1000)
   };
 };
