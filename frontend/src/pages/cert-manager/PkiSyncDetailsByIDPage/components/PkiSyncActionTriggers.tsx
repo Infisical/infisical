@@ -53,7 +53,7 @@ type Props = {
 };
 
 export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
-  const { destination, subscriberId, projectId, id } = pkiSync;
+  const { destination, projectId, id } = pkiSync;
 
   const navigate = useNavigate();
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -112,7 +112,8 @@ export const PkiSyncActionTriggers = ({ pkiSync }: Props) => {
   }, [updatePkiSyncMutation, id, projectId, pkiSync.isAutoSyncEnabled]);
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   return (

@@ -7,6 +7,7 @@ import { Tooltip } from "@app/components/v2";
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionSub
@@ -56,7 +57,17 @@ const CertificatePolicyActionSchema = z.object({
   [ProjectPermissionCertificateActions.Delete]: z.boolean().optional(),
   [ProjectPermissionCertificateActions.Edit]: z.boolean().optional(),
   [ProjectPermissionCertificateActions.Read]: z.boolean().optional(),
-  [ProjectPermissionCertificateActions.ReadPrivateKey]: z.boolean().optional()
+  [ProjectPermissionCertificateActions.ReadPrivateKey]: z.boolean().optional(),
+  [ProjectPermissionCertificateActions.Import]: z.boolean().optional()
+});
+
+const CertificateAuthorityPolicyActionSchema = z.object({
+  [ProjectPermissionCertificateAuthorityActions.Create]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.Delete]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.Edit]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.Read]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.Renew]: z.boolean().optional(),
+  [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: z.boolean().optional()
 });
 
 const SecretPolicyActionSchema = z.object({
@@ -208,7 +219,6 @@ const PkiSubscriberPolicyActionSchema = z.object({
   [ProjectPermissionPkiSubscriberActions.Create]: z.boolean().optional(),
   [ProjectPermissionPkiSubscriberActions.Edit]: z.boolean().optional(),
   [ProjectPermissionPkiSubscriberActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionPkiSubscriberActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionPkiSubscriberActions.ListCerts]: z.boolean().optional()
 });
 
@@ -217,7 +227,6 @@ const PkiTemplatePolicyActionSchema = z.object({
   [ProjectPermissionPkiTemplateActions.Create]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.Edit]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionPkiTemplateActions.IssueCert]: z.boolean().optional(),
   [ProjectPermissionPkiTemplateActions.ListCerts]: z.boolean().optional()
 });
 const CertificateProfilePolicyActionSchema = z.object({
@@ -225,7 +234,9 @@ const CertificateProfilePolicyActionSchema = z.object({
   [ProjectPermissionCertificateProfileActions.Create]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.Edit]: z.boolean().optional(),
   [ProjectPermissionCertificateProfileActions.Delete]: z.boolean().optional(),
-  [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional()
+  [ProjectPermissionCertificateProfileActions.IssueCert]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret]: z.boolean().optional(),
+  [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: z.boolean().optional()
 });
 
 const SecretEventsPolicyActionSchema = z.object({
@@ -381,8 +392,18 @@ export const projectRoleFormSchema = z.object({
       [ProjectPermissionSub.Environments]: GeneralPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.AuditLogs]: AuditLogsPolicyActionSchema.array().default([]),
       [ProjectPermissionSub.IpAllowList]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.CertificateAuthorities]: GeneralPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateAuthorities]: CertificateAuthorityPolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
+      [ProjectPermissionSub.Certificates]: CertificatePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.PkiSubscribers]: PkiSubscriberPolicyActionSchema.extend({
         inverted: z.boolean().optional(),
         conditions: ConditionSchema
@@ -397,8 +418,12 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.CertificateProfiles]:
-        CertificateProfilePolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.CertificateProfiles]: CertificateProfilePolicyActionSchema.extend({
+        inverted: z.boolean().optional(),
+        conditions: ConditionSchema
+      })
+        .array()
+        .default([]),
       [ProjectPermissionSub.SshCertificateAuthorities]: GeneralPolicyActionSchema.array().default(
         []
       ),
@@ -458,6 +483,9 @@ type TConditionalFields =
   | ProjectPermissionSub.DynamicSecrets
   | ProjectPermissionSub.PkiSubscribers
   | ProjectPermissionSub.CertificateTemplates
+  | ProjectPermissionSub.CertificateAuthorities
+  | ProjectPermissionSub.Certificates
+  | ProjectPermissionSub.CertificateProfiles
   | ProjectPermissionSub.SshHosts
   | ProjectPermissionSub.SecretRotation
   | ProjectPermissionSub.Identity
@@ -479,6 +507,9 @@ export const isConditionalSubjects = (
   subject === ProjectPermissionSub.SecretRotation ||
   subject === ProjectPermissionSub.PkiSubscribers ||
   subject === ProjectPermissionSub.CertificateTemplates ||
+  subject === ProjectPermissionSub.CertificateAuthorities ||
+  subject === ProjectPermissionSub.Certificates ||
+  subject === ProjectPermissionSub.CertificateProfiles ||
   subject === ProjectPermissionSub.SecretSyncs ||
   subject === ProjectPermissionSub.PkiSyncs ||
   subject === ProjectPermissionSub.SecretEvents ||
@@ -822,6 +853,31 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
           return;
         }
 
+        if (subject === ProjectPermissionSub.CertificateAuthorities) {
+          const canRead = action.includes(ProjectPermissionCertificateAuthorityActions.Read);
+          const canCreate = action.includes(ProjectPermissionCertificateAuthorityActions.Create);
+          const canEdit = action.includes(ProjectPermissionCertificateAuthorityActions.Edit);
+          const canDelete = action.includes(ProjectPermissionCertificateAuthorityActions.Delete);
+          const canRenew = action.includes(ProjectPermissionCertificateAuthorityActions.Renew);
+          const canSignIntermediate = action.includes(
+            ProjectPermissionCertificateAuthorityActions.SignIntermediate
+          );
+
+          // from above statement we are sure it won't be undefined
+          formVal[subject]!.push({
+            [ProjectPermissionCertificateAuthorityActions.Read]: canRead,
+            [ProjectPermissionCertificateAuthorityActions.Create]: canCreate,
+            [ProjectPermissionCertificateAuthorityActions.Edit]: canEdit,
+            [ProjectPermissionCertificateAuthorityActions.Delete]: canDelete,
+            [ProjectPermissionCertificateAuthorityActions.Renew]: canRenew,
+            [ProjectPermissionCertificateAuthorityActions.SignIntermediate]: canSignIntermediate,
+            conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+            inverted
+          });
+
+          return;
+        }
+
         // for other subjects
         const canRead = action.includes(ProjectPermissionActions.Read);
         const canEdit = action.includes(ProjectPermissionActions.Edit);
@@ -873,17 +929,22 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       const canEdit = action.includes(ProjectPermissionCertificateActions.Edit);
       const canDelete = action.includes(ProjectPermissionCertificateActions.Delete);
       const canCreate = action.includes(ProjectPermissionCertificateActions.Create);
+      const canImport = action.includes(ProjectPermissionCertificateActions.Import);
       const canReadPrivateKey = action.includes(ProjectPermissionCertificateActions.ReadPrivateKey);
 
-      if (!formVal[subject]) formVal[subject] = [{}];
+      if (!formVal[subject]) formVal[subject] = [];
 
       // from above statement we are sure it won't be undefined
-      if (canRead) formVal[subject]![0].read = true;
-      if (canEdit) formVal[subject]![0].edit = true;
-      if (canCreate) formVal[subject]![0].create = true;
-      if (canDelete) formVal[subject]![0].delete = true;
-      if (canReadPrivateKey)
-        formVal[subject]![0][ProjectPermissionCertificateActions.ReadPrivateKey] = true;
+      formVal[subject]!.push({
+        [ProjectPermissionCertificateActions.Read]: canRead,
+        [ProjectPermissionCertificateActions.Edit]: canEdit,
+        [ProjectPermissionCertificateActions.Create]: canCreate,
+        [ProjectPermissionCertificateActions.Delete]: canDelete,
+        [ProjectPermissionCertificateActions.ReadPrivateKey]: canReadPrivateKey,
+        [ProjectPermissionCertificateActions.Import]: canImport,
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
+      });
       return;
     }
 
@@ -1129,9 +1190,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         [ProjectPermissionPkiSubscriberActions.Read]: action.includes(
           ProjectPermissionPkiSubscriberActions.Read
         ),
-        [ProjectPermissionPkiSubscriberActions.IssueCert]: action.includes(
-          ProjectPermissionPkiSubscriberActions.IssueCert
-        ),
         [ProjectPermissionPkiSubscriberActions.ListCerts]: action.includes(
           ProjectPermissionPkiSubscriberActions.ListCerts
         ),
@@ -1156,9 +1214,6 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ),
         [ProjectPermissionPkiTemplateActions.Read]: action.includes(
           ProjectPermissionPkiTemplateActions.Read
-        ),
-        [ProjectPermissionPkiTemplateActions.IssueCert]: action.includes(
-          ProjectPermissionPkiTemplateActions.IssueCert
         ),
         [ProjectPermissionPkiTemplateActions.ListCerts]: action.includes(
           ProjectPermissionPkiTemplateActions.ListCerts
@@ -1187,7 +1242,15 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
         ),
         [ProjectPermissionCertificateProfileActions.IssueCert]: action.includes(
           ProjectPermissionCertificateProfileActions.IssueCert
-        )
+        ),
+        [ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret]: action.includes(
+          ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret
+        ),
+        [ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret]: action.includes(
+          ProjectPermissionCertificateProfileActions.RotateAcmeEabSecret
+        ),
+        conditions: conditions ? convertCaslConditionToFormOperator(conditions) : [],
+        inverted
       });
 
       return;
@@ -1196,7 +1259,7 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
     if (subject === ProjectPermissionSub.PamAccounts) {
       if (!formVal[subject]) formVal[subject] = [];
 
-      formVal[subject].push({
+      formVal[subject]!.push({
         [ProjectPermissionPamAccountActions.Access]: action.includes(
           ProjectPermissionPamAccountActions.Access
         ),
@@ -1552,10 +1615,15 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.CertificateAuthorities]: {
     title: "Certificate Authorities",
     actions: [
-      { label: "Read", value: "read" },
-      { label: "Create", value: "create" },
-      { label: "Modify", value: "edit" },
-      { label: "Remove", value: "delete" }
+      { label: "Read", value: ProjectPermissionCertificateAuthorityActions.Read },
+      { label: "Create", value: ProjectPermissionCertificateAuthorityActions.Create },
+      { label: "Modify", value: ProjectPermissionCertificateAuthorityActions.Edit },
+      { label: "Remove", value: ProjectPermissionCertificateAuthorityActions.Delete },
+      { label: "Renew", value: ProjectPermissionCertificateAuthorityActions.Renew },
+      {
+        label: "Sign Intermediate",
+        value: ProjectPermissionCertificateAuthorityActions.SignIntermediate
+      }
     ]
   },
   [ProjectPermissionSub.Certificates]: {
@@ -1563,7 +1631,8 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
     actions: [
       { label: "Read", value: ProjectPermissionCertificateActions.Read },
       { label: "Read Private Key", value: ProjectPermissionCertificateActions.ReadPrivateKey },
-      { label: "Create", value: ProjectPermissionCertificateActions.Create },
+      // { label: "Create", value: ProjectPermissionCertificateActions.Create }, // Hidden from UI - kept for backend compatibility
+      { label: "Import", value: ProjectPermissionCertificateActions.Import },
       { label: "Modify", value: ProjectPermissionCertificateActions.Edit },
       { label: "Remove", value: ProjectPermissionCertificateActions.Delete }
     ]
@@ -1575,7 +1644,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionPkiTemplateActions.Create },
       { label: "Modify", value: ProjectPermissionPkiTemplateActions.Edit },
       { label: "Remove", value: ProjectPermissionPkiTemplateActions.Delete },
-      { label: "Issue Certificates", value: ProjectPermissionPkiTemplateActions.IssueCert },
       { label: "List Certificates", value: ProjectPermissionPkiTemplateActions.ListCerts }
     ]
   },
@@ -1586,7 +1654,7 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionCertificateProfileActions.Create },
       { label: "Modify", value: ProjectPermissionCertificateProfileActions.Edit },
       { label: "Remove", value: ProjectPermissionCertificateProfileActions.Delete },
-      { label: "Issue Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
+      { label: "Request Certificates", value: ProjectPermissionCertificateProfileActions.IssueCert }
     ]
   },
   [ProjectPermissionSub.SshCertificateAuthorities]: {
@@ -1642,7 +1710,6 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Create", value: ProjectPermissionPkiSubscriberActions.Create },
       { label: "Modify", value: ProjectPermissionPkiSubscriberActions.Edit },
       { label: "Remove", value: ProjectPermissionPkiSubscriberActions.Delete },
-      { label: "Issue Certificate", value: ProjectPermissionPkiSubscriberActions.IssueCert },
       { label: "List Certificates", value: ProjectPermissionPkiSubscriberActions.ListCerts }
     ]
   },

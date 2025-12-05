@@ -5,6 +5,10 @@ import { TableName } from "@app/db/schemas";
 import { TPkiCertificateTemplatesV2Insert } from "@app/db/schemas/pki-certificate-templates-v2";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import {
   TCertificateTemplateV2,
@@ -133,6 +137,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
       limit?: number;
       search?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -144,6 +149,14 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
         query = query.where((builder) => {
           void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
+      }
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateTemplateV2,
+          processedRules
+        ) as typeof query;
       }
 
       const certificateTemplatesV2 = await query.orderBy("createdAt", "desc").offset(offset).limit(limit);
@@ -159,6 +172,7 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
     options: {
       search?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ) => {
     try {
@@ -170,6 +184,14 @@ export const certificateTemplateV2DALFactory = (db: TDbClient) => {
         query = query.where((builder) => {
           void builder.whereILike("name", `%${search}%`).orWhereILike("description", `%${search}%`);
         });
+      }
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateTemplateV2,
+          processedRules
+        ) as typeof query;
       }
 
       const result = await query.count("*").first();

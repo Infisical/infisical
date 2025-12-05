@@ -10,6 +10,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSet,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
@@ -79,8 +80,8 @@ describe("CertificateRequestService", () => {
       const mockPermission = {
         permission: createMongoAbility<ProjectPermissionSet>([
           {
-            action: ProjectPermissionCertificateActions.Create,
-            subject: ProjectPermissionSub.Certificates
+            action: ProjectPermissionCertificateProfileActions.IssueCert,
+            subject: ProjectPermissionSub.CertificateProfiles
           }
         ])
       };
@@ -224,6 +225,10 @@ describe("CertificateRequestService", () => {
           {
             action: ProjectPermissionCertificateActions.Read,
             subject: ProjectPermissionSub.Certificates
+          },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates
           }
         ])
       };
@@ -318,7 +323,7 @@ describe("CertificateRequestService", () => {
       });
     });
 
-    it("should get certificate from request successfully when private key access is denied", async () => {
+    it("should get certificate from request successfully when user lacks private key permission", async () => {
       const mockPermission = {
         permission: createMongoAbility<ProjectPermissionSet>([
           {
@@ -348,7 +353,6 @@ describe("CertificateRequestService", () => {
       (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
       (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithCert);
       (mockCertificateService.getCertBody as any).mockResolvedValue(mockCertBody);
-      (mockCertificateService.getCertPrivateKey as any).mockRejectedValue(new Error("Private key access denied"));
 
       const result = await service.getCertificateFromRequest(mockGetData);
 
@@ -362,8 +366,68 @@ describe("CertificateRequestService", () => {
         actorAuthMethod: AuthMethod.EMAIL,
         actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
       });
+      expect(mockCertificateService.getCertPrivateKey).not.toHaveBeenCalled();
+      expect(result).toEqual({
+        status: CertificateRequestStatus.ISSUED,
+        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----",
+        privateKey: null,
+        serialNumber: "123456",
+        errorMessage: null,
+        createdAt: mockRequestWithCert.createdAt,
+        updatedAt: mockRequestWithCert.updatedAt
+      });
+    });
+
+    it("should get certificate from request successfully when user has private key permission but key retrieval fails", async () => {
+      const mockPermission = {
+        permission: createMongoAbility<ProjectPermissionSet>([
+          {
+            action: ProjectPermissionCertificateActions.Read,
+            subject: ProjectPermissionSub.Certificates
+          },
+          {
+            action: ProjectPermissionCertificateActions.ReadPrivateKey,
+            subject: ProjectPermissionSub.Certificates
+          }
+        ])
+      };
+      const mockCertificate = {
+        id: "550e8400-e29b-41d4-a716-446655440009",
+        serialNumber: "123456",
+        commonName: "test.example.com"
+      };
+      const mockRequestWithCert = {
+        id: "550e8400-e29b-41d4-a716-446655440005",
+        projectId: "550e8400-e29b-41d4-a716-446655440003",
+        status: CertificateRequestStatus.ISSUED,
+        certificate: mockCertificate,
+        errorMessage: null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      const mockCertBody = {
+        certificate: "-----BEGIN CERTIFICATE-----\nMOCK_CERT_PEM\n-----END CERTIFICATE-----"
+      };
+
+      (mockPermissionService.getProjectPermission as any).mockResolvedValue(mockPermission);
+      (mockCertificateRequestDAL.findByIdWithCertificate as any).mockResolvedValue(mockRequestWithCert);
+      (mockCertificateService.getCertBody as any).mockResolvedValue(mockCertBody);
+      (mockCertificateService.getCertPrivateKey as any).mockRejectedValue(new Error("Private key not found"));
+
+      const result = await service.getCertificateFromRequest(mockGetData);
+
+      expect(mockCertificateRequestDAL.findByIdWithCertificate).toHaveBeenCalledWith(
+        "550e8400-e29b-41d4-a716-446655440005"
+      );
+      expect(mockCertificateService.getCertBody).toHaveBeenCalledWith({
+        id: "550e8400-e29b-41d4-a716-446655440009",
+        actor: ActorType.USER,
+        actorId: "550e8400-e29b-41d4-a716-446655440001",
+        actorAuthMethod: AuthMethod.EMAIL,
+        actorOrgId: "550e8400-e29b-41d4-a716-446655440002"
+      });
       expect(mockCertificateService.getCertPrivateKey).toHaveBeenCalledWith({
-        id: "550e8400-e29b-41d4-a716-446655440008",
+        id: "550e8400-e29b-41d4-a716-446655440009",
         actor: ActorType.USER,
         actorId: "550e8400-e29b-41d4-a716-446655440001",
         actorAuthMethod: AuthMethod.EMAIL,
