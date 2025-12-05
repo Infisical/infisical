@@ -2,6 +2,7 @@ import { registerProjectTemplateRouter } from "@app/ee/routes/v1/project-templat
 
 import { registerAccessApprovalPolicyRouter } from "./access-approval-policy-router";
 import { registerAccessApprovalRequestRouter } from "./access-approval-request-router";
+import { registerAiMcpEndpointRouter } from "./ai-mcp-endpoint-router";
 import { registerAiMcpServerRouter } from "./ai-mcp-server-router";
 import { registerAssumePrivilegeRouter } from "./assume-privilege-router";
 import { AUDIT_LOG_STREAM_REGISTER_ROUTER_MAP, registerAuditLogStreamRouter } from "./audit-log-stream-routers";
@@ -217,6 +218,7 @@ export const registerV1EERoutes = async (server: FastifyZodProvider) => {
   await server.register(
     async (aiRouter) => {
       await aiRouter.register(registerAiMcpServerRouter, { prefix: "/mcp-servers" });
+      await aiRouter.register(registerAiMcpEndpointRouter, { prefix: "/mcp-endpoints" });
     },
     { prefix: "/ai" }
   );

@@ -17,6 +17,10 @@ import { accessApprovalPolicyServiceFactory } from "@app/ee/services/access-appr
 import { accessApprovalRequestDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-dal";
 import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access-approval-request/access-approval-request-reviewer-dal";
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
+import { aiMcpEndpointDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-dal";
+import { aiMcpEndpointServerDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-dal";
+import { aiMcpEndpointServerToolDALFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-server-tool-dal";
+import { aiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-service";
 import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
 import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
 import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
@@ -2402,6 +2406,9 @@ export const registerRoutes = async (
   const pamSessionDAL = pamSessionDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
+  const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
+  const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
+  const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
 
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
@@ -2449,6 +2456,12 @@ export const registerRoutes = async (
     aiMcpServerToolDAL,
     kmsService,
     keyStore
+  });
+
+  const aiMcpEndpointService = aiMcpEndpointServiceFactory({
+    aiMcpEndpointDAL,
+    aiMcpEndpointServerDAL,
+    aiMcpEndpointServerToolDAL
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2643,7 +2656,8 @@ export const registerRoutes = async (
     identityProject: identityProjectService,
     convertor: convertorService,
     pkiAlertV2: pkiAlertV2Service,
-    aiMcpServer: aiMcpServerService
+    aiMcpServer: aiMcpServerService,
+    aiMcpEndpoint: aiMcpEndpointService
   });
 
   const cronJobs: CronJob[] = [];

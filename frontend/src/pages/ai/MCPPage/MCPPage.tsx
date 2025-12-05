@@ -6,6 +6,7 @@ import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/co
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { MCPEndpointsTab } from "./components/MCPEndpointsTab";
 import { MCPServersTab } from "./components/MCPServersTab";
 
 enum TabSections {
@@ -48,7 +49,7 @@ export const MCPPage = () => {
           </TabList>
 
           <TabPanel value={TabSections.MCPEndpoints}>
-            <div>MCP Endpoints - Coming soon</div>
+            <MCPEndpointsTab />
           </TabPanel>
 
           <TabPanel value={TabSections.MCPServers}>

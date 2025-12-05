@@ -81,9 +81,6 @@ export const MCPServerRow = ({ server, onEditServer, onDeleteServer }: Props) =>
         <span className="text-mineshaft-300">{server.name}</span>
       </Td>
       <Td>{getStatusBadge(server.status)}</Td>
-      <Td>
-        <span className="text-sm text-mineshaft-300">{server.toolsCount ?? 0}</span>
-      </Td>
       <Td className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild className="rounded-lg">

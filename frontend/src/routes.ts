@@ -302,6 +302,7 @@ const certManagerRoutes = route("/organizations/$orgId/projects/cert-management/
 const aiRoutes = route("/organizations/$orgId/projects/ai/$projectId", [
   layout("ai-layout", "ai/layout.tsx", [
     route("/mcp-servers/$serverId", "ai/MCPServerDetailPage/route.tsx"),
+    route("/mcp-endpoints/$endpointId", "ai/MCPEndpointDetailPage/route.tsx"),
     route("/overview", "ai/MCPPage/route.tsx"),
     route("/settings", "ai/SettingsPage/route.tsx"),
     route("/audit-logs", "project/AuditLogsPage/route-ai.tsx"),

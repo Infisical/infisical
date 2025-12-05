@@ -5,6 +5,7 @@ import { Cluster, Redis } from "ioredis";
 import { TUsers } from "@app/db/schemas";
 import { TAccessApprovalPolicyServiceFactory } from "@app/ee/services/access-approval-policy/access-approval-policy-types";
 import { TAccessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-types";
+import { TAiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai-mcp-endpoint-service";
 import { TAiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
 import { TAssumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-types";
 import { TAuditLogServiceFactory, TCreateAuditLogDTO } from "@app/ee/services/audit-log/audit-log-types";
@@ -363,6 +364,7 @@ declare module "fastify" {
       subOrganization: TSubOrgServiceFactory;
       pkiAlertV2: TPkiAlertV2ServiceFactory;
       aiMcpServer: TAiMcpServerServiceFactory;
+      aiMcpEndpoint: TAiMcpEndpointServiceFactory;
     };
     // this is exclusive use for middlewares in which we need to inject data
     // everywhere else access using service layer

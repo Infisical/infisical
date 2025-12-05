@@ -28,30 +28,6 @@ export const MCPServerList = ({ onEditServer, onDeleteServer }: Props) => {
 
   const servers = data?.servers;
 
-  if (!currentProject?.id) {
-    return (
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th>Name</Th>
-              <Th>Status</Th>
-              <Th>Available Tools</Th>
-              <Th className="w-16" />
-            </Tr>
-          </THead>
-          <TBody>
-            <Tr>
-              <Td colSpan={4}>
-                <EmptyState title="No Project Selected" />
-              </Td>
-            </Tr>
-          </TBody>
-        </Table>
-      </TableContainer>
-    );
-  }
-
   return (
     <TableContainer>
       <Table>
@@ -59,7 +35,6 @@ export const MCPServerList = ({ onEditServer, onDeleteServer }: Props) => {
           <Tr>
             <Th>Name</Th>
             <Th>Status</Th>
-            <Th>Available Tools</Th>
             <Th className="w-16" />
           </Tr>
         </THead>
