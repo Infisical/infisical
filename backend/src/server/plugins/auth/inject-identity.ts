@@ -185,7 +185,7 @@ export const injectIdentity = fp(
             rootOrgId: identity.rootOrgId,
             parentOrgId: identity.parentOrgId,
             identityId: identity.identityId,
-            identityName: identity.name,
+            identityName: identity.identityName,
             authMethod: null,
             isInstanceAdmin: serverCfg?.adminIdentityIds?.includes(identity.identityId),
             token
