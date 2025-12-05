@@ -37,6 +37,7 @@ import { Route as authLoginLdapPageRouteImport } from './pages/auth/LoginLdapPag
 import { Route as authAdminLoginPageRouteImport } from './pages/auth/AdminLoginPage/route'
 import { Route as adminSignUpPageRouteImport } from './pages/admin/SignUpPage/route'
 import { Route as organizationNoOrgPageRouteImport } from './pages/organization/NoOrgPage/route'
+import { Route as organizationMcpEndpointFinalizePageRouteImport } from './pages/organization/McpEndpointFinalizePage/route'
 import { Route as authSignUpPageRouteImport } from './pages/auth/SignUpPage/route'
 import { Route as authLoginPageRouteImport } from './pages/auth/LoginPage/route'
 import { Route as redirectsProjectRedirectImport } from './pages/redirects/project-redirect'
@@ -538,6 +539,13 @@ const organizationNoOrgPageRouteRoute = organizationNoOrgPageRouteImport.update(
     getParentRoute: () => middlewaresAuthenticateRoute,
   } as any,
 )
+
+const organizationMcpEndpointFinalizePageRouteRoute =
+  organizationMcpEndpointFinalizePageRouteImport.update({
+    id: '/organization/mcp-endpoint-finalize',
+    path: '/organization/mcp-endpoint-finalize',
+    getParentRoute: () => middlewaresAuthenticateRoute,
+  } as any)
 
 const authSignUpPageRouteRoute = authSignUpPageRouteImport.update({
   id: '/',
@@ -2454,6 +2462,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/signup/'
       preLoaderRoute: typeof authSignUpPageRouteImport
       parentRoute: typeof RestrictLoginSignupSignupImport
+    }
+    '/_authenticate/organization/mcp-endpoint-finalize': {
+      id: '/_authenticate/organization/mcp-endpoint-finalize'
+      path: '/organization/mcp-endpoint-finalize'
+      fullPath: '/organization/mcp-endpoint-finalize'
+      preLoaderRoute: typeof organizationMcpEndpointFinalizePageRouteImport
+      parentRoute: typeof middlewaresAuthenticateImport
     }
     '/_authenticate/organizations/none': {
       id: '/_authenticate/organizations/none'
@@ -5219,6 +5234,7 @@ interface middlewaresAuthenticateRouteChildren {
   authPasswordSetupPageRouteRoute: typeof authPasswordSetupPageRouteRoute
   middlewaresInjectOrgDetailsRoute: typeof middlewaresInjectOrgDetailsRouteWithChildren
   AuthenticatePersonalSettingsRoute: typeof AuthenticatePersonalSettingsRouteWithChildren
+  organizationMcpEndpointFinalizePageRouteRoute: typeof organizationMcpEndpointFinalizePageRouteRoute
   organizationNoOrgPageRouteRoute: typeof organizationNoOrgPageRouteRoute
 }
 
@@ -5229,6 +5245,8 @@ const middlewaresAuthenticateRouteChildren: middlewaresAuthenticateRouteChildren
       middlewaresInjectOrgDetailsRouteWithChildren,
     AuthenticatePersonalSettingsRoute:
       AuthenticatePersonalSettingsRouteWithChildren,
+    organizationMcpEndpointFinalizePageRouteRoute:
+      organizationMcpEndpointFinalizePageRouteRoute,
     organizationNoOrgPageRouteRoute: organizationNoOrgPageRouteRoute,
   }
 
@@ -5324,6 +5342,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/login/': typeof authLoginPageRouteRoute
   '/signup/': typeof authSignUpPageRouteRoute
+  '/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -5576,6 +5595,7 @@ export interface FileRoutesByTo {
   '/personal-settings': typeof userPersonalSettingsPageRouteRoute
   '/login': typeof authLoginPageRouteRoute
   '/signup': typeof authSignUpPageRouteRoute
+  '/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
   '/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/admin/signup': typeof adminSignUpPageRouteRoute
   '/login/admin': typeof authAdminLoginPageRouteRoute
@@ -5820,6 +5840,7 @@ export interface FileRoutesById {
   '/_restrict-login-signup/signup': typeof RestrictLoginSignupSignupRouteWithChildren
   '/_restrict-login-signup/login/': typeof authLoginPageRouteRoute
   '/_restrict-login-signup/signup/': typeof authSignUpPageRouteRoute
+  '/_authenticate/organization/mcp-endpoint-finalize': typeof organizationMcpEndpointFinalizePageRouteRoute
   '/_authenticate/organizations/none': typeof organizationNoOrgPageRouteRoute
   '/_restrict-login-signup/admin/signup': typeof adminSignUpPageRouteRoute
   '/_restrict-login-signup/login/admin': typeof authAdminLoginPageRouteRoute
@@ -6086,6 +6107,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/login/'
     | '/signup/'
+    | '/organization/mcp-endpoint-finalize'
     | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
@@ -6337,6 +6359,7 @@ export interface FileRouteTypes {
     | '/personal-settings'
     | '/login'
     | '/signup'
+    | '/organization/mcp-endpoint-finalize'
     | '/organizations/none'
     | '/admin/signup'
     | '/login/admin'
@@ -6579,6 +6602,7 @@ export interface FileRouteTypes {
     | '/_restrict-login-signup/signup'
     | '/_restrict-login-signup/login/'
     | '/_restrict-login-signup/signup/'
+    | '/_authenticate/organization/mcp-endpoint-finalize'
     | '/_authenticate/organizations/none'
     | '/_restrict-login-signup/admin/signup'
     | '/_restrict-login-signup/login/admin'
@@ -6890,6 +6914,7 @@ export const routeTree = rootRoute
         "/_authenticate/password-setup",
         "/_authenticate/_inject-org-details",
         "/_authenticate/personal-settings",
+        "/_authenticate/organization/mcp-endpoint-finalize",
         "/_authenticate/organizations/none"
       ]
     },
@@ -6975,6 +7000,10 @@ export const routeTree = rootRoute
     "/_restrict-login-signup/signup/": {
       "filePath": "auth/SignUpPage/route.tsx",
       "parent": "/_restrict-login-signup/signup"
+    },
+    "/_authenticate/organization/mcp-endpoint-finalize": {
+      "filePath": "organization/McpEndpointFinalizePage/route.tsx",
+      "parent": "/_authenticate"
     },
     "/_authenticate/organizations/none": {
       "filePath": "organization/NoOrgPage/route.tsx",

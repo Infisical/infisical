@@ -39,10 +39,10 @@ export const MCPServerList = ({ onEditServer, onDeleteServer }: Props) => {
           </Tr>
         </THead>
         <TBody>
-          {isLoading && <TableSkeleton columns={4} innerKey="mcp-servers" />}
+          {isLoading && <TableSkeleton columns={3} innerKey="mcp-servers" />}
           {!isLoading && (!servers || servers.length === 0) && (
             <Tr>
-              <Td colSpan={4}>
+              <Td colSpan={3}>
                 <EmptyState title="No MCP Servers" />
               </Td>
             </Tr>

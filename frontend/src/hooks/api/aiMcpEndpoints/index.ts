@@ -4,6 +4,7 @@ export {
   useDeleteAiMcpEndpoint,
   useDisableEndpointTool,
   useEnableEndpointTool,
+  useFinalizeMcpEndpointOAuth,
   useUpdateAiMcpEndpoint
 } from "./mutations";
 export {

@@ -20,6 +20,10 @@ export type TGetAiMcpEndpointDTO = {
   endpointId: string;
 };
 
+export type TInteractWithMcpDTO = {
+  endpointId: string;
+};
+
 export type TListAiMcpEndpointsDTO = {
   projectId: string;
 };
@@ -63,4 +67,57 @@ export type TEndpointToolConfig = {
   aiMcpEndpointId: string;
   aiMcpServerToolId: string;
   isEnabled: boolean;
+};
+
+// OAuth 2.0 Types
+export type TOAuthRegisterClientDTO = {
+  endpointId: string;
+  redirect_uris: string[];
+  token_endpoint_auth_method: string;
+  grant_types: string[];
+  response_types: string[];
+  client_name: string;
+  client_uri?: string;
+};
+
+export type TOAuthAuthorizeClientDTO = {
+  clientId: string;
+  state?: string;
+};
+
+export type TOAuthFinalizeDTO = {
+  endpointId: string;
+  clientId: string;
+  codeChallenge: string;
+  codeChallengeMethod: string;
+  redirectUri: string;
+  resource: string;
+  responseType: string;
+  projectId: string;
+  path?: string;
+  expiry: string;
+  tokenId: string;
+  userInfo: {
+    id: string;
+    email?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+  };
+  permission: {
+    type: string;
+    id: string;
+    orgId: string;
+    authMethod: string | null;
+  };
+  userAgent: string;
+  userIp: string;
+};
+
+export type TOAuthTokenExchangeDTO = {
+  endpointId: string;
+  grant_type: "authorization_code";
+  code: string;
+  redirect_uri: string;
+  code_verifier: string;
+  client_id: string;
 };

@@ -11,6 +11,7 @@ import {
   TDeleteAiMcpEndpointDTO,
   TDisableEndpointToolDTO,
   TEnableEndpointToolDTO,
+  TFinalizeMcpEndpointOAuthDTO,
   TUpdateAiMcpEndpointDTO
 } from "./types";
 
@@ -121,6 +122,18 @@ export const useBulkUpdateEndpointTools = () => {
       queryClient.invalidateQueries({
         queryKey: aiMcpEndpointKeys.tools(variables.endpointId)
       });
+    }
+  });
+};
+
+export const useFinalizeMcpEndpointOAuth = () => {
+  return useMutation({
+    mutationFn: async ({ endpointId, ...body }: TFinalizeMcpEndpointOAuthDTO) => {
+      const { data } = await apiRequest.post<{ callbackUrl: string }>(
+        `/api/v1/ai/mcp-endpoints/${endpointId}/oauth/finalize`,
+        body
+      );
+      return data;
     }
   });
 };

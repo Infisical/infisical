@@ -81,7 +81,11 @@ export const KeyStorePrefixes = {
 
   PkiAcmeNonce: (nonce: string) => `pki-acme-nonce:${nonce}` as const,
 
-  AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const
+  AiMcpServerOAuth: (sessionId: string) => `ai-mcp-server-oauth:${sessionId}` as const,
+
+  // AI MCP Endpoint OAuth
+  AiMcpEndpointOAuthClient: (clientId: string) => `ai-mcp-endpoint-oauth-client:${clientId}` as const,
+  AiMcpEndpointOAuthCode: (clientId: string, code: string) => `ai-mcp-endpoint-oauth-code:${clientId}:${code}` as const
 };
 
 export const KeyStoreTtls = {

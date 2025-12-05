@@ -4,6 +4,10 @@ import { Knex } from "knex";
 import { monitorEventLoopDelay } from "perf_hooks";
 import { z } from "zod";
 
+import {
+  registerMcpEndpointAuthServerMetadataRouter,
+  registerMcpEndpointMetadataRouter
+} from "@app/ee/routes/ai/mcp-endpoint-metadata-router";
 import { registerCertificateEstRouter } from "@app/ee/routes/est/certificate-est-router";
 import { registerV1EERoutes } from "@app/ee/routes/v1";
 import { registerV2EERoutes } from "@app/ee/routes/v2";
@@ -2461,7 +2465,12 @@ export const registerRoutes = async (
   const aiMcpEndpointService = aiMcpEndpointServiceFactory({
     aiMcpEndpointDAL,
     aiMcpEndpointServerDAL,
-    aiMcpEndpointServerToolDAL
+    aiMcpEndpointServerToolDAL,
+    aiMcpServerDAL,
+    aiMcpServerToolDAL,
+    kmsService,
+    keyStore,
+    authTokenService: tokenService
   });
 
   const migrationService = externalMigrationServiceFactory({
@@ -2760,6 +2769,10 @@ export const registerRoutes = async (
 
   // register special routes
   await server.register(registerCertificateEstRouter, { prefix: "/.well-known/est" });
+  await server.register(registerMcpEndpointMetadataRouter, { prefix: "/mcp-endpoints" });
+  await server.register(registerMcpEndpointAuthServerMetadataRouter, {
+    prefix: "/.well-known/oauth-authorization-server"
+  });
 
   // register routes for v1
   await server.register(

@@ -15,7 +15,7 @@ import { getServerCfg } from "@app/services/super-admin/super-admin-service";
 
 export type TAuthMode =
   | {
-      authMode: AuthMode.JWT;
+      authMode: AuthMode.JWT | AuthMode.MCP_JWT;
       actor: ActorType.USER;
       userId: string;
       tokenVersionId: string; // the session id of token used
@@ -91,12 +91,21 @@ export const extractAuth = async (req: FastifyRequest, jwtSecret: string) => {
   const decodedToken = crypto.jwt().verify(authTokenValue, jwtSecret) as JwtPayload;
 
   switch (decodedToken.authTokenType) {
-    case AuthTokenType.ACCESS_TOKEN:
+    case AuthTokenType.ACCESS_TOKEN: {
+      if (decodedToken?.mcp) {
+        return {
+          authMode: AuthMode.MCP_JWT,
+          token: decodedToken as AuthModeJwtTokenPayload,
+          actor: ActorType.USER
+        } as const;
+      }
+
       return {
         authMode: AuthMode.JWT,
         token: decodedToken as AuthModeJwtTokenPayload,
         actor: ActorType.USER
       } as const;
+    }
     case AuthTokenType.API_KEY:
       // throw new Error("API Key auth is no longer supported.");
       return { authMode: AuthMode.API_KEY, token: decodedToken, actor: ActorType.USER } as const;
@@ -170,6 +179,27 @@ export const injectIdentity = fp(
           requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
           req.auth = {
             authMode: AuthMode.JWT,
+            user,
+            userId: user.id,
+            tokenVersionId,
+            actor,
+            orgId,
+            rootOrgId,
+            parentOrgId,
+            authMethod: token.authMethod,
+            isMfaVerified: token.isMfaVerified,
+            token
+          };
+          break;
+        }
+        case AuthMode.MCP_JWT: {
+          const { user, tokenVersionId, orgId, orgName, rootOrgId, parentOrgId } =
+            await server.services.authToken.fnValidateJwtIdentity(token, subOrganizationSelector);
+          requestContext.set("orgId", orgId);
+          requestContext.set("orgName", orgName);
+          requestContext.set("userAuthInfo", { userId: user.id, email: user.email || "" });
+          req.auth = {
+            authMode: AuthMode.MCP_JWT,
             user,
             userId: user.id,
             tokenVersionId,
