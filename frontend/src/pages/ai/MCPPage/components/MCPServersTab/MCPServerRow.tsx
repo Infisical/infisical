@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { faCheck, faCopy, faEdit, faEllipsisV, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -22,6 +23,8 @@ interface Props {
 }
 
 export const MCPServerRow = ({ server, onEditServer, onDeleteServer }: Props) => {
+  const navigate = useNavigate();
+  const { orgId, projectId } = useParams({ strict: false });
   const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const handleCopyId = useCallback(() => {
@@ -35,6 +38,13 @@ export const MCPServerRow = ({ server, onEditServer, onDeleteServer }: Props) =>
 
     setTimeout(() => setIsIdCopied.off(), 2000);
   }, [setIsIdCopied, server.id]);
+
+  const handleRowClick = () => {
+    navigate({
+      to: "/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId",
+      params: { orgId: orgId!, projectId: projectId!, serverId: server.id }
+    });
+  };
 
   const getStatusBadge = (status: AiMcpServerStatus) => {
     const statusConfig = {
@@ -63,7 +73,10 @@ export const MCPServerRow = ({ server, onEditServer, onDeleteServer }: Props) =>
   };
 
   return (
-    <Tr className="h-10 transition-colors duration-100 hover:bg-mineshaft-700">
+    <Tr
+      className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+      onClick={handleRowClick}
+    >
       <Td>
         <span className="text-mineshaft-300">{server.name}</span>
       </Td>

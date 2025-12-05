@@ -106,3 +106,25 @@ export type TListAiMcpServersDTO = {
 export type TDeleteAiMcpServerDTO = {
   serverId: string;
 };
+
+export type TUpdateAiMcpServerDTO = {
+  serverId: string;
+  name?: string;
+  description?: string;
+};
+
+export type TAiMcpServerTool = {
+  id: string;
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+  aiMcpServerId: string;
+};
+
+export type TListAiMcpServerToolsDTO = {
+  serverId: string;
+};
+
+export type TSyncAiMcpServerToolsDTO = {
+  serverId: string;
+};

@@ -102,3 +102,9 @@ export type TCreateAiMcpServerDTO = {
   actorAuthMethod: string;
   actorOrgId: string;
 };
+
+export type TUpdateAiMcpServerDTO = {
+  serverId: string;
+  name?: string;
+  description?: string;
+};

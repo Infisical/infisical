@@ -1,14 +1,23 @@
 import crypto from "node:crypto";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - MCP SDK uses ESM with .js extensions which don't resolve types with moduleResolution: "Node"
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { request } from "@app/lib/config/request";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TAiMcpServerDALFactory } from "./ai-mcp-server-dal";
 import { AiMcpServerStatus } from "./ai-mcp-server-enum";
+import { TAiMcpServerToolDALFactory } from "./ai-mcp-server-tool-dal";
 import {
   TAiMcpServerCredentials,
   TCreateAiMcpServerDTO,
@@ -18,11 +27,13 @@ import {
   TOAuthAuthorizationServerMetadata,
   TOAuthDynamicClientMetadata,
   TOAuthSession,
-  TOAuthTokenResponse
+  TOAuthTokenResponse,
+  TUpdateAiMcpServerDTO
 } from "./ai-mcp-server-types";
 
 type TAiMcpServerServiceFactoryDep = {
   aiMcpServerDAL: TAiMcpServerDALFactory;
+  aiMcpServerToolDAL: TAiMcpServerToolDALFactory;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem">;
 };
@@ -53,7 +64,56 @@ const encryptCredentials = async ({
   return cipherTextBlob;
 };
 
-export const aiMcpServerServiceFactory = ({ aiMcpServerDAL, kmsService, keyStore }: TAiMcpServerServiceFactoryDep) => {
+// MCP tool type from the SDK response
+type TMcpTool = {
+  name: string;
+  description?: string;
+  inputSchema?: Record<string, unknown>;
+};
+
+export const aiMcpServerServiceFactory = ({
+  aiMcpServerDAL,
+  aiMcpServerToolDAL,
+  kmsService,
+  keyStore
+}: TAiMcpServerServiceFactoryDep) => {
+  /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
+  const fetchMcpTools = async (serverUrl: string, accessToken: string): Promise<TMcpTool[]> => {
+    let client: Client | undefined;
+    try {
+      client = new Client({
+        name: "infisical-mcp-client",
+        version: "1.0.0"
+      });
+
+      const transport = new StreamableHTTPClientTransport(new URL(serverUrl), {
+        requestInit: {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      });
+
+      await client.connect(transport);
+      const { tools } = await client.listTools();
+
+      return tools.map((tool: { name: string; description?: string; inputSchema?: unknown }) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema as Record<string, unknown> | undefined
+      }));
+    } catch (error) {
+      // Log but don't fail - tools can be fetched later
+      logger.error(error, "Failed to fetch tools from MCP server");
+      return [];
+    } finally {
+      if (client) {
+        await client.close();
+      }
+    }
+  };
+  /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-redundant-type-constituents */
+
   /**
    * Initiate OAuth flow for MCP server
    * Returns the authorization URL and session ID
@@ -252,12 +312,61 @@ export const aiMcpServerServiceFactory = ({ aiMcpServerDAL, kmsService, keyStore
       status: AiMcpServerStatus.ACTIVE
     });
 
+    // Fetch and store tools from MCP server
+    // Get access token from credentials (for OAuth or Bearer auth)
+    let accessToken: string | undefined;
+    if ("accessToken" in credentials) {
+      accessToken = credentials.accessToken;
+    } else if ("token" in credentials) {
+      accessToken = credentials.token;
+    }
+
+    if (accessToken) {
+      const tools = await fetchMcpTools(url, accessToken);
+
+      if (tools.length > 0) {
+        await aiMcpServerToolDAL.insertMany(
+          tools.map((tool) => ({
+            aiMcpServerId: server.id,
+            name: tool.name,
+            description: tool.description,
+            inputSchema: tool.inputSchema
+          }))
+        );
+      }
+    }
+
     return server;
   };
 
   const listMcpServers = async ({ projectId }: { projectId: string }) => {
     const servers = await aiMcpServerDAL.find({ projectId });
     return servers;
+  };
+
+  const getMcpServerById = async ({ serverId }: { serverId: string }) => {
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+    return server;
+  };
+
+  const updateMcpServer = async (dto: TUpdateAiMcpServerDTO) => {
+    const { serverId, name, description } = dto;
+
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    const updateData: { name?: string; description?: string } = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+
+    const updatedServer = await aiMcpServerDAL.updateById(serverId, updateData);
+
+    return updatedServer;
   };
 
   const deleteMcpServer = async ({ serverId }: { serverId: string }) => {
@@ -270,12 +379,81 @@ export const aiMcpServerServiceFactory = ({ aiMcpServerDAL, kmsService, keyStore
     return server;
   };
 
+  const listMcpServerTools = async ({ serverId }: { serverId: string }) => {
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    const tools = await aiMcpServerToolDAL.find({ aiMcpServerId: serverId });
+    return tools;
+  };
+
+  const syncMcpServerTools = async ({ serverId }: { serverId: string }) => {
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    if (!server.encryptedCredentials) {
+      throw new BadRequestError({ message: "Server credentials not found" });
+    }
+
+    // Decrypt credentials to get access token
+    const { decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: server.projectId
+    });
+
+    const decryptedCredentials = JSON.parse(
+      decryptor({ cipherTextBlob: server.encryptedCredentials }).toString()
+    ) as TAiMcpServerCredentials;
+
+    // Get access token from credentials
+    let accessToken: string | undefined;
+    if ("accessToken" in decryptedCredentials) {
+      accessToken = decryptedCredentials.accessToken;
+    } else if ("token" in decryptedCredentials) {
+      accessToken = decryptedCredentials.token;
+    }
+
+    if (!accessToken) {
+      throw new BadRequestError({ message: "No access token available for this server" });
+    }
+
+    // Fetch tools from MCP server
+    const fetchedTools = await fetchMcpTools(server.url, accessToken);
+
+    // Delete existing tools
+    await aiMcpServerToolDAL.delete({ aiMcpServerId: serverId });
+
+    // Insert new tools
+    if (fetchedTools.length > 0) {
+      await aiMcpServerToolDAL.insertMany(
+        fetchedTools.map((tool) => ({
+          aiMcpServerId: serverId,
+          name: tool.name,
+          description: tool.description,
+          inputSchema: tool.inputSchema
+        }))
+      );
+    }
+
+    // Return the newly inserted tools
+    const tools = await aiMcpServerToolDAL.find({ aiMcpServerId: serverId });
+    return tools;
+  };
+
   return {
     initiateOAuth,
     handleOAuthCallback,
     getOAuthStatus,
     createMcpServer,
+    getMcpServerById,
+    updateMcpServer,
     listMcpServers,
-    deleteMcpServer
+    deleteMcpServer,
+    listMcpServerTools,
+    syncMcpServerTools
   };
 };

@@ -1,8 +1,15 @@
-export { useCreateAiMcpServer, useDeleteAiMcpServer, useInitiateOAuth } from "./mutations";
+export {
+  useCreateAiMcpServer,
+  useDeleteAiMcpServer,
+  useInitiateOAuth,
+  useSyncAiMcpServerTools,
+  useUpdateAiMcpServer
+} from "./mutations";
 export {
   aiMcpServerKeys,
   useGetAiMcpServerById,
   useGetOAuthStatus,
-  useListAiMcpServers
+  useListAiMcpServers,
+  useListAiMcpServerTools
 } from "./queries";
 export * from "./types";

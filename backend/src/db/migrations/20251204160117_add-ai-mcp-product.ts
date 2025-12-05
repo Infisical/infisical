@@ -26,7 +26,7 @@ export async function up(knex: Knex): Promise<void> {
     await knex.schema.createTable(TableName.AiMcpServerTool, (t) => {
       t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
       t.string("name").notNullable();
-      t.string("description");
+      t.text("description");
       t.jsonb("inputSchema");
       t.uuid("aiMcpServerId").notNullable();
       t.foreign("aiMcpServerId").references("id").inTable(TableName.AiMcpServer).onDelete("CASCADE");

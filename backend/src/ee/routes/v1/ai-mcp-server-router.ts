@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AiMcpServerToolsSchema } from "@app/db/schemas/ai-mcp-server-tools";
 import { AiMcpServersSchema } from "@app/db/schemas/ai-mcp-servers";
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "@app/ee/services/ai-mcp-server/ai-mcp-server-enum";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
@@ -177,14 +178,10 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { encryptedCredentials, ...serverWithoutCredentials } = mcpServer;
-
-      return { server: serverWithoutCredentials };
+      return { server: mcpServer };
     }
   });
 
-  // List MCP Servers
   server.route({
     url: "/",
     method: "GET",
@@ -210,18 +207,122 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         projectId: req.query.projectId
       });
 
-      // Remove encrypted credentials from response
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const serversWithoutCredentials = mcpServers.map(({ encryptedCredentials, ...rest }) => rest);
-
       return {
-        servers: serversWithoutCredentials,
+        servers: mcpServers,
         totalCount: mcpServers.length
       };
     }
   });
 
-  // Delete MCP Server
+  server.route({
+    url: "/:serverId",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        serverId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const mcpServer = await server.services.aiMcpServer.getMcpServerById({
+        serverId: req.params.serverId
+      });
+
+      return { server: mcpServer };
+    }
+  });
+
+  server.route({
+    url: "/:serverId",
+    method: "PATCH",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        serverId: z.string().trim().min(1)
+      }),
+      body: z.object({
+        name: z.string().trim().min(1).max(64).optional(),
+        description: z.string().trim().max(256).optional()
+      }),
+      response: {
+        200: z.object({
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const mcpServer = await server.services.aiMcpServer.updateMcpServer({
+        serverId: req.params.serverId,
+        ...req.body
+      });
+
+      return { server: mcpServer };
+    }
+  });
+
+  server.route({
+    url: "/:serverId/tools",
+    method: "GET",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        serverId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          tools: z.array(AiMcpServerToolsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const tools = await server.services.aiMcpServer.listMcpServerTools({
+        serverId: req.params.serverId
+      });
+
+      return { tools };
+    }
+  });
+
+  server.route({
+    url: "/:serverId/tools/sync",
+    method: "POST",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        serverId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          tools: z.array(AiMcpServerToolsSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const tools = await server.services.aiMcpServer.syncMcpServerTools({
+        serverId: req.params.serverId
+      });
+
+      return { tools };
+    }
+  });
+
   server.route({
     url: "/:serverId",
     method: "DELETE",
@@ -244,10 +345,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
         serverId: req.params.serverId
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { encryptedCredentials, ...serverWithoutCredentials } = mcpServer;
-
-      return { server: serverWithoutCredentials };
+      return { server: mcpServer };
     }
   });
 };

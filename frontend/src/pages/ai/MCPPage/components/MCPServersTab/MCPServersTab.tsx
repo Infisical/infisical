@@ -7,10 +7,12 @@ import { Button, DeleteActionModal } from "@app/components/v2";
 import { TAiMcpServer, useDeleteAiMcpServer } from "@app/hooks/api";
 
 import { AddMCPServerModal } from "./AddMCPServerModal";
+import { EditMCPServerModal } from "./EditMCPServerModal";
 import { MCPServerList } from "./MCPServerList";
 
 export const MCPServersTab = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<TAiMcpServer | null>(null);
 
@@ -22,11 +24,7 @@ export const MCPServersTab = () => {
 
   const handleEditServer = (server: TAiMcpServer) => {
     setSelectedServer(server);
-    // TODO: Implement edit modal
-    createNotification({
-      text: `Edit ${server.name} - Coming soon`,
-      type: "info"
-    });
+    setIsEditModalOpen(true);
   };
 
   const handleDeleteServer = (server: TAiMcpServer) => {
@@ -78,6 +76,17 @@ export const MCPServersTab = () => {
       <MCPServerList onEditServer={handleEditServer} onDeleteServer={handleDeleteServer} />
 
       <AddMCPServerModal isOpen={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
+
+      <EditMCPServerModal
+        isOpen={isEditModalOpen}
+        onOpenChange={(isOpen) => {
+          setIsEditModalOpen(isOpen);
+          if (!isOpen) {
+            setSelectedServer(null);
+          }
+        }}
+        server={selectedServer}
+      />
 
       {selectedServer && (
         <DeleteActionModal

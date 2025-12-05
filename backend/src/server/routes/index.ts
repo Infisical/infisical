@@ -19,6 +19,7 @@ import { accessApprovalRequestReviewerDALFactory } from "@app/ee/services/access
 import { accessApprovalRequestServiceFactory } from "@app/ee/services/access-approval-request/access-approval-request-service";
 import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
 import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
+import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
@@ -2400,6 +2401,7 @@ export const registerRoutes = async (
   const pamAccountDAL = pamAccountDALFactory(db);
   const pamSessionDAL = pamSessionDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
+  const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
 
   const pamFolderService = pamFolderServiceFactory({
     pamFolderDAL,
@@ -2444,6 +2446,7 @@ export const registerRoutes = async (
 
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,
+    aiMcpServerToolDAL,
     kmsService,
     keyStore
   });

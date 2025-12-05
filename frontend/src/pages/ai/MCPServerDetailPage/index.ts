@@ -1,0 +1,1 @@
+export { MCPServerDetailPage } from "./MCPServerDetailPage";
