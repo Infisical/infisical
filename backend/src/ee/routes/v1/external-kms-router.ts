@@ -4,15 +4,10 @@ import { ExternalKmsSchema, KmsKeysSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import {
   ExternalKmsAwsSchema,
-  ExternalKmsGcpCredentialSchema,
   ExternalKmsGcpSchema,
   ExternalKmsInputSchema,
-  ExternalKmsInputUpdateSchema,
-  KmsGcpKeyFetchAuthType,
-  KmsProviders,
-  TExternalKmsGcpCredentialSchema
+  ExternalKmsInputUpdateSchema
 } from "@app/ee/services/external-kms/providers/model";
-import { NotFoundError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -291,69 +286,6 @@ export const registerExternalKmsRouter = async (server: FastifyZodProvider) => {
         name: req.params.name
       });
       return { externalKms };
-    }
-  });
-
-  server.route({
-    method: "POST",
-    url: "/gcp/keys",
-    config: {
-      rateLimit: writeLimit
-    },
-    schema: {
-      body: z.discriminatedUnion("authMethod", [
-        z.object({
-          authMethod: z.literal(KmsGcpKeyFetchAuthType.Credential),
-          region: z.string().trim().min(1),
-          credential: ExternalKmsGcpCredentialSchema
-        }),
-        z.object({
-          authMethod: z.literal(KmsGcpKeyFetchAuthType.Kms),
-          region: z.string().trim().min(1),
-          kmsId: z.string().trim().min(1)
-        })
-      ]),
-      response: {
-        200: z.object({
-          keys: z.string().array()
-        })
-      }
-    },
-    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
-    handler: async (req) => {
-      const { region, authMethod } = req.body;
-      let credentialJson: TExternalKmsGcpCredentialSchema | undefined;
-
-      if (authMethod === KmsGcpKeyFetchAuthType.Credential) {
-        credentialJson = req.body.credential;
-      } else if (authMethod === KmsGcpKeyFetchAuthType.Kms) {
-        const externalKms = await server.services.externalKms.findById({
-          actor: req.permission.type,
-          actorId: req.permission.id,
-          actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId,
-          id: req.body.kmsId
-        });
-
-        if (!externalKms || externalKms.external.provider !== KmsProviders.Gcp) {
-          throw new NotFoundError({ message: "KMS not found or not of type GCP" });
-        }
-
-        credentialJson = externalKms.external.providerInput.credential as TExternalKmsGcpCredentialSchema;
-      }
-
-      if (!credentialJson) {
-        throw new NotFoundError({
-          message: "Something went wrong while fetching the GCP credential, please check inputs and try again"
-        });
-      }
-
-      const results = await server.services.externalKms.fetchGcpKeys({
-        credential: credentialJson,
-        gcpRegion: region
-      });
-
-      return results;
     }
   });
 };

@@ -3,6 +3,7 @@ import { AssumeRoleCommand, STSClient } from "@aws-sdk/client-sts";
 
 import { CustomAWSHasher } from "@app/lib/aws/hashing";
 import { crypto } from "@app/lib/crypto/cryptography";
+import { BadRequestError } from "@app/lib/errors";
 
 import { ExternalKmsAwsSchema, KmsAwsCredentialType, TExternalKmsAwsSchema, TExternalKmsProviderFns } from "./model";
 
@@ -22,7 +23,7 @@ const getAwsKmsClient = async (providerInputs: TExternalKmsAwsSchema) => {
     });
     const response = await stsClient.send(command);
     if (!response.Credentials?.AccessKeyId || !response.Credentials?.SecretAccessKey)
-      throw new Error("Failed to assume role");
+      throw new BadRequestError({ message: "Failed to assume role" });
 
     const kmsClient = new KMSClient({
       region: providerInputs.awsRegion,
@@ -67,7 +68,7 @@ export const AwsKmsProviderFactory = async ({ inputs }: AwsKmsProviderArgs): Pro
     const command = new CreateKeyCommand({ Tags: [{ TagKey: "author", TagValue: "infisical" }] });
     const kmsKey = await awsClient.send(command);
 
-    if (!kmsKey.KeyMetadata?.KeyId) throw new Error("Failed to generate kms key");
+    if (!kmsKey.KeyMetadata?.KeyId) throw new BadRequestError({ message: "Failed to generate kms key" });
 
     const updatedProviderInputs = await ExternalKmsAwsSchema.parseAsync({
       ...providerInputs,
