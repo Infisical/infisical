@@ -219,20 +219,22 @@ export const HttpEventView = ({ events }: Props) => {
                   </div>
                 </button>
 
-                {isExpanded && (
-                  <div className="mt-2 space-y-2">
-                    {isRequest ? (
-                      <div className="font-mono text-bunker-100">
-                        <span className="font-semibold text-bunker-200">{event.method}</span>{" "}
-                        <HighlightText text={event.url} highlight={search} />
-                      </div>
-                    ) : (
-                      <div className="font-mono text-bunker-100">
-                        <span className="font-semibold text-bunker-200">Status:</span>{" "}
-                        <HighlightText text={event.status} highlight={search} />
-                      </div>
-                    )}
+                <div className="mt-2">
+                  {isRequest ? (
+                    <div className="font-mono text-bunker-100">
+                      <span className="font-semibold text-bunker-200">{event.method}</span>{" "}
+                      <HighlightText text={event.url} highlight={search} />
+                    </div>
+                  ) : (
+                    <div className="font-mono text-bunker-100">
+                      <span className="font-semibold text-bunker-200">Status:</span>{" "}
+                      <HighlightText text={event.status} highlight={search} />
+                    </div>
+                  )}
+                </div>
 
+                {isExpanded && (
+                  <div className="mt-2 ml-4 pl-3 border-l-2 border-mineshaft-600 space-y-2">
                     {Object.keys(event.headers).length > 0 && (
                       <div className="mt-2 pt-2 border-t border-mineshaft-700">
                         <button
