@@ -23,6 +23,8 @@ const SanitizedAccountSchema = z.union([
   SanitizedAwsIamAccountWithResourceSchema
 ]);
 
+type TSanitizedAccount = z.infer<typeof SanitizedAccountSchema>;
+
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -95,7 +97,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { accounts, folders, totalCount, folderId, folderPaths };
+      return { accounts: accounts as TSanitizedAccount[], folders, totalCount, folderId, folderPaths };
     }
   });
 

@@ -170,12 +170,6 @@ export const generateConsoleFederationUrl = async ({
 
   const federationEndpoint = "https://signin.aws.amazon.com/federation";
 
-  // Console destination can be regional
-  const getConsoleHost = () =>
-    connectionDetails.region === "us-east-1"
-      ? "console.aws.amazon.com"
-      : `${connectionDetails.region}.console.aws.amazon.com`;
-
   const signinTokenUrl = `${federationEndpoint}?Action=getSigninToken&Session=${encodeURIComponent(sessionJson)}`;
 
   const tokenResponse = await fetch(signinTokenUrl);
@@ -199,7 +193,7 @@ export const generateConsoleFederationUrl = async ({
     throw new Error(`AWS federation endpoint did not return a SigninToken: ${responseText.substring(0, 200)}`);
   }
 
-  const consoleDestination = `https://${getConsoleHost()}/`;
+  const consoleDestination = `https://console.aws.amazon.com/`;
   const consoleUrl = `${federationEndpoint}?Action=login&SigninToken=${encodeURIComponent(tokenData.SigninToken)}&Destination=${encodeURIComponent(consoleDestination)}`;
 
   return {

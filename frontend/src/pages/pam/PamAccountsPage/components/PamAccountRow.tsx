@@ -103,7 +103,7 @@ export const PamAccountRow = ({
                 </span>
               </Badge>
             )}
-            {account.lastRotatedAt && (
+            {"lastRotatedAt" in account && account.lastRotatedAt && (
               <Tooltip
                 className="max-w-sm text-center"
                 isDisabled={!account.lastRotationMessage}

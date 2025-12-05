@@ -67,9 +67,7 @@ export const AwsIamAccountSchema = BasePamAccountSchema.extend({
 });
 
 export const CreateAwsIamAccountSchema = BaseCreatePamAccountSchema.extend({
-  credentials: AwsIamAccountCredentialsSchema,
-  // AWS IAM doesn't support credential rotation - credentials are generated on-the-fly via STS
-  rotationEnabled: z.boolean().optional().default(false)
+  credentials: AwsIamAccountCredentialsSchema
 });
 
 export const UpdateAwsIamAccountSchema = BaseUpdatePamAccountSchema.extend({

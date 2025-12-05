@@ -439,7 +439,7 @@ export const pamAccountServiceFactory = ({
     const totalCount = totalFolderCount + totalAccountCount;
 
     const decryptedAndPermittedAccounts: Array<
-      TPamAccounts & {
+      Omit<TPamAccounts, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
         resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
         lastRotationMessage: string | null;
