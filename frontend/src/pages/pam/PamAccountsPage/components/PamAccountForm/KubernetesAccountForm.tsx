@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { Button, FormControl, ModalClose, TextArea } from "@app/components/v2";
-import { KubernetesAuthMethod, TKubernetesAccount } from "@app/hooks/api/pam";
+import { KubernetesAuthMethod, PamResourceType, TKubernetesAccount } from "@app/hooks/api/pam";
 import { UNCHANGED_PASSWORD_SENTINEL } from "@app/hooks/api/pam/constants";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
@@ -11,6 +11,8 @@ import { rotateAccountFieldsSchema } from "./RotateAccountFields";
 
 type Props = {
   account?: TKubernetesAccount;
+  resourceId?: string;
+  resourceType?: PamResourceType;
   onSubmit: (formData: FormData) => Promise<void>;
 };
 

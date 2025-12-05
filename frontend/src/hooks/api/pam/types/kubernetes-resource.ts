@@ -14,7 +14,6 @@ export type TKubernetesConnectionDetails = {
 
 export type TKubernetesServiceAccountTokenCredentials = {
   authMethod: KubernetesAuthMethod.ServiceAccountToken;
-  serviceAccountName: string;
   serviceAccountToken: string;
 };
 
