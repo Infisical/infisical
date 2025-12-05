@@ -8,9 +8,8 @@ export enum KubernetesAuthMethod {
 
 export type TKubernetesConnectionDetails = {
   url: string;
-  namespace: string;
-  skipTLSVerify: boolean;
-  caCertificate?: string;
+  sslRejectUnauthorized: boolean;
+  sslCertificate?: string;
 };
 
 export type TKubernetesServiceAccountTokenCredentials = {

@@ -5,9 +5,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { FormControl, Input, Switch, TextArea, Tooltip } from "@app/components/v2";
 
 export const KubernetesResourceFields = () => {
-  const { control, watch } = useFormContext();
-
-  const skipTLSVerify = watch("connectionDetails.skipTLSVerify");
+  const { control } = useFormContext();
 
   return (
     <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
@@ -32,14 +30,12 @@ export const KubernetesResourceFields = () => {
             <FormControl
               errorText={error?.message}
               isError={Boolean(error?.message)}
-              className={skipTLSVerify ? "opacity-50" : ""}
               label="CA Certificate"
               isOptional
             >
               <TextArea
                 className="h-14 resize-none!"
                 {...field}
-                isDisabled={skipTLSVerify}
                 placeholder="-----BEGIN CERTIFICATE-----..."
               />
             </FormControl>
