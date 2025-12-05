@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PamFoldersSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { PamAccountOrderBy, PamAccountView } from "@app/ee/services/pam-account/pam-account-enums";
+import { SanitizedAwsIamAccountWithResourceSchema } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import { SanitizedMySQLAccountWithResourceSchema } from "@app/ee/services/pam-resource/mysql/mysql-resource-schemas";
 import { PamResource } from "@app/ee/services/pam-resource/pam-resource-enums";
 import { SanitizedPostgresAccountWithResourceSchema } from "@app/ee/services/pam-resource/postgres/postgres-resource-schemas";
@@ -18,7 +19,8 @@ import { AuthMode } from "@app/services/auth/auth-type";
 const SanitizedAccountSchema = z.union([
   SanitizedSSHAccountWithResourceSchema, // ORDER MATTERS
   SanitizedPostgresAccountWithResourceSchema,
-  SanitizedMySQLAccountWithResourceSchema
+  SanitizedMySQLAccountWithResourceSchema,
+  SanitizedAwsIamAccountWithResourceSchema
 ]);
 
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
@@ -124,18 +126,29 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           })
       }),
       response: {
-        200: z.object({
-          sessionId: z.string(),
-          resourceType: z.nativeEnum(PamResource),
-          relayClientCertificate: z.string(),
-          relayClientPrivateKey: z.string(),
-          relayServerCertificateChain: z.string(),
-          gatewayClientCertificate: z.string(),
-          gatewayClientPrivateKey: z.string(),
-          gatewayServerCertificateChain: z.string(),
-          relayHost: z.string(),
-          metadata: z.record(z.string(), z.string().optional()).optional()
-        })
+        200: z.union([
+          // Gateway-based resources (Postgres, MySQL, SSH)
+          z.object({
+            sessionId: z.string(),
+            resourceType: z.nativeEnum(PamResource),
+            relayClientCertificate: z.string(),
+            relayClientPrivateKey: z.string(),
+            relayServerCertificateChain: z.string(),
+            gatewayClientCertificate: z.string(),
+            gatewayClientPrivateKey: z.string(),
+            gatewayServerCertificateChain: z.string(),
+            relayHost: z.string(),
+            metadata: z.record(z.string(), z.string().optional()).optional()
+          }),
+          // AWS IAM (no gateway, returns console URL)
+          z.object({
+            sessionId: z.string(),
+            resourceType: z.literal(PamResource.AwsIam),
+            consoleUrl: z.string().url(),
+            projectId: z.string(),
+            metadata: z.record(z.string(), z.string().optional()).optional()
+          })
+        ])
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),

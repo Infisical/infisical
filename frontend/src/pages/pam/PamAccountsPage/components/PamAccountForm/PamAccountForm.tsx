@@ -8,6 +8,7 @@ import {
 import { DiscriminativePick } from "@app/types";
 
 import { PamAccountHeader } from "../PamAccountHeader";
+import { AwsIamAccountForm } from "./AwsIamAccountForm";
 import { MySQLAccountForm } from "./MySQLAccountForm";
 import { PostgresAccountForm } from "./PostgresAccountForm";
 import { SshAccountForm } from "./SshAccountForm";
@@ -70,6 +71,10 @@ const CreateForm = ({
       return (
         <SshAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
       );
+    case PamResourceType.AwsIam:
+      return (
+        <AwsIamAccountForm onSubmit={onSubmit} resourceId={resourceId} resourceType={resourceType} />
+      );
     default:
       throw new Error(`Unhandled resource: ${resourceType}`);
   }
@@ -100,6 +105,8 @@ const UpdateForm = ({ account, onComplete }: UpdateFormProps) => {
       return <MySQLAccountForm account={account as any} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SshAccountForm account={account as any} onSubmit={onSubmit} />;
+    case PamResourceType.AwsIam:
+      return <AwsIamAccountForm account={account as any} onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled resource: ${account.resource.resourceType}`);
   }

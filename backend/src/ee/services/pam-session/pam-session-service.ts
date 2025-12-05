@@ -34,9 +34,40 @@ export const pamSessionServiceFactory = ({
   licenseService,
   kmsService
 }: TPamSessionServiceFactoryDep) => {
+  // Helper to check and update expired sessions when viewing session details (redundancy for scheduled job)
+  // Only applies to non-gateway sessions (e.g., AWS IAM) - gateway sessions are managed by the gateway
+  // This is intentionally only called in getById (session details view), not in list
+  const checkAndExpireSessionIfNeeded = async <
+    T extends { id: string; status: string; expiresAt: Date | null; gatewayIdentityId?: string | null }
+  >(
+    session: T
+  ): Promise<T> => {
+    // Skip gateway-based sessions - they have their own lifecycle managed by the gateway
+    if (session.gatewayIdentityId) {
+      return session;
+    }
+
+    const isActive = session.status === PamSessionStatus.Active || session.status === PamSessionStatus.Starting;
+    const isExpired = session.expiresAt && new Date(session.expiresAt) <= new Date();
+
+    if (isActive && isExpired) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const updatedSession = await pamSessionDAL.updateById(session.id, {
+        status: PamSessionStatus.Expired,
+        endedAt: new Date()
+      });
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      return { ...session, ...updatedSession };
+    }
+
+    return session;
+  };
+
   const getById = async (sessionId: string, actor: OrgServiceActor) => {
-    const session = await pamSessionDAL.findById(sessionId);
-    if (!session) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+    const sessionFromDb = await pamSessionDAL.findById(sessionId);
+    if (!sessionFromDb) throw new NotFoundError({ message: `Session with ID '${sessionId}' not found` });
+
+    const session = await checkAndExpireSessionIfNeeded(sessionFromDb);
 
     const { permission } = await permissionService.getProjectPermission({
       actor: actor.type,
@@ -116,7 +147,7 @@ export const pamSessionServiceFactory = ({
       OrgPermissionSubjects.Gateway
     );
 
-    if (session.gatewayIdentityId !== actor.id) {
+    if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
       throw new ForbiddenRequestError({ message: "Identity does not have access to update logs for this session" });
     }
 
@@ -158,7 +189,7 @@ export const pamSessionServiceFactory = ({
         OrgPermissionSubjects.Gateway
       );
 
-      if (session.gatewayIdentityId !== actor.id) {
+      if (session.gatewayIdentityId && session.gatewayIdentityId !== actor.id) {
         throw new ForbiddenRequestError({ message: "Identity does not have access to end this session" });
       }
     } else if (actor.type === ActorType.USER) {
@@ -169,7 +200,7 @@ export const pamSessionServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only identities and users can perform this action" });
     }
 
-    if (session.status === PamSessionStatus.Ended) {
+    if (session.status === PamSessionStatus.Ended || session.status === PamSessionStatus.Expired) {
       return {
         session,
         projectId: project.id

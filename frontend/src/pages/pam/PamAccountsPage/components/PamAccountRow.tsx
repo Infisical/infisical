@@ -41,6 +41,7 @@ type Props = {
   search: string;
   isFlatView: boolean;
   accountPath?: string;
+  isAccessLoading?: boolean;
 };
 
 export const PamAccountRow = ({
@@ -50,7 +51,8 @@ export const PamAccountRow = ({
   onUpdate,
   onDelete,
   isFlatView,
-  accountPath
+  accountPath,
+  isAccessLoading
 }: Props) => {
   const { id, name } = account;
 
@@ -127,6 +129,8 @@ export const PamAccountRow = ({
               leftIcon={<FontAwesomeIcon icon={faRightToBracket} />}
               onClick={() => onAccess(account)}
               size="xs"
+              isLoading={isAccessLoading}
+              isDisabled={isAccessLoading}
             >
               Access
             </Button>

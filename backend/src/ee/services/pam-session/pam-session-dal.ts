@@ -4,6 +4,8 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
 
+import { PamSessionStatus } from "./pam-session-enums";
+
 export type TPamSessionDALFactory = ReturnType<typeof pamSessionDALFactory>;
 export const pamSessionDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.PamSession);
@@ -22,5 +24,19 @@ export const pamSessionDALFactory = (db: TDbClient) => {
     return session;
   };
 
-  return { ...orm, findById };
+  const expireSessionById = async (sessionId: string, tx?: Knex) => {
+    const now = new Date();
+
+    const updatedCount = await (tx || db)(TableName.PamSession)
+      .where("id", sessionId)
+      .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
+      .update({
+        status: PamSessionStatus.Expired,
+        endedAt: now
+      });
+
+    return updatedCount;
+  };
+
+  return { ...orm, findById, expireSessionById };
 };
