@@ -4,6 +4,10 @@ import { TDbClient } from "@app/db";
 import { TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify, selectAllTableCols } from "@app/lib/knex";
+import {
+  applyProcessedPermissionRulesToQuery,
+  type ProcessedPermissionRules
+} from "@app/lib/knex/permission-filter-utils";
 
 import {
   EnrollmentType,
@@ -276,6 +280,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<TCertificateProfile[] | TCertificateProfileWithConfigs[]> => {
     try {
@@ -308,7 +313,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
         baseQuery = baseQuery.where(`${TableName.PkiCertificateProfile}.issuerType`, issuerType);
       }
 
-      const query = baseQuery
+      let query = baseQuery
         .leftJoin(
           TableName.CertificateAuthority,
           `${TableName.PkiCertificateProfile}.caId`,
@@ -353,6 +358,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
           db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
         );
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateProfile,
+          processedRules
+        ) as typeof query;
+      }
 
       const results = (await query
         .orderBy(`${TableName.PkiCertificateProfile}.createdAt`, "desc")
@@ -432,6 +445,7 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
       issuerType?: IssuerType;
       caId?: string;
     } = {},
+    processedRules?: ProcessedPermissionRules,
     tx?: Knex
   ): Promise<number> => {
     try {
@@ -457,6 +471,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
       if (issuerType) {
         query = query.where({ issuerType });
+      }
+
+      if (processedRules) {
+        query = applyProcessedPermissionRulesToQuery(
+          query,
+          TableName.PkiCertificateProfile,
+          processedRules
+        ) as typeof query;
       }
 
       const result = await query.count("*").first();

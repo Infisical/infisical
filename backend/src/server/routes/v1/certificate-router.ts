@@ -176,7 +176,8 @@ export const registerCertificateRouter = async (server: FastifyZodProvider) => {
           actor: req.permission.type,
           actorId: req.permission.id,
           actorAuthMethod: req.permission.authMethod,
-          actorOrgId: req.permission.orgId
+          actorOrgId: req.permission.orgId,
+          isInternal: true
         });
         const caType = (ca?.externalCa?.type as CaType) ?? CaType.INTERNAL;
         useOrderFlow = caType !== CaType.INTERNAL;

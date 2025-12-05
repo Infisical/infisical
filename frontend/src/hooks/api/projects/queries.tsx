@@ -191,12 +191,15 @@ export const fetchWorkspaceIntegrations = async (projectId: string) => {
   return data.integrations;
 };
 
-export const useGetWorkspaceIntegrations = (projectId: string) =>
+export const useGetWorkspaceIntegrations = (
+  projectId: string,
+  options?: { enabled?: boolean; refetchInterval?: number | false }
+) =>
   useQuery({
     queryKey: projectKeys.getProjectIntegrations(projectId),
     queryFn: () => fetchWorkspaceIntegrations(projectId),
-    enabled: Boolean(projectId),
-    refetchInterval: 4000
+    enabled: Boolean(projectId) && (options?.enabled ?? true),
+    refetchInterval: options?.refetchInterval ?? 4000
   });
 
 export const createWorkspace = (

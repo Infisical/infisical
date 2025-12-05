@@ -6,6 +6,7 @@ import { ActionProjectType } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
@@ -110,8 +111,8 @@ export const certificateRequestServiceFactory = ({
       });
 
       ForbiddenError.from(permission).throwUnlessCan(
-        ProjectPermissionCertificateActions.Create,
-        ProjectPermissionSub.Certificates
+        ProjectPermissionCertificateProfileActions.IssueCert,
+        ProjectPermissionSub.CertificateProfiles
       );
     }
 
@@ -217,20 +218,25 @@ export const certificateRequestServiceFactory = ({
       actorOrgId
     });
 
-    // Try to get private key (may fail if user doesn't have permission)
+    const canReadPrivateKey = permission.can(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
     let privateKey: string | null = null;
-    try {
-      const certPrivateKey = await certificateService.getCertPrivateKey({
-        id: certificateRequest.certificate.id,
-        actor,
-        actorId,
-        actorAuthMethod,
-        actorOrgId
-      });
-      privateKey = certPrivateKey.certPrivateKey;
-    } catch (error) {
-      // Private key access denied - continue without it
-      privateKey = null;
+    if (canReadPrivateKey) {
+      try {
+        const certPrivateKey = await certificateService.getCertPrivateKey({
+          id: certificateRequest.certificate.id,
+          actor,
+          actorId,
+          actorAuthMethod,
+          actorOrgId
+        });
+        privateKey = certPrivateKey.certPrivateKey;
+      } catch (error) {
+        privateKey = null;
+      }
     }
 
     return {

@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 import { randomUUID } from "crypto";
 import RE2 from "re2";
@@ -167,7 +167,9 @@ const validateProfileAndPermissions = async (
 
   ForbiddenError.from(permission).throwUnlessCan(
     ProjectPermissionCertificateProfileActions.IssueCert,
-    ProjectPermissionSub.CertificateProfiles
+    subject(ProjectPermissionSub.CertificateProfiles, {
+      slug: profile.slug
+    })
   );
 
   return profile;
@@ -999,11 +1001,27 @@ export const certificateV3ServiceFactory = ({
         });
       }
 
+      const { permission } = await permissionService.getProjectPermission({
+        actor,
+        actorId,
+        projectId: profile.projectId,
+        actorAuthMethod,
+        actorOrgId,
+        actionProjectType: ActionProjectType.CertificateManager
+      });
+
+      const canReadPrivateKey = permission.can(
+        ProjectPermissionCertificateActions.ReadPrivateKey,
+        ProjectPermissionSub.Certificates
+      );
+
+      const privateKeyForResponse = canReadPrivateKey ? selfSignedResult.privateKey.toString("utf8") : undefined;
+
       return {
         certificate: selfSignedResult.certificate.toString("utf8"),
         issuingCaCertificate: "",
         certificateChain: selfSignedResult.certificate.toString("utf8"),
-        privateKey: selfSignedResult.privateKey.toString("utf8"),
+        privateKey: privateKeyForResponse,
         serialNumber: selfSignedResult.serialNumber,
         certificateId: certificateData.id,
         certificateRequestId,
@@ -1100,11 +1118,28 @@ export const certificateV3ServiceFactory = ({
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
     }
 
+    // Check if user has permission to read private key
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: profile.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+
+    const canReadPrivateKey = permission.can(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionSub.Certificates
+    );
+
+    const privateKeyForResponse = canReadPrivateKey ? bufferToString(privateKey) : undefined;
+
     return {
       certificate: bufferToString(certificate),
       issuingCaCertificate: bufferToString(issuingCaCertificate),
       certificateChain: finalCertificateChain,
-      privateKey: bufferToString(privateKey),
+      privateKey: privateKeyForResponse,
       serialNumber,
       certificateId: cert.id,
       certificateRequestId,
@@ -1489,10 +1524,12 @@ export const certificateV3ServiceFactory = ({
           actionProjectType: ActionProjectType.CertificateManager
         });
 
-        ForbiddenError.from(permission).throwUnlessCan(
-          ProjectPermissionCertificateProfileActions.IssueCert,
-          ProjectPermissionSub.CertificateProfiles
-        );
+        if (profile) {
+          ForbiddenError.from(permission).throwUnlessCan(
+            ProjectPermissionCertificateProfileActions.IssueCert,
+            subject(ProjectPermissionSub.CertificateProfiles, { slug: profile.slug })
+          );
+        }
       }
 
       const issuerType = profile?.issuerType || (originalCert.caId ? IssuerType.CA : IssuerType.SELF_SIGNED);
@@ -1869,7 +1906,11 @@ export const certificateV3ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames ?? undefined,
+        serialNumber: certificate.serialNumber
+      })
     );
 
     if (!certificate.profileId) {
@@ -1972,7 +2013,11 @@ export const certificateV3ServiceFactory = ({
 
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateActions.Edit,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: certificate.commonName,
+        altNames: certificate.altNames ?? undefined,
+        serialNumber: certificate.serialNumber
+      })
     );
 
     if (!certificate.profileId) {
