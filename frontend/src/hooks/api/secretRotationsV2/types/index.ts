@@ -32,6 +32,11 @@ import { SecretV3RawSanitized } from "@app/hooks/api/secrets/types";
 import { DiscriminativePick } from "@app/types";
 
 import {
+  TMongoDBCredentialsRotation,
+  TMongoDBCredentialsRotationGeneratedCredentialsResponse,
+  TMongoDBCredentialsRotationOption
+} from "./mongodb-credentials-rotation";
+import {
   TMySqlCredentialsRotation,
   TMySqlCredentialsRotationGeneratedCredentialsResponse
 } from "./mysql-credentials-rotation";
@@ -61,6 +66,7 @@ export type TSecretRotationV2 = (
   | TAwsIamUserSecretRotation
   | TOktaClientSecretRotation
   | TRedisCredentialsRotation
+  | TMongoDBCredentialsRotation
 ) & {
   secrets: (SecretV3RawSanitized | null)[];
 };
@@ -72,7 +78,8 @@ export type TSecretRotationV2Option =
   | TLdapPasswordRotationOption
   | TAwsIamUserSecretRotationOption
   | TOktaClientSecretRotationOption
-  | TRedisCredentialsRotationOption;
+  | TRedisCredentialsRotationOption
+  | TMongoDBCredentialsRotationOption;
 
 export type TListSecretRotationV2Options = { secretRotationOptions: TSecretRotationV2Option[] };
 
@@ -88,7 +95,8 @@ export type TViewSecretRotationGeneratedCredentialsResponse =
   | TLdapPasswordRotationGeneratedCredentialsResponse
   | TAwsIamUserSecretRotationGeneratedCredentialsResponse
   | TOktaClientSecretRotationGeneratedCredentialsResponse
-  | TRedisCredentialsRotationGeneratedCredentialsResponse;
+  | TRedisCredentialsRotationGeneratedCredentialsResponse
+  | TMongoDBCredentialsRotationGeneratedCredentialsResponse;
 
 export type TCreateSecretRotationV2DTO = DiscriminativePick<
   TSecretRotationV2,
@@ -142,6 +150,7 @@ export type TSecretRotationOptionMap = {
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationOption;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationOption;
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationOption;
+  [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationOption;
 };
 
 export type TSecretRotationGeneratedCredentialsResponseMap = {
@@ -155,4 +164,5 @@ export type TSecretRotationGeneratedCredentialsResponseMap = {
   [SecretRotation.AwsIamUserSecret]: TAwsIamUserSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.OktaClientSecret]: TOktaClientSecretRotationGeneratedCredentialsResponse;
   [SecretRotation.RedisCredentials]: TRedisCredentialsRotationGeneratedCredentialsResponse;
+  [SecretRotation.MongoDBCredentials]: TMongoDBCredentialsRotationGeneratedCredentialsResponse;
 };

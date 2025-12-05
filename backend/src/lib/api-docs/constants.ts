@@ -2860,6 +2860,12 @@ export const SecretRotations = {
     },
     REDIS_CREDENTIALS: {
       permissionScope: "The ACL permission scope to assign to the issued Redis users."
+    },
+    MONGODB_CREDENTIALS: {
+      username1:
+        "The username of the first MongoDB user to rotate passwords for. This user must already exist in your database.",
+      username2:
+        "The username of the second MongoDB user to rotate passwords for. This user must already exist in your database."
     }
   },
   SECRETS_MAPPING: {
@@ -2890,6 +2896,10 @@ export const SecretRotations = {
     OKTA_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    MONGODB_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };

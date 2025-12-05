@@ -28,6 +28,7 @@ import { registerHerokuConnectionRouter } from "./heroku-connection-router";
 import { registerHumanitecConnectionRouter } from "./humanitec-connection-router";
 import { registerLaravelForgeConnectionRouter } from "./laravel-forge-connection-router";
 import { registerLdapConnectionRouter } from "./ldap-connection-router";
+import { registerMongoDBConnectionRouter } from "./mongodb-connection-router";
 import { registerMsSqlConnectionRouter } from "./mssql-connection-router";
 import { registerMySqlConnectionRouter } from "./mysql-connection-router";
 import { registerNetlifyConnectionRouter } from "./netlify-connection-router";
@@ -90,5 +91,6 @@ export const APP_CONNECTION_REGISTER_ROUTER_MAP: Record<AppConnection, (server: 
     [AppConnection.Northflank]: registerNorthflankConnectionRouter,
     [AppConnection.Okta]: registerOktaConnectionRouter,
     [AppConnection.Redis]: registerRedisConnectionRouter,
+    [AppConnection.MongoDB]: registerMongoDBConnectionRouter,
     [AppConnection.Chef]: registerChefConnectionRouter
   };

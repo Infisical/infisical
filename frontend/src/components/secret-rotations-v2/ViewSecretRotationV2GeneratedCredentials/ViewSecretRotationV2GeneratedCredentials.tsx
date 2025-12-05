@@ -67,6 +67,7 @@ const Content = ({ secretRotation }: ContentProps) => {
     case SecretRotation.MySqlCredentials:
     case SecretRotation.MsSqlCredentials:
     case SecretRotation.OracleDBCredentials:
+    case SecretRotation.MongoDBCredentials:
       Component = (
         <ViewSqlCredentialsRotationGeneratedCredentials
           generatedCredentialsResponse={generatedCredentialsResponse}

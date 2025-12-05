@@ -31,6 +31,7 @@ import {
   HCVaultConnectionMethod,
   HumanitecConnectionMethod,
   LdapConnectionMethod,
+  MongoDBConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
   OktaConnectionMethod,
@@ -129,6 +130,7 @@ export const APP_CONNECTION_MAP: Record<
   [AppConnection.Northflank]: { name: "Northflank", image: "Northflank.png" },
   [AppConnection.Okta]: { name: "Okta", image: "Okta.png" },
   [AppConnection.Redis]: { name: "Redis", image: "Redis.png" },
+  [AppConnection.MongoDB]: { name: "MongoDB", image: "MongoDB.png" },
   [AppConnection.LaravelForge]: {
     name: "Laravel Forge",
     image: "Laravel Forge.png",
@@ -181,6 +183,7 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
     case OracleDBConnectionMethod.UsernameAndPassword:
     case AzureADCSConnectionMethod.UsernamePassword:
     case RedisConnectionMethod.UsernameAndPassword:
+    case MongoDBConnectionMethod.UsernameAndPassword:
       return { name: "Username & Password", icon: faLock };
     case HCVaultConnectionMethod.AccessToken:
     case TeamCityConnectionMethod.AccessToken:

@@ -35,6 +35,7 @@ import { HerokuConnectionForm } from "./HerokuAppConnectionForm";
 import { HumanitecConnectionForm } from "./HumanitecConnectionForm";
 import { LaravelForgeConnectionForm } from "./LaravelForgeConnectionForm";
 import { LdapConnectionForm } from "./LdapConnectionForm";
+import { MongoDBConnectionForm } from "./MongoDBConnectionForm";
 import { MsSqlConnectionForm } from "./MsSqlConnectionForm";
 import { MySqlConnectionForm } from "./MySqlConnectionForm";
 import { NetlifyConnectionForm } from "./NetlifyConnectionForm";
@@ -173,6 +174,8 @@ const CreateForm = ({ app, onComplete, projectId }: CreateFormProps) => {
       return <OktaConnectionForm onSubmit={onSubmit} />;
     case AppConnection.Redis:
       return <RedisConnectionForm onSubmit={onSubmit} />;
+    case AppConnection.MongoDB:
+      return <MongoDBConnectionForm onSubmit={onSubmit} />;
     default:
       throw new Error(`Unhandled App ${app}`);
   }
@@ -331,6 +334,8 @@ const UpdateForm = ({ appConnection, onComplete }: UpdateFormProps) => {
       return <OktaConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     case AppConnection.Redis:
       return <RedisConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
+    case AppConnection.MongoDB:
+      return <MongoDBConnectionForm onSubmit={onSubmit} appConnection={appConnection} />;
     default:
       throw new Error(`Unhandled App ${(appConnection as TAppConnection).app}`);
   }

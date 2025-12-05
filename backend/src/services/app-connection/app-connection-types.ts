@@ -172,6 +172,12 @@ import {
   TLdapConnectionInput,
   TValidateLdapConnectionCredentialsSchema
 } from "./ldap";
+import {
+  TMongoDBConnection,
+  TMongoDBConnectionConfig,
+  TMongoDBConnectionInput,
+  TValidateMongoDBConnectionCredentialsSchema
+} from "./mongodb";
 import { TMsSqlConnection, TMsSqlConnectionInput, TValidateMsSqlConnectionCredentialsSchema } from "./mssql";
 import { TMySqlConnection, TMySqlConnectionInput, TValidateMySqlConnectionCredentialsSchema } from "./mysql";
 import {
@@ -295,6 +301,7 @@ export type TAppConnection = { id: string } & (
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
+  | TMongoDBConnection
   | TChefConnection
 );
 
@@ -345,6 +352,7 @@ export type TAppConnectionInput = { id: string } & (
   | TNorthflankConnectionInput
   | TOktaConnectionInput
   | TRedisConnectionInput
+  | TMongoDBConnectionInput
   | TChefConnectionInput
 );
 
@@ -413,6 +421,7 @@ export type TAppConnectionConfig =
   | TNorthflankConnectionConfig
   | TOktaConnectionConfig
   | TRedisConnectionConfig
+  | TMongoDBConnectionConfig
   | TChefConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
@@ -458,6 +467,7 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateNorthflankConnectionCredentialsSchema
   | TValidateOktaConnectionCredentialsSchema
   | TValidateRedisConnectionCredentialsSchema
+  | TValidateMongoDBConnectionCredentialsSchema
   | TValidateChefConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
