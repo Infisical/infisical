@@ -23,6 +23,14 @@ const SanitizedAccountSchema = z.union([
   SanitizedKubernetesAccountWithResourceSchema
 ]);
 
+const ListPamAccountsResponseSchema = z.object({
+  accounts: SanitizedAccountSchema.array(),
+  folders: PamFoldersSchema.array(),
+  totalCount: z.number().default(0),
+  folderId: z.string().optional(),
+  folderPaths: z.record(z.string(), z.string())
+});
+
 export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
   server.route({
     method: "GET",
@@ -52,13 +60,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           .optional()
       }),
       response: {
-        200: z.object({
-          accounts: SanitizedAccountSchema.array(),
-          folders: PamFoldersSchema.array(),
-          totalCount: z.number().default(0),
-          folderId: z.string().optional(),
-          folderPaths: z.record(z.string(), z.string())
-        })
+        200: ListPamAccountsResponseSchema
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
@@ -95,7 +97,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
         }
       });
 
-      return { accounts, folders, totalCount, folderId, folderPaths };
+      return { accounts, folders, totalCount, folderId, folderPaths } as z.infer<typeof ListPamAccountsResponseSchema>;
     }
   });
 
