@@ -186,7 +186,10 @@ export const AddExternalKmsGcpFormSchema = z.discriminatedUnion("formType", [
     .merge(AddExternalKmsGcpFormSchemaStandardInputs)
     .merge(AddExternalKmsSchema.pick({ name: true, description: true })),
   z
-    .object({ formType: z.literal("updateGcpKms") })
+    .object({ formType: z.literal("updateGcpKmsDetails") })
+    .merge(AddExternalKmsSchema.pick({ name: true, description: true })),
+  z
+    .object({ formType: z.literal("updateGcpKmsCredentials") })
     .merge(AddExternalKmsGcpFormSchemaStandardInputs)
     .merge(AddExternalKmsSchema.pick({ name: true, description: true }))
 ]);

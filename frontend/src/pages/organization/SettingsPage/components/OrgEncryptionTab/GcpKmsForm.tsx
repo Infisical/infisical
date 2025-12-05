@@ -81,6 +81,13 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
   const [isCredentialValid, setIsCredentialValid] = useState<boolean>(false);
   const [keys, setKeys] = useState<{ value: string; label: string }[]>([]);
 
+  const getFormType = () => {
+    if (kms) {
+      return mode === "details" ? "updateGcpKmsDetails" : "updateGcpKmsCredentials";
+    }
+    return "newGcpKms";
+  };
+
   const {
     control,
     handleSubmit,
@@ -93,7 +100,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
   } = useForm<AddExternalKmsGcpFormSchemaType>({
     resolver: zodResolver(AddExternalKmsGcpFormSchema),
     defaultValues: {
-      formType: kms ? "updateGcpKms" : "newGcpKms",
+      formType: getFormType(),
       name: kms?.name ?? "",
       description: kms?.description ?? "",
       gcpRegion: kms
@@ -114,6 +121,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     currentOrg.id,
     ExternalKmsProvider.Gcp
   );
+
   const { mutateAsync: fetchGcpKeys, isPending: isFetchGcpKeysLoading } =
     useExternalKmsFetchGcpKeys(currentOrg?.id);
 
@@ -144,11 +152,11 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
 
   // handles the form submission
   const handleGcpKmsFormSubmit = async (data: AddExternalKmsGcpFormSchemaType) => {
-    const { name, description, gcpRegion: gcpRegionObject, keyObject } = data;
+    const { name, description, formType } = data;
 
     try {
       if (kms) {
-        if (mode === "details") {
+        if (formType === "updateGcpKmsDetails") {
           await updateGcpExternalKms({
             kmsId: kms.id,
             name,
@@ -159,7 +167,9 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
             text: "Successfully updated GCP External KMS Details",
             type: "success"
           });
-        } else if (mode === "credentials") {
+        } else if (formType === "updateGcpKmsCredentials") {
+          const { gcpRegion: gcpRegionObject, keyObject } = data;
+
           const gcpRegion = gcpRegionObject?.value;
           if (!gcpRegion) {
             setError("gcpRegion", {
@@ -192,7 +202,9 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
             type: "success"
           });
         }
-      } else {
+      } else if (formType === "newGcpKms") {
+        const { gcpRegion: gcpRegionObject, keyObject } = data;
+
         const gcpRegion = gcpRegionObject?.value;
         if (!gcpRegion) {
           setError("gcpRegion", {
@@ -220,7 +232,7 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
             type: ExternalKmsProvider.Gcp,
             inputs: {
               gcpRegion,
-              keyName: keyObject?.value,
+              keyName: keyObject?.value ?? "",
               credential: credentialJson
             }
           }
