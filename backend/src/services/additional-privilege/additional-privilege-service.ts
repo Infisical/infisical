@@ -294,6 +294,21 @@ export const additionalPrivilegeServiceFactory = ({
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
     const scope = factory.getScopeField(dto.scopeData);
 
+    let projectMembershipId: string | undefined;
+    if (scope.key === "projectId") {
+      const projectMembership = await membershipDAL.findOne({
+        [dbActorField]: dto.selector.actorId,
+        scopeProjectId: scope.value,
+        scope: AccessScope.Project
+      });
+
+      if (!projectMembership) {
+        throw new NotFoundError({
+          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
+        });
+      }
+      projectMembershipId = projectMembership.id;
+    }
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       name: selector.name,
       [dbActorField]: dto.selector.actorId,
@@ -303,7 +318,11 @@ export const additionalPrivilegeServiceFactory = ({
       throw new NotFoundError({ message: `Additional privilege with name ${selector.name} doesn't exist` });
 
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions),
+        projectMembershipId
+      }
     };
   };
 

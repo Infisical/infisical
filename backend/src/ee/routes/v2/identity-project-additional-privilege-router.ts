@@ -339,7 +339,7 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: privilege.projectId as string,
+          projectMembershipId: privilege.projectMembershipId || (privilege.projectId as string),
           projectId,
           slug: privilege.name
         }
