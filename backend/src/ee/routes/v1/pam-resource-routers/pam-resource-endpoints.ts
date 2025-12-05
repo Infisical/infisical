@@ -19,7 +19,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
   createResourceSchema: z.ZodType<{
     projectId: T["projectId"];
     connectionDetails: T["connectionDetails"];
-    gatewayId: T["gatewayId"];
+    gatewayId?: T["gatewayId"];
     name: T["name"];
     rotationAccountCredentials?: T["rotationAccountCredentials"];
   }>;
@@ -103,7 +103,7 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
           type: EventType.PAM_RESOURCE_CREATE,
           metadata: {
             resourceType,
-            gatewayId: req.body.gatewayId,
+            ...(req.body.gatewayId && { gatewayId: req.body.gatewayId }),
             name: req.body.name
           }
         }
@@ -150,8 +150,8 @@ export const registerPamResourceEndpoints = <T extends TPamResource>({
           metadata: {
             resourceId: req.params.resourceId,
             resourceType,
-            gatewayId: req.body.gatewayId,
-            name: req.body.name
+            ...(req.body.gatewayId && { gatewayId: req.body.gatewayId }),
+            ...(req.body.name && { name: req.body.name })
           }
         }
       });

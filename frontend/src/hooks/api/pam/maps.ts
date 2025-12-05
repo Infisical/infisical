@@ -20,5 +20,6 @@ export const PAM_RESOURCE_TYPE_MAP: Record<
   [PamResourceType.CockroachDB]: { name: "CockroachDB", image: "CockroachDB.png" },
   [PamResourceType.Elasticsearch]: { name: "Elasticsearch", image: "Elastic.png" },
   [PamResourceType.Snowflake]: { name: "Snowflake", image: "Snowflake.png" },
-  [PamResourceType.DynamoDB]: { name: "DynamoDB", image: "DynamoDB.png", size: 55 }
+  [PamResourceType.DynamoDB]: { name: "DynamoDB", image: "DynamoDB.png", size: 55 },
+  [PamResourceType.AwsIam]: { name: "AWS IAM", image: "Amazon Web Services.png" }
 };

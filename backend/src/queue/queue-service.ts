@@ -83,6 +83,7 @@ export enum QueueName {
   HealthAlert = "health-alert",
   CertificateV3AutoRenewal = "certificate-v3-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
+  PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
 }
 
@@ -138,6 +139,7 @@ export enum QueueJobs {
   HealthAlert = "health-alert",
   CertificateV3DailyAutoRenewal = "certificate-v3-daily-auto-renewal",
   PamAccountRotation = "pam-account-rotation",
+  PamSessionExpiration = "pam-session-expiration",
   PkiAcmeChallengeValidation = "pki-acme-challenge-validation"
 }
 
@@ -403,6 +405,10 @@ export type TQueueJobTypes = {
   [QueueName.PamAccountRotation]: {
     name: QueueJobs.PamAccountRotation;
     payload: undefined;
+  };
+  [QueueName.PamSessionExpiration]: {
+    name: QueueJobs.PamSessionExpiration;
+    payload: { sessionId: string };
   };
   [QueueName.PkiAcmeChallengeValidation]: {
     name: QueueJobs.PkiAcmeChallengeValidation;

@@ -16,7 +16,8 @@ export enum PamResourceType {
   CockroachDB = "cockroachdb",
   Elasticsearch = "elasticsearch",
   Snowflake = "snowflake",
-  DynamoDB = "dynamodb"
+  DynamoDB = "dynamodb",
+  AwsIam = "aws-iam"
 }
 
 export enum PamResourceOrderBy {
@@ -28,7 +29,8 @@ export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
   Ended = "ended",
-  Terminated = "terminated"
+  Terminated = "terminated",
+  Expired = "expired"
 }
 
 // Accounts

@@ -52,6 +52,8 @@ import {
   PAM_RESOURCE_TYPE_MAP,
   PamAccountOrderBy,
   PamAccountView,
+  PamResourceType,
+  TPamAccount,
   TPamFolder
 } from "@app/hooks/api/pam";
 import { useListPamAccounts, useListPamResources } from "@app/hooks/api/pam/queries";
@@ -67,6 +69,7 @@ import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
+import { useAccessAwsIamAccount } from "./useAccessAwsIamAccount";
 
 type PamAccountFilter = {
   resourceIds: string[];
@@ -78,6 +81,7 @@ type Props = {
 
 export const PamAccountsTable = ({ projectId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
+  const { accessAwsIam, loadingAccountId } = useAccessAwsIamAccount();
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
     "misc",
@@ -419,8 +423,21 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                     search={search}
                     isFlatView={accountView === PamAccountView.Flat}
                     accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
-                    onAccess={(e) => {
-                      handlePopUpOpen("accessAccount", e);
+                    isAccessLoading={loadingAccountId === account.id}
+                    onAccess={(e: TPamAccount) => {
+                      // For AWS IAM, directly open console without modal
+                      if (e.resource.resourceType === PamResourceType.AwsIam) {
+                        let fullAccountPath = e?.name;
+                        const folderPath = e.folderId ? folderPaths[e.folderId] : undefined;
+                        if (folderPath) {
+                          const path = folderPath.replace(/^\/+|\/+$/g, "");
+                          fullAccountPath = `${path}/${e?.name}`;
+                        }
+
+                        accessAwsIam(e, fullAccountPath);
+                      } else {
+                        handlePopUpOpen("accessAccount", e);
+                      }
                     }}
                     onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
                     onDelete={(e) => handlePopUpOpen("deleteAccount", e)}

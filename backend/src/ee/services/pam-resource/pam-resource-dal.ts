@@ -14,7 +14,7 @@ export const pamResourceDALFactory = (db: TDbClient) => {
 
   const findById = async (id: string, tx?: Knex) => {
     const doc = await (tx || db.replicaNode())(TableName.PamResource)
-      .join(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
+      .leftJoin(TableName.GatewayV2, `${TableName.PamResource}.gatewayId`, `${TableName.GatewayV2}.id`)
       .select(selectAllTableCols(TableName.PamResource))
       .select(db.ref("name").withSchema(TableName.GatewayV2).as("gatewayName"))
       .select(db.ref("identityId").withSchema(TableName.GatewayV2).as("gatewayIdentityId"))

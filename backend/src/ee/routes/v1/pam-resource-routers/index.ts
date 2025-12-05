@@ -1,4 +1,9 @@
 import {
+  CreateAwsIamResourceSchema,
+  SanitizedAwsIamResourceSchema,
+  UpdateAwsIamResourceSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
@@ -43,6 +48,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedSSHResourceSchema,
       createResourceSchema: CreateSSHResourceSchema,
       updateResourceSchema: UpdateSSHResourceSchema
+    });
+  },
+  [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.AwsIam,
+      resourceResponseSchema: SanitizedAwsIamResourceSchema,
+      createResourceSchema: CreateAwsIamResourceSchema,
+      updateResourceSchema: UpdateAwsIamResourceSchema
     });
   }
 };

@@ -1,3 +1,4 @@
+import { awsIamResourceFactory } from "./aws-iam/aws-iam-resource-factory";
 import { PamResource } from "./pam-resource-enums";
 import { TPamAccountCredentials, TPamResourceConnectionDetails, TPamResourceFactory } from "./pam-resource-types";
 import { sqlResourceFactory } from "./shared/sql/sql-resource-factory";
@@ -8,5 +9,6 @@ type TPamResourceFactoryImplementation = TPamResourceFactory<TPamResourceConnect
 export const PAM_RESOURCE_FACTORY_MAP: Record<PamResource, TPamResourceFactoryImplementation> = {
   [PamResource.Postgres]: sqlResourceFactory as TPamResourceFactoryImplementation,
   [PamResource.MySQL]: sqlResourceFactory as TPamResourceFactoryImplementation,
-  [PamResource.SSH]: sshResourceFactory as TPamResourceFactoryImplementation
+  [PamResource.SSH]: sshResourceFactory as TPamResourceFactoryImplementation,
+  [PamResource.AwsIam]: awsIamResourceFactory as TPamResourceFactoryImplementation
 };

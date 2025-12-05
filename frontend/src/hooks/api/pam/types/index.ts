@@ -6,17 +6,19 @@ import {
   PamResourceType,
   PamSessionStatus
 } from "../enums";
+import { TAwsIamAccount, TAwsIamResource } from "./aws-iam-resource";
 import { TMySQLAccount, TMySQLResource } from "./mysql-resource";
 import { TPostgresAccount, TPostgresResource } from "./postgres-resource";
 import { TSSHAccount, TSSHResource } from "./ssh-resource";
 
+export * from "./aws-iam-resource";
 export * from "./mysql-resource";
 export * from "./postgres-resource";
 export * from "./ssh-resource";
 
-export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource;
+export type TPamResource = TPostgresResource | TMySQLResource | TSSHResource | TAwsIamResource;
 
-export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount;
+export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TAwsIamAccount;
 
 export type TPamFolder = {
   id: string;

@@ -14,36 +14,6 @@ type Props = {
   currentFolderId: string | null;
 };
 
-type ContentProps = {
-  onComplete: (account: TPamAccount) => void;
-  projectId: string;
-  currentFolderId: string | null;
-};
-
-const Content = ({ onComplete, projectId, currentFolderId }: ContentProps) => {
-  const [selectedResource, setSelectedResource] = useState<{
-    id: string;
-    name: string;
-    resourceType: PamResourceType;
-  } | null>(null);
-
-  if (selectedResource) {
-    return (
-      <PamAccountForm
-        onComplete={onComplete}
-        onBack={() => setSelectedResource(null)}
-        resourceId={selectedResource.id}
-        resourceName={selectedResource.name}
-        resourceType={selectedResource.resourceType}
-        projectId={projectId}
-        folderId={currentFolderId ?? undefined}
-      />
-    );
-  }
-
-  return <ResourceSelect projectId={projectId} onSubmit={(e) => setSelectedResource(e.resource)} />;
-};
-
 export const PamAddAccountModal = ({
   isOpen,
   onOpenChange,
@@ -51,22 +21,44 @@ export const PamAddAccountModal = ({
   onComplete,
   currentFolderId
 }: Props) => {
+  const [selectedResource, setSelectedResource] = useState<{
+    id: string;
+    name: string;
+    resourceType: PamResourceType;
+  } | null>(null);
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      // Reset state when modal closes
+      setSelectedResource(null);
+    }
+    onOpenChange(open);
+  };
+
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    <Modal isOpen={isOpen} onOpenChange={handleOpenChange}>
       <ModalContent
         className="max-w-2xl"
         title="Add Account"
         subTitle="Select a resource to add an account under."
-        bodyClassName="overflow-visible"
+        bodyClassName={selectedResource ? undefined : "overflow-visible"}
       >
-        <Content
-          projectId={projectId}
-          onComplete={(account) => {
-            if (onComplete) onComplete(account);
-            onOpenChange(false);
-          }}
-          currentFolderId={currentFolderId}
-        />
+        {selectedResource ? (
+          <PamAccountForm
+            onComplete={(account) => {
+              if (onComplete) onComplete(account);
+              onOpenChange(false);
+            }}
+            onBack={() => setSelectedResource(null)}
+            resourceId={selectedResource.id}
+            resourceName={selectedResource.name}
+            resourceType={selectedResource.resourceType}
+            projectId={projectId}
+            folderId={currentFolderId ?? undefined}
+          />
+        ) : (
+          <ResourceSelect projectId={projectId} onSubmit={(e) => setSelectedResource(e.resource)} />
+        )}
       </ModalContent>
     </Modal>
   );
