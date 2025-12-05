@@ -122,6 +122,25 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  const list = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
+
+    return { policies };
+  };
+
   const getById = async (policyId: string, actor: OrgServiceActor) => {
     const policy = await approvalPolicyDAL.findById(policyId);
     if (!policy) {
@@ -270,6 +289,7 @@ export const approvalPolicyServiceFactory = ({
 
   return {
     create,
+    list,
     getById,
     updateById,
     deleteById

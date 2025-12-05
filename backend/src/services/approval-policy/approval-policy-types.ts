@@ -1,4 +1,8 @@
-import { TApprovalPolicyDALFactory, TApprovalRequestGrantsDALFactory } from "./approval-policy-dal";
+import {
+  TApprovalPolicyDALFactory,
+  TApprovalRequestGrantsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import {
   TPamAccessPolicy,
@@ -12,6 +16,16 @@ export type TApprovalPolicyInputs = TPamAccessPolicyInputs;
 export type TApprovalPolicyConditions = TPamAccessPolicyConditions;
 export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints;
 
+export interface ApprovalPolicyStep {
+  name?: string | null;
+  requiredApprovals: number;
+  notifyApprovers?: boolean;
+  approvers: {
+    type: ApproverType;
+    id: string;
+  }[];
+}
+
 // DTOs
 export interface TCreatePolicyDTO {
   projectId: TApprovalPolicy["projectId"];
@@ -19,15 +33,7 @@ export interface TCreatePolicyDTO {
   maxRequestTtlSeconds?: TApprovalPolicy["maxRequestTtlSeconds"];
   conditions: TApprovalPolicy["conditions"]["conditions"];
   constraints: TApprovalPolicy["constraints"]["constraints"];
-  steps: {
-    name?: string | null;
-    requiredApprovals: number;
-    notifyApprovers?: boolean;
-    approvers: {
-      type: ApproverType.User | ApproverType.Group;
-      id: string;
-    }[];
-  }[];
+  steps: ApprovalPolicyStep[];
 }
 
 export interface TUpdatePolicyDTO {
@@ -35,15 +41,7 @@ export interface TUpdatePolicyDTO {
   maxRequestTtlSeconds?: TApprovalPolicy["maxRequestTtlSeconds"];
   conditions?: TApprovalPolicy["conditions"]["conditions"];
   constraints?: TApprovalPolicy["constraints"]["constraints"];
-  steps?: {
-    name?: string | null;
-    requiredApprovals: number;
-    notifyApprovers?: boolean;
-    approvers: {
-      type: ApproverType.User | ApproverType.Group;
-      id: string;
-    }[];
-  }[];
+  steps?: ApprovalPolicyStep[];
 }
 
 // Factory

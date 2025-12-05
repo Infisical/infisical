@@ -60,6 +60,33 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
 
   server.route({
     method: "GET",
+    url: "/",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List approval policies",
+      querystring: z.object({
+        projectId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          policies: z.array(policyResponseSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { policies } = await server.services.approvalPolicy.list(policyType, req.query.projectId, req.permission);
+
+      // TODO: Audit log
+
+      return { policies };
+    }
+  });
+
+  server.route({
+    method: "GET",
     url: "/:policyId",
     config: {
       rateLimit: readLimit
