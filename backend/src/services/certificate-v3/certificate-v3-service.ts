@@ -19,8 +19,10 @@ import { TCertificateBodyDALFactory } from "@app/services/certificate/certificat
 import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
 import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
 import {
+  CertExtendedKeyUsage,
   CertKeyAlgorithm,
   CertKeyType,
+  CertKeyUsage,
   CertSignatureAlgorithm,
   CertStatus
 } from "@app/services/certificate/certificate-types";
@@ -46,7 +48,9 @@ import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns
 import {
   CertExtendedKeyUsageType,
   CertKeyUsageType,
-  CertSubjectAlternativeNameType
+  CertSubjectAlternativeNameType,
+  mapLegacyExtendedKeyUsageToStandard,
+  mapLegacyKeyUsageToStandard
 } from "../certificate-common/certificate-constants";
 import {
   extractAlgorithmsFromCSR,
@@ -309,47 +313,56 @@ const extractCertificateFromBuffer = (certData: Buffer | { rawData: Buffer } | s
 const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
   if (!keyUsages) return [];
 
-  const validKeyUsages = Object.values(CertKeyUsageType);
+  const validKeyUsages = [...Object.values(CertKeyUsageType), ...Object.values(CertKeyUsage)] as string[];
+
+  const normalize = (usage: string): CertKeyUsageType | null => {
+    if (validKeyUsages.includes(usage)) {
+      return mapLegacyKeyUsageToStandard(usage as CertKeyUsageType);
+    }
+    return null;
+  };
+
+  if (!keyUsages) return [];
+
+  let raw: string[];
 
   if (Array.isArray(keyUsages)) {
-    return keyUsages.filter(
-      (usage): usage is CertKeyUsageType =>
-        typeof usage === "string" && validKeyUsages.includes(usage as CertKeyUsageType)
-    );
+    raw = keyUsages.filter((u): u is string => typeof u === "string");
+  } else if (typeof keyUsages === "string") {
+    raw = keyUsages.split(",").map((u) => u.trim());
+  } else {
+    return [];
   }
 
-  if (typeof keyUsages === "string") {
-    return keyUsages
-      .split(",")
-      .map((usage) => usage.trim())
-      .filter((usage): usage is CertKeyUsageType => validKeyUsages.includes(usage as CertKeyUsageType));
-  }
-
-  return [];
+  return raw.map((u) => normalize(u)).filter((u): u is CertKeyUsageType => u !== null);
 };
 
 const parseExtendedKeyUsages = (extendedKeyUsages: unknown): CertExtendedKeyUsageType[] => {
   if (!extendedKeyUsages) return [];
 
-  const validExtendedKeyUsages = Object.values(CertExtendedKeyUsageType);
+  const validExtendedKeyUsages = [
+    ...Object.values(CertExtendedKeyUsageType),
+    ...Object.values(CertExtendedKeyUsage)
+  ] as string[];
+
+  const normalize = (usage: string): CertExtendedKeyUsageType | null => {
+    if (validExtendedKeyUsages.includes(usage)) {
+      return mapLegacyExtendedKeyUsageToStandard(usage as CertExtendedKeyUsageType);
+    }
+    return null;
+  };
+
+  let raw: string[];
 
   if (Array.isArray(extendedKeyUsages)) {
-    return extendedKeyUsages.filter(
-      (usage): usage is CertExtendedKeyUsageType =>
-        typeof usage === "string" && validExtendedKeyUsages.includes(usage as CertExtendedKeyUsageType)
-    );
+    raw = extendedKeyUsages.filter((u): u is string => typeof u === "string");
+  } else if (typeof extendedKeyUsages === "string") {
+    raw = extendedKeyUsages.split(",").map((u) => u.trim());
+  } else {
+    return [];
   }
 
-  if (typeof extendedKeyUsages === "string") {
-    return extendedKeyUsages
-      .split(",")
-      .map((usage) => usage.trim())
-      .filter((usage): usage is CertExtendedKeyUsageType =>
-        validExtendedKeyUsages.includes(usage as CertExtendedKeyUsageType)
-      );
-  }
-
-  return [];
+  return raw.map((u) => normalize(u)).filter((u): u is CertExtendedKeyUsageType => u !== null);
 };
 
 const convertEnumsToStringArray = <T extends string>(enumArray: T[]): string[] => {
