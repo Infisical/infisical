@@ -3,13 +3,12 @@ import { TBasePamAccount } from "./base-account";
 import { TBasePamResource } from "./base-resource";
 
 export type TAwsIamConnectionDetails = {
-  region: string;
   roleArn: string;
 };
 
 export type TAwsIamCredentials = {
   targetRoleArn: string;
-  maxSessionDuration: number;
+  defaultSessionDuration: number;
 };
 
 export type TAwsIamResource = Omit<TBasePamResource, "gatewayId"> & {

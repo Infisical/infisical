@@ -427,7 +427,15 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                     onAccess={(e: TPamAccount) => {
                       // For AWS IAM, directly open console without modal
                       if (e.resource.resourceType === PamResourceType.AwsIam) {
-                        accessAwsIam(e);
+                        let fullAccountPath = e?.name;
+                        const folderPath = e.folderId ? folderPaths[e.folderId] : undefined;
+                        if (folderPath) {
+                          let path = folderPath;
+                          if (path.startsWith("/")) path = path.slice(1);
+                          fullAccountPath = `${path}/${e?.name}`;
+                        }
+
+                        accessAwsIam(e, fullAccountPath);
                       } else {
                         handlePopUpOpen("accessAccount", e);
                       }

@@ -32,7 +32,7 @@ export const awsIamResourceFactory: TPamResourceFactory<TAwsIamResourceConnectio
       }
 
       logger.info(
-        { roleArn: connectionDetails.roleArn, region: connectionDetails.region },
+        { roleArn: connectionDetails.roleArn },
         "[AWS IAM Resource Factory] PAM role connection validated successfully"
       );
 

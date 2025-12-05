@@ -8,11 +8,17 @@ import { TAwsIamResourceConnectionDetails } from "./aws-iam-resource-types";
 
 const AWS_STS_MIN_DURATION_SECONDS = 900;
 
-const createStsClient = (region: string): STSClient => {
+// We hardcode us-east-1 because:
+// 1. IAM is global - roles can be assumed from any STS regional endpoint
+// 2. The temporary credentials returned work globally across all AWS regions
+// 3. The target account's resources can be in any region - it doesn't affect STS calls
+const AWS_STS_DEFAULT_REGION = "us-east-1";
+
+const createStsClient = (): STSClient => {
   const appCfg = getConfig();
 
   const config: STSClientConfig = {
-    region,
+    region: AWS_STS_DEFAULT_REGION,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
     credentials:
@@ -31,7 +37,7 @@ export const validatePamRoleConnection = async (
   connectionDetails: TAwsIamResourceConnectionDetails,
   projectId: string
 ): Promise<boolean> => {
-  const stsClient = createStsClient(connectionDetails.region);
+  const stsClient = createStsClient();
 
   try {
     await stsClient.send(
@@ -58,7 +64,7 @@ export const validateTargetRoleAssumption = async ({
   targetRoleArn: string;
   projectId: string;
 }): Promise<boolean> => {
-  const stsClient = createStsClient(connectionDetails.region);
+  const stsClient = createStsClient();
 
   try {
     // First assume the PAM role
@@ -77,7 +83,7 @@ export const validateTargetRoleAssumption = async ({
 
     // Then use the PAM role credentials to assume the target role
     const pamStsClient = new STSClient({
-      region: connectionDetails.region,
+      region: AWS_STS_DEFAULT_REGION,
       useFipsEndpoint: crypto.isFipsModeEnabled(),
       sha256: CustomAWSHasher,
       credentials: {
@@ -118,7 +124,7 @@ export const generateConsoleFederationUrl = async ({
   projectId: string;
   sessionDuration: number;
 }): Promise<{ consoleUrl: string; expiresAt: Date }> => {
-  const stsClient = createStsClient(connectionDetails.region);
+  const stsClient = createStsClient();
 
   // First assume the PAM role
   const pamRoleCredentials = await stsClient.send(
@@ -136,7 +142,7 @@ export const generateConsoleFederationUrl = async ({
 
   // Role chaining: use PAM role credentials to assume the target role
   const pamStsClient = new STSClient({
-    region: connectionDetails.region,
+    region: AWS_STS_DEFAULT_REGION,
     useFipsEndpoint: crypto.isFipsModeEnabled(),
     sha256: CustomAWSHasher,
     credentials: {

@@ -122,6 +122,8 @@ export const useDeletePamAccount = () => {
 
 export type TAccessPamAccountDTO = {
   accountId: string;
+  accountPath: string;
+  projectId: string;
   duration: string;
 };
 
@@ -141,11 +143,13 @@ export type TAccessPamAccountResponse = {
 
 export const useAccessPamAccount = () => {
   return useMutation({
-    mutationFn: async ({ accountId, duration }: TAccessPamAccountDTO) => {
+    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
       const { data } = await apiRequest.post<TAccessPamAccountResponse>(
         "/api/v1/pam/accounts/access",
         {
           accountId,
+          accountPath,
+          projectId,
           duration
         }
       );

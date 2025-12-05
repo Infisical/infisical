@@ -1,4 +1,6 @@
 import { Controller, FormProvider, useForm } from "react-hook-form";
+import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -12,6 +14,7 @@ import {
   Input,
   ModalClose
 } from "@app/components/v2";
+import { CopyButton } from "@app/components/v2/CopyButton";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamResource } from "@app/hooks/api/pam";
 import { slugSchema } from "@app/lib/schemas";
@@ -24,7 +27,6 @@ type Props = {
 const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
 
 const AwsIamConnectionDetailsSchema = z.object({
-  region: z.string().trim().min(1, "Region is required"),
   roleArn: z
     .string()
     .trim()
@@ -50,12 +52,36 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
   const isUpdate = Boolean(resource);
   const { projectId } = useProject();
 
+  const permissionsPolicy = `{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Action": "sts:AssumeRole",
+    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/infisical-pam-*"
+  }]
+}`;
+
+  const trustPolicy = `{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "AWS": "arn:aws:iam::${INFISICAL_AWS_ACCOUNT_US}:root"
+    },
+    "Action": "sts:AssumeRole",
+    "Condition": {
+      "StringEquals": {
+        "sts:ExternalId": "${projectId}"
+      }
+    }
+  }]
+}`;
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: resource ?? {
       resourceType: PamResourceType.AwsIam,
       connectionDetails: {
-        region: "",
         roleArn: ""
       }
     }
@@ -86,21 +112,6 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
         />
 
         <Controller
-          name="connectionDetails.region"
-          control={control}
-          render={({ field, fieldState: { error } }) => (
-            <FormControl
-              isError={Boolean(error?.message)}
-              errorText={error?.message}
-              label="AWS Region"
-              tooltipText="This region is used for the STS endpoint and initial console URL. It does not restrict access to resources in other regions. To restrict region access, configure region conditions in the target role's IAM policy."
-            >
-              <Input placeholder="us-east-1" {...field} />
-            </FormControl>
-          )}
-        />
-
-        <Controller
           name="connectionDetails.roleArn"
           control={control}
           render={({ field, fieldState: { error } }) => (
@@ -115,10 +126,19 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
           )}
         />
 
-        <Accordion type="single" collapsible className="mt-4 w-full bg-mineshaft-700">
-          <AccordionItem value="aws-iam-role-setup">
-            <AccordionTrigger>AWS IAM Role Setup</AccordionTrigger>
-            <AccordionContent>
+        <Accordion
+          type="single"
+          collapsible
+          className="mt-4 w-full rounded-r border-l-2 border-l-primary bg-mineshaft-300/5"
+        >
+          <AccordionItem value="aws-iam-role-setup" className="border-b-0">
+            <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
+              <div className="flex items-center text-sm">
+                <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
+                AWS IAM Role Setup
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-4 pb-2.5">
               <p className="mb-3 text-sm text-mineshaft-300">
                 Before creating this resource, you need to set up an IAM role in your AWS account
                 that Infisical can assume. Follow these steps:
@@ -132,16 +152,14 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 <code className="rounded bg-mineshaft-700 px-1 text-xs">infisical-pam-*</code>{" "}
                 naming convention for target roles.
               </p>
-              <pre className="mb-4 max-h-40 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 text-xs whitespace-pre-wrap text-mineshaft-300">
-                {`{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Action": "sts:AssumeRole",
-    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/infisical-pam-*"
-  }]
-}`}
-              </pre>
+              <div className="relative mb-4">
+                <div className="absolute top-1 right-1">
+                  <CopyButton value={permissionsPolicy} size="sm" variant="plain" />
+                </div>
+                <pre className="max-h-45 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
+                  {permissionsPolicy}
+                </pre>
+              </div>
 
               <p className="mb-2 text-sm font-medium text-mineshaft-200">
                 Step 2: Create the PAM role with a trust policy
@@ -151,31 +169,26 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 <code className="rounded bg-mineshaft-700 px-1 text-xs">InfisicalPAMRole</code>)
                 with the permissions policy above and the following trust policy:
               </p>
-              <pre className="mb-4 max-h-40 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 text-xs whitespace-pre-wrap text-mineshaft-300">
-                {`{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "AWS": "arn:aws:iam::${INFISICAL_AWS_ACCOUNT_US}:root"
-    },
-    "Action": "sts:AssumeRole",
-    "Condition": {
-      "StringEquals": {
-        "sts:ExternalId": "${projectId}"
-      }
-    }
-  }]
-}`}
-              </pre>
+              <div className="relative mb-4">
+                <div className="absolute top-1 right-3">
+                  <CopyButton value={trustPolicy} size="sm" variant="plain" />
+                </div>
+                <pre className="max-h-40 overflow-y-auto rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-2 pr-8 text-xs whitespace-pre-wrap text-mineshaft-300">
+                  {trustPolicy}
+                </pre>
+              </div>
               <p className="text-xs text-mineshaft-400">
                 <strong>Note:</strong> Use{" "}
-                <code className="rounded bg-mineshaft-700 px-1">{INFISICAL_AWS_ACCOUNT_US}</code>{" "}
+                <code className="rounded bg-mineshaft-700 px-1 font-bold">
+                  {INFISICAL_AWS_ACCOUNT_US}
+                </code>{" "}
                 for US region or{" "}
-                <code className="rounded bg-mineshaft-700 px-1">{INFISICAL_AWS_ACCOUNT_EU}</code>{" "}
+                <code className="rounded bg-mineshaft-700 px-1 font-bold">
+                  {INFISICAL_AWS_ACCOUNT_EU}
+                </code>{" "}
                 for EU region. The External ID{" "}
-                <code className="rounded bg-mineshaft-700 px-1">{projectId}</code> is your current
-                project ID.
+                <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
+                current project ID.
               </p>
             </AccordionContent>
           </AccordionItem>

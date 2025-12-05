@@ -18,13 +18,12 @@ const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
 const AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING = 3600; // 1 hour
 
 export const AwsIamResourceConnectionDetailsSchema = z.object({
-  region: z.string().trim().min(1),
   roleArn: z.string().trim().min(1)
 });
 
 export const AwsIamAccountCredentialsSchema = z.object({
   targetRoleArn: z.string().trim().min(1).max(2048),
-  maxSessionDuration: z.coerce
+  defaultSessionDuration: z.coerce
     .number()
     .min(AWS_STS_MIN_SESSION_DURATION)
     .max(AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING)
@@ -79,6 +78,6 @@ export const UpdateAwsIamAccountSchema = BaseUpdatePamAccountSchema.extend({
 export const SanitizedAwsIamAccountWithResourceSchema = BasePamAccountSchemaWithResource.extend({
   credentials: AwsIamAccountCredentialsSchema.pick({
     targetRoleArn: true,
-    maxSessionDuration: true
+    defaultSessionDuration: true
   })
 });

@@ -591,7 +591,7 @@ export const pamAccountServiceFactory = ({
         targetRoleArn: awsCredentials.targetRoleArn,
         roleSessionName: actorEmail,
         projectId: account.projectId, // Use project ID as External ID for security
-        sessionDuration: awsCredentials.maxSessionDuration
+        sessionDuration: awsCredentials.defaultSessionDuration
       });
 
       const session = await pamSessionDAL.create({
