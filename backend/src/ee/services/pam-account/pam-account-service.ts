@@ -293,15 +293,15 @@ export const pamAccountServiceFactory = ({
     try {
       const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
 
-    return {
-      ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
-      resource: {
-        id: resource.id,
-        name: resource.name,
-        resourceType: resource.resourceType,
-        rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
-      }
-    };
+      return {
+        ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+        }
+      };
     } catch (err) {
       if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
         throw new BadRequestError({
