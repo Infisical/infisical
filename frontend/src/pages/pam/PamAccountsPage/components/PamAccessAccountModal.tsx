@@ -87,7 +87,7 @@ export const PamAccessAccountModal = ({
       case PamResourceType.SSH:
         return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       case PamResourceType.Kubernetes:
-        return `infisical pam kubernetes access-account ${account.id} --duration ${cliDuration} --domain ${siteURL}`;
+        return `infisical pam kubernetes access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
       default:
         return "";
     }
