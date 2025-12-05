@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
@@ -27,6 +27,13 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
         try {
           const { token, isMfaEnabled } = await selectOrganization({ organizationId: urlOrgId });
 
+          if (isMfaEnabled) {
+            throw redirect({
+              to: "/login/select-organization",
+              search: { org_id: urlOrgId }
+            });
+          }
+
           if (!isMfaEnabled && token) {
             SecurityClient.setToken(token);
             SecurityClient.setProviderAuthToken("");
@@ -41,6 +48,9 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
             });
           }
         } catch (error) {
+          if (isRedirect(error)) {
+            throw error;
+          }
           console.warn("Failed to automatically exchange token for organization:", error);
         }
       }
