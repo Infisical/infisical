@@ -27,7 +27,8 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
-import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSSHAccountCredentials } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -606,7 +607,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username,
+            username: (credentials as TSqlAccountCredentials).username,
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath: folderPath
@@ -622,18 +623,16 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username
+            username: (credentials as TSSHAccountCredentials).username
           };
         }
         break;
       case PamResource.Kubernetes:
-        {
-          metadata = {
-            resourceName: resource.name,
-            accountName: account.name,
-            accountPath
-          };
-        }
+        metadata = {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath
+        };
         break;
       default:
         break;
