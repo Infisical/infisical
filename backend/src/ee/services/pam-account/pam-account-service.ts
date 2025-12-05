@@ -27,7 +27,8 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
-import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSSHAccountCredentials } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -569,13 +570,29 @@ export const pamAccountServiceFactory = ({
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
+    const { host, port } =
+      resourceType !== PamResource.Kubernetes
+        ? connectionDetails
+        : (() => {
+            const url = new URL(connectionDetails.url);
+            let portNumber: number | undefined;
+            if (url.port) {
+              portNumber = Number(url.port);
+            } else {
+              portNumber = url.protocol === "https:" ? 443 : 80;
+            }
+            return {
+              host: url.hostname,
+              port: portNumber
+            };
+          })();
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
       sessionId: session.id,
       resourceType: resource.resourceType as PamResource,
-      host: connectionDetails.host,
-      port: connectionDetails.port,
+      host,
+      port,
       actorMetadata: {
         id: actor.id,
         type: actor.type,
@@ -606,7 +623,7 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username,
+            username: (credentials as TSqlAccountCredentials).username,
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath: folderPath
@@ -622,9 +639,16 @@ export const pamAccountServiceFactory = ({
           });
 
           metadata = {
-            username: credentials.username
+            username: (credentials as TSSHAccountCredentials).username
           };
         }
+        break;
+      case PamResource.Kubernetes:
+        metadata = {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath
+        };
         break;
       default:
         break;

@@ -1,6 +1,13 @@
-import { PamResourceType, TPamCommandLog, TPamSession, TTerminalEvent } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  THttpEvent,
+  TPamCommandLog,
+  TPamSession,
+  TTerminalEvent
+} from "@app/hooks/api/pam";
 
 import { CommandLogView } from "./CommandLogView";
+import { HttpEventView } from "./HttpEventView";
 import { TerminalEventView } from "./TerminalEventView";
 
 type Props = {
@@ -13,6 +20,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
   const isDatabaseSession =
     session.resourceType === PamResourceType.Postgres ||
     session.resourceType === PamResourceType.MySQL;
+  const isHttpSession = session.resourceType === PamResourceType.Kubernetes;
   const hasLogs = session.logs.length > 0;
 
   return (
@@ -23,6 +31,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
 
       {isDatabaseSession && hasLogs && <CommandLogView logs={session.logs as TPamCommandLog[]} />}
       {isSSHSession && hasLogs && <TerminalEventView events={session.logs as TTerminalEvent[]} />}
+      {isHttpSession && hasLogs && <HttpEventView events={session.logs as THttpEvent[]} />}
       {!hasLogs && (
         <div className="flex grow items-center justify-center text-bunker-300">
           <div className="text-center">
