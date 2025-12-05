@@ -37,9 +37,9 @@ export type TPamResourceConnectionDetails =
 
 // Account types
 export type TPamAccount = TPostgresAccount | TMySQLAccount | TSSHAccount | TKubernetesAccount;
-// eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
 export type TPamAccountCredentials =
   | TPostgresAccountCredentials
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-type-constituents
   | TMySQLAccountCredentials
   | TSSHAccountCredentials
   | TKubernetesAccountCredentials;
