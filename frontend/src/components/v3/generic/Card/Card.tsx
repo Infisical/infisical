@@ -8,7 +8,7 @@ function UnstableCard({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn("flex h-fit flex-col gap-6 rounded-[6px] text-foreground shadow-sm", className)}
+      className={cn("flex h-fit flex-col gap-6 text-foreground shadow-sm", className)}
       {...props}
     />
   );
@@ -32,7 +32,7 @@ function UnstableCardTitle({ className, ...props }: React.ComponentProps<"div">)
     <div
       data-slot="card-title"
       className={cn(
-        "flex items-center gap-1.5 leading-none font-semibold [&>svg]:inline-block [&>svg]:size-[18px]",
+        "flex items-center gap-1.5 text-lg leading-none font-semibold [&>svg]:inline-block [&>svg]:size-[18px]",
         className
       )}
       {...props}

@@ -45,7 +45,9 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
   return (
     <>
       <UnstableCard className="w-full max-w-84">
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Details</UnstableCardTitle>
           <UnstableCardDescription>Machine identity details</UnstableCardDescription>
           {!isOrgIdentity && (
@@ -57,17 +59,16 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                 })}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <UnstableIconButton
                     isDisabled={!isAllowed}
                     onClick={() => {
                       handlePopUpOpen("editIdentity");
                     }}
                     size="xs"
-                    variant="project"
+                    variant="outline"
                   >
                     <PencilIcon />
-                    Edit Details
-                  </UnstableButton>
+                  </UnstableIconButton>
                 )}
               </ProjectPermissionCan>
             </UnstableCardAction>

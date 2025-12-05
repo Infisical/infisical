@@ -6,6 +6,10 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Tooltip } from "@app/components/v2";
 import {
   Badge,
+  UnstableAccordion,
+  UnstableAccordionContent,
+  UnstableAccordionItem,
+  UnstableAccordionTrigger,
   UnstableButton,
   UnstableCard,
   UnstableCardAction,
@@ -49,7 +53,9 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Authentication</UnstableCardTitle>
           <UnstableCardDescription>Configure authentication methods</UnstableCardDescription>
           {hasAuthMethods &&
@@ -65,7 +71,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                 >
                   {(isAllowed) => (
                     <UnstableButton
-                      variant="project"
+                      variant="outline"
                       isFullWidth
                       size="xs"
                       isDisabled={!isAllowed}
@@ -87,43 +93,68 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         </UnstableCardHeader>
         <UnstableCardContent>
           {identity.authMethods.length > 0 ? (
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableHead className="w-full">Method</UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableHeader>
-              <UnstableTableBody>
+            <>
+              <UnstableAccordion
+                type={identity.authMethods.length === 1 ? "single" : "multiple"}
+                collapsible
+              >
                 {identity.authMethods.map((authMethod) => (
-                  <UnstableTableRow
-                    key={authMethod}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      handlePopUpOpen("viewAuthMethod", {
-                        authMethod,
-                        lockedOut: identity.activeLockoutAuthMethods?.includes(authMethod) ?? false,
-                        refetchIdentity
-                      })
-                    }
-                  >
-                    <UnstableTableCell>{identityAuthToNameMap[authMethod]}</UnstableTableCell>
-                    <UnstableTableCell>
-                      <div className="flex items-center gap-2">
-                        {identity.activeLockoutAuthMethods?.includes(authMethod) && (
-                          <Tooltip content="Auth method has active lockouts">
-                            <Badge isSquare variant="danger">
-                              <LockIcon />
-                            </Badge>
-                          </Tooltip>
-                        )}
-                        <UnstableIconButton variant="ghost" size="xs">
-                          <EllipsisIcon />
-                        </UnstableIconButton>
-                      </div>
-                    </UnstableTableCell>
-                  </UnstableTableRow>
+                  <UnstableAccordionItem key={authMethod} value={authMethod}>
+                    <UnstableAccordionTrigger>
+                      {identityAuthToNameMap[authMethod]}
+                    </UnstableAccordionTrigger>
+                    <UnstableAccordionContent>
+                      <ViewIdentityAuthModal
+                        isOpen
+                        authMethod={authMethod}
+                        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
+                        identityId={identity.id}
+                        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
+                        onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
+                      />
+                    </UnstableAccordionContent>
+                  </UnstableAccordionItem>
                 ))}
-              </UnstableTableBody>
-            </UnstableTable>
+              </UnstableAccordion>
+              {/* <UnstableTable>
+                <UnstableTableHeader>
+                  <UnstableTableHead className="w-full">Method</UnstableTableHead>
+                  <UnstableTableHead className="w-5" />
+                </UnstableTableHeader>
+                <UnstableTableBody>
+                  {identity.authMethods.map((authMethod) => (
+                    <UnstableTableRow
+                      key={authMethod}
+                      className="cursor-pointer"
+                      onClick={() =>
+                        handlePopUpOpen("viewAuthMethod", {
+                          authMethod,
+                          lockedOut:
+                            identity.activeLockoutAuthMethods?.includes(authMethod) ?? false,
+                          refetchIdentity
+                        })
+                      }
+                    >
+                      <UnstableTableCell>{identityAuthToNameMap[authMethod]}</UnstableTableCell>
+                      <UnstableTableCell>
+                        <div className="flex items-center gap-2">
+                          {identity.activeLockoutAuthMethods?.includes(authMethod) && (
+                            <Tooltip content="Auth method has active lockouts">
+                              <Badge isSquare variant="danger">
+                                <LockIcon />
+                              </Badge>
+                            </Tooltip>
+                          )}
+                          <UnstableIconButton variant="ghost" size="xs">
+                            <EllipsisIcon />
+                          </UnstableIconButton>
+                        </div>
+                      </UnstableTableCell>
+                    </UnstableTableRow>
+                  ))}
+                </UnstableTableBody>
+              </UnstableTable> */}
+            </>
           ) : (
             <UnstableEmpty className="rounded-sm border bg-mineshaft-800/50">
               <UnstableEmptyHeader>

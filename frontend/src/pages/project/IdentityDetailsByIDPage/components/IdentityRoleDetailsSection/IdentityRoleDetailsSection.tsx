@@ -96,7 +96,9 @@ export const IdentityRoleDetailsSection = ({
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Project Roles</UnstableCardTitle>
           <UnstableCardDescription>
             Manage roles assigned to this machine identity
@@ -112,7 +114,7 @@ export const IdentityRoleDetailsSection = ({
                 {(isAllowed) => (
                   <UnstableButton
                     size="xs"
-                    variant="project"
+                    variant="outline"
                     onClick={() => {
                       handlePopUpOpen("modifyRole");
                     }}

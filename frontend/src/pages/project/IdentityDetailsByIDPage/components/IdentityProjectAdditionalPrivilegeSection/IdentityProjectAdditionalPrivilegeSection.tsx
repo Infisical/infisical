@@ -81,7 +81,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Project Additional Privileges</UnstableCardTitle>
           <UnstableCardDescription>
             Assign one-off policies to this machine identity

@@ -199,16 +199,16 @@ export const ViewIdentityAuthModal = ({
   if (!identityId || !authMethod) return null;
 
   return (
-    <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
-      <ModalContent className="max-w-2xl" title={identityAuthToNameMap[authMethod]}>
-        <Content
-          identityId={identityId}
-          authMethod={authMethod}
-          lockedOut={lockedOut}
-          onDeleteAuthMethod={() => onOpenChange(false)}
-          onResetAllLockouts={() => onResetAllLockouts()}
-        />
-      </ModalContent>
-    </Modal>
+    // <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+    // <ModalContent className="max-w-2xl" title={identityAuthToNameMap[authMethod]}>
+    <Content
+      identityId={identityId}
+      authMethod={authMethod}
+      lockedOut={lockedOut}
+      onDeleteAuthMethod={() => onOpenChange(false)}
+      onResetAllLockouts={() => onResetAllLockouts()}
+    />
+    // </ModalContent>
+    // </Modal>
   );
 };
