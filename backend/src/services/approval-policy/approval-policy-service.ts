@@ -1,9 +1,9 @@
 import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies } from "@app/db/schemas";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
-import { TProjectDALFactory } from "@app/services/project/project-dal";
 
+import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
@@ -16,8 +16,8 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: TApprovalPolicyStepsDALFactory;
   approvalPolicyStepApproversDAL: TApprovalPolicyStepApproversDALFactory;
-  projectDAL: TProjectDALFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
+  projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
 };
 export type TApprovalPolicyServiceFactory = ReturnType<typeof approvalPolicyServiceFactory>;
 
@@ -25,11 +25,28 @@ export const approvalPolicyServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
-  permissionService
+  permissionService,
+  projectMembershipDAL
 }: TApprovalPolicyServiceFactoryDep) => {
+  const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
+    const uniqueUserIds = [...new Set(userIds)];
+    if (uniqueUserIds.length === 0) return;
+
+    const allMemberships = await projectMembershipDAL.findProjectMembershipsByUserIds(orgId, uniqueUserIds);
+    const projectMemberships = allMemberships.filter((membership) => membership.projectId === projectId);
+
+    if (projectMemberships.length !== uniqueUserIds.length) {
+      const projectMemberUserIds = new Set(projectMemberships.map((membership) => membership.userId));
+      const userIdsNotInProject = uniqueUserIds.filter((id) => !projectMemberUserIds.has(id));
+      throw new BadRequestError({
+        message: `Some users are not members of the project: ${userIdsNotInProject.join(", ")}`
+      });
+    }
+  };
+
   const create = async (
     policyType: ApprovalPolicyType,
-    { projectId, organizationId, name, maxRequestTtlSeconds, conditions, constraints, steps }: TCreatePolicyDTO,
+    { projectId, name, maxRequestTtlSeconds, conditions, constraints, steps }: TCreatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const { hasRole } = await permissionService.getProjectPermission({
@@ -45,11 +62,18 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
+    // Verify all users are part of project
+    const approverUserIds = steps
+      .flatMap((step) => step.approvers ?? [])
+      .filter((approver) => approver.type === ApproverType.User)
+      .map((approver) => approver.id);
+    await $verifyProjectUserMembership(approverUserIds, actor.orgId, projectId);
+
     const policy = await approvalPolicyDAL.transaction(async (tx) => {
       const newPolicy = await approvalPolicyDAL.create(
         {
           projectId,
-          organizationId,
+          organizationId: actor.orgId,
           name,
           maxRequestTtlSeconds,
           conditions: { version: 1, conditions },
@@ -94,8 +118,32 @@ export const approvalPolicyServiceFactory = ({
     });
 
     return {
-      policy
+      policy: { ...policy, steps }
     };
+  };
+
+  const getById = async (policyId: string, actor: OrgServiceActor) => {
+    const policy = await approvalPolicyDAL.findById(policyId);
+    if (!policy) {
+      throw new ForbiddenRequestError({ message: "Policy not found" });
+    }
+
+    const { hasRole } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: policy.projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    if (!hasRole(ProjectMembershipRole.Admin)) {
+      throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    const steps = await approvalPolicyDAL.findStepsByPolicyId(policyId);
+
+    return { policy: { ...policy, steps } };
   };
 
   const updateById = async (
@@ -119,6 +167,15 @@ export const approvalPolicyServiceFactory = ({
 
     if (!hasRole(ProjectMembershipRole.Admin)) {
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
+    }
+
+    if (steps !== undefined) {
+      // Verify all users are part of project
+      const approverUserIds = steps
+        .flatMap((step) => step.approvers ?? [])
+        .filter((approver) => approver.type === ApproverType.User)
+        .map((approver) => approver.id);
+      await $verifyProjectUserMembership(approverUserIds, actor.orgId, policy.projectId);
     }
 
     const updatedPolicy = await approvalPolicyDAL.transaction(async (tx) => {
@@ -178,8 +235,10 @@ export const approvalPolicyServiceFactory = ({
       return updated;
     });
 
+    const fetchedSteps = await approvalPolicyDAL.findStepsByPolicyId(policyId);
+
     return {
-      policy: updatedPolicy
+      policy: { ...updatedPolicy, steps: fetchedSteps }
     };
   };
 
@@ -202,15 +261,16 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "User has insufficient privileges" });
     }
 
-    const deletedPolicy = await approvalPolicyDAL.deleteById(policyId);
+    await approvalPolicyDAL.deleteById(policyId);
 
     return {
-      policy: deletedPolicy
+      policyId
     };
   };
 
   return {
     create,
+    getById,
     updateById,
     deleteById
   };

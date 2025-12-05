@@ -26,7 +26,7 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<TPamAccessPolicyIn
     for (const policy of policies) {
       const p = policy as TPamAccessPolicy;
       for (const c of p.conditions.conditions) {
-        if (!c.targetResources.some((r) => r === inputs.resourceId)) {
+        if (!c.resourceIds.some((r) => r === inputs.resourceId)) {
           // eslint-disable-next-line no-continue
           continue;
         }

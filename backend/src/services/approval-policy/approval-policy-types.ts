@@ -15,7 +15,6 @@ export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints;
 // DTOs
 export interface TCreatePolicyDTO {
   projectId: TApprovalPolicy["projectId"];
-  organizationId: TApprovalPolicy["organizationId"];
   name: TApprovalPolicy["name"];
   maxRequestTtlSeconds?: TApprovalPolicy["maxRequestTtlSeconds"];
   conditions: TApprovalPolicy["conditions"]["conditions"];

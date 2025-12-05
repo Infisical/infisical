@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { writeLimit } from "@app/server/config/rateLimiter";
+import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import {
@@ -50,7 +50,34 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const policy = await server.services.approvalPolicy.create(policyType, req.body, req.permission);
+      const { policy } = await server.services.approvalPolicy.create(policyType, req.body, req.permission);
+
+      // TODO: Audit log
+
+      return { policy };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/:policyId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get approval policy",
+      params: z.object({
+        policyId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          policy: policyResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
       // TODO: Audit log
 
@@ -78,7 +105,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const policy = await server.services.approvalPolicy.updateById(req.params.policyId, req.body, req.permission);
+      const { policy } = await server.services.approvalPolicy.updateById(req.params.policyId, req.body, req.permission);
 
       // TODO: Audit log
 
@@ -99,17 +126,17 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       }),
       response: {
         200: z.object({
-          policy: policyResponseSchema
+          policyId: z.string().uuid()
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const policy = await server.services.approvalPolicy.deleteById(req.params.policyId, req.permission);
+      const { policyId } = await server.services.approvalPolicy.deleteById(req.params.policyId, req.permission);
 
       // TODO: Audit log
 
-      return { policy };
+      return { policyId };
     }
   });
 };

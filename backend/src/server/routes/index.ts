@@ -2470,8 +2470,8 @@ export const registerRoutes = async (
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
-    projectDAL,
-    permissionService
+    permissionService,
+    projectMembershipDAL
   });
 
   // setup the communication with license key server
