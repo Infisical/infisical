@@ -31,9 +31,8 @@ export const PamAccessAccountModal = ({
 
   let fullAccountPath = account?.name ?? "";
   if (accountPath) {
-    let path = accountPath;
-    if (path.startsWith("/")) path = path.slice(1);
-    fullAccountPath = `${path}/${account?.name}`;
+    const path = accountPath.replace(/^\/+|\/+$/g, "");
+    fullAccountPath = `${path}/${account?.name ?? ""}`;
   }
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);

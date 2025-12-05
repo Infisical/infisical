@@ -430,8 +430,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                         let fullAccountPath = e?.name;
                         const folderPath = e.folderId ? folderPaths[e.folderId] : undefined;
                         if (folderPath) {
-                          let path = folderPath;
-                          if (path.startsWith("/")) path = path.slice(1);
+                          const path = folderPath.replace(/^\/+|\/+$/g, "");
                           fullAccountPath = `${path}/${e?.name}`;
                         }
 
