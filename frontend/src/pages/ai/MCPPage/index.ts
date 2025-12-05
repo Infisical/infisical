@@ -1,0 +1,1 @@
+export { MCPPage } from "./MCPPage";

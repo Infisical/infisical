@@ -1,5 +1,7 @@
 export * from "./accessApproval";
 export * from "./admin";
+export * from "./aiMcpEndpoints";
+export * from "./aiMcpServers";
 export * from "./apiKeys";
 export * from "./assumePrivileges";
 export * from "./auditLogs";
