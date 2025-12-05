@@ -81,23 +81,6 @@ export const identityOciAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    if (subOrganizationName) {
-      if (!isSubOrgIdentity) {
-        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
-
-        if (subOrg) {
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
-          });
-          if (subOrgMembership) {
-            subOrganizationId = subOrg.id;
-          }
-        }
-      }
-    }
-
     try {
       // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
       if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -128,6 +111,30 @@ export const identityOciAuthServiceFactory = ({
           throw new UnauthorizedError({
             message: "Access denied: OCI account username not allowed."
           });
+      }
+
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
       }
 
       // Generate the token

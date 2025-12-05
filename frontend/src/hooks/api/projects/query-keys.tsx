@@ -3,14 +3,16 @@ import { WorkflowIntegrationPlatform } from "../workflowIntegrations/types";
 import { TListProjectIdentitiesDTO, TSearchProjectsDTO } from "./types";
 
 export const projectKeys = {
-  getProjectById: (projectId: string) => ["projects", { projectId }] as const,
+  allProjectQueries: () => ["projects"] as const,
+  getProjectById: (projectId: string) =>
+    [...projectKeys.allProjectQueries(), { projectId }] as const,
   getProjectSecrets: (projectId: string) => [{ projectId }, "project-secrets"] as const,
   getProjectIndexStatus: (projectId: string) => [{ projectId }, "project-index-status"] as const,
   getProjectUpgradeStatus: (projectId: string) => [{ projectId }, "project-upgrade-status"],
   getProjectMemberships: (orgId: string) => [{ orgId }, "project-memberships"],
   getProjectAuthorization: (projectId: string) => [{ projectId }, "project-authorizations"],
   getProjectIntegrations: (projectId: string) => [{ projectId }, "project-integrations"],
-  getAllUserProjects: () => ["projects"] as const,
+  getAllUserProjects: () => [...projectKeys.allProjectQueries()] as const,
   getProjectAuditLogs: (projectId: string) => [{ projectId }, "project-audit-logs"] as const,
   getProjectUsers: (
     projectId: string,

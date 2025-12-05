@@ -96,23 +96,6 @@ export const identityUaServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    if (subOrganizationName) {
-      if (!isSubOrgIdentity) {
-        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
-
-        if (subOrg) {
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
-          });
-          if (subOrgMembership) {
-            subOrganizationId = subOrg.id;
-          }
-        }
-      }
-    }
-
     try {
       checkIPAgainstBlocklist({
         ipAddress: ip,
@@ -250,6 +233,30 @@ export const identityUaServiceFactory = ({
               // without them having to update their SDKs, CLIs, etc. This workaround sets it to 30 years to emulate "forever"
               accessTokenMaxTTL: 1000000000
             };
+
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
 
       const identityAccessToken = await identityUaDAL.transaction(async (tx) => {
         const uaClientSecretDoc = await identityUaClientSecretDAL.incrementUsage(validClientSecretInfo!.id, tx);

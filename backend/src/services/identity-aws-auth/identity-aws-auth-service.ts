@@ -123,23 +123,6 @@ export const identityAwsAuthServiceFactory = ({
     // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
     let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
-    if (subOrganizationName) {
-      if (!isSubOrgIdentity) {
-        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
-
-        if (subOrg) {
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
-          });
-          if (subOrgMembership) {
-            subOrganizationId = subOrg.id;
-          }
-        }
-      }
-    }
-
     try {
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
       const body: string = Buffer.from(iamRequestBody, "base64").toString();
@@ -204,6 +187,30 @@ export const identityAwsAuthServiceFactory = ({
           throw new UnauthorizedError({
             message: `Access denied: AWS principal ARN not allowed. [principal-arn=${formattedArn}]`
           });
+        }
+      }
+
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
         }
       }
 

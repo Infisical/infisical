@@ -559,8 +559,17 @@ export const authLoginServiceFactory = ({
 
     const membershipRole = (await membershipRoleDAL.findOne({ membershipId: orgMembership.id })).role;
 
+    let rootOrg = selectedOrg;
+
     if (isSubOrganization) {
       if (!selectedOrg.rootOrgId) {
+        throw new BadRequestError({
+          message: "Invalid sub-organization"
+        });
+      }
+
+      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
+      if (!rootOrg) {
         throw new BadRequestError({
           message: "Invalid sub-organization"
         });
@@ -582,18 +591,18 @@ export const authLoginServiceFactory = ({
     }
 
     if (
-      selectedOrg.authEnforced &&
+      rootOrg.authEnforced &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
-      !(selectedOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin)
+      !(rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin)
     ) {
       throw new BadRequestError({
         message: "Login with the auth method required by your organization."
       });
     }
 
-    if (selectedOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
-      const canBypass = selectedOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin;
+    if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+      const canBypass = rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin;
 
       if (!canBypass) {
         throw new ForbiddenRequestError({
@@ -604,13 +613,13 @@ export const authLoginServiceFactory = ({
     }
 
     if (decodedToken.authMethod === AuthMethod.GOOGLE) {
-      await orgDAL.updateById(selectedOrg.id, {
+      await orgDAL.updateById(rootOrg.id, {
         googleSsoAuthLastUsed: new Date()
       });
     }
 
-    const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = selectedOrg.enforceMfa ? (selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const shouldCheckMfa = rootOrg.enforceMfa || user.isMfaEnabled;
+    const orgMfaMethod = rootOrg.enforceMfa ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
@@ -644,7 +653,7 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      organizationId: isSubOrganization ? selectedOrg.rootOrgId || "" : organizationId,
+      organizationId: isSubOrganization ? rootOrg.id : organizationId,
       subOrganizationId: isSubOrganization ? organizationId : undefined,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
@@ -652,8 +661,8 @@ export const authLoginServiceFactory = ({
 
     // In the event of this being a break-glass request (non-saml / non-oidc, when either is enforced)
     if (
-      selectedOrg.authEnforced &&
-      selectedOrg.bypassOrgAuthEnabled &&
+      rootOrg.authEnforced &&
+      rootOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
       decodedToken.authMethod !== AuthMethod.GOOGLE

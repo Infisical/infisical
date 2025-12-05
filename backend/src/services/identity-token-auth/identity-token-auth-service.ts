@@ -514,16 +514,23 @@ export const identityTokenAuthServiceFactory = ({
       if (!isSubOrgIdentity) {
         const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
 
-        if (subOrg) {
-          const subOrgMembership = await membershipIdentityDAL.findOne({
-            scope: AccessScope.Organization,
-            actorIdentityId: identity.id,
-            scopeOrgId: subOrg.id
-          });
-          if (subOrgMembership) {
-            subOrganizationId = subOrg.id;
-          }
+        if (!subOrg) {
+          throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
         }
+
+        const subOrgMembership = await membershipIdentityDAL.findOne({
+          scope: AccessScope.Organization,
+          actorIdentityId: identity.id,
+          scopeOrgId: subOrg.id
+        });
+
+        if (!subOrgMembership) {
+          throw new UnauthorizedError({
+            message: `Identity not authorized to access sub organization ${subOrganizationName}`
+          });
+        }
+
+        subOrganizationId = subOrg.id;
       }
     }
 
