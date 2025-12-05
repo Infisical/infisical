@@ -81,13 +81,6 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
   const [isCredentialValid, setIsCredentialValid] = useState<boolean>(false);
   const [keys, setKeys] = useState<{ value: string; label: string }[]>([]);
 
-  const getFormType = () => {
-    if (kms) {
-      return mode === "details" ? "updateGcpKmsDetails" : "updateGcpKmsCredentials";
-    }
-    return "newGcpKms";
-  };
-
   const {
     control,
     handleSubmit,
@@ -96,11 +89,11 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
     getValues,
     resetField,
     setValue,
-    formState: { isSubmitting }
+    formState: { isSubmitting, isDirty, isValid }
   } = useForm<AddExternalKmsGcpFormSchemaType>({
     resolver: zodResolver(AddExternalKmsGcpFormSchema),
     defaultValues: {
-      formType: getFormType(),
+      formType: kms ? "updateGcpKms" : "newGcpKms",
       name: kms?.name ?? "",
       description: kms?.description ?? "",
       gcpRegion: kms
@@ -152,24 +145,11 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
 
   // handles the form submission
   const handleGcpKmsFormSubmit = async (data: AddExternalKmsGcpFormSchemaType) => {
-    const { name, description, formType } = data;
+    const { name, description, formType, gcpRegion: gcpRegionObject, keyObject } = data;
 
     try {
       if (kms) {
-        if (formType === "updateGcpKmsDetails") {
-          await updateGcpExternalKms({
-            kmsId: kms.id,
-            name,
-            description
-          });
-
-          createNotification({
-            text: "Successfully updated GCP External KMS Details",
-            type: "success"
-          });
-        } else if (formType === "updateGcpKmsCredentials") {
-          const { gcpRegion: gcpRegionObject, keyObject } = data;
-
+        if (formType === "updateGcpKms") {
           const gcpRegion = gcpRegionObject?.value;
           if (!gcpRegion) {
             setError("gcpRegion", {
@@ -188,6 +168,8 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
 
           await updateGcpExternalKms({
             kmsId: kms.id,
+            name,
+            description,
             configuration: {
               type: ExternalKmsProvider.Gcp,
               inputs: {
@@ -198,13 +180,11 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
           });
 
           createNotification({
-            text: "Successfully updated GCP External KMS configuration",
+            text: "Successfully updated GCP External KMS Details",
             type: "success"
           });
         }
       } else if (formType === "newGcpKms") {
-        const { gcpRegion: gcpRegionObject, keyObject } = data;
-
         const gcpRegion = gcpRegionObject?.value;
         if (!gcpRegion) {
           setError("gcpRegion", {
@@ -334,10 +314,6 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
               </FormControl>
             )}
           />
-        </>
-      )}
-      {(mode === "full" || mode === "credentials") && (
-        <>
           <Controller
             control={control}
             name="gcpRegion"
@@ -402,17 +378,21 @@ export const GcpKmsForm = ({ onCompleted, onCancel, kms, mode = "full" }: Props)
               </FormControl>
             )}
           />
-          {kms && (
-            <span className="text-xs text-mineshaft-300">
-              To change your GCP credentials, create a new external KMS and assign it to project you
-              want to use it with.
-            </span>
-          )}
         </>
       )}
+      {kms && mode === "credentials" && (
+        <span className="text-xs text-mineshaft-300">
+          To change your GCP credentials, create a new external KMS and assign it to project you
+          want to use it with.
+        </span>
+      )}
       <div className="mt-6 flex items-center space-x-4">
-        <Button type="submit" isLoading={isSubmitting}>
-          {mode === "credentials" ? "Update Configuration" : "Save"}
+        <Button
+          type="submit"
+          isLoading={isSubmitting}
+          isDisabled={!isDirty || !isValid || mode === "credentials"}
+        >
+          Save
         </Button>
         <Button variant="outline_bg" onClick={onCancel}>
           Cancel
