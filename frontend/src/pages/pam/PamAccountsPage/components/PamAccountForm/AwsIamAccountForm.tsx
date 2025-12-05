@@ -146,7 +146,7 @@ export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
         >
           <AccordionItem value="target-role-setup" className="border-b-0">
             <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
-              <div className="flex items-center text-sm">
+              <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
                 <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
                 Target Role Setup
               </div>

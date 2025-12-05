@@ -133,7 +133,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
         >
           <AccordionItem value="aws-iam-role-setup" className="border-b-0">
             <AccordionTrigger className="px-4 py-2.5 hover:no-underline [&[data-state=open]]:pb-1">
-              <div className="flex items-center text-sm">
+              <div className="flex items-center text-sm transition-colors duration-150 hover:text-primary">
                 <FontAwesomeIcon icon={faInfoCircle} size="sm" className="mr-1.5 text-primary" />
                 AWS IAM Role Setup
               </div>
