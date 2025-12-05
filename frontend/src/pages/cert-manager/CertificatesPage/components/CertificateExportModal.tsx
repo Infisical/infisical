@@ -53,17 +53,24 @@ const exportFormSchema = z
   .refine(
     (data) => {
       if (data.format === "pkcs12") {
-        return (
-          data.pkcs12Password &&
-          data.pkcs12Password.length >= 6 &&
-          data.pkcs12Alias &&
-          data.pkcs12Alias.trim() !== ""
-        );
+        return data.pkcs12Password && data.pkcs12Alias && data.pkcs12Alias.trim() !== "";
       }
       return true;
     },
     {
       message: "PKCS12 password and alias are required when using PKCS12 format",
+      path: ["pkcs12Password"]
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.format === "pkcs12") {
+        return data.pkcs12Password && data.pkcs12Password.length >= 6;
+      }
+      return true;
+    },
+    {
+      message: "PKCS12 password must be 6 characters or longer",
       path: ["pkcs12Password"]
     }
   )
