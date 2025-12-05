@@ -570,13 +570,29 @@ export const pamAccountServiceFactory = ({
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
+    const { host, port } =
+      resourceType !== PamResource.Kubernetes
+        ? connectionDetails
+        : (() => {
+            const url = new URL(connectionDetails.url);
+            let portNumber: number | undefined;
+            if (url.port) {
+              portNumber = Number(url.port);
+            } else {
+              portNumber = url.protocol === "https:" ? 443 : 80;
+            }
+            return {
+              host: url.hostname,
+              port: portNumber
+            };
+          })();
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
       sessionId: session.id,
       resourceType: resource.resourceType as PamResource,
-      host: connectionDetails.host,
-      port: connectionDetails.port,
+      host,
+      port,
       actorMetadata: {
         id: actor.id,
         type: actor.type,
