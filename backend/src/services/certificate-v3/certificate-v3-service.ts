@@ -322,8 +322,6 @@ const parseKeyUsages = (keyUsages: unknown): CertKeyUsageType[] => {
     return null;
   };
 
-  if (!keyUsages) return [];
-
   let raw: string[];
 
   if (Array.isArray(keyUsages)) {
