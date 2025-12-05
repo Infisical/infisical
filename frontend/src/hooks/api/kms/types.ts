@@ -131,7 +131,7 @@ export type AddExternalKmsType = z.infer<typeof AddExternalKmsSchema>;
 
 // we need separate schema for update because the credential field is not required on GCP
 export const ExternalKmsUpdateInputSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal(ExternalKmsProvider.Aws), inputs: ExternalKmsAwsSchema }),
+  z.object({ type: z.literal(ExternalKmsProvider.Aws), inputs: ExternalKmsAwsSchema.partial() }),
   z.object({
     type: z.literal(ExternalKmsProvider.Gcp),
     inputs: ExternalKmsGcpSchema.pick({ gcpRegion: true, keyName: true })

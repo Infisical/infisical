@@ -26,7 +26,7 @@ const AwsConnectionAssumeRoleCredentialsSchema = z.object({
     .trim()
     .min(1)
     .optional()
-    .describe("AWS assume role external id for furthur security in authentication")
+    .describe("AWS assume role external id for further security in authentication")
 });
 
 const AwsConnectionAccessTokenCredentialsSchema = z.object({
@@ -64,7 +64,10 @@ export const SanitizedExternalKmsAwsSchema = ExternalKmsAwsSchema.extend({
     }),
     z.object({
       type: z.literal(KmsAwsCredentialType.AssumeRole),
-      data: AwsConnectionAssumeRoleCredentialsSchema.pick({})
+      data: AwsConnectionAssumeRoleCredentialsSchema.pick({
+        assumeRoleArn: true,
+        externalId: true
+      })
     })
   ])
 });

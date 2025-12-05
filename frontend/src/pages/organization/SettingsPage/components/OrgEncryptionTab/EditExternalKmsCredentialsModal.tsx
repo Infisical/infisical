@@ -1,4 +1,4 @@
-import { ContentLoader, Modal, ModalContent } from "@app/components/v2";
+import { Modal, ModalContent } from "@app/components/v2";
 import { useGetExternalKmsById } from "@app/hooks/api";
 import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
@@ -18,7 +18,7 @@ export const EditExternalKmsCredentialsModal = ({
   provider,
   onOpenChange
 }: Props) => {
-  const { data: externalKms, isPending } = useGetExternalKmsById({ kmsId, provider });
+  const { data: kms } = useGetExternalKmsById({ kmsId, provider });
   return (
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
@@ -26,18 +26,17 @@ export const EditExternalKmsCredentialsModal = ({
         subTitle="Update the credentials for this KMS."
         bodyClassName="overflow-visible"
       >
-        {isPending && <ContentLoader />}
-        {externalKms?.externalKms?.provider === ExternalKmsProvider.Aws && (
+        {kms?.externalKms?.provider === ExternalKmsProvider.Aws && (
           <AwsKmsForm
-            kms={externalKms}
+            kms={kms}
             mode="credentials"
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
           />
         )}
-        {externalKms?.externalKms?.provider === ExternalKmsProvider.Gcp && (
+        {kms?.externalKms?.provider === ExternalKmsProvider.Gcp && (
           <GcpKmsForm
-            kms={externalKms}
+            kms={kms}
             mode="credentials"
             onCancel={() => onOpenChange(false)}
             onCompleted={() => onOpenChange(false)}
