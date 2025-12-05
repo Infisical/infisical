@@ -10,9 +10,21 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  DatabaseError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PolicyViolationError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import {
+  TApprovalPolicyDALFactory,
+  TApprovalRequestGrantsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -51,6 +63,8 @@ type TPamAccountServiceFactoryDep = {
   >;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  approvalPolicyDAL: TApprovalPolicyDALFactory;
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
 };
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
@@ -67,7 +81,9 @@ export const pamAccountServiceFactory = ({
   licenseService,
   kmsService,
   gatewayV2Service,
-  auditLogService
+  auditLogService,
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
     {
@@ -531,23 +547,50 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
+    const fac = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPamAccountActions.Access,
-      subject(ProjectPermissionSub.PamAccounts, {
-        resourceName: resource.name,
-        accountName: account.name,
-        accountPath: folderPath
-      })
-    );
+    const inputs = {
+      resourceId: resource.id,
+      accountPath: folderPath
+    };
+
+    const canAccess = await fac.canAccess(approvalRequestGrantsDAL, actor.id, resource.projectId, inputs);
+
+    if (canAccess) {
+      // Grant exists, allow access without checking permission
+    } else {
+      const policy = await fac.matchPolicy(approvalPolicyDAL, resource.projectId, inputs);
+
+      if (policy) {
+        throw new PolicyViolationError({
+          message: "A policy is in place for this resource",
+          details: {
+            policyId: policy.id,
+            policyName: policy.name,
+            policyType: policy.type
+          }
+        });
+      }
+
+      // If there isn't a policy in place, continue with checking permission
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId: account.projectId,
+        actionProjectType: ActionProjectType.PAM
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPamAccountActions.Access,
+        subject(ProjectPermissionSub.PamAccounts, {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath: folderPath
+        })
+      );
+    }
 
     const session = await pamSessionDAL.create({
       accountName: account.name,

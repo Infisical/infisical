@@ -15,8 +15,8 @@ import {
   TOracleDBConnectionInput,
   TValidateOracleDBConnectionCredentialsSchema
 } from "@app/ee/services/app-connections/oracledb";
-import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TGatewayServiceFactory } from "@app/ee/services/gateway/gateway-service";
+import { TGatewayV2ServiceFactory } from "@app/ee/services/gateway-v2/gateway-v2-service";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { TSqlConnectionConfig } from "@app/services/app-connection/shared/sql/sql-connection-types";
 import { SecretSync } from "@app/services/secret-sync/secret-sync-enums";

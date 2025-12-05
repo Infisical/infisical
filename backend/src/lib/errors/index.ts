@@ -183,3 +183,23 @@ export class CryptographyError extends Error {
     this.error = error;
   }
 }
+
+export class PolicyViolationError extends Error {
+  name: string;
+
+  error: unknown;
+
+  details?: unknown;
+
+  constructor({
+    name,
+    error,
+    message,
+    details
+  }: { message?: string; name?: string; error?: unknown; details?: unknown } = {}) {
+    super(message || "A policy is in place for this resource");
+    this.name = name || "PolicyViolationError";
+    this.error = error;
+    this.details = details;
+  }
+}

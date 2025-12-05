@@ -159,6 +159,13 @@ import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import {
+  approvalPolicyDALFactory,
+  approvalPolicyStepApproversDALFactory,
+  approvalPolicyStepsDALFactory,
+  approvalRequestGrantsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -2412,6 +2419,9 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     gatewayV2Service,
@@ -2423,7 +2433,9 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     userDAL,
-    auditLogService
+    auditLogService,
+    approvalRequestGrantsDAL,
+    approvalPolicyDAL
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2449,6 +2461,17 @@ export const registerRoutes = async (
     vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
+  });
+
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    projectDAL,
+    permissionService
   });
 
   // setup the communication with license key server
@@ -2630,7 +2653,8 @@ export const registerRoutes = async (
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
     convertor: convertorService,
-    pkiAlertV2: pkiAlertV2Service
+    pkiAlertV2: pkiAlertV2Service,
+    approvalPolicy: approvalPolicyService
   });
 
   const cronJobs: CronJob[] = [];
