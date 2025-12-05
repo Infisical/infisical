@@ -290,7 +290,8 @@ export const pamAccountServiceFactory = ({
       return decryptAccount(account, account.projectId, kmsService);
     }
 
-    const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
+    try {
+      const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
 
     return {
       ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
@@ -301,6 +302,15 @@ export const pamAccountServiceFactory = ({
         rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
       }
     };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Account with name '${name}' already exists for this path`
+        });
+      }
+
+      throw err;
+    }
   };
 
   const deleteById = async (id: string, actor: OrgServiceActor) => {
