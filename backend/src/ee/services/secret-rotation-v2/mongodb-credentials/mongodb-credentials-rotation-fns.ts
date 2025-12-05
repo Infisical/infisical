@@ -1,8 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { MongoClient } from "mongodb";
-import RE2 from "re2";
 
-import { verifyHostInputValidity } from "@app/ee/services/dynamic-secret/dynamic-secret-fns";
 import {
   TRotationFactory,
   TRotationFactoryGetSecretsPayload,
@@ -10,6 +8,7 @@ import {
   TRotationFactoryRevokeCredentials,
   TRotationFactoryRotateCredentials
 } from "@app/ee/services/secret-rotation-v2/secret-rotation-v2-types";
+import { createMongoClient } from "@app/services/app-connection/mongodb/mongodb-connection-fns";
 
 import { DEFAULT_PASSWORD_REQUIREMENTS, generatePassword } from "../shared/utils";
 import {
@@ -44,67 +43,10 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
 
   const passwordRequirement = DEFAULT_PASSWORD_REQUIREMENTS;
 
-  // Helper function to create MongoDB client with given credentials
-  const $createMongoClient = async (
-    authCredentials: { username: string; password: string },
-    options?: { validateConnection?: boolean }
-  ): Promise<MongoClient> => {
-    let normalizedHost = connection.credentials.host.trim();
-    const srvRegex = new RE2("^mongodb\\+srv:\\/\\/");
-    const protocolRegex = new RE2("^mongodb:\\/\\/");
-
-    const isSrvFromHost = srvRegex.test(normalizedHost);
-    if (isSrvFromHost) {
-      normalizedHost = srvRegex.replace(normalizedHost, "");
-    } else if (protocolRegex.test(normalizedHost)) {
-      normalizedHost = protocolRegex.replace(normalizedHost, "");
-    }
-
-    const [hostIp] = await verifyHostInputValidity(normalizedHost);
-
-    const isSrv = !connection.credentials.port || isSrvFromHost;
-    const uri = isSrv ? `mongodb+srv://${hostIp}` : `mongodb://${hostIp}:${connection.credentials.port}`;
-
-    const clientOptions: {
-      auth?: { username: string; password?: string };
-      authSource?: string;
-      tls?: boolean;
-      tlsInsecure?: boolean;
-      ca?: string;
-      directConnection?: boolean;
-    } = {
-      auth: {
-        username: authCredentials.username,
-        password: authCredentials.password
-      },
-      authSource: isSrv ? undefined : connection.credentials.database,
-      directConnection: !isSrv
-    };
-
-    if (connection.credentials.sslCertificate) {
-      clientOptions.tls = true;
-      clientOptions.ca = connection.credentials.sslCertificate;
-    }
-
-    const client = new MongoClient(uri, clientOptions);
-
-    if (options?.validateConnection) {
-      await client.db(connection.credentials.database).command({ ping: 1 });
-    }
-
-    return client;
-  };
-
   const $getClient = async () => {
     let client: MongoClient | null = null;
     try {
-      client = await $createMongoClient(
-        {
-          username: connection.credentials.username,
-          password: connection.credentials.password
-        },
-        { validateConnection: true }
-      );
+      client = await createMongoClient(connection.credentials, { validateConnection: true });
       return client;
     } catch (err) {
       if (client) await client.close();
@@ -115,13 +57,13 @@ export const mongodbCredentialsRotationFactory: TRotationFactory<
   const $validateCredentials = async (credentials: TMongoDBCredentialsRotationGeneratedCredentials[number]) => {
     let client: MongoClient | null = null;
     try {
-      client = await $createMongoClient(
-        {
+      client = await createMongoClient(connection.credentials, {
+        authCredentials: {
           username: credentials.username,
           password: credentials.password
         },
-        { validateConnection: true }
-      );
+        validateConnection: true
+      });
     } catch (error) {
       throw new Error(redactPasswords(error, [credentials]));
     } finally {

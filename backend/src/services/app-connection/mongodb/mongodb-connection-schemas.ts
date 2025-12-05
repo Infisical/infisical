@@ -17,9 +17,9 @@ export const BaseMongoDBUsernameAndPasswordConnectionSchema = z.object({
   password: z.string().min(1),
   database: z.string().min(1).trim(),
 
-  sslRejectUnauthorized: z.boolean(),
-  sslEnabled: z.boolean(),
-  sslCertificate: z
+  tlsRejectUnauthorized: z.boolean(),
+  tlsEnabled: z.boolean(),
+  tlsCertificate: z
     .string()
     .trim()
     .transform((value) => value || undefined)
@@ -43,9 +43,9 @@ export const SanitizedMongoDBConnectionSchema = z.discriminatedUnion("method", [
       port: true,
       username: true,
       database: true,
-      sslEnabled: true,
-      sslRejectUnauthorized: true,
-      sslCertificate: true
+      tlsEnabled: true,
+      tlsRejectUnauthorized: true,
+      tlsCertificate: true
     })
   })
 ]);

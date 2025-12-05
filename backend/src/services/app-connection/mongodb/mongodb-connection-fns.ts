@@ -17,11 +17,32 @@ export const getMongoDBConnectionListItem = () => {
   };
 };
 
-export const validateMongoDBConnectionCredentials = async (config: TMongoDBConnectionConfig) => {
+export type TMongoDBConnectionCredentials = {
+  host: string;
+  port?: number;
+  database: string;
+  username: string;
+  password: string;
+  tlsEnabled?: boolean;
+  tlsRejectUnauthorized?: boolean;
+  tlsCertificate?: string;
+};
+
+export type TCreateMongoClientOptions = {
+  authCredentials?: { username: string; password: string };
+  validateConnection?: boolean;
+};
+
+const DEFAULT_CONNECTION_TIMEOUT_MS = 10_000;
+
+export const createMongoClient = async (
+  credentials: TMongoDBConnectionCredentials,
+  options?: TCreateMongoClientOptions
+): Promise<MongoClient> => {
   const srvRegex = new RE2("^mongodb\\+srv:\\/\\/");
   const protocolRegex = new RE2("^mongodb:\\/\\/");
 
-  let normalizedHost = config.credentials.host.trim();
+  let normalizedHost = credentials.host.trim();
   const isSrvFromHost = srvRegex.test(normalizedHost);
   if (isSrvFromHost) {
     normalizedHost = srvRegex.replace(normalizedHost, "");
@@ -31,41 +52,60 @@ export const validateMongoDBConnectionCredentials = async (config: TMongoDBConne
 
   const [hostIp] = await verifyHostInputValidity(normalizedHost);
 
-  let client: MongoClient | null = null;
-  try {
-    const isSrv = !config.credentials.port || isSrvFromHost;
-    const uri = isSrv ? `mongodb+srv://${hostIp}` : `mongodb://${hostIp}:${config.credentials.port}`;
+  const isSrv = !credentials.port || isSrvFromHost;
+  const uri = isSrv ? `mongodb+srv://${hostIp}` : `mongodb://${hostIp}:${credentials.port}`;
 
-    const clientOptions: {
-      auth?: { username: string; password?: string };
-      authSource?: string;
-      tls?: boolean;
-      tlsInsecure?: boolean;
-      ca?: string;
-      directConnection?: boolean;
-    } = {
-      auth: {
-        username: config.credentials.username,
-        password: config.credentials.password
-      },
-      authSource: isSrv ? undefined : config.credentials.database,
-      directConnection: !isSrv
-    };
+  const authCredentials = options?.authCredentials ?? {
+    username: credentials.username,
+    password: credentials.password
+  };
 
-    if (config.credentials.sslEnabled) {
-      clientOptions.tls = true;
-      clientOptions.tlsInsecure = !config.credentials.sslRejectUnauthorized;
-      if (config.credentials.sslCertificate) {
-        clientOptions.ca = config.credentials.sslCertificate;
-      }
+  const clientOptions: {
+    auth?: { username: string; password?: string };
+    authSource?: string;
+    tls?: boolean;
+    tlsInsecure?: boolean;
+    ca?: string;
+    directConnection?: boolean;
+    connectTimeoutMS?: number;
+    serverSelectionTimeoutMS?: number;
+    socketTimeoutMS?: number;
+  } = {
+    auth: {
+      username: authCredentials.username,
+      password: authCredentials.password
+    },
+    authSource: isSrv ? undefined : credentials.database,
+    directConnection: !isSrv,
+    connectTimeoutMS: DEFAULT_CONNECTION_TIMEOUT_MS,
+    serverSelectionTimeoutMS: DEFAULT_CONNECTION_TIMEOUT_MS,
+    socketTimeoutMS: DEFAULT_CONNECTION_TIMEOUT_MS
+  };
+
+  if (credentials.tlsEnabled) {
+    clientOptions.tls = true;
+    clientOptions.tlsInsecure = !credentials.tlsRejectUnauthorized;
+    if (credentials.tlsCertificate) {
+      clientOptions.ca = credentials.tlsCertificate;
     }
+  }
 
-    client = new MongoClient(uri, clientOptions);
+  const client = new MongoClient(uri, clientOptions);
 
+  if (options?.validateConnection) {
     await client
-      .db(config.credentials.database)
+      .db(credentials.database)
       .command({ ping: 1 })
       .then(() => true);
+  }
+
+  return client;
+};
+
+export const validateMongoDBConnectionCredentials = async (config: TMongoDBConnectionConfig) => {
+  let client: MongoClient | null = null;
+  try {
+    client = await createMongoClient(config.credentials, { validateConnection: true });
 
     if (client) await client.close();
 

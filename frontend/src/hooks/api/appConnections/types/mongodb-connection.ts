@@ -11,9 +11,9 @@ export type TMongoDBConnectionCredentials = {
   username: string;
   password: string;
   database: string;
-  sslEnabled: boolean;
-  sslRejectUnauthorized: boolean;
-  sslCertificate?: string;
+  tlsEnabled: boolean;
+  tlsRejectUnauthorized: boolean;
+  tlsCertificate?: string;
 };
 
 export type TMongoDBConnection = TRootAppConnection & { app: AppConnection.MongoDB } & {

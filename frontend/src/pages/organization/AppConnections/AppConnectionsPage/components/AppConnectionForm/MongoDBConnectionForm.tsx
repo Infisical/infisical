@@ -45,9 +45,9 @@ const formSchema = z.discriminatedUnion("method", [
       username: z.string().trim().min(1, "Username required"),
       password: z.string().trim().min(1, "Password required"),
       database: z.string().trim().min(1, "Database required"),
-      sslEnabled: z.boolean().default(false),
-      sslRejectUnauthorized: z.boolean().default(true),
-      sslCertificate: z
+      tlsEnabled: z.boolean().default(false),
+      tlsRejectUnauthorized: z.boolean().default(true),
+      tlsCertificate: z
         .string()
         .trim()
         .transform((value) => value || undefined)
@@ -73,9 +73,9 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
         username: "",
         password: "",
         database: "",
-        sslEnabled: false,
-        sslRejectUnauthorized: true,
-        sslCertificate: undefined
+        tlsEnabled: false,
+        tlsRejectUnauthorized: true,
+        tlsCertificate: undefined
       }
     }
   });
@@ -87,7 +87,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
     formState: { isSubmitting, isDirty }
   } = form;
 
-  const sslEnabled = watch("credentials.sslEnabled");
+  const tlsEnabled = watch("credentials.tlsEnabled");
 
   return (
     <FormProvider {...form}>
@@ -147,7 +147,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                 }`
               }
             >
-              SSL ({sslEnabled ? "Enabled" : "Disabled"})
+              TLS ({tlsEnabled ? "Enabled" : "Disabled"})
             </Tab>
           </Tab.List>
           <Tab.Panels className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3 pb-0">
@@ -233,53 +233,53 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
             </Tab.Panel>
             <Tab.Panel>
               <Controller
-                name="credentials.sslEnabled"
+                name="credentials.tlsEnabled"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl isError={Boolean(error?.message)} errorText={error?.message}>
                     <Switch
                       className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                      id="ssl-enabled"
+                      id="tls-enabled"
                       thumbClassName="bg-mineshaft-800"
                       isChecked={value}
                       onCheckedChange={onChange}
                     >
-                      Enable SSL
+                      Enable TLS
                     </Switch>
                   </FormControl>
                 )}
               />
               <Controller
-                name="credentials.sslCertificate"
+                name="credentials.tlsCertificate"
                 control={control}
                 render={({ field, fieldState: { error } }) => (
                   <FormControl
                     errorText={error?.message}
                     isError={Boolean(error?.message)}
-                    className={sslEnabled ? "" : "opacity-50"}
-                    label="SSL Certificate"
+                    className={tlsEnabled ? "" : "opacity-50"}
+                    label="TLS Certificate"
                     isOptional
                   >
-                    <TextArea className="h-14 resize-none!" {...field} isDisabled={!sslEnabled} />
+                    <TextArea className="h-14 resize-none!" {...field} isDisabled={!tlsEnabled} />
                   </FormControl>
                 )}
               />
               <Controller
-                name="credentials.sslRejectUnauthorized"
+                name="credentials.tlsRejectUnauthorized"
                 control={control}
                 render={({ field: { value, onChange }, fieldState: { error } }) => (
                   <FormControl
-                    className={sslEnabled ? "" : "opacity-50"}
+                    className={tlsEnabled ? "" : "opacity-50"}
                     isError={Boolean(error?.message)}
                     errorText={error?.message}
                   >
                     <Switch
                       className="bg-mineshaft-400/50 shadow-inner data-[state=checked]:bg-green/80"
-                      id="ssl-reject-unauthorized"
+                      id="tls-reject-unauthorized"
                       thumbClassName="bg-mineshaft-800"
-                      isChecked={sslEnabled ? value : false}
+                      isChecked={tlsEnabled ? value : false}
                       onCheckedChange={onChange}
-                      isDisabled={!sslEnabled}
+                      isDisabled={!tlsEnabled}
                     >
                       <p className="w-38">
                         Reject Unauthorized
@@ -288,7 +288,7 @@ export const MongoDBConnectionForm = ({ appConnection, onSubmit }: Props) => {
                           content={
                             <p>
                               If enabled, Infisical will only connect to the server if it has a
-                              valid, trusted SSL certificate.
+                              valid, trusted TLS certificate.
                             </p>
                           }
                         >
