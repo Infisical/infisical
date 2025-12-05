@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
+  EFilterMemberType,
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
@@ -301,7 +302,15 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
           .default(EGroupMembersOrderBy.Name)
           .optional()
           .describe(GROUPS.LIST_MEMBERS.orderBy),
-        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MEMBERS.orderDirection)
+        orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MEMBERS.orderDirection),
+        memberTypeFilter: z
+          .union([z.nativeEnum(EFilterMemberType), z.array(z.nativeEnum(EFilterMemberType))])
+          .optional()
+          .describe(GROUPS.LIST_MEMBERS.memberTypeFilter)
+          .transform((val) => {
+            if (!val) return undefined;
+            return Array.isArray(val) ? val : [val];
+          })
       }),
       response: {
         200: z.object({

@@ -447,6 +447,7 @@ export const groupServiceFactory = ({
     search,
     orderBy,
     orderDirection,
+    memberTypeFilter,
     actor,
     actorId,
     actorAuthMethod,
@@ -481,7 +482,8 @@ export const groupServiceFactory = ({
       limit,
       search,
       orderBy,
-      orderDirection
+      orderDirection,
+      memberTypeFilter
     });
 
     return { members, totalCount };

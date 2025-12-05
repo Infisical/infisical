@@ -1,8 +1,8 @@
-import { faEllipsisV, faUserMinus } from "@fortawesome/free-solid-svg-icons";
+import { faEllipsisV, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { HardDriveIcon } from "lucide-react";
 
-import { OrgPermissionCan } from "@app/components/permissions";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,24 +13,20 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
-import { EGroupMemberType, TGroupMemberIdentity } from "@app/hooks/api/groups/types";
-import { UsePopUpState } from "@app/hooks/usePopUp";
+import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
+import { TGroupMemberIdentity } from "@app/hooks/api/groups/types";
 
 type Props = {
   identity: TGroupMemberIdentity;
-  handlePopUpOpen: (
-    popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
-    data?: object
-  ) => void;
+  onAssumePrivileges: (identityId: string) => void;
 };
 
 export const GroupMembershipIdentityRow = ({
   identity: { name, joinedGroupAt, id },
-  handlePopUpOpen
+  onAssumePrivileges
 }: Props) => {
   return (
-    <Tr className="items-center" key={`group-user-${id}`}>
+    <Tr className="items-center" key={`group-identity-${id}`}>
       <Td className="pr-0">
         <HardDriveIcon size={20} />
       </Td>
@@ -56,27 +52,22 @@ export const GroupMembershipIdentityRow = ({
               </IconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent sideOffset={2} align="end">
-              <OrgPermissionCan I={OrgPermissionGroupActions.Edit} a={OrgPermissionSubjects.Groups}>
+              <ProjectPermissionCan
+                I={ProjectPermissionIdentityActions.AssumePrivileges}
+                a={ProjectPermissionSub.Identity}
+              >
                 {(isAllowed) => {
                   return (
-                    <div>
-                      <DropdownMenuItem
-                        icon={<FontAwesomeIcon icon={faUserMinus} />}
-                        onClick={() =>
-                          handlePopUpOpen("removeMemberFromGroup", {
-                            memberType: EGroupMemberType.IDENTITY,
-                            identityId: id,
-                            name
-                          })
-                        }
-                        isDisabled={!isAllowed}
-                      >
-                        Remove Identity From Group
-                      </DropdownMenuItem>
-                    </div>
+                    <DropdownMenuItem
+                      icon={<FontAwesomeIcon icon={faUser} />}
+                      onClick={() => onAssumePrivileges(id)}
+                      isDisabled={!isAllowed}
+                    >
+                      Assume Privileges
+                    </DropdownMenuItem>
                   );
                 }}
-              </OrgPermissionCan>
+              </ProjectPermissionCan>
             </DropdownMenuContent>
           </DropdownMenu>
         </Tooltip>

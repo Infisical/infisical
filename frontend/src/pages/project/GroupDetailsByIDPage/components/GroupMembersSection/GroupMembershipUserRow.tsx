@@ -1,5 +1,6 @@
 import { faEllipsisV, faUser } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { UserIcon } from "lucide-react";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import {
@@ -13,28 +14,31 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionMemberActions, ProjectPermissionSub } from "@app/context";
-import { TGroupUser } from "@app/hooks/api/groups/types";
+import { TGroupMemberUser } from "@app/hooks/api/groups/types";
 
 type Props = {
-  user: TGroupUser;
+  user: TGroupMemberUser;
   onAssumePrivileges: (userId: string) => void;
 };
 
-export const GroupMembershipRow = ({
+export const GroupMembershipUserRow = ({
   user: { firstName, lastName, joinedGroupAt, email, id },
   onAssumePrivileges
 }: Props) => {
   return (
     <Tr className="items-center" key={`group-user-${id}`}>
-      <Td>
-        <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
+      <Td className="pr-0">
+        <UserIcon size={20} />
       </Td>
-      <Td>
-        <p>{email}</p>
+      <Td className="pl-2">
+        <p>
+          {`${firstName ?? "-"} ${lastName ?? ""}`}{" "}
+          <span className="text-mineshaft-400">({email})</span>
+        </p>
       </Td>
       <Td>
         <Tooltip content={new Date(joinedGroupAt).toLocaleString()}>
-          <p>{new Date(joinedGroupAt).toLocaleDateString()}</p>
+          <p className="inline-block">{new Date(joinedGroupAt).toLocaleDateString()}</p>
         </Tooltip>
       </Td>
       <Td>

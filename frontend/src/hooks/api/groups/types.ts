@@ -68,6 +68,11 @@ export enum EGroupMembersOrderBy {
   Name = "name"
 }
 
+export enum EFilterMemberType {
+  USERS = "users",
+  IDENTITIES = "identities"
+}
+
 export type TGroupMember = TGroupMemberUser | TGroupMemberIdentity;
 
 export type TGroupIdentity = {

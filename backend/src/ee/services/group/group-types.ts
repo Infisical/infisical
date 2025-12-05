@@ -61,6 +61,7 @@ export type TListGroupMembersDTO = {
   search?: string;
   orderBy?: EGroupMembersOrderBy;
   orderDirection?: OrderByDirection;
+  memberTypeFilter?: EFilterMemberType[];
 } & TGenericPermission;
 
 export type TListGroupProjectsDTO = {
@@ -185,4 +186,9 @@ export enum EGroupProjectsOrderBy {
 
 export enum EGroupMembersOrderBy {
   Name = "name"
+}
+
+export enum EFilterMemberType {
+  USERS = "users",
+  IDENTITIES = "identities"
 }

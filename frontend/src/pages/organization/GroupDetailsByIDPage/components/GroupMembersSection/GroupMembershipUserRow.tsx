@@ -37,16 +37,18 @@ export const GroupMembershipUserRow = ({
 
   return (
     <Tr className="items-center" key={`group-user-${id}`}>
-      <Td>
-        <UserIcon className="h-4 w-4" />
+      <Td className="pr-0">
+        <UserIcon size={20} />
       </Td>
-      <Td>
-        <p>{`${firstName ?? "-"} ${lastName ?? ""}`}</p>
-        <p className="text-mineshaft-400">{email}</p>
+      <Td className="pl-2">
+        <p>
+          {`${firstName ?? "-"} ${lastName ?? ""}`}{" "}
+          <span className="text-mineshaft-400">({email})</span>
+        </p>
       </Td>
       <Td>
         <Tooltip content={new Date(joinedGroupAt).toLocaleString()}>
-          <p>{new Date(joinedGroupAt).toLocaleDateString()}</p>
+          <p className="inline-block">{new Date(joinedGroupAt).toLocaleDateString()}</p>
         </Tooltip>
       </Td>
       <Td>

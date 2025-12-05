@@ -7,6 +7,7 @@ import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } fr
 import { OrderByDirection } from "@app/lib/types";
 
 import {
+  EFilterMemberType,
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
@@ -257,7 +258,8 @@ export const groupDALFactory = (db: TDbClient) => {
     limit,
     search,
     orderBy = EGroupMembersOrderBy.Name,
-    orderDirection = OrderByDirection.ASC
+    orderDirection = OrderByDirection.ASC,
+    memberTypeFilter
   }: {
     orgId: string;
     groupId: string;
@@ -266,6 +268,7 @@ export const groupDALFactory = (db: TDbClient) => {
     search?: string;
     orderBy?: EGroupMembersOrderBy;
     orderDirection?: OrderByDirection;
+    memberTypeFilter?: EFilterMemberType[];
   }) => {
     try {
       // Query for users - subquery for UNION
@@ -339,7 +342,22 @@ export const groupDALFactory = (db: TDbClient) => {
         void identitiesSubquery.andWhereRaw(`LOWER("${TableName.Identity}"."name") ilike ?`, [`%${search}%`]);
       }
 
-      const unionQuery = db.raw("(? UNION ALL ?)", [usersSubquery, identitiesSubquery]);
+      let unionQuery;
+
+      const includeUsers =
+        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(EFilterMemberType.USERS);
+      const includeIdentities =
+        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(EFilterMemberType.IDENTITIES);
+
+      if (includeUsers && includeIdentities) {
+        unionQuery = db.raw("(? UNION ALL ?)", [usersSubquery, identitiesSubquery]);
+      } else if (includeUsers) {
+        unionQuery = db.raw("(?)", [usersSubquery]);
+      } else if (includeIdentities) {
+        unionQuery = db.raw("(?)", [identitiesSubquery]);
+      } else {
+        unionQuery = db.raw("(? UNION ALL ?)", [usersSubquery, identitiesSubquery]);
+      }
 
       const combinedQuery = db
         .replicaNode()

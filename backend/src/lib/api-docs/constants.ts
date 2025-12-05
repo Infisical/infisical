@@ -120,7 +120,9 @@ export const GROUPS = {
     limit: "The number of members to return.",
     search: "The text string that member email(in case of users) or name(in case of identities) will be filtered by.",
     orderBy: "The column to order members by.",
-    orderDirection: "The direction to order members in."
+    orderDirection: "The direction to order members in.",
+    memberTypeFilter:
+      "Filter members by type. Can be a single value ('users' or 'identities') or an array of values. If not specified, both users and identities will be returned."
   },
   LIST_PROJECTS: {
     id: "The ID of the group to list projects for.",

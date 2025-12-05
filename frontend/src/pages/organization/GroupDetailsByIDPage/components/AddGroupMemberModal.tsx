@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { faMagnifyingGlass, faServer, faUsers } from "@fortawesome/free-solid-svg-icons";
+import { faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { HardDriveIcon, UserIcon } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import { Button, Input, Modal, ModalContent, Tooltip } from "@app/components/v2";
@@ -45,61 +46,61 @@ export const AddGroupMembersModal = ({
       }}
     >
       <ModalContent title="Add Group Members">
-        <Input
-          value={searchMemberFilter}
-          onChange={(e) => setSearchMemberFilter(e.target.value)}
-          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search members..."
-        />
+        <div className="mx-auto flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+          <Tooltip
+            className="text-center"
+            content={
+              isOidcManageGroupMembershipsEnabled
+                ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
+                : undefined
+            }
+          >
+            <div className="flex-1">
+              <Button
+                variant="outline_bg"
+                onClick={() => {
+                  setAddMemberType(AddMemberType.Users);
+                }}
+                size="xs"
+                isDisabled={isOidcManageGroupMembershipsEnabled}
+                className={twMerge(
+                  "w-full min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600",
+                  addMemberType === AddMemberType.Users ? "bg-mineshaft-500" : "bg-transparent"
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <UserIcon size={16} />
+                  Users
+                </div>
+              </Button>
+            </div>
+          </Tooltip>
+          <Button
+            variant="outline_bg"
+            onClick={() => {
+              setAddMemberType(AddMemberType.MachineIdentities);
+            }}
+            size="xs"
+            className={twMerge(
+              "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+              addMemberType === AddMemberType.MachineIdentities
+                ? "bg-mineshaft-500"
+                : "bg-transparent"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <HardDriveIcon size={16} />
+              Machine Identities
+            </div>
+          </Button>
+        </div>
         <div className="mt-4 mb-4 flex items-center justify-center gap-x-2">
-          <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
-            <Tooltip
-              className="text-center"
-              content={
-                isOidcManageGroupMembershipsEnabled
-                  ? "OIDC Group Membership Mapping Enabled. Assign users to this group in your OIDC provider."
-                  : undefined
-              }
-            >
-              <div className="flex-1">
-                <Button
-                  variant="outline_bg"
-                  onClick={() => {
-                    setAddMemberType(AddMemberType.Users);
-                  }}
-                  size="xs"
-                  isDisabled={isOidcManageGroupMembershipsEnabled}
-                  className={twMerge(
-                    "w-full min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600",
-                    addMemberType === AddMemberType.Users ? "bg-mineshaft-500" : "bg-transparent"
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <FontAwesomeIcon icon={faUsers} />
-                    Users
-                  </div>
-                </Button>
-              </div>
-            </Tooltip>
-            <Button
-              variant="outline_bg"
-              onClick={() => {
-                setAddMemberType(AddMemberType.MachineIdentities);
-              }}
-              size="xs"
-              className={twMerge(
-                "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
-                addMemberType === AddMemberType.MachineIdentities
-                  ? "bg-mineshaft-500"
-                  : "bg-transparent"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <FontAwesomeIcon icon={faServer} />
-                Machine Identities
-              </div>
-            </Button>
-          </div>
+          <Input
+            value={searchMemberFilter}
+            onChange={(e) => setSearchMemberFilter(e.target.value)}
+            leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+            placeholder="Search members..."
+          />
         </div>
         {addMemberType === AddMemberType.Users &&
           popUpData &&

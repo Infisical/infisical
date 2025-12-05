@@ -1,15 +1,25 @@
+import { useState } from "react";
 import {
   faArrowDown,
   faArrowUp,
+  faCheckCircle,
+  faFilter,
   faFolder,
   faMagnifyingGlass,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { HardDriveIcon, UserIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { OrgPermissionCan } from "@app/components/permissions";
 import {
   Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
   EmptyState,
   IconButton,
   Input,
@@ -33,7 +43,11 @@ import { usePagination, useResetPageHelper } from "@app/hooks";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
-import { EGroupMembersOrderBy, EGroupMemberType } from "@app/hooks/api/groups/types";
+import {
+  EFilterMemberType,
+  EGroupMembersOrderBy,
+  EGroupMemberType
+} from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { GroupMembershipIdentityRow } from "./GroupMembershipIdentityRow";
@@ -64,6 +78,8 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     initPerPage: getUserTablePreference("groupMembersTable", PreferenceKey.PerPage, 20)
   });
 
+  const [memberTypeFilter, setMemberTypeFilter] = useState<EFilterMemberType[]>([]);
+
   const handlePerPageChange = (newPerPage: number) => {
     setPerPage(newPerPage);
     setUserTablePreference("groupMembersTable", PreferenceKey.PerPage, newPerPage);
@@ -81,7 +97,8 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     limit: perPage,
     search,
     orderBy,
-    orderDirection
+    orderDirection,
+    memberTypeFilter: memberTypeFilter.length > 0 ? memberTypeFilter : undefined
   });
 
   const { members = [], totalCount = 0 } = groupMemberships ?? {};
@@ -92,20 +109,84 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     setPage
   });
 
+  const filterOptions = [
+    {
+      icon: <UserIcon size={16} />,
+      label: "Users",
+      value: EFilterMemberType.USERS
+    },
+    {
+      icon: <HardDriveIcon size={16} />,
+      label: "Identities",
+      value: EFilterMemberType.IDENTITIES
+    }
+  ];
+
   return (
     <div>
-      <Input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
-      />
+      <div className="flex gap-2">
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
+          placeholder="Search members..."
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <IconButton
+              ariaLabel="Filter Members"
+              variant="plain"
+              size="sm"
+              className={twMerge(
+                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                memberTypeFilter.length > 0 && "border-primary/50 text-primary"
+              )}
+            >
+              <FontAwesomeIcon icon={faFilter} />
+            </IconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            sideOffset={2}
+            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+            align="end"
+          >
+            <DropdownMenuLabel>Filter by Member Type</DropdownMenuLabel>
+            {filterOptions.map((option) => (
+              <DropdownMenuItem
+                key={option.value}
+                className="flex items-center gap-2"
+                iconPos="right"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setMemberTypeFilter((prev) => {
+                    if (prev.includes(option.value)) {
+                      return prev.filter((f) => f !== option.value);
+                    }
+                    return [...prev, option.value];
+                  });
+                  setPage(1);
+                }}
+                icon={
+                  memberTypeFilter.includes(option.value) && (
+                    <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
+                  )
+                }
+              >
+                <div className="flex items-center gap-2">
+                  {option.icon}
+                  {option.label}
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <TableContainer className="mt-4">
         <Table>
           <THead>
             <Tr>
               <Th className="w-5" />
-              <Th className="w-1/3">
+              <Th className="w-1/2 pl-2">
                 <div className="flex items-center">
                   Name
                   <IconButton

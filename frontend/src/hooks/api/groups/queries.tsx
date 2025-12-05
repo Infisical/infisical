@@ -4,6 +4,7 @@ import { apiRequest } from "@app/config/request";
 
 import { OrderByDirection } from "../generic/types";
 import {
+  EFilterMemberType,
   EFilterReturnedIdentities,
   EFilterReturnedProjects,
   EFilterReturnedUsers,
@@ -58,7 +59,8 @@ export const groupKeys = {
     limit,
     search,
     orderBy,
-    orderDirection
+    orderDirection,
+    memberTypeFilter
   }: {
     slug: string;
     offset: number;
@@ -66,10 +68,11 @@ export const groupKeys = {
     search: string;
     orderBy?: EGroupMembersOrderBy;
     orderDirection?: OrderByDirection;
+    memberTypeFilter?: EFilterMemberType[];
   }) =>
     [
       ...groupKeys.forGroupMembers(slug),
-      { offset, limit, search, orderBy, orderDirection }
+      { offset, limit, search, orderBy, orderDirection, memberTypeFilter }
     ] as const,
   allGroupProjects: () => ["group-projects"] as const,
   forGroupProjects: (groupId: string) => [...groupKeys.allGroupProjects(), groupId] as const,
@@ -160,7 +163,8 @@ export const useListGroupMembers = ({
   limit = 10,
   search,
   orderBy,
-  orderDirection
+  orderDirection,
+  memberTypeFilter
 }: {
   id: string;
   groupSlug: string;
@@ -169,6 +173,7 @@ export const useListGroupMembers = ({
   search: string;
   orderBy?: EGroupMembersOrderBy;
   orderDirection?: OrderByDirection;
+  memberTypeFilter?: EFilterMemberType[];
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupMembers({
@@ -177,7 +182,8 @@ export const useListGroupMembers = ({
       limit,
       search,
       orderBy,
-      orderDirection
+      orderDirection,
+      memberTypeFilter
     }),
     enabled: Boolean(groupSlug),
     placeholderData: (previousData) => previousData,
@@ -189,6 +195,12 @@ export const useListGroupMembers = ({
         ...(orderBy && { orderBy: orderBy.toString() }),
         ...(orderDirection && { orderDirection })
       });
+
+      if (memberTypeFilter && memberTypeFilter.length > 0) {
+        memberTypeFilter.forEach((filter) => {
+          params.append("memberTypeFilter", filter);
+        });
+      }
 
       const { data } = await apiRequest.get<{ members: TGroupMember[]; totalCount: number }>(
         `/api/v1/groups/${id}/members`,
