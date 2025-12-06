@@ -673,6 +673,29 @@ export const approvalPolicyServiceFactory = ({
     return { requests };
   };
 
+  const cancelRequest = async (requestId: string, actor: OrgServiceActor) => {
+    const request = await approvalRequestDAL.findById(requestId);
+    if (!request) {
+      throw new ForbiddenRequestError({ message: "Request not found" });
+    }
+
+    if (request.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({ message: "Request is not pending" });
+    }
+
+    if (request.requesterId !== actor.id) {
+      throw new ForbiddenRequestError({ message: "You are not the requester of this request" });
+    }
+
+    const updatedRequest = await approvalRequestDAL.updateById(requestId, {
+      status: ApprovalRequestStatus.Cancelled
+    });
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+
+    return { request: { ...updatedRequest, steps } };
+  };
+
   return {
     create,
     list,
@@ -683,6 +706,7 @@ export const approvalPolicyServiceFactory = ({
     listRequests,
     getRequestById,
     approveRequest,
-    rejectRequest
+    rejectRequest,
+    cancelRequest
   };
 };

@@ -338,4 +338,31 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       return { request };
     }
   });
+
+  server.route({
+    method: "POST",
+    url: "/requests/:requestId/cancel",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Cancel approval request",
+      params: z.object({
+        requestId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          request: requestResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
+
+      // TODO(andrey): Audit log
+
+      return { request };
+    }
+  });
 };
