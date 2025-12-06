@@ -70,11 +70,11 @@ export const PolicyReviewStep = () => {
         <div className="space-y-2">
           <ReviewField
             label="Minimum Duration"
-            value={`${constraints.requestDurationHours.min} hour${constraints.requestDurationHours.min !== 1 ? "s" : ""}`}
+            value={`${constraints.requestDurationSeconds.min} second${constraints.requestDurationSeconds.min !== 1 ? "s" : ""}`}
           />
           <ReviewField
             label="Maximum Duration"
-            value={`${constraints.requestDurationHours.max} hour${constraints.requestDurationHours.max !== 1 ? "s" : ""}`}
+            value={`${constraints.requestDurationSeconds.max} second${constraints.requestDurationSeconds.max !== 1 ? "s" : ""}`}
           />
         </div>
       </div>

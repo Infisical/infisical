@@ -48,9 +48,9 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
       maxRequestTtlSeconds: null,
       conditions: [{ resourceIds: [], accountPaths: [] }],
       constraints: {
-        requestDurationHours: {
-          min: 1,
-          max: 24
+        requestDurationSeconds: {
+          min: 30,
+          max: 604800
         }
       },
       steps: [
@@ -88,9 +88,9 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
         maxRequestTtlSeconds: null,
         conditions: [{ resourceIds: [], accountPaths: [] }],
         constraints: {
-          requestDurationHours: {
-            min: 1,
-            max: 24
+          requestDurationSeconds: {
+            min: 30,
+            max: 604800
           }
         },
         steps: [

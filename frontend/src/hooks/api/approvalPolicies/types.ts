@@ -23,7 +23,7 @@ export type PamAccessPolicyConditions = {
 }[];
 
 export type PamAccessPolicyConstraints = {
-  requestDurationHours: {
+  requestDurationSeconds: {
     min: number;
     max: number;
   };

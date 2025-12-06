@@ -12,9 +12,9 @@ export const PolicyFormSchema = z.object({
     .array()
     .min(1, "At least one condition is required"),
   constraints: z.object({
-    requestDurationHours: z.object({
-      min: z.number().min(0).max(168),
-      max: z.number().min(1).max(168)
+    requestDurationSeconds: z.object({
+      min: z.number().min(0).max(604800),
+      max: z.number().min(1).max(604800)
     })
   }),
   steps: z

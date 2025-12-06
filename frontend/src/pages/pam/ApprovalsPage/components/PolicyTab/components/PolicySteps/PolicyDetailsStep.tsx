@@ -51,19 +51,19 @@ export const PolicyDetailsStep = () => {
             Request Duration Constraints
           </p>
           <p className="text-xs text-mineshaft-400">
-            Set minimum and maximum duration (in hours) for access requests
+            Set minimum and maximum duration (in seconds) for access requests
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Controller
             control={control}
-            name="constraints.requestDurationHours.min"
+            name="constraints.requestDurationSeconds.min"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Minimum Hours"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="0-168 hours"
+                helperText="30-604800 hours"
               >
                 <Input
                   {...field}
@@ -77,13 +77,13 @@ export const PolicyDetailsStep = () => {
           />
           <Controller
             control={control}
-            name="constraints.requestDurationHours.max"
+            name="constraints.requestDurationSeconds.max"
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 label="Maximum Hours"
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="1-168 hours (7 days)"
+                helperText="30-604800 hours (7 days)"
               >
                 <Input
                   {...field}

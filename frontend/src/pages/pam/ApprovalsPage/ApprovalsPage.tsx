@@ -5,6 +5,7 @@ import { useOrganization, useProject } from "@app/context";
 import { ApprovalControlTabs } from "@app/types/project";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { PolicyTab } from "./components/PolicyTab";
+import { ApprovalRequestTab } from "./components/ApprovalRequestTab";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ const Page = () => {
             </Tab>
           </TabList>
           <TabPanel value={ApprovalControlTabs.Requests}>
-            <div>Hello</div>
+            <ApprovalRequestTab />
           </TabPanel>
           <TabPanel value={ApprovalControlTabs.Policies}>
             <PolicyTab />
