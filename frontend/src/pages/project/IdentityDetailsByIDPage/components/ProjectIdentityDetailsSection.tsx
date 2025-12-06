@@ -44,7 +44,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
 
   return (
     <>
-      <UnstableCard className="w-full max-w-84">
+      <UnstableCard className="w-full max-w-[22rem]">
         <UnstableCardHeader
         // className="border-b"
         >

@@ -2,7 +2,6 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { EmptyState, Spinner } from "@app/components/v2";
 import { useGetIdentityOciAuth } from "@app/hooks/api";
-import { IdentityOciAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOciAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
@@ -10,10 +9,8 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityOciAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
-  onDelete,
-  popUp
+  onEdit,
+  onDelete
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityOciAuth(identityId);
 
@@ -31,23 +28,8 @@ export const ViewIdentityOciAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityOciAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>

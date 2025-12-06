@@ -256,14 +256,14 @@ const Page = () => {
               </UnstableDropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-20 lg:flex-row">
+          <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={!isProjectIdentity}
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-20">
+            <div className="flex flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}

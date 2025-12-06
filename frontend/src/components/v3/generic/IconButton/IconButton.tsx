@@ -35,7 +35,7 @@ const iconButtonVariants = cva(
           "border-danger/75 bg-danger/40 text-foreground hover:bg-danger/50 hover:border-danger"
       },
       size: {
-        xs: "h-7 w-7 [&>svg]:size-4 [&>svg]:stroke-[1.75]",
+        xs: "h-7 w-7 [&>svg]:size-3.5 [&>svg]:stroke-[1.75]",
         sm: "h-8 w-8 [&>svg]:size-4 [&>svg]:stroke-[1.5]",
         md: "h-9 w-9 [&>svg]:size-6 [&>svg]:stroke-[1.5]",
         lg: "h-10 w-10 [&>svg]:size-7 [&>svg]:stroke-[1.5]"
