@@ -58,21 +58,6 @@ export const additionalPrivilegeServiceFactory = ({
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = data.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: data.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-
-      if (!projectMembership) {
-        throw new NotFoundError({ message: `Project membership for ${data.actorType} ${data.actorId} not found` });
-      }
-
-      projectMembershipId = projectMembership.id;
-    }
-
     const existingSlug = await additionalPrivilegeDAL.findOne({
       name: data.name,
       [dbActorField]: data.actorId,
@@ -96,8 +81,7 @@ export const additionalPrivilegeServiceFactory = ({
       return {
         additionalPrivilege: {
           ...additionalPrivilege,
-          permissions: unpackPermissions(additionalPrivilege.permissions),
-          projectMembershipId
+          permissions: unpackPermissions(additionalPrivilege.permissions)
         }
       };
     }
@@ -124,8 +108,7 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivilege: {
         ...additionalPrivilege,
-        permissions: unpackPermissions(additionalPrivilege.permissions),
-        projectMembershipId
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       }
     };
   };
@@ -136,21 +119,6 @@ export const additionalPrivilegeServiceFactory = ({
     await factory.onUpdateAdditionalPrivilegesGuard(dto);
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
-
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: dto.selector.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-      if (!projectMembership) {
-        throw new NotFoundError({
-          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
-        });
-      }
-      projectMembershipId = projectMembership.id;
-    }
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       [dbActorField]: dto.selector.actorId,
@@ -176,8 +144,7 @@ export const additionalPrivilegeServiceFactory = ({
       return {
         additionalPrivilege: {
           ...additionalPrivilege,
-          permissions: unpackPermissions(additionalPrivilege.permissions),
-          projectMembershipId
+          permissions: unpackPermissions(additionalPrivilege.permissions)
         }
       };
     }
@@ -202,8 +169,7 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivilege: {
         ...additionalPrivilege,
-        permissions: unpackPermissions(additionalPrivilege.permissions),
-        projectMembershipId
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       }
     };
   };
@@ -214,21 +180,6 @@ export const additionalPrivilegeServiceFactory = ({
     await factory.onDeleteAdditionalPrivilegesGuard(dto);
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
-
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: dto.selector.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-      if (!projectMembership) {
-        throw new NotFoundError({
-          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
-        });
-      }
-      projectMembershipId = projectMembership.id;
-    }
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
@@ -242,8 +193,7 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivilege: {
         ...additionalPrivilege,
-        permissions: unpackPermissions(additionalPrivilege.permissions),
-        projectMembershipId
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       }
     };
   };
@@ -254,21 +204,6 @@ export const additionalPrivilegeServiceFactory = ({
     await factory.onGetAdditionalPrivilegesByIdGuard(dto);
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
-
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: dto.selector.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-      if (!projectMembership) {
-        throw new NotFoundError({
-          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
-        });
-      }
-      projectMembershipId = projectMembership.id;
-    }
 
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,
@@ -281,8 +216,7 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivilege: {
         ...additionalPrivilege,
-        permissions: unpackPermissions(additionalPrivilege.permissions),
-        projectMembershipId
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       }
     };
   };
@@ -294,21 +228,6 @@ export const additionalPrivilegeServiceFactory = ({
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
     const scope = factory.getScopeField(dto.scopeData);
 
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: dto.selector.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-
-      if (!projectMembership) {
-        throw new NotFoundError({
-          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
-        });
-      }
-      projectMembershipId = projectMembership.id;
-    }
     const additionalPrivilege = await additionalPrivilegeDAL.findOne({
       name: selector.name,
       [dbActorField]: dto.selector.actorId,
@@ -320,8 +239,7 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivilege: {
         ...additionalPrivilege,
-        permissions: unpackPermissions(additionalPrivilege.permissions),
-        projectMembershipId
+        permissions: unpackPermissions(additionalPrivilege.permissions)
       }
     };
   };
@@ -333,21 +251,6 @@ export const additionalPrivilegeServiceFactory = ({
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
-    let projectMembershipId: string | undefined;
-    if (scope.key === "projectId") {
-      const projectMembership = await membershipDAL.findOne({
-        [dbActorField]: dto.selector.actorId,
-        scopeProjectId: scope.value,
-        scope: AccessScope.Project
-      });
-      if (!projectMembership) {
-        throw new NotFoundError({
-          message: `Project membership for ${dto.selector.actorType} ${dto.selector.actorId} not found`
-        });
-      }
-      projectMembershipId = projectMembership.id;
-    }
-
     const additionalPrivileges = await additionalPrivilegeDAL.find({
       [dbActorField]: dto.selector.actorId,
       [scope.key]: scope.value
@@ -356,7 +259,6 @@ export const additionalPrivilegeServiceFactory = ({
     return {
       additionalPrivileges: additionalPrivileges.map((el) => ({
         ...el,
-        projectMembershipId,
         permissions: unpackPermissions(el.permissions)
       }))
     };
