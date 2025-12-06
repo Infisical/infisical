@@ -1,5 +1,6 @@
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
 import { z } from "zod";
+
+import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
 export const PolicyFormSchema = z.object({
   name: z.string().min(1, "Policy name is required").max(128),

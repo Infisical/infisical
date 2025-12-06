@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Controller, useFieldArray, useFormContext } from "react-hook-form";
+import { MultiValue } from "react-select";
 import { faPlus, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
@@ -12,10 +13,7 @@ import { ApproverType } from "@app/hooks/api/approvalPolicies";
 import { TPolicyForm } from "../PolicySchema";
 
 export const PolicyApprovalSteps = () => {
-  const {
-    control,
-    formState: { errors }
-  } = useFormContext<TPolicyForm>();
+  const { control } = useFormContext<TPolicyForm>();
 
   const { currentProject } = useProject();
   const projectId = currentProject?.id || "";
@@ -55,7 +53,7 @@ export const PolicyApprovalSteps = () => {
     <div className="space-y-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <label className="text-sm font-medium text-mineshaft-200">Approval Steps</label>
+          <span className="text-sm font-medium text-mineshaft-200">Approval Steps</span>
           <p className="text-xs text-mineshaft-400">
             Define the approval workflow with sequential steps
           </p>
@@ -157,7 +155,9 @@ export const PolicyApprovalSteps = () => {
                           label="User Approvers"
                           isError={Boolean(error)}
                           errorText={
-                            error?.message && userApprovers.length === 0 && groupApprovers.length === 0
+                            error?.message &&
+                            userApprovers.length === 0 &&
+                            groupApprovers.length === 0
                               ? error?.message
                               : undefined
                           }
@@ -175,7 +175,10 @@ export const PolicyApprovalSteps = () => {
                             value={userApprovers}
                             onChange={(selected) => {
                               const newApprovers = [
-                                ...(selected || []),
+                                ...((selected as MultiValue<{
+                                  type: ApproverType;
+                                  id: string;
+                                }>) || []),
                                 ...groupApprovers
                               ];
                               onChange(newApprovers);
@@ -187,7 +190,9 @@ export const PolicyApprovalSteps = () => {
                           label="Group Approvers"
                           isError={Boolean(error)}
                           errorText={
-                            error?.message && userApprovers.length === 0 && groupApprovers.length === 0
+                            error?.message &&
+                            userApprovers.length === 0 &&
+                            groupApprovers.length === 0
                               ? error?.message
                               : undefined
                           }
@@ -205,7 +210,10 @@ export const PolicyApprovalSteps = () => {
                             onChange={(selected) => {
                               const newApprovers = [
                                 ...userApprovers,
-                                ...(selected || [])
+                                ...((selected as MultiValue<{
+                                  type: ApproverType;
+                                  id: string;
+                                }>) || [])
                               ];
                               onChange(newApprovers);
                             }}
@@ -225,7 +233,7 @@ export const PolicyApprovalSteps = () => {
         <div className="rounded border border-dashed border-mineshaft-600 bg-mineshaft-800/50 p-8 text-center">
           <p className="text-sm text-mineshaft-400">No approval steps defined</p>
           <p className="mt-1 text-xs text-mineshaft-500">
-            Click "Add Step" to create your first approval step
+            Click &quot;Add Step&quot; to create your first approval step
           </p>
         </div>
       )}

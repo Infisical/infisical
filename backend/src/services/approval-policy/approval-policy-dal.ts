@@ -219,7 +219,7 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
         .whereIn("requestId", requestIds)
         .orderBy("stepNumber", "asc");
 
-      const stepsByRequestId: Record<string, any[]> = {};
+      const stepsByRequestId: Record<string, ApprovalPolicyStep[]> = {};
 
       if (steps.length) {
         const stepIds = steps.map((step) => step.id);

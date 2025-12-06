@@ -598,15 +598,15 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
-  TCertificateRequests,
-  TCertificateRequestsInsert,
-  TCertificateRequestsUpdate
-} from "@app/db/schemas/certificate-requests";
-import {
   TAccessApprovalPoliciesEnvironments,
   TAccessApprovalPoliciesEnvironmentsInsert,
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
+import {
+  TCertificateRequests,
+  TCertificateRequestsInsert,
+  TCertificateRequestsUpdate
+} from "@app/db/schemas/certificate-requests";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,

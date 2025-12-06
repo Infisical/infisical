@@ -2,6 +2,7 @@ import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalR
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
 import { NotificationType } from "@app/services/notification/notification-types";
@@ -31,7 +32,6 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
-import { ms } from "@app/lib/ms";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -66,7 +66,7 @@ export const approvalPolicyServiceFactory = ({
 
     const userIdsToNotify = new Set<string>();
 
-    for (const approver of step.approvers) {
+    for await (const approver of step.approvers) {
       if (approver.type === ApproverType.User) {
         userIdsToNotify.add(approver.id);
       } else if (approver.type === ApproverType.Group) {
@@ -519,7 +519,7 @@ export const approvalPolicyServiceFactory = ({
     }
 
     const { updatedRequest, nextStepToNotify } = await approvalRequestDAL.transaction(async (tx) => {
-      let nextStepToNotify = null;
+      let nextStepToNotifyInner = null;
 
       // Create approval
       await approvalRequestApprovalsDAL.create(
@@ -565,7 +565,7 @@ export const approvalPolicyServiceFactory = ({
           );
 
           if (nextStep.notifyApprovers) {
-            nextStepToNotify = nextStep;
+            nextStepToNotifyInner = nextStep;
           }
         } else {
           // All steps completed
@@ -581,7 +581,7 @@ export const approvalPolicyServiceFactory = ({
         }
       }
 
-      return { updatedRequest: request, nextStepToNotify };
+      return { updatedRequest: request, nextStepToNotify: nextStepToNotifyInner };
     });
 
     if (nextStepToNotify) {

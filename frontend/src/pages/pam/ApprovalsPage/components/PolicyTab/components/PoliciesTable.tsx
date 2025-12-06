@@ -8,6 +8,7 @@ import {
   faUsers
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { useQuery } from "@tanstack/react-query";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -36,7 +37,6 @@ import {
   ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { useQuery } from "@tanstack/react-query";
 
 type Props = {
   handlePopUpOpen: (

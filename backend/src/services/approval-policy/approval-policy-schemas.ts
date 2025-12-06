@@ -6,9 +6,9 @@ import {
   ApprovalRequestsSchema,
   ApprovalRequestStepsSchema
 } from "@app/db/schemas";
+import { ms } from "@app/lib/ms";
 
 import { ApproverType } from "./approval-policy-enums";
-import { ms } from "@app/lib/ms";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),

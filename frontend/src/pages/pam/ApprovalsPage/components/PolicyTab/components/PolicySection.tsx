@@ -5,10 +5,10 @@ import { createNotification } from "@app/components/notifications";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import { useProject } from "@app/context";
 import { usePopUp } from "@app/hooks";
-import { useDeleteApprovalPolicy, ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, useDeleteApprovalPolicy } from "@app/hooks/api/approvalPolicies";
 
-import { PolicyModal } from "./PolicyModal";
 import { PoliciesTable } from "./PoliciesTable";
+import { PolicyModal } from "./PolicyModal";
 
 export const PolicySection = () => {
   const { currentProject } = useProject();

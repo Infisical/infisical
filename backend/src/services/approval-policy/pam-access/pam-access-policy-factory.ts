@@ -1,5 +1,7 @@
 import picomatch from "picomatch";
 
+import { ms } from "@app/lib/ms";
+
 import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
 import {
   TApprovalRequestFactoryCanAccess,
@@ -9,7 +11,6 @@ import {
   TApprovalResourceFactory
 } from "../approval-policy-types";
 import { TPamAccessPolicy, TPamAccessPolicyInputs, TPamAccessRequestData } from "./pam-access-policy-types";
-import { ms } from "@app/lib/ms";
 
 export const pamAccessPolicyFactory: TApprovalResourceFactory<
   TPamAccessPolicyInputs,

@@ -5,9 +5,9 @@ export {
 } from "./mutations";
 export { approvalPolicyQuery } from "./queries";
 export {
+  type ApprovalPolicyStep,
   ApprovalPolicyType,
   ApproverType,
-  type ApprovalPolicyStep,
   type PamAccessPolicyConditions,
   type PamAccessPolicyConstraints,
   type TApprovalPolicy,

@@ -9,8 +9,8 @@ import {
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "@tanstack/react-router";
 import { formatDistance } from "date-fns";
 import { twMerge } from "tailwind-merge";
 
@@ -39,14 +39,13 @@ import {
 import { Badge } from "@app/components/v3";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePagination } from "@app/hooks";
-import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
+import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 import {
   approvalRequestQuery,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
-import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
 type Filter = {
   status: "open" | "closed";
@@ -119,7 +118,9 @@ export const RequestsTable = () => {
     })
   );
 
-  const { page, perPage, setPage, setPerPage, offset } = usePagination();
+  const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
+    initPerPage: 10
+  });
 
   const filteredRequests = useMemo(() => {
     let filtered = requests;
@@ -376,7 +377,9 @@ export const RequestsTable = () => {
         {!isRequestsLoading && !filteredRequests?.length && (
           <EmptyState
             title={
-              requests.length ? "No approval requests match search..." : "No approval requests found"
+              requests.length
+                ? "No approval requests match search..."
+                : "No approval requests found"
             }
             icon={requests.length ? faSearch : faFileCircleQuestion}
           />

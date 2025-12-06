@@ -1,11 +1,12 @@
 import { Helmet } from "react-helmet";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
 import { useOrganization, useProject } from "@app/context";
 import { ApprovalControlTabs } from "@app/types/project";
-import { useNavigate, useSearch } from "@tanstack/react-router";
-import { PolicyTab } from "./components/PolicyTab";
+
 import { ApprovalRequestTab } from "./components/ApprovalRequestTab";
+import { PolicyTab } from "./components/PolicyTab";
 
 const Page = () => {
   const navigate = useNavigate();

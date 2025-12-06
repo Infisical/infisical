@@ -68,12 +68,6 @@ export const ROUTE_PATHS = Object.freeze({
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/networking"
     )
   },
-  Pam: {
-    ApprovalRequestDetailPage: setRoute(
-      "/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId",
-      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId"
-    )
-  },
   SecretManager: {
     ApprovalPage: setRoute(
       "/organizations/$orgId/projects/secret-management/$projectId/approval",
@@ -368,6 +362,10 @@ export const ROUTE_PATHS = Object.freeze({
     PamSessionByIDPage: setRoute(
       "/organizations/$orgId/projects/pam/$projectId/sessions/$sessionId",
       "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+    ),
+    ApprovalRequestDetailPage: setRoute(
+      "/organizations/$orgId/projects/pam/$projectId/approval-requests/$approvalRequestId",
+      "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/approval-requests/$approvalRequestId"
     )
   },
   Public: {
