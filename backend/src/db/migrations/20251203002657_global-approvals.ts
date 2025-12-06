@@ -108,6 +108,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("status").notNullable().index();
 
       t.integer("requiredApprovals").notNullable();
+      t.boolean("notifyApprovers").defaultTo(false);
 
       t.timestamp("startedAt").nullable();
       t.timestamp("completedAt").nullable();

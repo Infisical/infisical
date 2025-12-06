@@ -163,7 +163,11 @@ import {
   approvalPolicyDALFactory,
   approvalPolicyStepApproversDALFactory,
   approvalPolicyStepsDALFactory,
-  approvalRequestGrantsDALFactory
+  approvalRequestApprovalsDALFactory,
+  approvalRequestDALFactory,
+  approvalRequestGrantsDALFactory,
+  approvalRequestStepEligibleApproversDALFactory,
+  approvalRequestStepsDALFactory
 } from "@app/services/approval-policy/approval-policy-dal";
 import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
 import { authDALFactory } from "@app/services/auth/auth-dal";
@@ -2465,13 +2469,23 @@ export const registerRoutes = async (
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
+  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
 
   const approvalPolicyService = approvalPolicyServiceFactory({
     approvalPolicyDAL,
     approvalPolicyStepsDAL,
     approvalPolicyStepApproversDAL,
     permissionService,
-    projectMembershipDAL
+    projectMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService
   });
 
   // setup the communication with license key server

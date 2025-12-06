@@ -1,21 +1,47 @@
-import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies } from "@app/db/schemas";
+import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
+import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
 import { OrgServiceActor } from "@app/lib/types";
+import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
+import { NotificationType } from "@app/services/notification/notification-types";
 
 import { TProjectMembershipDALFactory } from "../project-membership/project-membership-dal";
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
-  TApprovalPolicyStepsDALFactory
+  TApprovalPolicyStepsDALFactory,
+  TApprovalRequestApprovalsDALFactory,
+  TApprovalRequestDALFactory,
+  TApprovalRequestStepEligibleApproversDALFactory,
+  TApprovalRequestStepsDALFactory
 } from "./approval-policy-dal";
-import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
-import { TCreatePolicyDTO, TUpdatePolicyDTO } from "./approval-policy-types";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestApprovalDecision,
+  ApprovalRequestStatus,
+  ApprovalRequestStepStatus,
+  ApproverType
+} from "./approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "./approval-policy-factory";
+import {
+  ApprovalPolicyStep,
+  TApprovalRequest,
+  TCreatePolicyDTO,
+  TCreateRequestDTO,
+  TUpdatePolicyDTO
+} from "./approval-policy-types";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
   approvalPolicyStepsDAL: TApprovalPolicyStepsDALFactory;
   approvalPolicyStepApproversDAL: TApprovalPolicyStepApproversDALFactory;
+  approvalRequestApprovalsDAL: TApprovalRequestApprovalsDALFactory;
+  approvalRequestDAL: TApprovalRequestDALFactory;
+  approvalRequestStepsDAL: TApprovalRequestStepsDALFactory;
+  approvalRequestStepEligibleApproversDAL: TApprovalRequestStepEligibleApproversDALFactory;
+  userGroupMembershipDAL: TUserGroupMembershipDALFactory;
+  notificationService: TNotificationServiceFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
   projectMembershipDAL: Pick<TProjectMembershipDALFactory, "findProjectMembershipsByUserIds">;
 };
@@ -25,9 +51,43 @@ export const approvalPolicyServiceFactory = ({
   approvalPolicyDAL,
   approvalPolicyStepsDAL,
   approvalPolicyStepApproversDAL,
+  approvalRequestApprovalsDAL,
+  approvalRequestDAL,
+  approvalRequestStepsDAL,
+  approvalRequestStepEligibleApproversDAL,
+  userGroupMembershipDAL,
+  notificationService,
   permissionService,
   projectMembershipDAL
 }: TApprovalPolicyServiceFactoryDep) => {
+  const $notifyApproversForStep = async (step: ApprovalPolicyStep, request: TApprovalRequests) => {
+    if (!step.notifyApprovers) return;
+
+    const userIdsToNotify = new Set<string>();
+
+    for (const approver of step.approvers) {
+      if (approver.type === ApproverType.User) {
+        userIdsToNotify.add(approver.id);
+      } else if (approver.type === ApproverType.Group) {
+        const members = await userGroupMembershipDAL.find({ groupId: approver.id });
+        members.forEach((member) => userIdsToNotify.add(member.userId));
+      }
+    }
+
+    if (userIdsToNotify.size === 0) return;
+
+    // TODO: Potentially link to requests in the future?
+    await notificationService.createUserNotifications(
+      Array.from(userIdsToNotify).map((userId) => ({
+        userId,
+        orgId: request.organizationId,
+        type: NotificationType.APPROVAL_REQUIRED,
+        title: "Approval Required",
+        body: `You have a new approval request for ${request.type} from ${request.requesterName}.`
+      }))
+    );
+  };
+
   const $verifyProjectUserMembership = async (userIds: string[], orgId: string, projectId: string) => {
     const uniqueUserIds = [...new Set(userIds)];
     if (uniqueUserIds.length === 0) return;
@@ -287,11 +347,339 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
+  const createRequest = async (
+    policyType: ApprovalPolicyType,
+    {
+      projectId,
+      requestData,
+      expiresAt,
+      justification,
+      requesterName,
+      requesterEmail
+    }: TCreateRequestDTO & {
+      requesterName: string;
+      requesterEmail: string;
+    },
+    actor: OrgServiceActor
+  ) => {
+    // TODO(andrey): Perm check
+
+    const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
+
+    const policy = await fac.matchPolicy(approvalPolicyDAL, projectId, requestData);
+
+    if (!policy) {
+      throw new ForbiddenRequestError({ message: "Policy not found" });
+    }
+
+    if (!fac.validateConstraints(policy, requestData)) {
+      throw new ForbiddenRequestError({ message: "Policy constraints not met" });
+    }
+
+    if (expiresAt) {
+      const now = new Date();
+      const ttlSeconds = (new Date(expiresAt).getTime() - now.getTime()) / 1000;
+
+      if (ttlSeconds < 3600) {
+        throw new BadRequestError({ message: "Expiration time must be at least 1 hour in the future" });
+      }
+
+      if (policy.maxRequestTtlSeconds && ttlSeconds > policy.maxRequestTtlSeconds) {
+        throw new BadRequestError({
+          message: `Expiration time exceeds the maximum allowed TTL of ${policy.maxRequestTtlSeconds} seconds`
+        });
+      }
+    }
+
+    const { request, steps } = await approvalRequestDAL.transaction(async (tx) => {
+      const newRequest = await approvalRequestDAL.create(
+        {
+          projectId,
+          organizationId: actor.orgId,
+          policyId: policy.id,
+          requesterId: actor.id,
+          requesterName,
+          requesterEmail,
+          type: policyType,
+          status: ApprovalRequestStatus.Pending,
+          justification,
+          currentStep: 1,
+          requestData: { version: 1, requestData },
+          expiresAt
+        },
+        tx
+      );
+
+      const newSteps = await Promise.all(
+        policy.steps.map(async (step, i) => {
+          const stepNum = i + 1;
+          const newStep = await approvalRequestStepsDAL.create(
+            {
+              requestId: newRequest.id,
+              stepNumber: stepNum,
+              name: step.name,
+              status: stepNum === 1 ? ApprovalRequestStepStatus.InProgress : ApprovalRequestStepStatus.Pending,
+              requiredApprovals: step.requiredApprovals,
+              notifyApprovers: step.notifyApprovers,
+              startedAt: stepNum === 1 ? new Date() : null
+            },
+            tx
+          );
+
+          await Promise.all(
+            step.approvers.map((approver) =>
+              approvalRequestStepEligibleApproversDAL.create(
+                {
+                  stepId: newStep.id,
+                  userId: approver.type === ApproverType.User ? approver.id : null,
+                  groupId: approver.type === ApproverType.Group ? approver.id : null
+                },
+                tx
+              )
+            )
+          );
+
+          return {
+            ...newStep,
+            approvers: step.approvers,
+            approvals: []
+          };
+        })
+      );
+
+      return { request: newRequest, steps: newSteps };
+    });
+
+    if (steps.length > 0) {
+      await $notifyApproversForStep(steps[0], request);
+    }
+
+    return {
+      request: { ...request, steps }
+    };
+  };
+
+  const getRequestById = async (requestId: string, _actor: OrgServiceActor) => {
+    // TODO(andrey): Perm check
+
+    const request = await approvalRequestDAL.findById(requestId);
+    if (!request) {
+      throw new ForbiddenRequestError({ message: "Request not found" });
+    }
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+
+    return {
+      request: { ...request, steps }
+    };
+  };
+
+  const approveRequest = async (requestId: string, { comment }: { comment?: string }, actor: OrgServiceActor) => {
+    const request = await approvalRequestDAL.findById(requestId);
+    if (!request) {
+      throw new ForbiddenRequestError({ message: "Request not found" });
+    }
+
+    if (request.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({ message: "Request is not pending" });
+    }
+
+    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
+      throw new BadRequestError({ message: "Request has expired" });
+    }
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const currentStepIndex = steps.findIndex((s) => s.stepNumber === request.currentStep);
+    if (currentStepIndex === -1) {
+      throw new BadRequestError({ message: "Current step not found" });
+    }
+
+    const currentStep = steps[currentStepIndex];
+
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroupIds = new Set(userGroups.map((g) => g.groupId));
+
+    const isEligible = currentStep.approvers.some(
+      (approver) =>
+        (approver.type === ApproverType.User && approver.id === actor.id) ||
+        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+    );
+
+    if (!isEligible) {
+      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+    }
+
+    const hasApproved = currentStep.approvals.some((a) => a.approverUserId === actor.id);
+    if (hasApproved) {
+      throw new BadRequestError({ message: "You have already approved this request" });
+    }
+
+    const { updatedRequest, nextStepToNotify } = await approvalRequestDAL.transaction(async (tx) => {
+      let nextStepToNotify = null;
+
+      // Create approval
+      await approvalRequestApprovalsDAL.create(
+        {
+          stepId: currentStep.id,
+          approverUserId: actor.id,
+          decision: ApprovalRequestApprovalDecision.Approved,
+          comment
+        },
+        tx
+      );
+
+      const newApprovalCount = currentStep.approvals.length + 1;
+      if (newApprovalCount >= currentStep.requiredApprovals) {
+        // Step completed
+        await approvalRequestStepsDAL.updateById(
+          currentStep.id,
+          {
+            status: ApprovalRequestStepStatus.Completed,
+            completedAt: new Date()
+          },
+          tx
+        );
+
+        const nextStep = steps[currentStepIndex + 1];
+        if (nextStep) {
+          // Move to next step
+          await approvalRequestDAL.updateById(
+            requestId,
+            {
+              currentStep: request.currentStep + 1
+            },
+            tx
+          );
+
+          await approvalRequestStepsDAL.updateById(
+            nextStep.id,
+            {
+              status: ApprovalRequestStepStatus.InProgress,
+              startedAt: new Date()
+            },
+            tx
+          );
+
+          if (nextStep.notifyApprovers) {
+            nextStepToNotify = nextStep;
+          }
+        } else {
+          // All steps completed
+          const completedReq = await approvalRequestDAL.updateById(
+            requestId,
+            {
+              status: ApprovalRequestStatus.Approved
+            },
+            tx
+          );
+
+          return { updatedRequest: completedReq, nextStepToNotify: null };
+        }
+      }
+
+      return { updatedRequest: request, nextStepToNotify };
+    });
+
+    if (nextStepToNotify) {
+      await $notifyApproversForStep(nextStepToNotify, updatedRequest);
+    }
+
+    // Fetch fresh state
+    const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const finalRequest = await approvalRequestDAL.findById(requestId);
+
+    const newRequest = { ...finalRequest, steps: finalSteps };
+
+    if (updatedRequest.status === ApprovalRequestStatus.Approved) {
+      const fac = APPROVAL_POLICY_FACTORY_MAP[updatedRequest.type as ApprovalPolicyType](
+        updatedRequest.type as ApprovalPolicyType
+      );
+      await fac.postApprovalRoutine(newRequest as TApprovalRequest);
+    }
+
+    return { request: newRequest };
+  };
+
+  const rejectRequest = async (requestId: string, { comment }: { comment?: string }, actor: OrgServiceActor) => {
+    const request = await approvalRequestDAL.findById(requestId);
+    if (!request) {
+      throw new ForbiddenRequestError({ message: "Request not found" });
+    }
+
+    if (request.status !== ApprovalRequestStatus.Pending) {
+      throw new BadRequestError({ message: "Request is not pending" });
+    }
+
+    if (request.expiresAt && new Date(request.expiresAt) < new Date()) {
+      await approvalRequestDAL.updateById(requestId, { status: ApprovalRequestStatus.Expired });
+      throw new BadRequestError({ message: "Request has expired" });
+    }
+
+    const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const currentStep = steps.find((s) => s.stepNumber === request.currentStep);
+
+    if (!currentStep) {
+      throw new BadRequestError({ message: "Current step not found" });
+    }
+
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroupIds = new Set(userGroups.map((g) => g.groupId));
+
+    const isEligible = currentStep.approvers.some(
+      (approver) =>
+        (approver.type === ApproverType.User && approver.id === actor.id) ||
+        (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+    );
+
+    if (!isEligible) {
+      throw new ForbiddenRequestError({ message: "You are not an eligible approver for this step" });
+    }
+
+    await approvalRequestDAL.transaction(async (tx) => {
+      await approvalRequestApprovalsDAL.create(
+        {
+          stepId: currentStep.id,
+          approverUserId: actor.id,
+          decision: ApprovalRequestApprovalDecision.Rejected,
+          comment
+        },
+        tx
+      );
+
+      await approvalRequestDAL.updateById(
+        requestId,
+        {
+          status: ApprovalRequestStatus.Rejected
+        },
+        tx
+      );
+    });
+
+    const finalSteps = await approvalRequestDAL.findStepsByRequestId(requestId);
+    const finalRequest = await approvalRequestDAL.findById(requestId);
+
+    return { request: { ...finalRequest, steps: finalSteps } };
+  };
+
+  const listRequests = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
+    // TODO(andrey): Perm check
+
+    const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
+
+    return { requests };
+  };
+
   return {
     create,
     list,
     getById,
     updateById,
-    deleteById
+    deleteById,
+    createRequest,
+    listRequests,
+    getRequestById,
+    approveRequest,
+    rejectRequest
   };
 };

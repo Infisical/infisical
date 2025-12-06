@@ -4,22 +4,23 @@ import { ApprovalRequestGrantStatus } from "../approval-policy-enums";
 import {
   TApprovalRequestFactoryCanAccess,
   TApprovalRequestFactoryMatchPolicy,
+  TApprovalRequestFactoryPostApprovalRoutine,
+  TApprovalRequestFactoryValidateConstraints,
   TApprovalResourceFactory
 } from "../approval-policy-types";
-import { TPamAccessPolicy, TPamAccessPolicyInputs } from "./pam-access-policy-types";
+import { TPamAccessPolicy, TPamAccessPolicyInputs, TPamAccessRequestData } from "./pam-access-policy-types";
 
-export const pamAccessPolicyFactory: TApprovalResourceFactory<TPamAccessPolicyInputs, TPamAccessPolicy> = (
-  policyType
-) => {
+export const pamAccessPolicyFactory: TApprovalResourceFactory<
+  TPamAccessPolicyInputs,
+  TPamAccessPolicy,
+  TPamAccessRequestData
+> = (policyType) => {
   const matchPolicy: TApprovalRequestFactoryMatchPolicy<TPamAccessPolicyInputs, TPamAccessPolicy> = async (
     approvalPolicyDAL,
     projectId,
     inputs
   ) => {
-    const policies = await approvalPolicyDAL.find({
-      type: policyType,
-      projectId
-    });
+    const policies = await approvalPolicyDAL.findByProjectId(policyType, projectId);
 
     let bestMatch: { policy: TPamAccessPolicy; wildcardCount: number; pathLength: number } | null = null;
 
@@ -32,7 +33,7 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<TPamAccessPolicyIn
         }
 
         // Find the most specific path pattern
-        // TODO: Make matching logic more advanced by accounting for wildcard positions
+        // TODO(andrey): Make matching logic more advanced by accounting for wildcard positions
         for (const pathPattern of c.accountPaths) {
           if (picomatch(pathPattern)(inputs.accountPath)) {
             const wildcardCount = (pathPattern.match(/\*/g) || []).length;
@@ -67,7 +68,7 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<TPamAccessPolicyIn
       revokedAt: null
     });
 
-    // TODO: Move some of this check to be part of SQL query
+    // TODO(andrey): Move some of this check to be part of SQL query
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
       const isMatch = picomatch(grantAttributes.accountPath);
@@ -79,8 +80,24 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<TPamAccessPolicyIn
     });
   };
 
+  const validateConstraints: TApprovalRequestFactoryValidateConstraints<TPamAccessPolicy, TPamAccessRequestData> = (
+    policy,
+    inputs
+  ) => {
+    const reqDuration = inputs.requestDurationSeconds;
+    const durationConstraint = policy.constraints.constraints.requestDurationSeconds;
+
+    return reqDuration >= durationConstraint.min && reqDuration <= durationConstraint.max;
+  };
+
+  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (_request) => {
+    // Placeholder
+  };
+
   return {
     matchPolicy,
-    canAccess
+    canAccess,
+    validateConstraints,
+    postApprovalRoutine
   };
 };

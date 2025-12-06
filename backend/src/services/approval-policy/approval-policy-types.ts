@@ -8,7 +8,9 @@ import {
   TPamAccessPolicy,
   TPamAccessPolicyConditions,
   TPamAccessPolicyConstraints,
-  TPamAccessPolicyInputs
+  TPamAccessPolicyInputs,
+  TPamAccessRequest,
+  TPamAccessRequestData
 } from "./pam-access/pam-access-policy-types";
 
 export type TApprovalPolicy = TPamAccessPolicy;
@@ -16,17 +18,20 @@ export type TApprovalPolicyInputs = TPamAccessPolicyInputs;
 export type TApprovalPolicyConditions = TPamAccessPolicyConditions;
 export type TApprovalPolicyConstraints = TPamAccessPolicyConstraints;
 
+export type TApprovalRequest = TPamAccessRequest;
+export type TApprovalRequestData = TPamAccessRequestData;
+
 export interface ApprovalPolicyStep {
   name?: string | null;
   requiredApprovals: number;
-  notifyApprovers?: boolean;
+  notifyApprovers?: boolean | null;
   approvers: {
     type: ApproverType;
     id: string;
   }[];
 }
 
-// DTOs
+// Policy DTOs
 export interface TCreatePolicyDTO {
   projectId: TApprovalPolicy["projectId"];
   name: TApprovalPolicy["name"];
@@ -44,6 +49,14 @@ export interface TUpdatePolicyDTO {
   steps?: ApprovalPolicyStep[];
 }
 
+// Request DTOs
+export interface TCreateRequestDTO {
+  projectId: TApprovalRequest["projectId"];
+  requestData: TApprovalRequest["requestData"]["requestData"];
+  justification?: TApprovalRequest["justification"];
+  expiresAt?: TApprovalRequest["expiresAt"];
+}
+
 // Factory
 export type TApprovalRequestFactoryMatchPolicy<I extends TApprovalPolicyInputs, P extends TApprovalPolicy> = (
   approvalPolicyDAL: TApprovalPolicyDALFactory,
@@ -56,10 +69,19 @@ export type TApprovalRequestFactoryCanAccess<I extends TApprovalPolicyInputs> = 
   userId: string,
   inputs: I
 ) => Promise<boolean>;
+export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy, R extends TApprovalRequestData> = (
+  policy: P,
+  inputs: R
+) => boolean;
+export type TApprovalRequestFactoryPostApprovalRoutine = (request: TApprovalRequest) => Promise<void>;
 
-export type TApprovalResourceFactory<I extends TApprovalPolicyInputs, P extends TApprovalPolicy> = (
-  policyType: ApprovalPolicyType
-) => {
+export type TApprovalResourceFactory<
+  I extends TApprovalPolicyInputs,
+  P extends TApprovalPolicy,
+  R extends TApprovalRequestData
+> = (policyType: ApprovalPolicyType) => {
   matchPolicy: TApprovalRequestFactoryMatchPolicy<I, P>;
   canAccess: TApprovalRequestFactoryCanAccess<I>;
+  validateConstraints: TApprovalRequestFactoryValidateConstraints<P, R>;
+  postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine;
 };

@@ -14,6 +14,7 @@ export const ApprovalRequestStepsSchema = z.object({
   name: z.string().nullable().optional(),
   status: z.string(),
   requiredApprovals: z.number(),
+  notifyApprovers: z.boolean().default(false).nullable().optional(),
   startedAt: z.date().nullable().optional(),
   completedAt: z.date().nullable().optional()
 });
