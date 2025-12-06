@@ -9,7 +9,7 @@ function UnstableCard({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex h-fit flex-col gap-6 rounded-md border border-border bg-mineshaft-900 px-4 py-6 text-foreground shadow-sm",
+        "flex h-fit flex-col gap-6 rounded-md border border-border bg-container px-4 py-6 text-foreground shadow-sm",
         className
       )}
       {...props}
