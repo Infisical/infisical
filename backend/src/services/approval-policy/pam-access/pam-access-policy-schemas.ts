@@ -19,7 +19,7 @@ export const PamAccessPolicyInputsSchema = z.object({
 // Conditions
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    resourceIds: z.string().uuid().array(),
+    resourceIds: z.string().uuid().array().optional(),
     accountPaths: z.string().array() // TODO(andrey): Add path & wildcard validation
   })
   .array();
