@@ -304,7 +304,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           to: "/organizations/$orgId/identities/$identityId",
                           params: {
                             identityId: id,
-                            orgId
+                            orgId: currentOrg.id
                           }
                         })
                       }

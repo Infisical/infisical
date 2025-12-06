@@ -19,7 +19,7 @@ import {
 
 const Page = () => {
   const navigate = useNavigate();
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { currentProject } = useProject();
   const selectedTab = useSearch({
     strict: false,
@@ -54,7 +54,8 @@ const Page = () => {
             }}
             className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
           >
-            <InfoIcon size={12} /> Looking for organization access control?
+            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization access
+            control?
           </Link>
         </PageHeader>
         <Tabs orientation="vertical" value={selectedTab} onValueChange={updateSelectedTab}>

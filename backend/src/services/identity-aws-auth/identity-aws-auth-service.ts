@@ -53,7 +53,7 @@ type TIdentityAwsAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityAwsAuthServiceFactory = ReturnType<typeof identityAwsAuthServiceFactory>;
@@ -101,7 +101,13 @@ export const identityAwsAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityAwsAuthServiceFactoryDep) => {
-  const login = async ({ identityId, iamHttpRequestMethod, iamRequestBody, iamRequestHeaders }: TLoginAwsAuthDTO) => {
+  const login = async ({
+    identityId,
+    iamHttpRequestMethod,
+    iamRequestBody,
+    iamRequestHeaders,
+    subOrganizationName
+  }: TLoginAwsAuthDTO) => {
     const appCfg = getConfig();
     const identityAwsAuth = await identityAwsAuthDAL.findOne({ identityId });
     if (!identityAwsAuth) {
@@ -112,6 +118,11 @@ export const identityAwsAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     try {
       const headers: TAwsGetCallerIdentityHeaders = JSON.parse(Buffer.from(iamRequestHeaders, "base64").toString());
       const body: string = Buffer.from(iamRequestBody, "base64").toString();
@@ -179,6 +190,30 @@ export const identityAwsAuthServiceFactory = ({
         }
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityAwsAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
@@ -207,7 +242,8 @@ export const identityAwsAuthServiceFactory = ({
             accessTokenMaxTTL: identityAwsAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityAwsAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AWS_AUTH
+            authMethod: IdentityAuthMethod.AWS_AUTH,
+            subOrganizationId
           },
           tx
         );

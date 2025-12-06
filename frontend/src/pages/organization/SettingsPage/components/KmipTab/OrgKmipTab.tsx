@@ -53,7 +53,7 @@ const OrgConfigSection = ({
     resolver: zodResolver(orgConfigFormSchema)
   });
 
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
   const { mutateAsync: setupOrgKmip } = useSetupOrgKmip(currentOrg.id);
 
   const onFormSubmit = async (formData: TKmipOrgConfigForm) => {
@@ -175,7 +175,10 @@ const OrgConfigSection = ({
         )}
         {!isKmipConfigLoading && !kmipConfig && (
           <div className="mt-2">
-            <div>KMIP has not yet been configured for the organization.</div>
+            <div>
+              KMIP has not yet been configured for the {isSubOrganization ? "sub-" : ""}
+              organization.
+            </div>
             <Button
               className="mt-2"
               onClick={() => {

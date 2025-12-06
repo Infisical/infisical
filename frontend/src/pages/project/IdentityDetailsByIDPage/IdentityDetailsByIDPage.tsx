@@ -51,7 +51,7 @@ const Page = () => {
     select: (el) => el.identityId as string
   });
   const { currentProject, projectId } = useProject();
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
 
   const { data: identityMembershipDetails, isPending: isMembershipDetailsLoading } =
     useGetProjectIdentityMembershipV2(projectId, identityId);
@@ -60,8 +60,6 @@ const Page = () => {
     useDeleteProjectIdentityMembership();
 
   const isProjectIdentity = Boolean(identityMembershipDetails?.identity.projectId);
-  const isNonScopedIdentity =
-    !isProjectIdentity && currentOrg.id !== identityMembershipDetails?.identity?.orgId;
 
   const {
     data: identity,
@@ -94,7 +92,7 @@ const Page = () => {
             type: "success",
             text: "Machine identity privilege assumption has started"
           });
-          const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization && isNonScopedIdentity ? `?subOrganization=${currentOrg.slug}` : ""}`;
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
           window.location.assign(
             url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
           );

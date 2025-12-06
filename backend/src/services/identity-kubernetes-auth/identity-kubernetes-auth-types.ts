@@ -3,6 +3,7 @@ import { TProjectPermission } from "@app/lib/types";
 export type TLoginKubernetesAuthDTO = {
   identityId: string;
   jwt: string;
+  subOrganizationName?: string;
 };
 
 export enum IdentityKubernetesAuthTokenReviewMode {

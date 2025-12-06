@@ -4,6 +4,7 @@ import { IdentityUaClientSecretsSchema, IdentityUniversalAuthsSchema } from "@ap
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, UNIVERSAL_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -35,7 +36,8 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
       description: "Login with Universal Auth for machine identity",
       body: z.object({
         clientId: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientId),
-        clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret)
+        clientSecret: z.string().trim().describe(UNIVERSAL_AUTH.LOGIN.clientSecret),
+        subOrganizationName: slugSchema().optional().describe(UNIVERSAL_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -55,7 +57,10 @@ export const registerIdentityUaRouter = async (server: FastifyZodProvider) => {
         identity,
         accessTokenTTL,
         accessTokenMaxTTL
-      } = await server.services.identityUa.login(req.body.clientId, req.body.clientSecret, req.realIp);
+      } = await server.services.identityUa.login({
+        ...req.body,
+        ip: req.realIp
+      });
 
       await server.services.auditLog.createAuditLog({
         ...req.auditLogInfo,

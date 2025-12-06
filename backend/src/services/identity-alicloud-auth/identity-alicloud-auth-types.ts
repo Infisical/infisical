@@ -11,6 +11,7 @@ export type TLoginAliCloudAuthDTO = {
   SignatureVersion: string;
   SignatureNonce: string;
   Signature: string;
+  subOrganizationName?: string;
 };
 
 export type TAttachAliCloudAuthDTO = {

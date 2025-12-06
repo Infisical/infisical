@@ -4,6 +4,7 @@ import { IdentityOciAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, OCI_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -40,7 +41,8 @@ export const registerIdentityOciAuthRouter = async (server: FastifyZodProvider) 
               });
             }
           })
-          .describe(OCI_AUTH.LOGIN.headers)
+          .describe(OCI_AUTH.LOGIN.headers),
+        subOrganizationName: slugSchema().optional().describe(OCI_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({

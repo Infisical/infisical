@@ -60,26 +60,19 @@ export const registerOrgRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          organization: sanitizedOrganizationSchema.extend({
-            subOrganization: z
-              .object({
-                id: z.string(),
-                name: z.string()
-              })
-              .optional()
-          })
+          organization: sanitizedOrganizationSchema
         })
       }
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const organization = await server.services.org.findOrganizationById(
-        req.permission.id,
-        req.params.organizationId,
-        req.permission.authMethod,
-        req.permission.rootOrgId,
-        req.permission.orgId
-      );
+      const organization = await server.services.org.findOrganizationById({
+        userId: req.permission.id,
+        orgId: req.params.organizationId,
+        actorAuthMethod: req.permission.authMethod,
+        rootOrgId: req.permission.rootOrgId,
+        actorOrgId: req.permission.orgId
+      });
       return { organization };
     }
   });

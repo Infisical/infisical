@@ -102,6 +102,7 @@ export type TOrgPlansTableDTO = {
 export type TOrgPlanDTO = {
   projectId?: string;
   refreshCache?: boolean;
+  rootOrgId: string;
 } & TOrgPermission;
 
 export type TStartOrgTrialDTO = {

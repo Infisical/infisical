@@ -350,6 +350,7 @@ export const licenseServiceFactory = ({
     actor,
     actorId,
     actorOrgId,
+    rootOrgId,
     actorAuthMethod,
     projectId,
     refreshCache
@@ -360,12 +361,12 @@ export const licenseServiceFactory = ({
       orgId,
       actorOrgId,
       actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
+      scope: OrganizationActionScope.Any
     });
     if (refreshCache) {
-      await refreshPlan(orgId);
+      await refreshPlan(rootOrgId);
     }
-    const plan = await getPlan(orgId, projectId);
+    const plan = await getPlan(rootOrgId, projectId);
     return plan;
   };
 

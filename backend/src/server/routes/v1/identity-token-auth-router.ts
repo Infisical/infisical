@@ -4,6 +4,7 @@ import { IdentityAccessTokensSchema, IdentityTokenAuthsSchema } from "@app/db/sc
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, TOKEN_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -307,7 +308,8 @@ export const registerIdentityTokenAuthRouter = async (server: FastifyZodProvider
         identityId: z.string().describe(TOKEN_AUTH.CREATE_TOKEN.identityId)
       }),
       body: z.object({
-        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name)
+        name: z.string().optional().describe(TOKEN_AUTH.CREATE_TOKEN.name),
+        subOrganizationName: slugSchema().optional().describe(TOKEN_AUTH.CREATE_TOKEN.subOrganizationName)
       }),
       response: {
         200: z.object({

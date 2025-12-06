@@ -188,16 +188,29 @@ export const membershipUserServiceFactory = ({
     });
 
     if (existingMemberships.length === users.length) return { memberships: [] };
+    const orgDetails = await orgDAL.findById(dto.permission.orgId);
+    const isSubOrganization = Boolean(orgDetails.rootOrgId);
 
     const newMembershipUsers = users.filter((user) => !existingMemberships?.find((el) => el.actorUserId === user.id));
     await factory.onCreateMembershipUserGuard(dto, newMembershipUsers);
-    const newMemberships = newMembershipUsers.map((user) => ({
-      scope: scopeData.scope,
-      ...scopeDatabaseFields,
-      actorUserId: user.id,
-      status: scopeData.scope === AccessScope.Organization ? OrgMembershipStatus.Invited : undefined,
-      inviteEmail: scopeData.scope === AccessScope.Organization ? user.email : undefined
-    }));
+    const newMemberships = newMembershipUsers.map((user) => {
+      let status: OrgMembershipStatus | undefined;
+      if (scopeData.scope === AccessScope.Organization) {
+        if (isSubOrganization) {
+          status = OrgMembershipStatus.Accepted;
+        } else {
+          status = OrgMembershipStatus.Invited;
+        }
+      }
+
+      return {
+        scope: scopeData.scope,
+        ...scopeDatabaseFields,
+        actorUserId: user.id,
+        status,
+        inviteEmail: status === OrgMembershipStatus.Invited ? user.email : undefined
+      };
+    });
 
     const customInputRoles = data.roles.filter((el) => factory.isCustomRole(el.role));
     const hasCustomRole = customInputRoles.length > 0;

@@ -60,7 +60,7 @@ type TIdentityJwtAuthServiceFactoryDep = {
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityJwtAuthServiceFactory = ReturnType<typeof identityJwtAuthServiceFactory>;
@@ -75,7 +75,7 @@ export const identityJwtAuthServiceFactory = ({
   kmsService,
   orgDAL
 }: TIdentityJwtAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: jwtValue }: TLoginJwtAuthDTO) => {
+  const login = async ({ identityId, jwt: jwtValue, subOrganizationName }: TLoginJwtAuthDTO) => {
     const appCfg = getConfig();
     const identityJwtAuth = await identityJwtAuthDAL.findOne({ identityId });
     if (!identityJwtAuth) {
@@ -86,6 +86,11 @@ export const identityJwtAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     try {
       const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -218,6 +223,30 @@ export const identityJwtAuthServiceFactory = ({
         });
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityJwtAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
@@ -246,7 +275,8 @@ export const identityJwtAuthServiceFactory = ({
             accessTokenMaxTTL: identityJwtAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityJwtAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.JWT_AUTH
+            authMethod: IdentityAuthMethod.JWT_AUTH,
+            subOrganizationId
           },
           tx
         );

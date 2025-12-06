@@ -368,6 +368,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -2690,6 +2691,15 @@ interface SelectOrganizationEvent {
   };
 }
 
+interface SelectSubOrganizationEvent {
+  type: EventType.SELECT_SUB_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    rootOrganizationId: string;
+  };
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -4609,4 +4619,5 @@ export type Event =
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
-  | SelectOrganizationEvent;
+  | SelectOrganizationEvent
+  | SelectSubOrganizationEvent;

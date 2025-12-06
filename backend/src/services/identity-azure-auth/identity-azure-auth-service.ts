@@ -49,7 +49,7 @@ type TIdentityAzureAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityAzureAuthServiceFactory = ReturnType<typeof identityAzureAuthServiceFactory>;
@@ -63,7 +63,7 @@ export const identityAzureAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityAzureAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: azureJwt }: TLoginAzureAuthDTO) => {
+  const login = async ({ identityId, jwt: azureJwt, subOrganizationName }: TLoginAzureAuthDTO) => {
     const appCfg = getConfig();
     const identityAzureAuth = await identityAzureAuthDAL.findOne({ identityId });
     if (!identityAzureAuth) {
@@ -74,6 +74,10 @@ export const identityAzureAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
 
     try {
       const azureIdentity = await validateAzureIdentity({
@@ -95,6 +99,30 @@ export const identityAzureAuthServiceFactory = ({
 
         if (!isServicePrincipalAllowed) {
           throw new UnauthorizedError({ message: `Service principal '${azureIdentity.oid}' not allowed` });
+        }
+      }
+
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
         }
       }
 
@@ -126,7 +154,8 @@ export const identityAzureAuthServiceFactory = ({
             accessTokenMaxTTL: identityAzureAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityAzureAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.AZURE_AUTH
+            authMethod: IdentityAuthMethod.AZURE_AUTH,
+            subOrganizationId
           },
           tx
         );

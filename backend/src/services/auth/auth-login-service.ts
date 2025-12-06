@@ -13,7 +13,13 @@ import { isAuthMethodSaml } from "@app/ee/services/permission/permission-fns";
 import { getConfig } from "@app/lib/config/env";
 import { crypto, generateSrpServerKey, srpCheckClientProof } from "@app/lib/crypto";
 import { getUserPrivateKey } from "@app/lib/crypto/srp";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, UnauthorizedError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  DatabaseError,
+  ForbiddenRequestError,
+  NotFoundError,
+  UnauthorizedError
+} from "@app/lib/errors";
 import { getMinExpiresIn, removeTrailingSlash } from "@app/lib/fn";
 import { logger } from "@app/lib/logger";
 import { AuthAttemptAuthMethod, AuthAttemptAuthResult, authAttemptCounter } from "@app/lib/telemetry/metrics";
@@ -142,6 +148,7 @@ export const authLoginServiceFactory = ({
       ip,
       userAgent,
       organizationId,
+      subOrganizationId,
       authMethod,
       isMfaVerified,
       mfaMethod
@@ -150,6 +157,7 @@ export const authLoginServiceFactory = ({
       ip: string;
       userAgent: string;
       organizationId?: string;
+      subOrganizationId?: string;
       authMethod: AuthMethod;
       isMfaVerified?: boolean;
       mfaMethod?: MfaMethod;
@@ -193,6 +201,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         accessVersion: tokenSession.accessVersion,
         organizationId,
+        subOrganizationId,
         isMfaVerified,
         mfaMethod
       },
@@ -208,6 +217,7 @@ export const authLoginServiceFactory = ({
         tokenVersionId: tokenSession.id,
         refreshVersion: tokenSession.refreshVersion,
         organizationId,
+        subOrganizationId,
         isMfaVerified,
         mfaMethod
       },
@@ -526,33 +536,73 @@ export const authLoginServiceFactory = ({
     const user = await userDAL.findUserEncKeyByUserId(decodedToken.userId);
     if (!user) throw new BadRequestError({ message: "User not found", name: "Find user from token" });
 
-    // Check if the user actually has access to the specified organization.
-    const userOrgs = await orgDAL.findAllOrgsByUserId(user.id);
+    // Check user membership in the sub-organization
+    const orgMembership = await membershipUserDAL.findOne({
+      actorUserId: user.id,
+      scopeOrgId: organizationId,
+      scope: AccessScope.Organization,
+      status: OrgMembershipStatus.Accepted
+    });
 
-    const selectedOrgMembership = userOrgs.find((org) => org.id === organizationId && org.userStatus !== "invited");
-
-    const selectedOrg = await orgDAL.findById(organizationId);
-
-    if (!selectedOrgMembership) {
+    if (!orgMembership) {
       throw new ForbiddenRequestError({
-        message: `User does not have access to the organization named ${selectedOrg?.name}`
+        message: `User does not have access to the organization with ID ${organizationId}`
       });
     }
 
-    // Check if authEnforced is true and the current auth method is not an enforced method
+    const selectedOrg = await orgDAL.findById(organizationId);
+    if (!selectedOrg) {
+      throw new NotFoundError({ message: `Organization with ID '${organizationId}' not found` });
+    }
+
+    const isSubOrganization = Boolean(selectedOrg.rootOrgId && selectedOrg.id !== selectedOrg.rootOrgId);
+
+    const membershipRole = (await membershipRoleDAL.findOne({ membershipId: orgMembership.id })).role;
+
+    let rootOrg = selectedOrg;
+
+    if (isSubOrganization) {
+      if (!selectedOrg.rootOrgId) {
+        throw new BadRequestError({
+          message: "Invalid sub-organization"
+        });
+      }
+
+      rootOrg = await orgDAL.findById(selectedOrg.rootOrgId);
+      if (!rootOrg) {
+        throw new BadRequestError({
+          message: "Invalid sub-organization"
+        });
+      }
+
+      // Check user membership in the root organization
+      const rootOrgMembership = await membershipUserDAL.findOne({
+        actorUserId: user.id,
+        scopeOrgId: selectedOrg.rootOrgId,
+        scope: AccessScope.Organization,
+        status: OrgMembershipStatus.Accepted
+      });
+
+      if (!rootOrgMembership) {
+        throw new ForbiddenRequestError({
+          message: "User does not have access to the root organization"
+        });
+      }
+    }
+
     if (
-      selectedOrg.authEnforced &&
+      rootOrg.authEnforced &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
-      !(selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin)
+      !(rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin)
     ) {
       throw new BadRequestError({
         message: "Login with the auth method required by your organization."
       });
     }
 
-    if (selectedOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
-      const canBypass = selectedOrg.bypassOrgAuthEnabled && selectedOrgMembership.userRole === OrgMembershipRole.Admin;
+    if (rootOrg.googleSsoAuthEnforced && decodedToken.authMethod !== AuthMethod.GOOGLE) {
+      const canBypass = rootOrg.bypassOrgAuthEnabled && membershipRole === OrgMembershipRole.Admin;
 
       if (!canBypass) {
         throw new ForbiddenRequestError({
@@ -563,13 +613,13 @@ export const authLoginServiceFactory = ({
     }
 
     if (decodedToken.authMethod === AuthMethod.GOOGLE) {
-      await orgDAL.updateById(selectedOrg.id, {
+      await orgDAL.updateById(rootOrg.id, {
         googleSsoAuthLastUsed: new Date()
       });
     }
 
-    const shouldCheckMfa = selectedOrg.enforceMfa || user.isMfaEnabled;
-    const orgMfaMethod = selectedOrg.enforceMfa ? (selectedOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
+    const shouldCheckMfa = rootOrg.enforceMfa || user.isMfaEnabled;
+    const orgMfaMethod = rootOrg.enforceMfa ? (rootOrg.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const userMfaMethod = user.isMfaEnabled ? (user.selectedMfaMethod ?? MfaMethod.EMAIL) : undefined;
     const mfaMethod = orgMfaMethod ?? userMfaMethod;
 
@@ -603,15 +653,16 @@ export const authLoginServiceFactory = ({
       user,
       userAgent,
       ip: ipAddress,
-      organizationId,
+      organizationId: isSubOrganization ? rootOrg.id : organizationId,
+      subOrganizationId: isSubOrganization ? organizationId : undefined,
       isMfaVerified: decodedToken.isMfaVerified,
       mfaMethod: decodedToken.mfaMethod
     });
 
     // In the event of this being a break-glass request (non-saml / non-oidc, when either is enforced)
     if (
-      selectedOrg.authEnforced &&
-      selectedOrg.bypassOrgAuthEnabled &&
+      rootOrg.authEnforced &&
+      rootOrg.bypassOrgAuthEnabled &&
       !isAuthMethodSaml(decodedToken.authMethod) &&
       decodedToken.authMethod !== AuthMethod.OIDC &&
       decodedToken.authMethod !== AuthMethod.GOOGLE
@@ -671,29 +722,55 @@ export const authLoginServiceFactory = ({
       }
     }
 
-    await auditLogService.createAuditLog({
-      orgId: organizationId,
-      ipAddress,
-      userAgent,
-      userAgentType: getUserAgentType(userAgent),
-      actor: {
-        type: ActorType.USER,
-        metadata: {
-          email: user.email,
-          userId: user.id,
-          username: user.username,
-          authMethod: decodedToken.authMethod
+    // Create audit log for organization selection
+    if (isSubOrganization) {
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username,
+            authMethod: decodedToken.authMethod
+          }
+        },
+        event: {
+          type: EventType.SELECT_SUB_ORGANIZATION,
+          metadata: {
+            organizationId,
+            organizationName: selectedOrg.name,
+            rootOrganizationId: selectedOrg.rootOrgId || ""
+          }
         }
-      },
-      event: {
-        type: EventType.SELECT_ORGANIZATION,
-        metadata: {
-          organizationId,
-          organizationName: selectedOrg.name
+      });
+    } else {
+      await auditLogService.createAuditLog({
+        orgId: organizationId,
+        ipAddress,
+        userAgent,
+        userAgentType: getUserAgentType(userAgent),
+        actor: {
+          type: ActorType.USER,
+          metadata: {
+            email: user.email,
+            userId: user.id,
+            username: user.username,
+            authMethod: decodedToken.authMethod
+          }
+        },
+        event: {
+          type: EventType.SELECT_ORGANIZATION,
+          metadata: {
+            organizationId,
+            organizationName: selectedOrg.name
+          }
         }
-      }
-    });
-
+      });
+    }
     return {
       ...tokens,
       user,

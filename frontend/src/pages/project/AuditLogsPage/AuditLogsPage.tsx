@@ -3,12 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { PageHeader } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { LogsSection } from "@app/pages/organization/AuditLogsPage/components";
 
 export const AuditLogsPage = () => {
   const { currentProject } = useProject();
-
+  const { isSubOrganization } = useOrganization();
   return (
     <div className="mx-auto flex flex-col justify-between bg-bunker-800 text-white">
       <Helmet>
@@ -29,7 +29,8 @@ export const AuditLogsPage = () => {
               }}
               className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
             >
-              <InfoIcon size={12} /> Looking for organization audit logs?
+              <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization audit
+              logs?
             </Link>
           </PageHeader>
           <LogsSection pageView project={currentProject} />

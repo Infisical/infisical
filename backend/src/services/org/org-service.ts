@@ -150,36 +150,47 @@ export const orgServiceFactory = ({
   /*
    * Get organization details by the organization id
    * */
-  const findOrganizationById = async (
-    userId: string,
-    orgId: string,
-    actorAuthMethod: ActorAuthMethod,
-    rootOrgId: string,
-    actorOrgId: string
-  ) => {
+  const findOrganizationById = async ({
+    userId,
+    orgId,
+    actorAuthMethod,
+    rootOrgId,
+    actorOrgId
+  }: {
+    userId: string;
+    orgId: string;
+    actorAuthMethod: ActorAuthMethod;
+    rootOrgId: string;
+    actorOrgId: string;
+  }) => {
     await permissionService.getOrgPermission({
       actor: ActorType.USER,
       actorId: userId,
       orgId,
       actorAuthMethod,
-      actorOrgId: rootOrgId,
+      actorOrgId,
       scope: OrganizationActionScope.Any
     });
     const appCfg = getConfig();
-    const org = await orgDAL.findOrgById(orgId);
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
+    const hasSubOrg = rootOrgId !== actorOrgId;
 
-    const hasSubOrg = actorOrgId !== rootOrgId;
+    const org = await orgDAL.findOrgById(rootOrgId);
+    if (!org) throw new NotFoundError({ message: `Organization with ID '${rootOrgId}' not found` });
+
     let subOrg;
     if (hasSubOrg) {
       subOrg = await orgDAL.findOne({ rootOrgId, id: actorOrgId });
+
+      if (!subOrg) throw new NotFoundError({ message: `Sub-organization with ID '${actorOrgId}' not found` });
     }
 
-    if (!org.userTokenExpiration) {
-      return { ...org, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME, subOrganization: subOrg };
+    const data = hasSubOrg && subOrg ? subOrg : org;
+    if (!data.userTokenExpiration) {
+      return { ...data, userTokenExpiration: appCfg.JWT_REFRESH_LIFETIME };
     }
-    return { ...org, subOrganization: subOrg };
+    return data;
   };
+
   /*
    * Get all organization a user part of
    * */

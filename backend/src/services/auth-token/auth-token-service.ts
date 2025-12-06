@@ -196,7 +196,7 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
   };
 
   // to parse jwt identity in inject identity plugin
-  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload, subOrganizationSelector?: string) => {
+  const fnValidateJwtIdentity = async (token: AuthModeJwtTokenPayload) => {
     const session = await tokenDAL.findOneTokenSession({
       id: token.tokenVersionId,
       userId: token.userId
@@ -214,13 +214,17 @@ export const tokenServiceFactory = ({ tokenDAL, userDAL, membershipUserDAL, orgD
     let rootOrgId = "";
     let parentOrgId = "";
     if (token.organizationId) {
-      if (subOrganizationSelector) {
+      // Check if token has sub-organization scope
+      if (token.subOrganizationId) {
         const subOrganization = await orgDAL.findOne({
-          rootOrgId: token.organizationId,
-          slug: subOrganizationSelector
+          id: token.subOrganizationId
         });
         if (!subOrganization)
-          throw new BadRequestError({ message: `Sub organization ${subOrganizationSelector} not found` });
+          throw new BadRequestError({ message: `Sub organization ${token.subOrganizationId} not found` });
+        // Verify the sub-org belongs to the token's root organization
+        if (subOrganization.rootOrgId !== token.organizationId && subOrganization.id !== token.organizationId) {
+          throw new ForbiddenRequestError({ message: "Sub-organization does not belong to the token's organization" });
+        }
 
         const orgMembership = await membershipUserDAL.findOne({
           actorUserId: user.id,

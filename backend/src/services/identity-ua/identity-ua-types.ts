@@ -1,5 +1,12 @@
 import { TProjectPermission } from "@app/lib/types";
 
+export type TLoginUaDTO = {
+  clientId: string;
+  clientSecret: string;
+  ip: string;
+  subOrganizationName?: string;
+};
+
 export type TAttachUaDTO = {
   identityId: string;
   accessTokenTTL: number;

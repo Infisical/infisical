@@ -14,7 +14,7 @@ import { ProjectSshTab } from "./components/ProjectSshTab";
 export const SettingsPage = () => {
   const { t } = useTranslation();
 
-  const { currentOrg } = useOrganization();
+  const { currentOrg, isSubOrganization } = useOrganization();
 
   return (
     <div className="flex h-full w-full justify-center bg-bunker-800 text-white">
@@ -34,7 +34,8 @@ export const SettingsPage = () => {
             }}
             className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
           >
-            <InfoIcon size={12} /> Looking for organization settings?
+            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization
+            settings?
           </Link>
         </PageHeader>
         <Tabs orientation="vertical" defaultValue="tab-project-general">

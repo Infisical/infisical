@@ -117,9 +117,10 @@ export const Route = createFileRoute("/_restrict-login-signup")({
         return;
       throw redirect({ to: "/login/select-organization" });
     }
+    const orgId = data.subOrganizationId || data.organizationId;
     throw redirect({
       to: "/organizations/$orgId/projects",
-      params: { orgId: data.organizationId }
+      params: { orgId }
     });
   },
   component: AuthConsentWrapper

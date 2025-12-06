@@ -42,7 +42,7 @@ export const Page = () => {
     strict: false,
     select: (el) => el.membershipId as string
   });
-  const { currentOrg, isSubOrganization } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { currentProject, projectId } = useProject();
 
   const { data: membershipDetails, isPending: isMembershipDetailsLoading } =
@@ -73,7 +73,7 @@ export const Page = () => {
             text: "User privilege assumption has started"
           });
 
-          const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization ? `?subOrganization=${currentOrg.slug}` : ""}`;
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
           window.location.assign(
             url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
           );

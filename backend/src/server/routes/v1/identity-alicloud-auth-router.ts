@@ -5,6 +5,7 @@ import { IdentityAlicloudAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ALICLOUD_AUTH, ApiDocsTags } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -38,6 +39,7 @@ export const registerIdentityAliCloudAuthRouter = async (server: FastifyZodProvi
             message: "AccessKeyId must be alphanumeric"
           })
           .describe(ALICLOUD_AUTH.LOGIN.AccessKeyId),
+        subOrganizationName: slugSchema().optional().describe(ALICLOUD_AUTH.LOGIN.subOrganizationName),
         SignatureMethod: z.enum(["HMAC-SHA1"]).describe(ALICLOUD_AUTH.LOGIN.SignatureMethod),
         Timestamp: z
           .string()

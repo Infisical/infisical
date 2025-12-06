@@ -1,12 +1,17 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useCreateSubOrganization } from "@app/hooks/api";
+import { useOrganization } from "@app/context";
+import { projectKeys, subOrganizationsQuery, useCreateSubOrganization } from "@app/hooks/api";
+import { authKeys, selectOrganization } from "@app/hooks/api/auth/queries";
 import { slugSchema } from "@app/lib/schemas";
+import { navigateUserToOrg } from "@app/pages/auth/LoginPage/Login.utils";
 
 type ContentProps = {
   onClose: () => void;
@@ -19,7 +24,10 @@ const AddOrgSchema = z.object({
 type FormData = z.infer<typeof AddOrgSchema>;
 
 export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
   const createSubOrg = useCreateSubOrganization();
+  const subOrgQuery = subOrganizationsQuery.list({ limit: 500, isAccessible: true });
+  const queryClient = useQueryClient();
 
   const {
     handleSubmit,
@@ -36,6 +44,15 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
   const router = useRouter();
 
   const onSubmit = async ({ name }: FormData) => {
+    if (isSubOrganization && currentOrg.rootOrgId) {
+      const { token } = await selectOrganization({
+        organizationId: currentOrg.rootOrgId
+      });
+
+      SecurityClient.setToken(token);
+      SecurityClient.setProviderAuthToken("");
+    }
+
     const { organization } = await createSubOrg.mutateAsync({
       name
     });
@@ -46,11 +63,18 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     });
     onClose();
 
-    navigate({
-      to: "/organizations/$orgId/projects",
-      params: { orgId: organization.id }
+    const { token } = await selectOrganization({
+      organizationId: organization.id
     });
+
+    SecurityClient.setToken(token);
+    SecurityClient.setProviderAuthToken("");
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+
     await router.invalidate({ sync: true }).catch(() => null);
+    await navigateUserToOrg({ navigate, organizationId: organization.id });
+    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
   };
 
   return (

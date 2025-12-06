@@ -7,6 +7,7 @@ import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -46,7 +47,8 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
       tags: [ApiDocsTags.TlsCertAuth],
       description: "Login with TLS Certificate Auth for machine identity",
       body: z.object({
-        identityId: z.string().trim().describe(TLS_CERT_AUTH.LOGIN.identityId)
+        identityId: z.string().trim().describe(TLS_CERT_AUTH.LOGIN.identityId),
+        subOrganizationName: slugSchema().optional().describe(TLS_CERT_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -66,7 +68,7 @@ export const registerIdentityTlsCertAuthRouter = async (server: FastifyZodProvid
 
       const { identityTlsCertAuth, accessToken, identityAccessToken, identity } =
         await server.services.identityTlsCertAuth.login({
-          identityId: req.body.identityId,
+          ...req.body,
           clientCertificate: clientCertificate as string
         });
 
