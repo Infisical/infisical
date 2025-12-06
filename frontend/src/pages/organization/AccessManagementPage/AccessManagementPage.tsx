@@ -85,7 +85,7 @@ export const AccessManagementPage = () => {
         <PageHeader
           scope={isSubOrganization ? "namespace" : "org"}
           title={`${isSubOrganization ? "Sub-Organization" : "Organization"} Access Control`}
-          description="Manage fine-grained access for users, groups, roles, and machine identities within your organization resources."
+          description={`Manage fine-grained access for users, groups, roles, and machine identities within your ${isSubOrganization ? "sub-" : ""}organization resources.`}
         >
           {isSubOrganization && (
             <Link
