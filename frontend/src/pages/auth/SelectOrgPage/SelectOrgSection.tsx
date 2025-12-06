@@ -47,6 +47,7 @@ export const SelectOrganizationSection = () => {
   const orgId = queryParams.get("org_id");
   const callbackPort = queryParams.get("callback_port");
   const isAdminLogin = queryParams.get("is_admin_login") === "true";
+  const mfaPending = queryParams.get("mfa_pending") === "true";
   const defaultSelectedOrg = organizations.data?.find((org) => org.id === orgId);
 
   const logout = useLogoutUser(true);
@@ -236,10 +237,22 @@ export const SelectOrganizationSection = () => {
   }, [organizations.isPending, organizations.data]);
 
   useEffect(() => {
+    if (mfaPending && defaultSelectedOrg) {
+      const storedMfaToken = sessionStorage.getItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+      if (storedMfaToken) {
+        sessionStorage.removeItem(SessionStorageKeys.MFA_TEMP_TOKEN);
+        SecurityClient.setMfaToken(storedMfaToken);
+        setIsInitialOrgCheckLoading(false);
+        toggleShowMfa.on();
+        setMfaSuccessCallback(() => () => handleSelectOrganization(defaultSelectedOrg));
+        return;
+      }
+    }
+
     if (defaultSelectedOrg) {
       handleSelectOrganization(defaultSelectedOrg);
     }
-  }, [defaultSelectedOrg]);
+  }, [defaultSelectedOrg, mfaPending]);
 
   if (
     userLoading ||

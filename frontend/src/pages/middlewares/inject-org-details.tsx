@@ -1,6 +1,7 @@
 import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 
 import SecurityClient from "@app/components/utilities/SecurityClient";
+import { SessionStorageKeys } from "@app/const";
 import { authKeys, fetchAuthToken, selectOrganization } from "@app/hooks/api/auth/queries";
 import { fetchOrganizationById, organizationKeys } from "@app/hooks/api/organization/queries";
 import { projectKeys } from "@app/hooks/api/projects";
@@ -28,9 +29,10 @@ export const Route = createFileRoute("/_authenticate/_inject-org-details")({
           const { token, isMfaEnabled } = await selectOrganization({ organizationId: urlOrgId });
 
           if (isMfaEnabled) {
+            sessionStorage.setItem(SessionStorageKeys.MFA_TEMP_TOKEN, token);
             throw redirect({
               to: "/login/select-organization",
-              search: { org_id: urlOrgId }
+              search: { org_id: urlOrgId, mfa_pending: true }
             });
           }
 

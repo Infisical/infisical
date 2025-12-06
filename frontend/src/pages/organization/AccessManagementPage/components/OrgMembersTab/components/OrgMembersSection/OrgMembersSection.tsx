@@ -242,7 +242,7 @@ export const OrgMembersSection = () => {
           isOpen={popUp.addMemberToSubOrg.isOpen}
           onOpenChange={(isOpen) => handlePopUpToggle("addMemberToSubOrg", isOpen)}
         >
-          <ModalContent title="Add member from your organization">
+          <ModalContent title="Add member from your organization" bodyClassName="overflow-visible">
             <AddSubOrgMemberModal onClose={() => handlePopUpClose("addMemberToSubOrg")} />
           </ModalContent>
         </Modal>
