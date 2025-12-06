@@ -361,6 +361,7 @@ const pamRoutes = route("/organizations/$orgId/projects/pam/$projectId", [
 
     // Access Management
     route("/access-management", "project/AccessControlPage/route-pam.tsx"),
+    route("/approvals", "pam/ApprovalsPage/route.tsx"),
     route("/roles/$roleSlug", "project/RoleDetailsBySlugPage/route-pam.tsx"),
     route("/identities/$identityId", "project/IdentityDetailsByIDPage/route-pam.tsx"),
     route("/members/$membershipId", "project/MemberDetailsByIDPage/route-pam.tsx"),
