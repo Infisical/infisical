@@ -60,7 +60,7 @@ export const SubOrgNameChangeSection = (): JSX.Element => {
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="py-4">
       <div>
-        <h2 className="text-md mb-2 text-mineshaft-100">Organization Name</h2>
+        <h2 className="text-md mb-2 text-mineshaft-100">Sub-Organization Name</h2>
         <Controller
           defaultValue=""
           render={({ field, fieldState: { error } }) => (

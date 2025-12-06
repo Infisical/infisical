@@ -32,7 +32,7 @@ import { UpdateExternalKmsForm } from "./UpdateExternalKmsForm";
 
 export const OrgEncryptionTab = withPermission(
   () => {
-    const { currentOrg } = useOrganization();
+    const { currentOrg, isSubOrganization } = useOrganization();
     const { subscription } = useSubscription();
     const orgId = currentOrg?.id || "";
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -86,7 +86,7 @@ export const OrgEncryptionTab = withPermission(
           </OrgPermissionCan>
         </div>
         <p className="mb-4 text-gray-400">
-          Encrypt your organization&apos;s data with external KMS.
+          Encrypt your {isSubOrganization ? "sub-" : ""}organization&apos;s data with external KMS.
         </p>
         <TableContainer>
           <Table>

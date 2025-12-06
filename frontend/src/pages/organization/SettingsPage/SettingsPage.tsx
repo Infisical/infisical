@@ -21,7 +21,7 @@ export const SettingsPage = () => {
         <div className="w-full max-w-8xl">
           <PageHeader
             scope={isSubOrganization ? "namespace" : "org"}
-            description="Configure organization-wide settings"
+            description={`Configure ${isSubOrganization ? "sub-" : ""}organization-wide settings`}
             title={isSubOrganization ? "Sub-Organization Settings" : "Organization Settings"}
           >
             {isSubOrganization && (
