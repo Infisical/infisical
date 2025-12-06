@@ -70,11 +70,11 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     SecurityClient.setToken(token);
     SecurityClient.setProviderAuthToken("");
     queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
+    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
 
     await router.invalidate({ sync: true }).catch(() => null);
-    queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
     await navigateUserToOrg({ navigate, organizationId: organization.id });
+    queryClient.removeQueries({ queryKey: projectKeys.allProjectQueries() });
   };
 
   return (

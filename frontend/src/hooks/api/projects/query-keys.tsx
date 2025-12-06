@@ -30,7 +30,8 @@ export const projectKeys = {
   // allows invalidation using above key without knowing params
   getProjectIdentityMembershipsWithParams: ({ projectId, ...params }: TListProjectIdentitiesDTO) =>
     [...projectKeys.getProjectIdentityMemberships(projectId), params] as const,
-  searchProject: (dto: TSearchProjectsDTO) => ["search-projects", dto] as const,
+  searchProject: (dto: TSearchProjectsDTO) =>
+    [...projectKeys.allProjectQueries(), "search-projects", dto] as const,
   getProjectGroupMemberships: (projectId: string) => [{ projectId }, "project-groups"] as const,
   getProjectGroupMembershipDetails: (projectId: string, groupId: string) =>
     [{ projectId, groupId }, "project-group-membership-details"] as const,
