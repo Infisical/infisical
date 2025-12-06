@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ms } from "@app/lib/ms";
 
 import {
   BaseApprovalPolicySchema,
@@ -22,11 +23,21 @@ export const PamAccessPolicyConditionsSchema = z
   })
   .array();
 
+const DurationSchema = z.string().refine(
+  (val) => {
+    const duration = ms(val) / 1000;
+
+    // 30 seconds to 7 days
+    return duration >= 30 && duration <= 604800;
+  },
+  { message: "Duration must be between 30 seconds and 7 days" }
+);
+
 // Constraints
 export const PamAccessPolicyConstraintsSchema = z.object({
-  requestDurationSeconds: z.object({
-    min: z.number().min(30).max(604800),
-    max: z.number().min(30).max(604800) // 30 seconds to 7 days
+  accessDuration: z.object({
+    min: DurationSchema,
+    max: DurationSchema
   })
 });
 
@@ -34,7 +45,7 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 export const PamAccessPolicyRequestDataSchema = z.object({
   resourceId: z.string().uuid(),
   accountPath: z.string(),
-  requestDurationSeconds: z.number().min(30).max(604800) // 30 seconds to 7 days
+  accessDuration: DurationSchema
 });
 
 // Policy

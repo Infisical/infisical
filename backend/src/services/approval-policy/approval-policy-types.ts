@@ -35,7 +35,7 @@ export interface ApprovalPolicyStep {
 export interface TCreatePolicyDTO {
   projectId: TApprovalPolicy["projectId"];
   name: TApprovalPolicy["name"];
-  maxRequestTtlSeconds?: TApprovalPolicy["maxRequestTtlSeconds"];
+  maxRequestTtl?: TApprovalPolicy["maxRequestTtl"];
   conditions: TApprovalPolicy["conditions"]["conditions"];
   constraints: TApprovalPolicy["constraints"]["constraints"];
   steps: ApprovalPolicyStep[];
@@ -43,7 +43,7 @@ export interface TCreatePolicyDTO {
 
 export interface TUpdatePolicyDTO {
   name?: TApprovalPolicy["name"];
-  maxRequestTtlSeconds?: TApprovalPolicy["maxRequestTtlSeconds"];
+  maxRequestTtl?: TApprovalPolicy["maxRequestTtl"];
   conditions?: TApprovalPolicy["conditions"]["conditions"];
   constraints?: TApprovalPolicy["constraints"]["constraints"];
   steps?: ApprovalPolicyStep[];
@@ -54,7 +54,7 @@ export interface TCreateRequestDTO {
   projectId: TApprovalRequest["projectId"];
   requestData: TApprovalRequest["requestData"]["requestData"];
   justification?: TApprovalRequest["justification"];
-  expiresAt?: TApprovalRequest["expiresAt"];
+  requestDuration?: string;
 }
 
 // Factory

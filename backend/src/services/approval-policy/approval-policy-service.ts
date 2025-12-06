@@ -31,6 +31,7 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
+import { ms } from "@app/lib/ms";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -106,7 +107,7 @@ export const approvalPolicyServiceFactory = ({
 
   const create = async (
     policyType: ApprovalPolicyType,
-    { projectId, name, maxRequestTtlSeconds, conditions, constraints, steps }: TCreatePolicyDTO,
+    { projectId, name, maxRequestTtl, conditions, constraints, steps }: TCreatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const { hasRole } = await permissionService.getProjectPermission({
@@ -135,7 +136,7 @@ export const approvalPolicyServiceFactory = ({
           projectId,
           organizationId: actor.orgId,
           name,
-          maxRequestTtlSeconds,
+          maxRequestTtl,
           conditions: { version: 1, conditions },
           constraints: { version: 1, constraints },
           type: policyType
@@ -227,7 +228,7 @@ export const approvalPolicyServiceFactory = ({
 
   const updateById = async (
     policyId: string,
-    { name, maxRequestTtlSeconds, conditions, constraints, steps }: TUpdatePolicyDTO,
+    { name, maxRequestTtl, conditions, constraints, steps }: TUpdatePolicyDTO,
     actor: OrgServiceActor
   ) => {
     const policy = await approvalPolicyDAL.findById(policyId);
@@ -264,8 +265,8 @@ export const approvalPolicyServiceFactory = ({
         updateDoc.name = name;
       }
 
-      if (maxRequestTtlSeconds !== undefined) {
-        updateDoc.maxRequestTtlSeconds = maxRequestTtlSeconds;
+      if (maxRequestTtl !== undefined) {
+        updateDoc.maxRequestTtl = maxRequestTtl;
       }
 
       if (conditions !== undefined) {
@@ -352,7 +353,7 @@ export const approvalPolicyServiceFactory = ({
     {
       projectId,
       requestData,
-      expiresAt,
+      requestDuration,
       justification,
       requesterName,
       requesterEmail
@@ -376,18 +377,20 @@ export const approvalPolicyServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Policy constraints not met" });
     }
 
-    if (expiresAt) {
-      const now = new Date();
-      const ttlSeconds = (new Date(expiresAt).getTime() - now.getTime()) / 1000;
+    let expiresAt: Date | undefined;
 
-      if (ttlSeconds < 3600) {
-        throw new BadRequestError({ message: "Expiration time must be at least 1 hour in the future" });
-      }
+    if (requestDuration) {
+      const ttlMs = ms(requestDuration);
 
-      if (policy.maxRequestTtlSeconds && ttlSeconds > policy.maxRequestTtlSeconds) {
-        throw new BadRequestError({
-          message: `Expiration time exceeds the maximum allowed TTL of ${policy.maxRequestTtlSeconds} seconds`
-        });
+      expiresAt = new Date(Date.now() + ttlMs);
+
+      if (policy.maxRequestTtl) {
+        const maxTtlMs = ms(policy.maxRequestTtl);
+        if (ttlMs > maxTtlMs) {
+          throw new BadRequestError({
+            message: `Expiration time exceeds the maximum allowed TTL of ${policy.maxRequestTtl}`
+          });
+        }
       }
     }
 

@@ -9,6 +9,7 @@ import {
   TApprovalResourceFactory
 } from "../approval-policy-types";
 import { TPamAccessPolicy, TPamAccessPolicyInputs, TPamAccessRequestData } from "./pam-access-policy-types";
+import { ms } from "@app/lib/ms";
 
 export const pamAccessPolicyFactory: TApprovalResourceFactory<
   TPamAccessPolicyInputs,
@@ -84,10 +85,10 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     policy,
     inputs
   ) => {
-    const reqDuration = inputs.requestDurationSeconds;
-    const durationConstraint = policy.constraints.constraints.requestDurationSeconds;
+    const reqDuration = ms(inputs.accessDuration);
+    const durationConstraint = policy.constraints.constraints.accessDuration;
 
-    return reqDuration >= durationConstraint.min && reqDuration <= durationConstraint.max;
+    return reqDuration >= ms(durationConstraint.min) && reqDuration <= ms(durationConstraint.max);
   };
 
   const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (_request) => {

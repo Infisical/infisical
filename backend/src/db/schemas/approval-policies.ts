@@ -14,7 +14,7 @@ export const ApprovalPoliciesSchema = z.object({
   type: z.string(),
   name: z.string(),
   isActive: z.boolean().default(true).nullable().optional(),
-  maxRequestTtlSeconds: z.number().nullable().optional(),
+  maxRequestTtl: z.string().nullable().optional(),
   conditions: z.unknown(),
   constraints: z.unknown(),
   createdAt: z.date(),

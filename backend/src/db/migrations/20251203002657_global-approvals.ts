@@ -19,7 +19,7 @@ export async function up(knex: Knex): Promise<void> {
 
       t.boolean("isActive").defaultTo(true);
 
-      t.integer("maxRequestTtlSeconds").nullable();
+      t.string("maxRequestTtl").nullable(); // 1hour, 30seconds, etc
 
       t.jsonb("conditions").notNullable();
       t.jsonb("constraints").notNullable();
@@ -71,11 +71,11 @@ export async function up(knex: Knex): Promise<void> {
       t.uuid("organizationId").notNullable().index();
       t.foreign("organizationId").references("id").inTable(TableName.Organization).onDelete("CASCADE");
 
-      t.uuid("policyId").notNullable().index();
-      t.foreign("policyId").references("id").inTable(TableName.ApprovalPolicies).onDelete("CASCADE");
+      t.uuid("policyId").nullable().index();
+      t.foreign("policyId").references("id").inTable(TableName.ApprovalPolicies).onDelete("SET NULL");
 
-      t.uuid("requesterId").notNullable().index();
-      t.foreign("requesterId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("requesterId").nullable().index();
+      t.foreign("requesterId").references("id").inTable(TableName.Users).onDelete("SET NULL");
 
       // To be used in the event of requester deletion
       t.string("requesterName").notNullable();
@@ -156,11 +156,11 @@ export async function up(knex: Knex): Promise<void> {
       t.string("projectId").notNullable().index();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
 
-      t.uuid("requestId").notNullable().index();
-      t.foreign("requestId").references("id").inTable(TableName.ApprovalRequests).onDelete("CASCADE");
+      t.uuid("requestId").nullable().index();
+      t.foreign("requestId").references("id").inTable(TableName.ApprovalRequests).onDelete("SET NULL");
 
-      t.uuid("granteeUserId").notNullable().index();
-      t.foreign("granteeUserId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("granteeUserId").nullable().index();
+      t.foreign("granteeUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");
 
       t.uuid("revokedByUserId").nullable().index();
       t.foreign("revokedByUserId").references("id").inTable(TableName.Users).onDelete("SET NULL");

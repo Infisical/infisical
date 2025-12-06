@@ -10,8 +10,8 @@ import { TImmutableDBKeys } from "./models";
 export const ApprovalRequestGrantsSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
-  requestId: z.string().uuid(),
-  granteeUserId: z.string().uuid(),
+  requestId: z.string().uuid().nullable().optional(),
+  granteeUserId: z.string().uuid().nullable().optional(),
   revokedByUserId: z.string().uuid().nullable().optional(),
   revocationReason: z.string().nullable().optional(),
   status: z.string(),

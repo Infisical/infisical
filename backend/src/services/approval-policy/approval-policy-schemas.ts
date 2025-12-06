@@ -8,6 +8,7 @@ import {
 } from "@app/db/schemas";
 
 import { ApproverType } from "./approval-policy-enums";
+import { ms } from "@app/lib/ms";
 
 const ApprovalPolicyStepSchema = z.object({
   name: z.string().min(1).max(128).nullable().optional(),
@@ -21,6 +22,16 @@ const ApprovalPolicyStepSchema = z.object({
     .array()
 });
 
+const MaxRequestTtlSchema = z.string().refine(
+  (val) => {
+    const duration = ms(val) / 1000;
+
+    // 1 hour to 30 days
+    return duration >= 3600 && duration <= 2592000;
+  },
+  { message: "Duration must be between 1 hour and 30 days" }
+);
+
 // Policy
 export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
   steps: ApprovalPolicyStepSchema.array()
@@ -29,13 +40,13 @@ export const BaseApprovalPolicySchema = ApprovalPoliciesSchema.extend({
 export const BaseCreateApprovalPolicySchema = z.object({
   projectId: z.string().uuid(),
   name: z.string().min(1).max(128),
-  maxRequestTtlSeconds: z.number().min(3600).max(2592000).nullable().optional(), // 1 hour to 30 days
+  maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array()
 });
 
 export const BaseUpdateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128).optional(),
-  maxRequestTtlSeconds: z.number().min(3600).max(2592000).nullable().optional(), // 1 hour to 30 days
+  maxRequestTtlSeconds: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array().optional()
 });
 
@@ -64,5 +75,17 @@ export const BaseApprovalRequestSchema = ApprovalRequestsSchema.extend({
 export const BaseCreateApprovalRequestSchema = z.object({
   projectId: z.string().uuid(),
   justification: z.string().max(256).nullable().optional(),
-  expiresAt: z.coerce.date().nullable().optional()
+  requestDuration: z
+    .string()
+    .refine(
+      (val) => {
+        const duration = ms(val) / 1000;
+
+        // 1 minute to 30 days
+        return duration >= 60 && duration <= 2592000;
+      },
+      { message: "Duration must be between 1 minute and 30 days" }
+    )
+    .nullable()
+    .optional()
 });
