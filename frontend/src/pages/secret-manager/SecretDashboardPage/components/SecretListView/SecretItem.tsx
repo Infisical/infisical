@@ -733,7 +733,7 @@ export const SecretItem = memo(
                     {(isAllowed) => (
                       <IconButton
                         ariaLabel="override-value"
-                        isDisabled={!isAllowed}
+                        isDisabled={!isAllowed || isRotatedSecret}
                         variant="plain"
                         size="sm"
                         onClick={handleOverrideClick}
@@ -742,7 +742,13 @@ export const SecretItem = memo(
                           isOverridden && "w-5 text-primary"
                         )}
                       >
-                        <Tooltip content={`${isOverridden ? "Remove" : "Add"} Override`}>
+                        <Tooltip
+                          content={
+                            isRotatedSecret
+                              ? "Unavailable for rotated secrets"
+                              : `${isOverridden ? "Remove" : "Add"} Override`
+                          }
+                        >
                           <FontAwesomeSymbol
                             symbolName={FontAwesomeSpriteName.Override}
                             className="h-3.5 w-3.5"
