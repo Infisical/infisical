@@ -125,14 +125,16 @@ const Page = () => {
                 identityId={identityId}
                 handlePopUpOpen={handlePopUpOpen}
               />
+            </div>
+            <div className="flex flex-1 flex-col gap-y-4">
               {!isAuthHidden && (
                 <IdentityAuthenticationSection
                   identityId={identityId}
                   handlePopUpOpen={handlePopUpOpen}
                 />
               )}
+              <IdentityProjectsSection identityId={identityId} />
             </div>
-            <IdentityProjectsSection identityId={identityId} />
           </div>
         </div>
       )}
@@ -170,14 +172,6 @@ const Page = () => {
             (popUp?.deleteIdentity?.data as { identityId: string })?.identityId
           )
         }
-      />
-      <ViewIdentityAuthModal
-        isOpen={popUp.viewAuthMethod.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
-        authMethod={popUp.viewAuthMethod.data?.authMethod}
-        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
-        identityId={identityId}
-        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
       />
     </div>
   );
