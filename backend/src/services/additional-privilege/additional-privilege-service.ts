@@ -79,7 +79,10 @@ export const additionalPrivilegeServiceFactory = ({
       });
 
       return {
-        additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+        additionalPrivilege: {
+          ...additionalPrivilege,
+          permissions: unpackPermissions(additionalPrivilege.permissions)
+        }
       };
     }
 
@@ -103,7 +106,10 @@ export const additionalPrivilegeServiceFactory = ({
     });
 
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      }
     };
   };
 
@@ -136,7 +142,10 @@ export const additionalPrivilegeServiceFactory = ({
       });
 
       return {
-        additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+        additionalPrivilege: {
+          ...additionalPrivilege,
+          permissions: unpackPermissions(additionalPrivilege.permissions)
+        }
       };
     }
 
@@ -158,7 +167,10 @@ export const additionalPrivilegeServiceFactory = ({
     });
 
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      }
     };
   };
 
@@ -179,7 +191,10 @@ export const additionalPrivilegeServiceFactory = ({
 
     const additionalPrivilege = await additionalPrivilegeDAL.deleteById(existingPrivilege.id);
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      }
     };
   };
 
@@ -199,7 +214,10 @@ export const additionalPrivilegeServiceFactory = ({
       throw new NotFoundError({ message: `Additional privilege with id ${selector.id} doesn't exist` });
 
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      }
     };
   };
 
@@ -219,7 +237,10 @@ export const additionalPrivilegeServiceFactory = ({
       throw new NotFoundError({ message: `Additional privilege with name ${selector.name} doesn't exist` });
 
     return {
-      additionalPrivilege: { ...additionalPrivilege, permissions: unpackPermissions(additionalPrivilege.permissions) }
+      additionalPrivilege: {
+        ...additionalPrivilege,
+        permissions: unpackPermissions(additionalPrivilege.permissions)
+      }
     };
   };
 
