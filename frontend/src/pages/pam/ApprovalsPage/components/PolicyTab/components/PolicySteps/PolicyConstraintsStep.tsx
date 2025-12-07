@@ -33,7 +33,7 @@ export const PolicyConstraintsStep = () => {
             variant="outline_bg"
             size="xs"
             leftIcon={<FontAwesomeIcon icon={faPlus} />}
-            onClick={() => appendCondition({ resourceIds: [], accountPaths: [] })}
+            onClick={() => appendCondition({ accountPaths: [] })}
           >
             Add Condition
           </Button>
@@ -60,35 +60,6 @@ export const PolicyConstraintsStep = () => {
                 <div className="space-y-3">
                   <Controller
                     control={control}
-                    name={`conditions.${index}.resourceIds`}
-                    render={({ field: resourceField, fieldState: { error } }) => (
-                      <FormControl
-                        label="Resource IDs"
-                        isError={Boolean(error)}
-                        errorText={error?.message}
-                        helperText="Comma-separated UUIDs of resources this condition applies to"
-                      >
-                        <Input
-                          value={resourceField.value.join(", ")}
-                          onChange={(e) => {
-                            const ids = e.target.value
-                              .split(",")
-                              .map((id) => id.trim())
-                              .filter(Boolean);
-                            resourceField.onChange(ids);
-                          }}
-                          placeholder="e.g., 550e8400-e29b-41d4-a716-446655440000, ..."
-                        />
-                      </FormControl>
-                    )}
-                  />
-                  <div className="flex items-center justify-center">
-                    <div style={{ height: "1px" }} className="w-1/5 bg-mineshaft-500" />
-                    <span className="px-2 text-xs font-medium text-mineshaft-400">AND</span>
-                    <div style={{ height: "1px" }} className="w-1/5 bg-mineshaft-500" />
-                  </div>
-                  <Controller
-                    control={control}
                     name={`conditions.${index}.accountPaths`}
                     render={({ field: pathField, fieldState: { error } }) => (
                       <FormControl
@@ -106,7 +77,7 @@ export const PolicyConstraintsStep = () => {
                               .filter(Boolean);
                             pathField.onChange(paths);
                           }}
-                          placeholder="e.g., /admin/*, /users/john"
+                          placeholder="e.g., /admin/**, /users/john, /**"
                         />
                       </FormControl>
                     )}

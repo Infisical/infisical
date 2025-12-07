@@ -23,18 +23,8 @@ const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
   }
 };
 
-const formatDuration = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
-  }
-  return `${minutes}m`;
-};
-
 export const RequestDetailsSection = ({ request }: Props) => {
-  const { accountPath, requestDurationSeconds } = request.requestData.requestData;
+  const { accountPath, accessDuration } = request.requestData.requestData;
 
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
@@ -53,9 +43,7 @@ export const RequestDetailsSection = ({ request }: Props) => {
           </GenericFieldLabel>
           <GenericFieldLabel label="Requester Email">{request.requesterEmail}</GenericFieldLabel>
           <GenericFieldLabel label="Account Path">{accountPath}</GenericFieldLabel>
-          <GenericFieldLabel label="Duration">
-            {formatDuration(requestDurationSeconds)}
-          </GenericFieldLabel>
+          <GenericFieldLabel label="Duration">{accessDuration}</GenericFieldLabel>
           {request.justification && (
             <GenericFieldLabel label="Justification">
               <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">

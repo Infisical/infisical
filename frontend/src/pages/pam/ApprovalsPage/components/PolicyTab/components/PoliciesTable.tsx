@@ -37,6 +37,8 @@ import {
   ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
+import { Badge } from "@app/components/v3";
+import { User, Users } from "lucide-react";
 
 type Props = {
   handlePopUpOpen: (
@@ -113,9 +115,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             {!isPoliciesLoading &&
               policies.map((policy) => {
                 const isExpanded = expandedRows.has(policy.id);
-                const maxTtl = policy.maxRequestTtlSeconds
-                  ? `${Math.floor(policy.maxRequestTtlSeconds / 3600)}h`
-                  : "No limit";
+                const maxTtl = policy.maxRequestTtl ? policy.maxRequestTtl : "No limit";
                 const conditionsCount = policy.conditions.conditions.length;
 
                 return (
@@ -198,8 +198,8 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                     {isExpanded && (
                       <Tr className="bg-mineshaft-800">
                         <Td colSpan={5} className="p-0">
-                          <div className="max-h-80 overflow-auto overflow-x-hidden">
-                            <div className="p-4">
+                          <div className="flex max-h-80 w-full gap-2 overflow-auto overflow-x-hidden">
+                            <div className="flex-1 p-4">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Contraints
                               </div>
@@ -211,27 +211,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                     )}
                                   >
                                     <div className="space-y-2">
-                                      <div>
-                                        <span className="text-sm font-medium text-mineshaft-300">
-                                          Resources:
-                                        </span>
-                                        <p className="text-sm text-mineshaft-100">
-                                          {step.resourceIds.join(", ")}
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center justify-center">
-                                        <div
-                                          style={{ height: "1px" }}
-                                          className="w-1/5 bg-mineshaft-500"
-                                        />
-                                        <span className="px-2 text-xs font-medium text-mineshaft-400">
-                                          AND
-                                        </span>
-                                        <div
-                                          style={{ height: "1px" }}
-                                          className="w-1/5 bg-mineshaft-500"
-                                        />
-                                      </div>
                                       <div>
                                         <span className="text-sm font-medium text-mineshaft-300">
                                           Account Paths:
@@ -256,7 +235,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                 </Fragment>
                               ))}
                             </div>
-                            <div className="p-4">
+                            <div className="flex-2 p-4">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Sequence
                               </div>
@@ -264,11 +243,11 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                 <div
                                   key={`${policy.id}-step-${index + 1}`}
                                   className={twMerge(
-                                    "mb-3 rounded border border-mineshaft-600 bg-mineshaft-900 p-3",
+                                    "mb-3 rounded border border-mineshaft-600 bg-mineshaft-900",
                                     index === policy.steps.length - 1 && "mb-0"
                                   )}
                                 >
-                                  <div className="mb-2 flex items-center justify-between">
+                                  <div className="mb-2 flex items-center justify-between bg-mineshaft-700 p-3">
                                     <div className="text-sm font-medium text-mineshaft-200">
                                       Step {index + 1}
                                       {step.name && (
@@ -282,21 +261,19 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                       {step.requiredApprovals !== 1 ? "s" : ""}
                                     </div>
                                   </div>
-                                  <div className="flex flex-wrap gap-2">
+                                  <div className="flex flex-wrap gap-2 p-3">
                                     {step.approvers.map((approver, approverIndex) => (
-                                      <div
+                                      <Badge
+                                        variant="neutral"
                                         key={`${policy.id}-step-${index + 1}-approver-${approverIndex + 1}`}
-                                        className="rounded bg-mineshaft-700 px-2 py-1 text-xs text-mineshaft-300"
                                       >
-                                        <FontAwesomeIcon
-                                          icon={faUsers}
-                                          className="mr-1.5 text-mineshaft-400"
-                                        />
-                                        <span className="capitalize">{approver.type}:</span>{" "}
-                                        <span className="text-mineshaft-200">
-                                          {getApproverLabel(approver.id, approver.type)}
-                                        </span>
-                                      </div>
+                                        {approver.type === ApproverType.Group ? (
+                                          <User />
+                                        ) : (
+                                          <Users />
+                                        )}
+                                        {getApproverLabel(approver.id, approver.type)}
+                                      </Badge>
                                     ))}
                                   </div>
                                 </div>

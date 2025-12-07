@@ -1,5 +1,6 @@
 export {
   useApproveApprovalRequest,
+  useCancelApprovalRequest,
   useCreateApprovalRequest,
   useRejectApprovalRequest
 } from "./mutations";

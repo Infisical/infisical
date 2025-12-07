@@ -63,16 +63,6 @@ const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
   }
 };
 
-const formatDuration = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-
-  if (hours > 0) {
-    return `${hours}h${minutes > 0 ? ` ${minutes}m` : ""}`;
-  }
-  return `${minutes}m`;
-};
-
 const checkIfUserNeedsToApprove = (
   request: TApprovalRequest,
   userId: string,
@@ -131,7 +121,6 @@ export const RequestsTable = () => {
           request.requesterName?.toLowerCase().includes(search.toLowerCase()) ||
           request.requesterEmail?.toLowerCase().includes(search.toLowerCase()) ||
           request.justification?.toLowerCase().includes(search.toLowerCase()) ||
-          request.requestData.requestData.resourceId.toLowerCase().includes(search.toLowerCase()) ||
           request.requestData.requestData.accountPath.toLowerCase().includes(search.toLowerCase())
       );
     }
@@ -272,7 +261,7 @@ export const RequestsTable = () => {
             {!isRequestsLoading &&
               paginatedRequests.map((request) => {
                 const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
-                const { accountPath, requestDurationSeconds } = request.requestData.requestData;
+                const { accountPath, accessDuration } = request.requestData.requestData;
 
                 return (
                   <Tr
@@ -297,14 +286,12 @@ export const RequestsTable = () => {
                       </div>
                     </Td>
                     <Td>
-                      <span className="text-sm text-mineshaft-200">
-                        {formatDuration(requestDurationSeconds)}
-                      </span>
+                      <span className="text-sm text-mineshaft-200">{accessDuration}</span>
                     </Td>
                     <Td>
                       <div className="flex items-center gap-2">
-                        <Badge variant={getStatusBadgeColor(request.status)}>
-                          {request.status}
+                        <Badge className="capitalize" variant={getStatusBadgeColor(request.status)}>
+                          {request.status.split("-").join(" ")}
                         </Badge>
                         {needsApproval && (
                           <div className="flex items-center gap-1 rounded bg-primary/20 px-2 py-0.5 text-xs text-primary">

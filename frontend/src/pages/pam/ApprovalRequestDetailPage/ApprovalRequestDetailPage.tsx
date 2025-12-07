@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams } from "@tanstack/react-router";
 
 import { ContentLoader, EmptyState, PageHeader } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
@@ -61,7 +61,7 @@ const PageContent = () => {
         <PageHeader
           scope={ProjectType.PAM}
           title="Approval Request"
-          description={`Request to access account ${request.requestData.requestData.accountPath} for ${request.requestData.requestData.requestDurationSeconds} by ${request.requesterName || "Unknown"}`}
+          description={`Request to access account ${request.requestData.requestData.accountPath} for ${request.requestData.requestData.accessDuration} by ${request.requesterName || "Unknown"}`}
         />
         <div className="flex justify-center gap-4">
           <div className="flex w-96 flex-col gap-4">

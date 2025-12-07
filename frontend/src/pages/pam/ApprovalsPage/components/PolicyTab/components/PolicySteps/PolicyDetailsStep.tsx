@@ -1,5 +1,6 @@
 import { Controller, useFormContext } from "react-hook-form";
 
+import { TtlFormLabel } from "@app/components/features";
 import { FormControl, Input } from "@app/components/v2";
 
 import { TPolicyForm } from "../PolicySchema";
@@ -25,24 +26,15 @@ export const PolicyDetailsStep = () => {
       />
       <Controller
         control={control}
-        name="maxRequestTtlSeconds"
+        name="maxRequestTtl"
         render={({ field, fieldState: { error } }) => (
           <FormControl
-            label="Max Request TTL (seconds)"
             isError={Boolean(error)}
             errorText={error?.message}
-            helperText="Maximum time-to-live for requests. Must be between 1 hour (3600s) and 30 days (2592000s). Leave empty for no limit."
+            label={<TtlFormLabel label="Max Request TTL" />}
+            helperText="Maximum time-to-live for requests. Must be between 1 hour and 30 days. Leave empty for no limit."
           >
-            <Input
-              {...field}
-              type="number"
-              value={field.value ?? ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                field.onChange(val === "" ? null : parseInt(val, 10));
-              }}
-              placeholder="e.g., 86400 (24 hours)"
-            />
+            <Input {...field} value={field.value ?? ""} placeholder="1h" />
           </FormControl>
         )}
       />
@@ -58,41 +50,29 @@ export const PolicyDetailsStep = () => {
         <div className="grid grid-cols-2 gap-4">
           <Controller
             control={control}
-            name="constraints.requestDurationSeconds.min"
+            name="constraints.accessDuration.min"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Minimum Hours"
+                label={<TtlFormLabel label="Minimum TTL" />}
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="30-604800 hours"
+                helperText="Must be between 30s and 7 days"
               >
-                <Input
-                  {...field}
-                  type="number"
-                  min={0}
-                  max={168}
-                  onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
-                />
+                <Input {...field} />
               </FormControl>
             )}
           />
           <Controller
             control={control}
-            name="constraints.requestDurationSeconds.max"
+            name="constraints.accessDuration.max"
             render={({ field, fieldState: { error } }) => (
               <FormControl
-                label="Maximum Hours"
+                label={<TtlFormLabel label="Maximum TTL" />}
                 isError={Boolean(error)}
                 errorText={error?.message}
-                helperText="30-604800 hours (7 days)"
+                helperText="Must be between 30s and 7 days"
               >
-                <Input
-                  {...field}
-                  type="number"
-                  min={1}
-                  max={168}
-                  onChange={(e) => field.onChange(parseInt(e.target.value, 10))}
-                />
+                <Input {...field} />
               </FormControl>
             )}
           />

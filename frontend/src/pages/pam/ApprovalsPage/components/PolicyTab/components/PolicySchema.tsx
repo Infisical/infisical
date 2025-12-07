@@ -1,21 +1,41 @@
+import ms from "ms";
 import { z } from "zod";
 
 import { ApproverType } from "@app/hooks/api/approvalPolicies";
 
+// 30 to  7 days
+const DurationSchema = (
+  min = 30,
+  max = 604800,
+  msg = "Duration must be between 30 seconds and 7 days"
+) =>
+  z.string().refine(
+    (val) => {
+      const duration = ms(val) / 1000;
+
+      // 30 seconds to 7 days
+      return duration >= min && duration <= max;
+    },
+    { message: msg }
+  );
+
 export const PolicyFormSchema = z.object({
   name: z.string().min(1, "Policy name is required").max(128),
-  maxRequestTtlSeconds: z.number().min(3600).max(2592000).nullable().optional(),
+  maxRequestTtl: DurationSchema(
+    3600,
+    2592000,
+    "Duration must be between 1 hour and 30 days"
+  ).nullish(),
   conditions: z
     .object({
-      resourceIds: z.array(z.string().uuid()),
       accountPaths: z.array(z.string().min(1))
     })
     .array()
     .min(1, "At least one condition is required"),
   constraints: z.object({
-    requestDurationSeconds: z.object({
-      min: z.number().min(0).max(604800),
-      max: z.number().min(1).max(604800)
+    accessDuration: z.object({
+      min: DurationSchema(),
+      max: DurationSchema()
     })
   }),
   steps: z

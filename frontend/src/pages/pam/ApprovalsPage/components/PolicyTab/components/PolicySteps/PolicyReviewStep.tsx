@@ -24,17 +24,7 @@ export const PolicyReviewStep = () => {
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, maxRequestTtlSeconds, conditions, constraints, steps } = watch();
-
-  const formatTtl = (seconds: number | null | undefined) => {
-    if (!seconds) return "No limit";
-    const hours = Math.floor(seconds / 3600);
-    const days = Math.floor(hours / 24);
-    if (days > 0) {
-      return `${days} day${days !== 1 ? "s" : ""} (${seconds}s)`;
-    }
-    return `${hours} hour${hours !== 1 ? "s" : ""} (${seconds}s)`;
-  };
+  const { name, maxRequestTtl, conditions, constraints, steps } = watch();
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -59,7 +49,7 @@ export const PolicyReviewStep = () => {
         </div>
         <div className="space-y-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Max Request TTL" value={formatTtl(maxRequestTtlSeconds)} />
+          <ReviewField label="Max Request TTL" value={maxRequestTtl || "No Limit"} />
         </div>
       </div>
 
@@ -68,14 +58,8 @@ export const PolicyReviewStep = () => {
           <h3 className="text-sm font-medium text-mineshaft-200">Request Duration Constraints</h3>
         </div>
         <div className="space-y-2">
-          <ReviewField
-            label="Minimum Duration"
-            value={`${constraints.requestDurationSeconds.min} second${constraints.requestDurationSeconds.min !== 1 ? "s" : ""}`}
-          />
-          <ReviewField
-            label="Maximum Duration"
-            value={`${constraints.requestDurationSeconds.max} second${constraints.requestDurationSeconds.max !== 1 ? "s" : ""}`}
-          />
+          <ReviewField label="Minimum Duration" value={constraints.accessDuration.min} />
+          <ReviewField label="Maximum Duration" value={constraints.accessDuration.max} />
         </div>
       </div>
 
@@ -95,14 +79,6 @@ export const PolicyReviewStep = () => {
                 Condition {index + 1}
               </div>
               <div className="space-y-2">
-                <div>
-                  <span className="text-xs text-mineshaft-400">Resource IDs: </span>
-                  <span className="text-xs text-mineshaft-200">
-                    {condition.resourceIds.length > 0
-                      ? condition.resourceIds.join(", ")
-                      : "None specified"}
-                  </span>
-                </div>
                 <div>
                   <span className="text-xs text-mineshaft-400">Account Paths: </span>
                   <span className="text-xs text-mineshaft-200">

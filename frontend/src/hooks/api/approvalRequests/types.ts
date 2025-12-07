@@ -49,9 +49,8 @@ export type ApprovalRequestStep = {
 };
 
 export type PamAccessRequestData = {
-  resourceId: string;
   accountPath: string;
-  requestDurationSeconds: number;
+  accessDuration: number;
 };
 
 export type TApprovalRequest = {
@@ -78,7 +77,7 @@ export type TCreateApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
   justification?: string | null;
-  expiresAt?: Date | null;
+  requestDuration?: string | null;
   requestData: PamAccessRequestData;
 };
 
@@ -102,4 +101,9 @@ export type TRejectApprovalRequestDTO = {
   policyType: ApprovalPolicyType;
   requestId: string;
   comment?: string;
+};
+
+export type TCancelApprovalRequestDTO = {
+  policyType: ApprovalPolicyType;
+  requestId: string;
 };

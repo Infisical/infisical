@@ -26,7 +26,7 @@ type Props = {
 };
 
 const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[] = [
-  { name: "Details", key: "details", fields: ["name", "maxRequestTtlSeconds"] },
+  { name: "Details", key: "details", fields: ["name", "maxRequestTtl"] },
   { name: "Constraints", key: "constraints", fields: ["conditions", "constraints"] },
   { name: "Approvals", key: "approvals", fields: ["steps"] },
   { name: "Review", key: "review", fields: [] }
@@ -45,12 +45,12 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     resolver: zodResolver(PolicyFormSchema),
     defaultValues: {
       name: "",
-      maxRequestTtlSeconds: null,
-      conditions: [{ resourceIds: [], accountPaths: [] }],
+      maxRequestTtl: null,
+      conditions: [{ accountPaths: [] }],
       constraints: {
-        requestDurationSeconds: {
-          min: 30,
-          max: 604800
+        accessDuration: {
+          min: "30s",
+          max: "7d"
         }
       },
       steps: [
@@ -74,7 +74,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     if (policyData?.policy) {
       reset({
         name: policyData.policy.name,
-        maxRequestTtlSeconds: policyData.policy.maxRequestTtlSeconds,
+        maxRequestTtl: policyData.policy.maxRequestTtl,
         conditions: policyData.policy.conditions.conditions,
         constraints: policyData.policy.constraints.constraints,
         steps: policyData.policy.steps.map((step) => ({
@@ -85,12 +85,12 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     } else {
       reset({
         name: "",
-        maxRequestTtlSeconds: null,
-        conditions: [{ resourceIds: [], accountPaths: [] }],
+        maxRequestTtl: null,
+        conditions: [{ accountPaths: [] }],
         constraints: {
-          requestDurationSeconds: {
-            min: 30,
-            max: 604800
+          accessDuration: {
+            min: "30s",
+            max: "7d"
           }
         },
         steps: [

@@ -18,14 +18,13 @@ export type ApprovalPolicyStep = {
 };
 
 export type PamAccessPolicyConditions = {
-  resourceIds: string[];
   accountPaths: string[];
 }[];
 
 export type PamAccessPolicyConstraints = {
-  requestDurationSeconds: {
-    min: number;
-    max: number;
+  accessDuration: {
+    min: string;
+    max: string;
   };
 };
 
@@ -33,7 +32,7 @@ export type TApprovalPolicy = {
   id: string;
   projectId: string;
   name: string;
-  maxRequestTtlSeconds?: number | null;
+  maxRequestTtl?: string | null;
   type: ApprovalPolicyType;
   conditions: {
     version: number;
@@ -52,7 +51,7 @@ export type TCreateApprovalPolicyDTO = {
   policyType: ApprovalPolicyType;
   projectId: string;
   name: string;
-  maxRequestTtlSeconds?: number | null;
+  maxRequestTtl?: string | null;
   conditions: PamAccessPolicyConditions;
   constraints: PamAccessPolicyConstraints;
   steps: ApprovalPolicyStep[];
@@ -62,7 +61,7 @@ export type TUpdateApprovalPolicyDTO = {
   policyType: ApprovalPolicyType;
   policyId: string;
   name?: string;
-  maxRequestTtlSeconds?: number | null;
+  maxRequestTtl?: string | null;
   conditions?: PamAccessPolicyConditions;
   constraints?: PamAccessPolicyConstraints;
   steps?: ApprovalPolicyStep[];

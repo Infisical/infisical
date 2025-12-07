@@ -6,6 +6,7 @@ import { approvalRequestQuery } from "./queries";
 import {
   TApprovalRequest,
   TApproveApprovalRequestDTO,
+  TCancelApprovalRequestDTO,
   TCreateApprovalRequestDTO,
   TRejectApprovalRequestDTO
 } from "./types";
@@ -49,6 +50,21 @@ export const useRejectApprovalRequest = () => {
       const { data } = await apiRequest.post<{ request: TApprovalRequest }>(
         `/api/v1/approval-policies/${policyType}/requests/${requestId}/reject`,
         { comment }
+      );
+      return data.request;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: approvalRequestQuery.allKey() });
+    }
+  });
+};
+
+export const useCancelApprovalRequest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ policyType, requestId }: TCancelApprovalRequestDTO) => {
+      const { data } = await apiRequest.post<{ request: TApprovalRequest }>(
+        `/api/v1/approval-policies/${policyType}/requests/${requestId}/cancel`
       );
       return data.request;
     },
