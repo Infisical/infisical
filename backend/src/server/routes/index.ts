@@ -2485,7 +2485,8 @@ export const registerRoutes = async (
     approvalRequestStepEligibleApproversDAL,
     approvalRequestApprovalsDAL,
     userGroupMembershipDAL,
-    notificationService
+    notificationService,
+    approvalRequestGrantsDAL
   });
 
   // setup the communication with license key server

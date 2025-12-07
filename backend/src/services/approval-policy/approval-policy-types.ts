@@ -73,7 +73,10 @@ export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy
   policy: P,
   inputs: R
 ) => boolean;
-export type TApprovalRequestFactoryPostApprovalRoutine = (request: TApprovalRequest) => Promise<void>;
+export type TApprovalRequestFactoryPostApprovalRoutine = (
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory,
+  request: TApprovalRequest
+) => Promise<void>;
 
 export type TApprovalResourceFactory<
   I extends TApprovalPolicyInputs,

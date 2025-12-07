@@ -14,6 +14,7 @@ import {
   TApprovalPolicyStepsDALFactory,
   TApprovalRequestApprovalsDALFactory,
   TApprovalRequestDALFactory,
+  TApprovalRequestGrantsDALFactory,
   TApprovalRequestStepEligibleApproversDALFactory,
   TApprovalRequestStepsDALFactory
 } from "./approval-policy-dal";
@@ -41,6 +42,7 @@ type TApprovalPolicyServiceFactoryDep = {
   approvalRequestDAL: TApprovalRequestDALFactory;
   approvalRequestStepsDAL: TApprovalRequestStepsDALFactory;
   approvalRequestStepEligibleApproversDAL: TApprovalRequestStepEligibleApproversDALFactory;
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
   userGroupMembershipDAL: TUserGroupMembershipDALFactory;
   notificationService: TNotificationServiceFactory;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission" | "getOrgPermission">;
@@ -56,6 +58,7 @@ export const approvalPolicyServiceFactory = ({
   approvalRequestDAL,
   approvalRequestStepsDAL,
   approvalRequestStepEligibleApproversDAL,
+  approvalRequestGrantsDAL,
   userGroupMembershipDAL,
   notificationService,
   permissionService,
@@ -598,7 +601,7 @@ export const approvalPolicyServiceFactory = ({
       const fac = APPROVAL_POLICY_FACTORY_MAP[updatedRequest.type as ApprovalPolicyType](
         updatedRequest.type as ApprovalPolicyType
       );
-      await fac.postApprovalRoutine(newRequest as TApprovalRequest);
+      await fac.postApprovalRoutine(approvalRequestGrantsDAL, newRequest as TApprovalRequest);
     }
 
     return { request: newRequest };

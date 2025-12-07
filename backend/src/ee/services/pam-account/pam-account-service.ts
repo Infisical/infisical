@@ -554,7 +554,7 @@ export const pamAccountServiceFactory = ({
       accountPath: `${folderPath}/${account.name}`
     };
 
-    const canAccess = await fac.canAccess(approvalRequestGrantsDAL, actor.id, resource.projectId, inputs);
+    const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
 
     if (canAccess) {
       // Grant exists, allow access without checking permission

@@ -74,11 +74,7 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     return grants.some((grant) => {
       const grantAttributes = grant.attributes as TPamAccessPolicyInputs;
       const isMatch = picomatch(grantAttributes.accountPath);
-      return (
-        grantAttributes.resourceId === inputs.resourceId &&
-        isMatch(inputs.accountPath) &&
-        (!grant.expiresAt || grant.expiresAt > new Date())
-      );
+      return isMatch(inputs.accountPath) && (!grant.expiresAt || grant.expiresAt > new Date());
     });
   };
 
@@ -92,8 +88,20 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
     return reqDuration >= ms(durationConstraint.min) && reqDuration <= ms(durationConstraint.max);
   };
 
-  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (_request) => {
-    // Placeholder
+  const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
+    const inputs = request.requestData.requestData;
+    const durationMs = ms(inputs.accessDuration);
+    const expiresAt = new Date(Date.now() + durationMs);
+
+    await approvalRequestGrantsDAL.create({
+      projectId: request.projectId,
+      requestId: request.id,
+      granteeUserId: request.requesterId,
+      status: ApprovalRequestGrantStatus.Active,
+      type: request.type,
+      attributes: inputs,
+      expiresAt
+    });
   };
 
   return {
