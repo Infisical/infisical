@@ -54,7 +54,7 @@ export interface TCreateRequestDTO {
   projectId: TApprovalRequest["projectId"];
   requestData: TApprovalRequest["requestData"]["requestData"];
   justification?: TApprovalRequest["justification"];
-  requestDuration?: string;
+  requestDuration?: string | null;
 }
 
 // Factory

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   ApprovalPoliciesSchema,
   ApprovalRequestApprovalsSchema,
+  ApprovalRequestGrantsSchema,
   ApprovalRequestsSchema,
   ApprovalRequestStepsSchema
 } from "@app/db/schemas";
@@ -89,3 +90,6 @@ export const BaseCreateApprovalRequestSchema = z.object({
     .nullable()
     .optional()
 });
+
+// Grants
+export const BaseApprovalRequestGrantSchema = ApprovalRequestGrantsSchema;

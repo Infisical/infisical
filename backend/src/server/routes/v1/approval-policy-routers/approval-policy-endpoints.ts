@@ -19,7 +19,8 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   updatePolicySchema,
   policyResponseSchema,
   createRequestSchema,
-  requestResponseSchema
+  requestResponseSchema,
+  grantResponseSchema
 }: {
   server: FastifyZodProvider;
   policyType: ApprovalPolicyType;
@@ -38,6 +39,7 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   policyResponseSchema: z.ZodTypeAny;
   createRequestSchema: z.ZodType<TCreateRequestDTO>;
   requestResponseSchema: z.ZodTypeAny;
+  grantResponseSchema: z.ZodTypeAny;
 }) => {
   // Policies
   server.route({
@@ -363,6 +365,95 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
       // TODO(andrey): Audit log
 
       return { request };
+    }
+  });
+
+  // Grants
+  server.route({
+    method: "GET",
+    url: "/grants",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "List approval grants",
+      querystring: z.object({
+        projectId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          grants: z.array(grantResponseSchema)
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { grants } = await server.services.approvalPolicy.listGrants(
+        policyType,
+        req.query.projectId,
+        req.permission
+      );
+
+      // TODO(andrey): Audit log
+
+      return { grants };
+    }
+  });
+
+  server.route({
+    method: "GET",
+    url: "/grants/:grantId",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      description: "Get approval grant",
+      params: z.object({
+        grantId: z.string().uuid()
+      }),
+      response: {
+        200: z.object({
+          grant: grantResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
+
+      // TODO(andrey): Audit log
+
+      return { grant };
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/grants/:grantId/revoke",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      description: "Revoke approval grant",
+      params: z.object({
+        grantId: z.string().uuid()
+      }),
+      body: z.object({
+        revocationReason: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          grant: grantResponseSchema
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const { grant } = await server.services.approvalPolicy.revokeGrant(req.params.grantId, req.body, req.permission);
+
+      // TODO(andrey): Audit log
+
+      return { grant };
     }
   });
 };

@@ -4,6 +4,7 @@ import { ms } from "@app/lib/ms";
 
 import {
   BaseApprovalPolicySchema,
+  BaseApprovalRequestGrantSchema,
   BaseApprovalRequestSchema,
   BaseCreateApprovalPolicySchema,
   BaseCreateApprovalRequestSchema,
@@ -78,4 +79,9 @@ export const PamAccessRequestSchema = BaseApprovalRequestSchema.extend({
 
 export const CreatePamAccessRequestSchema = BaseCreateApprovalRequestSchema.extend({
   requestData: PamAccessPolicyRequestDataSchema
+});
+
+// Grants
+export const PamAccessRequestGrantSchema = BaseApprovalRequestGrantSchema.extend({
+  attributes: PamAccessPolicyRequestDataSchema
 });

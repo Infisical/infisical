@@ -1,7 +1,7 @@
 import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
-import { BadRequestError, ForbiddenRequestError } from "@app/lib/errors";
+import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { TNotificationServiceFactory } from "@app/services/notification/notification-service";
@@ -21,6 +21,7 @@ import {
 import {
   ApprovalPolicyType,
   ApprovalRequestApprovalDecision,
+  ApprovalRequestGrantStatus,
   ApprovalRequestStatus,
   ApprovalRequestStepStatus,
   ApproverType
@@ -699,6 +700,50 @@ export const approvalPolicyServiceFactory = ({
     return { request: { ...updatedRequest, steps } };
   };
 
+  const listGrants = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
+    // TODO(andrey): Perm check
+
+    const grants = await approvalRequestGrantsDAL.find({ projectId, type: policyType });
+    return { grants };
+  };
+
+  const getGrantById = async (grantId: string, actor: OrgServiceActor) => {
+    // TODO(andrey): Perm check
+
+    const grant = await approvalRequestGrantsDAL.findById(grantId);
+    if (!grant) {
+      throw new NotFoundError({ message: "Grant not found" });
+    }
+
+    return { grant };
+  };
+
+  const revokeGrant = async (
+    grantId: string,
+    { revocationReason }: { revocationReason?: string },
+    actor: OrgServiceActor
+  ) => {
+    // TODO(andrey): Perm check
+
+    const grant = await approvalRequestGrantsDAL.findById(grantId);
+    if (!grant) {
+      throw new NotFoundError({ message: "Grant not found" });
+    }
+
+    if (grant.status !== ApprovalRequestGrantStatus.Active) {
+      throw new BadRequestError({ message: "Grant is not active" });
+    }
+
+    const updatedGrant = await approvalRequestGrantsDAL.updateById(grantId, {
+      status: ApprovalRequestGrantStatus.Revoked,
+      revokedAt: new Date(),
+      revokedByUserId: actor.id,
+      revocationReason
+    });
+
+    return { grant: updatedGrant };
+  };
+
   return {
     create,
     list,
@@ -710,6 +755,9 @@ export const approvalPolicyServiceFactory = ({
     getRequestById,
     approveRequest,
     rejectRequest,
-    cancelRequest
+    cancelRequest,
+    listGrants,
+    getGrantById,
+    revokeGrant
   };
 };

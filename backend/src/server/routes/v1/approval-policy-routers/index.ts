@@ -3,6 +3,7 @@ import {
   CreatePamAccessPolicySchema,
   CreatePamAccessRequestSchema,
   PamAccessPolicySchema,
+  PamAccessRequestGrantSchema,
   PamAccessRequestSchema,
   UpdatePamAccessPolicySchema
 } from "@app/services/approval-policy/pam-access/pam-access-policy-schemas";
@@ -21,7 +22,8 @@ export const APPROVAL_POLICY_REGISTER_ROUTER_MAP: Record<
       updatePolicySchema: UpdatePamAccessPolicySchema,
       policyResponseSchema: PamAccessPolicySchema,
       createRequestSchema: CreatePamAccessRequestSchema,
-      requestResponseSchema: PamAccessRequestSchema
+      requestResponseSchema: PamAccessRequestSchema,
+      grantResponseSchema: PamAccessRequestGrantSchema
     });
   }
 };
