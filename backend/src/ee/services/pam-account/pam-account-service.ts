@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
@@ -551,7 +553,7 @@ export const pamAccountServiceFactory = ({
 
     const inputs = {
       resourceId: resource.id,
-      accountPath: `${folderPath}/${account.name}`
+      accountPath: path.join(folderPath, account.name)
     };
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
