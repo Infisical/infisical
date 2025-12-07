@@ -347,7 +347,6 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
     }
   });
 
-  // Deprecated: Duplicate of /groups/:id/users, will be removed in the future
   server.route({
     method: "GET",
     url: "/:projectId/groups/:groupId/users",
@@ -356,9 +355,10 @@ export const registerGroupProjectRouter = async (server: FastifyZodProvider) => 
       rateLimit: readLimit
     },
     schema: {
-      hide: false,
+      hide: true,
+      deprecated: true,
       tags: [ApiDocsTags.ProjectGroups],
-      description: "Return project group users",
+      description: "Return project group users (Deprecated: Use /api/v1/groups/{id}/users instead)",
       params: z.object({
         projectId: z.string().trim().describe(GROUPS.LIST_USERS.projectId),
         groupId: z.string().trim().describe(GROUPS.LIST_USERS.id)
