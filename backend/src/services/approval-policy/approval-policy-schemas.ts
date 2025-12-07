@@ -47,7 +47,7 @@ export const BaseCreateApprovalPolicySchema = z.object({
 
 export const BaseUpdateApprovalPolicySchema = z.object({
   name: z.string().min(1).max(128).optional(),
-  maxRequestTtlSeconds: MaxRequestTtlSchema.nullable().optional(),
+  maxRequestTtl: MaxRequestTtlSchema.nullable().optional(),
   steps: ApprovalPolicyStepSchema.array().optional()
 });
 
