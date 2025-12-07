@@ -616,7 +616,6 @@ export const pamAccountServiceFactory = ({
       return {
         sessionId: session.id,
         resourceType,
-        projectId: account.projectId,
         account,
         consoleUrl,
         metadata: {

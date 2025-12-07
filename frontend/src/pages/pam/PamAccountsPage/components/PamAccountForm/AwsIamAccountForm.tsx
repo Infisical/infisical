@@ -18,7 +18,7 @@ import { CopyButton } from "@app/components/v2/CopyButton";
 import { useProject } from "@app/context";
 import { PamResourceType, TAwsIamAccount } from "@app/hooks/api/pam";
 
-import { GenericAccountFields } from "./GenericAccountFields";
+import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
 type Props = {
   account?: TAwsIamAccount;
@@ -45,12 +45,7 @@ const AwsIamCredentialsSchema = z.object({
     .default(3600)
 });
 
-const genericAwsIamAccountFieldsSchema = z.object({
-  name: z.string().min(1, "Name is required").max(64, "Name must be at most 64 characters"),
-  description: z.string().max(512).optional().nullable()
-});
-
-const formSchema = genericAwsIamAccountFieldsSchema.extend({
+const formSchema = genericAccountFieldsSchema.extend({
   credentials: AwsIamCredentialsSchema
 });
 
@@ -153,8 +148,8 @@ export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-2.5">
               <p className="mb-3 text-sm text-mineshaft-300">
-                The target role must have a trust policy that allows the Infisical PAM role to
-                assume it. If you used the{" "}
+                The target role must have a trust policy that allows the Infisical PAM role you
+                created and used in the &quot;Resources&quot; tab to assume it. If you used the{" "}
                 <code className="rounded bg-mineshaft-700 px-1 text-xs">infisical-pam-*</code>{" "}
                 naming convention, no additional changes are needed to the PAM role.
               </p>

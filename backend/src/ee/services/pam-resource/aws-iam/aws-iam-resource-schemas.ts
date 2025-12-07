@@ -51,13 +51,11 @@ export const AwsIamResourceListItemSchema = z.object({
 
 export const CreateAwsIamResourceSchema = BaseCreatePamResourceSchema.extend({
   connectionDetails: AwsIamResourceConnectionDetailsSchema,
-  gatewayId: z.string().uuid().nullable().optional(),
   rotationAccountCredentials: AwsIamAccountCredentialsSchema.nullable().optional()
 });
 
 export const UpdateAwsIamResourceSchema = BaseUpdatePamResourceSchema.extend({
   connectionDetails: AwsIamResourceConnectionDetailsSchema.optional(),
-  gatewayId: z.string().uuid().nullable().optional(),
   rotationAccountCredentials: AwsIamAccountCredentialsSchema.nullable().optional()
 });
 

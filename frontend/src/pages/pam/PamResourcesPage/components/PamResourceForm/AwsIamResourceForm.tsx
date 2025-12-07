@@ -66,7 +66,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "AWS": "arn:aws:iam::${INFISICAL_AWS_ACCOUNT_US}:root"
+      "AWS": "arn:aws:iam::<INFISICAL_AWS_ACCOUNT_ID>:root"
     },
     "Action": "sts:AssumeRole",
     "Condition": {
@@ -186,7 +186,11 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">
                   {INFISICAL_AWS_ACCOUNT_EU}
                 </code>{" "}
-                for EU region. The External ID{" "}
+                for EU region. Replace{" "}
+                <code className="rounded bg-mineshaft-700 px-1 font-bold">
+                  &lt;INFISICAL_AWS_ACCOUNT_ID&gt;
+                </code>{" "}
+                with the appropriate Infisical AWS account ID for your region. The External ID{" "}
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
                 current project ID.
               </p>
