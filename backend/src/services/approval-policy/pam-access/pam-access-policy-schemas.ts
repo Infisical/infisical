@@ -12,14 +12,12 @@ import {
 
 // Inputs
 export const PamAccessPolicyInputsSchema = z.object({
-  resourceId: z.string().uuid(),
   accountPath: z.string()
 });
 
 // Conditions
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    resourceIds: z.string().uuid().array().optional(),
     accountPaths: z.string().array() // TODO(andrey): Add path & wildcard validation
   })
   .array();
@@ -44,7 +42,6 @@ export const PamAccessPolicyConstraintsSchema = z.object({
 
 // Request Data
 export const PamAccessPolicyRequestDataSchema = z.object({
-  resourceId: z.string().uuid(),
   accountPath: z.string(),
   accessDuration: DurationSchema
 });
