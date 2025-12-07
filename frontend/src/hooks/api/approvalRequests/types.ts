@@ -14,11 +14,16 @@ export enum ApprovalRequestStepStatus {
   Rejected = "rejected"
 }
 
+export enum ApprovalRequestApprovalDecision {
+  Approved = "approved",
+  Rejected = "rejected"
+}
+
 export type ApprovalRequestApproval = {
   id: string;
-  requestStepId: string;
-  approverId: string;
-  approverType: ApproverType;
+  stepId: string;
+  approverUserId: string;
+  decision: ApprovalRequestApprovalDecision.Approved;
   comment?: string | null;
   createdAt: string;
   updatedAt: string;

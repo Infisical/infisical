@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   faCheckCircle,
   faChevronRight,
@@ -37,7 +37,8 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { useOrganization, useProject, useUser } from "@app/context";
+import { useOrganization, useProject, useProjectPermission, useUser } from "@app/context";
+import { getUserTablePreference, PreferenceKey } from "@app/helpers/userTablePreferences";
 import { usePagination } from "@app/hooks";
 import { ApprovalPolicyType, ApproverType } from "@app/hooks/api/approvalPolicies";
 import {
@@ -46,11 +47,6 @@ import {
   ApprovalRequestStepStatus,
   TApprovalRequest
 } from "@app/hooks/api/approvalRequests";
-
-type Filter = {
-  status: "open" | "closed";
-  closedStatuses: ApprovalRequestStatus[];
-};
 
 const getStatusBadgeColor = (status: ApprovalRequestStatus) => {
   switch (status) {
@@ -77,21 +73,25 @@ const formatDuration = (seconds: number) => {
   return `${minutes}m`;
 };
 
-const checkIfUserNeedsToApprove = (request: TApprovalRequest, userId: string): boolean => {
+const checkIfUserNeedsToApprove = (
+  request: TApprovalRequest,
+  userId: string,
+  userGroups: string[]
+): boolean => {
   const currentStep = request.steps.find(
     (step) => step.status === ApprovalRequestStepStatus.InProgress
   );
 
   if (!currentStep) return false;
 
-  const isApprover = currentStep.approvers.some(
-    (approver) => approver.type === ApproverType.User && approver.id === userId
+  const isApprover = currentStep.approvers.some((approver) =>
+    approver.type === ApproverType.User ? approver.id === userId : userGroups.includes(approver.id)
   );
 
   if (!isApprover) return false;
 
   const hasAlreadyApproved = currentStep.approvals.some(
-    (approval) => approval.approverId === userId
+    (approval) => approval.approverUserId === userId
   );
 
   return !hasAlreadyApproved;
@@ -101,15 +101,14 @@ export const RequestsTable = () => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { memberships } = useProjectPermission();
   const { user } = useUser();
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<Filter>({
-    status: "open",
-    closedStatuses: []
-  });
+  const [filter, setFilter] = useState(ApprovalRequestStatus.Pending);
 
   const projectId = currentProject?.id || "";
   const userId = user?.id || "";
+  const userGroups = memberships.map((el) => el.actorGroupId).filter(Boolean);
 
   const { data: requests = [], isPending: isRequestsLoading } = useQuery(
     approvalRequestQuery.list({
@@ -119,7 +118,7 @@ export const RequestsTable = () => {
   );
 
   const { page, perPage, setPage, setPerPage, offset } = usePagination("", {
-    initPerPage: 10
+    initPerPage: getUserTablePreference("PamApprovalRequestTable", PreferenceKey.PerPage, 10)
   });
 
   const filteredRequests = useMemo(() => {
@@ -137,24 +136,11 @@ export const RequestsTable = () => {
       );
     }
 
-    // Apply open/closed filter
-    if (filter.status === "open") {
-      filtered = filtered.filter((req) => req.status === ApprovalRequestStatus.Pending);
-    } else {
-      const closedStatuses = [
-        ApprovalRequestStatus.Approved,
-        ApprovalRequestStatus.Rejected,
-        ApprovalRequestStatus.Expired
-      ];
-      filtered = filtered.filter((req) => closedStatuses.includes(req.status));
-
-      // Apply specific closed status filter
-      if (filter.closedStatuses.length > 0) {
-        filtered = filtered.filter((req) => filter.closedStatuses.includes(req.status));
-      }
-    }
-
-    return filtered;
+    return filtered
+      .filter((req) => req.status === filter)
+      .sort(
+        (a, b) => (new Date(b.createdAt)?.getTime() || 0) - (new Date(a.createdAt)?.getTime() || 0)
+      );
   }, [requests, search, filter]);
 
   const paginatedRequests = useMemo(
@@ -173,30 +159,7 @@ export const RequestsTable = () => {
     });
   };
 
-  const handleStatusFilterToggle = useCallback(
-    () =>
-      setFilter((state) => ({
-        ...state,
-        status: state.status === "open" ? "closed" : "open",
-        closedStatuses: []
-      })),
-    []
-  );
-
-  const handleClosedStatusToggle = useCallback(
-    (status: ApprovalRequestStatus) =>
-      setFilter((state) => {
-        const closedStatuses = state.closedStatuses || [];
-
-        if (closedStatuses.includes(status)) {
-          return { ...state, closedStatuses: closedStatuses.filter((s) => s !== status) };
-        }
-        return { ...state, closedStatuses: [...closedStatuses, status] };
-      }),
-    []
-  );
-
-  const isTableFiltered = filter.status === "closed" || filter.closedStatuses.length > 0;
+  const isTableFiltered = filter !== ApprovalRequestStatus.Pending;
 
   return (
     <div>
@@ -220,9 +183,11 @@ export const RequestsTable = () => {
             <DropdownMenuItem
               onClick={(evt) => {
                 evt.preventDefault();
-                handleStatusFilterToggle();
+                setFilter(ApprovalRequestStatus.Pending);
               }}
-              icon={filter.status === "open" && <FontAwesomeIcon icon={faCheckCircle} />}
+              icon={
+                filter === ApprovalRequestStatus.Pending && <FontAwesomeIcon icon={faCheckCircle} />
+              }
               iconPos="right"
             >
               Open Requests
@@ -241,10 +206,10 @@ export const RequestsTable = () => {
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
-                    handleClosedStatusToggle(ApprovalRequestStatus.Approved);
+                    setFilter(ApprovalRequestStatus.Approved);
                   }}
                   icon={
-                    filter.closedStatuses.includes(ApprovalRequestStatus.Approved) && (
+                    filter === ApprovalRequestStatus.Approved && (
                       <FontAwesomeIcon icon={faCheckCircle} />
                     )
                   }
@@ -255,10 +220,10 @@ export const RequestsTable = () => {
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
-                    handleClosedStatusToggle(ApprovalRequestStatus.Rejected);
+                    setFilter(ApprovalRequestStatus.Rejected);
                   }}
                   icon={
-                    filter.closedStatuses.includes(ApprovalRequestStatus.Rejected) && (
+                    filter === ApprovalRequestStatus.Rejected && (
                       <FontAwesomeIcon icon={faCheckCircle} />
                     )
                   }
@@ -269,10 +234,10 @@ export const RequestsTable = () => {
                 <DropdownMenuItem
                   onClick={(evt) => {
                     evt.preventDefault();
-                    handleClosedStatusToggle(ApprovalRequestStatus.Expired);
+                    setFilter(ApprovalRequestStatus.Expired);
                   }}
                   icon={
-                    filter.closedStatuses.includes(ApprovalRequestStatus.Expired) && (
+                    filter === ApprovalRequestStatus.Expired && (
                       <FontAwesomeIcon icon={faCheckCircle} />
                     )
                   }
@@ -296,7 +261,7 @@ export const RequestsTable = () => {
           <THead>
             <Tr>
               <Th>Requester</Th>
-              <Th>Resource / Path</Th>
+              <Th>Account Path</Th>
               <Th>Duration</Th>
               <Th>Status</Th>
               <Th>Requested</Th>
@@ -306,9 +271,8 @@ export const RequestsTable = () => {
             {isRequestsLoading && <TableSkeleton columns={5} innerKey="approval-requests" />}
             {!isRequestsLoading &&
               paginatedRequests.map((request) => {
-                const needsApproval = checkIfUserNeedsToApprove(request, userId);
-                const { resourceId, accountPath, requestDurationSeconds } =
-                  request.requestData.requestData;
+                const needsApproval = checkIfUserNeedsToApprove(request, userId, userGroups);
+                const { accountPath, requestDurationSeconds } = request.requestData.requestData;
 
                 return (
                   <Tr
@@ -330,9 +294,6 @@ export const RequestsTable = () => {
                     <Td>
                       <div>
                         <div className="text-sm text-mineshaft-200">{accountPath}</div>
-                        <div className="font-mono text-xs text-mineshaft-400">
-                          {resourceId.slice(0, 8)}...
-                        </div>
                       </div>
                     </Td>
                     <Td>
@@ -376,11 +337,7 @@ export const RequestsTable = () => {
         )}
         {!isRequestsLoading && !filteredRequests?.length && (
           <EmptyState
-            title={
-              requests.length
-                ? "No approval requests match search..."
-                : "No approval requests found"
-            }
+            title="No approval requests found"
             icon={requests.length ? faSearch : faFileCircleQuestion}
           />
         )}
