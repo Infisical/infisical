@@ -7,6 +7,7 @@ import { ApprovalControlTabs } from "@app/types/project";
 
 import { ApprovalRequestTab } from "./components/ApprovalRequestTab";
 import { PolicyTab } from "./components/PolicyTab";
+import { RequestGrantTab } from "./components/RequestGrantTab";
 
 const Page = () => {
   const navigate = useNavigate();
@@ -55,7 +56,7 @@ const Page = () => {
             <PolicyTab />
           </TabPanel>
           <TabPanel value={ApprovalControlTabs.Grants}>
-            <div>Hello</div>
+            <RequestGrantTab />
           </TabPanel>
         </Tabs>
       </div>

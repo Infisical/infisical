@@ -2,13 +2,21 @@ import { Helmet } from "react-helmet";
 import { faBan, faChevronLeft } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
 
-import { ContentLoader, EmptyState, PageHeader } from "@app/components/v2";
+import { createNotification } from "@app/components/notifications";
+import {
+  Button,
+  ConfirmActionModal,
+  ContentLoader,
+  EmptyState,
+  PageHeader
+} from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useOrganization, useProject } from "@app/context";
+import { useOrganization, useProject, useUser } from "@app/context";
+import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
-import { approvalRequestQuery } from "@app/hooks/api/approvalRequests";
+import { approvalRequestQuery, useCancelApprovalRequest } from "@app/hooks/api/approvalRequests";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ApprovalStepsSection, RequestActionsSection, RequestDetailsSection } from "./components";
@@ -19,6 +27,10 @@ const PageContent = () => {
   });
   const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
+  const { user: currentUser } = useUser();
+  const cancelApprovalRequest = useCancelApprovalRequest();
+  const navigate = useNavigate();
+  const { handlePopUpOpen, handlePopUpToggle, popUp } = usePopUp(["cancelRequest"]);
 
   const { data: request, isPending } = useQuery(
     approvalRequestQuery.getById({
@@ -26,6 +38,32 @@ const PageContent = () => {
       requestId: approvalRequestId
     })
   );
+
+  const handleRequestCancel = async () => {
+    if (cancelApprovalRequest.isPending || !request) return;
+
+    await cancelApprovalRequest.mutateAsync(
+      {
+        requestId: request.id,
+        policyType: ApprovalPolicyType.PamAccess
+      },
+      {
+        onSuccess: () => {
+          createNotification({
+            text: "Successfully cancelled request",
+            type: "success"
+          });
+          navigate({
+            to: "/organizations/$orgId/projects/pam/$projectId/approvals",
+            params: {
+              orgId: currentProject.orgId,
+              projectId: currentProject.id
+            }
+          });
+        }
+      }
+    );
+  };
 
   if (isPending) {
     return (
@@ -62,7 +100,20 @@ const PageContent = () => {
           scope={ProjectType.PAM}
           title="Approval Request"
           description={`Request to access account ${request.requestData.requestData.accountPath} for ${request.requestData.requestData.accessDuration} by ${request.requesterName || "Unknown"}`}
-        />
+        >
+          <div>
+            {request.requesterId === currentUser.id && (
+              <Button
+                onClick={() => handlePopUpOpen("cancelRequest")}
+                variant="outline_bg"
+                size="xs"
+                isLoading={cancelApprovalRequest.isPending}
+              >
+                Cancel Request
+              </Button>
+            )}
+          </div>
+        </PageHeader>
         <div className="flex justify-center gap-4">
           <div className="flex w-96 flex-col gap-4">
             <RequestDetailsSection request={request} />
@@ -73,6 +124,14 @@ const PageContent = () => {
           </div>
         </div>
       </div>
+      <ConfirmActionModal
+        isOpen={popUp.cancelRequest.isOpen}
+        confirmKey="cancel"
+        title="Do you want to cancel this approval request?"
+        onChange={(isOpen) => handlePopUpToggle("cancelRequest", isOpen)}
+        onConfirmed={handleRequestCancel}
+        buttonText="Confirm"
+      />
     </div>
   );
 };
