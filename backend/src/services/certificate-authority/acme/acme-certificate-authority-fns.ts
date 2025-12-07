@@ -7,6 +7,7 @@ import { TableName } from "@app/db/schemas";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, CryptographyError, NotFoundError } from "@app/lib/errors";
+import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { OrgServiceActor } from "@app/lib/types";
 import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -715,11 +716,21 @@ export const AcmeCertificateAuthorityFns = ({
     return castDbEntryToAcmeCertificateAuthority(updatedCa);
   };
 
-  const listCertificateAuthorities = async ({ projectId }: { projectId: string }) => {
-    const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-      [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-      [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.ACME
-    });
+  const listCertificateAuthorities = async ({
+    projectId,
+    permissionFilters
+  }: {
+    projectId: string;
+    permissionFilters?: ProcessedPermissionRules;
+  }) => {
+    const cas = await certificateAuthorityDAL.findWithAssociatedCa(
+      {
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.ACME
+      },
+      {},
+      permissionFilters
+    );
 
     return cas.map(castDbEntryToAcmeCertificateAuthority);
   };

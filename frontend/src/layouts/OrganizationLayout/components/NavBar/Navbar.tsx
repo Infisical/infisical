@@ -183,9 +183,6 @@ export const Navbar = () => {
   }, [subscription, isBillingPage, isModalIntrusive]);
 
   const handleOrgChange = async (orgId: string) => {
-    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
-    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
-
     const { token, isMfaEnabled, mfaMethod } = await selectOrganization({
       organizationId: orgId
     });
@@ -202,6 +199,8 @@ export const Navbar = () => {
     await router.invalidate();
     await navigateUserToOrg(navigate, orgId);
     queryClient.removeQueries({ queryKey: subOrgQuery.queryKey });
+    queryClient.removeQueries({ queryKey: authKeys.getAuthToken });
+    queryClient.removeQueries({ queryKey: projectKeys.getAllUserProjects() });
   };
 
   const { mutateAsync } = useGetOrgTrialUrl();

@@ -2493,8 +2493,6 @@
                 "pages": [
                   "api-reference/endpoints/certificates/list",
                   "api-reference/endpoints/certificates/read",
-                  "api-reference/endpoints/certificates/issue-certificate",
-                  "api-reference/endpoints/certificates/sign-certificate",
                   "api-reference/endpoints/certificates/renew",
                   "api-reference/endpoints/certificates/update-config",
                   "api-reference/endpoints/certificates/revoke",

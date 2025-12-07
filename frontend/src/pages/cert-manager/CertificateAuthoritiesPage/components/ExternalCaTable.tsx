@@ -1,3 +1,4 @@
+import { subject } from "@casl/ability";
 import {
   faBan,
   faCertificate,
@@ -26,7 +27,12 @@ import {
   Tr
 } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionCertificateAuthorityActions,
+  ProjectPermissionSub,
+  useProject,
+  useProjectPermission
+} from "@app/context";
 import { CaStatus, CaType, useListExternalCasByProjectId } from "@app/hooks/api";
 import { caStatusToNameMap, getCaStatusBadgeVariant } from "@app/hooks/api/ca/constants";
 import { UsePopUpState } from "@app/hooks/usePopUp";
@@ -45,6 +51,7 @@ type Props = {
 
 export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data, isPending } = useListExternalCasByProjectId(currentProject.id);
 
   return (
@@ -65,17 +72,29 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
               data &&
               data.length > 0 &&
               data.map((ca) => {
+                const canEditCa = permission.can(
+                  ProjectPermissionCertificateAuthorityActions.Edit,
+                  subject(ProjectPermissionSub.CertificateAuthorities, {
+                    name: ca.name
+                  })
+                );
+
                 return (
                   <Tr
-                    className="h-10 cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
+                    className={twMerge(
+                      "h-10 transition-colors duration-100",
+                      canEditCa && "cursor-pointer hover:bg-mineshaft-700",
+                      !canEditCa && "cursor-not-allowed opacity-60"
+                    )}
                     key={`ca-${ca.id}`}
-                    onClick={() => {
+                    onClick={() =>
+                      canEditCa &&
                       handlePopUpOpen("ca", {
                         caId: ca.id,
                         name: ca.name,
                         type: ca.type
-                      });
-                    }}
+                      })
+                    }
                   >
                     <Td>{ca.name}</Td>
                     <Td>{ca.type}</Td>
@@ -95,8 +114,10 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="p-1">
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Edit}
-                            a={ProjectPermissionSub.CertificateAuthorities}
+                            I={ProjectPermissionCertificateAuthorityActions.Edit}
+                            a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                              name: ca.name
+                            })}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -120,8 +141,10 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                           </ProjectPermissionCan>
                           {(ca.status === CaStatus.ACTIVE || ca.status === CaStatus.DISABLED) && (
                             <ProjectPermissionCan
-                              I={ProjectPermissionActions.Edit}
-                              a={ProjectPermissionSub.CertificateAuthorities}
+                              I={ProjectPermissionCertificateAuthorityActions.Edit}
+                              a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                                name: ca.name
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -149,8 +172,10 @@ export const ExternalCaTable = ({ handlePopUpOpen }: Props) => {
                             </ProjectPermissionCan>
                           )}
                           <ProjectPermissionCan
-                            I={ProjectPermissionActions.Delete}
-                            a={ProjectPermissionSub.CertificateAuthorities}
+                            I={ProjectPermissionCertificateAuthorityActions.Delete}
+                            a={subject(ProjectPermissionSub.CertificateAuthorities, {
+                              name: ca.name
+                            })}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem

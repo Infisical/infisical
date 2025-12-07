@@ -5,6 +5,7 @@ import RE2 from "re2";
 import { TableName } from "@app/db/schemas";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
+import { ProcessedPermissionRules } from "@app/lib/knex/permission-filter-utils";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
 import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
@@ -798,11 +799,21 @@ export const AzureAdCsCertificateAuthorityFns = ({
     return castDbEntryToAzureAdCsCertificateAuthority(updatedCa);
   };
 
-  const listCertificateAuthorities = async ({ projectId }: { projectId: string }) => {
-    const cas = await certificateAuthorityDAL.findWithAssociatedCa({
-      [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
-      [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.AZURE_AD_CS
-    });
+  const listCertificateAuthorities = async ({
+    projectId,
+    permissionFilters
+  }: {
+    projectId: string;
+    permissionFilters?: ProcessedPermissionRules;
+  }) => {
+    const cas = await certificateAuthorityDAL.findWithAssociatedCa(
+      {
+        [`${TableName.CertificateAuthority}.projectId` as "projectId"]: projectId,
+        [`${TableName.ExternalCertificateAuthority}.type` as "type"]: CaType.AZURE_AD_CS
+      },
+      {},
+      permissionFilters
+    );
 
     return cas.map(castDbEntryToAzureAdCsCertificateAuthority);
   };

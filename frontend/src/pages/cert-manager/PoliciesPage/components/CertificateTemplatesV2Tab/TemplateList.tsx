@@ -1,6 +1,17 @@
-import { faCircleInfo, faEdit, faEllipsis, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { useCallback } from "react";
+import { subject } from "@casl/ability";
+import {
+  faCheck,
+  faCircleInfo,
+  faCopy,
+  faEdit,
+  faEllipsis,
+  faTrash
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
+import { createNotification } from "@app/components/notifications";
+import { ProjectPermissionCan } from "@app/components/permissions";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,11 +28,12 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { useProject, useProjectPermission } from "@app/context";
+import { useProject } from "@app/context";
 import {
   ProjectPermissionPkiTemplateActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import { useToggle } from "@app/hooks";
 import { useListCertificateTemplatesV2 } from "@app/hooks/api/certificateTemplates/queries";
 import { TCertificateTemplateV2WithPolicies } from "@app/hooks/api/certificateTemplates/types";
 
@@ -31,8 +43,8 @@ interface Props {
 }
 
 export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
-  const { permission } = useProjectPermission();
   const { currentProject } = useProject();
+  const [isIdCopied, setIsIdCopied] = useToggle(false);
 
   const { data, isLoading } = useListCertificateTemplatesV2({
     projectId: currentProject?.id || "",
@@ -42,19 +54,24 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
 
   const templates = data?.certificateTemplates || [];
 
+  const handleCopyId = useCallback(
+    (templateId: string) => {
+      setIsIdCopied.on();
+      navigator.clipboard.writeText(templateId);
+
+      createNotification({
+        text: "Template ID copied to clipboard",
+        type: "info"
+      });
+
+      setTimeout(() => setIsIdCopied.off(), 2000);
+    },
+    [setIsIdCopied]
+  );
+
   if (!currentProject?.id) {
     return null;
   }
-
-  const canEditTemplate = permission.can(
-    ProjectPermissionPkiTemplateActions.Edit,
-    ProjectPermissionSub.CertificateTemplates
-  );
-
-  const canDeleteTemplate = permission.can(
-    ProjectPermissionPkiTemplateActions.Delete,
-    ProjectPermissionSub.CertificateTemplates
-  );
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -110,28 +127,55 @@ export const TemplateList = ({ onEditTemplate, onDeleteTemplate }: Props) => {
                       </div>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="p-1">
-                      {canEditTemplate && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditTemplate(template);
-                          }}
-                          icon={<FontAwesomeIcon icon={faEdit} />}
-                        >
-                          Edit Template
-                        </DropdownMenuItem>
-                      )}
-                      {canDeleteTemplate && (
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDeleteTemplate(template);
-                          }}
-                          icon={<FontAwesomeIcon icon={faTrash} />}
-                        >
-                          Delete Template
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyId(template.id);
+                        }}
+                        icon={<FontAwesomeIcon icon={isIdCopied ? faCheck : faCopy} />}
+                      >
+                        Copy Template ID
+                      </DropdownMenuItem>
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPkiTemplateActions.Edit}
+                        a={subject(ProjectPermissionSub.CertificateTemplates, {
+                          name: template.name
+                        })}
+                      >
+                        {(isAllowed) =>
+                          isAllowed && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onEditTemplate(template);
+                              }}
+                              icon={<FontAwesomeIcon icon={faEdit} />}
+                            >
+                              Edit Template
+                            </DropdownMenuItem>
+                          )
+                        }
+                      </ProjectPermissionCan>
+                      <ProjectPermissionCan
+                        I={ProjectPermissionPkiTemplateActions.Delete}
+                        a={subject(ProjectPermissionSub.CertificateTemplates, {
+                          name: template.name
+                        })}
+                      >
+                        {(isAllowed) =>
+                          isAllowed && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteTemplate(template);
+                              }}
+                              icon={<FontAwesomeIcon icon={faTrash} />}
+                            >
+                              Delete Template
+                            </DropdownMenuItem>
+                          )
+                        }
+                      </ProjectPermissionCan>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </Td>

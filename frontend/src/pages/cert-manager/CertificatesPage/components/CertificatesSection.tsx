@@ -6,6 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub,
   useProject
 } from "@app/context";
@@ -104,12 +105,12 @@ export const CertificatesSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateActions.Create}
-          a={ProjectPermissionSub.Certificates}
-        >
-          {(isAllowed) => (
-            <div className="flex gap-2">
+        <div className="flex gap-2">
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateActions.Import}
+            a={ProjectPermissionSub.Certificates}
+          >
+            {(isAllowed) => (
               <Button
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
@@ -118,6 +119,13 @@ export const CertificatesSection = () => {
               >
                 Import
               </Button>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateProfileActions.IssueCert}
+            a={ProjectPermissionSub.CertificateProfiles}
+          >
+            {(isAllowed) => (
               <Button
                 colorSchema="primary"
                 type="submit"
@@ -127,9 +135,9 @@ export const CertificatesSection = () => {
               >
                 Request
               </Button>
-            </div>
-          )}
-        </ProjectPermissionCan>
+            )}
+          </ProjectPermissionCan>
+        </div>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
       <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />

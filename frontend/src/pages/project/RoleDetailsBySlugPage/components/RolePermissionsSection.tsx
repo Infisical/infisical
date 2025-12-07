@@ -21,6 +21,9 @@ import { ProjectMembershipRole } from "@app/hooks/api/roles/types";
 
 import { AddPoliciesButton } from "./AddPoliciesButton";
 import { AppConnectionPermissionConditions } from "./AppConnectionPermissionConditions";
+import { CertificateAuthorityPermissionConditions } from "./CertificateAuthorityPermissionConditions";
+import { CertificatePermissionConditions } from "./CertificatePermissionConditions";
+import { CertificateProfilePermissionConditions } from "./CertificateProfilePermissionConditions";
 import { DynamicSecretPermissionConditions } from "./DynamicSecretPermissionConditions";
 import { GeneralPermissionConditions } from "./GeneralPermissionConditions";
 import { GeneralPermissionPolicies } from "./GeneralPermissionPolicies";
@@ -96,6 +99,18 @@ export const renderConditionalComponents = (
       return <PamAccountPermissionConditions isDisabled={isDisabled} />;
     }
 
+    if (subject === ProjectPermissionSub.CertificateAuthorities) {
+      return <CertificateAuthorityPermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.Certificates) {
+      return <CertificatePermissionConditions isDisabled={isDisabled} />;
+    }
+
+    if (subject === ProjectPermissionSub.CertificateProfiles) {
+      return <CertificateProfilePermissionConditions isDisabled={isDisabled} />;
+    }
+
     return <GeneralPermissionConditions isDisabled={isDisabled} type={subject} />;
   }
 
@@ -103,13 +118,15 @@ export const renderConditionalComponents = (
 };
 
 export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
-  const { currentProject } = useProject();
-  const projectId = currentProject?.id || "";
-  const { data: role, isPending } = useGetProjectRoleBySlug(
-    currentProject?.id ?? "",
-    roleSlug as string
-  );
-  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId);
+  const { currentProject, projectId } = useProject();
+
+  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
+
+  const { data: role, isPending } = useGetProjectRoleBySlug(projectId, roleSlug as string);
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
+    enabled: isSecretManagerProject,
+    refetchInterval: false
+  });
   const hasNativeIntegrations = integrations.length > 0;
 
   const [showAccessTree, setShowAccessTree] = useState<ProjectPermissionSub | null>(null);
@@ -141,8 +158,6 @@ export const RolePermissionsSection = ({ roleSlug, isDisabled }: Props) => {
   const isCustomRole = !Object.values(ProjectMembershipRole).includes(
     (role?.slug ?? "") as ProjectMembershipRole
   );
-
-  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
 
   const permissions = form.watch("permissions");
 
