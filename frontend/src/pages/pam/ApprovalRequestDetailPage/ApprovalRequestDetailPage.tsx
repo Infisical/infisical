@@ -16,7 +16,11 @@ import { ROUTE_PATHS } from "@app/const/routes";
 import { useOrganization, useProject, useUser } from "@app/context";
 import { usePopUp } from "@app/hooks";
 import { ApprovalPolicyType } from "@app/hooks/api/approvalPolicies";
-import { approvalRequestQuery, useCancelApprovalRequest } from "@app/hooks/api/approvalRequests";
+import {
+  approvalRequestQuery,
+  ApprovalRequestStatus,
+  useCancelApprovalRequest
+} from "@app/hooks/api/approvalRequests";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import { ApprovalStepsSection, RequestActionsSection, RequestDetailsSection } from "./components";
@@ -102,16 +106,17 @@ const PageContent = () => {
           description={`Request to access account ${request.requestData.requestData.accountPath} for ${request.requestData.requestData.accessDuration} by ${request.requesterName || "Unknown"}`}
         >
           <div>
-            {request.requesterId === currentUser.id && (
-              <Button
-                onClick={() => handlePopUpOpen("cancelRequest")}
-                variant="outline_bg"
-                size="xs"
-                isLoading={cancelApprovalRequest.isPending}
-              >
-                Cancel Request
-              </Button>
-            )}
+            {request.requesterId === currentUser.id &&
+              request.status === ApprovalRequestStatus.Pending && (
+                <Button
+                  onClick={() => handlePopUpOpen("cancelRequest")}
+                  variant="outline_bg"
+                  size="xs"
+                  isLoading={cancelApprovalRequest.isPending}
+                >
+                  Cancel Request
+                </Button>
+              )}
           </div>
         </PageHeader>
         <div className="flex justify-center gap-4">

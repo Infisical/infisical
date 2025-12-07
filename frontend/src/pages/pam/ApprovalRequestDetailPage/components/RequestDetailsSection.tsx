@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 
-import { Badge } from "@app/components/v3";
 import { GenericFieldLabel } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { ApprovalRequestStatus, TApprovalRequest } from "@app/hooks/api/approvalRequests";
 
 type Props = {

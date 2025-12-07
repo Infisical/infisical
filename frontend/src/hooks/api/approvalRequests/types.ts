@@ -4,7 +4,8 @@ export enum ApprovalRequestStatus {
   Pending = "pending",
   Approved = "approved",
   Rejected = "rejected",
-  Expired = "expired"
+  Expired = "expired",
+  Cancelled = "cancelled"
 }
 
 export enum ApprovalRequestStepStatus {

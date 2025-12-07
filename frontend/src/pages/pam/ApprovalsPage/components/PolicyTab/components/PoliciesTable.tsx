@@ -9,6 +9,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { useQuery } from "@tanstack/react-query";
+import { User, Users } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 
 import {
@@ -28,6 +29,7 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
+import { Badge } from "@app/components/v3";
 import { useProject } from "@app/context";
 import { getMemberLabel } from "@app/helpers/members";
 import { useGetWorkspaceUsers, useListWorkspaceGroups } from "@app/hooks/api";
@@ -37,8 +39,6 @@ import {
   ApproverType
 } from "@app/hooks/api/approvalPolicies";
 import { UsePopUpState } from "@app/hooks/usePopUp";
-import { Badge } from "@app/components/v3";
-import { User, Users } from "lucide-react";
 
 type Props = {
   handlePopUpOpen: (
