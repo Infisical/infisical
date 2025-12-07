@@ -63,25 +63,34 @@ const assumePamRole = async ({
 }): Promise<Credentials | null> => {
   const stsClient = createStsClient();
 
-  const result = await stsClient.send(
-    new AssumeRoleCommand({
-      RoleArn: connectionDetails.roleArn,
-      RoleSessionName: `infisical-pam-${sessionNameSuffix}-${Date.now()}`,
-      DurationSeconds: sessionDuration,
-      ExternalId: projectId
-    })
-  );
+  try {
+    const result = await stsClient.send(
+      new AssumeRoleCommand({
+        RoleArn: connectionDetails.roleArn,
+        RoleSessionName: `infisical-pam-${sessionNameSuffix}-${Date.now()}`,
+        DurationSeconds: sessionDuration,
+        ExternalId: projectId
+      })
+    );
 
-  if (!result.Credentials) {
+    if (!result.Credentials) {
+      if (throwOnError) {
+        throw new InternalServerError({
+          message: "Failed to assume PAM role - AWS STS did not return credentials"
+        });
+      }
+      return null;
+    }
+
+    return result.Credentials;
+  } catch (error) {
     if (throwOnError) {
       throw new InternalServerError({
-        message: "Failed to assume PAM role - AWS STS did not return credentials"
+        message: `Failed to assume PAM role - AWS STS did not return credentials: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
     return null;
   }
-
-  return result.Credentials;
 };
 
 /**
@@ -105,25 +114,34 @@ const assumeTargetRole = async ({
 }): Promise<Credentials | null> => {
   const chainedStsClient = createStsClient(pamCredentials);
 
-  const result = await chainedStsClient.send(
-    new AssumeRoleCommand({
-      RoleArn: targetRoleArn,
-      RoleSessionName: roleSessionName,
-      DurationSeconds: sessionDuration,
-      ExternalId: projectId
-    })
-  );
+  try {
+    const result = await chainedStsClient.send(
+      new AssumeRoleCommand({
+        RoleArn: targetRoleArn,
+        RoleSessionName: roleSessionName,
+        DurationSeconds: sessionDuration,
+        ExternalId: projectId
+      })
+    );
 
-  if (!result.Credentials) {
+    if (!result.Credentials) {
+      if (throwOnError) {
+        throw new BadRequestError({
+          message: "Failed to assume target role - verify the target role trust policy allows the PAM role to assume it"
+        });
+      }
+      return null;
+    }
+
+    return result.Credentials;
+  } catch (error) {
     if (throwOnError) {
-      throw new BadRequestError({
-        message: "Failed to assume target role - verify the target role trust policy allows the PAM role to assume it"
+      throw new InternalServerError({
+        message: `Failed to assume target role - AWS STS did not return credentials: ${error instanceof Error ? error.message : "Unknown error"}`
       });
     }
     return null;
   }
-
-  return result.Credentials;
 };
 
 export const validatePamRoleConnection = async (
@@ -217,16 +235,8 @@ export const generateConsoleFederationUrl = async ({
     });
   }
 
-  const tokenData = tokenResponse.data;
-
-  if (!tokenData.SigninToken) {
-    throw new InternalServerError({
-      message: `AWS federation endpoint did not return a SigninToken: ${JSON.stringify(tokenResponse.data).substring(0, 200)}`
-    });
-  }
-
   const consoleDestination = `https://console.aws.amazon.com/`;
-  const consoleUrl = `${federationEndpoint}?Action=login&SigninToken=${encodeURIComponent(tokenData.SigninToken)}&Destination=${encodeURIComponent(consoleDestination)}`;
+  const consoleUrl = `${federationEndpoint}?Action=login&SigninToken=${encodeURIComponent(tokenResponse.data.SigninToken)}&Destination=${encodeURIComponent(consoleDestination)}`;
 
   return {
     consoleUrl,
