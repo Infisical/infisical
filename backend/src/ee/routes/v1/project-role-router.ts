@@ -315,6 +315,8 @@ export const registerProjectRoleRouter = async (server: FastifyZodProvider) => {
             memberships: z
               .object({
                 id: z.string(),
+                actorGroupId: z.string().nullish(),
+                actorUserId: z.string().nullish(),
                 roles: z
                   .object({
                     role: z.string()

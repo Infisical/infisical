@@ -8,6 +8,7 @@ import {
   faFilter,
   faFolderPlus,
   faMagnifyingGlass,
+  faPen,
   faPlus,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
@@ -67,6 +68,7 @@ import { PamAddFolderModal } from "./PamAddFolderModal";
 import { PamDeleteAccountModal } from "./PamDeleteAccountModal";
 import { PamDeleteFolderModal } from "./PamDeleteFolderModal";
 import { PamFolderRow } from "./PamFolderRow";
+import { PamRequestAccountAccessModal } from "./PamRequestAccountAccessModal";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
 import { useAccessAwsIamAccount } from "./useAccessAwsIamAccount";
@@ -90,6 +92,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     "deleteFolder",
     "addAccount",
     "accessAccount",
+    "requestAccount",
     "updateAccount",
     "deleteAccount"
   ] as const);
@@ -323,6 +326,14 @@ export const PamAccountsTable = ({ projectId }: Props) => {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
+        <Button
+          variant="outline_bg"
+          leftIcon={<FontAwesomeIcon icon={faPen} />}
+          onClick={() => handlePopUpOpen("requestAccount")}
+          className="h-10 transition-colors"
+        >
+          Request Account
+        </Button>
         <ProjectPermissionCan
           I={ProjectPermissionPamAccountActions.Create}
           a={ProjectPermissionSub.PamAccounts}
@@ -489,6 +500,10 @@ export const PamAccountsTable = ({ projectId }: Props) => {
             : undefined
         }
         projectId={projectId}
+      />
+      <PamRequestAccountAccessModal
+        isOpen={popUp.requestAccount.isOpen}
+        onOpenChange={(isOpen) => handlePopUpToggle("requestAccount", isOpen)}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}

@@ -291,7 +291,7 @@ export const ReviewAccessRequestModal = ({
           {request.user &&
           (request.user.firstName || request.user.lastName) &&
           request.user.email ? (
-            <span className="inline font-bold">
+            <span className="inline font-medium">
               {request.user?.firstName} {request.user?.lastName} ({request.user?.email})
             </span>
           ) : (
