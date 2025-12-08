@@ -362,6 +362,13 @@ export const AppConnectionsBrowser = () => {
         "Learn how to connect your Northflank projects to pull secrets from Infisical.",
       category: "Hosting",
     },
+    {
+      name: "MongoDB",
+      slug: "mongodb",
+      path: "/integrations/app-connections/mongodb",
+      description: "Learn how to connect your MongoDB to pull secrets from Infisical.",
+      category: "Databases"
+    }
   ].sort(function (a, b) {
     return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
   });
