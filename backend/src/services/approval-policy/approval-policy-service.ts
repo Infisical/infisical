@@ -1,6 +1,13 @@
+import { ForbiddenError } from "@casl/ability";
+
 import { ActionProjectType, ProjectMembershipRole, TApprovalPolicies, TApprovalRequests } from "@app/db/schemas";
 import { TUserGroupMembershipDALFactory } from "@app/ee/services/group/user-group-membership-dal";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
+import {
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 import { BadRequestError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
 import { ms } from "@app/lib/ms";
 import { OrgServiceActor } from "@app/lib/types";
@@ -34,13 +41,6 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
-import { ForbiddenError } from "@casl/ability";
-import {
-  ProjectPermissionActions,
-  ProjectPermissionApprovalRequestActions,
-  ProjectPermissionApprovalRequestGrantActions,
-  ProjectPermissionSub
-} from "@app/ee/services/permission/project-permission";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -751,6 +751,7 @@ export const approvalPolicyServiceFactory = ({
 
       if (isRequester) {
         filteredRequests.push(request);
+        // eslint-disable-next-line no-continue
         continue;
       }
 

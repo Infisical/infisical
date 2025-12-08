@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { BadRequestError } from "@app/lib/errors";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
@@ -11,7 +12,6 @@ import {
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
 import { AuthMode } from "@app/services/auth/auth-type";
-import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 
 export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   server,
