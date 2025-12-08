@@ -179,14 +179,13 @@ const Page = () => {
             search={{
               selectedTab: ProjectAccessControlTabs.Identities
             }}
-            className="mb-3 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
+            className="mb-4 flex w-fit items-center gap-x-1 text-sm text-mineshaft-400 transition duration-100 hover:text-mineshaft-400/80"
           >
             <ChevronLeftIcon size={16} />
             Project Machine Identities
           </Link>
           <PageHeader
             scope={currentProject.type}
-            className="mb-20"
             description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
             title={identityMembershipDetails.identity.name}
           >
@@ -256,14 +255,14 @@ const Page = () => {
               </UnstableDropdownMenuContent>
             </DropdownMenu>
           </PageHeader>
-          <div className="flex flex-col gap-20 lg:flex-row">
+          <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
               isOrgIdentity={!isProjectIdentity}
               membership={identityMembershipDetails!}
             />
 
-            <div className="flex flex-1 flex-col gap-y-20">
+            <div className="flex flex-1 flex-col gap-y-5">
               {identity ? (
                 <ProjectIdentityAuthenticationSection
                   identity={identity}

@@ -1,11 +1,11 @@
 import { subject } from "@casl/ability";
-import { EllipsisIcon, LockIcon, PlusIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
+import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { Tooltip } from "@app/components/v2";
+import { DeleteActionModal } from "@app/components/v2";
 import {
-  Badge,
   UnstableButton,
   UnstableCard,
   UnstableCardAction,
@@ -17,20 +17,29 @@ import {
   UnstableEmptyContent,
   UnstableEmptyDescription,
   UnstableEmptyHeader,
-  UnstableEmptyTitle,
-  UnstableIconButton,
-  UnstableTable,
-  UnstableTableBody,
-  UnstableTableCell,
-  UnstableTableHead,
-  UnstableTableHeader,
-  UnstableTableRow
+  UnstableEmptyTitle
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
-import { IdentityAuthMethod, identityAuthToNameMap, TProjectIdentity } from "@app/hooks/api";
+import {
+  IdentityAuthMethod,
+  identityAuthToNameMap,
+  TProjectIdentity,
+  useDeleteIdentityAliCloudAuth,
+  useDeleteIdentityAwsAuth,
+  useDeleteIdentityAzureAuth,
+  useDeleteIdentityGcpAuth,
+  useDeleteIdentityJwtAuth,
+  useDeleteIdentityKubernetesAuth,
+  useDeleteIdentityLdapAuth,
+  useDeleteIdentityOciAuth,
+  useDeleteIdentityOidcAuth,
+  useDeleteIdentityTlsCertAuth,
+  useDeleteIdentityTokenAuth,
+  useDeleteIdentityUniversalAuth
+} from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
-import { ViewIdentityAuthModal } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal";
+import { ViewIdentityAuth } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth";
 
 type Props = {
   identity: TProjectIdentity;
@@ -39,17 +48,58 @@ type Props = {
 
 export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen } = usePopUp([
-    "viewAuthMethod",
     "identityAuthMethod",
-    "upgradePlan"
+    "upgradePlan",
+    "revokeAuthMethod"
   ]);
 
   const hasAuthMethods = Boolean(identity.authMethods.length);
 
+  const { mutateAsync: revokeUniversalAuth } = useDeleteIdentityUniversalAuth();
+  const { mutateAsync: revokeTokenAuth } = useDeleteIdentityTokenAuth();
+  const { mutateAsync: revokeKubernetesAuth } = useDeleteIdentityKubernetesAuth();
+  const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
+  const { mutateAsync: revokeTlsCertAuth } = useDeleteIdentityTlsCertAuth();
+  const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
+  const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
+  const { mutateAsync: revokeAliCloudAuth } = useDeleteIdentityAliCloudAuth();
+  const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
+  const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
+  const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
+  const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
+
+  const RemoveAuthMap = {
+    [IdentityAuthMethod.KUBERNETES_AUTH]: revokeKubernetesAuth,
+    [IdentityAuthMethod.GCP_AUTH]: revokeGcpAuth,
+    [IdentityAuthMethod.TLS_CERT_AUTH]: revokeTlsCertAuth,
+    [IdentityAuthMethod.AWS_AUTH]: revokeAwsAuth,
+    [IdentityAuthMethod.AZURE_AUTH]: revokeAzureAuth,
+    [IdentityAuthMethod.ALICLOUD_AUTH]: revokeAliCloudAuth,
+    [IdentityAuthMethod.UNIVERSAL_AUTH]: revokeUniversalAuth,
+    [IdentityAuthMethod.TOKEN_AUTH]: revokeTokenAuth,
+    [IdentityAuthMethod.OCI_AUTH]: revokeOciAuth,
+    [IdentityAuthMethod.OIDC_AUTH]: revokeOidcAuth,
+    [IdentityAuthMethod.JWT_AUTH]: revokeJwtAuth,
+    [IdentityAuthMethod.LDAP_AUTH]: revokeLdapAuth
+  };
+
+  const handleDeleteAuthMethod = async (authMethod: IdentityAuthMethod) => {
+    await RemoveAuthMap[authMethod]({
+      identityId: identity.id,
+      projectId: identity.projectId!
+    });
+
+    createNotification({
+      text: "Successfully removed auth method",
+      type: "success"
+    });
+    handlePopUpToggle("revokeAuthMethod", false);
+  };
+
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader>
           <UnstableCardTitle>Authentication</UnstableCardTitle>
           <UnstableCardDescription>Configure authentication methods</UnstableCardDescription>
           {hasAuthMethods &&
@@ -65,7 +115,7 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
                 >
                   {(isAllowed) => (
                     <UnstableButton
-                      variant="project"
+                      variant="outline"
                       isFullWidth
                       size="xs"
                       isDisabled={!isAllowed}
@@ -87,43 +137,12 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         </UnstableCardHeader>
         <UnstableCardContent>
           {identity.authMethods.length > 0 ? (
-            <UnstableTable>
-              <UnstableTableHeader>
-                <UnstableTableHead className="w-full">Method</UnstableTableHead>
-                <UnstableTableHead className="w-5" />
-              </UnstableTableHeader>
-              <UnstableTableBody>
-                {identity.authMethods.map((authMethod) => (
-                  <UnstableTableRow
-                    key={authMethod}
-                    className="cursor-pointer"
-                    onClick={() =>
-                      handlePopUpOpen("viewAuthMethod", {
-                        authMethod,
-                        lockedOut: identity.activeLockoutAuthMethods?.includes(authMethod) ?? false,
-                        refetchIdentity
-                      })
-                    }
-                  >
-                    <UnstableTableCell>{identityAuthToNameMap[authMethod]}</UnstableTableCell>
-                    <UnstableTableCell>
-                      <div className="flex items-center gap-2">
-                        {identity.activeLockoutAuthMethods?.includes(authMethod) && (
-                          <Tooltip content="Auth method has active lockouts">
-                            <Badge isSquare variant="danger">
-                              <LockIcon />
-                            </Badge>
-                          </Tooltip>
-                        )}
-                        <UnstableIconButton variant="ghost" size="xs">
-                          <EllipsisIcon />
-                        </UnstableIconButton>
-                      </div>
-                    </UnstableTableCell>
-                  </UnstableTableRow>
-                ))}
-              </UnstableTableBody>
-            </UnstableTable>
+            <ViewIdentityAuth
+              authMethods={identity.authMethods}
+              identityId={identity.id}
+              onResetAllLockouts={refetchIdentity}
+              activeLockoutAuthMethods={identity.activeLockoutAuthMethods}
+            />
           ) : (
             <UnstableEmpty className="rounded-sm border bg-mineshaft-800/50">
               <UnstableEmptyHeader>
@@ -175,13 +194,15 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         text={(popUp.upgradePlan?.data as { description: string })?.description}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
       />
-      <ViewIdentityAuthModal
-        isOpen={popUp.viewAuthMethod.isOpen}
-        onOpenChange={(isOpen) => handlePopUpToggle("viewAuthMethod", isOpen)}
-        authMethod={popUp.viewAuthMethod.data?.authMethod}
-        lockedOut={popUp.viewAuthMethod.data?.lockedOut || false}
-        identityId={identity.id}
-        onResetAllLockouts={popUp.viewAuthMethod.data?.refetchIdentity}
+      <DeleteActionModal
+        isOpen={popUp?.revokeAuthMethod?.isOpen}
+        title={`Are you sure you want to remove ${popUp?.revokeAuthMethod?.data ? identityAuthToNameMap[popUp.revokeAuthMethod.data as IdentityAuthMethod] : "this auth method"} on this identity?`}
+        onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
+        deleteKey="confirm"
+        buttonText="Remove"
+        onDeleteApproved={() =>
+          handleDeleteAuthMethod(popUp.revokeAuthMethod.data as IdentityAuthMethod)
+        }
       />
     </>
   );

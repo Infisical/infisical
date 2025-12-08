@@ -49,14 +49,14 @@
   --color-sub-org: #96ff59;
   --color-project: #e0ed34;
   --color-neutral: #adaeb0;
-  --color-border: #323439;
+  --color-border: #2b2c30;
   --color-label: #adaeb0;
   --color-muted: #707174;
-  --color-popover: #111419;
+  --color-popover: #141617;
   --color-ring: #2d2f33;
-  --color-container: #16181a;
+  --color-card: #16181a;
   --color-accent: #7d7f80;
-  --color-muted-foreground: ;
+  --color-container: #1a1c1e;
 
   /*legacy color schema */
   --color-org-v1: #30b3ff;

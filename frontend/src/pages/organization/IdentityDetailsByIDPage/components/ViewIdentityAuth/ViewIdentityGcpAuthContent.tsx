@@ -2,7 +2,6 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { EmptyState, Spinner } from "@app/components/v2";
 import { useGetIdentityGcpAuth } from "@app/hooks/api";
-import { IdentityGcpAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityGcpAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
@@ -10,10 +9,8 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityGcpAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
-  onDelete,
-  popUp
+  onEdit,
+  onDelete
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityGcpAuth(identityId);
 
@@ -31,23 +28,8 @@ export const ViewIdentityGcpAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityGcpAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>

@@ -2,7 +2,6 @@ import { faBan } from "@fortawesome/free-solid-svg-icons";
 
 import { EmptyState, Spinner } from "@app/components/v2";
 import { useGetIdentityTokenAuth, useGetIdentityTokensTokenAuth } from "@app/hooks/api";
-import { IdentityTokenAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityTokenAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { IdentityTokenAuthTokensTable } from "./IdentityTokenAuthTokensTable";
@@ -11,10 +10,8 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityTokenAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
   onDelete,
-  popUp
+  onEdit
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityTokenAuth(identityId);
   const { data: tokens = [], isPending: clientSecretsPending } =
@@ -34,23 +31,8 @@ export const ViewIdentityTokenAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityTokenAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>

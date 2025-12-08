@@ -12,7 +12,6 @@ import {
   DetailValue,
   OrgIcon,
   ProjectIcon,
-  UnstableButton,
   UnstableButtonGroup,
   UnstableCard,
   UnstableCardAction,
@@ -44,8 +43,10 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
 
   return (
     <>
-      <UnstableCard className="w-full max-w-84">
-        <UnstableCardHeader className="border-b">
+      <UnstableCard className="w-full max-w-[22rem]">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Details</UnstableCardTitle>
           <UnstableCardDescription>Machine identity details</UnstableCardDescription>
           {!isOrgIdentity && (
@@ -57,17 +58,16 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                 })}
               >
                 {(isAllowed) => (
-                  <UnstableButton
+                  <UnstableIconButton
                     isDisabled={!isAllowed}
                     onClick={() => {
                       handlePopUpOpen("editIdentity");
                     }}
                     size="xs"
-                    variant="project"
+                    variant="outline"
                   >
                     <PencilIcon />
-                    Edit Details
-                  </UnstableButton>
+                  </UnstableIconButton>
                 )}
               </ProjectPermissionCan>
             </UnstableCardAction>
@@ -92,6 +92,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                     variant="ghost"
                     size="xs"
                   >
+                    {/* TODO(scott): color this should be a button variant */}
                     {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
                   </UnstableIconButton>
                 </Tooltip>
@@ -118,9 +119,13 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
               <DetailValue className="flex flex-wrap gap-2">
                 {identity?.metadata?.length ? (
                   identity.metadata?.map((el) => (
-                    <UnstableButtonGroup key={el.id}>
-                      <Badge>{el.key}</Badge>
-                      <Badge variant="outline">{el.value}</Badge>
+                    <UnstableButtonGroup className="min-w-0" key={el.id}>
+                      <Badge isTruncatable>
+                        <span>{el.key}</span>
+                      </Badge>
+                      <Badge variant="outline" isTruncatable>
+                        <span>{el.value}</span>
+                      </Badge>
                     </UnstableButtonGroup>
                   ))
                 ) : (

@@ -8,7 +8,6 @@ import {
   useGetIdentityUniversalAuth,
   useGetIdentityUniversalAuthClientSecrets
 } from "@app/hooks/api";
-import { IdentityUniversalAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityUniversalAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { LockoutFields } from "./IdentityAuthLockoutFields";
@@ -18,10 +17,8 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityUniversalAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
   onDelete,
-  popUp,
+  onEdit,
   lockedOut,
   onResetAllLockouts
 }: ViewAuthMethodProps) => {
@@ -51,23 +48,8 @@ export const ViewIdentityUniversalAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityUniversalAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       {Number(data.accessTokenPeriod) > 0 ? (
         <IdentityAuthFieldDisplay label="Access Token Period (seconds)">
           {data.accessTokenPeriod}

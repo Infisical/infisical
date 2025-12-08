@@ -4,18 +4,15 @@ import { EyeIcon } from "lucide-react";
 import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useGetIdentityOidcAuth } from "@app/hooks/api";
-import { IdentityOidcAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityOidcAuthForm";
-import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuthModal/ViewIdentityContentWrapper";
+import { ViewIdentityContentWrapper } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth/ViewIdentityContentWrapper";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
 
 export const ViewIdentityOidcAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
-  onDelete,
-  popUp
+  onEdit,
+  onDelete
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityOidcAuth(identityId);
 
@@ -33,23 +30,8 @@ export const ViewIdentityOidcAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityOidcAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>

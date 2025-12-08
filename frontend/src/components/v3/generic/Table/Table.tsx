@@ -8,7 +8,7 @@ function UnstableTable({ className, ...props }: React.ComponentProps<"table">) {
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto border border-border/50 bg-mineshaft-800/50"
+      className="relative w-full overflow-x-auto border border-border bg-container"
     >
       <table
         data-slot="table"
@@ -39,10 +39,7 @@ function UnstableTableFooter({ className, ...props }: React.ComponentProps<"tfoo
   return (
     <tfoot
       data-slot="table-footer"
-      className={cn(
-        "border-t border-border/50 bg-muted/50 font-medium [&>tr]:last:border-b-0",
-        className
-      )}
+      className={cn("border-t border-border font-medium [&>tr]:last:border-b-0", className)}
       {...props}
     />
   );
@@ -53,7 +50,7 @@ function UnstableTableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "border-b border-border/50 transition-colors hover:bg-foreground/5 data-[state=selected]:bg-foreground/5",
+        "border-b border-border transition-colors hover:bg-foreground/5 data-[state=selected]:bg-foreground/5",
         className
       )}
       {...props}
@@ -66,7 +63,7 @@ function UnstableTableHead({ className, ...props }: React.ComponentProps<"th">) 
     <th
       data-slot="table-head"
       className={cn(
-        "h-[30px] border-x-0 border-t-0 border-b border-border/50 px-3 text-left align-middle text-xs whitespace-nowrap text-accent text-mineshaft-400 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "h-[30px] border-x-0 border-t-0 border-b border-border px-3 text-left align-middle text-xs whitespace-nowrap text-accent [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}
@@ -91,7 +88,7 @@ function UnstableTableCaption({ className, ...props }: React.ComponentProps<"cap
   return (
     <caption
       data-slot="table-caption"
-      className={cn("mt-4 text-sm text-muted-foreground", className)}
+      className={cn("text-muted-foreground mt-4 text-sm", className)}
       {...props}
     />
   );

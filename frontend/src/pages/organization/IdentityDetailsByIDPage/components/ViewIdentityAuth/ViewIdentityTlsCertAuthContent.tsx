@@ -4,7 +4,6 @@ import { EyeIcon } from "lucide-react";
 import { EmptyState, Spinner, Tooltip } from "@app/components/v2";
 import { Badge } from "@app/components/v3";
 import { useGetIdentityTlsCertAuth } from "@app/hooks/api";
-import { IdentityTlsCertAuthForm } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityTlsCertAuthForm";
 
 import { IdentityAuthFieldDisplay } from "./IdentityAuthFieldDisplay";
 import { ViewAuthMethodProps } from "./types";
@@ -12,10 +11,8 @@ import { ViewIdentityContentWrapper } from "./ViewIdentityContentWrapper";
 
 export const ViewIdentityTlsCertAuthContent = ({
   identityId,
-  handlePopUpToggle,
-  handlePopUpOpen,
-  onDelete,
-  popUp
+  onEdit,
+  onDelete
 }: ViewAuthMethodProps) => {
   const { data, isPending } = useGetIdentityTlsCertAuth(identityId);
 
@@ -36,23 +33,8 @@ export const ViewIdentityTlsCertAuthContent = ({
     );
   }
 
-  if (popUp.identityAuthMethod.isOpen) {
-    return (
-      <IdentityTlsCertAuthForm
-        identityId={identityId}
-        isUpdate
-        handlePopUpOpen={handlePopUpOpen}
-        handlePopUpToggle={handlePopUpToggle}
-      />
-    );
-  }
-
   return (
-    <ViewIdentityContentWrapper
-      onEdit={() => handlePopUpOpen("identityAuthMethod")}
-      onDelete={onDelete}
-      identityId={identityId}
-    >
+    <ViewIdentityContentWrapper onEdit={onEdit} onDelete={onDelete} identityId={identityId}>
       <IdentityAuthFieldDisplay label="Access Token TTL (seconds)">
         {data.accessTokenTTL}
       </IdentityAuthFieldDisplay>

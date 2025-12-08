@@ -81,7 +81,9 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
   return (
     <>
       <UnstableCard>
-        <UnstableCardHeader className="border-b">
+        <UnstableCardHeader
+        // className="border-b"
+        >
           <UnstableCardTitle>Project Additional Privileges</UnstableCardTitle>
           <UnstableCardDescription>
             Assign one-off policies to this machine identity
@@ -96,7 +98,7 @@ export const IdentityProjectAdditionalPrivilegeSection = ({ identityMembershipDe
               >
                 {(isAllowed) => (
                   <UnstableButton
-                    variant="project"
+                    variant="outline"
                     size="xs"
                     onClick={() => {
                       handlePopUpOpen("modifyPrivilege");

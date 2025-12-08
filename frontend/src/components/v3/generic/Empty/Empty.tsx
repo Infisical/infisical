@@ -70,7 +70,7 @@ function UnstableEmptyDescription({ className, ...props }: React.ComponentProps<
     <div
       data-slot="empty-description"
       className={cn(
-        "text-xs/relaxed text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "text-xs/relaxed text-muted [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-project",
         className
       )}
       {...props}
