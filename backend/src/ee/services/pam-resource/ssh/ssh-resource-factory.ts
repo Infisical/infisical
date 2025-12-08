@@ -60,6 +60,10 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
 ) => {
   const validateConnection = async () => {
     try {
+      if (!gatewayId) {
+        throw new BadRequestError({ message: "Gateway ID is required" });
+      }
+
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
         return new Promise<void>((resolve, reject) => {
           const client = new Client();
@@ -131,6 +135,10 @@ export const sshResourceFactory: TPamResourceFactory<TSSHResourceConnectionDetai
     credentials
   ) => {
     try {
+      if (!gatewayId) {
+        throw new BadRequestError({ message: "Gateway ID is required" });
+      }
+
       await executeWithGateway({ connectionDetails, gatewayId, resourceType }, gatewayV2Service, async (proxyPort) => {
         return new Promise<void>((resolve, reject) => {
           const client = new Client();
