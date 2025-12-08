@@ -3,7 +3,12 @@ import { TableName, TApprovalRequestApprovals } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
 import { ormify } from "@app/lib/knex";
 
-import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
+import {
+  ApprovalPolicyType,
+  ApprovalRequestGrantStatus,
+  ApprovalRequestStatus,
+  ApproverType
+} from "./approval-policy-enums";
 import { ApprovalPolicyStep } from "./approval-policy-types";
 
 // Approval Policy
@@ -274,7 +279,21 @@ export const approvalRequestDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { ...orm, findStepsByRequestId, findByProjectId };
+  const markExpiredRequests = async () => {
+    try {
+      const result = await db(TableName.ApprovalRequests)
+        .where("status", ApprovalRequestStatus.Pending)
+        .whereNotNull("expiresAt")
+        .where("expiresAt", "<", new Date())
+        .update({ status: ApprovalRequestStatus.Expired });
+
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Mark expired approval requests" });
+    }
+  };
+
+  return { ...orm, findStepsByRequestId, findByProjectId, markExpiredRequests };
 };
 
 // Approval Request Steps
@@ -297,7 +316,22 @@ export const approvalRequestStepEligibleApproversDALFactory = (db: TDbClient) =>
 export type TApprovalRequestGrantsDALFactory = ReturnType<typeof approvalRequestGrantsDALFactory>;
 export const approvalRequestGrantsDALFactory = (db: TDbClient) => {
   const orm = ormify(db, TableName.ApprovalRequestGrants);
-  return orm;
+
+  const markExpiredGrants = async () => {
+    try {
+      const result = await db(TableName.ApprovalRequestGrants)
+        .where("status", ApprovalRequestGrantStatus.Active)
+        .whereNotNull("expiresAt")
+        .where("expiresAt", "<", new Date())
+        .update({ status: ApprovalRequestGrantStatus.Expired });
+
+      return result;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "Mark expired approval grants" });
+    }
+  };
+
+  return { ...orm, markExpiredGrants };
 };
 
 // Approval Request Approvals

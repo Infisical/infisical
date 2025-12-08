@@ -1927,6 +1927,9 @@ export const registerRoutes = async (
     identityDAL
   });
 
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
@@ -1942,7 +1945,9 @@ export const registerRoutes = async (
     serviceTokenService,
     orgService,
     userNotificationDAL,
-    keyValueStoreDAL
+    keyValueStoreDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2423,7 +2428,6 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
-  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
   const approvalPolicyDAL = approvalPolicyDALFactory(db);
 
   const pamAccountService = pamAccountServiceFactory({
@@ -2469,7 +2473,6 @@ export const registerRoutes = async (
 
   const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
   const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
-  const approvalRequestDAL = approvalRequestDALFactory(db);
   const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
   const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
   const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
