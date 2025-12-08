@@ -672,7 +672,7 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const [identity] = await identityOrgMembershipDAL.findByIds([identityId]);
+    const [identity] = await identityOrgMembershipDAL.findByIds([identityId], group.orgId);
 
     if (!identity) {
       throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });
@@ -824,7 +824,7 @@ export const groupServiceFactory = ({
         details: { missingPermissions: permissionBoundary.missingPermissions }
       });
 
-    const [identity] = await identityOrgMembershipDAL.findByIds([identityId]);
+    const [identity] = await identityOrgMembershipDAL.findByIds([identityId], group.orgId);
 
     if (!identity)
       throw new NotFoundError({ message: `Identity with id ${identityId} is not part of the organization` });

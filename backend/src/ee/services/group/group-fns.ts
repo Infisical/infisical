@@ -303,7 +303,7 @@ export const addIdentitiesToGroup = async ({
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
-    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, tx);
+    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, group.orgId, tx);
 
     const existingIdentityOrgMembershipsIdentityIdsSet = new Set(foundIdentities.map((u) => u.id));
 
@@ -500,7 +500,7 @@ export const removeIdentitiesFromGroup = async ({
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
-    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, tx);
+    const foundIdentities = await identityOrgMembershipDAL.findByIds(identityIdsArray, group.orgId, tx);
 
     if (foundIdentities.length !== identityIdsArray.length) {
       throw new NotFoundError({

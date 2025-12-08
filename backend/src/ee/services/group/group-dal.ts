@@ -237,10 +237,10 @@ export const groupDALFactory = (db: TDbClient) => {
       const identities = await query;
 
       return {
-        identities: identities.map(({ name, identityId, joinedGroupAt }) => ({
+        identities: identities.map(({ name, identityId, joinedGroupAt, groupId: identityGroupId }) => ({
           id: identityId,
           name,
-          isPartOfGroup: !!groupId,
+          isPartOfGroup: !!identityGroupId,
           joinedGroupAt
         })),
         // @ts-expect-error col select is raw and not strongly typed
