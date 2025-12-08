@@ -880,6 +880,7 @@ export const Navbar = () => {
               onClose={() => {
                 setShowSubOrgForm(false);
               }}
+              handleOrgSelection={handleOrgSelection}
             />
           </div>
         </ModalContent>
