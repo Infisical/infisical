@@ -1,3 +1,4 @@
+import picomatch from "picomatch";
 import { z } from "zod";
 
 import { ms } from "@app/lib/ms";
@@ -19,7 +20,20 @@ export const PamAccessPolicyInputsSchema = z.object({
 // Conditions
 export const PamAccessPolicyConditionsSchema = z
   .object({
-    accountPaths: z.string().array() // TODO(andrey): Add path & wildcard validation
+    accountPaths: z
+      .string()
+      .refine(
+        (el) => {
+          try {
+            picomatch.parse([el]);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Invalid glob pattern" }
+      )
+      .array()
   })
   .array();
 

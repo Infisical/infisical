@@ -7,7 +7,7 @@ import { logger } from "@app/lib/logger";
 import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TUserNotificationDALFactory } from "@app/services/notification/user-notification-dal";
 
-import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-policy-dal";
+import { TApprovalRequestDALFactory, TApprovalRequestGrantsDALFactory } from "../approval-policy/approval-request-dal";
 import { TIdentityAccessTokenDALFactory } from "../identity-access-token/identity-access-token-dal";
 import { TIdentityUaClientSecretDALFactory } from "../identity-ua/identity-ua-client-secret-dal";
 import { TOrgServiceFactory } from "../org/org-service";

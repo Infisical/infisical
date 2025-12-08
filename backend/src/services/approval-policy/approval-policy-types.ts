@@ -1,7 +1,5 @@
-import {
-  TApprovalPolicyDALFactory,
-  TApprovalRequestGrantsDALFactory
-} from "@app/services/approval-policy/approval-policy-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 
 import { ApprovalPolicyType, ApproverType } from "./approval-policy-enums";
 import {
@@ -72,7 +70,7 @@ export type TApprovalRequestFactoryCanAccess<I extends TApprovalPolicyInputs> = 
 export type TApprovalRequestFactoryValidateConstraints<P extends TApprovalPolicy, R extends TApprovalRequestData> = (
   policy: P,
   inputs: R
-) => boolean;
+) => { valid: boolean; errors?: string[] };
 export type TApprovalRequestFactoryPostApprovalRoutine = (
   approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory,
   request: TApprovalRequest

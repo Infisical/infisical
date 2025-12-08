@@ -18,12 +18,7 @@ import { TProjectMembershipDALFactory } from "../project-membership/project-memb
 import {
   TApprovalPolicyDALFactory,
   TApprovalPolicyStepApproversDALFactory,
-  TApprovalPolicyStepsDALFactory,
-  TApprovalRequestApprovalsDALFactory,
-  TApprovalRequestDALFactory,
-  TApprovalRequestGrantsDALFactory,
-  TApprovalRequestStepEligibleApproversDALFactory,
-  TApprovalRequestStepsDALFactory
+  TApprovalPolicyStepsDALFactory
 } from "./approval-policy-dal";
 import {
   ApprovalPolicyType,
@@ -41,6 +36,13 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
+import {
+  TApprovalRequestApprovalsDALFactory,
+  TApprovalRequestDALFactory,
+  TApprovalRequestGrantsDALFactory,
+  TApprovalRequestStepEligibleApproversDALFactory,
+  TApprovalRequestStepsDALFactory
+} from "./approval-request-dal";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -394,11 +396,17 @@ export const approvalPolicyServiceFactory = ({
     const policy = await fac.matchPolicy(approvalPolicyDAL, projectId, requestData);
 
     if (!policy) {
-      throw new ForbiddenRequestError({ message: "Policy not found" });
+      throw new ForbiddenRequestError({
+        message: "No policies match the requested resource, you can access it without a request"
+      });
     }
 
-    if (!fac.validateConstraints(policy, requestData)) {
-      throw new ForbiddenRequestError({ message: "Policy constraints not met" });
+    const constraintValidation = fac.validateConstraints(policy, requestData);
+    if (!constraintValidation.valid) {
+      const errorMessage = constraintValidation.errors
+        ? `Policy constraints not met: ${constraintValidation.errors.join("; ")}`
+        : "Policy constraints not met";
+      throw new ForbiddenRequestError({ message: errorMessage });
     }
 
     let expiresAt: Date | undefined;

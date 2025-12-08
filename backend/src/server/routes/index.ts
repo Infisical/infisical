@@ -162,14 +162,16 @@ import { appConnectionServiceFactory } from "@app/services/app-connection/app-co
 import {
   approvalPolicyDALFactory,
   approvalPolicyStepApproversDALFactory,
-  approvalPolicyStepsDALFactory,
+  approvalPolicyStepsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import {
   approvalRequestApprovalsDALFactory,
   approvalRequestDALFactory,
   approvalRequestGrantsDALFactory,
   approvalRequestStepEligibleApproversDALFactory,
   approvalRequestStepsDALFactory
-} from "@app/services/approval-policy/approval-policy-dal";
-import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+} from "@app/services/approval-policy/approval-request-dal";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";

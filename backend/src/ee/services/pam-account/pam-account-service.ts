@@ -26,12 +26,10 @@ import {
 } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
-import {
-  TApprovalPolicyDALFactory,
-  TApprovalRequestGrantsDALFactory
-} from "@app/services/approval-policy/approval-policy-dal";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
 import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
 import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
@@ -579,9 +577,8 @@ export const pamAccountServiceFactory = ({
 
     const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
 
-    if (canAccess) {
-      // Grant exists, allow access without checking permission
-    } else {
+    // Grant does not exist, check policy and fallback to permission check
+    if (!canAccess) {
       const policy = await fac.matchPolicy(approvalPolicyDAL, resource.projectId, inputs);
 
       if (policy) {

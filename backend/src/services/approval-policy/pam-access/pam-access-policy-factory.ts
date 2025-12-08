@@ -79,8 +79,27 @@ export const pamAccessPolicyFactory: TApprovalResourceFactory<
   ) => {
     const reqDuration = ms(inputs.accessDuration);
     const durationConstraint = policy.constraints.constraints.accessDuration;
+    const minDuration = ms(durationConstraint.min);
+    const maxDuration = ms(durationConstraint.max);
 
-    return reqDuration >= ms(durationConstraint.min) && reqDuration <= ms(durationConstraint.max);
+    const errors: string[] = [];
+
+    if (reqDuration < minDuration) {
+      errors.push(
+        `Access duration ${inputs.accessDuration} is below the minimum allowed duration of ${durationConstraint.min}`
+      );
+    }
+
+    if (reqDuration > maxDuration) {
+      errors.push(
+        `Access duration ${inputs.accessDuration} exceeds the maximum allowed duration of ${durationConstraint.max}`
+      );
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors: errors.length > 0 ? errors : undefined
+    };
   };
 
   const postApprovalRoutine: TApprovalRequestFactoryPostApprovalRoutine = async (approvalRequestGrantsDAL, request) => {
