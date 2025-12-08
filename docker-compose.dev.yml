@@ -71,6 +71,7 @@ services:
     ports:
       - 4000:4000
       - 9464:9464 # for OTEL collection of Prometheus metrics
+      - 9229:9229 # For debugger access
     environment:
       - NODE_ENV=development
       - DB_CONNECTION_URI=postgres://infisical:infisical@db/infisical?sslmode=disable

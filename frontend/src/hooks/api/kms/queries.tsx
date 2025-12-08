@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { apiRequest } from "@app/config/request";
 
-import { Kms, KmsListEntry } from "./types";
+import { ExternalKmsProvider, Kms, KmsListEntry } from "./types";
 
 export const kmsKeys = {
   getExternalKmsList: (orgId: string) => ["get-all-external-kms", { orgId }],
@@ -23,15 +23,19 @@ export const useGetExternalKmsList = (orgId: string, { enabled }: { enabled?: bo
   });
 };
 
-export const useGetExternalKmsById = (kmsId: string) => {
+export const useGetExternalKmsById = ({
+  kmsId,
+  provider
+}: {
+  kmsId: string;
+  provider: ExternalKmsProvider;
+}) => {
   return useQuery({
     queryKey: kmsKeys.getExternalKmsById(kmsId),
     enabled: Boolean(kmsId),
     queryFn: async () => {
-      const {
-        data: { externalKms }
-      } = await apiRequest.get<{ externalKms: Kms }>(`/api/v1/external-kms/${kmsId}`);
-      return externalKms;
+      const { data } = await apiRequest.get<Kms>(`/api/v1/external-kms/${provider}/${kmsId}`);
+      return data;
     }
   });
 };

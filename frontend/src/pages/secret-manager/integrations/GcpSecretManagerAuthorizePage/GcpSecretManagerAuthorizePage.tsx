@@ -11,7 +11,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, TextArea } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { localStorageService } from "@app/helpers/localStorage";
 import { useGetCloudIntegrations, useSaveIntegrationAccessToken } from "@app/hooks/api";
 
@@ -25,7 +25,7 @@ type FormData = z.infer<typeof schema>;
 
 export const GcpSecretManagerAuthorizePage = () => {
   const navigate = useNavigate();
-
+  const { currentOrg } = useOrganization();
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema)
   });
@@ -70,8 +70,9 @@ export const GcpSecretManagerAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/gcp-secret-manager/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/gcp-secret-manager/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

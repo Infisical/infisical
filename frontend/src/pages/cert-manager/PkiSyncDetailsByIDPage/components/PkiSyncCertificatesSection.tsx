@@ -32,6 +32,7 @@ import {
 import { Badge } from "@app/components/v3";
 import { ProjectPermissionSub } from "@app/context";
 import { ProjectPermissionPkiSyncActions } from "@app/context/ProjectPermissionContext/types";
+import { PKI_SYNC_MAP } from "@app/helpers/pkiSyncs";
 import { useListPkiSyncCertificates, useRemoveCertificatesFromPkiSync } from "@app/hooks/api";
 import { CertificateSyncStatus, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
@@ -42,14 +43,14 @@ type Props = {
 const getSyncStatusVariant = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "success";
   if (status === CertificateSyncStatus.Failed) return "danger";
-  if (status === CertificateSyncStatus.Syncing) return "neutral";
+  if (status === CertificateSyncStatus.Running) return "neutral";
   return "project";
 };
 
 const getSyncStatusText = (status?: CertificateSyncStatus | null) => {
   if (status === CertificateSyncStatus.Succeeded) return "Synced";
   if (status === CertificateSyncStatus.Failed) return "Failed";
-  if (status === CertificateSyncStatus.Syncing) return "Syncing";
+  if (status === CertificateSyncStatus.Running) return "Syncing";
   if (status === CertificateSyncStatus.Pending) return "Pending";
   return "Unknown";
 };
@@ -84,8 +85,11 @@ export const PkiSyncCertificatesSection = ({ pkiSync }: Props) => {
   const totalCount = data?.totalCount || 0;
   const removeCertificatesFromSync = useRemoveCertificatesFromPkiSync();
 
+  const destinationName = PKI_SYNC_MAP[pkiSync.destination].name;
+
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: pkiSync.subscriberId || ""
+    subscriberName: destinationName,
+    name: pkiSync.name
   });
 
   const handleRemoveCertificate = async (certificateId: string) => {

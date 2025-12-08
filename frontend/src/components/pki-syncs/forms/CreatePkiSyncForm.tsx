@@ -4,7 +4,6 @@ import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { twMerge } from "tailwind-merge";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Switch } from "@app/components/v2";
@@ -16,6 +15,7 @@ import { PkiSyncFormSchema, TPkiSyncForm } from "./schemas/pki-sync-schema";
 import { PkiSyncCertificatesFields } from "./PkiSyncCertificatesFields";
 import { PkiSyncDestinationFields } from "./PkiSyncDestinationFields";
 import { PkiSyncDetailsFields } from "./PkiSyncDetailsFields";
+import { PkiSyncFieldMappingsFields } from "./PkiSyncFieldMappingsFields";
 import { PkiSyncOptionsFields } from "./PkiSyncOptionsFields";
 import { PkiSyncReviewFields } from "./PkiSyncReviewFields";
 
@@ -26,13 +26,38 @@ type Props = {
   initialData?: any;
 };
 
-const FORM_TABS: { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[] = [
-  { name: "Destination", key: "destination", fields: ["connection", "destinationConfig"] },
-  { name: "Sync Options", key: "options", fields: ["syncOptions"] },
-  { name: "Details", key: "details", fields: ["name", "description"] },
-  { name: "Certificates", key: "certificates", fields: ["certificateIds"] },
-  { name: "Review", key: "review", fields: [] }
-];
+const getFormTabs = (
+  destination: PkiSync
+): { name: string; key: string; fields: (keyof TPkiSyncForm)[] }[] => {
+  const baseTabs = [
+    {
+      name: "Destination",
+      key: "destination",
+      fields: ["connection", "destinationConfig"] as (keyof TPkiSyncForm)[]
+    },
+    { name: "Sync Options", key: "options", fields: ["syncOptions"] as (keyof TPkiSyncForm)[] }
+  ];
+
+  if (destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) {
+    baseTabs.push({
+      name: "Mappings",
+      key: "mappings",
+      fields: ["syncOptions"] as (keyof TPkiSyncForm)[]
+    });
+  }
+
+  baseTabs.push(
+    { name: "Details", key: "details", fields: ["name", "description"] as (keyof TPkiSyncForm)[] },
+    {
+      name: "Certificates",
+      key: "certificates",
+      fields: ["certificateIds"] as (keyof TPkiSyncForm)[]
+    },
+    { name: "Review", key: "review", fields: [] as (keyof TPkiSyncForm)[] }
+  );
+
+  return baseTabs;
+};
 
 export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialData }: Props) => {
   const createPkiSync = useCreatePkiSync();
@@ -42,6 +67,7 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
+  const FORM_TABS = getFormTabs(destination);
 
   const { syncOption } = usePkiSyncOption(destination);
 
@@ -55,7 +81,19 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
         canImportCertificates: false,
         canRemoveCertificates: false,
         preserveArn: true,
-        certificateNameSchema: syncOption?.defaultCertificateNameSchema
+        certificateNameSchema: syncOption?.defaultCertificateNameSchema,
+        ...((destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && {
+          fieldMappings: {
+            certificate: "certificate",
+            privateKey: "private_key",
+            certificateChain: "certificate_chain",
+            caCertificate: "ca_certificate"
+          }
+        }),
+        ...(destination === PkiSync.AwsSecretsManager && {
+          preserveSecretOnRenewal: true,
+          updateExistingCertificates: true
+        })
       },
       ...initialData
     } as Partial<TPkiSyncForm>,
@@ -167,10 +205,10 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
     );
 
   return (
-    <form className={twMerge(isFinalStep && "max-h-[70vh] overflow-y-auto")}>
+    <form className="flex max-h-[70vh] flex-col overflow-hidden">
       <FormProvider {...formMethods}>
         <Tab.Group selectedIndex={selectedTabIndex} onChange={setSelectedTabIndex}>
-          <Tab.List className="-pb-1 mb-6 w-full border-b-2 border-mineshaft-600">
+          <Tab.List className="-pb-1 mb-6 w-full flex-shrink-0 border-b-2 border-mineshaft-600">
             {FORM_TABS.map((tab, index) => (
               <Tab
                 onClick={async (e) => {
@@ -191,11 +229,11 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
               </Tab>
             ))}
           </Tab.List>
-          <Tab.Panels>
-            <Tab.Panel>
+          <Tab.Panels className="flex-1 overflow-y-auto">
+            <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncDestinationFields />
             </Tab.Panel>
-            <Tab.Panel>
+            <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncOptionsFields destination={destination} />
               <Controller
                 control={control}
@@ -225,20 +263,25 @@ export const CreatePkiSyncForm = ({ destination, onComplete, onCancel, initialDa
                 }}
               />
             </Tab.Panel>
-            <Tab.Panel>
+            {(destination === PkiSync.Chef || destination === PkiSync.AwsSecretsManager) && (
+              <Tab.Panel className="max-h-full overflow-y-auto">
+                <PkiSyncFieldMappingsFields destination={destination} />
+              </Tab.Panel>
+            )}
+            <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncDetailsFields />
             </Tab.Panel>
-            <Tab.Panel>
+            <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncCertificatesFields />
             </Tab.Panel>
-            <Tab.Panel>
+            <Tab.Panel className="max-h-full overflow-y-auto">
               <PkiSyncReviewFields />
             </Tab.Panel>
           </Tab.Panels>
         </Tab.Group>
       </FormProvider>
 
-      <div className="flex w-full flex-row-reverse justify-between gap-4 pt-4">
+      <div className="mt-4 flex w-full flex-shrink-0 flex-row-reverse justify-between gap-4 border-t border-mineshaft-600 pt-4">
         <Button onClick={handleNext} colorSchema="secondary">
           {isFinalStep ? "Create Sync" : "Next"}
         </Button>

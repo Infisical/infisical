@@ -18,7 +18,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthCircleCIOrganizations } from "@app/hooks/api";
 import { CircleCiScope } from "@app/hooks/api/integrationAuth/types";
 import { IntegrationsListPageTabs } from "@app/types/integrations";
@@ -46,7 +46,7 @@ export const CircleCIConfigurePage = () => {
   const navigate = useNavigate();
   const { mutateAsync, isPending: isCreatingIntegration } = useCreateIntegration();
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.CircleConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -102,8 +102,9 @@ export const CircleCIConfigurePage = () => {
       text: "Successfully created integration"
     });
     navigate({
-      to: "/projects/secret-management/$projectId/integrations",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

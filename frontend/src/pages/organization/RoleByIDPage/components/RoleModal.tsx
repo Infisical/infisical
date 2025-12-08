@@ -97,8 +97,9 @@ export const RoleModal = ({ popUp, handlePopUpToggle }: Props) => {
 
       handlePopUpToggle("role", false);
       navigate({
-        to: "/organization/roles/$roleId",
+        to: "/organizations/$orgId/roles/$roleId" as const,
         params: {
+          orgId,
           roleId: newRole.id
         }
       });

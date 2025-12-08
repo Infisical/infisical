@@ -186,6 +186,7 @@ export enum EventType {
   CREATE_TOKEN_IDENTITY_TOKEN_AUTH = "create-token-identity-token-auth",
   UPDATE_TOKEN_IDENTITY_TOKEN_AUTH = "update-token-identity-token-auth",
   GET_TOKENS_IDENTITY_TOKEN_AUTH = "get-tokens-identity-token-auth",
+  GET_TOKEN_IDENTITY_TOKEN_AUTH = "get-token-identity-token-auth",
 
   ADD_IDENTITY_TOKEN_AUTH = "add-identity-token-auth",
   UPDATE_IDENTITY_TOKEN_AUTH = "update-identity-token-auth",
@@ -387,6 +388,9 @@ export enum EventType {
   GET_CERTIFICATE_PROFILE_LATEST_ACTIVE_BUNDLE = "get-certificate-profile-latest-active-bundle",
   UPDATE_CERTIFICATE_RENEWAL_CONFIG = "update-certificate-renewal-config",
   DISABLE_CERTIFICATE_RENEWAL_CONFIG = "disable-certificate-renewal-config",
+  CREATE_CERTIFICATE_REQUEST = "create-certificate-request",
+  GET_CERTIFICATE_REQUEST = "get-certificate-request",
+  GET_CERTIFICATE_FROM_REQUEST = "get-certificate-from-request",
   ATTEMPT_CREATE_SLACK_INTEGRATION = "attempt-create-slack-integration",
   ATTEMPT_REINSTALL_SLACK_INTEGRATION = "attempt-reinstall-slack-integration",
   GET_PROJECT_SLACK_CONFIG = "get-project-slack-config",
@@ -535,6 +539,7 @@ export enum EventType {
   DASHBOARD_GET_SECRET_VALUE = "dashboard-get-secret-value",
   DASHBOARD_GET_SECRET_VERSION_VALUE = "dashboard-get-secret-version-value",
 
+  PAM_SESSION_CREDENTIALS_GET = "pam-session-credentials-get",
   PAM_SESSION_START = "pam-session-start",
   PAM_SESSION_LOGS_UPDATE = "pam-session-logs-update",
   PAM_SESSION_END = "pam-session-end",
@@ -1026,6 +1031,15 @@ interface GetTokensIdentityTokenAuthEvent {
   type: EventType.GET_TOKENS_IDENTITY_TOKEN_AUTH;
   metadata: {
     identityId: string;
+  };
+}
+
+interface GetTokenIdentityTokenAuthEvent {
+  type: EventType.GET_TOKEN_IDENTITY_TOKEN_AUTH;
+  metadata: {
+    identityId: string;
+    identityName: string;
+    tokenId: string;
   };
 }
 
@@ -2776,6 +2790,7 @@ interface CreateCertificateProfile {
     name: string;
     projectId: string;
     enrollmentType: string;
+    issuerType: string;
   };
 }
 
@@ -2834,7 +2849,6 @@ interface OrderCertificateFromProfile {
   type: EventType.ORDER_CERTIFICATE_FROM_PROFILE;
   metadata: {
     certificateProfileId: string;
-    orderId: string;
     profileName: string;
   };
 }
@@ -3978,6 +3992,14 @@ interface OrgRoleDeleteEvent {
   };
 }
 
+interface PamSessionCredentialsGetEvent {
+  type: EventType.PAM_SESSION_CREDENTIALS_GET;
+  metadata: {
+    sessionId: string;
+    accountName: string;
+  };
+}
+
 interface PamSessionStartEvent {
   type: EventType.PAM_SESSION_START;
   metadata: {
@@ -4054,6 +4076,7 @@ interface PamAccountAccessEvent {
   type: EventType.PAM_ACCOUNT_ACCESS;
   metadata: {
     accountId: string;
+    accountPath: string;
     accountName: string;
     duration?: string;
   };
@@ -4176,6 +4199,31 @@ interface DisableCertificateRenewalConfigEvent {
   };
 }
 
+interface CreateCertificateRequestEvent {
+  type: EventType.CREATE_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    profileId?: string;
+    caId?: string;
+    commonName?: string;
+  };
+}
+
+interface GetCertificateRequestEvent {
+  type: EventType.GET_CERTIFICATE_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+  };
+}
+
+interface GetCertificateFromRequestEvent {
+  type: EventType.GET_CERTIFICATE_FROM_REQUEST;
+  metadata: {
+    certificateRequestId: string;
+    certificateId?: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4214,6 +4262,7 @@ export type Event =
   | CreateTokenIdentityTokenAuthEvent
   | UpdateTokenIdentityTokenAuthEvent
   | GetTokensIdentityTokenAuthEvent
+  | GetTokenIdentityTokenAuthEvent
   | AddIdentityTokenAuthEvent
   | UpdateIdentityTokenAuthEvent
   | GetIdentityTokenAuthEvent
@@ -4531,6 +4580,7 @@ export type Event =
   | OrgRoleCreateEvent
   | OrgRoleUpdateEvent
   | OrgRoleDeleteEvent
+  | PamSessionCredentialsGetEvent
   | PamSessionStartEvent
   | PamSessionLogsUpdateEvent
   | PamSessionEndEvent
@@ -4553,6 +4603,9 @@ export type Event =
   | PamResourceDeleteEvent
   | UpdateCertificateRenewalConfigEvent
   | DisableCertificateRenewalConfigEvent
+  | CreateCertificateRequestEvent
+  | GetCertificateRequestEvent
+  | GetCertificateFromRequestEvent
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent

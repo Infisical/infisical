@@ -245,15 +245,22 @@ export const ScimTokenModal = ({ popUp, handlePopUpOpen, handlePopUpToggle }: Pr
                 data &&
                 data.length > 0 &&
                 data.map(({ id, description, ttlDays, createdAt }) => {
+                  const isInvalidTTLDays = ttlDays > 9999; // added validation later so some users would still be using this
                   let expiresAt;
                   if (ttlDays > 0) {
-                    expiresAt = new Date(new Date(createdAt).getTime() + ttlDays * 86400 * 1000);
+                    expiresAt = isInvalidTTLDays
+                      ? new Date()
+                      : new Date(new Date(createdAt).getTime() + ttlDays * 86400 * 1000);
                   }
 
                   return (
                     <Tr className="h-10 items-center" key={`mi-client-secret-${id}`}>
                       <Td>{description === "" ? "-" : description}</Td>
-                      <Td>{expiresAt ? format(expiresAt, "yyyy-MM-dd HH:mm:ss") : "-"}</Td>
+                      <Td>
+                        {expiresAt && !isInvalidTTLDays
+                          ? format(expiresAt, "yyyy-MM-dd HH:mm:ss")
+                          : "-"}
+                      </Td>
                       <Td>{format(new Date(createdAt), "yyyy-MM-dd HH:mm:ss")}</Td>
                       <Td>
                         <IconButton

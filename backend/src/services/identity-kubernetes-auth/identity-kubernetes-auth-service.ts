@@ -270,7 +270,13 @@ export const identityKubernetesAuthServiceFactory = ({
             }
           )
           .catch((err) => {
+            const tokenReviewerJwtSnippet = `${tokenReviewerJwt?.substring?.(0, 10) || ""}...${tokenReviewerJwt?.substring?.(tokenReviewerJwt.length - 10) || ""}`;
+            const serviceAccountJwtSnippet = `${serviceAccountJwt?.substring?.(0, 10) || ""}...${serviceAccountJwt?.substring?.(serviceAccountJwt.length - 10) || ""}`;
             if (err instanceof AxiosError) {
+              logger.error(
+                { response: err.response, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+                "tokenReviewCallbackRaw: Kubernetes token review request error (request error)"
+              );
               if (err.response) {
                 const { message } = err?.response?.data as unknown as { message?: string };
 
@@ -281,6 +287,11 @@ export const identityKubernetesAuthServiceFactory = ({
                   });
                 }
               }
+            } else {
+              logger.error(
+                { error: err as Error, host, port, tokenReviewerJwtSnippet, serviceAccountJwtSnippet },
+                "tokenReviewCallbackRaw: Kubernetes token review request error (non-request error)"
+              );
             }
             throw err;
           });

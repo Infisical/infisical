@@ -27,21 +27,20 @@ import {
 export const useUpdateCa = () => {
   const queryClient = useQueryClient();
   return useMutation<TUnifiedCertificateAuthority, object, TUpdateCertificateAuthorityDTO>({
-    mutationFn: async ({ caName, ...body }) => {
+    mutationFn: async ({ id, ...body }) => {
       const { data } = await apiRequest.patch<TUnifiedCertificateAuthority>(
-        `/api/v1/pki/ca/${body.type}/${caName}`,
+        `/api/v1/cert-manager/ca/${body.type}/${id}`,
         body
       );
 
       return data;
     },
-    onSuccess: ({ projectId, type }, { caName }) => {
-      caKeys.getCaByNameAndProjectId(caName, projectId);
+    onSuccess: ({ projectId, type }, { id }) => {
       queryClient.invalidateQueries({
         queryKey: caKeys.listCasByTypeAndProjectId(type, projectId)
       });
       queryClient.invalidateQueries({
-        queryKey: caKeys.getCaByNameAndProjectId(caName, projectId)
+        queryKey: caKeys.getCaById(id)
       });
       // Invalidate external CAs list
       queryClient.invalidateQueries({
@@ -56,7 +55,7 @@ export const useCreateCa = () => {
   return useMutation<TUnifiedCertificateAuthority, object, TCreateCertificateAuthorityDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TUnifiedCertificateAuthority>(
-        `/api/v1/pki/ca/${body.type}`,
+        `/api/v1/cert-manager/ca/${body.type}`,
         body
       );
       return data;
@@ -76,14 +75,9 @@ export const useCreateCa = () => {
 export const useDeleteCa = () => {
   const queryClient = useQueryClient();
   return useMutation<TUnifiedCertificateAuthority, object, TDeleteCertificateAuthorityDTO>({
-    mutationFn: async ({ caName, type, projectId }) => {
+    mutationFn: async ({ id, type }) => {
       const { data } = await apiRequest.delete<TUnifiedCertificateAuthority>(
-        `/api/v1/pki/ca/${type}/${caName}`,
-        {
-          data: {
-            projectId
-          }
-        }
+        `/api/v1/cert-manager/ca/${type}/${id}`
       );
       return data;
     },
@@ -104,7 +98,7 @@ export const useSignIntermediate = () => {
   return useMutation<TSignIntermediateResponse, object, TSignIntermediateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TSignIntermediateResponse>(
-        `/api/v1/pki/ca/${body.caId}/sign-intermediate`,
+        `/api/v1/cert-manager/ca/internal/${body.caId}/sign-intermediate`,
         body
       );
       return data;
@@ -117,13 +111,14 @@ export const useImportCaCertificate = (projectId: string) => {
   return useMutation<TImportCaCertificateResponse, object, TImportCaCertificateDTO>({
     mutationFn: async ({ caId, ...body }) => {
       const { data } = await apiRequest.post<TImportCaCertificateResponse>(
-        `/api/v1/pki/ca/${caId}/import-certificate`,
+        `/api/v1/cert-manager/ca/internal/${caId}/import-certificate`,
         body
       );
       return data;
     },
     onSuccess: (_, { caId }) => {
       queryClient.invalidateQueries({ queryKey: projectKeys.getProjectCas({ projectId }) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
       queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
       queryClient.invalidateQueries({
@@ -133,7 +128,7 @@ export const useImportCaCertificate = (projectId: string) => {
   });
 };
 
-// consider rename to issue certificate
+// TODO: DEPRECATE
 export const useCreateCertificate = () => {
   const queryClient = useQueryClient();
   return useMutation<TCreateCertificateResponse, object, TCreateCertificateDTO>({
@@ -157,7 +152,7 @@ export const useCreateCertificateV3 = (options?: { projectId?: string }) => {
   return useMutation<TCreateCertificateV3Response, object, TCreateCertificateV3DTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TCreateCertificateV3Response>(
-        "/api/v3/pki/certificates/issue-certificate",
+        "/api/v1/cert-manager/certificates/issue-certificate",
         body
       );
       return data;
@@ -185,7 +180,7 @@ export const useOrderCertificateWithProfile = () => {
   return useMutation<TOrderCertificateResponse, object, TOrderCertificateDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TOrderCertificateResponse>(
-        "/api/v3/pki/certificates/order-certificate",
+        "/api/v1/cert-manager/certificates/order-certificate",
         body
       );
       return data;
@@ -203,7 +198,7 @@ export const useRenewCa = () => {
   return useMutation<TRenewCaResponse, object, TRenewCaDTO>({
     mutationFn: async (body) => {
       const { data } = await apiRequest.post<TRenewCaResponse>(
-        `/api/v1/pki/ca/${body.caId}/renew`,
+        `/api/v1/cert-manager/ca/internal/${body.caId}/renew`,
         body
       );
       return data;

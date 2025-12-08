@@ -13,7 +13,9 @@ import { PkiSync, TPkiSync } from "@app/hooks/api/pkiSyncs";
 
 import {
   AwsCertificateManagerPkiSyncDestinationSection,
-  AzureKeyVaultPkiSyncDestinationSection
+  AwsSecretsManagerPkiSyncDestinationSection,
+  AzureKeyVaultPkiSyncDestinationSection,
+  ChefPkiSyncDestinationSection
 } from "./PkiSyncDestinationSection/index";
 
 const GenericFieldLabel = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -29,7 +31,7 @@ type Props = {
 };
 
 export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props) => {
-  const { destination, subscriberId } = pkiSync;
+  const { destination } = pkiSync;
 
   const destinationDetails = PKI_SYNC_MAP[destination];
 
@@ -38,8 +40,14 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
     case PkiSync.AwsCertificateManager:
       DestinationComponents = <AwsCertificateManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
+    case PkiSync.AwsSecretsManager:
+      DestinationComponents = <AwsSecretsManagerPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
     case PkiSync.AzureKeyVault:
       DestinationComponents = <AzureKeyVaultPkiSyncDestinationSection pkiSync={pkiSync} />;
+      break;
+    case PkiSync.Chef:
+      DestinationComponents = <ChefPkiSyncDestinationSection pkiSync={pkiSync} />;
       break;
     default:
       // For future destinations, return null (no additional fields to show)
@@ -47,7 +55,8 @@ export const PkiSyncDestinationSection = ({ pkiSync, onEditDestination }: Props)
   }
 
   const permissionSubject = subject(ProjectPermissionSub.PkiSyncs, {
-    subscriberId: subscriberId || ""
+    subscriberName: destinationDetails.name,
+    name: pkiSync.name
   });
 
   return (

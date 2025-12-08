@@ -21,12 +21,13 @@ import {
   PkiSyncCertificatesSection,
   PkiSyncDestinationSection,
   PkiSyncDetailsSection,
+  PkiSyncFieldMappingsSection,
   PkiSyncOptionsSection
 } from "./components";
 
 const PageContent = () => {
   const navigate = useNavigate();
-  const { syncId, projectId } = useParams({
+  const { syncId, projectId, orgId } = useParams({
     from: ROUTE_PATHS.CertManager.PkiSyncDetailsByIDPage.id
   });
 
@@ -63,6 +64,7 @@ const PageContent = () => {
 
   const handleEditDetails = () => handlePopUpOpen("editSync", PkiSyncEditFields.Details);
   const handleEditOptions = () => handlePopUpOpen("editSync", PkiSyncEditFields.Options);
+  const handleEditMappings = () => handlePopUpOpen("editSync", PkiSyncEditFields.Mappings);
   const handleEditDestination = () => handlePopUpOpen("editSync", PkiSyncEditFields.Destination);
 
   return (
@@ -77,7 +79,8 @@ const PageContent = () => {
               navigate({
                 to: ROUTE_PATHS.CertManager.IntegrationsListPage.path,
                 params: {
-                  projectId
+                  projectId,
+                  orgId
                 },
                 search: {
                   selectedTab: IntegrationsListPageTabs.PkiSyncs
@@ -103,6 +106,7 @@ const PageContent = () => {
             <div className="mr-4 flex w-72 flex-col gap-4">
               <PkiSyncDetailsSection pkiSync={pkiSync} onEditDetails={handleEditDetails} />
               <PkiSyncOptionsSection pkiSync={pkiSync} onEditOptions={handleEditOptions} />
+              <PkiSyncFieldMappingsSection pkiSync={pkiSync} onEditMappings={handleEditMappings} />
             </div>
             <div className="flex flex-1 flex-col gap-4">
               <PkiSyncDestinationSection

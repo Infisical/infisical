@@ -72,7 +72,7 @@ export const SignUpPage = () => {
 
       if (!serverDetails?.emailConfigured && step === 4) {
         navigate({
-          to: "/organization/projects"
+          to: "/"
         });
       }
     })();

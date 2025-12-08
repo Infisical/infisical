@@ -16,7 +16,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration, useGetIntegrationAuthApps } from "@app/hooks/api";
 import {
   useGetIntegrationAuthOctopusDeployScopeValues,
@@ -47,7 +47,7 @@ type TFormData = z.infer<typeof formSchema>;
 export const OctopusDeployConfigurePage = () => {
   const navigate = useNavigate();
   const createIntegration = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const { watch, control, reset, handleSubmit } = useForm<TFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -134,8 +134,9 @@ export const OctopusDeployConfigurePage = () => {
       text: "Successfully created integration"
     });
     navigate({
-      to: "/projects/secret-management/$projectId/integrations",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id
       },
       search: {

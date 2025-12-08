@@ -112,7 +112,7 @@ export const SECRET_SYNC_PLAN_MAP: Record<SecretSync, SecretSyncPlanType> = {
 
 export const SECRET_SYNC_SKIP_FIELDS_MAP: Record<SecretSync, string[]> = {
   [SecretSync.AWSParameterStore]: [],
-  [SecretSync.AWSSecretsManager]: ["mappingBehavior", "secretName"],
+  [SecretSync.AWSSecretsManager]: ["mappingBehavior"],
   [SecretSync.GitHub]: [],
   [SecretSync.GCPSecretManager]: [],
   [SecretSync.AzureKeyVault]: [],

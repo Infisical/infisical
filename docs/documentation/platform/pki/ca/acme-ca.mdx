@@ -1,66 +1,63 @@
 ---
 title: "ACME-compatible CA"
-description: "Learn how to automatically provision and manage TLS certificates using ACME Certificate Authorities like Let's Encrypt with Infisical PKI"
+description: "Learn how to connect Infisical to an ACME-compatible CA to issue certificates."
 ---
 
 ## Concept
 
-The Infisical ACME integration allows you to connect with ACME (Automatic Certificate Management Environment) Certificate Authorities to automatically issue and manage publicly trusted TLS certificates for your [subscribers](/documentation/platform/pki/subscribers). This integration enables you to leverage established public CA infrastructure like Let's Encrypt while centralizing your certificate management within Infisical.
+Infisical can connect to any upstream ACME-compatible CA (e.g. Lets's Encrypt, DigiCert, etc.) supporting the [ACME protocol](https://en.wikipedia.org/wiki/Automatic_Certificate_Management_Environment) to issue certificates back to your end-entities. This integration uses the [DNS-01 challenge](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) method as part of the ACME domain validation challenge workflow for a requested certificate.
 
-ACME is a protocol that automates the process of certificate issuance and renewal through domain validation challenges. The integration is perfect for obtaining trusted X.509 certificates for public-facing services and is capable of automatically renewing certificates as needed.
+The upstream ACME-compatible CA integration lets you connect Infisical to providers by specifying
+their **ACME Directory URL** such as:
+
+- [Let's Encrypt](/documentation/platform/pki/ca/lets-encrypt): `https://acme-v02.api.letsencrypt.org/directory`.
+- [DigiCert](/documentation/platform/pki/ca/digicert): `https://acme.digicert.com/v2/acme/directory`.
+- Google GTS: `https://dv.acme-v02.api.pki.goog/directory`.
+- Buypass: `https://api.buypass.com/acme/directory`.
+- ZeroSSL: `https://acme.zerossl.com/v2/DV90`.
+- SSL.com: `https://acme.ssl.com/sslcom-dv-rsa`.
+
+When Infisical requests a certificate from an ACME-compatible CA, it creates a TXT record at `_acme-challenge.{your-domain}` in your configured DNS provider (e.g. Route53, Cloudflare, DNS Made Easy, etc.); this TXT record contains the challenge token issued by the ACME-compatible CA to validate domain control for the requested certificate.
+The ACME provider checks for the existence of this TXT record to verify domain control before issuing the certificate back to Infisical.
+
+After validation completes successfully, Infisical automatically removes the TXT record from your DNS provider.
 
 <div align="center">
 
 ```mermaid
 graph TD
-    A[ACME CA Provider<br>e.g., Let's Encrypt] <-->|ACME v2 Protocol| B[Infisical]
-    B -->|Creates TXT Records<br>via Route53/Cloudflare| C[DNS Validation]
-    B -->|Manages Certificates| D[Subscribers]
+    A[ACME-compatible CA] <-->|ACME v2 Protocol| B[Infisical]
+    B -->|Creates TXT Records<br>via DNS Provider| C[DNS Validation]
+    B -->|Manages Certificates| D[End-Entities]
 ```
 
 </div>
 
-As part of the workflow, you configure DNS provider credentials, register an ACME CA provider with Infisical, and create subscribers to represent the certificates you wish to issue. Each issued certificate is automatically managed through its lifecycle, including renewal before expiration.
-
-We recommend reading about [ACME protocol](https://tools.ietf.org/html/rfc8555) and [DNS-01 challenges](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) for a fuller understanding of the underlying technology.
+We recommend reading about [ACME protocol](https://tools.ietf.org/html/rfc8555) and [DNS-01 challenges](https://letsencrypt.org/docs/challenge-types/#dns-01-challenge) for a fuller understanding of the underlying workflow.
 
 ## Workflow
 
-A typical workflow for using Infisical with ACME Certificate Authorities consists of the following steps:
+A typical workflow for using Infisical with an external ACME-compatible CA consists of the following steps:
 
-1. Setting up AWS Route53 or Cloudflare credentials with appropriate DNS permissions.
-2. Creating an AWS/Cloudflare connection in Infisical to store the credentials.
-3. Registering an ACME Certificate Authority (like Let's Encrypt) with Infisical.
-4. Creating subscribers that use the ACME CA as their issuing authority.
-5. Managing certificate lifecycle events such as issuance, renewal, and revocation through Infisical.
+1. Setting up your DNS provider (e.g. Route53, Cloudflare, etc.) with appropriate DNS permissions.
+2. Creating an [App Connection](/integrations/app-connections/overview) in Infisical to store credentials for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge.
+3. Registering an [External CA](/documentation/platform/pki/ca/external-ca) in Infisical with the ACME type and inputting required configuration including the **ACME Directory URL** of the upstream ACME-compatible CA and the **App Connection** for your DNS provider.
 
-## Understanding ACME DNS-01 Challenge
+Once this is complete, you can create a [certificate profile](/documentation/platform/pki/certificates/profiles) linked to the External CA proceed to request a certificate against it.
 
-The DNS-01 challenge is the method used by ACME CA providers to verify that you control a domain before issuing a certificate. Here's how Infisical handles this process:
+## Guide to Connecting Infisical to an ACME-compatible CA
 
-1. **Challenge Request**: When you request a certificate, the ACME provider (like Let's Encrypt) issues a challenge token.
-
-2. **DNS Record Creation**: Infisical creates a TXT record at `_acme-challenge.<YOUR_DOMAIN>` with a value derived from the challenge token.
-
-3. **DNS Propagation**: The TXT record must propagate through the DNS system (usually takes a few minutes, depending on TTL settings).
-
-4. **Validation**: The ACME provider checks for the existence of this TXT record to verify domain control.
-
-5. **Cleanup**: After validation completes successfully, Infisical automatically removes the TXT record from your DNS.
-
-This automated process eliminates the need for manual intervention in domain validation, streamlining certificate issuance.
-
-## Guide
-
-In the following steps, we explore how to set up ACME Certificate Authority integration with Infisical using Let's Encrypt as an example.
+In the following steps, we explore how to connect Infisical to an ACME-compatible CA.
 
 <Steps>
-    <Step title="Create App Connection with Required Permissions">
-        Before proceeding with the ACME CA registration, you need to set up an App Connection with the appropriate permissions for DNS validation:
+    <Step title="Create an App Connection to your DNS provider">
+        Before registering an ACME-compatible CA with Infisical, you need to set up an [App Connection](/integrations/app-connections/overview) with the appropriate permissions for Infisical to perform the DNS-01 challenge with your DNS provider.
+        
+        If you don’t see a specific DNS provider listed below or need a dedicated one, please reach out to sales@infisical.com and we’ll help get that enabled for you.
 
         <Tabs>
             <Tab title="Route53">
-                1. Navigate to your Organization Settings > App Connections and create a new AWS connection.
+                1. Navigate to your Certificate Management Project > App Connections and create a new AWS connection.
 
                 2. Ensure your AWS connection has the following minimum permissions for Route53 DNS validation:
 
@@ -112,7 +109,7 @@ In the following steps, we explore how to set up ACME Certificate Authority inte
                 For detailed instructions on setting up an AWS connection, see the [AWS Connection](/integrations/app-connections/aws) documentation.
             </Tab>
             <Tab title="Cloudflare">
-                1. Navigate to your Organization Settings > App Connections and create a new Cloudflare connection.
+                1. Navigate to your Certificate Management Project > App Connections and create a new Cloudflare connection.
 
                 2. Ensure your Cloudflare token has the following minimum permissions for DNS validation:
 
@@ -123,58 +120,45 @@ In the following steps, we explore how to set up ACME Certificate Authority inte
 
                 For detailed instructions on setting up a Cloudflare connection, see the [Cloudflare Connection](/integrations/app-connections/cloudflare) documentation.
             </Tab>
+            <Tab title="DNS Made Easy">
+                Navigate to your Certificate Management Project > App Connections and create a new DNS Made Easy connection.
+
+                For detailed instructions on setting up a DNS Made Easy connection, see the [DNS Made Easy Connection](/integrations/app-connections/dns-made-easy) documentation.
+            </Tab>
         </Tabs>
     </Step>
-    <Step title="Register ACME Certificate Authority">
+    <Step title="Register an ACME-compatible CA">
         <Tabs>
           <Tab title="Infisical UI">
-            <Steps>
-                <Step title="Create ACME CA">
-                    To register an ACME CA, head to your Project > Internal PKI > Certificate Authorities and press the **+** button in the External Certificate Authorities section.
+              To register an ACME-compatible CA, head to your Certificate Management Project > Certificate Authorities > External Certificate Authorities and press **Create CA**.
 
-                    ![pki register external ca](/images/platform/pki/ca/external-ca/create-external-ca-button.png)
+              ![pki register external ca](/images/platform/pki/ca/external-ca/create-external-ca-button.png)
 
-                    Fill out the details for the ACME CA registration:
+              Here, set the **CA Type** to **ACME** and fill out details for it.
 
-                    ![pki register external ca details](/images/platform/pki/ca/external-ca/create-external-ca-form.png)
+              ![pki register external ca details](/images/platform/pki/ca/external-ca/create-external-ca-form.png)
 
-                    Here's guidance on each field:
+              Here's some guidance for each field:
 
-                    - **Type**: Select "ACME" as the External CA type.
-                    - **Name**: Enter a name for the ACME CA (e.g., "lets-encrypt-production").
-                    - **DNS App Connection**: Select from available DNS app connections or configure a new one. This connection provides Infisical with the credentials needed to create and remove DNS records for ACME validation.
-                    - **Zone ID**: Enter the Zone ID for the domain(s) you'll be requesting certificates for.
-                    - **Directory URL**: Enter the ACME v2 directory URL for your chosen CA provider (e.g., `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt).
-                    - **Account Email**: Email address to associate with your ACME account. This email will receive important notifications about your certificates.
-                    - **Enable Direct Issuance**: Toggle on to allow direct certificate issuance without requiring subscribers.
-                    - **EAB Key Identifier (KID)**: (Optional) The Key Identifier (KID) provided by your ACME CA for External Account Binding (EAB). This is required by some ACME providers (e.g., ZeroSSL, DigiCert) to link your ACME account to an external account you've pre-registered with them.
-                    - **EAB HMAC Key**: (Optional) The HMAC Key provided by your ACME CA for External Account Binding (EAB). This key is used in conjunction with the KID to prove ownership of the external account during ACME account registration.
+              - Name: A slug-friendly name for the ACME-compatible CA such as `lets-encrypt-production`.
+              - DNS App Connection: The App Connection from Step 1 used for Infisical to connect to your DNS provider and create/remove DNS records as part of the DNS-01 challenge in ACME.
+              - Zone / Zone ID: Enter the Zone / Zone ID for the domain(s) you'll be requesting certificates for.
+              - Directory URL: Enter the **ACME Directory URL** for your desired upstream ACME-compatible CA such as `https://acme-v02.api.letsencrypt.org/directory` for Let's Encrypt.
+              - Account Email: The email address to associate with your ACME account. This email will receive important notifications about your certificates.
+              - EAB Key Identifier (KID): (Optional) The Key Identifier (KID) provided by your ACME CA for External Account Binding (EAB). This is required by some ACME providers (e.g., ZeroSSL, DigiCert) to link your ACME account to an external account you've pre-registered with them.
+              - EAB HMAC Key: (Optional) The HMAC Key provided by your ACME CA for External Account Binding (EAB). This key is used in conjunction with the KID to prove ownership of the external account during ACME account registration.
 
-                    Finally, press **Create** to register the ACME CA with Infisical.
-                </Step>
-                <Step title="Verify ACME CA Registration">
-                    Once registered, your ACME CA will appear in the External Certificate Authorities section.
+              Finally, press **Create** to register the ACME-compatible CA with Infisical.
 
-                    ![pki external ca list](/images/platform/pki/ca/external-ca/external-ca-list.png)
-
-                    From here, you can:
-
-                    - View the status of the ACME CA registration
-                    - Edit the configuration settings
-                    - Disable or re-enable the ACME CA
-                    - Delete the ACME CA registration if no longer needed
-
-                    You can now use this ACME CA to issue certificates for your subscribers.
-                </Step>
-            </Steps>
+              Great! You’ve successfully registered an external ACME-compatible CA with Infisical. Now check out the [Certificates](/documentation/platform/pki/certificates/overview) section to learn more about how to issue X.509 certificates using the ACME-compatible CA.
           </Tab>
           <Tab title="API">
-            To register an ACME CA with Infisical using the API, make a request to the Create External CA endpoint:
+            To register an ACME CA with Infisical using the API, make a request to the [Create External CA](https://infisical.com/docs/api-reference/endpoints/certificate-authorities/acme/create) endpoint:
 
             ### Sample request
 
             ```bash Request
-            curl 'https://app.infisical.com/api/v1/pki/ca/acme' \
+            curl 'https://app.infisical.com/api/v1/cert-manager/ca/acme' \
               -H 'Authorization: Bearer <your-access-token>' \
               -H 'Content-Type: application/json' \
               --data-raw '{
@@ -227,77 +211,8 @@ In the following steps, we explore how to set up ACME Certificate Authority inte
           </Tab>
         </Tabs>
     </Step>
-    <Step title="Create Subscriber for ACME CA">
-        Next, create a subscriber that uses your ACME CA for certificate issuance. Navigate to your Project > Subscribers and create a new subscriber.
-
-        Configure the subscriber with:
-        - **Issuing CA**: Select your registered ACME CA
-        - **Common Name**: The domain for which you want to issue certificates (e.g., `example.com`)
-        - **Alternative Names**: Additional domains to include in the certificate
-
-        Check out the [Subscribers](/documentation/platform/pki/subscribers) page for detailed instructions on creating and managing subscribers.
-    </Step>
-    <Step title="Issue Certificate">
-        Once your subscriber is configured, you can issue certificates either through the Infisical UI or programmatically via the API.
-
-        When you request a certificate:
-        1. Infisical generates a key pair for the certificate
-        2. Sends a Certificate Signing Request (CSR) to the ACME CA
-        3. Receives a DNS-01 challenge from the ACME provider
-        4. Creates a TXT record in Route53/Cloudflare to satisfy the challenge
-        5. Notifies the ACME provider that the challenge is ready for validation
-        6. Once validated, the ACME provider issues the certificate
-        7. Infisical stores and manages the certificate for your subscriber
-
-        The certificate will be automatically renewed before expiration according to your subscriber configuration.
-    </Step>
-    <Step title="Use Certificate in Your Applications">
-        The issued certificate and private key are now available through Infisical and can be:
-
-        - Downloaded directly from the Infisical UI
-        - Retrieved via the Infisical API for programmatic access using the [latest certificate bundle endpoint](/api-reference/endpoints/certificate-profiles/get-latest-active-bundle)
-    </Step>
 
 </Steps>
-
-## Example: Let's Encrypt Integration
-
-Let's Encrypt is a free, automated, and open Certificate Authority that provides domain-validated SSL/TLS certificates. Here's how the integration works with Infisical:
-
-### Production Environment
-
-- **Directory URL**: `https://acme-v02.api.letsencrypt.org/directory`
-- **Rate Limits**: 50 certificates per registered domain per week
-- **Certificate Validity**: 90 days with automatic renewal
-- **Trusted By**: All major browsers and operating systems
-
-### Staging Environment (for testing)
-
-- **Directory URL**: `https://acme-staging-v02.api.letsencrypt.org/directory`
-- **Rate Limits**: Much higher limits for testing
-- **Certificate Validity**: 90 days (not trusted by browsers)
-- **Use Case**: Testing your ACME integration without hitting production rate limits
-
-<Note>
-  Always test your ACME integration using Let's Encrypt's staging environment
-  first. This allows you to verify your DNS configuration and certificate
-  issuance process without consuming your production rate limits.
-</Note>
-
-## Example: DigiCert Integration
-
-DigiCert is a leading commercial Certificate Authority providing a wide range of trusted SSL/TLS certificates. Infisical can integrate with [DigiCert's ACME](https://docs.digicert.com/en/certcentral/certificate-tools/certificate-lifecycle-automation-guides/third-party-acme-integration/request-and-manage-certificates-with-acme.html) service to automate the provisioning and management of these certificates.
-
-- **Directory URL**: `https://acme.digicert.com/v2/acme/directory`
-- **External Account Binding (EAB)**: Required. You will need a Key Identifier (KID) and HMAC Key from your DigiCert account to register the ACME CA in Infisical.
-- **Certificate Validity**: Typically 90 days, with automatic renewal through Infisical.
-- **Trusted By**: All major browsers and operating systems.
-
-<Note>
-  When integrating with DigiCert ACME, ensure you have obtained the necessary
-  External Account Binding (EAB) Key Identifier (KID) and HMAC Key from your
-  DigiCert account.
-</Note>
 
 ## FAQ
 
@@ -325,17 +240,8 @@ DigiCert is a leading commercial Certificate Authority providing a wide range of
     - Reduce the impact of compromised certificates
     - Ensure systems stay up-to-date with certificate management practices
 
-    When configured, Infisical automatically handles certificate renewal for subscribers.
-
   </Accordion>
   <Accordion title="Can I use multiple ACME providers?">
-    Yes! You can register multiple ACME CAs in the same project:
-
-    - Different providers for different domains or use cases
-    - Staging and production environments for the same provider
-    - Backup providers for redundancy
-
-    Each subscriber can be configured to use a specific ACME CA based on your requirements.
-
+    Yes. You can register multiple ACME CAs in the same project.
   </Accordion>
 </AccordionGroup>

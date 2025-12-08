@@ -253,7 +253,7 @@ export const kmsServiceFactory = ({
     }
 
     if (!org.kmsDefaultKeyId) {
-      throw new Error("Invalid organization KMS");
+      throw new BadRequestError({ message: "Invalid organization KMS" });
     }
 
     return org.kmsDefaultKeyId;
@@ -292,7 +292,7 @@ export const kmsServiceFactory = ({
       let externalKms: TExternalKmsProviderFns;
 
       if (!kmsDoc.orgKms.id || !kmsDoc.orgKms.encryptedDataKey) {
-        throw new Error("Invalid organization KMS");
+        throw new BadRequestError({ message: "Invalid organization KMS" });
       }
 
       // The idea is external kms connection info is encrypted by an org default KMS
@@ -338,7 +338,7 @@ export const kmsServiceFactory = ({
           break;
         }
         default:
-          throw new Error("Invalid KMS provider.");
+          throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
       return async ({ cipherTextBlob }: Pick<TDecryptWithKmsDTO, "cipherTextBlob">) => {
@@ -509,7 +509,7 @@ export const kmsServiceFactory = ({
     if (kmsDoc.externalKms) {
       let externalKms: TExternalKmsProviderFns;
       if (!kmsDoc.orgKms.id || !kmsDoc.orgKms.encryptedDataKey) {
-        throw new Error("Invalid organization KMS");
+        throw new BadRequestError({ message: "Invalid organization KMS" });
       }
 
       const orgKmsDecryptor = await decryptWithKmsKey({
@@ -550,7 +550,7 @@ export const kmsServiceFactory = ({
           break;
         }
         default:
-          throw new Error("Invalid KMS provider.");
+          throw new BadRequestError({ message: "Invalid KMS provider." });
       }
 
       return async ({ plainText }: Pick<TEncryptWithKmsDTO, "plainText">) => {
@@ -651,7 +651,7 @@ export const kmsServiceFactory = ({
     }
 
     if (!org.kmsEncryptedDataKey) {
-      throw new Error("Invalid organization KMS");
+      throw new BadRequestError({ message: "Invalid organization KMS" });
     }
 
     const kmsDecryptor = await decryptWithKmsKey({
@@ -723,7 +723,7 @@ export const kmsServiceFactory = ({
     }
 
     if (!project.kmsSecretManagerKeyId) {
-      throw new Error("Missing project KMS key ID");
+      throw new BadRequestError({ message: "Missing project KMS key ID" });
     }
 
     return project.kmsSecretManagerKeyId;
@@ -832,9 +832,10 @@ export const kmsServiceFactory = ({
 
     const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
-      throw new Error(
-        "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
-      );
+      throw new BadRequestError({
+        message:
+          "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"
+      });
 
     const encryptionKeyBuffer = Buffer.from(encryptionKey, isBase64 ? "base64" : "utf8");
 
@@ -846,7 +847,9 @@ export const kmsServiceFactory = ({
     if (kmsRootConfig.encryptionStrategy === RootKeyEncryptionStrategy.HSM) {
       const hsmIsActive = await hsmService.isActive();
       if (!hsmIsActive) {
-        throw new Error("Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+        throw new BadRequestError({
+          message: "Unable to decrypt root KMS key. HSM service is inactive. Did you configure the HSM?"
+        });
       }
 
       const decryptedKey = await hsmService.decrypt(kmsRootConfig.encryptedRootKey);
@@ -861,14 +864,16 @@ export const kmsServiceFactory = ({
       return cipher.decrypt(kmsRootConfig.encryptedRootKey, encryptionKeyBuffer);
     }
 
-    throw new Error(`Invalid root key encryption strategy: ${kmsRootConfig.encryptionStrategy}`);
+    throw new BadRequestError({ message: `Invalid root key encryption strategy: ${kmsRootConfig.encryptionStrategy}` });
   };
 
   const $encryptRootKey = async (plainKeyBuffer: Buffer, strategy: RootKeyEncryptionStrategy) => {
     if (strategy === RootKeyEncryptionStrategy.HSM) {
       const hsmIsActive = await hsmService.isActive();
       if (!hsmIsActive) {
-        throw new Error("Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?");
+        throw new BadRequestError({
+          message: "Unable to encrypt root KMS key. HSM service is inactive. Did you configure the HSM?"
+        });
       }
       const encrypted = await hsmService.encrypt(plainKeyBuffer);
       return encrypted;
@@ -882,7 +887,7 @@ export const kmsServiceFactory = ({
     }
 
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    throw new Error(`Invalid root key encryption strategy: ${strategy}`);
+    throw new BadRequestError({ message: `Invalid root key encryption strategy: ${strategy}` });
   };
 
   // by keeping the decrypted data key in inner scope
@@ -1130,7 +1135,7 @@ export const kmsServiceFactory = ({
 
     if (!encryptedRootKey) {
       logger.error("KMS: Failed to re-encrypt ROOT Key with selected strategy");
-      throw new Error("Failed to re-encrypt ROOT Key with selected strategy");
+      throw new BadRequestError({ message: "Failed to re-encrypt ROOT Key with selected strategy" });
     }
 
     await kmsRootConfigDAL.updateById(KMS_ROOT_CONFIG_UUID, {

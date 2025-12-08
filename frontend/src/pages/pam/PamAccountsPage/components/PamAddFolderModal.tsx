@@ -14,8 +14,6 @@ type Props = {
 export const PamAddFolderModal = ({ isOpen, onOpenChange, projectId, currentFolderId }: Props) => {
   const createPamFolder = useCreatePamFolder();
 
-  console.log({ currentFolderId });
-
   const onSubmit = async (formData: Pick<TPamFolder, "name" | "description">) => {
     await createPamFolder.mutateAsync({
       ...formData,

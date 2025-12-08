@@ -8,7 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { Button, Card, CardTitle, FormControl, Input } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useSaveIntegrationAccessToken } from "@app/hooks/api";
 
 const schema = z.object({
@@ -20,7 +20,7 @@ type FormData = z.infer<typeof schema>;
 export const FlyioAuthorizePage = () => {
   const navigate = useNavigate();
   const { currentProject } = useProject();
-
+  const { currentOrg } = useOrganization();
   const { control, handleSubmit } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -44,8 +44,9 @@ export const FlyioAuthorizePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations/flyio/create",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations/flyio/create",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

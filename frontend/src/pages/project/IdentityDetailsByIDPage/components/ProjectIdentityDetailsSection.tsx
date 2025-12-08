@@ -69,7 +69,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
     } catch {
       createNotification({
         type: "error",
-        text: "Failed to delete project identity"
+        text: "Failed to delete project machine identity"
       });
     }
   };
@@ -77,7 +77,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
   return (
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
-        <h3 className="text-lg font-medium text-mineshaft-100">Identity Details</h3>
+        <h3 className="text-lg font-medium text-mineshaft-100">Details</h3>
         <DropdownMenu>
           {!isOrgIdentity && (
             <DropdownMenuTrigger asChild>
@@ -114,7 +114,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                   }}
                   disabled={!isAllowed}
                 >
-                  Edit Identity
+                  Edit Machine Identity
                 </DropdownMenuItem>
               )}
             </ProjectPermissionCan>
@@ -137,7 +137,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                   icon={<FontAwesomeIcon icon={faTrash} />}
                   disabled={!isAllowed}
                 >
-                  Delete Identity
+                  Delete Machine Identity
                 </DropdownMenuItem>
               )}
             </ProjectPermissionCan>
@@ -146,7 +146,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
       </div>
       <div className="pt-4">
         <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Identity ID</p>
+          <p className="text-sm font-medium text-mineshaft-300">Machine Identity ID</p>
           <div className="group flex align-top">
             <p className="text-sm break-all text-mineshaft-300">{identity.id}</p>
             <div className="opacity-0 transition-opacity duration-300 group-hover:opacity-100">

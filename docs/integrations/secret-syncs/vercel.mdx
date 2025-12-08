@@ -43,6 +43,9 @@ description: "Learn how to configure a Vercel Sync for Infisical."
                 - **Overwrite Destination Secrets**: Removes any secrets at the destination endpoint not present in Infisical.
                 - **Import Secrets (Prioritize Infisical)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Infisical over Vercel when keys conflict.
                 - **Import Secrets (Prioritize Vercel)**: Imports secrets from the destination endpoint before syncing, prioritizing values from Vercel over Infisical when keys conflict.
+            <Note>
+                Vercel does not expose the values of [sensitive environment variables](https://vercel.com/docs/environment-variables/sensitive-environment-variables), so Infisical cannot import them during the initial sync. As a result, these secrets are created in Infisical with empty values. After the first sync, you'll need to manually re-enter their values in Infisical to ensure both platforms stay aligned.
+            </Note>
             - **Key Schema**: Template that determines how secret names are transformed when syncing, using `{{secretKey}}` as a placeholder for the original secret name and `{{environment}}` for the environment.
             <Note>
                 We highly recommend using a Key Schema to ensure that Infisical only manages the specific keys you intend, keeping everything else untouched.
@@ -149,4 +152,5 @@ description: "Learn how to configure a Vercel Sync for Infisical."
         }
         ```
     </Tab>
+
 </Tabs>

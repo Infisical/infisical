@@ -3,7 +3,7 @@ import { createFileRoute, linkOptions } from "@tanstack/react-router";
 import { PamSessionByIDPage } from "./PamSessionByIDPage";
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/pam/$projectId/_pam-layout/sessions/$sessionId"
 )({
   component: PamSessionByIDPage,
   beforeLoad: ({ context, params }) => {
@@ -13,7 +13,7 @@ export const Route = createFileRoute(
         {
           label: "Sessions",
           link: linkOptions({
-            to: "/projects/pam/$projectId/sessions",
+            to: "/organizations/$orgId/projects/pam/$projectId/sessions",
             params
           })
         },

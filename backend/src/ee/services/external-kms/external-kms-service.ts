@@ -24,7 +24,13 @@ import {
 } from "./external-kms-types";
 import { AwsKmsProviderFactory } from "./providers/aws-kms";
 import { GcpKmsProviderFactory } from "./providers/gcp-kms";
-import { ExternalKmsAwsSchema, ExternalKmsGcpSchema, KmsProviders, TExternalKmsGcpSchema } from "./providers/model";
+import {
+  ExternalKmsAwsSchema,
+  ExternalKmsGcpSchema,
+  KmsProviders,
+  TExternalKmsAwsSchema,
+  TExternalKmsGcpSchema
+} from "./providers/model";
 
 type TExternalKmsServiceFactoryDep = {
   externalKmsDAL: TExternalKmsDALFactory;
@@ -72,6 +78,7 @@ export const externalKmsServiceFactory = ({
     const kmsName = name ? slugify(name) : slugify(alphaNumericNanoId(8).toLowerCase());
 
     let sanitizedProviderInput = "";
+    let sanitizedProviderInputObject: TExternalKmsAwsSchema | TExternalKmsGcpSchema;
     switch (provider.type) {
       case KmsProviders.Aws:
         {
@@ -88,9 +95,18 @@ export const externalKmsServiceFactory = ({
           try {
             // if missing kms key this generate a new kms key id and returns new provider input
             const newProviderInput = await externalKms.generateInputKmsKey();
+            sanitizedProviderInputObject = newProviderInput;
             sanitizedProviderInput = JSON.stringify(newProviderInput);
 
             await externalKms.validateConnection();
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              throw error;
+            }
+
+            throw new BadRequestError({
+              message: error instanceof Error ? `AWS error: ${error.message}` : "Failed to validate AWS connection"
+            });
           } finally {
             await externalKms.cleanup();
           }
@@ -101,7 +117,16 @@ export const externalKmsServiceFactory = ({
           const externalKms = await GcpKmsProviderFactory({ inputs: provider.inputs });
           try {
             await externalKms.validateConnection();
+            sanitizedProviderInputObject = provider.inputs;
             sanitizedProviderInput = JSON.stringify(provider.inputs);
+          } catch (error) {
+            if (error instanceof BadRequestError) {
+              throw error;
+            }
+
+            throw new BadRequestError({
+              message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to validate GCP connection"
+            });
           } finally {
             await externalKms.cleanup();
           }
@@ -139,7 +164,10 @@ export const externalKmsServiceFactory = ({
         },
         tx
       );
-      return { ...kms, external: externalKmsCfg };
+      return {
+        ...kms,
+        external: { ...externalKmsCfg, providerInput: sanitizedProviderInputObject }
+      };
     });
 
     return externalKms;
@@ -179,6 +207,7 @@ export const externalKmsServiceFactory = ({
     if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
     let sanitizedProviderInput = "";
+    let sanitizedProviderInputObject: TExternalKmsAwsSchema | TExternalKmsGcpSchema;
     const { encryptor: orgDataKeyEncryptor, decryptor: orgDataKeyDecryptor } =
       await kmsService.createCipherPairWithDataKey({
         type: KmsDataKey.Organization,
@@ -199,7 +228,16 @@ export const externalKmsServiceFactory = ({
             const externalKms = await AwsKmsProviderFactory({ inputs: updatedProviderInput });
             try {
               await externalKms.validateConnection();
+              sanitizedProviderInputObject = updatedProviderInput;
               sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } catch (error) {
+              if (error instanceof BadRequestError) {
+                throw error;
+              }
+
+              throw new BadRequestError({
+                message: error instanceof Error ? `AWS error: ${error.message}` : "Failed to validate AWS connection"
+              });
             } finally {
               await externalKms.cleanup();
             }
@@ -214,7 +252,16 @@ export const externalKmsServiceFactory = ({
             const externalKms = await GcpKmsProviderFactory({ inputs: updatedProviderInput });
             try {
               await externalKms.validateConnection();
+              sanitizedProviderInputObject = updatedProviderInput;
               sanitizedProviderInput = JSON.stringify(updatedProviderInput);
+            } catch (error) {
+              if (error instanceof BadRequestError) {
+                throw error;
+              }
+
+              throw new BadRequestError({
+                message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to validate GCP connection"
+              });
             } finally {
               await externalKms.cleanup();
             }
@@ -234,14 +281,17 @@ export const externalKmsServiceFactory = ({
     }
 
     const externalKms = await externalKmsDAL.transaction(async (tx) => {
-      const kms = await kmsDAL.updateById(
-        kmsDoc.id,
-        {
-          description,
-          name: kmsName
-        },
-        tx
-      );
+      let kms = kmsDoc;
+      if (kmsName || description) {
+        kms = await kmsDAL.updateById(
+          kmsDoc.id,
+          {
+            description,
+            name: kmsName
+          },
+          tx
+        );
+      }
       if (encryptedProviderInputs) {
         const externalKmsCfg = await externalKmsDAL.updateById(
           externalKmsDoc.id,
@@ -250,9 +300,9 @@ export const externalKmsServiceFactory = ({
           },
           tx
         );
-        return { ...kms, external: externalKmsCfg };
+        return { ...kms, external: { ...externalKmsCfg, providerInput: sanitizedProviderInputObject } };
       }
-      return { ...kms, external: externalKmsDoc };
+      return { ...kms, external: { ...externalKmsDoc, providerInput: sanitizedProviderInputObject } };
     });
 
     return externalKms;
@@ -273,9 +323,40 @@ export const externalKmsServiceFactory = ({
     const externalKmsDoc = await externalKmsDAL.findOne({ kmsKeyId: kmsDoc.id });
     if (!externalKmsDoc) throw new NotFoundError({ message: `External KMS with ID '${kmsId}' not found` });
 
+    let decryptedProviderInputObject: TExternalKmsAwsSchema | TExternalKmsGcpSchema;
+
+    const { decryptor: orgDataKeyDecryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: actorOrgId
+    });
+
+    const decryptedProviderInputBlob = orgDataKeyDecryptor({
+      cipherTextBlob: externalKmsDoc.encryptedProviderInputs
+    });
+
+    switch (externalKmsDoc.provider) {
+      case KmsProviders.Aws: {
+        const decryptedProviderInput = await ExternalKmsAwsSchema.parseAsync(
+          JSON.parse(decryptedProviderInputBlob.toString())
+        );
+        decryptedProviderInputObject = decryptedProviderInput;
+        break;
+      }
+      case KmsProviders.Gcp: {
+        const decryptedProviderInput = await ExternalKmsGcpSchema.parseAsync(
+          JSON.parse(decryptedProviderInputBlob.toString())
+        );
+
+        decryptedProviderInputObject = decryptedProviderInput;
+        break;
+      }
+      default:
+        break;
+    }
+
     const externalKms = await externalKmsDAL.transaction(async (tx) => {
       const kms = await kmsDAL.deleteById(kmsDoc.id, tx);
-      return { ...kms, external: externalKmsDoc };
+      return { ...kms, external: { ...externalKmsDoc, providerInput: decryptedProviderInputObject } };
     });
 
     return externalKms;
@@ -393,6 +474,14 @@ export const externalKmsServiceFactory = ({
     const externalKms = await GcpKmsProviderFactory({ inputs: { credential, gcpRegion, keyName: "" } });
     try {
       return await externalKms.getKeysList();
+    } catch (error) {
+      if (error instanceof BadRequestError) {
+        throw error;
+      }
+
+      throw new BadRequestError({
+        message: error instanceof Error ? `GCP error: ${error.message}` : "Failed to fetch GCP keys"
+      });
     } finally {
       await externalKms.cleanup();
     }

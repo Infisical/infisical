@@ -50,11 +50,11 @@ export const CertificateRevocationModal = ({ popUp, handlePopUpToggle }: Props) 
   const onFormSubmit = async ({ revocationReason }: FormData) => {
     if (!currentProject?.slug) return;
 
-    const { serialNumber } = popUp.revokeCertificate.data as { serialNumber: string };
+    const { certificateId } = popUp.revokeCertificate.data as { certificateId: string };
 
     await revokeCertificate({
-      projectSlug: currentProject.slug,
-      serialNumber,
+      projectId: currentProject.id,
+      id: certificateId,
       revocationReason
     });
 

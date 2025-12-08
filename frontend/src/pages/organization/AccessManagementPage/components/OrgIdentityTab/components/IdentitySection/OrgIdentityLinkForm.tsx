@@ -64,9 +64,10 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
       type: "success"
     });
     navigate({
-      to: "/organization/identities/$identityId",
+      to: "/organizations/$orgId/identities/$identityId",
       params: {
-        identityId: identity.id
+        identityId: identity.id,
+        orgId: currentOrg.id
       }
     });
   };
@@ -77,11 +78,11 @@ export const OrgIdentityLinkForm = ({ onClose }: Props) => {
         control={control}
         name="identity"
         render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <FormControl label="Identity" errorText={error?.message} isError={Boolean(error)}>
+          <FormControl label="Machine Identity" errorText={error?.message} isError={Boolean(error)}>
             <FilterableSelect
               value={value}
               onChange={onChange}
-              placeholder="Select identity..."
+              placeholder="Select machine identity..."
               // onInputChange={setSearchValue}
               options={rootOrgIdentities}
               getOptionValue={(option) => option.id}

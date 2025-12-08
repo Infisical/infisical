@@ -5,6 +5,7 @@ import {
   ProjectPermissionAppConnectionActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionCertificateProfileActions,
   ProjectPermissionCmekActions,
   ProjectPermissionCommitsActions,
@@ -44,9 +45,7 @@ const buildAdminPermissionRules = () => {
     ProjectPermissionSub.Settings,
     ProjectPermissionSub.Environments,
     ProjectPermissionSub.Tags,
-    ProjectPermissionSub.AuditLogs,
     ProjectPermissionSub.IpAllowList,
-    ProjectPermissionSub.CertificateAuthorities,
     ProjectPermissionSub.PkiAlerts,
     ProjectPermissionSub.PkiCollections,
     ProjectPermissionSub.SshCertificateAuthorities,
@@ -66,6 +65,20 @@ const buildAdminPermissionRules = () => {
       el
     );
   });
+
+  can([ProjectPermissionAuditLogsActions.Read], ProjectPermissionSub.AuditLogs);
+
+  can(
+    [
+      ProjectPermissionCertificateAuthorityActions.Read,
+      ProjectPermissionCertificateAuthorityActions.Create,
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      ProjectPermissionCertificateAuthorityActions.Delete,
+      ProjectPermissionCertificateAuthorityActions.Renew,
+      ProjectPermissionCertificateAuthorityActions.SignIntermediate
+    ],
+    ProjectPermissionSub.CertificateAuthorities
+  );
 
   can(
     [
@@ -95,7 +108,8 @@ const buildAdminPermissionRules = () => {
       ProjectPermissionCertificateActions.Edit,
       ProjectPermissionCertificateActions.Create,
       ProjectPermissionCertificateActions.Delete,
-      ProjectPermissionCertificateActions.ReadPrivateKey
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
@@ -460,7 +474,7 @@ const buildMemberPermissionRules = () => {
   can([ProjectPermissionActions.Read], ProjectPermissionSub.IpAllowList);
 
   // double check if all CRUD are needed for CA and Certificates
-  can([ProjectPermissionActions.Read], ProjectPermissionSub.CertificateAuthorities);
+  can([ProjectPermissionCertificateAuthorityActions.Read], ProjectPermissionSub.CertificateAuthorities);
   can([ProjectPermissionPkiTemplateActions.Read], ProjectPermissionSub.CertificateTemplates);
 
   can(
@@ -468,7 +482,8 @@ const buildMemberPermissionRules = () => {
       ProjectPermissionCertificateActions.Read,
       ProjectPermissionCertificateActions.Edit,
       ProjectPermissionCertificateActions.Create,
-      ProjectPermissionCertificateActions.Delete
+      ProjectPermissionCertificateActions.Delete,
+      ProjectPermissionCertificateActions.Import
     ],
     ProjectPermissionSub.Certificates
   );
@@ -599,7 +614,7 @@ const buildViewerPermissionRules = () => {
   can(ProjectPermissionActions.Read, ProjectPermissionSub.Tags);
   can(ProjectPermissionAuditLogsActions.Read, ProjectPermissionSub.AuditLogs);
   can(ProjectPermissionActions.Read, ProjectPermissionSub.IpAllowList);
-  can(ProjectPermissionActions.Read, ProjectPermissionSub.CertificateAuthorities);
+  can(ProjectPermissionCertificateAuthorityActions.Read, ProjectPermissionSub.CertificateAuthorities);
   can(ProjectPermissionCertificateActions.Read, ProjectPermissionSub.Certificates);
   can(ProjectPermissionPkiTemplateActions.Read, ProjectPermissionSub.CertificateTemplates);
   can(ProjectPermissionCmekActions.Read, ProjectPermissionSub.Cmek);

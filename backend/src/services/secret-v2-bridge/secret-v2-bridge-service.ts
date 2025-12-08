@@ -2263,7 +2263,8 @@ export const secretV2BridgeServiceFactory = ({
         ]
       }
     });
-    if (secretsToDelete.length !== inputSecrets.length)
+    const secretsToDeleteSet = new Set(secretsToDelete.map((el) => el.key));
+    if (secretsToDeleteSet.size !== inputSecrets.length)
       throw new NotFoundError({
         message: `One or more secrets does not exist: ${secretsToDelete.map((el) => el.key).join(", ")}`
       });

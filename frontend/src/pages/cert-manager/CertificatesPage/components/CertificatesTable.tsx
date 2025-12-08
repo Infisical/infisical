@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { subject } from "@casl/ability";
 import {
   faBan,
   faCertificate,
@@ -40,8 +41,10 @@ import {
 import { Badge } from "@app/components/v3";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionPkiSyncActions,
   ProjectPermissionSub,
-  useProject
+  useProject,
+  useProjectPermission
 } from "@app/context";
 import { useUpdateRenewalConfig } from "@app/hooks/api";
 import { caSupportsCapability } from "@app/hooks/api/ca/constants";
@@ -96,6 +99,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
   const [perPage, setPerPage] = useState(PER_PAGE_INIT);
 
   const { currentProject } = useProject();
+  const { permission } = useProjectPermission();
   const { data, isPending } = useListWorkspaceCertificates({
     projectId: currentProject?.id ?? "",
     offset: (page - 1) * perPage,
@@ -207,55 +211,72 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         return "opacity-0 group-hover:opacity-100";
                       })()}`}
                     >
-                      {canShowAutoRenewalIcon && (
-                        <Tooltip
-                          content={(() => {
-                            if (hasFailed && certificate.renewalError) {
-                              return `Auto-renewal failed: ${certificate.renewalError}`;
-                            }
-                            if (isAutoRenewalEnabled) {
-                              const expiryDate = new Date(certificate.notAfter);
-                              const now = new Date();
-                              const daysUntilExpiry = Math.ceil(
-                                (expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
-                              );
-                              const daysUntilRenewal = Math.max(
-                                0,
-                                daysUntilExpiry - (certificate.renewBeforeDays || 0)
-                              );
-                              return `Auto-renews in ${daysUntilRenewal}d`;
-                            }
-                            return "Set auto renewal";
-                          })()}
-                        >
-                          <button
-                            type="button"
-                            className={(() => {
-                              if (hasFailed) return "pr-1 text-red-500 hover:text-red-400";
-                              return "pr-1 text-primary-500 hover:text-primary-400";
-                            })()}
-                            aria-label="Certificate auto-renewal"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (hasFailed) return;
+                      {canShowAutoRenewalIcon &&
+                        (() => {
+                          const canEditCertificate = permission.can(
+                            ProjectPermissionCertificateActions.Edit,
+                            subject(ProjectPermissionSub.Certificates, {
+                              commonName: certificate.commonName,
+                              altNames: certificate.altNames,
+                              serialNumber: certificate.serialNumber
+                            })
+                          );
 
-                              handlePopUpOpen("manageRenewal", {
-                                certificateId: certificate.id,
-                                commonName: originalDisplayName,
-                                profileId: certificate.profileId || "",
-                                renewBeforeDays: certificate.renewBeforeDays || 7,
-                                ttlDays: Math.ceil(
-                                  (new Date(certificate.notAfter).getTime() -
-                                    new Date(certificate.notBefore).getTime()) /
-                                    (24 * 60 * 60 * 1000)
-                                )
-                              });
-                            }}
-                          >
-                            <FontAwesomeIcon icon={faClockRotateLeft} />
-                          </button>
-                        </Tooltip>
-                      )}
+                          return (
+                            <Tooltip
+                              content={(() => {
+                                if (hasFailed && certificate.renewalError) {
+                                  return `Auto-renewal failed: ${certificate.renewalError}`;
+                                }
+                                if (isAutoRenewalEnabled) {
+                                  const expiryDate = new Date(certificate.notAfter);
+                                  const now = new Date();
+                                  const daysUntilExpiry = Math.ceil(
+                                    (expiryDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+                                  );
+                                  const daysUntilRenewal = Math.max(
+                                    0,
+                                    daysUntilExpiry - (certificate.renewBeforeDays || 0)
+                                  );
+                                  return `Auto-renews in ${daysUntilRenewal}d`;
+                                }
+                                return "Set auto renewal";
+                              })()}
+                            >
+                              <button
+                                type="button"
+                                className={(() => {
+                                  if (hasFailed) return "pr-1 text-red-500 hover:text-red-400";
+                                  return "pr-1 text-primary-500 hover:text-primary-400";
+                                })()}
+                                aria-label="Certificate auto-renewal"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (!canEditCertificate) return;
+                                  if (hasFailed) return;
+
+                                  handlePopUpOpen("manageRenewal", {
+                                    certificateId: certificate.id,
+                                    commonName: originalDisplayName,
+                                    profileId: certificate.profileId || "",
+                                    renewBeforeDays: certificate.renewBeforeDays || 7,
+                                    ttlDays: Math.ceil(
+                                      (new Date(certificate.notAfter).getTime() -
+                                        new Date(certificate.notBefore).getTime()) /
+                                        (24 * 60 * 60 * 1000)
+                                    ),
+                                    notAfter: certificate.notAfter,
+                                    renewalError: certificate.renewalError,
+                                    renewedFromCertificateId: certificate.renewedFromCertificateId,
+                                    renewedByCertificateId: certificate.renewedByCertificateId
+                                  });
+                                }}
+                              >
+                                <FontAwesomeIcon icon={faClockRotateLeft} />
+                              </button>
+                            </Tooltip>
+                          );
+                        })()}
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild className="rounded-lg">
@@ -268,7 +289,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                       <DropdownMenuContent align="start" className="p-1">
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateActions.Read}
-                          a={ProjectPermissionSub.Certificates}
+                          a={subject(ProjectPermissionSub.Certificates, {
+                            commonName: certificate.commonName,
+                            altNames: certificate.altNames,
+                            serialNumber: certificate.serialNumber,
+                            friendlyName: certificate.friendlyName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
@@ -277,6 +303,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                               onClick={async () =>
                                 handlePopUpOpen("certificateExport", {
+                                  certificateId: certificate.id,
                                   serialNumber: certificate.serialNumber
                                 })
                               }
@@ -290,7 +317,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {isLegacyTemplatesEnabled && (
                           <ProjectPermissionCan
                             I={ProjectPermissionCertificateActions.Read}
-                            a={ProjectPermissionSub.Certificates}
+                            a={subject(ProjectPermissionSub.Certificates, {
+                              commonName: certificate.commonName,
+                              altNames: certificate.altNames,
+                              serialNumber: certificate.serialNumber,
+                              friendlyName: certificate.friendlyName
+                            })}
                           >
                             {(isAllowed) => (
                               <DropdownMenuItem
@@ -326,7 +358,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => {
                                 return (
@@ -390,7 +427,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -416,7 +458,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {/* Manual renewal action for profile-issued certificates that are not revoked/expired (including failed ones) */}
                         {(() => {
                           const canRenew =
-                            certificate.profileId &&
+                            (certificate.profileId || certificate.caId) &&
                             certificate.hasPrivateKey !== false &&
                             !certificate.renewedByCertificateId &&
                             !isRevoked &&
@@ -427,7 +469,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -454,8 +501,8 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         {certificate.status === CertStatus.ACTIVE &&
                           !certificate.renewedByCertificateId && (
                             <ProjectPermissionCan
-                              I={ProjectPermissionCertificateActions.Edit}
-                              a={ProjectPermissionSub.Certificates}
+                              I={ProjectPermissionPkiSyncActions.Edit}
+                              a={ProjectPermissionSub.PkiSyncs}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -477,21 +524,26 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                             </ProjectPermissionCan>
                           )}
-                        {/* Only show revoke button if CA supports revocation */}
+                        {/* Only show revoke button if CA supports revocation and certificate is not already revoked */}
                         {(() => {
                           const caType = caCapabilityMap[certificate.caId];
                           const supportsRevocation =
                             !caType ||
                             caSupportsCapability(caType, CaCapability.REVOKE_CERTIFICATES);
 
-                          if (!supportsRevocation) {
+                          if (!supportsRevocation || isRevoked) {
                             return null;
                           }
 
                           return (
                             <ProjectPermissionCan
                               I={ProjectPermissionCertificateActions.Delete}
-                              a={ProjectPermissionSub.Certificates}
+                              a={subject(ProjectPermissionSub.Certificates, {
+                                commonName: certificate.commonName,
+                                altNames: certificate.altNames,
+                                serialNumber: certificate.serialNumber,
+                                friendlyName: certificate.friendlyName
+                              })}
                             >
                               {(isAllowed) => (
                                 <DropdownMenuItem
@@ -501,7 +553,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                                   )}
                                   onClick={async () =>
                                     handlePopUpOpen("revokeCertificate", {
-                                      serialNumber: certificate.serialNumber
+                                      certificateId: certificate.id
                                     })
                                   }
                                   disabled={!isAllowed}
@@ -515,7 +567,12 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                         })()}
                         <ProjectPermissionCan
                           I={ProjectPermissionCertificateActions.Delete}
-                          a={ProjectPermissionSub.Certificates}
+                          a={subject(ProjectPermissionSub.Certificates, {
+                            commonName: certificate.commonName,
+                            altNames: certificate.altNames,
+                            serialNumber: certificate.serialNumber,
+                            friendlyName: certificate.friendlyName
+                          })}
                         >
                           {(isAllowed) => (
                             <DropdownMenuItem
@@ -524,7 +581,7 @@ export const CertificatesTable = ({ handlePopUpOpen }: Props) => {
                               )}
                               onClick={async () =>
                                 handlePopUpOpen("deleteCertificate", {
-                                  serialNumber: certificate.serialNumber,
+                                  certificateId: certificate.id,
                                   commonName: certificate.commonName
                                 })
                               }

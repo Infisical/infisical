@@ -106,6 +106,16 @@ export const GROUPS = {
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
+  LIST_PROJECTS: {
+    id: "The ID of the group to list projects for.",
+    offset: "The offset to start from. If you enter 10, it will start from the 10th project.",
+    limit: "The number of projects to return.",
+    search: "The text string that project name or slug will be filtered by.",
+    filterProjects:
+      "Whether to filter the list of returned projects. 'assignedProjects' will only return projects assigned to the group, 'unassignedProjects' will only return projects not assigned to the group, undefined will return all projects in the organization.",
+    orderBy: "The column to order projects by.",
+    orderDirection: "The direction to order projects in."
+  },
   ADD_USER: {
     id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
@@ -583,6 +593,10 @@ export const TOKEN_AUTH = {
     identityId: "The ID of the machine identity to list token metadata for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th token.",
     limit: "The number of tokens to return."
+  },
+  GET_TOKEN: {
+    identityId: "The ID of the machine identity to get the token for.",
+    tokenId: "The ID of the token to get metadata for."
   },
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
@@ -1948,9 +1962,11 @@ export const CERTIFICATE_AUTHORITIES = {
 
 export const CERTIFICATES = {
   GET: {
+    id: "The ID of the certificate to get.",
     serialNumber: "The serial number of the certificate to get."
   },
   REVOKE: {
+    id: "The ID of the certificate to revoke.",
     serialNumber:
       "The serial number of the certificate to revoke. The revoked certificate will be added to the certificate revocation list (CRL) of the CA.",
     revocationReason: "The reason for revoking the certificate.",
@@ -1958,9 +1974,11 @@ export const CERTIFICATES = {
     serialNumberRes: "The serial number of the revoked certificate."
   },
   DELETE: {
+    id: "The ID of the certificate to delete.",
     serialNumber: "The serial number of the certificate to delete."
   },
   GET_CERT: {
+    id: "The ID of the certificate to get the certificate body and certificate chain for.",
     serialNumber: "The serial number of the certificate to get the certificate body and certificate chain for.",
     certificate: "The certificate body of the certificate.",
     certificateChain: "The certificate chain of the certificate.",

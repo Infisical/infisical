@@ -58,7 +58,15 @@ export const GetAcmeDirectoryResponseSchema = z.object({
   newNonce: z.string(),
   newAccount: z.string(),
   newOrder: z.string(),
-  revokeCert: z.string().optional()
+  revokeCert: z.string().optional(),
+  meta: z
+    .object({
+      termsOfService: z.string().optional(),
+      website: z.string().optional(),
+      caaIdentities: z.array(z.string()).optional(),
+      externalAccountRequired: z.boolean().optional()
+    })
+    .optional()
 });
 
 // New Account payload schema

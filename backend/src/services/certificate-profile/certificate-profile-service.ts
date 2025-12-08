@@ -1,4 +1,4 @@
-import { ForbiddenError } from "@casl/ability";
+import { ForbiddenError, subject } from "@casl/ability";
 import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
@@ -10,6 +10,7 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { buildUrl } from "@app/ee/services/pki-acme/pki-acme-fns";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { extractX509CertFromChain } from "@app/lib/certificates/extract-certificate";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
@@ -19,8 +20,9 @@ import { ActorAuthMethod, ActorType } from "../auth/auth-type";
 import { TCertificateBodyDALFactory } from "../certificate/certificate-body-dal";
 import { getCertificateCredentials, isCertChainValid } from "../certificate/certificate-fns";
 import { TCertificateSecretDALFactory } from "../certificate/certificate-secret-dal";
-import { TCertificateAuthorityCertDALFactory } from "../certificate-authority/certificate-authority-cert-dal";
 import { TCertificateAuthorityDALFactory } from "../certificate-authority/certificate-authority-dal";
+import { CaType } from "../certificate-authority/certificate-authority-enums";
+import { TExternalCertificateAuthorityDALFactory } from "../certificate-authority/external-certificate-authority-dal";
 import { TCertificateTemplateV2DALFactory } from "../certificate-template-v2/certificate-template-v2-dal";
 import { TAcmeEnrollmentConfigDALFactory } from "../enrollment-config/acme-enrollment-config-dal";
 import { TApiEnrollmentConfigDALFactory } from "../enrollment-config/api-enrollment-config-dal";
@@ -32,12 +34,90 @@ import { getProjectKmsCertificateKeyId } from "../project/project-fns";
 import { TCertificateProfileDALFactory } from "./certificate-profile-dal";
 import {
   EnrollmentType,
+  IssuerType,
   TCertificateProfile,
   TCertificateProfileCertificate,
   TCertificateProfileInsert,
   TCertificateProfileUpdate,
   TCertificateProfileWithConfigs
 } from "./certificate-profile-types";
+
+const validateIssuerTypeConstraints = (
+  issuerType: IssuerType,
+  enrollmentType: EnrollmentType,
+  caId: string | null,
+  existingCaId?: string | null
+) => {
+  if (issuerType === IssuerType.CA) {
+    if (!caId && !existingCaId) {
+      throw new ForbiddenRequestError({
+        message: "CA issuer type requires a Certificate Authority to be selected"
+      });
+    }
+  }
+
+  if (issuerType === IssuerType.SELF_SIGNED) {
+    if (caId) {
+      throw new ForbiddenRequestError({
+        message: "Self-signed issuer type cannot have a Certificate Authority"
+      });
+    }
+    if (enrollmentType !== EnrollmentType.API) {
+      throw new ForbiddenRequestError({
+        message: "Self-signed issuer type only supports API enrollment"
+      });
+    }
+  }
+};
+
+const validateTemplateByExternalCaType = (
+  externalCaType: CaType | undefined,
+  externalConfigs: Record<string, unknown> | null | undefined
+) => {
+  if (!externalCaType) return;
+
+  switch (externalCaType) {
+    case CaType.AZURE_AD_CS:
+      if (!externalConfigs?.template || typeof externalConfigs.template !== "string") {
+        throw new ForbiddenRequestError({
+          message: "Azure ADCS Certificate Authority requires a template to be specified in external configs"
+        });
+      }
+      break;
+    default:
+      break;
+  }
+};
+
+const validateExternalConfigs = async (
+  externalConfigs: Record<string, unknown> | null | undefined,
+  caId: string | null,
+  certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">,
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findOne">
+) => {
+  if (!externalConfigs) return;
+
+  if (!caId) {
+    throw new ForbiddenRequestError({
+      message: "External configs can only be specified when a Certificate Authority is selected"
+    });
+  }
+
+  const ca = await certificateAuthorityDAL.findById(caId);
+  if (!ca) {
+    throw new NotFoundError({ message: "Certificate Authority not found" });
+  }
+
+  const externalCa = await externalCertificateAuthorityDAL.findOne({ caId });
+
+  if (!externalCa) {
+    throw new ForbiddenRequestError({
+      message: "External configs can only be specified for external Certificate Authorities"
+    });
+  }
+
+  validateTemplateByExternalCaType(externalCa.type as CaType, externalConfigs);
+};
 
 const generateAndEncryptAcmeEabSecret = async (
   projectId: string,
@@ -151,7 +231,7 @@ type TCertificateProfileServiceFactoryDep = {
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findById">;
-  certificateAuthorityCertDAL: Pick<TCertificateAuthorityCertDALFactory, "findById">;
+  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "findById" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   kmsService: Pick<TKmsServiceFactory, "generateKmsKey" | "encryptWithKmsKey" | "decryptWithKmsKey">;
@@ -161,9 +241,22 @@ type TCertificateProfileServiceFactoryDep = {
 export type TCertificateProfileServiceFactory = ReturnType<typeof certificateProfileServiceFactory>;
 
 const convertDalToService = (dalResult: Record<string, unknown>): TCertificateProfile => {
+  let parsedExternalConfigs: Record<string, unknown> | null = null;
+  if (dalResult.externalConfigs && typeof dalResult.externalConfigs === "string") {
+    try {
+      parsedExternalConfigs = JSON.parse(dalResult.externalConfigs) as Record<string, unknown>;
+    } catch {
+      parsedExternalConfigs = null;
+    }
+  } else if (dalResult.externalConfigs && typeof dalResult.externalConfigs === "object") {
+    parsedExternalConfigs = dalResult.externalConfigs as Record<string, unknown>;
+  }
+
   return {
     ...dalResult,
-    enrollmentType: dalResult.enrollmentType as EnrollmentType
+    enrollmentType: dalResult.enrollmentType as EnrollmentType,
+    issuerType: dalResult.issuerType as IssuerType,
+    externalConfigs: parsedExternalConfigs
   } as TCertificateProfile;
 };
 
@@ -175,6 +268,8 @@ export const certificateProfileServiceFactory = ({
   acmeEnrollmentConfigDAL,
   certificateBodyDAL,
   certificateSecretDAL,
+  certificateAuthorityDAL,
+  externalCertificateAuthorityDAL,
   permissionService,
   licenseService,
   kmsService,
@@ -205,7 +300,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Create,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: data.slug
+      })
     );
 
     const project = await projectDAL.findById(projectId);
@@ -213,7 +310,7 @@ export const certificateProfileServiceFactory = ({
       throw new NotFoundError({ message: "Project not found" });
     }
     const plan = await licenseService.getPlan(project.orgId);
-    if (!plan.pkiAcme) {
+    if (!plan.pkiAcme && data.enrollmentType === EnrollmentType.ACME) {
       throw new BadRequestError({
         message: "Failed to create certificate profile: Plan restriction. Upgrade plan to continue"
       });
@@ -239,6 +336,16 @@ export const certificateProfileServiceFactory = ({
         message: "Certificate profile with this name already exists in project"
       });
     }
+
+    validateIssuerTypeConstraints(data.issuerType, data.enrollmentType, data.caId ?? null);
+
+    // Validate external configs
+    await validateExternalConfigs(
+      data.externalConfigs,
+      data.caId ?? null,
+      certificateAuthorityDAL,
+      externalCertificateAuthorityDAL
+    );
 
     // Validate enrollment configuration requirements
     if (data.enrollmentType === EnrollmentType.EST && !data.estConfig) {
@@ -308,7 +415,8 @@ export const certificateProfileServiceFactory = ({
           projectId,
           estConfigId,
           apiConfigId,
-          acmeConfigId
+          acmeConfigId,
+          externalConfigs: data.externalConfigs
         },
         tx
       );
@@ -349,7 +457,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Edit,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: existingProfile.slug
+      })
     );
 
     if (data.certificateTemplateId) {
@@ -376,7 +486,26 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
-    const { estConfig, apiConfig, ...profileUpdateData } = data;
+    const finalIssuerType = data.issuerType || existingProfile.issuerType;
+    const finalEnrollmentType = data.enrollmentType || existingProfile.enrollmentType;
+    const finalCaId = data.caId !== undefined ? data.caId : existingProfile.caId;
+
+    validateIssuerTypeConstraints(finalIssuerType, finalEnrollmentType, finalCaId ?? null, existingProfile.caId);
+
+    // Validate external configs only if they are provided in the update
+    if (data.externalConfigs !== undefined) {
+      await validateExternalConfigs(
+        data.externalConfigs,
+        finalCaId ?? null,
+        certificateAuthorityDAL,
+        externalCertificateAuthorityDAL
+      );
+    }
+
+    const updatedData =
+      finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
+
+    const { estConfig, apiConfig, ...profileUpdateData } = updatedData;
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
@@ -453,7 +582,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const converted = convertDalToService(profile);
@@ -489,7 +620,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     if (profile.estConfig && profile.estConfig.caChain) {
@@ -517,9 +650,24 @@ export const certificateProfileServiceFactory = ({
       }
     }
 
+    // Parse externalConfigs from JSON string to object if it exists
+    let parsedExternalConfigs: Record<string, unknown> | null = null;
+    if (profile.externalConfigs && typeof profile.externalConfigs === "string") {
+      try {
+        parsedExternalConfigs = JSON.parse(profile.externalConfigs) as Record<string, unknown>;
+      } catch {
+        // If parsing fails, leave as null
+        parsedExternalConfigs = null;
+      }
+    } else if (profile.externalConfigs && typeof profile.externalConfigs === "object") {
+      // Already an object, use as-is
+      parsedExternalConfigs = profile.externalConfigs;
+    }
+
     return {
       ...profile,
-      enrollmentType: profile.enrollmentType as EnrollmentType
+      enrollmentType: profile.enrollmentType as EnrollmentType,
+      externalConfigs: parsedExternalConfigs
     };
   };
 
@@ -548,7 +696,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug
+      })
     );
 
     const profile = await certificateProfileDAL.findBySlugAndProjectId(slug, projectId);
@@ -569,6 +719,7 @@ export const certificateProfileServiceFactory = ({
     limit = 20,
     search,
     enrollmentType,
+    issuerType,
     caId
   }: {
     actor: ActorType;
@@ -580,6 +731,7 @@ export const certificateProfileServiceFactory = ({
     limit?: number;
     search?: string;
     enrollmentType?: EnrollmentType;
+    issuerType?: IssuerType;
     caId?: string;
   }): Promise<{
     profiles: TCertificateProfileWithConfigs[];
@@ -598,19 +750,35 @@ export const certificateProfileServiceFactory = ({
       ProjectPermissionSub.CertificateProfiles
     );
 
-    const profiles = await certificateProfileDAL.findByProjectId(projectId, {
-      offset,
-      limit,
-      search,
-      enrollmentType,
-      caId
-    });
+    const processedRules = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateProfileActions.Read,
+      ProjectPermissionSub.CertificateProfiles
+    );
 
-    const totalCount = await certificateProfileDAL.countByProjectId(projectId, {
-      search,
-      enrollmentType,
-      caId
-    });
+    const profiles = await certificateProfileDAL.findByProjectId(
+      projectId,
+      {
+        offset,
+        limit,
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      processedRules
+    );
+
+    const totalCount = await certificateProfileDAL.countByProjectId(
+      projectId,
+      {
+        search,
+        enrollmentType,
+        issuerType,
+        caId
+      },
+      processedRules
+    );
 
     const convertedProfiles = await Promise.all(
       profiles.map(async (profile) => {
@@ -695,7 +863,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Delete,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const deletedProfile = await certificateProfileDAL.deleteById(profileId);
@@ -741,7 +911,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const certificates = await certificateProfileDAL.getCertificatesByProfile(profileId, {
@@ -782,17 +954,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.Read,
-      ProjectPermissionSub.CertificateProfiles
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.Read,
-      ProjectPermissionSub.Certificates
-    );
-
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionCertificateActions.ReadPrivateKey,
-      ProjectPermissionSub.Certificates
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     const cert = await certificateProfileDAL.getLatestActiveCertificateForProfile(profileId);
@@ -800,6 +964,24 @@ export const certificateProfileServiceFactory = ({
     if (!cert) {
       return null;
     }
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.Read,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateActions.ReadPrivateKey,
+      subject(ProjectPermissionSub.Certificates, {
+        commonName: cert.commonName,
+        altNames: cert.altNames ?? undefined,
+        serialNumber: cert.serialNumber
+      })
+    );
 
     const certBody = await certificateBodyDAL.findOne({ certId: cert.id });
 
@@ -894,7 +1076,9 @@ export const certificateProfileServiceFactory = ({
 
       ForbiddenError.from(permission).throwUnlessCan(
         ProjectPermissionCertificateProfileActions.Read,
-        ProjectPermissionSub.CertificateProfiles
+        subject(ProjectPermissionSub.CertificateProfiles, {
+          slug: profile.slug
+        })
       );
     }
 
@@ -945,7 +1129,9 @@ export const certificateProfileServiceFactory = ({
     });
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateProfileActions.RevealAcmeEabSecret,
-      ProjectPermissionSub.CertificateProfiles
+      subject(ProjectPermissionSub.CertificateProfiles, {
+        slug: profile.slug
+      })
     );
 
     if (profile.enrollmentType !== EnrollmentType.ACME) {

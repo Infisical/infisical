@@ -91,7 +91,8 @@ const Page = withPermission(
 
       handlePopUpClose("removeMember");
       navigate({
-        to: "/organization/access-management" as const,
+        to: "/organizations/$orgId/access-management" as const,
+        params: { orgId },
         search: {
           selectedTab: OrgAccessControlTabSections.Member
         }
@@ -103,14 +104,15 @@ const Page = withPermission(
         {membership && (
           <div className="mx-auto w-full max-w-8xl">
             <Link
-              to="/organization/access-management"
+              to="/organizations/$orgId/access-management"
+              params={{ orgId }}
               search={{
                 selectedTab: OrgAccessControlTabSections.Member
               }}
               className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
             >
               <FontAwesomeIcon icon={faChevronLeft} />
-              Users
+              Organization Users
             </Link>
             <PageHeader
               scope={isSubOrganization ? "namespace" : "org"}
@@ -242,8 +244,8 @@ const Page = withPermission(
                 )}
               </div>
             </PageHeader>
-            <div className="flex">
-              <div className="mr-4 w-96">
+            <div className="flex flex-col gap-4 md:flex-row">
+              <div className="w-full md:w-96">
                 <UserDetailsSection membershipId={membershipId} handlePopUpOpen={handlePopUpOpen} />
               </div>
               <div className="w-full space-y-2">

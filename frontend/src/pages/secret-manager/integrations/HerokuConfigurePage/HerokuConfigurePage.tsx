@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Button, Card, CardTitle, FormControl, Select, SelectItem } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 // import { RadioGroup } from "@app/components/v2/RadioGroup";
 import { useCreateIntegration } from "@app/hooks/api";
 import {
@@ -40,7 +40,7 @@ type FormData = z.infer<typeof schema>;
 
 export const HerokuConfigurePage = () => {
   const navigate = useNavigate();
-
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const { control, handleSubmit, setValue, watch } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -98,8 +98,9 @@ export const HerokuConfigurePage = () => {
 
       setIsLoading(false);
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

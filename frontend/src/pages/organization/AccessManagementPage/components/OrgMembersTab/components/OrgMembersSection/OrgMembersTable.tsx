@@ -336,7 +336,7 @@ export const OrgMembersTable = ({
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Apply Roles to Filter Users
+                  Filter Organization Users by Role
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -365,7 +365,7 @@ export const OrgMembersTable = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search members..."
+          placeholder="Search organization users..."
         />
       </div>
       <TableContainer className="mt-4">
@@ -392,7 +392,7 @@ export const OrgMembersTable = ({
                   }}
                 />
               </Th>
-              <Th className="w-1/3">
+              <Th className="min-w-40 md:w-1/3 md:min-w-0">
                 <div className="flex items-center">
                   Name
                   <IconButton
@@ -434,7 +434,7 @@ export const OrgMembersTable = ({
               </Th>
               <Th className="w-1/3">
                 <div className="flex items-center">
-                  Role
+                  Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgMembersOrderBy.Role ? "" : "opacity-30"}`}
@@ -481,9 +481,10 @@ export const OrgMembersTable = ({
                       className="h-10 w-full cursor-pointer transition-colors duration-100 hover:bg-mineshaft-700"
                       onClick={() =>
                         navigate({
-                          to: "/organization/members/$membershipId" as const,
+                          to: "/organizations/$orgId/members/$membershipId" as const,
                           params: {
-                            membershipId: orgMembershipId
+                            membershipId: orgMembershipId,
+                            orgId
                           }
                         })
                       }
@@ -505,7 +506,7 @@ export const OrgMembersTable = ({
                       <Td
                         className={twMerge("group max-w-0", isActive ? "" : "text-mineshaft-400")}
                       >
-                        <div className="flex items-center gap-x-2">
+                        <div className="flex w-full items-center gap-x-2">
                           <p className="truncate">
                             {name ?? <span className="text-mineshaft-400">Not Set</span>}
                           </p>
@@ -619,9 +620,10 @@ export const OrgMembersTable = ({
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       navigate({
-                                        to: "/organization/members/$membershipId" as const,
+                                        to: "/organizations/$orgId/members/$membershipId" as const,
                                         params: {
-                                          membershipId: orgMembershipId
+                                          membershipId: orgMembershipId,
+                                          orgId
                                         }
                                       });
                                     }}
@@ -725,8 +727,8 @@ export const OrgMembersTable = ({
           <EmptyState
             title={
               members.length
-                ? "No organization members match search..."
-                : "No organization members found"
+                ? "No organization users match search..."
+                : "No organization users found"
             }
             icon={members.length ? faSearch : faUsers}
           />

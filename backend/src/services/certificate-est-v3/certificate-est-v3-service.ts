@@ -67,6 +67,12 @@ export const certificateEstV3ServiceFactory = ({
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
     }
 
+    if (!profile.caId) {
+      throw new BadRequestError({
+        message: "Self-signed certificates are not supported for EST enrollment"
+      });
+    }
+
     const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);
     if (!estConfig) {
       throw new NotFoundError({ message: "EST configuration not found" });
@@ -167,6 +173,12 @@ export const certificateEstV3ServiceFactory = ({
 
     if (!profile.estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
+    }
+
+    if (!profile.caId) {
+      throw new BadRequestError({
+        message: "Self-signed certificates are not supported for EST enrollment"
+      });
     }
 
     const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);
@@ -279,6 +291,12 @@ export const certificateEstV3ServiceFactory = ({
 
     if (!profile.estConfigId) {
       throw new BadRequestError({ message: "EST enrollment not configured for this profile" });
+    }
+
+    if (!profile.caId) {
+      throw new BadRequestError({
+        message: "Self-signed certificates are not supported for EST enrollment"
+      });
     }
 
     const estConfig = await estEnrollmentConfigDAL.findById(profile.estConfigId);

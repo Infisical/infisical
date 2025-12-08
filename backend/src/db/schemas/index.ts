@@ -16,6 +16,7 @@ export * from "./certificate-authority-certs";
 export * from "./certificate-authority-crl";
 export * from "./certificate-authority-secret";
 export * from "./certificate-bodies";
+export * from "./certificate-requests";
 export * from "./certificate-secrets";
 export * from "./certificate-syncs";
 export * from "./certificate-template-est-configs";

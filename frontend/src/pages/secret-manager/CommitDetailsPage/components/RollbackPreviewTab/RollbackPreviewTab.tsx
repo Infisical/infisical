@@ -17,7 +17,7 @@ import {
   Tooltip
 } from "@app/components/v2";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import {
   ProjectPermissionCommitsActions,
   ProjectPermissionSub
@@ -80,6 +80,7 @@ export const RollbackPreviewTab = (): JSX.Element => {
   const [deepRollback, setDeepRollback] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const envSlug = useParams({
     from: ROUTE_PATHS.SecretManager.RollbackPreviewPage.id,
@@ -103,8 +104,9 @@ export const RollbackPreviewTab = (): JSX.Element => {
 
   const goBackToHistory = () => {
     navigate({
-      to: "/projects/secret-management/$projectId/commits/$environment/$folderId",
+      to: "/organizations/$orgId/projects/secret-management/$projectId/commits/$environment/$folderId",
       params: {
+        orgId: currentOrg.id,
         projectId: currentProject.id,
         folderId,
         environment: envSlug

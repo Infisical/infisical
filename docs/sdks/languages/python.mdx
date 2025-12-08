@@ -108,6 +108,15 @@ response = client.auth.oidc_auth.login(
 
 This authentication method is useful when integrating with OIDC-compliant identity providers like Okta, Auth0, or any service that issues OIDC tokens.
 
+#### Token Auth
+
+```python
+response = client.auth.token_auth.login(token="<your-token>")
+```
+
+**Parameters:**
+- `token` (str): The access token to authenticate with. This can be a [machine identity token](/documentation/platform/identities/token-auth) or a user access token.
+
 ### `secrets`
 
 This sub-class handles operations related to secrets:

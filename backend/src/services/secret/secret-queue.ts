@@ -64,6 +64,8 @@ import { expandSecretReferencesFactory, getAllSecretReferences } from "../secret
 import { TSecretVersionV2DALFactory } from "../secret-v2-bridge/secret-version-dal";
 import { TSecretVersionV2TagDALFactory } from "../secret-v2-bridge/secret-version-tag-dal";
 import { SmtpTemplates, TSmtpService } from "../smtp/smtp-service";
+import { TTelemetryServiceFactory } from "../telemetry/telemetry-service";
+import { PostHogEventTypes } from "../telemetry/telemetry-types";
 import { TUserDALFactory } from "../user/user-dal";
 import { TWebhookDALFactory } from "../webhook/webhook-dal";
 import { fnTriggerWebhook } from "../webhook/webhook-fns";
@@ -120,6 +122,7 @@ type TSecretQueueFactoryDep = {
   reminderService: Pick<TReminderServiceFactory, "createReminderInternal" | "deleteReminderBySecretId">;
   eventBusService: TEventBusService;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
+  telemetryService: Pick<TTelemetryServiceFactory, "sendPostHogEvents">;
 };
 
 export type TGetSecrets = {
@@ -184,7 +187,8 @@ export const secretQueueFactory = ({
   eventBusService,
   licenseService,
   membershipUserDAL,
-  membershipRoleDAL
+  membershipRoleDAL,
+  telemetryService
 }: TSecretQueueFactoryDep) => {
   const integrationMeter = opentelemetry.metrics.getMeter("Integrations");
   const errorHistogram = integrationMeter.createHistogram("integration_secret_sync_errors", {
@@ -742,7 +746,7 @@ export const secretQueueFactory = ({
           environment: jobPayload.environmentName,
           count: jobPayload.count,
           projectName: project.name,
-          integrationUrl: `${appCfg.SITE_URL}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
+          integrationUrl: `${appCfg.SITE_URL}/organizations/${project.orgId}/projects/secret-management/${project.id}/integrations?selectedTab=native-integrations`
         }
       });
     }
@@ -1027,6 +1031,29 @@ export const secretQueueFactory = ({
               lastUsed: new Date(),
               syncMessage: response?.syncMessage ?? "",
               isSynced: response?.isSynced ?? true
+            });
+
+            await telemetryService.sendPostHogEvents({
+              event: PostHogEventTypes.IntegrationSynced,
+              distinctId: `project/${projectId}`,
+              organizationId: project.orgId,
+              properties: {
+                integrationId: integration.id,
+                integration: integration.integration,
+                environment,
+                secretPath,
+                projectId,
+                url: integration.url ?? undefined,
+                app: integration.app ?? undefined,
+                appId: integration.appId ?? undefined,
+                targetEnvironment: integration.targetEnvironment ?? undefined,
+                targetEnvironmentId: integration.targetEnvironmentId ?? undefined,
+                targetService: integration.targetService ?? undefined,
+                targetServiceId: integration.targetServiceId ?? undefined,
+                path: integration.path ?? undefined,
+                region: integration.region ?? undefined,
+                isManualSync: isManual ?? false
+              }
             });
 
             // May be undefined, if it's undefined we assume the sync was successful, hence the strict equality type check.

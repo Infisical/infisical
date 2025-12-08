@@ -20,6 +20,7 @@ import { TPermissionServiceFactory } from "@app/ee/services/permission/permissio
 import {
   ProjectPermissionActions,
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateAuthorityActions,
   ProjectPermissionMemberActions,
   ProjectPermissionPkiSubscriberActions,
   ProjectPermissionPkiTemplateActions,
@@ -39,6 +40,7 @@ import { TSshCertificateTemplateDALFactory } from "@app/ee/services/ssh-certific
 import { TSshHostDALFactory } from "@app/ee/services/ssh-host/ssh-host-dal";
 import { TSshHostGroupDALFactory } from "@app/ee/services/ssh-host-group/ssh-host-group-dal";
 import { PgSqlLock, TKeyStoreFactory } from "@app/keystore/keystore";
+import { getProcessedPermissionRules } from "@app/lib/casl/permission-filter-utils";
 import { getConfig } from "@app/lib/config/env";
 import { crypto } from "@app/lib/crypto/cryptography";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
@@ -911,7 +913,7 @@ export const projectServiceFactory = ({
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionActions.Read,
+      ProjectPermissionCertificateAuthorityActions.Read,
       ProjectPermissionSub.CertificateAuthorities
     );
 
@@ -963,35 +965,38 @@ export const projectServiceFactory = ({
       ProjectPermissionSub.Certificates
     );
 
+    const regularFilters = {
+      projectId,
+      ...(friendlyName && { friendlyName }),
+      ...(commonName && { commonName })
+    };
+    const permissionFilters = getProcessedPermissionRules(
+      permission,
+      ProjectPermissionCertificateActions.Read,
+      ProjectPermissionSub.Certificates
+    );
+
     const certificates = forPkiSync
-      ? await certificateDAL.findActiveCertificatesForSync(
-          {
-            projectId,
-            ...(friendlyName && { friendlyName }),
-            ...(commonName && { commonName })
-          },
-          { offset, limit }
-        )
+      ? await certificateDAL.findActiveCertificatesForSync(regularFilters, { offset, limit }, permissionFilters)
       : await certificateDAL.findWithPrivateKeyInfo(
+          regularFilters,
           {
-            projectId,
-            ...(friendlyName && { friendlyName }),
-            ...(commonName && { commonName })
+            offset,
+            limit,
+            sort: [["notAfter", "desc"]]
           },
-          { offset, limit, sort: [["notAfter", "desc"]] }
+          permissionFilters
         );
 
+    const countFilter = {
+      projectId,
+      ...(regularFilters.friendlyName && { friendlyName: String(regularFilters.friendlyName) }),
+      ...(regularFilters.commonName && { commonName: String(regularFilters.commonName) })
+    };
+
     const count = forPkiSync
-      ? await certificateDAL.countActiveCertificatesForSync({
-          projectId,
-          friendlyName,
-          commonName
-        })
-      : await certificateDAL.countCertificatesInProject({
-          projectId,
-          friendlyName,
-          commonName
-        });
+      ? await certificateDAL.countActiveCertificatesForSync(countFilter)
+      : await certificateDAL.countCertificatesInProject(countFilter);
 
     return {
       certificates,
@@ -1984,7 +1989,7 @@ export const projectServiceFactory = ({
       projectTypeUrl = "cert-management";
     }
 
-    const callbackPath = `/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
+    const callbackPath = `/organizations/${project.orgId}/projects/${projectTypeUrl}/${project.id}/access-management?selectedTab=members&requesterEmail=${userDetails.email}`;
 
     await notificationService.createUserNotifications(
       projectMembers

@@ -1,10 +1,11 @@
+import { subject } from "@casl/ability";
 import { faCheck, faCopy, faPencil } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
 import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, IconButton, Tooltip } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import { ProjectPermissionCertificateAuthorityActions, ProjectPermissionSub } from "@app/context";
 import { useTimedReset } from "@app/hooks";
 import { CaStatus, CaType, InternalCaType, useGetCa } from "@app/hooks/api";
 import { caStatusToNameMap, caTypeToNameMap } from "@app/hooks/api/ca/constants";
@@ -13,15 +14,14 @@ import { certKeyAlgorithmToNameMap } from "@app/hooks/api/certificates/constants
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  caName: string;
+  caId: string;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["ca", "renewCa", "installCaCert"]>,
     data?: object
   ) => void;
 };
 
-export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
-  const { currentProject } = useProject();
+export const CaDetailsSection = ({ caId, handlePopUpOpen }: Props) => {
   const [copyTextId, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
   });
@@ -30,8 +30,7 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
   });
 
   const { data } = useGetCa({
-    caName,
-    projectId: currentProject.id,
+    caId,
     type: CaType.INTERNAL
   });
 
@@ -41,7 +40,10 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
     <div className="rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-4">
         <h3 className="text-lg font-medium text-mineshaft-100">CA Details</h3>
-        <ProjectPermissionCan I={ProjectPermissionActions.Edit} a={ProjectPermissionSub.Identity}>
+        <ProjectPermissionCan
+          I={ProjectPermissionCertificateAuthorityActions.Edit}
+          a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
+        >
           {(isAllowed) => {
             return (
               <Tooltip content="Edit CA">
@@ -53,7 +55,7 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
                   onClick={(e) => {
                     e.stopPropagation();
                     handlePopUpOpen("ca", {
-                      name: ca.name
+                      caId: ca.id
                     });
                   }}
                 >
@@ -154,14 +156,10 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
               : "-"}
           </p>
         </div>
-        <div className="mb-4">
-          <p className="text-sm font-medium text-mineshaft-300">Enable Direct Issuance</p>
-          <p className="text-sm text-mineshaft-300">{ca.enableDirectIssuance ? "True" : "False"}</p>
-        </div>
         {ca.status === CaStatus.ACTIVE && (
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Edit}
-            a={ProjectPermissionSub.CertificateAuthorities}
+            I={ProjectPermissionCertificateAuthorityActions.Renew}
+            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
               return (
@@ -196,8 +194,8 @@ export const CaDetailsSection = ({ caName, handlePopUpOpen }: Props) => {
         )}
         {ca.status === CaStatus.PENDING_CERTIFICATE && (
           <ProjectPermissionCan
-            I={ProjectPermissionActions.Create}
-            a={ProjectPermissionSub.CertificateAuthorities}
+            I={ProjectPermissionCertificateAuthorityActions.Create}
+            a={subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })}
           >
             {(isAllowed) => {
               return (

@@ -29,6 +29,7 @@ import {
   Pagination,
   Table,
   TableContainer,
+  TableSkeleton,
   TBody,
   Th,
   THead,
@@ -40,11 +41,22 @@ import {
   ProjectPermissionPamAccountActions,
   ProjectPermissionSub
 } from "@app/context/ProjectPermissionContext/types";
+import {
+  getUserTablePreference,
+  PreferenceKey,
+  setUserTablePreference
+} from "@app/helpers/userTablePreferences";
 import { usePagination, usePopUp, useResetPageHelper } from "@app/hooks";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
-import { PAM_RESOURCE_TYPE_MAP, TPamAccount, TPamFolder } from "@app/hooks/api/pam";
+import {
+  PAM_RESOURCE_TYPE_MAP,
+  PamAccountOrderBy,
+  PamAccountView,
+  TPamFolder
+} from "@app/hooks/api/pam";
+import { useListPamAccounts, useListPamResources } from "@app/hooks/api/pam/queries";
 
-import { AccountView, AccountViewToggle } from "./AccountViewToggle";
+import { AccountViewToggle } from "./AccountViewToggle";
 import { FolderBreadCrumbs } from "./FolderBreadCrumbs";
 import { PamAccessAccountModal } from "./PamAccessAccountModal";
 import { PamAccountRow } from "./PamAccountRow";
@@ -56,21 +68,15 @@ import { PamFolderRow } from "./PamFolderRow";
 import { PamUpdateAccountModal } from "./PamUpdateAccountModal";
 import { PamUpdateFolderModal } from "./PamUpdateFolderModal";
 
-enum OrderBy {
-  Name = "name"
-}
-
-type Filters = {
-  resource: string[];
+type PamAccountFilter = {
+  resourceIds: string[];
 };
 
 type Props = {
-  accounts: TPamAccount[];
-  folders: TPamFolder[];
   projectId: string;
 };
 
-export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
+export const PamAccountsTable = ({ projectId }: Props) => {
   const navigate = useNavigate({ from: ROUTE_PATHS.Pam.AccountsPage.path });
 
   const { popUp, handlePopUpOpen, handlePopUpClose, handlePopUpToggle } = usePopUp([
@@ -92,18 +98,21 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
     from: ROUTE_PATHS.Pam.AccountsPage.id
   });
 
-  const [accountView, setAccountView] = useState<AccountView>(initAccountView ?? AccountView.Flat);
+  const [accountView, setAccountView] = useState<PamAccountView>(
+    initAccountView ?? PamAccountView.Flat
+  );
 
-  const [filters, setFilters] = useState<Filters>({
-    resource: []
+  const [filter, setFilter] = useState<PamAccountFilter>({
+    resourceIds: []
   });
 
   const {
     search,
+    debouncedSearch,
     setSearch,
-    setPage,
     page,
     perPage,
+    setPage,
     setPerPage,
     offset,
     orderDirection,
@@ -111,114 +120,74 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
     orderBy,
     setOrderDirection,
     setOrderBy
-  } = usePagination<OrderBy>(OrderBy.Name, { initPerPage: 20, initSearch });
+  } = usePagination<PamAccountOrderBy>(PamAccountOrderBy.Name, {
+    initPerPage: getUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, 20),
+    initSearch
+  });
 
-  const { foldersByParentId, pathMap, folderPaths } = useMemo(() => {
-    const foldersById: Record<string, TPamFolder> = {};
-    const tempFoldersByParentId: Record<string, TPamFolder[]> = { null: [] };
-    const tempPathMap: Record<string, string> = { "/": "null" };
-    const tempFolderPaths: Record<string, string> = {};
+  const handlePerPageChange = (newPerPage: number) => {
+    setPerPage(newPerPage);
+    setUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, newPerPage);
+  };
 
-    folders.forEach((folder) => {
-      foldersById[folder.id] = folder;
-      if (!tempFoldersByParentId[folder.parentId || "null"]) {
-        tempFoldersByParentId[folder.parentId || "null"] = [];
-      }
-      tempFoldersByParentId[folder.parentId || "null"].push(folder);
-    });
+  const { data, isLoading } = useListPamAccounts({
+    projectId,
+    accountPath,
+    accountView,
+    offset,
+    limit: perPage,
+    search: debouncedSearch,
+    orderBy,
+    orderDirection,
+    filterResourceIds: filter.resourceIds.length ? filter.resourceIds.join(",") : undefined
+  });
 
-    const buildPaths = (parentId: string | null, currentPath: string) => {
-      (tempFoldersByParentId[parentId || "null"] || []).forEach((folder) => {
-        const newPath = `${currentPath}${folder.name}/`;
-        tempPathMap[newPath] = folder.id;
-        tempFolderPaths[folder.id] = newPath;
-        buildPaths(folder.id, newPath);
-      });
-    };
-
-    buildPaths(null, "/");
-
-    return {
-      foldersByParentId: tempFoldersByParentId,
-      pathMap: tempPathMap,
-      folderPaths: tempFolderPaths
-    };
-  }, [folders]);
-
-  const effectiveFolderIdForFiltering = useMemo(() => {
-    if (accountView === AccountView.Flat) {
-      return null;
-    }
-    const folderId = pathMap[accountPath];
-    return folderId === "null" ? null : folderId || null;
-  }, [accountView, accountPath, pathMap]);
-
-  const foldersToRender = useMemo(() => {
-    if (accountView === AccountView.Flat) {
-      return [];
-    }
-    return (foldersByParentId[effectiveFolderIdForFiltering || "null"] || []).filter((folder) =>
-      folder.name.toLowerCase().includes(search.trim().toLowerCase())
-    );
-  }, [accountView, effectiveFolderIdForFiltering, foldersByParentId, search]);
-
-  const accountsToProcess = useMemo(() => {
-    if (accountView === AccountView.Flat) {
-      return accounts;
-    }
-    return accounts.filter(
-      (acc) => (acc.folderId || "null") === (effectiveFolderIdForFiltering || "null")
-    );
-  }, [accountView, accounts, effectiveFolderIdForFiltering]);
-
-  const filteredAccounts = useMemo(
-    () =>
-      accountsToProcess
-        .filter((account) => {
-          const {
-            name,
-            description,
-            resource: { name: resourceName, id: resourceId }
-          } = account;
-
-          if (filters.resource.length && !filters.resource.includes(resourceId)) {
-            return false;
-          }
-
-          const searchValue = search.trim().toLowerCase();
-          const path = (account.folderId && folderPaths[account.folderId]) || "";
-
-          return (
-            name.toLowerCase().includes(searchValue) ||
-            resourceName.toLowerCase().includes(searchValue) ||
-            (description || "").toLowerCase().includes(searchValue) ||
-            path.toLowerCase().includes(searchValue)
-          );
-        })
-        .sort((a, b) => {
-          const [accOne, accTwo] = orderDirection === OrderByDirection.ASC ? [a, b] : [b, a];
-
-          switch (orderBy) {
-            case OrderBy.Name:
-            default:
-              return accOne.name.toLowerCase().localeCompare(accTwo.name.toLowerCase());
-          }
-        }),
-    [accountsToProcess, orderDirection, search, orderBy, filters, folderPaths]
-  );
+  const accounts = data?.accounts || [];
+  const folders = data?.folders || [];
+  const totalCount = data?.totalCount || 0;
+  const folderPaths = data?.folderPaths || {};
+  const currentFolderId = data?.folderId ?? null;
 
   useResetPageHelper({
-    totalCount: filteredAccounts.length,
+    totalCount,
     offset,
     setPage
   });
 
-  const currentPageData = useMemo(
-    () => filteredAccounts.slice(offset, perPage * page),
-    [filteredAccounts, offset, perPage, page]
+  const foldersToRender = useMemo(() => {
+    if (accountView === PamAccountView.Flat) {
+      return [];
+    }
+    return folders.filter((folder) =>
+      folder.name.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  }, [accountView, folders, search]);
+
+  const filteredAccounts = useMemo(
+    () =>
+      accounts.filter((account) => {
+        const {
+          name,
+          description,
+          resource: { name: resourceName, id: resourceId }
+        } = account;
+
+        if (filter.resourceIds.length && !filter.resourceIds.includes(resourceId)) {
+          return false;
+        }
+
+        const searchValue = search.trim().toLowerCase();
+
+        return (
+          name.toLowerCase().includes(searchValue) ||
+          resourceName.toLowerCase().includes(searchValue) ||
+          (description || "").toLowerCase().includes(searchValue)
+        );
+      }),
+    [accounts, search, filter]
   );
 
-  const handleSort = (column: OrderBy) => {
+  const handleSort = (column: PamAccountOrderBy) => {
     if (column === orderBy) {
       toggleOrderDirection();
       return;
@@ -228,15 +197,16 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
     setOrderDirection(OrderByDirection.ASC);
   };
 
-  const getClassName = (col: OrderBy) => twMerge("ml-2", orderBy === col ? "" : "opacity-30");
+  const getClassName = (col: PamAccountOrderBy) =>
+    twMerge("ml-2", orderBy === col ? "" : "opacity-30");
 
-  const getColSortIcon = (col: OrderBy) =>
+  const getColSortIcon = (col: PamAccountOrderBy) =>
     orderDirection === OrderByDirection.DESC && orderBy === col ? faArrowUp : faArrowDown;
 
-  const isTableFiltered = Boolean(filters.resource.length);
+  const isTableFiltered = Boolean(filter.resourceIds.length);
 
   const handleFolderClick = (folder: TPamFolder) => {
-    if (accountView === AccountView.Flat) {
+    if (accountView === PamAccountView.Flat) {
       return;
     }
     const newPath = `${accountPath}${folder.name}/`;
@@ -246,17 +216,17 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
   const isContentEmpty = !filteredAccounts.length && !foldersToRender.length;
   const isSearchEmpty = isContentEmpty && (Boolean(search) || isTableFiltered);
 
-  const uniqueResources = useMemo(() => {
-    const resourceMap = new Map<string, TPamAccount["resource"]>();
-    accounts.forEach((account) => {
-      resourceMap.set(account.resource.id, account.resource);
-    });
-    return Array.from(resourceMap.values());
-  }, [accounts]);
+  const { data: resourcesData } = useListPamResources({
+    projectId,
+    // temporarily returning a large number until we rework table filtering
+    limit: 100
+  });
+
+  const resources = resourcesData?.resources || [];
 
   return (
     <div>
-      {accountView === AccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
+      {accountView === PamAccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
       <div className="mt-4 flex gap-2">
         <ProjectPermissionCan I={ProjectPermissionActions.Read} a={ProjectPermissionSub.PamFolders}>
           {(isAllowed) =>
@@ -264,12 +234,14 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
               <AccountViewToggle
                 value={accountView}
                 onChange={(e) => {
+                  setPage(1);
+                  setFilter({ resourceIds: [] });
                   setAccountView(e);
                   navigate({
                     search: (prev) => ({
                       ...prev,
-                      accountView: e === AccountView.Flat ? undefined : e,
-                      accountPath: e === AccountView.Flat ? "/" : prev.accountPath
+                      accountView: e === PamAccountView.Flat ? undefined : e,
+                      accountPath: e === PamAccountView.Flat ? "/" : prev.accountPath
                     })
                   });
                 }}
@@ -307,25 +279,25 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent className="max-h-[70vh] thin-scrollbar overflow-y-auto" align="end">
             <DropdownMenuLabel>Resource</DropdownMenuLabel>
-            {uniqueResources.length ? (
-              uniqueResources.map((resource) => {
+            {resources.length ? (
+              resources.map((resource) => {
                 const { name, image } = PAM_RESOURCE_TYPE_MAP[resource.resourceType];
 
                 return (
                   <DropdownMenuItem
                     onClick={(e) => {
                       e.preventDefault();
-                      const newResources = filters.resource.includes(resource.id)
-                        ? filters.resource.filter((a) => a !== resource.id)
-                        : [...filters.resource, resource.id];
-                      setFilters((prev) => ({
+                      const newResources = filter.resourceIds.includes(resource.id)
+                        ? filter.resourceIds.filter((a) => a !== resource.id)
+                        : [...filter.resourceIds, resource.id];
+                      setFilter((prev) => ({
                         ...prev,
-                        resource: newResources
+                        resourceIds: newResources
                       }));
                     }}
                     key={resource.id}
                     icon={
-                      filters.resource.includes(resource.id) && (
+                      filter.resourceIds.includes(resource.id) && (
                         <FontAwesomeIcon className="text-primary" icon={faCheckCircle} />
                       )
                     }
@@ -358,12 +330,12 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                 leftIcon={<FontAwesomeIcon icon={faPlus} />}
                 onClick={() => handlePopUpOpen("addAccount")}
                 isDisabled={!isAllowedToCreateAccounts}
-                className={`h-10 transition-colors ${accountView === AccountView.Flat ? "" : "rounded-r-none"}`}
+                className={`h-10 transition-colors ${accountView === PamAccountView.Flat ? "" : "rounded-r-none"}`}
               >
                 Add Account
               </Button>
 
-              {accountView !== AccountView.Flat && (
+              {accountView !== PamAccountView.Flat && (
                 <DropdownMenu
                   open={popUp.misc.isOpen}
                   onOpenChange={(isOpen) => handlePopUpToggle("misc", isOpen)}
@@ -414,11 +386,11 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
                   Accounts
                   <IconButton
                     variant="plain"
-                    className={getClassName(OrderBy.Name)}
+                    className={getClassName(PamAccountOrderBy.Name)}
                     ariaLabel="sort"
-                    onClick={() => handleSort(OrderBy.Name)}
+                    onClick={() => handleSort(PamAccountOrderBy.Name)}
                   >
-                    <FontAwesomeIcon icon={getColSortIcon(OrderBy.Name)} />
+                    <FontAwesomeIcon icon={getColSortIcon(PamAccountOrderBy.Name)} />
                   </IconButton>
                 </div>
               </Th>
@@ -426,45 +398,48 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
             </Tr>
           </THead>
           <TBody>
-            {accountView !== AccountView.Flat &&
-              foldersToRender.map((folder) => (
-                <PamFolderRow
-                  key={folder.id}
-                  folder={folder}
-                  search={search}
-                  onClick={() => handleFolderClick(folder)}
-                  onUpdate={(e) => handlePopUpOpen("updateFolder", e)}
-                  onDelete={(e) => handlePopUpOpen("deleteFolder", e)}
-                />
-              ))}
-            {currentPageData.map((account) => (
-              <PamAccountRow
-                key={account.id}
-                account={account}
-                search={search}
-                isFlatView={accountView === AccountView.Flat}
-                accountPath={
-                  account.folderId ? folderPaths[account.folderId]?.slice(0, -1) : undefined
-                }
-                onAccess={(e) => {
-                  handlePopUpOpen("accessAccount", e);
-                }}
-                onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
-                onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
-              />
-            ))}
+            {isLoading && <TableSkeleton columns={2} innerKey="pam-accounts" />}
+            {!isLoading && (
+              <>
+                {accountView !== PamAccountView.Flat &&
+                  foldersToRender.map((folder) => (
+                    <PamFolderRow
+                      key={folder.id}
+                      folder={folder}
+                      search={search}
+                      onClick={() => handleFolderClick(folder)}
+                      onUpdate={(e) => handlePopUpOpen("updateFolder", e)}
+                      onDelete={(e) => handlePopUpOpen("deleteFolder", e)}
+                    />
+                  ))}
+                {filteredAccounts.map((account) => (
+                  <PamAccountRow
+                    key={account.id}
+                    account={account}
+                    search={search}
+                    isFlatView={accountView === PamAccountView.Flat}
+                    accountPath={account.folderId ? folderPaths[account.folderId] : undefined}
+                    onAccess={(e) => {
+                      handlePopUpOpen("accessAccount", e);
+                    }}
+                    onUpdate={(e) => handlePopUpOpen("updateAccount", e)}
+                    onDelete={(e) => handlePopUpOpen("deleteAccount", e)}
+                  />
+                ))}
+              </>
+            )}
           </TBody>
         </Table>
-        {Boolean(filteredAccounts.length) && (
+        {Boolean(totalCount) && !isLoading && (
           <Pagination
-            count={filteredAccounts.length}
+            count={totalCount}
             page={page}
             perPage={perPage}
-            onChangePage={setPage}
-            onChangePerPage={setPerPage}
+            onChangePage={(newPage) => setPage(newPage)}
+            onChangePerPage={handlePerPageChange}
           />
         )}
-        {isContentEmpty && (
+        {!isLoading && isContentEmpty && (
           <EmptyState
             title={isSearchEmpty ? "No accounts match search" : "No accounts"}
             icon={isSearchEmpty ? faSearch : faCircleXmark}
@@ -485,12 +460,18 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
         isOpen={popUp.addFolder.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addFolder", isOpen)}
         projectId={projectId}
-        currentFolderId={effectiveFolderIdForFiltering}
+        currentFolderId={currentFolderId}
       />
       <PamAccessAccountModal
         isOpen={popUp.accessAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("accessAccount", isOpen)}
         account={popUp.accessAccount.data}
+        accountPath={
+          popUp.accessAccount.data?.folderId
+            ? folderPaths[popUp.accessAccount.data.folderId]
+            : undefined
+        }
+        projectId={projectId}
       />
       <PamDeleteAccountModal
         isOpen={popUp.deleteAccount.isOpen}
@@ -506,7 +487,7 @@ export const PamAccountsTable = ({ accounts, folders, projectId }: Props) => {
         isOpen={popUp.addAccount.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addAccount", isOpen)}
         projectId={projectId}
-        currentFolderId={effectiveFolderIdForFiltering}
+        currentFolderId={currentFolderId}
       />
     </div>
   );

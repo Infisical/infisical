@@ -119,6 +119,7 @@ const envSchema = z
         })
         .default("{}")
     ),
+    DNS_MADE_EASY_SANDBOX_ENABLED: zodStrBool.default("false").optional(),
     // smtp options
     SMTP_HOST: zpStr(z.string().optional()),
     SMTP_IGNORE_TLS: zodStrBool.default("false"),
@@ -400,7 +401,7 @@ const envSchema = z
     isAcmeDevelopmentMode: data.NODE_ENV === "development" && data.ACME_DEVELOPMENT_MODE,
     isProductionMode: data.NODE_ENV === "production" || IS_PACKAGED,
     isRedisSentinelMode: Boolean(data.REDIS_SENTINEL_HOSTS),
-    isBddNockApiEnabled: data.NODE_ENV === "development" && data.BDD_NOCK_API_ENABLED,
+    isBddNockApiEnabled: data.NODE_ENV !== "production" && data.BDD_NOCK_API_ENABLED,
     REDIS_SENTINEL_HOSTS: data.REDIS_SENTINEL_HOSTS?.trim()
       ?.split(",")
       .map((el) => {

@@ -31,12 +31,17 @@ import { orderCertificate } from "@app/services/certificate-authority/acme/acme-
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
-import { extractCertificateRequestFromCSR } from "@app/services/certificate-common/certificate-csr-utils";
+import {
+  extractAlgorithmsFromCSR,
+  extractCertificateRequestFromCSR
+} from "@app/services/certificate-common/certificate-csr-utils";
 import { TCertificateProfileDALFactory } from "@app/services/certificate-profile/certificate-profile-dal";
 import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
+import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
@@ -62,6 +67,7 @@ import {
 import { buildUrl, extractAccountIdFromKid, validateDnsIdentifier } from "./pki-acme-fns";
 import { TPkiAcmeOrderAuthDALFactory } from "./pki-acme-order-auth-dal";
 import { TPkiAcmeOrderDALFactory } from "./pki-acme-order-dal";
+import { TPkiAcmeQueueServiceFactory } from "./pki-acme-queue";
 import {
   AcmeAuthStatus,
   AcmeChallengeStatus,
@@ -94,12 +100,13 @@ import {
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
   appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction">;
+  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
   externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
   certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
+  certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
     "findByProjectIdAndAccountId" | "findByProfileIdAndPublicKeyThumbprintAndAlg" | "create"
@@ -126,7 +133,9 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
-  acmeChallengeService: TPkiAcmeChallengeServiceFactory;
+  certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
+  pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -138,6 +147,7 @@ export const pkiAcmeServiceFactory = ({
   certificateProfileDAL,
   certificateBodyDAL,
   certificateSecretDAL,
+  certificateTemplateV2DAL,
   acmeAccountDAL,
   acmeOrderDAL,
   acmeAuthDAL,
@@ -147,7 +157,9 @@ export const pkiAcmeServiceFactory = ({
   kmsService,
   licenseService,
   certificateV3Service,
-  acmeChallengeService
+  certificateTemplateV2Service,
+  acmeChallengeService,
+  pkiAcmeQueueService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -206,6 +218,9 @@ export const pkiAcmeServiceFactory = ({
     const { protectedHeader: rawProtectedHeader, payload: rawPayload } = result;
     try {
       const protectedHeader = ProtectedHeaderSchema.parse(rawProtectedHeader);
+      if (protectedHeader.jwk && protectedHeader.kid) {
+        throw new AcmeMalformedError({ message: "Both JWK and KID are provided in the protected header" });
+      }
       const parsedUrl = (() => {
         try {
           return new URL(protectedHeader.url);
@@ -288,6 +303,7 @@ export const pkiAcmeServiceFactory = ({
       url,
       rawJwsPayload,
       getJWK: async (protectedHeader) => {
+        // get jwk instead of kid
         if (!protectedHeader.kid) {
           throw new AcmeMalformedError({ message: "KID is required in the protected header" });
         }
@@ -353,7 +369,10 @@ export const pkiAcmeServiceFactory = ({
     return {
       newNonce: buildUrl(profile.id, "/new-nonce"),
       newAccount: buildUrl(profile.id, "/new-account"),
-      newOrder: buildUrl(profile.id, "/new-order")
+      newOrder: buildUrl(profile.id, "/new-order"),
+      meta: {
+        externalAccountRequired: true
+      }
     };
   };
 
@@ -386,11 +405,61 @@ export const pkiAcmeServiceFactory = ({
     payload: TCreateAcmeAccountPayload;
   }): Promise<TAcmeResponse<TCreateAcmeAccountResponse>> => {
     const profile = await validateAcmeProfile(profileId);
+    const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
+
+    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
+      profileId,
+      alg,
+      publicKeyThumbprint
+    );
+    if (onlyReturnExisting) {
+      if (!existingAccount) {
+        throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
+      }
+      return {
+        status: 200,
+        body: {
+          status: "valid",
+          contact: existingAccount.emails,
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+        },
+        headers: {
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+        }
+      };
+    }
+
+    // Note: We only check EAB for the new account request. This is a very special case for cert-manager.
+    // There's a bug in their ACME client implementation, they don't take the account KID value they have
+    // and relying on a '{"onlyReturnExisting": true}' new-account request to find out their KID value.
+    // But the problem is, that new-account request doesn't come with EAB. And while the get existing account operation
+    // fails, they just discard the error and proceed to request a new order. Since no KID provided, their ACME
+    // client will send JWK instead. As a result, we are seeing KID not provide in header error for the new-order
+    // endpoint.
+    //
+    // To solve the problem, we lose the check for EAB a bit for the onlyReturnExisting new account request.
+    // It should be fine as we've already checked EAB when they created the account.
+    // And the private key ownership indicating they are the same user.
+    // ref: https://github.com/cert-manager/cert-manager/issues/7388#issuecomment-3535630925
     if (!externalAccountBinding) {
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
+    if (existingAccount) {
+      return {
+        status: 200,
+        body: {
+          status: "valid",
+          contact: existingAccount.emails,
+          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
+        },
+        headers: {
+          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
+          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
+        }
+      };
+    }
 
-    const publicKeyThumbprint = await calculateJwkThumbprint(jwk, "sha256");
     const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
       projectId: profile.projectId,
       projectDAL,
@@ -441,30 +510,7 @@ export const pkiAcmeServiceFactory = ({
       });
     }
 
-    const existingAccount: TPkiAcmeAccounts | null = await acmeAccountDAL.findByProfileIdAndPublicKeyThumbprintAndAlg(
-      profileId,
-      alg,
-      publicKeyThumbprint
-    );
-    if (onlyReturnExisting && !existingAccount) {
-      throw new AcmeAccountDoesNotExistError({ message: "ACME account not found" });
-    }
-    if (existingAccount) {
-      // With the same public key, we found an existing account, just return it
-      return {
-        status: 200,
-        body: {
-          status: "valid",
-          contact: existingAccount.emails,
-          orders: buildUrl(profile.id, `/accounts/${existingAccount.id}/orders`)
-        },
-        headers: {
-          Location: buildUrl(profile.id, `/accounts/${existingAccount.id}`),
-          Link: `<${buildUrl(profile.id, "/directory")}>;rel="index"`
-        }
-      };
-    }
-
+    // TODO: handle unique constraint violation error, should be very very rare
     const newAccount = await acmeAccountDAL.create({
       profileId: profile.id,
       alg,
@@ -649,6 +695,13 @@ export const pkiAcmeServiceFactory = ({
     payload: TFinalizeAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
     const profile = (await certificateProfileDAL.findByIdWithConfigs(profileId))!;
+
+    if (!profile.caId) {
+      throw new BadRequestError({
+        message: "Self-signed certificates are not supported for ACME enrollment"
+      });
+    }
+
     let order = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
@@ -669,9 +722,6 @@ export const pkiAcmeServiceFactory = ({
 
         // Check and validate the CSR
         const certificateRequest = extractCertificateRequestFromCSR(csr);
-        if (!certificateRequest.commonName) {
-          throw new AcmeBadCSRError({ message: "Invalid CSR: Common name is required" });
-        }
         if (
           certificateRequest.subjectAlternativeNames?.some(
             (san) => san.type !== CertSubjectAlternativeNameType.DNS_NAME
@@ -687,7 +737,7 @@ export const pkiAcmeServiceFactory = ({
         const csrIdentifierValues = new Set(
           (certificateRequest.subjectAlternativeNames ?? [])
             .map((san) => san.value.toLowerCase())
-            .concat([certificateRequest.commonName.toLowerCase()])
+            .concat(certificateRequest.commonName ? [certificateRequest.commonName.toLowerCase()] : [])
         );
         if (
           csrIdentifierValues.size !== orderWithAuthorizations.authorizations.length ||
@@ -698,7 +748,7 @@ export const pkiAcmeServiceFactory = ({
           throw new AcmeBadCSRError({ message: "Invalid CSR: Common name + SANs mismatch with order identifiers" });
         }
 
-        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId);
+        const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(profile.caId!);
         if (!ca) {
           throw new NotFoundError({ message: "Certificate Authority not found" });
         }
@@ -731,14 +781,39 @@ export const pkiAcmeServiceFactory = ({
             const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
             const csrObj = new x509.Pkcs10CertificateRequest(csr);
             const csrPem = csrObj.toString("pem");
-            // TODO: for internal CA, we rely on the internal certificate authority service to check CSR against the template
-            //       we should check the CSR against the template here
+
+            const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+              extractAlgorithmsFromCSR(csr);
+
+            certificateRequest.keyAlgorithm = extractedKeyAlgorithm;
+            certificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
+            if (finalizingOrder.notAfter) {
+              const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
+              const notAfter = new Date(finalizingOrder.notAfter);
+              const diffMs = notAfter.getTime() - notBefore.getTime();
+              const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+              certificateRequest.validity = { ttl: `${diffDays}d` };
+            }
+
+            const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
+            if (!template) {
+              throw new NotFoundError({ message: "Certificate template not found" });
+            }
+            const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+              template.id,
+              certificateRequest
+            );
+            if (!validationResult.isValid) {
+              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+            }
             // TODO: this is pretty slow, and we are holding the transaction open for a long time,
             //       we should queue the certificate issuance to a background job instead
             const cert = await orderCertificate(
               {
                 caId: certificateAuthority!.id,
-                commonName: certificateRequest.commonName!,
+                // It is possible that the CSR does not have a common name, in which case we use an empty string
+                // (more likely than not for a CSR from a modern ACME client like certbot, cert-manager, etc.)
+                commonName: certificateRequest.commonName ?? "",
                 altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
                 csr: Buffer.from(csrPem),
                 // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
@@ -781,6 +856,8 @@ export const pkiAcmeServiceFactory = ({
           // TODO: audit log the error
           if (exp instanceof BadRequestError) {
             errorToReturn = new AcmeBadCSRError({ message: `Invalid CSR: ${exp.message}` });
+          } else if (exp instanceof AcmeError) {
+            errorToReturn = exp;
           } else {
             errorToReturn = new AcmeServerInternalError({ message: "Failed to sign certificate with internal error" });
           }
@@ -935,7 +1012,8 @@ export const pkiAcmeServiceFactory = ({
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
     }
-    await acmeChallengeService.validateChallengeResponse(challengeId);
+    await acmeChallengeService.markChallengeAsReady(challengeId);
+    await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
     return {
       status: 200,

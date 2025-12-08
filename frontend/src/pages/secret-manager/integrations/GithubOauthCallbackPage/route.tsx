@@ -13,7 +13,7 @@ export const GithubOAuthCallbackPageQueryParamsSchema = z.object({
 });
 
 export const Route = createFileRoute(
-  "/_authenticate/_inject-org-details/_org-layout/projects/secret-management/$projectId/_secret-manager-layout/integrations/github/oauth2/callback"
+  "/_authenticate/_inject-org-details/_org-layout/organizations/$orgId/projects/secret-management/$projectId/_secret-manager-layout/integrations/github/oauth2/callback"
 )({
   component: GithubOauthCallbackPage,
   validateSearch: zodValidator(GithubOAuthCallbackPageQueryParamsSchema),
@@ -24,7 +24,7 @@ export const Route = createFileRoute(
         {
           label: "Integrations",
           link: linkOptions({
-            to: "/projects/secret-management/$projectId/integrations",
+            to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
             params,
             search: {
               selectedTab: IntegrationsListPageTabs.NativeIntegrations

@@ -25,6 +25,7 @@
     "outputPath": "binary"
   },
   "scripts": {
+    "assets:export": "./scripts/export-assets.sh",
     "binary:build": "npm run binary:clean && npm run build:frontend && npm run build && npm run binary:babel-frontend && npm run binary:babel-backend && npm run binary:rename-imports",
     "binary:package": "pkg --no-bytecode --public-packages \"*\" --public --target host .",
     "binary:babel-backend": " babel ./dist -d ./dist",
@@ -32,7 +33,7 @@
     "binary:clean": "rm -rf ./dist && rm -rf ./binary",
     "binary:rename-imports": "ts-node ./scripts/rename-mjs.ts",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "tsx watch --clear-screen=false ./src/main.ts  | pino-pretty --colorize --colorizeObjects --singleLine",
+    "dev": "tsx watch --clear-screen=false ./src/main.ts  --config tsconfig.dev.json | pino-pretty --colorize --colorizeObjects --singleLine",
     "dev:docker": "nodemon",
     "build": "tsup --sourcemap",
     "build:frontend": "npm run build --prefix ../frontend",
@@ -110,6 +111,7 @@
     "@types/resolve": "^1.20.6",
     "@types/safe-regex": "^1.1.6",
     "@types/sjcl": "^1.0.34",
+    "@types/ssh2": "^1.15.5",
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.20.0",
     "@typescript-eslint/parser": "^6.20.0",
@@ -257,6 +259,7 @@
     "sjcl": "^1.0.8",
     "smee-client": "^2.0.0",
     "snowflake-sdk": "^1.14.0",
+    "ssh2": "^1.17.0",
     "tedious": "^18.2.1",
     "tweetnacl": "^1.0.3",
     "tweetnacl-util": "^0.15.1",

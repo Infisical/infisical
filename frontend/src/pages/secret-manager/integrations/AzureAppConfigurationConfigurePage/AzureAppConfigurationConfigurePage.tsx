@@ -21,7 +21,7 @@ import {
 } from "@app/components/v2";
 import { SecretPathInput } from "@app/components/v2/SecretPathInput";
 import { ROUTE_PATHS } from "@app/const/routes";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { useCreateIntegration } from "@app/hooks/api";
 import { useGetIntegrationAuthById } from "@app/hooks/api/integrationAuth";
 import { IntegrationSyncBehavior } from "@app/hooks/api/integrations/types";
@@ -79,7 +79,7 @@ export const AzureAppConfigurationConfigurePage = () => {
 
   const selectedEnvironment = watch("sourceEnvironment");
   const { mutateAsync } = useCreateIntegration();
-
+  const { currentOrg } = useOrganization();
   const integrationAuthId = useSearch({
     from: ROUTE_PATHS.SecretManager.Integratons.AzureAppConfigurationsConfigurePage.id,
     select: (el) => el.integrationAuthId
@@ -131,8 +131,9 @@ export const AzureAppConfigurationConfigurePage = () => {
       });
 
       navigate({
-        to: "/projects/secret-management/$projectId/integrations",
+        to: "/organizations/$orgId/projects/secret-management/$projectId/integrations",
         params: {
+          orgId: currentOrg.id,
           projectId: currentProject.id
         },
         search: {

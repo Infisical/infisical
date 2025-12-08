@@ -10,11 +10,30 @@ import { PamResourceType, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
   account?: TPamAccount;
+  accountPath?: string;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  projectId: string;
 };
 
-export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) => {
+export const PamAccessAccountModal = ({
+  isOpen,
+  onOpenChange,
+  account,
+  projectId,
+  accountPath
+}: Props) => {
+  let fullAccountPath = account?.name;
+  if (accountPath) {
+    let path = accountPath;
+    if (path.startsWith("/")) path = path.slice(1);
+    fullAccountPath = `${path}/${account?.name}`;
+  }
+
+  const { protocol, hostname, port } = window.location;
+  const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
+  const siteURL = `${protocol}//${hostname}${portSuffix}`;
+
   const [duration, setDuration] = useState("4h");
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
@@ -58,15 +77,19 @@ export const PamAccessAccountModal = ({ isOpen, onOpenChange, account }: Props) 
     return duration;
   }, [duration]);
 
-  const command = useMemo(
-    () =>
-      account &&
-      (account.resource.resourceType === PamResourceType.Postgres ||
-        account.resource.resourceType === PamResourceType.MySQL)
-        ? `infisical pam db access-account ${account.id} --duration ${cliDuration}`
-        : "",
-    [account, cliDuration]
-  );
+  const command = useMemo(() => {
+    if (!account) return "";
+
+    switch (account.resource.resourceType) {
+      case PamResourceType.Postgres:
+      case PamResourceType.MySQL:
+        return `infisical pam db access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+      case PamResourceType.SSH:
+        return `infisical pam ssh access-account ${fullAccountPath} --project-id ${projectId} --duration ${cliDuration} --domain ${siteURL}`;
+      default:
+        return "";
+    }
+  }, [account, cliDuration]);
 
   if (!account) return null;
 

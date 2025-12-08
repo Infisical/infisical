@@ -5,4 +5,4 @@ export {
   useRemoveUserFromGroup,
   useUpdateGroup
 } from "./mutations";
-export { useGetGroupById, useListGroupUsers } from "./queries";
+export { useGetGroupById, useListGroupProjects, useListGroupUsers } from "./queries";

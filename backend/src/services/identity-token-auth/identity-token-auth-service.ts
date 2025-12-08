@@ -38,6 +38,7 @@ import {
   TAttachTokenAuthDTO,
   TCreateTokenAuthTokenDTO,
   TGetTokenAuthDTO,
+  TGetTokenAuthTokenByIdDTO,
   TGetTokenAuthTokensDTO,
   TRevokeTokenAuthDTO,
   TRevokeTokenAuthTokenDTO,
@@ -618,6 +619,65 @@ export const identityTokenAuthServiceFactory = ({
     return { tokens, identityMembershipOrg };
   };
 
+  const getTokenAuthTokenById = async ({
+    tokenId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TGetTokenAuthTokenByIdDTO) => {
+    const foundToken = await identityAccessTokenDAL.findOne({
+      [`${TableName.IdentityAccessToken}.id` as "id"]: tokenId,
+      [`${TableName.IdentityAccessToken}.authMethod` as "authMethod"]: IdentityAuthMethod.TOKEN_AUTH
+    });
+    if (!foundToken) throw new NotFoundError({ message: `Token with ID ${tokenId} not found` });
+
+    const identityMembershipOrg = await membershipIdentityDAL.getIdentityById({
+      scopeData: {
+        scope: AccessScope.Organization,
+        orgId: actorOrgId
+      },
+      identityId: foundToken.identityId
+    });
+    if (!identityMembershipOrg) {
+      throw new NotFoundError({ message: `Failed to find identity with ID ${foundToken.identityId}` });
+    }
+
+    if (!identityMembershipOrg.identity.authMethods.includes(IdentityAuthMethod.TOKEN_AUTH)) {
+      throw new BadRequestError({
+        message: "The identity does not have Token Auth"
+      });
+    }
+
+    if (identityMembershipOrg.identity.projectId) {
+      const { permission } = await permissionService.getProjectPermission({
+        actionProjectType: ActionProjectType.Any,
+        actor,
+        actorId,
+        projectId: identityMembershipOrg.identity.projectId,
+        actorAuthMethod,
+        actorOrgId
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionIdentityActions.Read,
+        subject(ProjectPermissionSub.Identity, { identityId: identityMembershipOrg.identity.id })
+      );
+    } else {
+      const { permission } = await permissionService.getOrgPermission({
+        scope: OrganizationActionScope.Any,
+        actor,
+        actorId,
+        orgId: identityMembershipOrg.scopeOrgId,
+        actorAuthMethod,
+        actorOrgId
+      });
+      ForbiddenError.from(permission).throwUnlessCan(OrgPermissionIdentityActions.Read, OrgPermissionSubjects.Identity);
+    }
+
+    return { token: foundToken, identityMembershipOrg };
+  };
+
   const updateTokenAuthToken = async ({
     tokenId,
     name,
@@ -797,6 +857,7 @@ export const identityTokenAuthServiceFactory = ({
     revokeIdentityTokenAuth,
     createTokenAuthToken,
     getTokenAuthTokens,
+    getTokenAuthTokenById,
     updateTokenAuthToken,
     revokeTokenAuthToken
   };

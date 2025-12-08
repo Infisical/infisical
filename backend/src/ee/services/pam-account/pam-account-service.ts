@@ -1,6 +1,6 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
-import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamResources } from "@app/db/schemas";
+import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -27,12 +27,14 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
+import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
 import { TPamAccountDALFactory } from "./pam-account-dal";
+import { PamAccountView } from "./pam-account-enums";
 import { decryptAccount, decryptAccountCredentials, encryptAccountCredentials } from "./pam-account-fns";
-import { TAccessAccountDTO, TCreateAccountDTO, TUpdateAccountDTO } from "./pam-account-types";
+import { TAccessAccountDTO, TCreateAccountDTO, TListAccountsDTO, TUpdateAccountDTO } from "./pam-account-types";
 
 type TPamAccountServiceFactoryDep = {
   pamResourceDAL: TPamResourceDALFactory;
@@ -251,17 +253,17 @@ export const pamAccountServiceFactory = ({
         gatewayV2Service
       );
 
-      // Logic to prevent overwriting unedited censored values
-      const finalCredentials = { ...credentials };
-      if (credentials.password === "__INFISICAL_UNCHANGED__") {
-        const decryptedCredentials = await decryptAccountCredentials({
-          encryptedCredentials: account.encryptedCredentials,
-          projectId: account.projectId,
-          kmsService
-        });
+      const decryptedCredentials = await decryptAccountCredentials({
+        encryptedCredentials: account.encryptedCredentials,
+        projectId: account.projectId,
+        kmsService
+      });
 
-        finalCredentials.password = decryptedCredentials.password;
-      }
+      // Logic to prevent overwriting unedited censored values
+      const finalCredentials = await factory.handleOverwritePreventionForCensoredValues(
+        credentials,
+        decryptedCredentials
+      );
 
       const validatedCredentials = await factory.validateAccountCredentials(finalCredentials);
       const encryptedCredentials = await encryptAccountCredentials({
@@ -334,21 +336,96 @@ export const pamAccountServiceFactory = ({
     };
   };
 
-  const list = async (projectId: string, actor: OrgServiceActor) => {
+  const list = async ({
+    projectId,
+    accountPath,
+    accountView,
+    actor,
+    actorId,
+    actorAuthMethod,
+    actorOrgId,
+    ...params
+  }: TListAccountsDTO) => {
     const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
+      actor,
+      actorId,
       projectId,
+      actorAuthMethod,
+      actorOrgId,
       actionProjectType: ActionProjectType.PAM
     });
 
-    const accountsWithResourceDetails = await pamAccountDAL.findWithResourceDetails({ projectId });
+    const limit = params.limit || 20;
+    const offset = params.offset || 0;
 
     const canReadFolders = permission.can(ProjectPermissionActions.Read, ProjectPermissionSub.PamFolders);
 
-    const folders = canReadFolders ? await pamFolderDAL.find({ projectId }) : [];
+    const folder = accountPath === "/" ? null : await pamFolderDAL.findByPath(projectId, accountPath);
+    if (accountPath !== "/" && !folder) {
+      return { accounts: [], folders: [], totalCount: 0, folderPaths: {} };
+    }
+    const folderId = folder?.id;
+
+    let totalFolderCount = 0;
+    if (canReadFolders && accountView === PamAccountView.Nested) {
+      const { totalCount } = await pamFolderDAL.findByProjectId({
+        projectId,
+        parentId: folderId,
+        search: params.search
+      });
+      totalFolderCount = totalCount;
+    }
+
+    let folders: TPamFolders[] = [];
+    if (canReadFolders && accountView === PamAccountView.Nested && offset < totalFolderCount) {
+      const folderLimit = Math.min(limit, totalFolderCount - offset);
+      const { folders: foldersResp } = await pamFolderDAL.findByProjectId({
+        projectId,
+        parentId: folderId,
+        limit: folderLimit,
+        offset,
+        search: params.search,
+        orderBy: params.orderBy,
+        orderDirection: params.orderDirection
+      });
+
+      folders = foldersResp;
+    }
+
+    let accountsWithResourceDetails: Awaited<
+      ReturnType<typeof pamAccountDAL.findByProjectIdWithResourceDetails>
+    >["accounts"] = [];
+    let totalAccountCount = 0;
+
+    const accountsToFetch = limit - folders.length;
+    if (accountsToFetch > 0) {
+      const accountOffset = Math.max(0, offset - totalFolderCount);
+      const { accounts, totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+        projectId,
+        folderId,
+        accountView,
+        offset: accountOffset,
+        limit: accountsToFetch,
+        search: params.search,
+        orderBy: params.orderBy,
+        orderDirection: params.orderDirection,
+        filterResourceIds: params.filterResourceIds
+      });
+      accountsWithResourceDetails = accounts;
+      totalAccountCount = totalCount;
+    } else {
+      // if no accounts are to be fetched for the current page, we still need the total count for pagination
+      const { totalCount } = await pamAccountDAL.findByProjectIdWithResourceDetails({
+        projectId,
+        folderId,
+        accountView,
+        search: params.search,
+        filterResourceIds: params.filterResourceIds
+      });
+      totalAccountCount = totalCount;
+    }
+
+    const totalCount = totalFolderCount + totalAccountCount;
 
     const decryptedAndPermittedAccounts: Array<
       TPamAccounts & {
@@ -359,12 +436,6 @@ export const pamAccountServiceFactory = ({
     > = [];
 
     for await (const account of accountsWithResourceDetails) {
-      const accountPath = await getFullPamFolderPath({
-        pamFolderDAL,
-        folderId: account.folderId,
-        projectId: account.projectId
-      });
-
       // Check permission for each individual account
       if (
         permission.can(
@@ -391,14 +462,32 @@ export const pamAccountServiceFactory = ({
       }
     }
 
+    const folderPaths: Record<string, string> = {};
+    const accountFolderIds = [
+      ...new Set(decryptedAndPermittedAccounts.flatMap((a) => (a.folderId ? [a.folderId] : [])))
+    ];
+
+    await Promise.all(
+      accountFolderIds.map(async (fId) => {
+        folderPaths[fId] = await getFullPamFolderPath({
+          pamFolderDAL,
+          folderId: fId,
+          projectId
+        });
+      })
+    );
+
     return {
       accounts: decryptedAndPermittedAccounts,
-      folders
+      folders,
+      totalCount,
+      folderId,
+      folderPaths
     };
   };
 
   const access = async (
-    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
+    { accountPath, projectId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -408,8 +497,36 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    const account = await pamAccountDAL.findById(accountId);
-    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    const pathSegments: string[] = accountPath.split("/").filter(Boolean);
+    if (pathSegments.length === 0) {
+      throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
+    }
+
+    const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
+    const folderPathSegments: string[] = pathSegments.slice(0, -1);
+
+    const folderPath: string = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
+
+    let folderId: string | null = null;
+    if (folderPath !== "/") {
+      const folder = await pamFolderDAL.findByPath(projectId, folderPath);
+      if (!folder) {
+        throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
+      }
+      folderId = folder.id;
+    }
+
+    const account = await pamAccountDAL.findOne({
+      projectId,
+      folderId,
+      name: accountName
+    });
+
+    if (!account) {
+      throw new NotFoundError({
+        message: `Account with name '${accountName}' not found at path '${accountPath}'`
+      });
+    }
 
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
@@ -419,14 +536,8 @@ export const pamAccountServiceFactory = ({
       actorAuthMethod: actor.authMethod,
       actorId: actor.id,
       actorOrgId: actor.orgId,
-      projectId: account.projectId,
+      projectId,
       actionProjectType: ActionProjectType.PAM
-    });
-
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
     });
 
     ForbiddenError.from(permission).throwUnlessCan(
@@ -434,7 +545,7 @@ export const pamAccountServiceFactory = ({
       subject(ProjectPermissionSub.PamAccounts, {
         resourceName: resource.name,
         accountName: account.name,
-        accountPath
+        accountPath: folderPath
       })
     );
 
@@ -444,7 +555,7 @@ export const pamAccountServiceFactory = ({
       actorIp,
       actorName,
       actorUserAgent,
-      projectId: account.projectId,
+      projectId,
       resourceName: resource.name,
       resourceType: resource.resourceType,
       status: PamSessionStatus.Starting,
@@ -453,11 +564,7 @@ export const pamAccountServiceFactory = ({
       expiresAt: new Date(Date.now() + duration)
     });
 
-    const { connectionDetails, gatewayId, resourceType } = await decryptResource(
-      resource,
-      account.projectId,
-      kmsService
-    );
+    const { connectionDetails, gatewayId, resourceType } = await decryptResource(resource, projectId, kmsService);
 
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
@@ -486,23 +593,36 @@ export const pamAccountServiceFactory = ({
       case PamResource.Postgres:
       case PamResource.MySQL:
         {
-          const connectionCredentials = await decryptResourceConnectionDetails({
+          const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
             kmsService,
-            projectId: account.projectId
-          });
+            projectId
+          })) as TSqlResourceConnectionDetails;
 
           const credentials = await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
-            projectId: account.projectId
+            projectId
           });
 
           metadata = {
             username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
-            accountPath
+            accountPath: folderPath
+          };
+        }
+        break;
+      case PamResource.SSH:
+        {
+          const credentials = await decryptAccountCredentials({
+            encryptedCredentials: account.encryptedCredentials,
+            kmsService,
+            projectId
+          });
+
+          metadata = {
+            username: credentials.username
           };
         }
         break;
@@ -520,7 +640,7 @@ export const pamAccountServiceFactory = ({
       gatewayClientPrivateKey: gatewayConnectionDetails.gateway.clientPrivateKey,
       gatewayServerCertificateChain: gatewayConnectionDetails.gateway.serverCertificateChain,
       relayHost: gatewayConnectionDetails.relayHost,
-      projectId: account.projectId,
+      projectId,
       account,
       metadata
     };
@@ -566,11 +686,6 @@ export const pamAccountServiceFactory = ({
       throw new BadRequestError({ message: "Session has ended or expired" });
     }
 
-    // Verify that the session has not already had credentials fetched
-    if (session.status !== PamSessionStatus.Starting) {
-      throw new BadRequestError({ message: "Session has already been started" });
-    }
-
     const account = await pamAccountDAL.findById(session.accountId);
     if (!account) throw new NotFoundError({ message: `Account with ID '${session.accountId}' not found` });
 
@@ -587,11 +702,16 @@ export const pamAccountServiceFactory = ({
 
     const decryptedResource = await decryptResource(resource, session.projectId, kmsService);
 
+    let sessionStarted = false;
+
     // Mark session as started
-    await pamSessionDAL.updateById(sessionId, {
-      status: PamSessionStatus.Active,
-      startedAt: new Date()
-    });
+    if (session.status === PamSessionStatus.Starting) {
+      await pamSessionDAL.updateById(sessionId, {
+        status: PamSessionStatus.Active,
+        startedAt: new Date()
+      });
+      sessionStarted = true;
+    }
 
     return {
       credentials: {
@@ -599,7 +719,8 @@ export const pamAccountServiceFactory = ({
         ...decryptedAccount.credentials
       },
       projectId: project.id,
-      account
+      account,
+      sessionStarted
     };
   };
 

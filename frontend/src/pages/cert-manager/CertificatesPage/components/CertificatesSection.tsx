@@ -6,6 +6,7 @@ import { ProjectPermissionCan } from "@app/components/permissions";
 import { Button, DeleteActionModal } from "@app/components/v2";
 import {
   ProjectPermissionCertificateActions,
+  ProjectPermissionCertificateProfileActions,
   ProjectPermissionSub,
   useProject
 } from "@app/context";
@@ -39,10 +40,13 @@ export const CertificatesSection = () => {
     "managePkiSyncs"
   ] as const);
 
-  const onRemoveCertificateSubmit = async (serialNumber: string) => {
+  const onRemoveCertificateSubmit = async (id: string) => {
     if (!currentProject?.slug) return;
 
-    await deleteCert({ serialNumber, projectSlug: currentProject.slug });
+    await deleteCert({
+      id,
+      projectId: currentProject.id
+    });
 
     createNotification({
       text: "Successfully deleted certificate",
@@ -54,7 +58,13 @@ export const CertificatesSection = () => {
 
   const handleCertificateExport = async (
     format: "pem" | "pkcs12",
-    serialNumber: string,
+    {
+      certificateId,
+      serialNumber
+    }: {
+      certificateId: string;
+      serialNumber: string;
+    },
     options?: ExportOptions
   ) => {
     if (format === "pem") {
@@ -72,7 +82,7 @@ export const CertificatesSection = () => {
 
       try {
         await downloadCertPkcs12({
-          serialNumber,
+          certificateId,
           projectSlug: currentProject.slug,
           password: options.pkcs12.password,
           alias: options.pkcs12.alias
@@ -95,12 +105,12 @@ export const CertificatesSection = () => {
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
       <div className="mb-4 flex justify-between">
         <p className="text-xl font-medium text-mineshaft-100">Certificates</p>
-        <ProjectPermissionCan
-          I={ProjectPermissionCertificateActions.Create}
-          a={ProjectPermissionSub.Certificates}
-        >
-          {(isAllowed) => (
-            <div className="flex gap-2">
+        <div className="flex gap-2">
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateActions.Import}
+            a={ProjectPermissionSub.Certificates}
+          >
+            {(isAllowed) => (
               <Button
                 variant="outline_bg"
                 leftIcon={<FontAwesomeIcon icon={faArrowRight} />}
@@ -109,6 +119,13 @@ export const CertificatesSection = () => {
               >
                 Import
               </Button>
+            )}
+          </ProjectPermissionCan>
+          <ProjectPermissionCan
+            I={ProjectPermissionCertificateProfileActions.IssueCert}
+            a={ProjectPermissionSub.CertificateProfiles}
+          >
+            {(isAllowed) => (
               <Button
                 colorSchema="primary"
                 type="submit"
@@ -116,11 +133,11 @@ export const CertificatesSection = () => {
                 onClick={() => handlePopUpOpen("issueCertificate")}
                 isDisabled={!isAllowed}
               >
-                Issue
+                Request
               </Button>
-            </div>
-          )}
-        </ProjectPermissionCan>
+            )}
+          </ProjectPermissionCan>
+        </div>
       </div>
       <CertificatesTable handlePopUpOpen={handlePopUpOpen} />
       <CertificateIssuanceModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
@@ -147,7 +164,7 @@ export const CertificatesSection = () => {
         deleteKey="confirm"
         onDeleteApproved={() =>
           onRemoveCertificateSubmit(
-            (popUp?.deleteCertificate?.data as { serialNumber: string })?.serialNumber
+            (popUp?.deleteCertificate?.data as { certificateId: string })?.certificateId
           )
         }
       />

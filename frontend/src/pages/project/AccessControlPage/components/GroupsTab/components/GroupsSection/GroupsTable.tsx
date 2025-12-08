@@ -32,7 +32,12 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionActions, ProjectPermissionSub, useProject } from "@app/context";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionSub,
+  useOrganization,
+  useProject
+} from "@app/context";
 import { getProjectBaseURL } from "@app/helpers/project";
 import {
   getUserTablePreference,
@@ -61,6 +66,7 @@ enum GroupsOrderBy {
 }
 
 export const GroupTable = ({ handlePopUpOpen }: Props) => {
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
   const navigate = useNavigate();
 
@@ -116,7 +122,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-        placeholder="Search members..."
+        placeholder="Search project groups..."
       />
       <TableContainer className="mt-4">
         <Table>
@@ -137,7 +143,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                   </IconButton>
                 </div>
               </Th>
-              <Th>Role</Th>
+              <Th>Project Role</Th>
               <Th>Added on</Th>
               <Th className="w-5" />
             </Tr>
@@ -161,6 +167,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                           navigate({
                             to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                             params: {
+                              orgId: currentOrg.id,
                               projectId: currentProject.id,
                               groupId: id
                             }
@@ -171,6 +178,7 @@ export const GroupTable = ({ handlePopUpOpen }: Props) => {
                         navigate({
                           to: `${getProjectBaseURL(currentProject.type)}/groups/$groupId` as const,
                           params: {
+                            orgId: currentOrg.id,
                             projectId: currentProject.id,
                             groupId: id
                           }

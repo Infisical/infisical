@@ -18,7 +18,8 @@ import {
   Tooltip,
   Tr
 } from "@app/components/v2";
-import { ProjectPermissionSub } from "@app/context";
+import { ProjectPermissionSub, useProject } from "@app/context";
+import { useGetWorkspaceIntegrations } from "@app/hooks/api";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
 import {
@@ -46,6 +47,13 @@ type TForm = { permissions: Record<ProjectPermissionSub, boolean> };
 const Content = ({ onClose, type: projectType }: ContentProps) => {
   const rootForm = useFormContext<TFormSchema>();
   const [search, setSearch] = useState("");
+  const { currentProject, projectId } = useProject();
+  const isSecretManagerProject = currentProject.type === ProjectType.SecretManager;
+  const { data: integrations = [] } = useGetWorkspaceIntegrations(projectId, {
+    enabled: isSecretManagerProject,
+    refetchInterval: false
+  });
+
   const {
     control,
     handleSubmit,
@@ -60,6 +68,8 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
     }
   });
 
+  const hasNativeIntegrations = integrations.length > 0;
+
   const filteredPolicies = Object.entries(PROJECT_PERMISSION_OBJECT)
     .filter(
       ([subject, { title }]) =>
@@ -68,6 +78,11 @@ const Content = ({ onClose, type: projectType }: ContentProps) => {
         ] && (search ? title.toLowerCase().includes(search.toLowerCase()) : true)
     )
     .filter(([subject]) => !EXCLUDED_PERMISSION_SUBS.includes(subject as ProjectPermissionSub))
+    .filter(
+      ([subject]) =>
+        // Hide Native Integrations policy if project has no integrations
+        subject !== ProjectPermissionSub.Integrations || hasNativeIntegrations
+    )
     .sort((a, b) => a[1].title.localeCompare(b[1].title))
     .map(([subject]) => subject);
 
