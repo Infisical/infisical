@@ -16,7 +16,12 @@ import {
 } from "@app/components/v2";
 import { CopyButton } from "@app/components/v2/CopyButton";
 import { useProject } from "@app/context";
-import { PamResourceType, TAwsIamAccount } from "@app/hooks/api/pam";
+import {
+  PamResourceType,
+  TAwsIamAccount,
+  TAwsIamResource,
+  useGetPamResourceById
+} from "@app/hooks/api/pam";
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
@@ -51,16 +56,27 @@ const formSchema = genericAccountFieldsSchema.extend({
 
 type FormData = z.infer<typeof formSchema>;
 
-export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
+export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit }: Props) => {
   const isUpdate = Boolean(account);
   const { projectId } = useProject();
+
+  const resourceIdToFetch = account?.resourceId || resourceId;
+  const resourceTypeToFetch = account?.resource?.resourceType || resourceType;
+  const { data: resource } = useGetPamResourceById(resourceTypeToFetch, resourceIdToFetch, {
+    enabled: !!resourceIdToFetch && !!resourceTypeToFetch
+  });
+
+  const pamRoleArn =
+    (resource?.resourceType === PamResourceType.AwsIam &&
+      (resource as TAwsIamResource).connectionDetails?.roleArn) ||
+    "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_PAM_ROLE_NAME>";
 
   const targetRoleTrustPolicy = `{
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "AWS": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_PAM_ROLE_NAME>"
+      "AWS": "${pamRoleArn}"
     },
     "Action": "sts:AssumeRole",
     "Condition": {
@@ -166,16 +182,12 @@ export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
                 </pre>
               </div>
               <p className="text-xs text-mineshaft-400">
-                <strong>Note:</strong> Replace{" "}
-                <code className="rounded bg-mineshaft-700 px-1">&lt;YOUR_ACCOUNT_ID&gt;</code> with
-                your AWS account ID and{" "}
-                <code className="rounded bg-mineshaft-700 px-1">&lt;YOUR_PAM_ROLE_NAME&gt;</code>{" "}
-                with the name of the PAM role you created in the &quot;Resources&quot; tab. The
-                External ID{" "}
+                <strong>Note:</strong> The Principal role ARN shown above is from the PAM Resource
+                selected for this account. The External ID{" "}
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
-                current project ID. If this target role name doesn&apos;t match the wildcard pattern
-                in your PAM role&apos;s permissions policy, you&apos;ll need to update that policy
-                to include this role&apos;s ARN.
+                current project ID. If your target role name doesn&apos;t match the wildcard pattern
+                in your PAM Resource&apos;s role&apos;s permissions policy, you&apos;ll need to
+                update that policy to include this role&apos;s ARN.
               </p>
             </AccordionContent>
           </AccordionItem>

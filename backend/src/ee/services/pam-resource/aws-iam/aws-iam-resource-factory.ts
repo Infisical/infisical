@@ -62,8 +62,7 @@ export const awsIamResourceFactory: TPamResourceFactory<TAwsIamResourceConnectio
 
       if (!isValid) {
         throw new BadRequestError({
-          message:
-            "Unable to assume the target role. Verify the target role ARN and ensure the PAM role has permission to assume it."
+          message: `Unable to assume the target role. Verify the target role ARN and ensure the PAM role (ARN: ${connectionDetails.roleArn}) has permission to assume it.`
         });
       }
 
