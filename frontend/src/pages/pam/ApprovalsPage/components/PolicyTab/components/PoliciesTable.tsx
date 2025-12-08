@@ -98,7 +98,9 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             <Tr>
               <Th className="w-10" />
               <Th>Policy Name</Th>
-              <Th>Max Request TTL</Th>
+              <Th>Max Approval Request TTL</Th>
+              <Th>Min Access Duration</Th>
+              <Th>Max Access Duration</Th>
               <Th>Conditions</Th>
               <Th className="w-5" />
             </Tr>
@@ -107,7 +109,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             {isPoliciesLoading && <TableSkeleton columns={5} innerKey="approval-policies" />}
             {!isPoliciesLoading && policies.length === 0 && (
               <Tr>
-                <Td colSpan={5}>
+                <Td colSpan={7}>
                   <EmptyState title="No policies found" icon={faUsers} />
                 </Td>
               </Tr>
@@ -143,6 +145,8 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                       </Td>
                       <Td>{policy.name}</Td>
                       <Td>{maxTtl}</Td>
+                      <Td>{policy.constraints.constraints.accessDuration.min}</Td>
+                      <Td>{policy.constraints.constraints.accessDuration.max}</Td>
                       <Td>
                         {conditionsCount} condition{conditionsCount !== 1 ? "s" : ""}
                       </Td>
@@ -197,11 +201,11 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                     </Tr>
                     {isExpanded && (
                       <Tr className="bg-mineshaft-800">
-                        <Td colSpan={5} className="p-0">
-                          <div className="flex max-h-80 w-full gap-2 overflow-auto overflow-x-hidden">
-                            <div className="flex-1 p-4">
+                        <Td colSpan={7} className="p-0">
+                          <div className="flex max-h-80 w-full gap-2 gap-4 overflow-auto overflow-x-hidden p-4">
+                            <div className="flex-1">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
-                                Approval Contraints
+                                Approval Conditions
                               </div>
                               {policy.conditions.conditions.map((step, index) => (
                                 <Fragment key={`${policy.id}--${index + 1}`}>
@@ -235,7 +239,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                                 </Fragment>
                               ))}
                             </div>
-                            <div className="flex-2 p-4">
+                            <div className="flex-2">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Sequence
                               </div>

@@ -66,7 +66,7 @@ export const PolicyConstraintsStep = () => {
                         label="Account Paths"
                         isError={Boolean(error)}
                         errorText={error?.message}
-                        helperText="Comma-separated account paths this condition applies to"
+                        helperText="Matches any of the comma-separated account paths this condition applies to"
                       >
                         <Input
                           value={pathField.value.join(", ")}

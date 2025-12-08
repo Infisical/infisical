@@ -80,7 +80,6 @@ export const ApprovalStepsSection = ({ request }: Props) => {
       <div className="space-y-6">
         {request.steps.map((step, index) => (
           <div key={step.id} className="relative">
-            {/* Connector line */}
             {index < request.steps.length - 1 && (
               <div className="absolute top-8 left-2 h-full w-0.5 bg-mineshaft-600" />
             )}
@@ -130,7 +129,7 @@ export const ApprovalStepsSection = ({ request }: Props) => {
                       <div className="flex flex-wrap gap-1.5">
                         {step.approvers.map((approver) => (
                           <Badge variant="neutral">
-                            {approver.type === ApproverType.Group ? <User /> : <Users />}
+                            {approver.type === ApproverType.User ? <User /> : <Users />}
                             {getApproverLabel(approver.id, approver.type)}
                           </Badge>
                         ))}

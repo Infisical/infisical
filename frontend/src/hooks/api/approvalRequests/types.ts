@@ -51,7 +51,7 @@ export type ApprovalRequestStep = {
 
 export type PamAccessRequestData = {
   accountPath: string;
-  accessDuration: number;
+  accessDuration: string;
 };
 
 export type TApprovalRequest = {

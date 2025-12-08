@@ -49,13 +49,15 @@ export const PolicyReviewStep = () => {
         </div>
         <div className="space-y-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Max Request TTL" value={maxRequestTtl || "No Limit"} />
+          <ReviewField label="Max Approval Request TTL" value={maxRequestTtl || "No Limit"} />
         </div>
       </div>
 
       <div>
         <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">Request Duration Constraints</h3>
+          <h3 className="text-sm font-medium text-mineshaft-200">
+            PAM Account Access Duration TTL
+          </h3>
         </div>
         <div className="space-y-2">
           <ReviewField label="Minimum Duration" value={constraints.accessDuration.min} />

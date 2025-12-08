@@ -26,8 +26,8 @@ type Props = {
 };
 
 const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[] = [
-  { name: "Details", key: "details", fields: ["name", "maxRequestTtl"] },
-  { name: "Constraints", key: "constraints", fields: ["conditions", "constraints"] },
+  { name: "Details", key: "details", fields: ["name", "maxRequestTtl", "constraints"] },
+  { name: "Conditions", key: "conditions", fields: ["conditions"] },
   { name: "Approvals", key: "approvals", fields: ["steps"] },
   { name: "Review", key: "review", fields: [] }
 ];

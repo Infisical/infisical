@@ -31,7 +31,7 @@ export const PolicyDetailsStep = () => {
           <FormControl
             isError={Boolean(error)}
             errorText={error?.message}
-            label={<TtlFormLabel label="Max Request TTL" />}
+            label={<TtlFormLabel label="Max Approval Request TTL" />}
             helperText="Maximum time-to-live for requests. Must be between 1 hour and 30 days. Leave empty for no limit."
           >
             <Input {...field} value={field.value ?? ""} placeholder="1h" />
@@ -41,10 +41,10 @@ export const PolicyDetailsStep = () => {
       <div className="border-t border-mineshaft-600 pt-4">
         <div className="mb-3">
           <p className="pb-0.5 text-sm font-medium text-mineshaft-200">
-            Request Duration Constraints
+            PAM Account Access Duration TTL
           </p>
           <p className="text-xs text-mineshaft-400">
-            Set minimum and maximum duration (in seconds) for access requests
+            Set minimum and maximum duration (in seconds) for pam account access
           </p>
         </div>
         <div className="grid grid-cols-2 gap-4">
