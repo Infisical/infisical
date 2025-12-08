@@ -355,7 +355,8 @@ export const approvalPolicyServiceFactory = ({
     await approvalPolicyDAL.deleteById(policyId);
 
     return {
-      policyId
+      policyId,
+      projectId: policy.projectId
     };
   };
 

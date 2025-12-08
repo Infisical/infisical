@@ -11,6 +11,7 @@ import {
   TUpdatePolicyDTO
 } from "@app/services/approval-policy/approval-policy-types";
 import { AuthMode } from "@app/services/auth/auth-type";
+import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 
 export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
   server,
@@ -61,7 +62,18 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.create(policyType, req.body, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.body.projectId,
+        event: {
+          type: EventType.APPROVAL_POLICY_CREATE,
+          metadata: {
+            policyType,
+            name: req.body.name
+          }
+        }
+      });
 
       return { policy };
     }
@@ -88,7 +100,18 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { policies } = await server.services.approvalPolicy.list(policyType, req.query.projectId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.APPROVAL_POLICY_LIST,
+          metadata: {
+            policyType,
+            count: policies.length
+          }
+        }
+      });
 
       return { policies };
     }
@@ -115,7 +138,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.getById(req.params.policyId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: policy.projectId,
+        event: {
+          type: EventType.APPROVAL_POLICY_GET,
+          metadata: {
+            policyType,
+            policyId: policy.id,
+            name: policy.name
+          }
+        }
+      });
 
       return { policy };
     }
@@ -143,7 +178,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { policy } = await server.services.approvalPolicy.updateById(req.params.policyId, req.body, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: policy.projectId,
+        event: {
+          type: EventType.APPROVAL_POLICY_UPDATE,
+          metadata: {
+            policyType,
+            policyId: policy.id,
+            name: policy.name
+          }
+        }
+      });
 
       return { policy };
     }
@@ -168,9 +215,23 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     },
     onRequest: verifyAuth([AuthMode.JWT]),
     handler: async (req) => {
-      const { policyId } = await server.services.approvalPolicy.deleteById(req.params.policyId, req.permission);
+      const { policyId, projectId } = await server.services.approvalPolicy.deleteById(
+        req.params.policyId,
+        req.permission
+      );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId,
+        event: {
+          type: EventType.APPROVAL_POLICY_DELETE,
+          metadata: {
+            policyType,
+            policyId
+          }
+        }
+      });
 
       return { policyId };
     }
@@ -202,7 +263,18 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_LIST,
+          metadata: {
+            policyType,
+            count: requests.length
+          }
+        }
+      });
 
       return { requests };
     }
@@ -240,7 +312,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_CREATE,
+          metadata: {
+            policyType,
+            justification: req.body.justification || undefined,
+            requestDuration: req.body.requestDuration || "infinite"
+          }
+        }
+      });
 
       return { request };
     }
@@ -267,7 +351,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.getRequestById(req.params.requestId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_GET,
+          metadata: {
+            policyType,
+            requestId: request.id,
+            status: request.status
+          }
+        }
+      });
 
       return { request };
     }
@@ -301,7 +397,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_APPROVE,
+          metadata: {
+            policyType,
+            requestId: req.params.requestId,
+            comment: req.body.comment
+          }
+        }
+      });
 
       return { request };
     }
@@ -335,7 +443,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_REJECT,
+          metadata: {
+            policyType,
+            requestId: req.params.requestId,
+            comment: req.body.comment
+          }
+        }
+      });
 
       return { request };
     }
@@ -362,7 +482,18 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { request } = await server.services.approvalPolicy.cancelRequest(req.params.requestId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: request.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_CANCEL,
+          metadata: {
+            policyType,
+            requestId: req.params.requestId
+          }
+        }
+      });
 
       return { request };
     }
@@ -394,7 +525,18 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
         req.permission
       );
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: req.query.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_GRANT_LIST,
+          metadata: {
+            policyType,
+            count: grants.length
+          }
+        }
+      });
 
       return { grants };
     }
@@ -421,7 +563,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.getGrantById(req.params.grantId, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: grant.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_GRANT_GET,
+          metadata: {
+            policyType,
+            grantId: grant.id,
+            status: grant.status
+          }
+        }
+      });
 
       return { grant };
     }
@@ -451,7 +605,19 @@ export const registerApprovalPolicyEndpoints = <P extends TApprovalPolicy>({
     handler: async (req) => {
       const { grant } = await server.services.approvalPolicy.revokeGrant(req.params.grantId, req.body, req.permission);
 
-      // TODO(andrey): Audit log
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        orgId: req.permission.orgId,
+        projectId: grant.projectId,
+        event: {
+          type: EventType.APPROVAL_REQUEST_GRANT_REVOKE,
+          metadata: {
+            policyType,
+            grantId: grant.id,
+            revocationReason: req.body.revocationReason
+          }
+        }
+      });
 
       return { grant };
     }
