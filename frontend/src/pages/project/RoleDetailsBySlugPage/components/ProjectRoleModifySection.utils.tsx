@@ -15,6 +15,7 @@ import {
 import {
   PermissionConditionOperators,
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionApprovalRequestActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -258,6 +259,11 @@ const PamSessionPolicyActionSchema = z.object({
   [ProjectPermissionPamSessionActions.Read]: z.boolean().optional()
 });
 
+const ApprovalRequestPolicyActionSchema = z.object({
+  [ProjectPermissionApprovalRequestActions.Read]: z.boolean().optional(),
+  [ProjectPermissionApprovalRequestActions.Create]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -468,7 +474,8 @@ export const projectRoleFormSchema = z.object({
       })
         .array()
         .default([]),
-      [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
+      [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1289,6 +1296,16 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       // Map actions to the keys defined in ApprovalPolicyActionSchema
       if (canRead) formVal[subject]![0][ProjectPermissionPamAccountActions.Read] = true;
     }
+
+    if (subject === ProjectPermissionSub.ApprovalRequests) {
+      const canRead = action.includes(ProjectPermissionApprovalRequestActions.Read);
+      const canCreate = action.includes(ProjectPermissionApprovalRequestActions.Create);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionApprovalRequestActions.Read] = true;
+      if (canCreate) formVal[subject]![0][ProjectPermissionApprovalRequestActions.Create] = true;
+    }
   });
 
   return formVal;
@@ -1958,6 +1975,13 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
   [ProjectPermissionSub.PamSessions]: {
     title: "Sessions",
     actions: [{ label: "Read", value: ProjectPermissionPamSessionActions.Read }]
+  },
+  [ProjectPermissionSub.ApprovalRequests]: {
+    title: "Approval Requests",
+    actions: [
+      { label: "Read", value: ProjectPermissionApprovalRequestActions.Read },
+      { label: "Create", value: ProjectPermissionApprovalRequestActions.Create }
+    ]
   }
 };
 
@@ -1968,7 +1992,8 @@ const SharedPermissionSubjects = {
   [ProjectPermissionSub.Identity]: true,
   [ProjectPermissionSub.Project]: true,
   [ProjectPermissionSub.Role]: true,
-  [ProjectPermissionSub.Settings]: true
+  [ProjectPermissionSub.Settings]: true,
+  [ProjectPermissionSub.ApprovalRequests]: true
 };
 
 const SecretsManagerPermissionSubjects = (enabled = false) => ({

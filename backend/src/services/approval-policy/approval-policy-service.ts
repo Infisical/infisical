@@ -34,6 +34,12 @@ import {
   TCreateRequestDTO,
   TUpdatePolicyDTO
 } from "./approval-policy-types";
+import { ForbiddenError } from "@casl/ability";
+import {
+  ProjectPermissionActions,
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionSub
+} from "@app/ee/services/permission/project-permission";
 
 type TApprovalPolicyServiceFactoryDep = {
   approvalPolicyDAL: TApprovalPolicyDALFactory;
@@ -367,7 +373,19 @@ export const approvalPolicyServiceFactory = ({
     },
     actor: OrgServiceActor
   ) => {
-    // TODO(andrey): Perm check
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalRequestActions.Create,
+      ProjectPermissionSub.ApprovalRequests
+    );
 
     const fac = APPROVAL_POLICY_FACTORY_MAP[policyType](policyType);
 
@@ -466,15 +484,45 @@ export const approvalPolicyServiceFactory = ({
     };
   };
 
-  const getRequestById = async (requestId: string, _actor: OrgServiceActor) => {
-    // TODO(andrey): Perm check
-
+  const getRequestById = async (requestId: string, actor: OrgServiceActor) => {
     const request = await approvalRequestDAL.findById(requestId);
     if (!request) {
       throw new ForbiddenRequestError({ message: "Request not found" });
     }
 
     const steps = await approvalRequestDAL.findStepsByRequestId(requestId);
+
+    const isRequester = request.requesterId === actor.id;
+
+    // Check if user is an eligible approver for any step
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroupIds = new Set(userGroups.map((g) => g.groupId));
+
+    const isApprover = steps.some((step) =>
+      step.approvers.some(
+        (approver) =>
+          (approver.type === ApproverType.User && approver.id === actor.id) ||
+          (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+      )
+    );
+
+    // If user is requester or approver, allow access regardless of role permission
+    if (!isRequester && !isApprover) {
+      // Otherwise, check role permission
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId: request.projectId,
+        actionProjectType: ActionProjectType.Any
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionApprovalRequestActions.Read,
+        ProjectPermissionSub.ApprovalRequests
+      );
+    }
 
     return {
       request: { ...request, steps }
@@ -670,11 +718,55 @@ export const approvalPolicyServiceFactory = ({
   };
 
   const listRequests = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
-    // TODO(andrey): Perm check
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    const hasReadPermission = permission.can(
+      ProjectPermissionApprovalRequestActions.Read,
+      ProjectPermissionSub.ApprovalRequests
+    );
 
     const requests = await approvalRequestDAL.findByProjectId(policyType, projectId);
 
-    return { requests };
+    // If user has read permission, return all requests
+    if (hasReadPermission) {
+      return { requests };
+    }
+
+    // Otherwise, filter to only requests where user is requester or approver
+    const userGroups = await userGroupMembershipDAL.findGroupMembershipsByUserIdInOrg(actor.id, actor.orgId);
+    const userGroupIds = new Set(userGroups.map((g) => g.groupId));
+
+    const filteredRequests = [];
+    for (const request of requests) {
+      const isRequester = request.requesterId === actor.id;
+
+      if (isRequester) {
+        filteredRequests.push(request);
+        continue;
+      }
+
+      // Check if user is an eligible approver for any step
+      const isApprover = request.steps.some((step) =>
+        step.approvers.some(
+          (approver) =>
+            (approver.type === ApproverType.User && approver.id === actor.id) ||
+            (approver.type === ApproverType.Group && userGroupIds.has(approver.id))
+        )
+      );
+
+      if (isApprover) {
+        filteredRequests.push(request);
+      }
+    }
+
+    return { requests: filteredRequests };
   };
 
   const cancelRequest = async (requestId: string, actor: OrgServiceActor) => {
