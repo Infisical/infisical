@@ -229,6 +229,11 @@ export enum ProjectPermissionApprovalRequestActions {
   Create = "create"
 }
 
+export enum ProjectPermissionApprovalRequestGrantActions {
+  Read = "read",
+  Revoke = "revoke"
+}
+
 export const isCustomProjectRole = (slug: string) =>
   !Object.values(ProjectMembershipRole).includes(slug as ProjectMembershipRole);
 
@@ -280,7 +285,8 @@ export enum ProjectPermissionSub {
   PamAccounts = "pam-accounts",
   PamSessions = "pam-sessions",
   CertificateProfiles = "certificate-profiles",
-  ApprovalRequests = "approval-requests"
+  ApprovalRequests = "approval-requests",
+  ApprovalRequestGrants = "approval-request-grants"
 }
 
 export type SecretSubjectFields = {
@@ -507,7 +513,8 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.CertificateProfiles> & CertificateProfileSubjectFields)
       )
     ]
-  | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests];
+  | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
+  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants];
 
 const SECRET_PATH_MISSING_SLASH_ERR_MSG = "Invalid Secret Path; it must start with a '/'";
 const SECRET_PATH_PERMISSION_OPERATOR_SCHEMA = z.union([
@@ -1116,6 +1123,12 @@ const GeneralPermissionSchema = [
   z.object({
     subject: z.literal(ProjectPermissionSub.ApprovalRequests).describe("The entity this permission pertains to."),
     action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalRequestActions).describe(
+      "Describe what action an entity can take."
+    )
+  }),
+  z.object({
+    subject: z.literal(ProjectPermissionSub.ApprovalRequestGrants).describe("The entity this permission pertains to."),
+    action: CASL_ACTION_SCHEMA_NATIVE_ENUM(ProjectPermissionApprovalRequestGrantActions).describe(
       "Describe what action an entity can take."
     )
   })

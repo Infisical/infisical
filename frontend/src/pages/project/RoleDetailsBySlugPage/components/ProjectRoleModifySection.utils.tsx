@@ -16,6 +16,7 @@ import {
   PermissionConditionOperators,
   ProjectPermissionAppConnectionActions,
   ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCommitsActions,
   ProjectPermissionDynamicSecretActions,
@@ -264,6 +265,11 @@ const ApprovalRequestPolicyActionSchema = z.object({
   [ProjectPermissionApprovalRequestActions.Create]: z.boolean().optional()
 });
 
+const ApprovalRequestGrantPolicyActionSchema = z.object({
+  [ProjectPermissionApprovalRequestGrantActions.Read]: z.boolean().optional(),
+  [ProjectPermissionApprovalRequestGrantActions.Revoke]: z.boolean().optional()
+});
+
 const SecretRollbackPolicyActionSchema = z.object({
   read: z.boolean().optional(),
   create: z.boolean().optional()
@@ -475,7 +481,11 @@ export const projectRoleFormSchema = z.object({
         .array()
         .default([]),
       [ProjectPermissionSub.PamSessions]: PamSessionPolicyActionSchema.array().default([]),
-      [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default([])
+      [ProjectPermissionSub.ApprovalRequests]: ApprovalRequestPolicyActionSchema.array().default(
+        []
+      ),
+      [ProjectPermissionSub.ApprovalRequestGrants]:
+        ApprovalRequestGrantPolicyActionSchema.array().default([])
     })
     .partial()
     .optional()
@@ -1306,6 +1316,17 @@ export const rolePermission2Form = (permissions: TProjectPermission[] = []) => {
       if (canRead) formVal[subject]![0][ProjectPermissionApprovalRequestActions.Read] = true;
       if (canCreate) formVal[subject]![0][ProjectPermissionApprovalRequestActions.Create] = true;
     }
+
+    if (subject === ProjectPermissionSub.ApprovalRequestGrants) {
+      const canRead = action.includes(ProjectPermissionApprovalRequestGrantActions.Read);
+      const canRevoke = action.includes(ProjectPermissionApprovalRequestGrantActions.Revoke);
+
+      if (!formVal[subject]) formVal[subject] = [{}];
+
+      if (canRead) formVal[subject]![0][ProjectPermissionApprovalRequestGrantActions.Read] = true;
+      if (canRevoke)
+        formVal[subject]![0][ProjectPermissionApprovalRequestGrantActions.Revoke] = true;
+    }
   });
 
   return formVal;
@@ -1982,6 +2003,13 @@ export const PROJECT_PERMISSION_OBJECT: TProjectPermissionObject = {
       { label: "Read", value: ProjectPermissionApprovalRequestActions.Read },
       { label: "Create", value: ProjectPermissionApprovalRequestActions.Create }
     ]
+  },
+  [ProjectPermissionSub.ApprovalRequestGrants]: {
+    title: "Approval Request Grants",
+    actions: [
+      { label: "Read", value: ProjectPermissionApprovalRequestGrantActions.Read },
+      { label: "Revoke", value: ProjectPermissionApprovalRequestGrantActions.Revoke }
+    ]
   }
 };
 
@@ -1993,7 +2021,8 @@ const SharedPermissionSubjects = {
   [ProjectPermissionSub.Project]: true,
   [ProjectPermissionSub.Role]: true,
   [ProjectPermissionSub.Settings]: true,
-  [ProjectPermissionSub.ApprovalRequests]: true
+  [ProjectPermissionSub.ApprovalRequests]: true,
+  [ProjectPermissionSub.ApprovalRequestGrants]: true
 };
 
 const SecretsManagerPermissionSubjects = (enabled = false) => ({

@@ -38,6 +38,7 @@ import { ForbiddenError } from "@casl/ability";
 import {
   ProjectPermissionActions,
   ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 
@@ -87,7 +88,7 @@ export const approvalPolicyServiceFactory = ({
 
     if (userIdsToNotify.size === 0) return;
 
-    // TODO: Potentially link to requests in the future?
+    // TODO: Potentially link to requests in the future to support click redirects
     await notificationService.createUserNotifications(
       Array.from(userIdsToNotify).map((userId) => ({
         userId,
@@ -793,19 +794,43 @@ export const approvalPolicyServiceFactory = ({
   };
 
   const listGrants = async (policyType: ApprovalPolicyType, projectId: string, actor: OrgServiceActor) => {
-    // TODO(andrey): Perm check
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalRequestGrantActions.Read,
+      ProjectPermissionSub.ApprovalRequestGrants
+    );
 
     const grants = await approvalRequestGrantsDAL.find({ projectId, type: policyType });
     return { grants };
   };
 
   const getGrantById = async (grantId: string, actor: OrgServiceActor) => {
-    // TODO(andrey): Perm check
-
     const grant = await approvalRequestGrantsDAL.findById(grantId);
     if (!grant) {
       throw new NotFoundError({ message: "Grant not found" });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: grant.projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalRequestGrantActions.Read,
+      ProjectPermissionSub.ApprovalRequestGrants
+    );
 
     return { grant };
   };
@@ -815,12 +840,24 @@ export const approvalPolicyServiceFactory = ({
     { revocationReason }: { revocationReason?: string },
     actor: OrgServiceActor
   ) => {
-    // TODO(andrey): Perm check
-
     const grant = await approvalRequestGrantsDAL.findById(grantId);
     if (!grant) {
       throw new NotFoundError({ message: "Grant not found" });
     }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor: actor.type,
+      actorAuthMethod: actor.authMethod,
+      actorId: actor.id,
+      actorOrgId: actor.orgId,
+      projectId: grant.projectId,
+      actionProjectType: ActionProjectType.Any
+    });
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionApprovalRequestGrantActions.Revoke,
+      ProjectPermissionSub.ApprovalRequestGrants
+    );
 
     if (grant.status !== ApprovalRequestGrantStatus.Active) {
       throw new BadRequestError({ message: "Grant is not active" });
