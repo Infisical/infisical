@@ -120,6 +120,45 @@ export const useDeletePamAccount = () => {
   });
 };
 
+export type TAccessPamAccountDTO = {
+  accountId: string;
+  accountPath: string;
+  projectId: string;
+  duration: string;
+};
+
+export type TAccessPamAccountResponse = {
+  sessionId: string;
+  resourceType: string;
+  consoleUrl?: string;
+  metadata?: Record<string, string | undefined>;
+  relayClientCertificate?: string;
+  relayClientPrivateKey?: string;
+  relayServerCertificateChain?: string;
+  gatewayClientCertificate?: string;
+  gatewayClientPrivateKey?: string;
+  gatewayServerCertificateChain?: string;
+  relayHost?: string;
+};
+
+export const useAccessPamAccount = () => {
+  return useMutation({
+    mutationFn: async ({ accountId, accountPath, projectId, duration }: TAccessPamAccountDTO) => {
+      const { data } = await apiRequest.post<TAccessPamAccountResponse>(
+        "/api/v1/pam/accounts/access",
+        {
+          accountId,
+          accountPath,
+          projectId,
+          duration
+        }
+      );
+
+      return data;
+    }
+  });
+};
+
 // Folders
 export const useCreatePamFolder = () => {
   const queryClient = useQueryClient();

@@ -1,4 +1,9 @@
 import {
+  CreateAwsIamAccountSchema,
+  SanitizedAwsIamAccountWithResourceSchema,
+  UpdateAwsIamAccountSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
   CreateMySQLAccountSchema,
   SanitizedMySQLAccountWithResourceSchema,
   UpdateMySQLAccountSchema
@@ -43,6 +48,15 @@ export const PAM_ACCOUNT_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fasti
       accountResponseSchema: SanitizedSSHAccountWithResourceSchema,
       createAccountSchema: CreateSSHAccountSchema,
       updateAccountSchema: UpdateSSHAccountSchema
+    });
+  },
+  [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.AwsIam,
+      accountResponseSchema: SanitizedAwsIamAccountWithResourceSchema,
+      createAccountSchema: CreateAwsIamAccountSchema,
+      updateAccountSchema: UpdateAwsIamAccountSchema
     });
   }
 };

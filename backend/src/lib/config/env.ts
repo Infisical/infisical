@@ -286,6 +286,10 @@ const envSchema = z
     DYNAMIC_SECRET_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()).default(
       process.env.INF_APP_CONNECTION_AWS_SECRET_ACCESS_KEY
     ),
+
+    // PAM AWS credentials (for AWS IAM PAM resource type)
+    PAM_AWS_ACCESS_KEY_ID: zpStr(z.string().optional()),
+    PAM_AWS_SECRET_ACCESS_KEY: zpStr(z.string().optional()),
     /* ----------------------------------------------------------------------------- */
 
     /* App Connections ----------------------------------------------------------------------------- */
