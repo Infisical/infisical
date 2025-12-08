@@ -31,7 +31,7 @@ export const pamSessionDALFactory = (db: TDbClient) => {
       .where("id", sessionId)
       .whereIn("status", [PamSessionStatus.Active, PamSessionStatus.Starting])
       .update({
-        status: PamSessionStatus.Expired,
+        status: PamSessionStatus.Ended,
         endedAt: now
       });
 

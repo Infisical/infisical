@@ -53,7 +53,7 @@ export const pamSessionServiceFactory = ({
     if (isActive && isExpired) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const updatedSession = await pamSessionDAL.updateById(session.id, {
-        status: PamSessionStatus.Expired,
+        status: PamSessionStatus.Ended,
         endedAt: new Date()
       });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -200,7 +200,7 @@ export const pamSessionServiceFactory = ({
       throw new ForbiddenRequestError({ message: "Only identities and users can perform this action" });
     }
 
-    if (session.status === PamSessionStatus.Ended || session.status === PamSessionStatus.Expired) {
+    if (session.status === PamSessionStatus.Ended) {
       return {
         session,
         projectId: project.id

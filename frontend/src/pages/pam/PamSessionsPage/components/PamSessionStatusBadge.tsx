@@ -2,7 +2,6 @@ import {
   ActivityIcon,
   BanIcon,
   ChevronsLeftRightEllipsisIcon,
-  ClockIcon,
   GavelIcon,
   LucideIcon
 } from "lucide-react";
@@ -34,10 +33,6 @@ const PAM_SESSION_STATUS_CONFIG: Record<PamSessionStatus, StatusConfig> = {
   [PamSessionStatus.Ended]: {
     variant: "neutral",
     icon: BanIcon
-  },
-  [PamSessionStatus.Expired]: {
-    variant: "warning",
-    icon: ClockIcon
   }
 };
 

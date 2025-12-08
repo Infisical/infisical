@@ -57,7 +57,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
   "Statement": [{
     "Effect": "Allow",
     "Action": "sts:AssumeRole",
-    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/infisical-pam-*"
+    "Resource": "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_PREFIX>-*"
   }]
 }`;
 
@@ -148,9 +148,12 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
                 Step 1: Create a permissions policy for assuming target roles
               </p>
               <p className="mb-3 text-sm text-mineshaft-300">
-                This policy allows the PAM role to assume target roles. We recommend using the{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">infisical-pam-*</code>{" "}
-                naming convention for target roles.
+                This policy allows the PAM role to assume target roles. We recommend using a
+                wildcard pattern (e.g.,{" "}
+                <code className="rounded bg-mineshaft-700 px-1 text-xs">pam-*</code> or{" "}
+                <code className="rounded bg-mineshaft-700 px-1 text-xs">privileged-*</code>) so you
+                can add new accounts without updating this policy. Choose a prefix that fits your
+                naming conventions.
               </p>
               <div className="relative mb-4">
                 <div className="absolute top-1 right-1">

@@ -148,10 +148,10 @@ export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-2.5">
               <p className="mb-3 text-sm text-mineshaft-300">
-                The target role must have a trust policy that allows the Infisical PAM role you
-                created and used in the &quot;Resources&quot; tab to assume it. If you used the{" "}
-                <code className="rounded bg-mineshaft-700 px-1 text-xs">infisical-pam-*</code>{" "}
-                naming convention, no additional changes are needed to the PAM role.
+                The target role must have a trust policy that allows the PAM role (created in the
+                &quot;Resources&quot; tab) to assume it. If your target role name follows the
+                wildcard pattern you defined in the PAM role&apos;s permissions policy, no
+                additional changes are needed.
               </p>
 
               <p className="mb-2 text-sm font-medium text-mineshaft-200">
@@ -170,13 +170,12 @@ export const AwsIamAccountForm = ({ account, onSubmit }: Props) => {
                 <code className="rounded bg-mineshaft-700 px-1">&lt;YOUR_ACCOUNT_ID&gt;</code> with
                 your AWS account ID and{" "}
                 <code className="rounded bg-mineshaft-700 px-1">&lt;YOUR_PAM_ROLE_NAME&gt;</code>{" "}
-                with the name of the PAM role you created and used in the &quot;Resources&quot; tab
-                (e.g., <code className="rounded bg-mineshaft-700 px-1">InfisicalPAMRole</code>). The
+                with the name of the PAM role you created in the &quot;Resources&quot; tab. The
                 External ID{" "}
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
-                current project ID. If your target role name doesn&apos;t follow the{" "}
-                <code className="rounded bg-mineshaft-700 px-1">infisical-pam-*</code> pattern, you
-                must update the PAM role&apos;s permissions policy to include the target role ARN.
+                current project ID. If this target role name doesn&apos;t match the wildcard pattern
+                in your PAM role&apos;s permissions policy, you&apos;ll need to update that policy
+                to include this role&apos;s ARN.
               </p>
             </AccordionContent>
           </AccordionItem>

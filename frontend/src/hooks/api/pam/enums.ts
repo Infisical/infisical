@@ -29,8 +29,7 @@ export enum PamSessionStatus {
   Starting = "starting",
   Active = "active",
   Ended = "ended",
-  Terminated = "terminated",
-  Expired = "expired"
+  Terminated = "terminated"
 }
 
 // Accounts
