@@ -22,6 +22,7 @@ const SCOPE_BADGE: Record<NonNullable<Props["scope"]>, { icon: LucideIcon; class
   [ProjectType.KMS]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.PAM]: { className: "text-project", icon: ProjectIcon },
   [ProjectType.SecretScanning]: { className: "text-project", icon: ProjectIcon },
+  [ProjectType.AI]: { className: "text-project", icon: ProjectIcon },
   namespace: { className: "text-sub-org", icon: SubOrgIcon },
   instance: { className: "text-neutral", icon: InstanceIcon }
 };

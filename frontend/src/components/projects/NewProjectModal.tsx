@@ -84,6 +84,10 @@ const PROJECT_TYPE_MENU_ITEMS = [
   {
     label: "PAM",
     value: ProjectType.PAM
+  },
+  {
+    label: "AI",
+    value: ProjectType.AI
   }
 ];
 

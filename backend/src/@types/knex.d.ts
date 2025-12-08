@@ -20,6 +20,21 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAiMcpEndpoints,
+  TAiMcpEndpointServers,
+  TAiMcpEndpointServersInsert,
+  TAiMcpEndpointServersUpdate,
+  TAiMcpEndpointServerTools,
+  TAiMcpEndpointServerToolsInsert,
+  TAiMcpEndpointServerToolsUpdate,
+  TAiMcpEndpointsInsert,
+  TAiMcpEndpointsUpdate,
+  TAiMcpServers,
+  TAiMcpServersInsert,
+  TAiMcpServersUpdate,
+  TAiMcpServerTools,
+  TAiMcpServerToolsInsert,
+  TAiMcpServerToolsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -574,15 +589,15 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
-  TCertificateRequests,
-  TCertificateRequestsInsert,
-  TCertificateRequestsUpdate
-} from "@app/db/schemas/certificate-requests";
-import {
   TAccessApprovalPoliciesEnvironments,
   TAccessApprovalPoliciesEnvironmentsInsert,
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
+import {
+  TCertificateRequests,
+  TCertificateRequestsInsert,
+  TCertificateRequestsUpdate
+} from "@app/db/schemas/certificate-requests";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
@@ -1474,6 +1489,27 @@ declare module "knex/types/tables" {
       TVaultExternalMigrationConfigs,
       TVaultExternalMigrationConfigsInsert,
       TVaultExternalMigrationConfigsUpdate
+    >;
+    [TableName.AiMcpServer]: KnexOriginal.CompositeTableType<TAiMcpServers, TAiMcpServersInsert, TAiMcpServersUpdate>;
+    [TableName.AiMcpServerTool]: KnexOriginal.CompositeTableType<
+      TAiMcpServerTools,
+      TAiMcpServerToolsInsert,
+      TAiMcpServerToolsUpdate
+    >;
+    [TableName.AiMcpEndpoint]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpoints,
+      TAiMcpEndpointsInsert,
+      TAiMcpEndpointsUpdate
+    >;
+    [TableName.AiMcpEndpointServer]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpointServers,
+      TAiMcpEndpointServersInsert,
+      TAiMcpEndpointServersUpdate
+    >;
+    [TableName.AiMcpEndpointServerTool]: KnexOriginal.CompositeTableType<
+      TAiMcpEndpointServerTools,
+      TAiMcpEndpointServerToolsInsert,
+      TAiMcpEndpointServerToolsUpdate
     >;
   }
 }

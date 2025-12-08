@@ -223,7 +223,14 @@ export enum TableName {
   PkiAcmeOrder = "pki_acme_orders",
   PkiAcmeOrderAuth = "pki_acme_order_auths",
   PkiAcmeAuth = "pki_acme_auths",
-  PkiAcmeChallenge = "pki_acme_challenges"
+  PkiAcmeChallenge = "pki_acme_challenges",
+
+  // AI
+  AiMcpServer = "ai_mcp_servers",
+  AiMcpServerTool = "ai_mcp_server_tools",
+  AiMcpEndpoint = "ai_mcp_endpoints",
+  AiMcpEndpointServer = "ai_mcp_endpoint_servers",
+  AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";
@@ -316,7 +323,8 @@ export enum ProjectType {
   KMS = "kms",
   SSH = "ssh",
   SecretScanning = "secret-scanning",
-  PAM = "pam"
+  PAM = "pam",
+  AI = "ai"
 }
 
 export enum ActionProjectType {
