@@ -119,8 +119,8 @@ const PageContent = () => {
               )}
           </div>
         </PageHeader>
-        <div className="flex justify-center gap-4">
-          <div className="flex w-96 flex-col gap-4">
+        <div className="flex flex-col justify-center gap-4 lg:flex-row">
+          <div className="flex flex-col gap-4 lg:w-96">
             <RequestDetailsSection request={request} />
             <RequestActionsSection request={request} />
           </div>

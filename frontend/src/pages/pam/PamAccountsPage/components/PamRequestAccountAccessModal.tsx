@@ -111,6 +111,7 @@ const Content = ({ onOpenChange, account, accountPath }: Props) => {
         control={control}
         render={({ field, fieldState: { error } }) => (
           <FormControl
+            isRequired
             helperText="Account path including the account name. Supports glob patterns (e.g., /folder/**, /*/account-name)"
             errorText={error?.message}
             isError={Boolean(error?.message)}
@@ -126,7 +127,6 @@ const Content = ({ onOpenChange, account, accountPath }: Props) => {
         render={({ field, fieldState: { error } }) => (
           <FormControl
             label={<TtlFormLabel label="Access Duration" />}
-            helperText="Duration of access requested"
             errorText={error?.message}
             isError={Boolean(error?.message)}
           >
@@ -139,7 +139,6 @@ const Content = ({ onOpenChange, account, accountPath }: Props) => {
         control={control}
         render={({ field, fieldState: { error } }) => (
           <FormControl
-            helperText="Provide a reason for requesting access"
             errorText={error?.message}
             isError={Boolean(error?.message)}
             label="Justification"
@@ -178,7 +177,7 @@ export const PamRequestAccountAccessModal = (props: Props) => {
       <ModalContent
         className="max-w-2xl pb-2"
         title="Request Account Access"
-        subTitle="Request access to this account path"
+        subTitle="Request access to an account path"
       >
         <Content {...props} />
       </ModalContent>
