@@ -24,7 +24,7 @@ export const PolicyReviewStep = () => {
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, maxRequestTtl, conditions, constraints, steps } = watch();
+  const { name, conditions, constraints, steps } = watch();
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {

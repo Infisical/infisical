@@ -197,7 +197,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                     {isExpanded && (
                       <Tr className="bg-mineshaft-800">
                         <Td colSpan={7} className="p-0">
-                          <div className="flex max-h-80 w-full gap-2 gap-4 overflow-auto overflow-x-hidden p-4">
+                          <div className="flex max-h-80 w-full gap-4 overflow-auto overflow-x-hidden p-4">
                             <div className="flex-1">
                               <div className="mb-2 text-sm font-medium text-mineshaft-300">
                                 Approval Conditions

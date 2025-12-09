@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 import { TtlFormLabel } from "@app/components/features";
@@ -7,15 +6,7 @@ import { FormControl, Input } from "@app/components/v2";
 import { TPolicyForm } from "../PolicySchema";
 
 export const PolicyDetailsStep = () => {
-  const {
-    control,
-    formState: { errors }
-  } = useFormContext<TPolicyForm>();
-
-  useEffect(() => {
-    console.log("YOOOO");
-    console.log(errors);
-  }, [errors]);
+  const { control } = useFormContext<TPolicyForm>();
 
   return (
     <div className="flex flex-col gap-4">
