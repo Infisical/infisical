@@ -24,8 +24,6 @@ apiRequest.interceptors.request.use((config) => {
   const token = getAuthToken();
   const providerAuthToken = SecurityClient.getProviderAuthToken();
 
-  const params = new URLSearchParams(window.location.search);
-
   if (config.headers) {
     if (signupTempToken) {
       // eslint-disable-next-line no-param-reassign
@@ -39,17 +37,6 @@ apiRequest.interceptors.request.use((config) => {
     } else if (providerAuthToken) {
       // eslint-disable-next-line no-param-reassign
       config.headers.Authorization = `Bearer ${providerAuthToken}`;
-    }
-
-    const rootOrgHeader = config.headers.get("x-root-org");
-
-    if (rootOrgHeader) {
-      config.headers.delete("x-root-org");
-    } else {
-      const subOrganization = params.get("subOrganization");
-      if (subOrganization) {
-        config.headers.set("x-infisical-org", subOrganization);
-      }
     }
   }
 

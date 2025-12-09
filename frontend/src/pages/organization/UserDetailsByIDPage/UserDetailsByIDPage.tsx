@@ -112,7 +112,7 @@ const Page = withPermission(
               className="mb-4 flex items-center gap-x-2 text-sm text-mineshaft-400"
             >
               <FontAwesomeIcon icon={faChevronLeft} />
-              Organization Users
+              {isSubOrganization ? "Sub-" : ""}Organization Users
             </Link>
             <PageHeader
               scope={isSubOrganization ? "namespace" : "org"}

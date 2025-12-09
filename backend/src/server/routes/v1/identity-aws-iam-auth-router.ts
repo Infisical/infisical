@@ -4,6 +4,7 @@ import { IdentityAwsAuthsSchema } from "@app/db/schemas";
 import { EventType } from "@app/ee/services/audit-log/audit-log-types";
 import { ApiDocsTags, AWS_AUTH } from "@app/lib/api-docs";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -28,7 +29,8 @@ export const registerIdentityAwsAuthRouter = async (server: FastifyZodProvider) 
         identityId: z.string().trim().describe(AWS_AUTH.LOGIN.identityId),
         iamHttpRequestMethod: z.string().default("POST").describe(AWS_AUTH.LOGIN.iamHttpRequestMethod),
         iamRequestBody: z.string().describe(AWS_AUTH.LOGIN.iamRequestBody),
-        iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders)
+        iamRequestHeaders: z.string().describe(AWS_AUTH.LOGIN.iamRequestHeaders),
+        subOrganizationName: slugSchema().optional().describe(AWS_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({

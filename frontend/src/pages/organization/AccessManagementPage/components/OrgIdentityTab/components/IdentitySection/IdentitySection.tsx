@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { faPlus } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AnimatePresence, motion } from "framer-motion";
-import { LinkIcon, PlusIcon } from "lucide-react";
+import { InfoIcon } from "lucide-react";
+import { twMerge } from "tailwind-merge";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
 import { OrgPermissionCan } from "@app/components/permissions";
-import { Button, DeleteActionModal, Modal, ModalContent } from "@app/components/v2";
+import { Button, DeleteActionModal, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import { DocumentationLinkBadge } from "@app/components/v3";
 import {
   OrgPermissionIdentityActions,
@@ -30,9 +30,8 @@ import { OrgIdentityLinkForm } from "./OrgIdentityLinkForm";
 import { OrgIdentityModal } from "./OrgIdentityModal";
 
 enum IdentityWizardSteps {
-  SelectAction = "select-action",
-  LinkIdentity = "link-identity",
-  OrganizationIdentity = "project-identity"
+  CreateIdentity = "create-identity",
+  LinkIdentity = "link-identity"
 }
 
 export const IdentitySection = withPermission(
@@ -41,7 +40,7 @@ export const IdentitySection = withPermission(
     const { currentOrg, isSubOrganization } = useOrganization();
     const orgId = currentOrg?.id || "";
 
-    const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.SelectAction);
+    const [wizardStep, setWizardStep] = useState(IdentityWizardSteps.CreateIdentity);
 
     const { mutateAsync: deleteMutateAsync } = useDeleteOrgIdentity();
     const { mutateAsync: deleteTemplateMutateAsync } = useDeleteIdentityAuthTemplate();
@@ -100,7 +99,7 @@ export const IdentitySection = withPermission(
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <div className="flex flex-1 items-center gap-x-2">
               <p className="text-xl font-medium text-mineshaft-100">
-                Organization Machine Identities
+                {isSubOrganization ? "Sub-" : ""}Organization Machine Identities
               </p>
               <DocumentationLinkBadge href="https://infisical.com/docs/documentation/platform/identities/machine-identities" />
             </div>
@@ -124,7 +123,7 @@ export const IdentitySection = withPermission(
                       }
 
                       if (!isSubOrganization) {
-                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
+                        setWizardStep(IdentityWizardSteps.CreateIdentity);
                       }
 
                       handlePopUpOpen("identity");
@@ -197,7 +196,7 @@ export const IdentitySection = withPermission(
           onOpenChange={(open) => {
             handlePopUpToggle("identity", open);
             if (!open) {
-              setWizardStep(IdentityWizardSteps.SelectAction);
+              setWizardStep(IdentityWizardSteps.CreateIdentity);
             }
           }}
         >
@@ -214,80 +213,84 @@ export const IdentitySection = withPermission(
                 : undefined
             }
           >
-            <AnimatePresence mode="wait">
-              {wizardStep === IdentityWizardSteps.SelectAction && (
-                <motion.div
-                  key="select-type-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
-                >
-                  <div
-                    className="cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setWizardStep(IdentityWizardSteps.OrganizationIdentity)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setWizardStep(IdentityWizardSteps.OrganizationIdentity);
-                      }
+            {isSubOrganization && (
+              <div className="mb-4 flex items-center justify-center gap-x-2">
+                <div className="flex w-3/4 gap-x-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
+                  <Button
+                    variant="outline_bg"
+                    onClick={() => {
+                      setWizardStep(IdentityWizardSteps.CreateIdentity);
                     }}
+                    size="xs"
+                    className={twMerge(
+                      "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                      wizardStep === IdentityWizardSteps.CreateIdentity
+                        ? "bg-mineshaft-500"
+                        : "bg-transparent"
+                    )}
                   >
-                    <div className="flex items-center gap-2">
-                      <PlusIcon size="1rem" />
-                      <div>Create Machine Identity</div>
-                    </div>
-                    <div className="mt-2 text-xs text-mineshaft-300">
-                      Create a new machine identity specifically for this sub-organization. This
-                      machine identity will be managed at the sub-organization level.
-                    </div>
-                  </div>
-                  <div
-                    className="mt-4 cursor-pointer rounded-md border border-mineshaft-600 p-4 transition-all hover:bg-mineshaft-700"
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setWizardStep(IdentityWizardSteps.LinkIdentity)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        setWizardStep(IdentityWizardSteps.LinkIdentity);
-                      }
+                    Create New
+                  </Button>
+                  <Button
+                    variant="outline_bg"
+                    onClick={() => {
+                      setWizardStep(IdentityWizardSteps.LinkIdentity);
                     }}
+                    size="xs"
+                    className={twMerge(
+                      "min-w-[2.4rem] flex-1 rounded border-none hover:bg-mineshaft-600",
+                      wizardStep === IdentityWizardSteps.LinkIdentity
+                        ? "bg-mineshaft-500"
+                        : "bg-transparent"
+                    )}
                   >
-                    <div className="flex items-center gap-2">
-                      <LinkIcon size="1rem" />
-                      <div>Assign Existing Machine Identity</div>
-                    </div>
-                    <div className="mt-2 text-xs text-mineshaft-300">
-                      Assign an existing machine identity from your parent organization. The machine
-                      identity will continue to be managed at its original scope.
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              {wizardStep === IdentityWizardSteps.OrganizationIdentity && (
-                <motion.div
-                  key="identity-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
+                    Assign Existing
+                  </Button>
+                </div>
+                <Tooltip
+                  className="max-w-sm"
+                  position="right"
+                  align="start"
+                  content={
+                    <>
+                      <p className="mb-2 text-mineshaft-300">
+                        You can add machine identities to your sub-organization in one of two ways:
+                      </p>
+                      <ul className="ml-3.5 flex list-disc flex-col gap-y-4">
+                        <li className="text-mineshaft-200">
+                          <strong className="font-medium text-mineshaft-100">Create New</strong> -
+                          Create a new machine identity specifically for this sub-organization. This
+                          machine identity will be managed at the sub-organization level.
+                          <p className="mt-2">
+                            This method is recommended for autonomous teams that need to manage
+                            machine identity authentication.
+                          </p>
+                        </li>
+                        <li>
+                          <strong className="font-medium text-mineshaft-100">
+                            Assign Existing
+                          </strong>{" "}
+                          Assign an existing machine identity from your parent organization. The
+                          machine identity will continue to be managed at its original scope.
+                          <p className="mt-2">
+                            This method is recommended for organizations that need to maintain
+                            centralized control.
+                          </p>
+                        </li>
+                      </ul>
+                    </>
+                  }
                 >
-                  <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
-                </motion.div>
-              )}
-              {wizardStep === IdentityWizardSteps.LinkIdentity && (
-                <motion.div
-                  key="link-step"
-                  transition={{ duration: 0.1 }}
-                  initial={{ opacity: 0, translateX: 30 }}
-                  animate={{ opacity: 1, translateX: 0 }}
-                  exit={{ opacity: 0, translateX: -30 }}
-                >
-                  <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <InfoIcon size={16} className="text-mineshaft-400" />
+                </Tooltip>
+              </div>
+            )}
+            {wizardStep === IdentityWizardSteps.CreateIdentity && (
+              <OrgIdentityModal popUp={popUp} handlePopUpToggle={handlePopUpToggle} />
+            )}
+            {wizardStep === IdentityWizardSteps.LinkIdentity && (
+              <OrgIdentityLinkForm onClose={() => handlePopUpClose("identity")} />
+            )}
           </ModalContent>
         </Modal>
         <DeleteActionModal

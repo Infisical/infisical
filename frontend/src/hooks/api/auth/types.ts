@@ -1,6 +1,7 @@
 export type GetAuthTokenAPI = {
   token: string;
   organizationId?: string;
+  subOrganizationId?: string;
 };
 
 export enum UserEncryptionVersion {

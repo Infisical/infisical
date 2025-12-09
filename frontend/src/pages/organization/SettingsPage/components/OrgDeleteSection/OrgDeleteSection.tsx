@@ -47,7 +47,7 @@ export const OrgDeleteSection = () => {
           onClick={() => handlePopUpOpen("deleteOrg")}
           isDisabled={Boolean(!hasOrgRole(OrgMembershipRole.Admin))}
         >
-          {`Delete ${currentOrg.subOrganization?.name ?? currentOrg?.name}`}
+          {`Delete ${currentOrg?.name}`}
         </Button>
       </div>
       <DeleteActionModal

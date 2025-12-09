@@ -70,7 +70,7 @@ type TIdentityLdapAuthServiceFactoryDep = {
     TKeyStoreFactory,
     "setItemWithExpiry" | "getItem" | "deleteItem" | "getKeysByPattern" | "deleteItems" | "acquireLock"
   >;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityLdapAuthServiceFactory = ReturnType<typeof identityLdapAuthServiceFactory>;
@@ -153,7 +153,7 @@ export const identityLdapAuthServiceFactory = ({
     return { opts, ldapConfig };
   };
 
-  const login = async ({ identityId }: TLoginLdapAuthDTO) => {
+  const login = async ({ identityId, subOrganizationName }: TLoginLdapAuthDTO) => {
     const appCfg = getConfig();
     const identityLdapAuth = await identityLdapAuthDAL.findOne({ identityId });
 
@@ -167,12 +167,40 @@ export const identityLdapAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     const plan = await licenseService.getPlan(identity.orgId);
     if (!plan.ldap) {
       throw new BadRequestError({
         message:
           "Failed to login to identity due to plan restriction. Upgrade plan to login to use LDAP authentication."
       });
+    }
+    if (subOrganizationName) {
+      if (!isSubOrgIdentity) {
+        const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+        if (!subOrg) {
+          throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+        }
+
+        const subOrgMembership = await membershipIdentityDAL.findOne({
+          scope: AccessScope.Organization,
+          actorIdentityId: identity.id,
+          scopeOrgId: subOrg.id
+        });
+
+        if (!subOrgMembership) {
+          throw new UnauthorizedError({
+            message: `Identity not authorized to access sub organization ${subOrganizationName}`
+          });
+        }
+
+        subOrganizationId = subOrg.id;
+      }
     }
 
     try {
@@ -204,7 +232,8 @@ export const identityLdapAuthServiceFactory = ({
             accessTokenMaxTTL: identityLdapAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityLdapAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.LDAP_AUTH
+            authMethod: IdentityAuthMethod.LDAP_AUTH,
+            subOrganizationId
           },
           tx
         );

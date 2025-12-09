@@ -81,7 +81,8 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           token: z.string(),
-          organizationId: z.string().optional()
+          organizationId: z.string().optional(),
+          subOrganizationId: z.string().optional()
         })
       }
     },
@@ -89,14 +90,15 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
       const { decodedToken, tokenVersion } = await server.services.authToken.validateRefreshToken(req.cookies.jid);
       const appCfg = getConfig();
       let expiresIn: string | number = appCfg.JWT_AUTH_LIFETIME;
+
       if (decodedToken.organizationId) {
-        const org = await server.services.org.findOrganizationById(
-          decodedToken.userId,
-          decodedToken.organizationId,
-          decodedToken.authMethod,
-          decodedToken.organizationId,
-          decodedToken.organizationId
-        );
+        const org = await server.services.org.findOrganizationById({
+          userId: decodedToken.userId,
+          orgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
+          actorAuthMethod: decodedToken.authMethod,
+          actorOrgId: decodedToken.subOrganizationId ? decodedToken.subOrganizationId : decodedToken.organizationId,
+          rootOrgId: decodedToken.organizationId
+        });
         if (org && org.userTokenExpiration) {
           expiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
         }
@@ -110,14 +112,14 @@ export const registerAuthRoutes = async (server: FastifyZodProvider) => {
           tokenVersionId: tokenVersion.id,
           accessVersion: tokenVersion.accessVersion,
           organizationId: decodedToken.organizationId,
+          ...(decodedToken.subOrganizationId && { subOrganizationId: decodedToken.subOrganizationId }),
           isMfaVerified: decodedToken.isMfaVerified,
           mfaMethod: decodedToken.mfaMethod
         },
         appCfg.AUTH_SECRET,
         { expiresIn }
       );
-
-      return { token, organizationId: decodedToken.organizationId };
+      return { token, organizationId: decodedToken.organizationId, subOrganizationId: decodedToken.subOrganizationId };
     }
   });
 };
