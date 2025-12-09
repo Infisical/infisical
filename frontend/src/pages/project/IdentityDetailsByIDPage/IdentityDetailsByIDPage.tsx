@@ -270,7 +270,7 @@ const Page = () => {
                 />
               ) : (
                 <UnstableCard>
-                  <UnstableCardHeader className="border-b">
+                  <UnstableCardHeader>
                     <UnstableCardTitle>Authentication</UnstableCardTitle>
                     <UnstableCardDescription>
                       Configure authentication methods
