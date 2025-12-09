@@ -299,7 +299,7 @@ export const addIdentitiesToGroup = async ({
   identityOrgMembershipDAL,
   identityGroupMembershipDAL
 }: TAddIdentitiesToGroup) => {
-  const processAddition = async (tx: Knex) => {
+  return identityDAL.transaction(async (tx) => {
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
@@ -341,10 +341,6 @@ export const addIdentitiesToGroup = async ({
     );
 
     return foundIdentities;
-  };
-
-  return identityDAL.transaction(async (tx) => {
-    return processAddition(tx);
   });
 };
 
@@ -496,7 +492,7 @@ export const removeIdentitiesFromGroup = async ({
   identityOrgMembershipDAL,
   identityGroupMembershipDAL
 }: TRemoveIdentitiesFromGroup) => {
-  const processRemoval = async (tx: Knex) => {
+  return identityDAL.transaction(async (tx) => {
     const identityIdsSet = new Set(identityIds);
     const identityIdsArray = Array.from(identityIdsSet);
 
@@ -541,10 +537,6 @@ export const removeIdentitiesFromGroup = async ({
     );
 
     return foundIdentities;
-  };
-
-  return identityDAL.transaction(async (tx) => {
-    return processRemoval(tx);
   });
 };
 
