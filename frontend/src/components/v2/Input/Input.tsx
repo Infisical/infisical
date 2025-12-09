@@ -65,6 +65,12 @@ const inputParentContainerVariants = cva("inline-flex font-inter items-center bo
   }
 });
 
+const data1pIgnore = (autoComplete?: string) => {
+  if (!autoComplete) return true;
+
+  return !autoComplete.match(/(email|password|username)/i);
+};
+
 export type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> &
   VariantProps<typeof inputVariants> &
   Props;
@@ -86,6 +92,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       isReadOnly,
       autoCapitalization,
       warning,
+      autoComplete,
       ...props
     },
     ref
@@ -116,6 +123,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           readOnly={isReadOnly}
           disabled={isDisabled}
           onInput={handleInput}
+          autoComplete={autoComplete}
+          data-1p-ignore={data1pIgnore(autoComplete)}
           className={twMerge(
             leftIcon ? "pl-10" : "pl-2.5",
             rightIcon || warning ? "pr-10" : "pr-2.5",

@@ -1,0 +1,141 @@
+---
+title: "MongoDB Connection"
+description: "Learn how to configure a MongoDB Connection for Infisical."
+---
+
+Infisical supports the use of Username & Password authentication to connect with MongoDB databases.
+
+## Configure a MongoDB user for Infisical 
+
+<Steps>
+    <Step title="Create a MongoDB user">
+        Infisical recommends creating a designated user in your MongoDB database for your connection.
+
+        ```bash
+        use [TARGET-DATABASE]
+        db.createUser({
+          user: "infisical_manager",
+          pwd: "[ENTER-YOUR-USER-PASSWORD]",
+          roles: []
+        })
+        ```
+    </Step>
+
+    <Step title="Grant Relevant Permissions">
+        Depending on how you intend to use your MongoDB connection, you'll need to grant one or more of the following permissions.
+
+        <Tip>
+            To learn more about MongoDB's permission system, please visit their [documentation](https://www.mongodb.com/docs/manual/core/security-built-in-roles/).
+        </Tip>
+        
+        <Tabs>
+            <Tab title="Secret Rotation">
+                For Secret Rotations, your Infisical user will require the ability to create, update, and delete users in the target database:
+
+                ```bash
+                use [TARGET-DATABASE]
+                db.grantRolesToUser("infisical_manager", [
+                  { role: "userAdmin", db: "[TARGET-DATABASE]" }
+                ])
+                ```
+
+                <Note>
+                    The `userAdmin` role allows managing users (create, update passwords, delete) within the specified database.
+                </Note>
+            </Tab>
+        </Tabs>
+    </Step>
+</Steps>
+
+
+## Create MongoDB Connection in Infisical
+
+<Tabs>
+    <Tab title="Infisical UI">
+        <Steps>
+            <Step title="Navigate to App Connections">
+                In your Infisical dashboard, navigate to the **App Connections** page in the desired project.
+
+                ![App Connections Tab](/images/app-connections/general/add-connection.png)
+            </Step>
+            <Step title="Select MongoDB Connection">
+                Click the **+ Add Connection** button and select the **MongoDB Connection** option from the available integrations.
+
+                ![Select MongoDB Connection](/images/app-connections/mongodb/mongodb-app-connection-option.png)
+            </Step>
+            <Step title="Fill out the MongoDB Connection Modal">
+                Complete the MongoDB Connection form by entering:
+                - A descriptive name for the connection
+                - An optional description for future reference
+                - The MongoDB host URL for your database
+                - The MongoDB port for your database
+                - The MongoDB username for your database
+                - The MongoDB password for your database
+                - The MongoDB database name to connect to
+
+                You can optionally configure SSL/TLS for your MongoDB connection in the **SSL** section.
+
+                ![MongoDB Connection Modal](/images/app-connections/mongodb/mongodb-app-connection-form.png)
+            </Step>
+            <Step title="Connection Created">
+                After clicking Create, your **MongoDB Connection** is established and ready to use with your Infisical project.
+
+                ![MongoDB Connection Created](/images/app-connections/mongodb/mongodb-app-connection-generated.png)
+            </Step>
+        </Steps>
+    </Tab>
+    <Tab title="API">
+        To create a MongoDB Connection, make an API request to the [Create MongoDB Connection](/api-reference/endpoints/app-connections/mongodb/create) API endpoint.
+
+        ### Sample request
+
+        ```bash Request
+        curl    --request POST \
+                --url https://app.infisical.com/api/v1/app-connections/mongodb \
+                --header 'Content-Type: application/json' \
+                --data '{
+                    "name": "my-mongodb-connection",
+                    "method": "username-and-password",
+                    "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+                    "credentials": {
+                        "host": "[MONGODB HOST]",
+                        "port": 27017,
+                        "username": "[MONGODB USERNAME]",
+                        "password": "[MONGODB PASSWORD]",
+                        "database": "[MONGODB DATABASE]"
+                    }
+                }'
+        ```
+
+        ### Sample response
+
+        ```bash Response
+        {
+          "appConnection": {
+              "id": "e5d18aca-86f7-4026-a95e-efb8aeb0d8e6",
+              "name": "my-mongodb-connection",
+              "projectId": "7ffbb072-2575-495a-b5b0-127f88caef78",
+              "description": null,
+              "version": 1,
+              "orgId": "6f03caa1-a5de-43ce-b127-95a145d3464c",
+              "createdAt": "2025-04-23T19:46:34.831Z",
+              "updatedAt": "2025-04-23T19:46:34.831Z",
+              "isPlatformManagedCredentials": false,
+              "credentialsHash": "7c2d371dec195f82a6a0d5b41c970a229cfcaf88e894a5b6395e2dbd0280661f",
+              "app": "mongodb",
+              "method": "username-and-password",
+              "credentials": {
+                "host": "[MONGODB HOST]",
+                "port": 27017,
+                "username": "[MONGODB USERNAME]",
+                "database": "[MONGODB DATABASE]",
+                "sslEnabled": false,
+                "sslRejectUnauthorized": false,
+                "sslCertificate": ""
+              }
+          }
+        }
+        ```
+    </Tab>
+</Tabs>
+

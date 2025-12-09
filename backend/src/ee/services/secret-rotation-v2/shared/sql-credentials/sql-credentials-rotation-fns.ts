@@ -87,8 +87,6 @@ export const sqlCredentialsRotationFactory: TRotationFactory<
   ) => {
     // For SQL, since we get existing users, we change both their passwords
     // on issue to invalidate their existing passwords
-    // For SQL, since we get existing users, we change both their passwords
-    // on issue to invalidate their existing passwords
     const credentialsSet = [
       { username: username1, password: generatePassword(passwordRequirement) },
       { username: username2, password: generatePassword(passwordRequirement) }

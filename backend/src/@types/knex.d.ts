@@ -26,6 +26,30 @@ import {
   TAppConnections,
   TAppConnectionsInsert,
   TAppConnectionsUpdate,
+  TApprovalPolicies,
+  TApprovalPoliciesInsert,
+  TApprovalPoliciesUpdate,
+  TApprovalPolicyStepApprovers,
+  TApprovalPolicyStepApproversInsert,
+  TApprovalPolicyStepApproversUpdate,
+  TApprovalPolicySteps,
+  TApprovalPolicyStepsInsert,
+  TApprovalPolicyStepsUpdate,
+  TApprovalRequestApprovals,
+  TApprovalRequestApprovalsInsert,
+  TApprovalRequestApprovalsUpdate,
+  TApprovalRequestGrants,
+  TApprovalRequestGrantsInsert,
+  TApprovalRequestGrantsUpdate,
+  TApprovalRequests,
+  TApprovalRequestsInsert,
+  TApprovalRequestStepEligibleApprovers,
+  TApprovalRequestStepEligibleApproversInsert,
+  TApprovalRequestStepEligibleApproversUpdate,
+  TApprovalRequestSteps,
+  TApprovalRequestStepsInsert,
+  TApprovalRequestStepsUpdate,
+  TApprovalRequestsUpdate,
   TAuditLogs,
   TAuditLogsInsert,
   TAuditLogStreams,
@@ -577,15 +601,15 @@ import {
   TWorkflowIntegrationsUpdate
 } from "@app/db/schemas";
 import {
-  TCertificateRequests,
-  TCertificateRequestsInsert,
-  TCertificateRequestsUpdate
-} from "@app/db/schemas/certificate-requests";
-import {
   TAccessApprovalPoliciesEnvironments,
   TAccessApprovalPoliciesEnvironmentsInsert,
   TAccessApprovalPoliciesEnvironmentsUpdate
 } from "@app/db/schemas/access-approval-policies-environments";
+import {
+  TCertificateRequests,
+  TCertificateRequestsInsert,
+  TCertificateRequestsUpdate
+} from "@app/db/schemas/certificate-requests";
 import {
   TIdentityAuthTemplates,
   TIdentityAuthTemplatesInsert,
@@ -1482,6 +1506,46 @@ declare module "knex/types/tables" {
       TVaultExternalMigrationConfigs,
       TVaultExternalMigrationConfigsInsert,
       TVaultExternalMigrationConfigsUpdate
+    >;
+    [TableName.ApprovalPolicies]: KnexOriginal.CompositeTableType<
+      TApprovalPolicies,
+      TApprovalPoliciesInsert,
+      TApprovalPoliciesUpdate
+    >;
+    [TableName.ApprovalPolicyStepApprovers]: KnexOriginal.CompositeTableType<
+      TApprovalPolicyStepApprovers,
+      TApprovalPolicyStepApproversInsert,
+      TApprovalPolicyStepApproversUpdate
+    >;
+    [TableName.ApprovalPolicySteps]: KnexOriginal.CompositeTableType<
+      TApprovalPolicySteps,
+      TApprovalPolicyStepsInsert,
+      TApprovalPolicyStepsUpdate
+    >;
+    [TableName.ApprovalRequestApprovals]: KnexOriginal.CompositeTableType<
+      TApprovalRequestApprovals,
+      TApprovalRequestApprovalsInsert,
+      TApprovalRequestApprovalsUpdate
+    >;
+    [TableName.ApprovalRequestGrants]: KnexOriginal.CompositeTableType<
+      TApprovalRequestGrants,
+      TApprovalRequestGrantsInsert,
+      TApprovalRequestGrantsUpdate
+    >;
+    [TableName.ApprovalRequestStepEligibleApprovers]: KnexOriginal.CompositeTableType<
+      TApprovalRequestStepEligibleApprovers,
+      TApprovalRequestStepEligibleApproversInsert,
+      TApprovalRequestStepEligibleApproversUpdate
+    >;
+    [TableName.ApprovalRequestSteps]: KnexOriginal.CompositeTableType<
+      TApprovalRequestSteps,
+      TApprovalRequestStepsInsert,
+      TApprovalRequestStepsUpdate
+    >;
+    [TableName.ApprovalRequests]: KnexOriginal.CompositeTableType<
+      TApprovalRequests,
+      TApprovalRequestsInsert,
+      TApprovalRequestsUpdate
     >;
   }
 }
