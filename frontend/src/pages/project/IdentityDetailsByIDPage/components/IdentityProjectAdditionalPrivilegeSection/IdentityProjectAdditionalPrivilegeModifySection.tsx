@@ -208,7 +208,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                         rightIcon={<FontAwesomeIcon icon={faCaretDown} className="ml-2" />}
                         isDisabled={isIdentityEditDisabled}
                         className={twMerge(
-                          "bg-mineshaft-600 hover:bg-mineshaft-500 w-full border-none py-2.5 text-xs capitalize",
+                          "w-full border-none bg-mineshaft-600 py-2.5 text-xs capitalize hover:bg-mineshaft-500",
                           isTemporary && "text-primary",
                           isExpired && "text-red-600"
                         )}
@@ -226,7 +226,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
                   className="border border-gray-600 pt-4"
                 >
                   <div className="flex flex-col space-y-4">
-                    <div className="text-mineshaft-300 border-b border-b-gray-700 pb-2 text-sm">
+                    <div className="border-b border-b-gray-700 pb-2 text-sm text-mineshaft-300">
                       Configure Timed Access
                     </div>
                     {isExpired && <Tag colorSchema="red">Expired</Tag>}
@@ -306,7 +306,7 @@ export const IdentityProjectAdditionalPrivilegeModifySection = ({
             <div className="flex items-center space-x-4">
               {isDirty && (
                 <Button
-                  className="text-mineshaft-300 mr-4"
+                  className="mr-4 text-mineshaft-300"
                   variant="link"
                   isDisabled={isSubmitting}
                   isLoading={isSubmitting}
