@@ -406,9 +406,11 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
           )}
           {!isOAuthAuthorized && isOAuthPending && (
             <div className="space-y-3">
-              <div className="flex items-center gap-2 rounded-md border border-yellow-500/30 bg-yellow-500/10 p-3">
-                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-yellow-500" />
-                <span className="text-sm text-yellow-500">Waiting for OAuth authorization...</span>
+              <div className="flex items-center gap-2 rounded-md border border-primary-500/30 bg-primary-500/10 p-3">
+                <FontAwesomeIcon icon={faSpinner} className="animate-spin text-primary-400" />
+                <span className="text-sm text-mineshaft-200">
+                  Waiting for OAuth authorization...
+                </span>
               </div>
               <Button
                 onClick={handleCancelOAuth}

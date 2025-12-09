@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import {
-  faCheckCircle,
-  faExternalLink,
-  faPlug,
-  faSpinner,
-  faWarning
-} from "@fortawesome/free-solid-svg-icons";
+import { faCheckCircle, faExternalLink, faSpinner } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearch } from "@tanstack/react-router";
@@ -335,9 +329,6 @@ export const McpEndpointFinalizePage = () => {
         </Link>
 
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-            <FontAwesomeIcon icon={faPlug} className="text-2xl text-primary" />
-          </div>
           <h1 className="text-xl font-semibold text-mineshaft-100">Authorize MCP Access</h1>
           <p className="mt-2 text-sm text-bunker-300">
             An external application is requesting access to your MCP endpoint
@@ -371,11 +362,12 @@ export const McpEndpointFinalizePage = () => {
 
         {/* Servers requiring authentication */}
         {!isServersLoading && hasServersRequiringAuth && (
-          <div className="mb-6 space-y-2">
+          <div className="mt-6 mb-6 space-y-2">
             {pendingServers && pendingServers.length > 0 && (
-              <p className="flex items-center gap-2 text-xs text-yellow-500">
-                <FontAwesomeIcon icon={faWarning} />
-                <span>Authenticate with personal credential servers to continue</span>
+              <p className="text-xs text-bunker-300">
+                {pendingServers.length === 1
+                  ? "The following server uses personal credentials. Authenticate with your own account to access its tools."
+                  : "The following servers use personal credentials. Authenticate with your own accounts to access their tools."}
               </p>
             )}
             {serversRequiringAuth.map((server) => {
