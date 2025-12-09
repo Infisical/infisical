@@ -55,47 +55,6 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
 
   const hasAuthMethods = Boolean(identity.authMethods.length);
 
-  const { mutateAsync: revokeUniversalAuth } = useDeleteIdentityUniversalAuth();
-  const { mutateAsync: revokeTokenAuth } = useDeleteIdentityTokenAuth();
-  const { mutateAsync: revokeKubernetesAuth } = useDeleteIdentityKubernetesAuth();
-  const { mutateAsync: revokeGcpAuth } = useDeleteIdentityGcpAuth();
-  const { mutateAsync: revokeTlsCertAuth } = useDeleteIdentityTlsCertAuth();
-  const { mutateAsync: revokeAwsAuth } = useDeleteIdentityAwsAuth();
-  const { mutateAsync: revokeAzureAuth } = useDeleteIdentityAzureAuth();
-  const { mutateAsync: revokeAliCloudAuth } = useDeleteIdentityAliCloudAuth();
-  const { mutateAsync: revokeOciAuth } = useDeleteIdentityOciAuth();
-  const { mutateAsync: revokeOidcAuth } = useDeleteIdentityOidcAuth();
-  const { mutateAsync: revokeJwtAuth } = useDeleteIdentityJwtAuth();
-  const { mutateAsync: revokeLdapAuth } = useDeleteIdentityLdapAuth();
-
-  const RemoveAuthMap = {
-    [IdentityAuthMethod.KUBERNETES_AUTH]: revokeKubernetesAuth,
-    [IdentityAuthMethod.GCP_AUTH]: revokeGcpAuth,
-    [IdentityAuthMethod.TLS_CERT_AUTH]: revokeTlsCertAuth,
-    [IdentityAuthMethod.AWS_AUTH]: revokeAwsAuth,
-    [IdentityAuthMethod.AZURE_AUTH]: revokeAzureAuth,
-    [IdentityAuthMethod.ALICLOUD_AUTH]: revokeAliCloudAuth,
-    [IdentityAuthMethod.UNIVERSAL_AUTH]: revokeUniversalAuth,
-    [IdentityAuthMethod.TOKEN_AUTH]: revokeTokenAuth,
-    [IdentityAuthMethod.OCI_AUTH]: revokeOciAuth,
-    [IdentityAuthMethod.OIDC_AUTH]: revokeOidcAuth,
-    [IdentityAuthMethod.JWT_AUTH]: revokeJwtAuth,
-    [IdentityAuthMethod.LDAP_AUTH]: revokeLdapAuth
-  };
-
-  const handleDeleteAuthMethod = async (authMethod: IdentityAuthMethod) => {
-    await RemoveAuthMap[authMethod]({
-      identityId: identity.id,
-      projectId: identity.projectId!
-    });
-
-    createNotification({
-      text: "Successfully removed auth method",
-      type: "success"
-    });
-    handlePopUpToggle("revokeAuthMethod", false);
-  };
-
   return (
     <>
       <UnstableCard>
@@ -193,16 +152,6 @@ export const ProjectIdentityAuthenticationSection = ({ identity, refetchIdentity
         onOpenChange={(isOpen) => handlePopUpToggle("upgradePlan", isOpen)}
         text={(popUp.upgradePlan?.data as { description: string })?.description}
         isEnterpriseFeature={popUp.upgradePlan.data?.isEnterpriseFeature}
-      />
-      <DeleteActionModal
-        isOpen={popUp?.revokeAuthMethod?.isOpen}
-        title={`Are you sure you want to remove ${popUp?.revokeAuthMethod?.data ? identityAuthToNameMap[popUp.revokeAuthMethod.data as IdentityAuthMethod] : "this auth method"} on this identity?`}
-        onChange={(isOpen) => handlePopUpToggle("revokeAuthMethod", isOpen)}
-        deleteKey="confirm"
-        buttonText="Remove"
-        onDeleteApproved={() =>
-          handleDeleteAuthMethod(popUp.revokeAuthMethod.data as IdentityAuthMethod)
-        }
       />
     </>
   );
