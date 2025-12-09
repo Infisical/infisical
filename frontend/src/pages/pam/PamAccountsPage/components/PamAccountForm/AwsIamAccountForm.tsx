@@ -2,8 +2,10 @@ import { Controller, FormProvider, useForm } from "react-hook-form";
 import { faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import ms from "ms";
 import { z } from "zod";
 
+import { TtlFormLabel } from "@app/components/features";
 import {
   Accordion,
   AccordionContent,
@@ -25,6 +27,9 @@ import {
 
 import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccountFields";
 
+const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
+const AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING = 3600; // 1 hour
+
 type Props = {
   account?: TAwsIamAccount;
   resourceId?: string;
@@ -42,12 +47,29 @@ const AwsIamCredentialsSchema = z.object({
     .refine((val) => arnRoleRegex.test(val), {
       message: "ARN must be in the format 'arn:aws:iam::123456789012:role/RoleName'"
     }),
-  // Max 1 hour (3600s) due to AWS role chaining limitation, min 15 min (900s)
-  defaultSessionDuration: z.coerce
-    .number()
-    .min(900, "Minimum session duration is 900 seconds (15 minutes)")
-    .max(3600, "Maximum session duration is 3600 seconds (1 hour)")
-    .default(3600)
+  defaultSessionDuration: z.string().superRefine((val, ctx) => {
+    const valMs = ms(val);
+    if (typeof valMs !== "number" || valMs <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid duration format. Use formats like 15m, 30m, 1h"
+      });
+      return;
+    }
+    const valSeconds = valMs / 1000;
+    if (valSeconds < AWS_STS_MIN_SESSION_DURATION) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Minimum session duration is 15 minutes (15m)"
+      });
+    }
+    if (valSeconds > AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Maximum session duration is 1 hour (1h) due to AWS role chaining"
+      });
+    }
+  })
 });
 
 const formSchema = genericAccountFieldsSchema.extend({
@@ -87,16 +109,36 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
   }]
 }`;
 
+  // Convert seconds to human-readable format for existing accounts
+  const getDefaultSessionDuration = () => {
+    if (account?.credentials?.defaultSessionDuration) {
+      const seconds = account.credentials.defaultSessionDuration;
+      if (seconds >= 3600 && seconds % 3600 === 0) {
+        return `${seconds / 3600}h`;
+      }
+      return `${seconds / 60}m`;
+    }
+    return "1h";
+  };
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: account ?? {
-      name: "",
-      description: "",
-      credentials: {
-        targetRoleArn: "",
-        defaultSessionDuration: 3600
-      }
-    }
+    defaultValues: account
+      ? {
+          ...account,
+          credentials: {
+            ...account.credentials,
+            defaultSessionDuration: getDefaultSessionDuration()
+          }
+        }
+      : {
+          name: "",
+          description: "",
+          credentials: {
+            targetRoleArn: "",
+            defaultSessionDuration: "1h"
+          }
+        }
   });
 
   const {
@@ -105,9 +147,22 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
     formState: { isSubmitting, isDirty }
   } = form;
 
+  const handleFormSubmit = async (formData: FormData) => {
+    const durationMs = ms(formData.credentials.defaultSessionDuration);
+    const durationSeconds = Math.floor(durationMs / 1000);
+
+    await onSubmit({
+      ...formData,
+      credentials: {
+        ...formData.credentials,
+        defaultSessionDuration: durationSeconds
+      }
+    } as any);
+  };
+
   return (
     <FormProvider {...form}>
-      <form onSubmit={handleSubmit(onSubmit)}>
+      <form onSubmit={handleSubmit(handleFormSubmit)}>
         <GenericAccountFields />
 
         <div className="mb-4 rounded-sm border border-mineshaft-600 bg-mineshaft-700/70 p-3">
@@ -139,12 +194,12 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
             render={({ field, fieldState: { error } }) => (
               <FormControl
                 className="mb-0"
-                helperText="In seconds. Min 900 (15m), max 3600 (1h) due to AWS role chaining limit."
+                helperText="Min 15m, max 1h due to AWS role chaining limit."
                 errorText={error?.message}
                 isError={Boolean(error?.message)}
-                label="Default Session Duration (seconds)"
+                label={<TtlFormLabel label="Default Session Duration" />}
               >
-                <Input {...field} type="number" placeholder="3600" />
+                <Input {...field} placeholder="1h" />
               </FormControl>
             )}
           />
