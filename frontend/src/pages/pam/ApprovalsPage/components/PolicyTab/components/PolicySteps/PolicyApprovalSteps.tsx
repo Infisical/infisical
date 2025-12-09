@@ -78,7 +78,7 @@ export const PolicyApprovalSteps = () => {
 
       <div className="space-y-4">
         {stepFields.map((field, index) => (
-          <div key={field.id} className="rounded border border-mineshaft-600 bg-mineshaft-800 p-4">
+          <div key={field.id} className="rounded border border-mineshaft-600 bg-mineshaft-700 p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/20 text-xs font-semibold text-primary">

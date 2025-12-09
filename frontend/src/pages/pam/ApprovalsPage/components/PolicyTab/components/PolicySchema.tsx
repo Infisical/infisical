@@ -28,7 +28,13 @@ export const PolicyFormSchema = z.object({
   ).nullish(),
   conditions: z
     .object({
-      accountPaths: z.array(z.string().min(1))
+      accountPaths: z
+        .string()
+        .array()
+        .min(1, "Must have at least one account path")
+        .refine((val) => val.every((path) => path.length > 0), {
+          message: "All account paths must be non-empty"
+        })
     })
     .array()
     .min(1, "At least one condition is required"),

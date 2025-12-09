@@ -15,7 +15,6 @@ import {
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 import { PolicyApprovalSteps } from "./PolicySteps/PolicyApprovalSteps";
-import { PolicyConstraintsStep } from "./PolicySteps/PolicyConstraintsStep";
 import { PolicyDetailsStep } from "./PolicySteps/PolicyDetailsStep";
 import { PolicyReviewStep } from "./PolicySteps/PolicyReviewStep";
 import { PolicyFormSchema, TPolicyForm } from "./PolicySchema";
@@ -26,9 +25,12 @@ type Props = {
 };
 
 const FORM_STEPS: { name: string; key: string; fields: (keyof TPolicyForm)[] }[] = [
-  { name: "Details", key: "details", fields: ["name", "maxRequestTtl", "constraints"] },
-  { name: "Conditions", key: "conditions", fields: ["conditions"] },
-  { name: "Approvals", key: "approvals", fields: ["steps"] },
+  {
+    name: "Configuration",
+    key: "configuration",
+    fields: ["name", "constraints", "conditions"]
+  },
+  { name: "Approval Sequence", key: "approvals", fields: ["steps"] },
   { name: "Review", key: "review", fields: [] }
 ];
 
@@ -61,8 +63,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
           approvers: []
         }
       ]
-    },
-    mode: "onChange"
+    }
   });
 
   const { handleSubmit, trigger, reset } = formMethods;
@@ -184,7 +185,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
   return (
     <Modal isOpen={isOpen} onOpenChange={(open) => handlePopUpToggle("policy", open)}>
       <ModalContent
-        title={policyData?.policyId ? "Edit Policy" : "Create Policy"}
+        title={policyData?.policyId ? "Edit Access Policy" : "Create Access Policy"}
         className="max-w-3xl"
       >
         <FormProvider {...formMethods}>
@@ -216,9 +217,6 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
                   <PolicyDetailsStep />
                 </Tab.Panel>
                 <Tab.Panel>
-                  <PolicyConstraintsStep />
-                </Tab.Panel>
-                <Tab.Panel>
                   <PolicyApprovalSteps />
                 </Tab.Panel>
                 <Tab.Panel>
@@ -237,7 +235,8 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
                 isLoading={isCreating || isUpdating}
                 isDisabled={isCreating || isUpdating}
               >
-                {policyData?.policyId ? "Update" : "Create"} {isFinalStep ? "" : "Next"}
+                {isFinalStep && (policyData?.policyId ? "Update" : "Create")}
+                {!isFinalStep && "Next"}
               </Button>
             </div>
           </form>

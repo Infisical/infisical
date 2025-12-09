@@ -98,7 +98,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             <Tr>
               <Th className="w-10" />
               <Th>Policy Name</Th>
-              <Th>Access Duration (min - max)</Th>
+              <Th>Max. Access Duration</Th>
               <Th>Conditions</Th>
               <Th className="w-5" />
             </Tr>
@@ -141,10 +141,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                         </IconButton>
                       </Td>
                       <Td>{policy.name}</Td>
-                      <Td>
-                        {policy.constraints.constraints.accessDuration.min} -{" "}
-                        {policy.constraints.constraints.accessDuration.max}
-                      </Td>
+                      <Td>{policy.constraints.constraints.accessDuration.max}</Td>
                       <Td>
                         {conditionsCount} condition{conditionsCount !== 1 ? "s" : ""}
                       </Td>
