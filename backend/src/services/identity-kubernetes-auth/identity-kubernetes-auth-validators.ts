@@ -46,7 +46,7 @@ export const validateKubernetesHostConnectivity = async ({
 
     throw new BadRequestError({
       name: "KubernetesHostConnectionError",
-      message: error.message || `Failed to connect to Kubernetes host at ${kubernetesHost}: ${error.message}`,
+      message: `Failed to connect to Kubernetes host at ${kubernetesHost}: ${error.message}`,
       error
     });
   }
