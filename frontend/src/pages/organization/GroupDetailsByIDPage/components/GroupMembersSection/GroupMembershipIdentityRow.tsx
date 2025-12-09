@@ -14,7 +14,7 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
-import { EGroupMemberType, TGroupMemberIdentity } from "@app/hooks/api/groups/types";
+import { GroupMemberType, TGroupMemberIdentity } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -64,7 +64,7 @@ export const GroupMembershipIdentityRow = ({
                         icon={<FontAwesomeIcon icon={faUserMinus} />}
                         onClick={() =>
                           handlePopUpOpen("removeMemberFromGroup", {
-                            memberType: EGroupMemberType.IDENTITY,
+                            memberType: GroupMemberType.IDENTITY,
                             identityId: id,
                             name
                           })

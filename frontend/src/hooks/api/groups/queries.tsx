@@ -4,11 +4,11 @@ import { apiRequest } from "@app/config/request";
 
 import { OrderByDirection } from "../generic/types";
 import {
-  EFilterMemberType,
-  EFilterReturnedIdentities,
-  EFilterReturnedProjects,
-  EFilterReturnedUsers,
-  EGroupMembersOrderBy,
+  FilterMemberType,
+  FilterReturnedIdentities,
+  FilterReturnedProjects,
+  FilterReturnedUsers,
+  GroupMembersOrderBy,
   TGroup,
   TGroupIdentity,
   TGroupMember,
@@ -32,7 +32,7 @@ export const groupKeys = {
     offset: number;
     limit: number;
     search: string;
-    filter?: EFilterReturnedUsers;
+    filter?: FilterReturnedUsers;
   }) => [...groupKeys.forGroupUserMemberships(slug), { offset, limit, search, filter }] as const,
   allGroupIdentitiesMemberships: () => ["group-identities-memberships"] as const,
   forGroupIdentitiesMemberships: (slug: string) =>
@@ -48,7 +48,7 @@ export const groupKeys = {
     offset: number;
     limit: number;
     search: string;
-    filter?: EFilterReturnedIdentities;
+    filter?: FilterReturnedIdentities;
   }) =>
     [...groupKeys.forGroupIdentitiesMemberships(slug), { offset, limit, search, filter }] as const,
   allGroupMembers: () => ["group-members"] as const,
@@ -66,9 +66,9 @@ export const groupKeys = {
     offset: number;
     limit: number;
     search: string;
-    orderBy?: EGroupMembersOrderBy;
+    orderBy?: GroupMembersOrderBy;
     orderDirection?: OrderByDirection;
-    memberTypeFilter?: EFilterMemberType[];
+    memberTypeFilter?: FilterMemberType[];
   }) =>
     [
       ...groupKeys.forGroupMembers(slug),
@@ -89,7 +89,7 @@ export const groupKeys = {
     offset: number;
     limit: number;
     search: string;
-    filter?: EFilterReturnedProjects;
+    filter?: FilterReturnedProjects;
     orderBy?: string;
     orderDirection?: OrderByDirection;
   }) =>
@@ -124,7 +124,7 @@ export const useListGroupUsers = ({
   offset: number;
   limit: number;
   search: string;
-  filter?: EFilterReturnedUsers;
+  filter?: FilterReturnedUsers;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupUserMemberships({
@@ -171,9 +171,9 @@ export const useListGroupMembers = ({
   offset: number;
   limit: number;
   search: string;
-  orderBy?: EGroupMembersOrderBy;
+  orderBy?: GroupMembersOrderBy;
   orderDirection?: OrderByDirection;
-  memberTypeFilter?: EFilterMemberType[];
+  memberTypeFilter?: FilterMemberType[];
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupMembers({
@@ -227,7 +227,7 @@ export const useListGroupIdentities = ({
   offset: number;
   limit: number;
   search: string;
-  filter?: EFilterReturnedIdentities;
+  filter?: FilterReturnedIdentities;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupIdentitiesMemberships({
@@ -274,7 +274,7 @@ export const useListGroupProjects = ({
   search: string;
   orderBy?: string;
   orderDirection?: OrderByDirection;
-  filter?: EFilterReturnedProjects;
+  filter?: FilterReturnedProjects;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupProjects({

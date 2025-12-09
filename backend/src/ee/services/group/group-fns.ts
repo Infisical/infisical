@@ -504,7 +504,7 @@ export const removeIdentitiesFromGroup = async ({
 
     if (foundIdentities.length !== identityIdsArray.length) {
       throw new NotFoundError({
-        message: `Identities not found`
+        message: `Machine identities not found`
       });
     }
 
@@ -525,7 +525,7 @@ export const removeIdentitiesFromGroup = async ({
     identityIdsArray.forEach((identityId) => {
       if (!existingIdentityGroupMembershipsIdentityIdsSet.has(identityId)) {
         throw new ForbiddenRequestError({
-          message: `Identities are not part of the group ${group.slug}`
+          message: `Machine identities are not part of the group ${group.slug}`
         });
       }
     });

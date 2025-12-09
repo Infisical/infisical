@@ -10,7 +10,7 @@ import {
   useRemoveIdentityFromGroup,
   useRemoveUserFromGroup
 } from "@app/hooks/api";
-import { EGroupMemberType } from "@app/hooks/api/groups/types";
+import { GroupMemberType } from "@app/hooks/api/groups/types";
 import { usePopUp } from "@app/hooks/usePopUp";
 
 import { AddGroupMembersModal } from "../AddGroupMemberModal";
@@ -22,8 +22,8 @@ type Props = {
 };
 
 type RemoveMemberData =
-  | { memberType: EGroupMemberType.USER; username: string }
-  | { memberType: EGroupMemberType.IDENTITY; identityId: string; name: string };
+  | { memberType: GroupMemberType.USER; username: string }
+  | { memberType: GroupMemberType.IDENTITY; identityId: string; name: string };
 
 export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
   const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
@@ -40,7 +40,7 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
   const { mutateAsync: removeIdentityFromGroupMutateAsync } = useRemoveIdentityFromGroup();
 
   const handleRemoveMemberFromGroup = async (memberData: RemoveMemberData) => {
-    if (memberData.memberType === EGroupMemberType.USER) {
+    if (memberData.memberType === GroupMemberType.USER) {
       await removeUserFromGroupMutateAsync({
         groupId,
         username: memberData.username,
@@ -69,7 +69,7 @@ export const GroupMembersSection = ({ groupId, groupSlug }: Props) => {
 
   const getMemberName = (memberData: RemoveMemberData) => {
     if (!memberData) return "";
-    if (memberData.memberType === EGroupMemberType.USER) {
+    if (memberData.memberType === GroupMemberType.USER) {
       return memberData.username;
     }
     return memberData.name;

@@ -51,24 +51,24 @@ export type TGroupUser = {
   joinedGroupAt: Date;
 };
 
-export enum EGroupMemberType {
+export enum GroupMemberType {
   USER = "user",
   IDENTITY = "identity"
 }
 
 export type TGroupMemberUser = TGroupUser & {
-  memberType: EGroupMemberType.USER;
+  memberType: GroupMemberType.USER;
 };
 
 export type TGroupMemberIdentity = TGroupIdentity & {
-  memberType: EGroupMemberType.IDENTITY;
+  memberType: GroupMemberType.IDENTITY;
 };
 
-export enum EGroupMembersOrderBy {
+export enum GroupMembersOrderBy {
   Name = "name"
 }
 
-export enum EFilterMemberType {
+export enum FilterMemberType {
   USERS = "users",
   IDENTITIES = "identities"
 }
@@ -90,17 +90,17 @@ export type TGroupProject = {
   joinedGroupAt: Date;
 };
 
-export enum EFilterReturnedUsers {
+export enum FilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
 }
 
-export enum EFilterReturnedIdentities {
+export enum FilterReturnedIdentities {
   ASSIGNED_IDENTITIES = "assignedIdentities",
   NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
 }
 
-export enum EFilterReturnedProjects {
+export enum FilterReturnedProjects {
   ASSIGNED_PROJECTS = "assignedProjects",
   UNASSIGNED_PROJECTS = "unassignedProjects"
 }

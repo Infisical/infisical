@@ -43,7 +43,7 @@ export type TListGroupUsersDTO = {
   limit: number;
   username?: string;
   search?: string;
-  filter?: EFilterReturnedUsers;
+  filter?: FilterReturnedUsers;
 } & TGenericPermission;
 
 export type TListGroupIdentitiesDTO = {
@@ -51,7 +51,7 @@ export type TListGroupIdentitiesDTO = {
   offset: number;
   limit: number;
   search?: string;
-  filter?: EFilterReturnedIdentities;
+  filter?: FilterReturnedIdentities;
 } & TGenericPermission;
 
 export type TListGroupMembersDTO = {
@@ -59,9 +59,9 @@ export type TListGroupMembersDTO = {
   offset: number;
   limit: number;
   search?: string;
-  orderBy?: EGroupMembersOrderBy;
+  orderBy?: GroupMembersOrderBy;
   orderDirection?: OrderByDirection;
-  memberTypeFilter?: EFilterMemberType[];
+  memberTypeFilter?: FilterMemberType[];
 } & TGenericPermission;
 
 export type TListGroupProjectsDTO = {
@@ -69,8 +69,8 @@ export type TListGroupProjectsDTO = {
   offset: number;
   limit: number;
   search?: string;
-  filter?: EFilterReturnedProjects;
-  orderBy?: EGroupProjectsOrderBy;
+  filter?: FilterReturnedProjects;
+  orderBy?: GroupProjectsOrderBy;
   orderDirection?: OrderByDirection;
 } & TGenericPermission;
 
@@ -165,30 +165,30 @@ export type TConvertPendingGroupAdditionsToGroupMemberships = {
   tx?: Knex;
 };
 
-export enum EFilterReturnedUsers {
+export enum FilterReturnedUsers {
   EXISTING_MEMBERS = "existingMembers",
   NON_MEMBERS = "nonMembers"
 }
 
-export enum EFilterReturnedIdentities {
+export enum FilterReturnedIdentities {
   ASSIGNED_IDENTITIES = "assignedIdentities",
   NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
 }
 
-export enum EFilterReturnedProjects {
+export enum FilterReturnedProjects {
   ASSIGNED_PROJECTS = "assignedProjects",
   UNASSIGNED_PROJECTS = "unassignedProjects"
 }
 
-export enum EGroupProjectsOrderBy {
+export enum GroupProjectsOrderBy {
   Name = "name"
 }
 
-export enum EGroupMembersOrderBy {
+export enum GroupMembersOrderBy {
   Name = "name"
 }
 
-export enum EFilterMemberType {
+export enum FilterMemberType {
   USERS = "users",
   IDENTITIES = "identities"
 }

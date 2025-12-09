@@ -19,7 +19,7 @@ import {
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useResetPageHelper } from "@app/hooks";
 import { useAddIdentityToGroup, useListGroupIdentities } from "@app/hooks/api";
-import { EFilterReturnedIdentities, TGroupIdentity } from "@app/hooks/api/groups/types";
+import { FilterReturnedIdentities, TGroupIdentity } from "@app/hooks/api/groups/types";
 
 type Props = {
   groupId: string;
@@ -38,7 +38,7 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
     offset,
     limit: perPage,
     search,
-    filter: EFilterReturnedIdentities.NON_ASSIGNED_IDENTITIES
+    filter: FilterReturnedIdentities.NON_ASSIGNED_IDENTITIES
   });
 
   const { totalCount = 0 } = data ?? {};

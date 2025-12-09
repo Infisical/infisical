@@ -7,12 +7,12 @@ import { buildFindFilter, ormify, selectAllTableCols, TFindFilter, TFindOpt } fr
 import { OrderByDirection } from "@app/lib/types";
 
 import {
-  EFilterMemberType,
-  EFilterReturnedIdentities,
-  EFilterReturnedProjects,
-  EFilterReturnedUsers,
-  EGroupMembersOrderBy,
-  EGroupProjectsOrderBy
+  FilterMemberType,
+  FilterReturnedIdentities,
+  FilterReturnedProjects,
+  FilterReturnedUsers,
+  GroupMembersOrderBy,
+  GroupProjectsOrderBy
 } from "./group-types";
 
 export type TGroupDALFactory = ReturnType<typeof groupDALFactory>;
@@ -92,7 +92,7 @@ export const groupDALFactory = (db: TDbClient) => {
     limit?: number;
     username?: string;
     search?: string;
-    filter?: EFilterReturnedUsers;
+    filter?: FilterReturnedUsers;
   }) => {
     try {
       const query = db
@@ -134,10 +134,10 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       switch (filter) {
-        case EFilterReturnedUsers.EXISTING_MEMBERS:
+        case FilterReturnedUsers.EXISTING_MEMBERS:
           void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is not", null);
           break;
-        case EFilterReturnedUsers.NON_MEMBERS:
+        case FilterReturnedUsers.NON_MEMBERS:
           void query.andWhere(`${TableName.UserGroupMembership}.createdAt`, "is", null);
           break;
         default:
@@ -162,7 +162,7 @@ export const groupDALFactory = (db: TDbClient) => {
             username: memberUsername,
             firstName,
             lastName,
-            isPartOfGroup: !!memberGroupId,
+            isPartOfGroup: Boolean(memberGroupId),
             joinedGroupAt
           })
         ),
@@ -187,7 +187,7 @@ export const groupDALFactory = (db: TDbClient) => {
     offset?: number;
     limit?: number;
     search?: string;
-    filter?: EFilterReturnedIdentities;
+    filter?: FilterReturnedIdentities;
   }) => {
     try {
       const query = db
@@ -224,10 +224,10 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       switch (filter) {
-        case EFilterReturnedIdentities.ASSIGNED_IDENTITIES:
+        case FilterReturnedIdentities.ASSIGNED_IDENTITIES:
           void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is not", null);
           break;
-        case EFilterReturnedIdentities.NON_ASSIGNED_IDENTITIES:
+        case FilterReturnedIdentities.NON_ASSIGNED_IDENTITIES:
           void query.andWhere(`${TableName.IdentityGroupMembership}.createdAt`, "is", null);
           break;
         default:
@@ -240,7 +240,7 @@ export const groupDALFactory = (db: TDbClient) => {
         identities: identities.map(({ name, identityId, joinedGroupAt, groupId: identityGroupId }) => ({
           id: identityId,
           name,
-          isPartOfGroup: !!identityGroupId,
+          isPartOfGroup: Boolean(identityGroupId),
           joinedGroupAt
         })),
         // @ts-expect-error col select is raw and not strongly typed
@@ -257,7 +257,7 @@ export const groupDALFactory = (db: TDbClient) => {
     offset = 0,
     limit,
     search,
-    orderBy = EGroupMembersOrderBy.Name,
+    orderBy = GroupMembersOrderBy.Name,
     orderDirection = OrderByDirection.ASC,
     memberTypeFilter
   }: {
@@ -266,9 +266,9 @@ export const groupDALFactory = (db: TDbClient) => {
     offset?: number;
     limit?: number;
     search?: string;
-    orderBy?: EGroupMembersOrderBy;
+    orderBy?: GroupMembersOrderBy;
     orderDirection?: OrderByDirection;
-    memberTypeFilter?: EFilterMemberType[];
+    memberTypeFilter?: FilterMemberType[];
   }) => {
     try {
       // Query for users - subquery for UNION
@@ -345,9 +345,9 @@ export const groupDALFactory = (db: TDbClient) => {
       let unionQuery;
 
       const includeUsers =
-        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(EFilterMemberType.USERS);
+        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(FilterMemberType.USERS);
       const includeIdentities =
-        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(EFilterMemberType.IDENTITIES);
+        !memberTypeFilter || memberTypeFilter.length === 0 || memberTypeFilter.includes(FilterMemberType.IDENTITIES);
 
       if (includeUsers && includeIdentities) {
         unionQuery = db.raw("(? UNION ALL ?)", [usersSubquery, identitiesSubquery]);
@@ -366,7 +366,7 @@ export const groupDALFactory = (db: TDbClient) => {
         .from(db.raw("(?) as combined_members", [unionQuery]));
 
       if (orderBy) {
-        if (orderBy === EGroupMembersOrderBy.Name) {
+        if (orderBy === GroupMembersOrderBy.Name) {
           const orderDirectionClause = orderDirection === OrderByDirection.ASC ? "ASC" : "DESC";
           void combinedQuery.orderByRaw(`LOWER("sortName") ${orderDirectionClause}`);
         }
@@ -439,8 +439,8 @@ export const groupDALFactory = (db: TDbClient) => {
     offset?: number;
     limit?: number;
     search?: string;
-    filter?: EFilterReturnedProjects;
-    orderBy?: EGroupProjectsOrderBy;
+    filter?: FilterReturnedProjects;
+    orderBy?: GroupProjectsOrderBy;
     orderDirection?: OrderByDirection;
   }) => {
     try {
@@ -482,10 +482,10 @@ export const groupDALFactory = (db: TDbClient) => {
       }
 
       switch (filter) {
-        case EFilterReturnedProjects.ASSIGNED_PROJECTS:
+        case FilterReturnedProjects.ASSIGNED_PROJECTS:
           void query.whereNotNull(`${TableName.Membership}.id`);
           break;
-        case EFilterReturnedProjects.UNASSIGNED_PROJECTS:
+        case FilterReturnedProjects.UNASSIGNED_PROJECTS:
           void query.whereNull(`${TableName.Membership}.id`);
           break;
         default:

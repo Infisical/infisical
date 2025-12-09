@@ -2,12 +2,12 @@ import { z } from "zod";
 
 import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
-  EFilterMemberType,
-  EFilterReturnedIdentities,
-  EFilterReturnedProjects,
-  EFilterReturnedUsers,
-  EGroupMembersOrderBy,
-  EGroupProjectsOrderBy
+  FilterMemberType,
+  FilterReturnedIdentities,
+  FilterReturnedProjects,
+  FilterReturnedUsers,
+  GroupMembersOrderBy,
+  GroupProjectsOrderBy
 } from "@app/ee/services/group/group-types";
 import { ApiDocsTags, GROUPS } from "@app/lib/api-docs";
 import { OrderByDirection } from "@app/lib/types";
@@ -15,6 +15,11 @@ import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
+
+const GroupIdentityResponseSchema = IdentitiesSchema.pick({
+  id: true,
+  name: true
+});
 
 export const registerGroupRouter = async (server: FastifyZodProvider) => {
   server.route({
@@ -194,7 +199,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_USERS.limit),
         username: z.string().trim().optional().describe(GROUPS.LIST_USERS.username),
         search: z.string().trim().optional().describe(GROUPS.LIST_USERS.search),
-        filter: z.nativeEnum(EFilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
+        filter: z.nativeEnum(FilterReturnedUsers).optional().describe(GROUPS.LIST_USERS.filterUsers)
       }),
       response: {
         200: z.object({
@@ -205,12 +210,10 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
             lastName: true,
             id: true
           })
-            .merge(
-              z.object({
-                isPartOfGroup: z.boolean(),
-                joinedGroupAt: z.date().nullable()
-              })
-            )
+            .extend({
+              isPartOfGroup: z.boolean(),
+              joinedGroupAt: z.date().nullable()
+            })
             .array(),
           totalCount: z.number()
         })
@@ -247,21 +250,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_IDENTITIES.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_IDENTITIES.limit),
         search: z.string().trim().optional().describe(GROUPS.LIST_IDENTITIES.search),
-        filter: z.nativeEnum(EFilterReturnedIdentities).optional().describe(GROUPS.LIST_IDENTITIES.filterIdentities)
+        filter: z.nativeEnum(FilterReturnedIdentities).optional().describe(GROUPS.LIST_IDENTITIES.filterIdentities)
       }),
       response: {
         200: z.object({
-          identities: IdentitiesSchema.pick({
-            id: true,
-            name: true
-          })
-            .merge(
-              z.object({
-                isPartOfGroup: z.boolean(),
-                joinedGroupAt: z.date().nullable()
-              })
-            )
-            .array(),
+          identities: GroupIdentityResponseSchema.extend({
+            isPartOfGroup: z.boolean(),
+            joinedGroupAt: z.date().nullable()
+          }).array(),
           totalCount: z.number()
         })
       }
@@ -298,13 +294,13 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_MEMBERS.limit),
         search: z.string().trim().optional().describe(GROUPS.LIST_MEMBERS.search),
         orderBy: z
-          .nativeEnum(EGroupMembersOrderBy)
-          .default(EGroupMembersOrderBy.Name)
+          .nativeEnum(GroupMembersOrderBy)
+          .default(GroupMembersOrderBy.Name)
           .optional()
           .describe(GROUPS.LIST_MEMBERS.orderBy),
         orderDirection: z.nativeEnum(OrderByDirection).optional().describe(GROUPS.LIST_MEMBERS.orderDirection),
         memberTypeFilter: z
-          .union([z.nativeEnum(EFilterMemberType), z.array(z.nativeEnum(EFilterMemberType))])
+          .union([z.nativeEnum(FilterMemberType), z.array(z.nativeEnum(FilterMemberType))])
           .optional()
           .describe(GROUPS.LIST_MEMBERS.memberTypeFilter)
           .transform((val) => {
@@ -322,21 +318,14 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
                 firstName: true,
                 lastName: true,
                 id: true
-              }).merge(
-                z.object({
-                  joinedGroupAt: z.date().nullable(),
-                  memberType: z.literal("user")
-                })
-              ),
-              IdentitiesSchema.pick({
-                id: true,
-                name: true
-              }).merge(
-                z.object({
-                  joinedGroupAt: z.date().nullable(),
-                  memberType: z.literal("identity")
-                })
-              )
+              }).extend({
+                joinedGroupAt: z.date().nullable(),
+                memberType: z.literal("user")
+              }),
+              GroupIdentityResponseSchema.extend({
+                joinedGroupAt: z.date().nullable(),
+                memberType: z.literal("identity")
+              })
             ])
             .array(),
           totalCount: z.number()
@@ -374,10 +363,10 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_PROJECTS.offset),
         limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_PROJECTS.limit),
         search: z.string().trim().optional().describe(GROUPS.LIST_PROJECTS.search),
-        filter: z.nativeEnum(EFilterReturnedProjects).optional().describe(GROUPS.LIST_PROJECTS.filterProjects),
+        filter: z.nativeEnum(FilterReturnedProjects).optional().describe(GROUPS.LIST_PROJECTS.filterProjects),
         orderBy: z
-          .nativeEnum(EGroupProjectsOrderBy)
-          .default(EGroupProjectsOrderBy.Name)
+          .nativeEnum(GroupProjectsOrderBy)
+          .default(GroupProjectsOrderBy.Name)
           .describe(GROUPS.LIST_PROJECTS.orderBy),
         orderDirection: z
           .nativeEnum(OrderByDirection)
@@ -393,11 +382,9 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
             description: true,
             type: true
           })
-            .merge(
-              z.object({
-                joinedGroupAt: z.date().nullable()
-              })
-            )
+            .extend({
+              joinedGroupAt: z.date().nullable()
+            })
             .array(),
           totalCount: z.number()
         })
@@ -470,10 +457,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().trim().describe(GROUPS.ADD_IDENTITY.identityId)
       }),
       response: {
-        200: IdentitiesSchema.pick({
-          id: true,
-          name: true
-        })
+        200: GroupIdentityResponseSchema
       }
     },
     handler: async (req) => {
@@ -543,10 +527,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         identityId: z.string().trim().describe(GROUPS.DELETE_IDENTITY.identityId)
       }),
       response: {
-        200: IdentitiesSchema.pick({
-          id: true,
-          name: true
-        })
+        200: GroupIdentityResponseSchema
       }
     },
     handler: async (req) => {

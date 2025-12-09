@@ -19,7 +19,7 @@ import {
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useResetPageHelper } from "@app/hooks";
 import { useAddUserToGroup, useListGroupUsers } from "@app/hooks/api";
-import { EFilterReturnedUsers } from "@app/hooks/api/groups/types";
+import { FilterReturnedUsers } from "@app/hooks/api/groups/types";
 
 type Props = {
   groupId: string;
@@ -38,7 +38,7 @@ export const AddGroupUsersTab = ({ groupId, groupSlug, search }: Props) => {
     offset,
     limit: perPage,
     search,
-    filter: EFilterReturnedUsers.NON_MEMBERS
+    filter: FilterReturnedUsers.NON_MEMBERS
   });
 
   const { totalCount = 0 } = data ?? {};

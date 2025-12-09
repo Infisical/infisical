@@ -15,7 +15,7 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects, useOrganization } from "@app/context";
 import { useOidcManageGroupMembershipsEnabled } from "@app/hooks/api";
-import { EGroupMemberType, TGroupMemberUser } from "@app/hooks/api/groups/types";
+import { GroupMemberType, TGroupMemberUser } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
@@ -81,7 +81,7 @@ export const GroupMembershipUserRow = ({
                           icon={<FontAwesomeIcon icon={faUserMinus} />}
                           onClick={() =>
                             handlePopUpOpen("removeMemberFromGroup", {
-                              memberType: EGroupMemberType.USER,
+                              memberType: GroupMemberType.USER,
                               username
                             })
                           }

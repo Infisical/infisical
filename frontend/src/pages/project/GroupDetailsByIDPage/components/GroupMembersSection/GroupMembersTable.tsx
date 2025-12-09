@@ -46,9 +46,9 @@ import { ActorType } from "@app/hooks/api/auditLogs/enums";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 import { useListGroupMembers } from "@app/hooks/api/groups/queries";
 import {
-  EFilterMemberType,
-  EGroupMembersOrderBy,
-  EGroupMemberType,
+  FilterMemberType,
+  GroupMembersOrderBy,
+  GroupMemberType,
   TGroupMembership
 } from "@app/hooks/api/groups/types";
 
@@ -72,7 +72,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     orderDirection,
     toggleOrderDirection,
     orderBy
-  } = usePagination(EGroupMembersOrderBy.Name, {
+  } = usePagination(GroupMembersOrderBy.Name, {
     initPerPage: getUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, 20)
   });
 
@@ -91,7 +91,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     }
   }, [username]);
 
-  const [memberTypeFilter, setMemberTypeFilter] = useState<EFilterMemberType[]>([]);
+  const [memberTypeFilter, setMemberTypeFilter] = useState<FilterMemberType[]>([]);
 
   const { handlePopUpToggle, popUp, handlePopUpOpen } = usePopUp(["assumePrivileges"] as const);
 
@@ -158,12 +158,12 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     {
       icon: <UserIcon size={16} />,
       label: "Users",
-      value: EFilterMemberType.USERS
+      value: FilterMemberType.USERS
     },
     {
       icon: <HardDriveIcon size={16} />,
       label: "Identities",
-      value: EFilterMemberType.IDENTITIES
+      value: FilterMemberType.IDENTITIES
     }
   ];
 
@@ -254,7 +254,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
             {isPending && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
             {!isPending &&
               groupMemberships?.members?.map((userGroupMembership) => {
-                return userGroupMembership.memberType === EGroupMemberType.USER ? (
+                return userGroupMembership.memberType === GroupMemberType.USER ? (
                   <GroupMembershipUserRow
                     key={`user-group-membership-${userGroupMembership.id}`}
                     user={userGroupMembership}
