@@ -869,14 +869,12 @@ export const identityKubernetesAuthServiceFactory = ({
     const gatewayIdValue = isGatewayV1 ? gatewayId : null;
     const gatewayV2IdValue = isGatewayV1 ? null : gatewayId;
 
-    // Determine the effective values for validation
     const effectiveTokenReviewMode = tokenReviewMode ?? identityKubernetesAuth.tokenReviewMode;
     const effectiveKubernetesHost =
       kubernetesHost !== undefined ? kubernetesHost : identityKubernetesAuth.kubernetesHost;
     const effectiveGatewayId =
       gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id);
 
-    // Validate Kubernetes host connectivity if host is being updated (only for API mode without gateway)
     if (
       kubernetesHost &&
       effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
@@ -889,7 +887,6 @@ export const identityKubernetesAuthServiceFactory = ({
       });
     }
 
-    // Validate token reviewer JWT permissions if token is being updated (only for API mode without gateway)
     if (
       tokenReviewerJwt &&
       effectiveKubernetesHost &&
