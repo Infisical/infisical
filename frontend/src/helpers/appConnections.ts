@@ -34,6 +34,7 @@ import {
   MongoDBConnectionMethod,
   MsSqlConnectionMethod,
   MySqlConnectionMethod,
+  OctopusDeployConnectionMethod,
   OktaConnectionMethod,
   OnePassConnectionMethod,
   OracleDBConnectionMethod,
@@ -136,7 +137,8 @@ export const APP_CONNECTION_MAP: Record<
     image: "Laravel Forge.png",
     size: 65
   },
-  [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true }
+  [AppConnection.Chef]: { name: "Chef", image: "Chef.png", enterprise: true },
+  [AppConnection.OctopusDeploy]: { name: "Octopus Deploy", image: "Octopus Deploy.png" }
 };
 
 export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) => {
@@ -221,6 +223,8 @@ export const getAppConnectionMethodDetails = (method: TAppConnection["method"]) 
       return { name: "Certificate", icon: faCertificate };
     case DNSMadeEasyConnectionMethod.APIKeySecret:
       return { name: "API Key & Secret", icon: faKey };
+    case OctopusDeployConnectionMethod.ApiKey:
+      return { name: "API Key", icon: faKey };
     default:
       throw new Error(`Unhandled App Connection Method: ${method}`);
   }

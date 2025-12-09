@@ -2522,6 +2522,10 @@ export const AppConnections = {
       orgName: "The short name of the Chef organization to connect to.",
       userName: "The username used to access Chef.",
       privateKey: "The private key used to access Chef."
+    },
+    OCTOPUS_DEPLOY: {
+      instanceUrl: "The Octopus Deploy instance URL to connect to.",
+      apiKey: "The API key used to authenticate with Octopus Deploy."
     }
   }
 };

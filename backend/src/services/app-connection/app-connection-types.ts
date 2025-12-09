@@ -193,6 +193,12 @@ import {
   TValidateNorthflankConnectionCredentialsSchema
 } from "./northflank";
 import {
+  TOctopusDeployConnection,
+  TOctopusDeployConnectionConfig,
+  TOctopusDeployConnectionInput,
+  TValidateOctopusDeployConnectionCredentialsSchema
+} from "./octopus-deploy";
+import {
   TOktaConnection,
   TOktaConnectionConfig,
   TOktaConnectionInput,
@@ -303,6 +309,7 @@ export type TAppConnection = { id: string } & (
   | TRedisConnection
   | TMongoDBConnection
   | TChefConnection
+  | TOctopusDeployConnection
 );
 
 export type TAppConnectionRaw = NonNullable<Awaited<ReturnType<TAppConnectionDALFactory["findById"]>>>;
@@ -354,6 +361,7 @@ export type TAppConnectionInput = { id: string } & (
   | TRedisConnectionInput
   | TMongoDBConnectionInput
   | TChefConnectionInput
+  | TOctopusDeployConnectionInput
 );
 
 export type TSqlConnectionInput =
@@ -422,7 +430,8 @@ export type TAppConnectionConfig =
   | TOktaConnectionConfig
   | TRedisConnectionConfig
   | TMongoDBConnectionConfig
-  | TChefConnectionConfig;
+  | TChefConnectionConfig
+  | TOctopusDeployConnectionConfig;
 
 export type TValidateAppConnectionCredentialsSchema =
   | TValidateAwsConnectionCredentialsSchema
@@ -468,7 +477,8 @@ export type TValidateAppConnectionCredentialsSchema =
   | TValidateOktaConnectionCredentialsSchema
   | TValidateRedisConnectionCredentialsSchema
   | TValidateMongoDBConnectionCredentialsSchema
-  | TValidateChefConnectionCredentialsSchema;
+  | TValidateChefConnectionCredentialsSchema
+  | TValidateOctopusDeployConnectionCredentialsSchema;
 
 export type TListAwsConnectionKmsKeys = {
   connectionId: string;
