@@ -2,9 +2,7 @@ import { subject } from "@casl/ability";
 import { PlusIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
-import { createNotification } from "@app/components/notifications";
 import { ProjectPermissionCan } from "@app/components/permissions";
-import { DeleteActionModal } from "@app/components/v2";
 import {
   UnstableButton,
   UnstableCard,
@@ -20,23 +18,7 @@ import {
   UnstableEmptyTitle
 } from "@app/components/v3";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
-import {
-  IdentityAuthMethod,
-  identityAuthToNameMap,
-  TProjectIdentity,
-  useDeleteIdentityAliCloudAuth,
-  useDeleteIdentityAwsAuth,
-  useDeleteIdentityAzureAuth,
-  useDeleteIdentityGcpAuth,
-  useDeleteIdentityJwtAuth,
-  useDeleteIdentityKubernetesAuth,
-  useDeleteIdentityLdapAuth,
-  useDeleteIdentityOciAuth,
-  useDeleteIdentityOidcAuth,
-  useDeleteIdentityTlsCertAuth,
-  useDeleteIdentityTokenAuth,
-  useDeleteIdentityUniversalAuth
-} from "@app/hooks/api";
+import { IdentityAuthMethod, TProjectIdentity } from "@app/hooks/api";
 import { usePopUp } from "@app/hooks/usePopUp";
 import { IdentityAuthMethodModal } from "@app/pages/organization/AccessManagementPage/components/OrgIdentityTab/components/IdentitySection/IdentityAuthMethodModal";
 import { ViewIdentityAuth } from "@app/pages/organization/IdentityDetailsByIDPage/components/ViewIdentityAuth";
