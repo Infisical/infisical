@@ -963,7 +963,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             tagSlugs: tags,
             includeTagsInSearch: true,
-            includeMetadataInSearch: true
+            includeMetadataInSearch: true,
+            excludeRotatedSecrets: includeSecretRotations
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
@@ -985,7 +986,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 offset: adjustedOffset,
                 tagSlugs: tags,
                 includeTagsInSearch: true,
-                includeMetadataInSearch: true
+                includeMetadataInSearch: true,
+                excludeRotatedSecrets: includeSecretRotations
               })
             ).secrets;
 
@@ -993,26 +995,11 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
               rawSecrets.map((secret) => secret.id)
             );
 
-            const rotationSecretIds =
-              includeSecretRotations && secretRotations?.length
-                ? new Set(
-                    secretRotations.flatMap((rotation) => rotation.secrets.filter(Boolean).map((secret) => secret.id))
-                  )
-                : new Set<string>();
-
-            const filteredSecrets = rawSecrets.filter((secret) => !rotationSecretIds.has(secret.id));
-
-            secrets = filteredSecrets.map((secret) => ({
+            secrets = rawSecrets.map((secret) => ({
               ...secret,
               isEmpty: !secret.secretValue,
               reminder: reminders[secret.id] ?? null
             }));
-
-            if (includeSecretRotations && secretRotations?.length && totalSecretCount && rotationSecretIds.size > 0) {
-              const filteredCount = rawSecrets.filter((secret) => !rotationSecretIds.has(secret.id)).length;
-              const originalCount = rawSecrets.length;
-              totalSecretCount = Math.max(0, totalSecretCount - (originalCount - filteredCount));
-            }
           }
         }
       } catch (error) {
