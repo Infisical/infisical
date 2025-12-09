@@ -27,7 +27,7 @@ export type TGetCertificateRequestDTO = TProjectPermission & {
   certificateRequestId: string;
 };
 
-export type TGetCertificateFromRequestDTO = TProjectPermission & {
+export type TGetCertificateFromRequestDTO = Omit<TProjectPermission, "projectId"> & {
   certificateRequestId: string;
 };
 
