@@ -4,6 +4,7 @@ import https from "https";
 import { request } from "@app/lib/config/request";
 import { BadRequestError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { blockLocalAndPrivateIpAddresses } from "@app/lib/validator";
 
 import { handleAxiosError, KubernetesAuthErrorContext } from "./identity-kubernetes-auth-error-handlers";
 
@@ -23,6 +24,8 @@ export const validateKubernetesHostConnectivity = async ({
       ca: caCert || undefined,
       rejectUnauthorized: Boolean(caCert)
     });
+
+    await blockLocalAndPrivateIpAddresses(kubernetesHost);
 
     await request.get(`${kubernetesHost}/version`, {
       httpsAgent,
@@ -70,6 +73,8 @@ export const validateTokenReviewerJwtPermissions = async ({
     });
 
     const testToken = "test-token-for-permission-validation";
+
+    await blockLocalAndPrivateIpAddresses(kubernetesHost);
 
     const response = await request.post(
       `${kubernetesHost}/apis/authentication.k8s.io/v1/tokenreviews`,
