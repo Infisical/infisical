@@ -21,9 +21,10 @@ import { VaultPolicyImportModal } from "@app/pages/project/RoleDetailsBySlugPage
 type Props = {
   isDisabled?: boolean;
   projectType: ProjectType;
+  projectId?: string;
 };
 
-export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
+export const AddPoliciesButton = ({ isDisabled, projectType, projectId }: Props) => {
   const { popUp, handlePopUpToggle, handlePopUpOpen, handlePopUpClose } = usePopUp([
     "addPolicy",
     "addPolicyOptions",
@@ -109,6 +110,7 @@ export const AddPoliciesButton = ({ isDisabled, projectType }: Props) => {
         </DropdownMenuContent>
       </DropdownMenu>
       <PolicySelectionModal
+        projectId={projectId}
         type={projectType}
         isOpen={popUp.addPolicy.isOpen}
         onOpenChange={(isOpen) => handlePopUpToggle("addPolicy", isOpen)}

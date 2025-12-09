@@ -42,7 +42,7 @@ export const organizationKeys = {
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
-  getOrgById: (orgId: string, subOrg?: string) => ["organization", { orgId, subOrg }],
+  getOrgById: (orgId: string) => ["organization", { orgId }],
   getAvailableIdentities: () => ["available-identities"],
   getAvailableUsers: () => ["available-users"]
 };
@@ -67,7 +67,7 @@ export const fetchOrganizationById = async (id: string) => {
   const {
     data: { organization }
   } = await apiRequest.get<{
-    organization: Organization & { subOrganization?: { id: string; name: string } };
+    organization: Organization;
   }>(`/api/v1/organization/${id}`);
   return organization;
 };

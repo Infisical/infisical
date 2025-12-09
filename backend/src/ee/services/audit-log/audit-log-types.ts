@@ -368,6 +368,7 @@ export enum EventType {
   ORG_ADMIN_BYPASS_SSO = "org-admin-bypassed-sso",
   USER_LOGIN = "user-login",
   SELECT_ORGANIZATION = "select-organization",
+  SELECT_SUB_ORGANIZATION = "select-sub-organization",
   CREATE_CERTIFICATE_TEMPLATE = "create-certificate-template",
   UPDATE_CERTIFICATE_TEMPLATE = "update-certificate-template",
   DELETE_CERTIFICATE_TEMPLATE = "delete-certificate-template",
@@ -559,7 +560,21 @@ export enum EventType {
   PAM_RESOURCE_GET = "pam-resource-get",
   PAM_RESOURCE_CREATE = "pam-resource-create",
   PAM_RESOURCE_UPDATE = "pam-resource-update",
-  PAM_RESOURCE_DELETE = "pam-resource-delete"
+  PAM_RESOURCE_DELETE = "pam-resource-delete",
+  APPROVAL_POLICY_CREATE = "approval-policy-create",
+  APPROVAL_POLICY_UPDATE = "approval-policy-update",
+  APPROVAL_POLICY_DELETE = "approval-policy-delete",
+  APPROVAL_POLICY_LIST = "approval-policy-list",
+  APPROVAL_POLICY_GET = "approval-policy-get",
+  APPROVAL_REQUEST_GET = "approval-request-get",
+  APPROVAL_REQUEST_LIST = "approval-request-list",
+  APPROVAL_REQUEST_CREATE = "approval-request-create",
+  APPROVAL_REQUEST_APPROVE = "approval-request-approve",
+  APPROVAL_REQUEST_REJECT = "approval-request-reject",
+  APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
+  APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
+  APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -2690,6 +2705,15 @@ interface SelectOrganizationEvent {
   };
 }
 
+interface SelectSubOrganizationEvent {
+  type: EventType.SELECT_SUB_ORGANIZATION;
+  metadata: {
+    organizationId: string;
+    organizationName: string;
+    rootOrganizationId: string;
+  };
+}
+
 interface CreateCertificateTemplateEstConfig {
   type: EventType.CREATE_CERTIFICATE_TEMPLATE_EST_CONFIG;
   metadata: {
@@ -4159,7 +4183,7 @@ interface PamResourceCreateEvent {
   type: EventType.PAM_RESOURCE_CREATE;
   metadata: {
     resourceType: string;
-    gatewayId: string;
+    gatewayId?: string;
     name: string;
   };
 }
@@ -4221,6 +4245,126 @@ interface GetCertificateFromRequestEvent {
   metadata: {
     certificateRequestId: string;
     certificateId?: string;
+  };
+}
+
+interface ApprovalPolicyCreateEvent {
+  type: EventType.APPROVAL_POLICY_CREATE;
+  metadata: {
+    policyType: string;
+    name: string;
+  };
+}
+
+interface ApprovalPolicyUpdateEvent {
+  type: EventType.APPROVAL_POLICY_UPDATE;
+  metadata: {
+    policyType: string;
+    policyId: string;
+    name: string;
+  };
+}
+
+interface ApprovalPolicyDeleteEvent {
+  type: EventType.APPROVAL_POLICY_DELETE;
+  metadata: {
+    policyType: string;
+    policyId: string;
+  };
+}
+
+interface ApprovalPolicyListEvent {
+  type: EventType.APPROVAL_POLICY_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalPolicyGetEvent {
+  type: EventType.APPROVAL_POLICY_GET;
+  metadata: {
+    policyType: string;
+    policyId: string;
+    name: string;
+  };
+}
+
+interface ApprovalRequestGetEvent {
+  type: EventType.APPROVAL_REQUEST_GET;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    status: string;
+  };
+}
+
+interface ApprovalRequestListEvent {
+  type: EventType.APPROVAL_REQUEST_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalRequestCreateEvent {
+  type: EventType.APPROVAL_REQUEST_CREATE;
+  metadata: {
+    policyType: string;
+    justification?: string;
+    requestDuration: string;
+  };
+}
+
+interface ApprovalRequestApproveEvent {
+  type: EventType.APPROVAL_REQUEST_APPROVE;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    comment?: string;
+  };
+}
+
+interface ApprovalRequestRejectEvent {
+  type: EventType.APPROVAL_REQUEST_REJECT;
+  metadata: {
+    policyType: string;
+    requestId: string;
+    comment?: string;
+  };
+}
+
+interface ApprovalRequestCancelEvent {
+  type: EventType.APPROVAL_REQUEST_CANCEL;
+  metadata: {
+    policyType: string;
+    requestId: string;
+  };
+}
+
+interface ApprovalRequestGrantListEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_LIST;
+  metadata: {
+    policyType: string;
+    count: number;
+  };
+}
+
+interface ApprovalRequestGrantGetEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_GET;
+  metadata: {
+    policyType: string;
+    grantId: string;
+    status: string;
+  };
+}
+
+interface ApprovalRequestGrantRevokeEvent {
+  type: EventType.APPROVAL_REQUEST_GRANT_REVOKE;
+  metadata: {
+    policyType: string;
+    grantId: string;
+    revocationReason?: string;
   };
 }
 
@@ -4609,4 +4753,19 @@ export type Event =
   | AutomatedRenewCertificate
   | AutomatedRenewCertificateFailed
   | UserLoginEvent
-  | SelectOrganizationEvent;
+  | SelectOrganizationEvent
+  | SelectSubOrganizationEvent
+  | ApprovalPolicyCreateEvent
+  | ApprovalPolicyUpdateEvent
+  | ApprovalPolicyDeleteEvent
+  | ApprovalPolicyListEvent
+  | ApprovalPolicyGetEvent
+  | ApprovalRequestGetEvent
+  | ApprovalRequestListEvent
+  | ApprovalRequestCreateEvent
+  | ApprovalRequestApproveEvent
+  | ApprovalRequestRejectEvent
+  | ApprovalRequestCancelEvent
+  | ApprovalRequestGrantListEvent
+  | ApprovalRequestGrantGetEvent
+  | ApprovalRequestGrantRevokeEvent;

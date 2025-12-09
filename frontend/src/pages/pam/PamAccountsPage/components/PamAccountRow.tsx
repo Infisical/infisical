@@ -41,6 +41,7 @@ type Props = {
   search: string;
   isFlatView: boolean;
   accountPath?: string;
+  isAccessLoading?: boolean;
 };
 
 export const PamAccountRow = ({
@@ -50,7 +51,8 @@ export const PamAccountRow = ({
   onUpdate,
   onDelete,
   isFlatView,
-  accountPath
+  accountPath,
+  isAccessLoading
 }: Props) => {
   const { id, name } = account;
 
@@ -101,7 +103,7 @@ export const PamAccountRow = ({
                 </span>
               </Badge>
             )}
-            {account.lastRotatedAt && (
+            {"lastRotatedAt" in account && account.lastRotatedAt && (
               <Tooltip
                 className="max-w-sm text-center"
                 isDisabled={!account.lastRotationMessage}
@@ -127,6 +129,8 @@ export const PamAccountRow = ({
               leftIcon={<FontAwesomeIcon icon={faRightToBracket} />}
               onClick={() => onAccess(account)}
               size="xs"
+              isLoading={isAccessLoading}
+              isDisabled={isAccessLoading}
             >
               Access
             </Button>

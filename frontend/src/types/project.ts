@@ -5,3 +5,9 @@ export enum ProjectAccessControlTabs {
   Identities = "identities",
   ServiceTokens = "service-tokens"
 }
+
+export enum ApprovalControlTabs {
+  Requests = "requests",
+  Policies = "policies",
+  Grants = "grants"
+}
