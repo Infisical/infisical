@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { Tab } from "@headlessui/react";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, Modal, ModalContent } from "@app/components/v2";
@@ -37,6 +38,8 @@ const FORM_TABS = [
 ];
 
 export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
+  const navigate = useNavigate();
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { currentProject } = useProject();
   const [selectedTabIndex, setSelectedTabIndex] = useState(0);
 
@@ -93,7 +96,7 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
     }
 
     try {
-      await createMcpServer.mutateAsync({
+      const server = await createMcpServer.mutateAsync({
         projectId: currentProject.id,
         name: data.name,
         url: data.url,
@@ -110,7 +113,16 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
         type: "success"
       });
 
-      handleClose();
+      reset();
+      setSelectedTabIndex(0);
+      onOpenChange(false);
+
+      if (orgId) {
+        navigate({
+          to: "/organizations/$orgId/projects/ai/$projectId/mcp-servers/$serverId",
+          params: { orgId, projectId: currentProject.id, serverId: server.id }
+        });
+      }
     } catch (error) {
       console.error("Failed to create MCP server:", error);
       createNotification({

@@ -2,6 +2,7 @@ import { Controller, useForm } from "react-hook-form";
 import { faServer } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useNavigate, useParams } from "@tanstack/react-router";
 
 import { createNotification } from "@app/components/notifications";
 import {
@@ -24,6 +25,8 @@ type Props = {
 };
 
 export const AddMCPEndpointModal = ({ isOpen, onOpenChange }: Props) => {
+  const navigate = useNavigate();
+  const { orgId } = useParams({ strict: false }) as { orgId?: string };
   const { currentProject } = useProject();
   const createEndpoint = useCreateAiMcpEndpoint();
 
@@ -79,7 +82,7 @@ export const AddMCPEndpointModal = ({ isOpen, onOpenChange }: Props) => {
     }
 
     try {
-      await createEndpoint.mutateAsync({
+      const endpoint = await createEndpoint.mutateAsync({
         projectId: currentProject.id,
         name: data.name,
         description: data.description || undefined,
@@ -91,7 +94,15 @@ export const AddMCPEndpointModal = ({ isOpen, onOpenChange }: Props) => {
         type: "success"
       });
 
-      handleClose();
+      reset();
+      onOpenChange(false);
+
+      if (orgId) {
+        navigate({
+          to: "/organizations/$orgId/projects/ai/$projectId/mcp-endpoints/$endpointId",
+          params: { orgId, projectId: currentProject.id, endpointId: endpoint.id }
+        });
+      }
     } catch (error) {
       console.error("Failed to create MCP endpoint:", error);
       createNotification({
@@ -105,15 +116,11 @@ export const AddMCPEndpointModal = ({ isOpen, onOpenChange }: Props) => {
     <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
       <ModalContent
         title="Create MCP Endpoint"
-        subTitle="Configure a unified entrypoint interface with security rules and governance controls"
+        subTitle="Aggregate multiple MCP servers into a single connection URL for AI clients"
         className="max-w-2xl"
         onClose={handleClose}
       >
         <form onSubmit={handleSubmit(onSubmit)}>
-          <p className="mb-4 text-sm text-bunker-300">
-            Create an endpoint to aggregate multiple MCP servers into a single entrypoint.
-          </p>
-
           <Controller
             control={control}
             name="name"
@@ -190,9 +197,6 @@ export const AddMCPEndpointModal = ({ isOpen, onOpenChange }: Props) => {
                             )}
                           </div>
                         </label>
-                        <span className="mt-0.5 text-xs text-bunker-400">
-                          {server.toolsCount ?? 0} tools
-                        </span>
                       </div>
                     ))}
                   </div>

@@ -30,22 +30,6 @@ import {
   MCPEndpointToolSelectionSection
 } from "./components";
 
-const MCPEndpointStatusBadge = ({ status }: { status: string | null }) => {
-  const statusConfig: Record<string, { color: string; label: string }> = {
-    active: { color: "bg-emerald-500", label: "Active" },
-    inactive: { color: "bg-red-500", label: "Inactive" }
-  };
-
-  const config = statusConfig[status || "inactive"] || statusConfig.inactive;
-
-  return (
-    <div className="flex items-center gap-2 rounded-full border border-mineshaft-500 bg-mineshaft-800 px-3 py-1">
-      <div className={`h-2 w-2 rounded-full ${config.color}`} />
-      <span className="text-sm text-mineshaft-200">{config.label}</span>
-    </div>
-  );
-};
-
 const PageContent = () => {
   const navigate = useNavigate();
   const params = useParams({
@@ -131,10 +115,9 @@ const PageContent = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <MCPEndpointStatusBadge status={mcpEndpoint.status} />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline_bg" size="sm">
+              <Button variant="outline" size="sm" colorSchema="secondary">
                 <FontAwesomeIcon icon={faEllipsisV} />
               </Button>
             </DropdownMenuTrigger>
@@ -159,6 +142,7 @@ const PageContent = () => {
           />
           <MCPEndpointConnectionSection endpoint={mcpEndpoint} />
           <MCPEndpointConnectedServersSection
+            endpointId={mcpEndpoint.id}
             projectId={mcpEndpoint.projectId}
             serverIds={mcpEndpoint.serverIds}
           />

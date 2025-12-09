@@ -10,6 +10,7 @@ import {
   Td,
   Th,
   THead,
+  Tooltip,
   Tr
 } from "@app/components/v2";
 import { useListAiMcpServerTools, useSyncAiMcpServerTools } from "@app/hooks/api";
@@ -77,7 +78,18 @@ export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
                     {tool.name}
                   </code>
                 </Td>
-                <Td className="text-mineshaft-300">{tool.description || "-"}</Td>
+                <Td className="max-w-md text-mineshaft-300">
+                  {tool.description ? (
+                    <Tooltip
+                      content={tool.description}
+                      className="max-h-96 max-w-lg overflow-y-auto"
+                    >
+                      <span className="line-clamp-2 cursor-help">{tool.description}</span>
+                    </Tooltip>
+                  ) : (
+                    "-"
+                  )}
+                </Td>
               </Tr>
             ))}
           </TBody>

@@ -59,7 +59,7 @@ export const MCPEndpointsTab = () => {
         <div>
           <h2 className="text-xl font-semibold text-mineshaft-100">MCP Endpoints</h2>
           <p className="text-sm text-bunker-300">
-            Unified entrypoint interfaces with security rules and governance controls
+            Create connection URLs that AI clients like Claude can use to access your MCP servers
           </p>
         </div>
 

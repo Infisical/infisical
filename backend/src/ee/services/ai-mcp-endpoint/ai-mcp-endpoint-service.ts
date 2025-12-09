@@ -357,7 +357,10 @@ export const aiMcpEndpointServiceFactory = ({
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
 
-    const updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+    let updatedEndpoint = endpoint;
+    if (Object.keys(updateData).length > 0) {
+      updatedEndpoint = await aiMcpEndpointDAL.updateById(endpointId, updateData);
+    }
 
     // Update server connections if provided
     if (serverIds !== undefined) {

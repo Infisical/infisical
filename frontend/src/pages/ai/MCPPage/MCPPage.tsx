@@ -32,7 +32,7 @@ export const MCPPage = () => {
         <PageHeader
           scope={ProjectType.AI}
           title="MCP Management"
-          description="Manage MCP endpoints, connect MCP servers, and configure tools with governance"
+          description="Manage MCP endpoints, connect MCP servers, and configure tools with secure governance"
         />
         <Tabs
           orientation="vertical"

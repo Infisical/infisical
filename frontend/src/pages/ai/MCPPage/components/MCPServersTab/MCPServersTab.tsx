@@ -59,7 +59,7 @@ export const MCPServersTab = () => {
         <div>
           <h2 className="text-xl font-semibold text-mineshaft-100">MCP Servers</h2>
           <p className="text-sm text-bunker-300">
-            Manage MCP servers to be used within the project
+            Connect to remote MCP servers like Notion, GitHub, and Slack to enable AI tool access
           </p>
         </div>
 
