@@ -10,6 +10,7 @@ import {
 import { Knex } from "knex";
 import { z, ZodError } from "zod";
 
+import { TPkiAcmeOrders } from "@app/db/schemas";
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
 import { TPkiAcmeAuths } from "@app/db/schemas/pki-acme-auths";
 import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
@@ -104,7 +105,6 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
-import { TPkiAcmeOrders } from "@app/db/schemas";
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
@@ -1008,17 +1008,15 @@ export const pkiAcmeServiceFactory = ({
             ca,
             tx
           });
-          if (result.certificateId) {
-            await acmeOrderDAL.updateById(
-              orderId,
-              {
-                status: AcmeOrderStatus.Valid,
-                csr,
-                certificateId: result.certificateId
-              },
-              tx
-            );
-          }
+          await acmeOrderDAL.updateById(
+            orderId,
+            {
+              status: result.certificateId ? AcmeOrderStatus.Valid : AcmeOrderStatus.Processing,
+              csr,
+              certificateId: result.certificateId
+            },
+            tx
+          );
           certIssuanceJobDataToReturn = result.certIssuanceJobData;
         } catch (exp) {
           await acmeOrderDAL.updateById(
