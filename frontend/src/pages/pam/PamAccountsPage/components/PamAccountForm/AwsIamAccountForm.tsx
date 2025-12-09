@@ -30,11 +30,20 @@ import { GenericAccountFields, genericAccountFieldsSchema } from "./GenericAccou
 const AWS_STS_MIN_SESSION_DURATION = 900; // 15 minutes
 const AWS_STS_MAX_SESSION_DURATION_ROLE_CHAINING = 3600; // 1 hour
 
+type SubmitData = {
+  name: string;
+  description?: string | null;
+  credentials: {
+    targetRoleArn: string;
+    defaultSessionDuration: number;
+  };
+};
+
 type Props = {
   account?: TAwsIamAccount;
   resourceId?: string;
   resourceType?: PamResourceType;
-  onSubmit: (formData: FormData) => Promise<void>;
+  onSubmit: (formData: SubmitData) => Promise<void>;
 };
 
 const arnRoleRegex = /^arn:aws:iam::\d{12}:role\/[\w+=,.@/-]+$/;
@@ -152,12 +161,13 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
     const durationSeconds = Math.floor(durationMs / 1000);
 
     await onSubmit({
-      ...formData,
+      name: formData.name,
+      description: formData.description,
       credentials: {
-        ...formData.credentials,
+        targetRoleArn: formData.credentials.targetRoleArn,
         defaultSessionDuration: durationSeconds
       }
-    } as any);
+    });
   };
 
   return (
