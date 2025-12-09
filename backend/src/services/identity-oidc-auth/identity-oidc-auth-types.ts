@@ -38,6 +38,7 @@ export type TGetOidcAuthDTO = {
 export type TLoginOidcAuthDTO = {
   identityId: string;
   jwt: string;
+  subOrganizationName?: string;
 };
 
 export type TRevokeOidcAuthDTO = {

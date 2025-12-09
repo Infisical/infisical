@@ -200,7 +200,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </DropdownSubMenuTrigger>
               <DropdownSubMenuContent className="max-h-80 thin-scrollbar overflow-y-auto rounded-l-none">
                 <DropdownMenuLabel className="sticky top-0 bg-mineshaft-900">
-                  Filter Organization Machine Identities by Role
+                  Filter {isSubOrganization ? "Sub-" : ""}Organization Machine Identities by Role
                 </DropdownMenuLabel>
                 {roles?.map(({ id, slug, name }) => (
                   <DropdownMenuItem
@@ -229,7 +229,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={<FontAwesomeIcon icon={faMagnifyingGlass} />}
-          placeholder="Search machine identities by name..."
+          placeholder={`Search ${isSubOrganization ? "sub-organization" : "organization"} machine identities by name...`}
         />
       </div>
       <TableContainer>
@@ -258,7 +258,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
               </Th>
               <Th>
                 <div className="flex items-center">
-                  Organization Role
+                  {isSubOrganization ? "Sub-" : ""}Organization Role
                   <IconButton
                     variant="plain"
                     className={`ml-2 ${orderBy === OrgIdentityOrderBy.Role ? "" : "opacity-30"}`}
@@ -304,7 +304,7 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
                           to: "/organizations/$orgId/identities/$identityId",
                           params: {
                             identityId: id,
-                            orgId
+                            orgId: currentOrg.id
                           }
                         })
                       }
@@ -455,8 +455,8 @@ export const IdentityTable = ({ handlePopUpOpen }: Props) => {
           <EmptyState
             title={
               debouncedSearch.trim().length > 0 || filter.roles?.length > 0
-                ? "No machine identities match search filter"
-                : "No machine identities have been created in this organization"
+                ? `No ${isSubOrganization ? "sub-" : ""}organization machine identities match search filter`
+                : `No machine identities have been created in this ${isSubOrganization ? "sub-" : ""}organization`
             }
             icon={faServer}
           />

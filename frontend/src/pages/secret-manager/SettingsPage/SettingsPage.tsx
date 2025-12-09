@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { InfoIcon } from "lucide-react";
 
 import { PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/components/v2";
-import { useProject } from "@app/context";
+import { useOrganization, useProject } from "@app/context";
 import { ProjectType, ProjectVersion } from "@app/hooks/api/projects/types";
 import { ProjectGeneralTab } from "@app/pages/project/SettingsPage/components/ProjectGeneralTab";
 
@@ -15,6 +15,8 @@ import { WorkflowIntegrationTab } from "./components/WorkflowIntegrationSection"
 
 export const SettingsPage = () => {
   const { t } = useTranslation();
+  const { isSubOrganization } = useOrganization();
+
   const { currentProject } = useProject();
   const tabs = [
     { name: "General", key: "tab-project-general", Component: ProjectGeneralTab },
@@ -55,7 +57,8 @@ export const SettingsPage = () => {
             }}
             className="flex items-center gap-x-1.5 text-xs whitespace-nowrap text-neutral hover:underline"
           >
-            <InfoIcon size={12} /> Looking for organization settings?
+            <InfoIcon size={12} /> Looking for {isSubOrganization ? "sub-" : ""}organization
+            settings?
           </Link>
         </PageHeader>
         <Tabs orientation="vertical" defaultValue={tabs[0].key}>

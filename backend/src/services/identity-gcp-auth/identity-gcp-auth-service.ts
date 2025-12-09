@@ -47,7 +47,7 @@ type TIdentityGcpAuthServiceFactoryDep = {
   identityAccessTokenDAL: Pick<TIdentityAccessTokenDALFactory, "create" | "delete">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityGcpAuthServiceFactory = ReturnType<typeof identityGcpAuthServiceFactory>;
@@ -61,7 +61,7 @@ export const identityGcpAuthServiceFactory = ({
   licenseService,
   orgDAL
 }: TIdentityGcpAuthServiceFactoryDep) => {
-  const login = async ({ identityId, jwt: gcpJwt }: TLoginGcpAuthDTO) => {
+  const login = async ({ identityId, jwt: gcpJwt, subOrganizationName }: TLoginGcpAuthDTO) => {
     const appCfg = getConfig();
     const identityGcpAuth = await identityGcpAuthDAL.findOne({ identityId });
     if (!identityGcpAuth) {
@@ -72,6 +72,11 @@ export const identityGcpAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     try {
       let gcpIdentityDetails: TGcpIdentityDetails;
       switch (identityGcpAuth.type) {
@@ -138,6 +143,30 @@ export const identityGcpAuthServiceFactory = ({
           });
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       const identityAccessToken = await identityGcpAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
           identity.projectId
@@ -166,7 +195,8 @@ export const identityGcpAuthServiceFactory = ({
             accessTokenMaxTTL: identityGcpAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityGcpAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.GCP_AUTH
+            authMethod: IdentityAuthMethod.GCP_AUTH,
+            subOrganizationId
           },
           tx
         );

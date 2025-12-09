@@ -30,6 +30,8 @@ export type Organization = {
   maxSharedSecretLifetime: number;
   maxSharedSecretViewLimit: number | null;
   blockDuplicateSecretSyncDestinations: boolean;
+  parentOrgId: string | null;
+  rootOrgId: string | null;
 };
 
 export type UpdateOrgDTO = {

@@ -1,11 +1,16 @@
 image:
   repository: infisical/cli
-  tag: "0.43.0"
+  tag: "0.43.39"
   pullPolicy: IfNotPresent
 
 secret:
   # The secret that contains the environment variables to be used by the gateway, such as INFISICAL_API_URL and TOKEN
   name: "infisical-gateway-environment"
+
+gateway:
+  # Specify where to save PAM session recordings. This directory will always be created when the gateway starts.
+  # Defaults to /var/lib/infisical/session_recordings.
+  pamSessionRecordingsDirectory: /var/lib/infisical/session_recordings
 
 resources:
   limits:

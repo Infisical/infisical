@@ -1,15 +1,18 @@
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate, useRouter } from "@tanstack/react-router";
 import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
+import SecurityClient from "@app/components/utilities/SecurityClient";
 import { Button, FormControl, Input } from "@app/components/v2";
+import { useOrganization } from "@app/context";
 import { useCreateSubOrganization } from "@app/hooks/api";
+import { selectOrganization } from "@app/hooks/api/auth/queries";
 import { slugSchema } from "@app/lib/schemas";
 
 type ContentProps = {
   onClose: () => void;
+  handleOrgSelection: (params: { organizationId: string }) => void;
 };
 
 const AddOrgSchema = z.object({
@@ -18,7 +21,8 @@ const AddOrgSchema = z.object({
 
 type FormData = z.infer<typeof AddOrgSchema>;
 
-export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
+export const NewSubOrganizationForm = ({ onClose, handleOrgSelection }: ContentProps) => {
+  const { currentOrg, isSubOrganization } = useOrganization();
   const createSubOrg = useCreateSubOrganization();
 
   const {
@@ -32,10 +36,16 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     resolver: zodResolver(AddOrgSchema)
   });
 
-  const navigate = useNavigate();
-  const router = useRouter();
-
   const onSubmit = async ({ name }: FormData) => {
+    if (isSubOrganization && currentOrg.rootOrgId) {
+      const { token } = await selectOrganization({
+        organizationId: currentOrg.rootOrgId
+      });
+
+      SecurityClient.setToken(token);
+      SecurityClient.setProviderAuthToken("");
+    }
+
     const { organization } = await createSubOrg.mutateAsync({
       name
     });
@@ -46,11 +56,7 @@ export const NewSubOrganizationForm = ({ onClose }: ContentProps) => {
     });
     onClose();
 
-    navigate({
-      to: "/organizations/$orgId/projects",
-      params: { orgId: organization.id }
-    });
-    await router.invalidate({ sync: true }).catch(() => null);
+    await handleOrgSelection({ organizationId: organization.id });
   };
 
   return (

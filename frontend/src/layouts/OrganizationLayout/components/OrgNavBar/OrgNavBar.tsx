@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { twMerge } from "tailwind-merge";
 
 import { CreateOrgModal } from "@app/components/organization/CreateOrgModal";
 import { Tab, TabList, Tabs } from "@app/components/v2";
@@ -21,7 +22,14 @@ export const OrgNavBar = ({ isHidden }: Props) => {
   return (
     <div className="bg-mineshaft-900">
       {!isHidden && (
-        <div className="dark flex w-full flex-col overflow-x-hidden border-y border-t-org/15 border-b-org/5 bg-gradient-to-b from-org/[0.075] to-org/[0.025] px-4 pt-0.5">
+        <div
+          className={twMerge(
+            "dark flex w-full flex-col overflow-x-hidden border-y bg-gradient-to-b px-4 pt-0.5",
+            isRootOrganization
+              ? "border-t-org/15 border-b-org/5 from-org/[0.075] to-org/[0.025]"
+              : "border-t-sub-org/15 border-b-sub-org/5 from-sub-org/[0.075] to-sub-org/[0.025]"
+          )}
+        >
           <motion.div
             key="menu-org-items"
             initial={{ x: -150 }}
