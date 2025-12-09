@@ -54,10 +54,13 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           volumeMounts:
-            - name: infisical-gateway-session-recordings-data
-              mountPath: {{ .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
             - name: infisical-gateway-cached-relay-data
               mountPath: /var/lib/infisical
+            {{- $sessionPath := .Values.gateway.pamSessionRecordingsDirectory | default "/var/lib/infisical/session_recordings" }}
+            {{- if not (hasPrefix "/var/lib/infisical" $sessionPath) }}
+            - name: infisical-gateway-session-recordings-data
+              mountPath: {{ $sessionPath }}
+            {{- end }}
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
