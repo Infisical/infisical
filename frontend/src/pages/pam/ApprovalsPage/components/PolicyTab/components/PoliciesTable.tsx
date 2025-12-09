@@ -98,9 +98,7 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             <Tr>
               <Th className="w-10" />
               <Th>Policy Name</Th>
-              <Th>Max Approval Request TTL</Th>
-              <Th>Min Access Duration</Th>
-              <Th>Max Access Duration</Th>
+              <Th>Access Duration (min - max)</Th>
               <Th>Conditions</Th>
               <Th className="w-5" />
             </Tr>
@@ -117,7 +115,6 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
             {!isPoliciesLoading &&
               policies.map((policy) => {
                 const isExpanded = expandedRows.has(policy.id);
-                const maxTtl = policy.maxRequestTtl ? policy.maxRequestTtl : "No limit";
                 const conditionsCount = policy.conditions.conditions.length;
 
                 return (
@@ -144,9 +141,10 @@ export const PoliciesTable = ({ handlePopUpOpen }: Props) => {
                         </IconButton>
                       </Td>
                       <Td>{policy.name}</Td>
-                      <Td>{maxTtl}</Td>
-                      <Td>{policy.constraints.constraints.accessDuration.min}</Td>
-                      <Td>{policy.constraints.constraints.accessDuration.max}</Td>
+                      <Td>
+                        {policy.constraints.constraints.accessDuration.min} -{" "}
+                        {policy.constraints.constraints.accessDuration.max}
+                      </Td>
                       <Td>
                         {conditionsCount} condition{conditionsCount !== 1 ? "s" : ""}
                       </Td>

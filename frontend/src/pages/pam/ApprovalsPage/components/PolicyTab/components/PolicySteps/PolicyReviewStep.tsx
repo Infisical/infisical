@@ -187,8 +187,8 @@ export const PolicyReviewStep = () => {
       {/* Summary Notice */}
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
         <p className="text-xs text-mineshaft-300">
-          Please review all the details above. Click &quot;Create&quot; to save this policy or
-          &quot;Back&quot; to make changes.
+          Please review all the details above. Submit to save this policy or go back to make
+          changes.
         </p>
       </div>
     </div>

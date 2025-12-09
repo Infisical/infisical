@@ -24,7 +24,8 @@ export const PolicyDetailsStep = () => {
           </FormControl>
         )}
       />
-      <Controller
+      {/*
+        <Controller
         control={control}
         name="maxRequestTtl"
         render={({ field, fieldState: { error } }) => (
@@ -38,6 +39,7 @@ export const PolicyDetailsStep = () => {
           </FormControl>
         )}
       />
+      */}
       <div className="border-t border-mineshaft-600 pt-4">
         <div className="mb-3">
           <p className="pb-0.5 text-sm font-medium text-mineshaft-200">
