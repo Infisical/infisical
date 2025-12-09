@@ -785,10 +785,11 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "ACME order not found" });
     }
     // Sync order first in case if there is a certificate request that needs to be processed
-    const syncedOrder = await checkAndSyncAcmeOrderStatus({ orderId });
+    await checkAndSyncAcmeOrderStatus({ orderId });
+    const updatedOrder = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
     return {
       status: 200,
-      body: buildAcmeOrderResource({ profileId, order: syncedOrder }),
+      body: buildAcmeOrderResource({ profileId, order: updatedOrder }),
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
@@ -897,6 +898,8 @@ export const pkiAcmeServiceFactory = ({
       status: CertificateRequestStatus.PENDING,
       tx
     });
+    const csrObj = new x509.Pkcs10CertificateRequest(csr);
+    const csrPem = csrObj.toString("pem");
     return {
       certIssuanceJobData: {
         certificateId: orderId,
@@ -910,7 +913,7 @@ export const pkiAcmeServiceFactory = ({
         keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
         extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
         certificateRequestId: certRequest.id,
-        csr
+        csr: csrPem
       }
     };
   };
