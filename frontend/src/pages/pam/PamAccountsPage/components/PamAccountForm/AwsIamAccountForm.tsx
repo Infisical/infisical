@@ -97,17 +97,17 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
     enabled: !!resourceIdToFetch && !!resourceTypeToFetch
   });
 
-  const pamRoleArn =
+  const resourceRoleArn =
     (resource?.resourceType === PamResourceType.AwsIam &&
       (resource as TAwsIamResource).connectionDetails?.roleArn) ||
-    "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_PAM_ROLE_NAME>";
+    "arn:aws:iam::<YOUR_ACCOUNT_ID>:role/<YOUR_RESOURCE_ROLE_NAME>";
 
   const targetRoleTrustPolicy = `{
   "Version": "2012-10-17",
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "AWS": "${pamRoleArn}"
+      "AWS": "${resourceRoleArn}"
     },
     "Action": "sts:AssumeRole",
     "Condition": {
@@ -229,10 +229,9 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
             </AccordionTrigger>
             <AccordionContent className="px-4 pb-2.5">
               <p className="mb-3 text-sm text-mineshaft-300">
-                The target role must have a trust policy that allows the PAM role (created in the
-                &quot;Resources&quot; tab) to assume it. If your target role name follows the
-                wildcard pattern you defined in the PAM role&apos;s permissions policy, no
-                additional changes are needed.
+                The target role must have a trust policy that allows the Resource Role (created in
+                the &quot;Resources&quot; tab) to assume it. Ensure the target role&apos;s trust
+                policy includes the Resource Role as a trusted principal.
               </p>
 
               <p className="mb-2 text-sm font-medium text-mineshaft-200">
@@ -247,12 +246,11 @@ export const AwsIamAccountForm = ({ account, resourceId, resourceType, onSubmit 
                 </pre>
               </div>
               <p className="text-xs text-mineshaft-400">
-                <strong>Note:</strong> The Principal role ARN shown above is from the PAM Resource
+                <strong>Note:</strong> The Principal role ARN shown above is from the Resource
                 selected for this account. The External ID{" "}
                 <code className="rounded bg-mineshaft-700 px-1 font-bold">{projectId}</code> is your
-                current project ID. If your target role name doesn&apos;t match the wildcard pattern
-                in your PAM Resource&apos;s role&apos;s permissions policy, you&apos;ll need to
-                update that policy to include this role&apos;s ARN.
+                current project ID. If you configured granular permissions in your Resource
+                Role&apos;s policy, ensure this target role&apos;s ARN is included.
               </p>
             </AccordionContent>
           </AccordionItem>
