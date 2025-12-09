@@ -186,6 +186,7 @@ export const PolicyModal = ({ popUp, handlePopUpToggle }: Props) => {
     <Modal isOpen={isOpen} onOpenChange={(open) => handlePopUpToggle("policy", open)}>
       <ModalContent
         title={policyData?.policyId ? "Edit Access Policy" : "Create Access Policy"}
+        subTitle="Configure a policy dictating account access with constraints"
         className="max-w-3xl"
       >
         <FormProvider {...formMethods}>
