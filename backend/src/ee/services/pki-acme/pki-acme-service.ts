@@ -19,24 +19,15 @@ import { crypto } from "@app/lib/crypto/cryptography";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { isPrivateIp } from "@app/lib/ip/ipRange";
 import { logger } from "@app/lib/logger";
-import { TAppConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TCertificateBodyDALFactory } from "@app/services/certificate/certificate-body-dal";
-import { TCertificateDALFactory } from "@app/services/certificate/certificate-dal";
-import { TCertificateSecretDALFactory } from "@app/services/certificate/certificate-secret-dal";
-import {
-  CertExtendedKeyUsage,
-  CertKeyUsage,
-  CertSubjectAlternativeNameType
-} from "@app/services/certificate/certificate-types";
-import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
+import { CertSubjectAlternativeNameType } from "@app/services/certificate/certificate-types";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
 import {
   TCertificateIssuanceQueueFactory,
   TIssueCertificateFromProfileJobData
 } from "@app/services/certificate-authority/certificate-issuance-queue";
-import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import {
   extractAlgorithmsFromCSR,
   extractCertificateRequestFromCSR
@@ -788,7 +779,7 @@ export const pkiAcmeServiceFactory = ({
     }
     // Sync order first in case if there is a certificate request that needs to be processed
     await checkAndSyncAcmeOrderStatus({ orderId });
-    const updatedOrder = await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId);
+    const updatedOrder = (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId))!;
     return {
       status: 200,
       body: buildAcmeOrderResource({ profileId, order: updatedOrder }),
