@@ -100,7 +100,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
     setUserTablePreference("projectGroupMembersTable", PreferenceKey.PerPage, newPerPage);
   };
 
-  const { isSubOrganization, currentOrg } = useOrganization();
+  const { currentOrg } = useOrganization();
   const { currentProject } = useProject();
 
   const { data: groupMemberships, isPending } = useListGroupMembers({
@@ -145,7 +145,7 @@ export const GroupMembersTable = ({ groupMembership }: Props) => {
                 : "User privilege assumption has started"
           });
 
-          const url = `${getProjectHomePage(currentProject.type, currentProject.environments)}${isSubOrganization ? `?subOrganization=${currentOrg.slug}` : ""}`;
+          const url = getProjectHomePage(currentProject.type, currentProject.environments);
           window.location.assign(
             url.replace("$orgId", currentOrg.id).replace("$projectId", currentProject.id)
           );

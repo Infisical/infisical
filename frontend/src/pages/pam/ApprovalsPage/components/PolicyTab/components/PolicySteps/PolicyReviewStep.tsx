@@ -24,7 +24,7 @@ export const PolicyReviewStep = () => {
   const { data: members = [] } = useGetWorkspaceUsers(projectId);
   const { data: groups = [] } = useListWorkspaceGroups(projectId);
 
-  const { name, maxRequestTtl, conditions, constraints, steps } = watch();
+  const { name, conditions, constraints, steps } = watch();
 
   const getApproverLabel = (approverId: string, approverType: ApproverType) => {
     if (approverType === ApproverType.User) {
@@ -45,61 +45,23 @@ export const PolicyReviewStep = () => {
     <div className="space-y-6">
       <div>
         <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">Policy Details</h3>
+          <h3 className="text-sm font-medium text-mineshaft-200">Policy Configuration</h3>
         </div>
-        <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-2">
           <ReviewField label="Policy Name" value={name || "Not set"} />
-          <ReviewField label="Max Approval Request TTL" value={maxRequestTtl || "No Limit"} />
+          <ReviewField label="Max. Access Duration" value={constraints.accessDuration.max} />
+          <ReviewField
+            label="Account Paths"
+            value={
+              conditions[0].accountPaths.length ? conditions[0].accountPaths.join(",") : "Not set"
+            }
+          />
         </div>
       </div>
 
       <div>
         <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">
-            PAM Account Access Duration TTL
-          </h3>
-        </div>
-        <div className="space-y-2">
-          <ReviewField label="Minimum Duration" value={constraints.accessDuration.min} />
-          <ReviewField label="Maximum Duration" value={constraints.accessDuration.max} />
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">
-            Conditions ({conditions.length})
-          </h3>
-        </div>
-        <div className="space-y-3">
-          {conditions.map((condition, index) => (
-            <div
-              key={`condition-${index + 1}`}
-              className="rounded border border-mineshaft-600 bg-mineshaft-800/50 p-3"
-            >
-              <div className="mb-2 text-xs font-medium text-mineshaft-300">
-                Condition {index + 1}
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <span className="text-xs text-mineshaft-400">Account Paths: </span>
-                  <span className="text-xs text-mineshaft-200">
-                    {condition.accountPaths.length > 0
-                      ? condition.accountPaths.join(", ")
-                      : "None specified"}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-3 border-b border-mineshaft-600 pb-2">
-          <h3 className="text-sm font-medium text-mineshaft-200">
-            Approval Workflow ({steps.length} step{steps.length !== 1 ? "s" : ""})
-          </h3>
+          <h3 className="text-sm font-medium text-mineshaft-200">Approval Sequence</h3>
         </div>
         <div className="space-y-3">
           {steps.map((step, index) => {
@@ -109,7 +71,7 @@ export const PolicyReviewStep = () => {
             return (
               <div
                 key={`step-${index + 1}`}
-                className="rounded border border-mineshaft-600 bg-mineshaft-800/50 p-3"
+                className="rounded border border-mineshaft-600 bg-mineshaft-700 p-3"
               >
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -187,8 +149,8 @@ export const PolicyReviewStep = () => {
       {/* Summary Notice */}
       <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
         <p className="text-xs text-mineshaft-300">
-          Please review all the details above. Click &quot;Create&quot; to save this policy or
-          &quot;Back&quot; to make changes.
+          Please review all the details above. Submit to save this policy or go back to make
+          changes.
         </p>
       </div>
     </div>

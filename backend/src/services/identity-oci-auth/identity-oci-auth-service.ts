@@ -51,7 +51,7 @@ type TIdentityOciAuthServiceFactoryDep = {
   membershipIdentityDAL: Pick<TMembershipIdentityDALFactory, "findOne" | "update" | "getIdentityById">;
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getProjectPermission">;
-  orgDAL: Pick<TOrgDALFactory, "findById">;
+  orgDAL: Pick<TOrgDALFactory, "findById" | "findOne">;
 };
 
 export type TIdentityOciAuthServiceFactory = ReturnType<typeof identityOciAuthServiceFactory>;
@@ -65,7 +65,7 @@ export const identityOciAuthServiceFactory = ({
   permissionService,
   orgDAL
 }: TIdentityOciAuthServiceFactoryDep) => {
-  const login = async ({ identityId, headers, userOcid }: TLoginOciAuthDTO) => {
+  const login = async ({ identityId, headers, userOcid, subOrganizationName }: TLoginOciAuthDTO) => {
     const appCfg = getConfig();
     const identityOciAuth = await identityOciAuthDAL.findOne({ identityId });
     if (!identityOciAuth) {
@@ -76,6 +76,11 @@ export const identityOciAuthServiceFactory = ({
     if (!identity) throw new UnauthorizedError({ message: "Identity not found" });
 
     const org = await orgDAL.findById(identity.orgId);
+    const isSubOrgIdentity = Boolean(org.rootOrgId);
+
+    // If the identity is a sub-org identity, then the scope is always the org.id, and if it's a root org identity, then we need to resolve the scope if a subOrganizationName is specified
+    let subOrganizationId = isSubOrgIdentity ? org.id : null;
+
     try {
       // Validate OCI host format. Ensures that the host is in "identity.<region>.oraclecloud.com" format.
       if (!headers.host || !new RE2("^identity\\.([a-z]{2}-[a-z]+-[1-9])\\.oraclecloud\\.com$").test(headers.host)) {
@@ -108,6 +113,30 @@ export const identityOciAuthServiceFactory = ({
           });
       }
 
+      if (subOrganizationName) {
+        if (!isSubOrgIdentity) {
+          const subOrg = await orgDAL.findOne({ rootOrgId: org.id, slug: subOrganizationName });
+
+          if (!subOrg) {
+            throw new NotFoundError({ message: `Sub organization with name ${subOrganizationName} not found` });
+          }
+
+          const subOrgMembership = await membershipIdentityDAL.findOne({
+            scope: AccessScope.Organization,
+            actorIdentityId: identity.id,
+            scopeOrgId: subOrg.id
+          });
+
+          if (!subOrgMembership) {
+            throw new UnauthorizedError({
+              message: `Identity not authorized to access sub organization ${subOrganizationName}`
+            });
+          }
+
+          subOrganizationId = subOrg.id;
+        }
+      }
+
       // Generate the token
       const identityAccessToken = await identityOciAuthDAL.transaction(async (tx) => {
         await membershipIdentityDAL.update(
@@ -137,7 +166,8 @@ export const identityOciAuthServiceFactory = ({
             accessTokenMaxTTL: identityOciAuth.accessTokenMaxTTL,
             accessTokenNumUses: 0,
             accessTokenNumUsesLimit: identityOciAuth.accessTokenNumUsesLimit,
-            authMethod: IdentityAuthMethod.OCI_AUTH
+            authMethod: IdentityAuthMethod.OCI_AUTH,
+            subOrganizationId
           },
           tx
         );

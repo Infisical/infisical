@@ -5,10 +5,10 @@ import {
   faArrowDown,
   faArrowUp,
   faCheckCircle,
+  faClipboardCheck,
   faFilter,
   faFolderPlus,
   faMagnifyingGlass,
-  faPen,
   faPlus,
   faSearch
 } from "@fortawesome/free-solid-svg-icons";
@@ -328,11 +328,11 @@ export const PamAccountsTable = ({ projectId }: Props) => {
         </DropdownMenu>
         <Button
           variant="outline_bg"
-          leftIcon={<FontAwesomeIcon icon={faPen} />}
+          leftIcon={<FontAwesomeIcon icon={faClipboardCheck} />}
           onClick={() => handlePopUpOpen("requestAccount")}
           className="h-10 transition-colors"
         >
-          Request Account
+          Request Access
         </Button>
         <ProjectPermissionCan
           I={ProjectPermissionPamAccountActions.Create}

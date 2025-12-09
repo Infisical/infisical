@@ -57,6 +57,7 @@ export const registerLoginRouter = async (server: FastifyZodProvider) => {
     },
     handler: async (req, res) => {
       const cfg = getConfig();
+
       const tokens = await server.services.login.selectOrganization({
         userAgent: req.body.userAgent ?? req.headers["user-agent"],
         authJwtToken: req.headers.authorization,

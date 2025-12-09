@@ -180,8 +180,11 @@ export const RequestGrantTab = () => {
 
   return (
     <div className="mb-6 rounded-lg border border-mineshaft-600 bg-mineshaft-900 p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-xl font-medium text-mineshaft-100">Access Grants</p>
+      <div className="mb-4">
+        <div className="flex items-center gap-x-2">
+          <p className="text-xl font-medium text-mineshaft-100">Access Grants</p>
+        </div>
+        <p className="text-sm text-bunker-300">View and revoke access grants to PAM accounts</p>
       </div>
       <div>
         <div className="flex gap-2">
@@ -269,7 +272,7 @@ export const RequestGrantTab = () => {
               <Tr>
                 <Th>User</Th>
                 <Th>Account Path</Th>
-                <Th>Duration</Th>
+                <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
                 <Th>Expires</Th>

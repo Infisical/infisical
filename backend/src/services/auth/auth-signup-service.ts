@@ -258,13 +258,13 @@ export const authSignupServiceFactory = ({
     let refreshTokenExpiresIn: string | number = appCfg.JWT_REFRESH_LIFETIME;
 
     if (organizationId) {
-      const org = await orgService.findOrganizationById(
-        user.id,
-        organizationId,
-        authMethod,
-        organizationId,
-        organizationId
-      );
+      const org = await orgService.findOrganizationById({
+        userId: user.id,
+        orgId: organizationId,
+        actorAuthMethod: authMethod,
+        actorOrgId: organizationId,
+        rootOrgId: organizationId
+      });
       if (org && org.userTokenExpiration) {
         tokenSessionExpiresIn = getMinExpiresIn(appCfg.JWT_AUTH_LIFETIME, org.userTokenExpiration);
         refreshTokenExpiresIn = org.userTokenExpiration;

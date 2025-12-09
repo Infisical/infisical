@@ -43,7 +43,7 @@ export const RequestDetailsSection = ({ request }: Props) => {
           </GenericFieldLabel>
           <GenericFieldLabel label="Requester Email">{request.requesterEmail}</GenericFieldLabel>
           <GenericFieldLabel label="Account Path">{accountPath}</GenericFieldLabel>
-          <GenericFieldLabel label="Duration">{accessDuration}</GenericFieldLabel>
+          <GenericFieldLabel label="Access Duration">{accessDuration}</GenericFieldLabel>
           {request.justification && (
             <GenericFieldLabel label="Justification">
               <p className="rounded-sm bg-mineshaft-600 p-2 text-xs break-words">

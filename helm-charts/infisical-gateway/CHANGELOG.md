@@ -1,3 +1,8 @@
+## 1.0.4 (December 9, 2025)
+* Updated default CLI image version from `0.43.0` to `0.43.39`.
+* Added new `gateway.pamSessionRecordingsDirectory`, allowing users to specify the folder where temporary session recording files for PAM are stored. Defaults to `/var/lib/infisical/session_recordings`
+* Added volume mounts for the user-specified `pamSessionRecordingsDirectory` path, and `/var/lib/infisical` for cached relay data.
+
 ## 1.0.3 (November 14, 2025)
 * Added support for setting the image repository by setting `image.repository`. Defaults to `infisical/cli`.
 
