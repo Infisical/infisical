@@ -54,7 +54,9 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
         accessToken: "",
         refreshToken: "",
         tokenType: "Bearer"
-      }
+      },
+      oauthClientId: "",
+      oauthClientSecret: ""
     } as TAddMCPServerForm
   });
 
@@ -98,7 +100,9 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
         description: data.description || undefined,
         credentialMode: data.credentialMode as unknown as AiMcpServerCredentialMode,
         authMethod: data.authMethod as unknown as AiMcpServerAuthMethod,
-        credentials: data.credentials
+        credentials: data.credentials,
+        oauthClientId: data.oauthClientId || undefined,
+        oauthClientSecret: data.oauthClientSecret || undefined
       } as TCreateAiMcpServerDTO);
 
       createNotification({
@@ -179,7 +183,7 @@ export const AddMCPServerModal = ({ isOpen, onOpenChange }: Props) => {
                   <BasicInfoStep />
                 </Tab.Panel>
                 <Tab.Panel>
-                  <AuthenticationStep />
+                  <AuthenticationStep onOAuthSuccess={() => handleSubmit(onSubmit)()} />
                 </Tab.Panel>
               </Tab.Panels>
             </Tab.Group>

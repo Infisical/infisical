@@ -8,7 +8,11 @@ import { Button, FormControl, Input, Select, SelectItem } from "@app/components/
 import { useProject } from "@app/context";
 import { useGetOAuthStatus, useInitiateOAuth } from "@app/hooks/api";
 
-import { MCPServerAuthMethod, TAddMCPServerForm } from "./AddMCPServerForm.schema";
+import {
+  MCPServerAuthMethod,
+  MCPServerCredentialMode,
+  TAddMCPServerForm
+} from "./AddMCPServerForm.schema";
 
 // Only OAuth is supported for now - other methods are defined in schema for future use
 const AUTH_METHOD_OPTIONS = [{ value: MCPServerAuthMethod.OAUTH, label: "OAuth" }];
@@ -17,10 +21,16 @@ const OAUTH_POPUP_WIDTH = 600;
 const OAUTH_POPUP_HEIGHT = 700;
 const OAUTH_POLL_INTERVAL = 2000; // Poll every 2 seconds
 
-export const AuthenticationStep = () => {
+type Props = {
+  onOAuthSuccess?: () => void;
+};
+
+export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
   const { currentProject } = useProject();
   const { control, watch, setValue, getValues } = useFormContext<TAddMCPServerForm>();
   const authMethod = watch("authMethod");
+  const credentialMode = watch("credentialMode");
+  const isPersonalMode = credentialMode === MCPServerCredentialMode.PERSONAL;
 
   // OAuth state
   const [oauthSessionId, setOauthSessionId] = useState<string | null>(null);
@@ -50,13 +60,17 @@ export const AuthenticationStep = () => {
       // Mark OAuth as succeeded (for popup close detection)
       oauthSucceededRef.current = true;
 
-      // OAuth completed successfully
-      setValue("credentials", {
-        accessToken: oauthStatus.accessToken,
-        refreshToken: oauthStatus.refreshToken,
-        expiresAt: oauthStatus.expiresAt,
-        tokenType: oauthStatus.tokenType || "Bearer"
-      });
+      // OAuth completed successfully - use shouldDirty and shouldTouch to trigger re-renders
+      setValue(
+        "credentials",
+        {
+          accessToken: oauthStatus.accessToken,
+          refreshToken: oauthStatus.refreshToken,
+          expiresAt: oauthStatus.expiresAt,
+          tokenType: oauthStatus.tokenType || "Bearer"
+        },
+        { shouldDirty: true, shouldTouch: true, shouldValidate: true }
+      );
 
       setIsOAuthPending(false);
       setOauthSessionId(null);
@@ -71,8 +85,16 @@ export const AuthenticationStep = () => {
         text: "OAuth authorization successful",
         type: "success"
       });
+
+      // Auto-submit the form after OAuth succeeds
+      if (onOAuthSuccess) {
+        // Small delay to ensure form state is updated
+        setTimeout(() => {
+          onOAuthSuccess();
+        }, 100);
+      }
     }
-  }, [oauthStatus, setValue]);
+  }, [oauthStatus, setValue, onOAuthSuccess]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -162,10 +184,16 @@ export const AuthenticationStep = () => {
     try {
       setIsOAuthPending(true);
 
+      // Get optional client credentials
+      const clientId = getValues("oauthClientId");
+      const clientSecret = getValues("oauthClientSecret");
+
       // 1. Call backend to initiate OAuth and get auth URL
       const { authUrl, sessionId } = await initiateOAuth.mutateAsync({
         url: serverUrl,
-        projectId: currentProject.id
+        projectId: currentProject.id,
+        clientId: clientId || undefined,
+        clientSecret: clientSecret || undefined
       });
 
       setOauthSessionId(sessionId);
@@ -216,9 +244,25 @@ export const AuthenticationStep = () => {
 
   return (
     <>
-      <p className="mb-4 text-sm text-bunker-300">
-        Configure shared authentication credentials for the MCP server.
-      </p>
+      {isPersonalMode ? (
+        <div className="mb-4 space-y-2">
+          <p className="text-sm text-bunker-300">
+            Authorize once to discover available tools from the MCP server.
+          </p>
+          <div className="rounded-md border border-primary-500/30 bg-primary-500/10 p-3">
+            <p className="text-xs text-mineshaft-200">
+              <span className="font-medium text-primary-400">Note:</span> Since you selected
+              Personal Credentials, each user will authenticate with their own credentials when
+              accessing this server. This authorization is only used to fetch the list of available
+              tools.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <p className="mb-4 text-sm text-bunker-300">
+          Configure shared authentication credentials for the MCP server.
+        </p>
+      )}
 
       <Controller
         control={control}
@@ -301,10 +345,63 @@ export const AuthenticationStep = () => {
 
       {authMethod === MCPServerAuthMethod.OAUTH && (
         <div className="mt-2 space-y-4">
+          {/* Optional client credentials for servers without DCR support (like GitHub) */}
+          <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-4">
+            <p className="text-xs text-bunker-300">
+              Optional: For MCP servers that don&apos;t support Dynamic Client Registration, enter
+              your OAuth app credentials below.
+              {isPersonalMode &&
+                " These will be saved so users don't need to provide them when authenticating."}
+            </p>
+            <Controller
+              control={control}
+              name="oauthClientId"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Client ID"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="mb-0"
+                >
+                  <Input
+                    {...field}
+                    value={field.value || ""}
+                    placeholder="Optional client ID"
+                    isDisabled={isOAuthPending || !!isOAuthAuthorized}
+                  />
+                </FormControl>
+              )}
+            />
+            <Controller
+              control={control}
+              name="oauthClientSecret"
+              render={({ field, fieldState: { error } }) => (
+                <FormControl
+                  label="Client Secret"
+                  isError={Boolean(error)}
+                  errorText={error?.message}
+                  className="mb-0"
+                >
+                  <Input
+                    {...field}
+                    value={field.value || ""}
+                    type="password"
+                    placeholder="Optional client secret"
+                    isDisabled={isOAuthPending || !!isOAuthAuthorized}
+                  />
+                </FormControl>
+              )}
+            />
+          </div>
+
           {isOAuthAuthorized && (
             <div className="flex items-center gap-2 rounded-md border border-green/30 bg-green/10 p-3">
               <FontAwesomeIcon icon={faCheck} className="text-green" />
-              <span className="text-sm text-green">OAuth authorization successful</span>
+              <span className="text-sm text-green">
+                {isPersonalMode
+                  ? "Authorization successful — tools can now be discovered"
+                  : "OAuth authorization successful"}
+              </span>
             </div>
           )}
           {!isOAuthAuthorized && isOAuthPending && (
@@ -331,7 +428,7 @@ export const AuthenticationStep = () => {
               isLoading={initiateOAuth.isPending}
               isDisabled={initiateOAuth.isPending}
             >
-              Authorize with OAuth
+              {isPersonalMode ? "Authorize to Discover Tools" : "Authorize with OAuth"}
             </Button>
           )}
         </div>

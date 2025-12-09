@@ -228,6 +228,7 @@ export enum TableName {
   // AI
   AiMcpServer = "ai_mcp_servers",
   AiMcpServerTool = "ai_mcp_server_tools",
+  AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
   AiMcpEndpoint = "ai_mcp_endpoints",
   AiMcpEndpointServer = "ai_mcp_endpoint_servers",
   AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools"

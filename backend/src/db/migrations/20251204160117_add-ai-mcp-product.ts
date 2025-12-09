@@ -14,6 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       t.string("credentialMode");
       t.string("authMethod");
       t.binary("encryptedCredentials");
+      t.binary("encryptedOauthConfig"); // Stores client ID/secret for OAuth servers without DCR
       t.string("projectId").notNullable();
       t.foreign("projectId").references("id").inTable(TableName.Project).onDelete("CASCADE");
       t.timestamps(true, true, true);
@@ -69,9 +70,28 @@ export async function up(knex: Knex): Promise<void> {
       t.unique(["aiMcpEndpointId", "aiMcpServerToolId"]);
     });
   }
+
+  // Store user OAuth credentials for MCP servers with "personal" credential mode
+  if (!(await knex.schema.hasTable(TableName.AiMcpServerUserCredential))) {
+    await knex.schema.createTable(TableName.AiMcpServerUserCredential, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.uuid("userId").notNullable();
+      t.foreign("userId").references("id").inTable(TableName.Users).onDelete("CASCADE");
+      t.uuid("aiMcpServerId").notNullable();
+      t.foreign("aiMcpServerId").references("id").inTable(TableName.AiMcpServer).onDelete("CASCADE");
+      t.binary("encryptedCredentials").notNullable();
+      t.timestamps(true, true, true);
+      t.unique(["userId", "aiMcpServerId"]);
+    });
+
+    await createOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
+  // await dropOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
+  await knex.schema.dropTableIfExists(TableName.AiMcpServerUserCredential);
+
   await knex.schema.dropTableIfExists(TableName.AiMcpEndpointServerTool);
   await knex.schema.dropTableIfExists(TableName.AiMcpEndpointServer);
 

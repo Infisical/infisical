@@ -11,6 +11,7 @@ import { KeyStorePrefixes, TKeyStoreFactory } from "@app/keystore/keystore";
 import { getConfig } from "@app/lib/config/env";
 import { crypto as cryptoModule } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError, UnauthorizedError } from "@app/lib/errors";
+import { logger } from "@app/lib/logger";
 import { ms } from "@app/lib/ms";
 import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
@@ -18,8 +19,10 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
+import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
+import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
 import { TAiMcpServerToolDALFactory } from "../ai-mcp-server/ai-mcp-server-tool-dal";
-import { TAiMcpServerCredentials } from "../ai-mcp-server/ai-mcp-server-types";
+import { TAiMcpServerUserCredentialDALFactory } from "../ai-mcp-server/ai-mcp-server-user-credential-dal";
 import { TAiMcpEndpointDALFactory } from "./ai-mcp-endpoint-dal";
 import { TAiMcpEndpointServerDALFactory } from "./ai-mcp-endpoint-server-dal";
 import { TAiMcpEndpointServerToolDALFactory } from "./ai-mcp-endpoint-server-tool-dal";
@@ -31,6 +34,8 @@ import {
   TDisableEndpointToolDTO,
   TEnableEndpointToolDTO,
   TGetAiMcpEndpointDTO,
+  TGetServersRequiringAuthDTO,
+  TInitiateServerOAuthDTO,
   TInteractWithMcpDTO,
   TListAiMcpEndpointsDTO,
   TListEndpointToolsDTO,
@@ -38,6 +43,8 @@ import {
   TOAuthFinalizeDTO,
   TOAuthRegisterClientDTO,
   TOAuthTokenExchangeDTO,
+  TSaveUserServerCredentialDTO,
+  TServerAuthStatus,
   TUpdateAiMcpEndpointDTO
 } from "./ai-mcp-endpoint-types";
 
@@ -47,6 +54,11 @@ type TAiMcpEndpointServiceFactoryDep = {
   aiMcpEndpointServerToolDAL: TAiMcpEndpointServerToolDALFactory;
   aiMcpServerDAL: TAiMcpServerDALFactory;
   aiMcpServerToolDAL: TAiMcpServerToolDALFactory;
+  aiMcpServerUserCredentialDAL: TAiMcpServerUserCredentialDALFactory;
+  aiMcpServerService: Pick<
+    TAiMcpServerServiceFactory,
+    "getCredentialsForServer" | "initiateOAuth" | "getOAuthStatus" | "getServerOAuthConfig"
+  >;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
@@ -100,11 +112,13 @@ export const aiMcpEndpointServiceFactory = ({
   aiMcpEndpointServerToolDAL,
   aiMcpServerDAL,
   aiMcpServerToolDAL,
+  aiMcpServerUserCredentialDAL,
+  aiMcpServerService,
   kmsService,
   keyStore,
   authTokenService
 }: TAiMcpEndpointServiceFactoryDep) => {
-  const interactWithMcp = async ({ endpointId }: TInteractWithMcpDTO) => {
+  const interactWithMcp = async ({ endpointId, userId }: TInteractWithMcpDTO) => {
     const appCfg = getConfig();
 
     // Get the endpoint
@@ -151,12 +165,6 @@ export const aiMcpEndpointServiceFactory = ({
       return { server: emptyServer, transport };
     }
 
-    // Create cipher pair for decryption
-    const { decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.SecretManager,
-      projectId: endpoint.projectId
-    });
-
     // Connect to each server and get their tools
     const mcpClientTools = await Promise.all(
       validServers.map(async (mcpServer) => {
@@ -165,25 +173,23 @@ export const aiMcpEndpointServiceFactory = ({
         // Create a map from tool name to database tool ID for this specific server
         const toolNameToDbId = new Map(dbServerTools.map((t) => [t.name, t.id]));
 
-        if (!mcpServer.encryptedCredentials) {
+        // Get credentials based on server's credential mode
+        const credentialsResult = await aiMcpServerService.getCredentialsForServer({
+          serverId: mcpServer.id,
+          serverUrl: mcpServer.url,
+          credentialMode: mcpServer.credentialMode,
+          projectId: endpoint.projectId,
+          userId
+        });
+
+        if (!credentialsResult) {
+          logger.warn(`No credentials found for MCP server ${mcpServer.name} (mode: ${mcpServer.credentialMode})`);
           return { client: null, server: mcpServer, tools: [], toolNameToDbId };
         }
 
-        const decryptedCredentials = JSON.parse(
-          decryptor({ cipherTextBlob: mcpServer.encryptedCredentials }).toString()
-        ) as TAiMcpServerCredentials;
-
-        // Get access token from credentials
-        let accessToken: string | undefined;
-        if ("accessToken" in decryptedCredentials) {
-          accessToken = decryptedCredentials.accessToken;
-        } else if ("token" in decryptedCredentials) {
-          accessToken = decryptedCredentials.token;
-        }
-
         const headers: Record<string, string> = {};
-        if (accessToken) {
-          headers.Authorization = `Bearer ${accessToken}`;
+        if (credentialsResult.accessToken) {
+          headers.Authorization = `Bearer ${credentialsResult.accessToken}`;
         }
 
         try {
@@ -207,8 +213,9 @@ export const aiMcpEndpointServiceFactory = ({
             tools: tools as Array<{ name: string; description?: string; inputSchema?: Record<string, unknown> }>,
             toolNameToDbId
           };
-        } catch {
+        } catch (error) {
           // If connection fails, return empty tools for this server
+          logger.error(error, `Failed to connect to MCP server ${mcpServer.name} (${mcpServer.url})`);
           return { client: null, server: mcpServer, tools: [], toolNameToDbId };
         }
       })
@@ -652,6 +659,140 @@ export const aiMcpEndpointServiceFactory = ({
     };
   };
 
+  // Get servers that require personal authentication for an endpoint
+  const getServersRequiringAuth = async ({
+    endpointId,
+    userId
+  }: TGetServersRequiringAuthDTO): Promise<TServerAuthStatus[]> => {
+    const endpoint = await aiMcpEndpointDAL.findById(endpointId);
+    if (!endpoint) {
+      throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    // Get connected servers
+    const connectedServerLinks = await aiMcpEndpointServerDAL.find({ aiMcpEndpointId: endpointId });
+    const serverIds = connectedServerLinks.map((link) => link.aiMcpServerId);
+
+    if (serverIds.length === 0) {
+      return [];
+    }
+
+    // Get server details
+    const servers = await Promise.all(serverIds.map((id) => aiMcpServerDAL.findById(id)));
+    const validServers = servers.filter((s) => s !== null && s !== undefined);
+
+    // Filter to only servers with personal credential mode
+    const personalServers = validServers.filter((s) => s.credentialMode === AiMcpServerCredentialMode.PERSONAL);
+
+    if (personalServers.length === 0) {
+      return [];
+    }
+
+    // Check which servers the user already has credentials for
+    const serversWithAuthStatus = await Promise.all(
+      personalServers.map(async (server) => {
+        const existingCredential = await aiMcpServerUserCredentialDAL.findByUserAndServer(userId, server.id);
+
+        return {
+          id: server.id,
+          name: server.name,
+          url: server.url,
+          hasCredentials: Boolean(existingCredential)
+        };
+      })
+    );
+
+    return serversWithAuthStatus;
+  };
+
+  // Initiate OAuth for a server (personal credential mode)
+  const initiateServerOAuth = async ({
+    endpointId,
+    serverId,
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId
+  }: TInitiateServerOAuthDTO) => {
+    // Verify endpoint exists and server is connected
+    const endpoint = await aiMcpEndpointDAL.findById(endpointId);
+    if (!endpoint) {
+      throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    if (server.credentialMode !== AiMcpServerCredentialMode.PERSONAL) {
+      throw new BadRequestError({ message: "This server does not use personal credentials" });
+    }
+
+    // Get stored OAuth config (client ID/secret) if available
+    const oauthConfig = await aiMcpServerService.getServerOAuthConfig(serverId);
+
+    // Use the existing MCP server OAuth initiate with stored client credentials
+    return aiMcpServerService.initiateOAuth({
+      projectId: endpoint.projectId,
+      url: server.url,
+      actorId,
+      actor,
+      actorAuthMethod,
+      actorOrgId,
+      clientId: oauthConfig?.clientId,
+      clientSecret: oauthConfig?.clientSecret
+    });
+  };
+
+  // Save user credentials after OAuth completes
+  const saveUserServerCredential = async ({
+    endpointId,
+    serverId,
+    userId,
+    accessToken,
+    refreshToken,
+    expiresAt,
+    tokenType
+  }: TSaveUserServerCredentialDTO) => {
+    // Verify endpoint and server exist
+    const endpoint = await aiMcpEndpointDAL.findById(endpointId);
+    if (!endpoint) {
+      throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    const server = await aiMcpServerDAL.findById(serverId);
+    if (!server) {
+      throw new NotFoundError({ message: `MCP server with ID '${serverId}' not found` });
+    }
+
+    // Encrypt the credentials
+    const credentials = {
+      accessToken,
+      refreshToken,
+      expiresAt,
+      tokenType: tokenType || "Bearer"
+    };
+
+    const { encryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.SecretManager,
+      projectId: endpoint.projectId
+    });
+
+    const encryptedCredentials = encryptor({
+      plainText: Buffer.from(JSON.stringify(credentials))
+    }).cipherTextBlob;
+
+    // Upsert the credential
+    await aiMcpServerUserCredentialDAL.upsertCredential({
+      userId,
+      aiMcpServerId: serverId,
+      encryptedCredentials
+    });
+
+    return { success: true };
+  };
+
   return {
     interactWithMcp,
     createMcpEndpoint,
@@ -666,6 +807,9 @@ export const aiMcpEndpointServiceFactory = ({
     oauthRegisterClient,
     oauthAuthorizeClient,
     oauthFinalize,
-    oauthTokenExchange
+    oauthTokenExchange,
+    getServersRequiringAuth,
+    initiateServerOAuth,
+    saveUserServerCredential
   };
 };

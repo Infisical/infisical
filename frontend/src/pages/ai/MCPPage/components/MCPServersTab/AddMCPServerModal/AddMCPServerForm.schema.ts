@@ -48,7 +48,9 @@ export const AddMCPServerFormSchema = z
     name: z.string().trim().min(1, "Name is required").max(64, "Name cannot exceed 64 characters"),
     description: z.string().trim().max(256, "Description cannot exceed 256 characters").optional(),
     url: z.string().trim().min(1, "Endpoint URL is required").url("Must be a valid URL"),
-    credentialMode: z.nativeEnum(MCPServerCredentialMode)
+    credentialMode: z.nativeEnum(MCPServerCredentialMode),
+    oauthClientId: z.string().trim().optional(),
+    oauthClientSecret: z.string().trim().optional()
   })
   .and(MCPServerCredentialsSchema);
 

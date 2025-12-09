@@ -28,6 +28,7 @@ import { aiMcpEndpointServiceFactory } from "@app/ee/services/ai-mcp-endpoint/ai
 import { aiMcpServerDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-dal";
 import { aiMcpServerServiceFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-service";
 import { aiMcpServerToolDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-tool-dal";
+import { aiMcpServerUserCredentialDALFactory } from "@app/ee/services/ai-mcp-server/ai-mcp-server-user-credential-dal";
 import { assumePrivilegeServiceFactory } from "@app/ee/services/assume-privilege/assume-privilege-service";
 import { auditLogDALFactory } from "@app/ee/services/audit-log/audit-log-dal";
 import { auditLogQueueServiceFactory } from "@app/ee/services/audit-log/audit-log-queue";
@@ -2410,6 +2411,7 @@ export const registerRoutes = async (
   const pamSessionDAL = pamSessionDALFactory(db);
   const aiMcpServerDAL = aiMcpServerDALFactory(db);
   const aiMcpServerToolDAL = aiMcpServerToolDALFactory(db);
+  const aiMcpServerUserCredentialDAL = aiMcpServerUserCredentialDALFactory(db);
   const aiMcpEndpointDAL = aiMcpEndpointDALFactory(db);
   const aiMcpEndpointServerDAL = aiMcpEndpointServerDALFactory(db);
   const aiMcpEndpointServerToolDAL = aiMcpEndpointServerToolDALFactory(db);
@@ -2458,6 +2460,7 @@ export const registerRoutes = async (
   const aiMcpServerService = aiMcpServerServiceFactory({
     aiMcpServerDAL,
     aiMcpServerToolDAL,
+    aiMcpServerUserCredentialDAL,
     kmsService,
     keyStore
   });
@@ -2468,6 +2471,8 @@ export const registerRoutes = async (
     aiMcpEndpointServerToolDAL,
     aiMcpServerDAL,
     aiMcpServerToolDAL,
+    aiMcpServerUserCredentialDAL,
+    aiMcpServerService,
     kmsService,
     keyStore,
     authTokenService: tokenService

@@ -18,6 +18,7 @@ export const AiMcpServersSchema = z.object({
   credentialMode: z.string().nullable().optional(),
   authMethod: z.string().nullable().optional(),
   encryptedCredentials: zodBuffer.nullable().optional(),
+  encryptedOauthConfig: zodBuffer.nullable().optional(),
   projectId: z.string(),
   createdAt: z.date(),
   updatedAt: z.date()

@@ -1,7 +1,13 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
-import { faCheckCircle, faPlug, faSpinner } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faExternalLink,
+  faPlug,
+  faSpinner,
+  faWarning
+} from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useSearch } from "@tanstack/react-router";
@@ -9,7 +15,18 @@ import { z } from "zod";
 
 import { createNotification } from "@app/components/notifications";
 import { Button, FormControl, Input } from "@app/components/v2";
-import { useFinalizeMcpEndpointOAuth, useGetAiMcpEndpointById } from "@app/hooks/api";
+import {
+  useFinalizeMcpEndpointOAuth,
+  useGetAiMcpEndpointById,
+  useGetServersRequiringAuth,
+  useInitiateServerOAuth,
+  useSaveUserServerCredential
+} from "@app/hooks/api";
+import { useGetOAuthStatus } from "@app/hooks/api/aiMcpServers/queries";
+
+const OAUTH_POPUP_WIDTH = 600;
+const OAUTH_POPUP_HEIGHT = 700;
+const OAUTH_POLL_INTERVAL = 2000;
 
 const FinalizeFormSchema = z.object({
   expireIn: z.string().min(1, "Expiration is required")
@@ -17,8 +34,20 @@ const FinalizeFormSchema = z.object({
 
 type FormData = z.infer<typeof FinalizeFormSchema>;
 
+type ServerOAuthState = {
+  serverId: string;
+  sessionId: string | null;
+  isPending: boolean;
+  isAuthorized: boolean;
+};
+
 export const McpEndpointFinalizePage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [serverOAuthStates, setServerOAuthStates] = useState<Map<string, ServerOAuthState>>(
+    new Map()
+  );
+  const [activeOAuthServerId, setActiveOAuthServerId] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
 
   const search = useSearch({
     from: "/_authenticate/organization/mcp-endpoint-finalize"
@@ -28,7 +57,24 @@ export const McpEndpointFinalizePage = () => {
     endpointId: search.endpointId
   });
 
+  const { data: serversRequiringAuth, isLoading: isServersLoading } = useGetServersRequiringAuth({
+    endpointId: search.endpointId
+  });
+
   const { mutateAsync: finalizeOAuth, isPending } = useFinalizeMcpEndpointOAuth();
+  const initiateServerOAuth = useInitiateServerOAuth();
+  const saveUserCredential = useSaveUserServerCredential();
+
+  // Get the active session ID for OAuth polling
+  const activeServerState = activeOAuthServerId ? serverOAuthStates.get(activeOAuthServerId) : null;
+
+  const { data: oauthStatus } = useGetOAuthStatus(
+    { sessionId: activeServerState?.sessionId || "" },
+    {
+      enabled: Boolean(activeServerState?.sessionId) && activeServerState?.isPending === true,
+      refetchInterval: OAUTH_POLL_INTERVAL
+    }
+  );
 
   const {
     handleSubmit,
@@ -40,6 +86,190 @@ export const McpEndpointFinalizePage = () => {
       expireIn: "30d"
     }
   });
+
+  // Initialize server OAuth states when data loads
+  useEffect(() => {
+    if (serversRequiringAuth && serversRequiringAuth.length > 0) {
+      const initialStates = new Map<string, ServerOAuthState>();
+      serversRequiringAuth.forEach((server) => {
+        initialStates.set(server.id, {
+          serverId: server.id,
+          sessionId: null,
+          isPending: false,
+          isAuthorized: server.hasCredentials
+        });
+      });
+      setServerOAuthStates(initialStates);
+    }
+  }, [serversRequiringAuth]);
+
+  // Handle OAuth status updates
+  useEffect(() => {
+    if (oauthStatus?.authorized && oauthStatus.accessToken && activeOAuthServerId) {
+      // Save the credentials
+      saveUserCredential.mutate(
+        {
+          endpointId: search.endpointId,
+          serverId: activeOAuthServerId,
+          accessToken: oauthStatus.accessToken,
+          refreshToken: oauthStatus.refreshToken,
+          expiresAt: oauthStatus.expiresAt,
+          tokenType: oauthStatus.tokenType
+        },
+        {
+          onSuccess: () => {
+            // Update the state to mark as authorized
+            setServerOAuthStates((prev) => {
+              const newMap = new Map(prev);
+              const state = newMap.get(activeOAuthServerId);
+              if (state) {
+                newMap.set(activeOAuthServerId, {
+                  ...state,
+                  isPending: false,
+                  isAuthorized: true,
+                  sessionId: null
+                });
+              }
+              return newMap;
+            });
+
+            setActiveOAuthServerId(null);
+
+            createNotification({
+              text: "Server authentication successful",
+              type: "success"
+            });
+          },
+          onError: () => {
+            createNotification({
+              text: "Failed to save credentials",
+              type: "error"
+            });
+          }
+        }
+      );
+    }
+  }, [oauthStatus, activeOAuthServerId, search.endpointId, saveUserCredential]);
+
+  // Check if popup was closed manually
+  useEffect(() => {
+    let checkPopupClosed: NodeJS.Timeout | null = null;
+
+    if (activeOAuthServerId && activeServerState?.isPending) {
+      checkPopupClosed = setInterval(() => {
+        if (popupRef.current?.closed) {
+          if (checkPopupClosed) {
+            clearInterval(checkPopupClosed);
+          }
+          // Give some time for the callback to process
+          setTimeout(() => {
+            const currentState = serverOAuthStates.get(activeOAuthServerId);
+            if (currentState && !currentState.isAuthorized) {
+              setServerOAuthStates((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(activeOAuthServerId, {
+                  ...currentState,
+                  isPending: false,
+                  sessionId: null
+                });
+                return newMap;
+              });
+              setActiveOAuthServerId(null);
+            }
+          }, 3000);
+        }
+      }, 500);
+    }
+
+    return () => {
+      if (checkPopupClosed) {
+        clearInterval(checkPopupClosed);
+      }
+    };
+  }, [activeOAuthServerId, activeServerState?.isPending, serverOAuthStates]);
+
+  const handleServerOAuth = useCallback(
+    async (serverId: string) => {
+      try {
+        // Update state to pending
+        setServerOAuthStates((prev) => {
+          const newMap = new Map(prev);
+          const state = newMap.get(serverId);
+          if (state) {
+            newMap.set(serverId, { ...state, isPending: true });
+          }
+          return newMap;
+        });
+        setActiveOAuthServerId(serverId);
+
+        const { authUrl, sessionId } = await initiateServerOAuth.mutateAsync({
+          endpointId: search.endpointId,
+          serverId
+        });
+
+        // Update state with session ID
+        setServerOAuthStates((prev) => {
+          const newMap = new Map(prev);
+          const state = newMap.get(serverId);
+          if (state) {
+            newMap.set(serverId, { ...state, sessionId });
+          }
+          return newMap;
+        });
+
+        // Open popup
+        const left = window.screenX + (window.outerWidth - OAUTH_POPUP_WIDTH) / 2;
+        const top = window.screenY + (window.outerHeight - OAUTH_POPUP_HEIGHT) / 2;
+
+        popupRef.current = window.open(
+          authUrl,
+          "MCP Server OAuth",
+          `width=${OAUTH_POPUP_WIDTH},height=${OAUTH_POPUP_HEIGHT},left=${left},top=${top},scrollbars=yes,resizable=yes`
+        );
+
+        if (!popupRef.current) {
+          createNotification({
+            text: "Failed to open OAuth popup. Please allow popups for this site.",
+            type: "error"
+          });
+          setServerOAuthStates((prev) => {
+            const newMap = new Map(prev);
+            const state = newMap.get(serverId);
+            if (state) {
+              newMap.set(serverId, { ...state, isPending: false, sessionId: null });
+            }
+            return newMap;
+          });
+          setActiveOAuthServerId(null);
+        }
+      } catch (error) {
+        console.error("Failed to initiate OAuth:", error);
+        createNotification({
+          text: "Failed to initiate authentication",
+          type: "error"
+        });
+        setServerOAuthStates((prev) => {
+          const newMap = new Map(prev);
+          const state = newMap.get(serverId);
+          if (state) {
+            newMap.set(serverId, { ...state, isPending: false, sessionId: null });
+          }
+          return newMap;
+        });
+        setActiveOAuthServerId(null);
+      }
+    },
+    [search.endpointId, initiateServerOAuth]
+  );
+
+  // Check if all servers requiring auth have been authenticated
+  const allServersAuthenticated =
+    !serversRequiringAuth ||
+    serversRequiringAuth.length === 0 ||
+    serversRequiringAuth.every((server) => {
+      const state = serverOAuthStates.get(server.id);
+      return state?.isAuthorized || server.hasCredentials;
+    });
 
   const onSubmit = async ({ expireIn }: FormData) => {
     try {
@@ -57,7 +287,6 @@ export const McpEndpointFinalizePage = () => {
       setIsRedirecting(true);
       window.location.href = callbackUrl;
 
-      // Fallback: try to close the window after 3 seconds if redirect doesn't navigate away
       setTimeout(() => {
         window.close();
       }, 3000);
@@ -86,6 +315,12 @@ export const McpEndpointFinalizePage = () => {
       </div>
     );
   }
+
+  const hasServersRequiringAuth = serversRequiringAuth && serversRequiringAuth.length > 0;
+  const pendingServers = serversRequiringAuth?.filter((server) => {
+    const state = serverOAuthStates.get(server.id);
+    return !state?.isAuthorized && !server.hasCredentials;
+  });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-bunker-800">
@@ -134,6 +369,57 @@ export const McpEndpointFinalizePage = () => {
           </div>
         )}
 
+        {/* Servers requiring authentication */}
+        {!isServersLoading && hasServersRequiringAuth && (
+          <div className="mb-6 space-y-2">
+            {pendingServers && pendingServers.length > 0 && (
+              <p className="flex items-center gap-2 text-xs text-yellow-500">
+                <FontAwesomeIcon icon={faWarning} />
+                <span>Authenticate with personal credential servers to continue</span>
+              </p>
+            )}
+            {serversRequiringAuth.map((server) => {
+              const state = serverOAuthStates.get(server.id);
+              const isAuthorized = state?.isAuthorized || server.hasCredentials;
+              const isServerPending = state?.isPending;
+
+              return (
+                <div
+                  key={server.id}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 ${
+                    isAuthorized
+                      ? "border-green-500/30 bg-green-500/5"
+                      : "border-mineshaft-600 bg-mineshaft-700/50"
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-mineshaft-100">{server.name}</p>
+                  </div>
+                  <div className="ml-3 flex-shrink-0">
+                    {isAuthorized && (
+                      <FontAwesomeIcon icon={faCheckCircle} className="text-green-500" />
+                    )}
+                    {!isAuthorized && isServerPending && (
+                      <FontAwesomeIcon icon={faSpinner} className="animate-spin text-yellow-500" />
+                    )}
+                    {!isAuthorized && !isServerPending && (
+                      <Button
+                        size="xs"
+                        variant="outline_bg"
+                        onClick={() => handleServerOAuth(server.id)}
+                        isLoading={initiateServerOAuth.isPending}
+                        leftIcon={<FontAwesomeIcon icon={faExternalLink} />}
+                      >
+                        Authenticate
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)}>
           <Controller
             control={control}
@@ -155,7 +441,7 @@ export const McpEndpointFinalizePage = () => {
               type="submit"
               className="flex-1"
               isLoading={isSubmitting || isPending}
-              isDisabled={isSubmitting || isPending || !endpoint}
+              isDisabled={isSubmitting || isPending || !endpoint || !allServersAuthenticated}
             >
               Authorize
             </Button>

@@ -35,6 +35,9 @@ import {
   TAiMcpServerTools,
   TAiMcpServerToolsInsert,
   TAiMcpServerToolsUpdate,
+  TAiMcpServerUserCredentials,
+  TAiMcpServerUserCredentialsInsert,
+  TAiMcpServerUserCredentialsUpdate,
   TApiKeys,
   TApiKeysInsert,
   TApiKeysUpdate,
@@ -1510,6 +1513,11 @@ declare module "knex/types/tables" {
       TAiMcpEndpointServerTools,
       TAiMcpEndpointServerToolsInsert,
       TAiMcpEndpointServerToolsUpdate
+    >;
+    [TableName.AiMcpServerUserCredential]: KnexOriginal.CompositeTableType<
+      TAiMcpServerUserCredentials,
+      TAiMcpServerUserCredentialsInsert,
+      TAiMcpServerUserCredentialsUpdate
     >;
   }
 }

@@ -79,3 +79,25 @@ export type TFinalizeMcpEndpointOAuthDTO = {
   resource: string;
   expireIn: string;
 };
+
+// Personal credentials types
+export type TServerAuthStatus = {
+  id: string;
+  name: string;
+  url: string;
+  hasCredentials: boolean;
+};
+
+export type TInitiateServerOAuthDTO = {
+  endpointId: string;
+  serverId: string;
+};
+
+export type TSaveUserServerCredentialDTO = {
+  endpointId: string;
+  serverId: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  tokenType?: string;
+};

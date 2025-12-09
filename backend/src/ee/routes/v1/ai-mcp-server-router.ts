@@ -13,7 +13,9 @@ const CreateMcpServerBaseSchema = z.object({
   name: z.string().trim().min(1).max(64),
   url: z.string().trim().url(),
   description: z.string().trim().max(256).optional(),
-  credentialMode: z.nativeEnum(AiMcpServerCredentialMode)
+  credentialMode: z.nativeEnum(AiMcpServerCredentialMode),
+  oauthClientId: z.string().trim().min(1).optional(),
+  oauthClientSecret: z.string().trim().min(1).optional()
 });
 
 const McpServerCredentialsSchema = z.discriminatedUnion("authMethod", [
@@ -51,7 +53,9 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
     schema: {
       body: z.object({
         projectId: z.string().trim().min(1),
-        url: z.string().trim().url()
+        url: z.string().trim().url(),
+        clientId: z.string().trim().min(1).optional(),
+        clientSecret: z.string().trim().min(1).optional()
       }),
       response: {
         200: z.object({
@@ -65,6 +69,8 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       const result = await server.services.aiMcpServer.initiateOAuth({
         projectId: req.body.projectId,
         url: req.body.url,
+        clientId: req.body.clientId,
+        clientSecret: req.body.clientSecret,
         actorId: req.permission.id,
         actor: req.permission.type,
         actorAuthMethod: req.permission.authMethod!,
@@ -164,7 +170,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       body: CreateMcpServerBaseSchema.and(McpServerCredentialsSchema),
       response: {
         200: z.object({
-          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true, encryptedOauthConfig: true })
         })
       }
     },
@@ -196,7 +202,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          servers: z.array(AiMcpServersSchema.omit({ encryptedCredentials: true })),
+          servers: z.array(AiMcpServersSchema.omit({ encryptedCredentials: true, encryptedOauthConfig: true })),
           totalCount: z.number()
         })
       }
@@ -226,7 +232,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true, encryptedOauthConfig: true })
         })
       }
     },
@@ -256,7 +262,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true, encryptedOauthConfig: true })
         })
       }
     },
@@ -335,7 +341,7 @@ export const registerAiMcpServerRouter = async (server: FastifyZodProvider) => {
       }),
       response: {
         200: z.object({
-          server: AiMcpServersSchema.omit({ encryptedCredentials: true })
+          server: AiMcpServersSchema.omit({ encryptedCredentials: true, encryptedOauthConfig: true })
         })
       }
     },

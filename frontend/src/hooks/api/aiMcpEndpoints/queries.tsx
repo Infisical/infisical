@@ -6,14 +6,17 @@ import {
   TAiMcpEndpoint,
   TAiMcpEndpointToolConfig,
   TAiMcpEndpointWithServerIds,
-  TListAiMcpEndpointsDTO
+  TListAiMcpEndpointsDTO,
+  TServerAuthStatus
 } from "./types";
 
 export const aiMcpEndpointKeys = {
   all: ["aiMcpEndpoints"] as const,
   list: (projectId: string) => [...aiMcpEndpointKeys.all, "list", projectId] as const,
   byId: (endpointId: string) => [...aiMcpEndpointKeys.all, "byId", endpointId] as const,
-  tools: (endpointId: string) => [...aiMcpEndpointKeys.all, "tools", endpointId] as const
+  tools: (endpointId: string) => [...aiMcpEndpointKeys.all, "tools", endpointId] as const,
+  serversRequiringAuth: (endpointId: string) =>
+    [...aiMcpEndpointKeys.all, "serversRequiringAuth", endpointId] as const
 };
 
 export const useListAiMcpEndpoints = ({ projectId }: TListAiMcpEndpointsDTO) => {
@@ -53,6 +56,19 @@ export const useListEndpointTools = ({ endpointId }: { endpointId: string }) => 
         `/api/v1/ai/mcp-endpoints/${endpointId}/tools`
       );
       return data.tools;
+    },
+    enabled: Boolean(endpointId)
+  });
+};
+
+export const useGetServersRequiringAuth = ({ endpointId }: { endpointId: string }) => {
+  return useQuery({
+    queryKey: aiMcpEndpointKeys.serversRequiringAuth(endpointId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<{ servers: TServerAuthStatus[] }>(
+        `/api/v1/ai/mcp-endpoints/${endpointId}/servers-requiring-auth`
+      );
+      return data.servers;
     },
     enabled: Boolean(endpointId)
   });

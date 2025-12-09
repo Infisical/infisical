@@ -1,13 +1,23 @@
 import { AiMcpServerAuthMethod, AiMcpServerCredentialMode } from "./ai-mcp-server-enum";
 
 // OAuth types from MCP server
+// Protected Resource Metadata (RFC 9728)
+export type TOAuthProtectedResourceMetadata = {
+  resource: string;
+  resource_name?: string;
+  authorization_servers: string[];
+  bearer_methods_supported?: string[];
+  scopes_supported?: string[];
+};
+
+// Authorization Server Metadata (RFC 8414)
 export type TOAuthAuthorizationServerMetadata = {
   issuer: string;
   authorization_endpoint: string;
   token_endpoint: string;
-  registration_endpoint: string;
+  registration_endpoint?: string; // Optional - not all servers support DCR
   scopes_supported?: string[];
-  response_types_supported: string[];
+  response_types_supported?: string[];
   grant_types_supported?: string[];
   token_endpoint_auth_methods_supported?: string[];
   code_challenge_methods_supported?: string[];
@@ -58,9 +68,11 @@ export type TOAuthSession = {
   codeVerifier: string;
   codeChallenge: string;
   clientId: string;
+  clientSecret?: string; // For servers that don't support DCR (like GitHub)
   projectId: string;
   serverUrl: string;
   redirectUri: string;
+  tokenEndpoint: string; // Stored from OAuth discovery for token exchange
   // Set after callback
   accessToken?: string;
   refreshToken?: string;
@@ -69,7 +81,6 @@ export type TOAuthSession = {
   authorized?: boolean;
 };
 
-// DTO types
 export type TInitiateOAuthDTO = {
   projectId: string;
   url: string;
@@ -77,6 +88,8 @@ export type TInitiateOAuthDTO = {
   actor: string;
   actorAuthMethod: string;
   actorOrgId: string;
+  clientId?: string;
+  clientSecret?: string;
 };
 
 export type THandleOAuthCallbackDTO = {
@@ -97,6 +110,8 @@ export type TCreateAiMcpServerDTO = {
   credentialMode: AiMcpServerCredentialMode;
   authMethod: AiMcpServerAuthMethod;
   credentials: TBasicCredentials | TBearerCredentials | TOAuthCredentials;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
   actorId: string;
   actor: string;
   actorAuthMethod: string;

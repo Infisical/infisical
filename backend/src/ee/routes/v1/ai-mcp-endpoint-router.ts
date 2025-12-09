@@ -72,7 +72,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       }
 
       const { server: mcpServer, transport } = await server.services.aiMcpEndpoint.interactWithMcp({
-        endpointId: req.params.endpointId
+        endpointId: req.params.endpointId,
+        userId: req.permission.id
       });
 
       // Close transport when client disconnects
@@ -546,6 +547,112 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
         ...req.body
       });
       return payload;
+    }
+  });
+
+  // Get servers requiring personal authentication
+  server.route({
+    method: "GET",
+    url: "/:endpointId/servers-requiring-auth",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          servers: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              url: z.string(),
+              hasCredentials: z.boolean()
+            })
+          )
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const servers = await server.services.aiMcpEndpoint.getServersRequiringAuth({
+        endpointId: req.params.endpointId,
+        userId: req.permission.id
+      });
+
+      return { servers };
+    }
+  });
+
+  // Initiate OAuth for a server (personal credential mode)
+  server.route({
+    method: "POST",
+    url: "/:endpointId/servers/:serverId/oauth/initiate",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().trim().min(1),
+        serverId: z.string().trim().min(1)
+      }),
+      response: {
+        200: z.object({
+          authUrl: z.string(),
+          sessionId: z.string()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.aiMcpEndpoint.initiateServerOAuth({
+        endpointId: req.params.endpointId,
+        serverId: req.params.serverId,
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod as string,
+        actorOrgId: req.permission.orgId
+      });
+
+      return result;
+    }
+  });
+
+  // Save user credentials after OAuth completes
+  server.route({
+    method: "POST",
+    url: "/:endpointId/servers/:serverId/credentials",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        endpointId: z.string().trim().min(1),
+        serverId: z.string().trim().min(1)
+      }),
+      body: z.object({
+        accessToken: z.string().min(1),
+        refreshToken: z.string().optional(),
+        expiresAt: z.number().optional(),
+        tokenType: z.string().optional()
+      }),
+      response: {
+        200: z.object({
+          success: z.boolean()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const result = await server.services.aiMcpEndpoint.saveUserServerCredential({
+        endpointId: req.params.endpointId,
+        serverId: req.params.serverId,
+        userId: req.permission.id,
+        ...req.body
+      });
+
+      return result;
     }
   });
 };

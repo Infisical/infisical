@@ -12,6 +12,8 @@ import {
   TDisableEndpointToolDTO,
   TEnableEndpointToolDTO,
   TFinalizeMcpEndpointOAuthDTO,
+  TInitiateServerOAuthDTO,
+  TSaveUserServerCredentialDTO,
   TUpdateAiMcpEndpointDTO
 } from "./types";
 
@@ -134,6 +136,36 @@ export const useFinalizeMcpEndpointOAuth = () => {
         body
       );
       return data;
+    }
+  });
+};
+
+export const useInitiateServerOAuth = () => {
+  return useMutation({
+    mutationFn: async ({ endpointId, serverId }: TInitiateServerOAuthDTO) => {
+      const { data } = await apiRequest.post<{ authUrl: string; sessionId: string }>(
+        `/api/v1/ai/mcp-endpoints/${endpointId}/servers/${serverId}/oauth/initiate`
+      );
+      return data;
+    }
+  });
+};
+
+export const useSaveUserServerCredential = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ endpointId, serverId, ...body }: TSaveUserServerCredentialDTO) => {
+      const { data } = await apiRequest.post<{ success: boolean }>(
+        `/api/v1/ai/mcp-endpoints/${endpointId}/servers/${serverId}/credentials`,
+        body
+      );
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: aiMcpEndpointKeys.serversRequiringAuth(variables.endpointId)
+      });
     }
   });
 };

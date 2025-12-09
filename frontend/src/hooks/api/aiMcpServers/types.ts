@@ -69,12 +69,16 @@ export type TCreateAiMcpServerDTO = {
   url: string;
   description?: string;
   credentialMode: AiMcpServerCredentialMode;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
 } & TAiMcpServerCredentials;
 
 // OAuth initiate DTO
 export type TInitiateOAuthDTO = {
   projectId: string;
   url: string;
+  clientId?: string;
+  clientSecret?: string;
 };
 
 export type TInitiateOAuthResponse = {

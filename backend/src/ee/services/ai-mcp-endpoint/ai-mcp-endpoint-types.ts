@@ -22,6 +22,7 @@ export type TGetAiMcpEndpointDTO = {
 
 export type TInteractWithMcpDTO = {
   endpointId: string;
+  userId: string;
 };
 
 export type TListAiMcpEndpointsDTO = {
@@ -120,4 +121,38 @@ export type TOAuthTokenExchangeDTO = {
   redirect_uri: string;
   code_verifier: string;
   client_id: string;
+};
+
+// Personal credentials types
+export type TGetServersRequiringAuthDTO = {
+  endpointId: string;
+  userId: string;
+};
+
+export type TServerAuthStatus = {
+  id: string;
+  name: string;
+  url: string;
+  hasCredentials: boolean;
+  oauthClientId?: string;
+  oauthClientSecret?: string;
+};
+
+export type TInitiateServerOAuthDTO = {
+  endpointId: string;
+  serverId: string;
+  actorId: string;
+  actor: string;
+  actorAuthMethod: string;
+  actorOrgId: string;
+};
+
+export type TSaveUserServerCredentialDTO = {
+  endpointId: string;
+  serverId: string;
+  userId: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  tokenType?: string;
 };
