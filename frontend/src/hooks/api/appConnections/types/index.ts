@@ -26,6 +26,7 @@ import { THerokuConnection } from "./heroku-connection";
 import { THumanitecConnection } from "./humanitec-connection";
 import { TLaravelForgeConnection } from "./laravel-forge-connection";
 import { TLdapConnection } from "./ldap-connection";
+import { TMongoDBConnection } from "./mongodb-connection";
 import { TMsSqlConnection } from "./mssql-connection";
 import { TMySqlConnection } from "./mysql-connection";
 import { TNetlifyConnection } from "./netlify-connection";
@@ -69,6 +70,7 @@ export * from "./heroku-connection";
 export * from "./humanitec-connection";
 export * from "./laravel-forge-connection";
 export * from "./ldap-connection";
+export * from "./mongodb-connection";
 export * from "./mssql-connection";
 export * from "./mysql-connection";
 export * from "./netlify-connection";
@@ -129,6 +131,7 @@ export type TAppConnection =
   | TNorthflankConnection
   | TOktaConnection
   | TRedisConnection
+  | TMongoDBConnection
   | TChefConnection
   | TDNSMadeEasyConnection;
 

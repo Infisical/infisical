@@ -25,10 +25,12 @@ import {
 import { withPermission } from "@app/hoc";
 import { usePopUp } from "@app/hooks";
 import { useGetExternalKmsList, useRemoveExternalKms } from "@app/hooks/api";
+import { ExternalKmsProvider } from "@app/hooks/api/kms/types";
 
 import { AddExternalKmsForm } from "./AddExternalKmsForm";
+import { EditExternalKmsCredentialsModal } from "./EditExternalKmsCredentialsModal";
+import { EditExternalKmsDetailsModal } from "./EditExternalKmsDetailsModal";
 import { ExternalKmsItem } from "./ExternalKmsItem";
-import { UpdateExternalKmsForm } from "./UpdateExternalKmsForm";
 
 export const OrgEncryptionTab = withPermission(
   () => {
@@ -38,7 +40,8 @@ export const OrgEncryptionTab = withPermission(
     const { popUp, handlePopUpOpen, handlePopUpToggle } = usePopUp([
       "upgradePlan",
       "addExternalKms",
-      "editExternalKms",
+      "editExternalKmsDetails",
+      "editExternalKmsCredentials",
       "removeExternalKms"
     ] as const);
     const { data: externalKmsList, isPending: isExternalKmsListLoading } =
@@ -47,11 +50,12 @@ export const OrgEncryptionTab = withPermission(
     const { mutateAsync: removeExternalKms } = useRemoveExternalKms(currentOrg.id);
 
     const handleRemoveExternalKms = async () => {
-      const { kmsId } = popUp?.removeExternalKms?.data as {
+      const { kmsId, provider } = popUp?.removeExternalKms?.data as {
         kmsId: string;
+        provider: ExternalKmsProvider;
       };
 
-      await removeExternalKms(kmsId);
+      await removeExternalKms({ kmsId, provider });
 
       createNotification({
         text: "Successfully deleted external KMS",
@@ -128,10 +132,21 @@ export const OrgEncryptionTab = withPermission(
           isOpen={popUp.addExternalKms.isOpen}
           onToggle={(state) => handlePopUpToggle("addExternalKms", state)}
         />
-        <UpdateExternalKmsForm
-          isOpen={popUp.editExternalKms.isOpen}
-          kmsId={(popUp.editExternalKms.data as { kmsId: string })?.kmsId}
-          onOpenChange={(state) => handlePopUpToggle("editExternalKms", state)}
+        <EditExternalKmsDetailsModal
+          isOpen={popUp.editExternalKmsDetails.isOpen}
+          kmsId={(popUp.editExternalKmsDetails.data as { kmsId: string })?.kmsId}
+          provider={
+            (popUp.editExternalKmsDetails.data as { provider: ExternalKmsProvider })?.provider
+          }
+          onOpenChange={(state) => handlePopUpToggle("editExternalKmsDetails", state)}
+        />
+        <EditExternalKmsCredentialsModal
+          isOpen={popUp.editExternalKmsCredentials.isOpen}
+          kmsId={(popUp.editExternalKmsCredentials.data as { kmsId: string })?.kmsId}
+          provider={
+            (popUp.editExternalKmsCredentials.data as { provider: ExternalKmsProvider })?.provider
+          }
+          onOpenChange={(state) => handlePopUpToggle("editExternalKmsCredentials", state)}
         />
         <DeleteActionModal
           isOpen={popUp.removeExternalKms.isOpen}

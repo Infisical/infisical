@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { PamResource } from "../pam-resource-enums";
 import {
+  BaseCreateGatewayPamResourceSchema,
   BaseCreatePamAccountSchema,
-  BaseCreatePamResourceSchema,
   BasePamAccountSchema,
   BasePamAccountSchemaWithResource,
   BasePamResourceSchema,
-  BaseUpdatePamAccountSchema,
-  BaseUpdatePamResourceSchema
+  BaseUpdateGatewayPamResourceSchema,
+  BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
 import { SSHAuthMethod } from "./ssh-resource-enums";
 
@@ -73,12 +73,12 @@ export const SanitizedSSHResourceSchema = BaseSSHResourceSchema.extend({
     .optional()
 });
 
-export const CreateSSHResourceSchema = BaseCreatePamResourceSchema.extend({
+export const CreateSSHResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
   connectionDetails: SSHResourceConnectionDetailsSchema,
   rotationAccountCredentials: SSHAccountCredentialsSchema.nullable().optional()
 });
 
-export const UpdateSSHResourceSchema = BaseUpdatePamResourceSchema.extend({
+export const UpdateSSHResourceSchema = BaseUpdateGatewayPamResourceSchema.extend({
   connectionDetails: SSHResourceConnectionDetailsSchema.optional(),
   rotationAccountCredentials: SSHAccountCredentialsSchema.nullable().optional()
 });

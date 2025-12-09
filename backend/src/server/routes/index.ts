@@ -159,6 +159,19 @@ import { apiKeyDALFactory } from "@app/services/api-key/api-key-dal";
 import { apiKeyServiceFactory } from "@app/services/api-key/api-key-service";
 import { appConnectionDALFactory } from "@app/services/app-connection/app-connection-dal";
 import { appConnectionServiceFactory } from "@app/services/app-connection/app-connection-service";
+import {
+  approvalPolicyDALFactory,
+  approvalPolicyStepApproversDALFactory,
+  approvalPolicyStepsDALFactory
+} from "@app/services/approval-policy/approval-policy-dal";
+import { approvalPolicyServiceFactory } from "@app/services/approval-policy/approval-policy-service";
+import {
+  approvalRequestApprovalsDALFactory,
+  approvalRequestDALFactory,
+  approvalRequestGrantsDALFactory,
+  approvalRequestStepEligibleApproversDALFactory,
+  approvalRequestStepsDALFactory
+} from "@app/services/approval-policy/approval-request-dal";
 import { authDALFactory } from "@app/services/auth/auth-dal";
 import { authLoginServiceFactory } from "@app/services/auth/auth-login-service";
 import { authPaswordServiceFactory } from "@app/services/auth/auth-password-service";
@@ -279,6 +292,7 @@ import { orgServiceFactory } from "@app/services/org/org-service";
 import { orgAdminServiceFactory } from "@app/services/org-admin/org-admin-service";
 import { orgMembershipDALFactory } from "@app/services/org-membership/org-membership-dal";
 import { pamAccountRotationServiceFactory } from "@app/services/pam-account-rotation/pam-account-rotation-queue";
+import { pamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { dailyExpiringPkiItemAlertQueueServiceFactory } from "@app/services/pki-alert/expiring-pki-item-alert-queue";
 import { pkiAlertDALFactory } from "@app/services/pki-alert/pki-alert-dal";
 import { pkiAlertServiceFactory } from "@app/services/pki-alert/pki-alert-service";
@@ -1916,6 +1930,9 @@ export const registerRoutes = async (
     identityDAL
   });
 
+  const approvalRequestDAL = approvalRequestDALFactory(db);
+  const approvalRequestGrantsDAL = approvalRequestGrantsDALFactory(db);
+
   // DAILY
   const dailyResourceCleanUp = dailyResourceCleanUpQueueServiceFactory({
     scimService,
@@ -1931,7 +1948,9 @@ export const registerRoutes = async (
     serviceTokenService,
     orgService,
     userNotificationDAL,
-    keyValueStoreDAL
+    keyValueStoreDAL,
+    approvalRequestDAL,
+    approvalRequestGrantsDAL
   });
 
   const healthAlert = healthAlertServiceFactory({
@@ -2412,6 +2431,12 @@ export const registerRoutes = async (
     gatewayV2Service
   });
 
+  const approvalPolicyDAL = approvalPolicyDALFactory(db);
+  const pamSessionExpirationService = pamSessionExpirationServiceFactory({
+    queueService,
+    pamSessionDAL
+  });
+
   const pamAccountService = pamAccountServiceFactory({
     pamAccountDAL,
     gatewayV2Service,
@@ -2423,7 +2448,10 @@ export const registerRoutes = async (
     permissionService,
     projectDAL,
     userDAL,
-    auditLogService
+    auditLogService,
+    approvalRequestGrantsDAL,
+    approvalPolicyDAL,
+    pamSessionExpirationService
   });
 
   const pamAccountRotation = pamAccountRotationServiceFactory({
@@ -2449,6 +2477,27 @@ export const registerRoutes = async (
     vaultExternalMigrationConfigDAL,
     secretService,
     auditLogService
+  });
+
+  const approvalPolicyStepsDAL = approvalPolicyStepsDALFactory(db);
+  const approvalPolicyStepApproversDAL = approvalPolicyStepApproversDALFactory(db);
+  const approvalRequestStepsDAL = approvalRequestStepsDALFactory(db);
+  const approvalRequestStepEligibleApproversDAL = approvalRequestStepEligibleApproversDALFactory(db);
+  const approvalRequestApprovalsDAL = approvalRequestApprovalsDALFactory(db);
+
+  const approvalPolicyService = approvalPolicyServiceFactory({
+    approvalPolicyDAL,
+    approvalPolicyStepsDAL,
+    approvalPolicyStepApproversDAL,
+    permissionService,
+    projectMembershipDAL,
+    approvalRequestDAL,
+    approvalRequestStepsDAL,
+    approvalRequestStepEligibleApproversDAL,
+    approvalRequestApprovalsDAL,
+    userGroupMembershipDAL,
+    notificationService,
+    approvalRequestGrantsDAL
   });
 
   // setup the communication with license key server
@@ -2490,6 +2539,7 @@ export const registerRoutes = async (
   await healthAlert.init();
   await pkiSyncCleanup.init();
   await pamAccountRotation.init();
+  await pamSessionExpirationService.init();
   await dailyReminderQueueService.startDailyRemindersJob();
   await dailyReminderQueueService.startSecretReminderMigrationJob();
   await dailyExpiringPkiItemAlert.startSendingAlerts();
@@ -2630,7 +2680,8 @@ export const registerRoutes = async (
     additionalPrivilege: additionalPrivilegeService,
     identityProject: identityProjectService,
     convertor: convertorService,
-    pkiAlertV2: pkiAlertV2Service
+    pkiAlertV2: pkiAlertV2Service,
+    approvalPolicy: approvalPolicyService
   });
 
   const cronJobs: CronJob[] = [];

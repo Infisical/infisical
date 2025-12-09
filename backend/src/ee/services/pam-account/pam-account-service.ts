@@ -1,6 +1,13 @@
+import path from "node:path";
+
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, OrganizationActionScope, TPamAccounts, TPamFolders, TPamResources } from "@app/db/schemas";
+import {
+  extractAwsAccountIdFromArn,
+  generateConsoleFederationUrl,
+  TAwsIamAccountCredentials
+} from "@app/ee/services/pam-resource/aws-iam";
 import { PAM_RESOURCE_FACTORY_MAP } from "@app/ee/services/pam-resource/pam-resource-factory";
 import { decryptResource, decryptResourceConnectionDetails } from "@app/ee/services/pam-resource/pam-resource-fns";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
@@ -10,12 +17,23 @@ import {
   ProjectPermissionSub
 } from "@app/ee/services/permission/project-permission";
 import { DatabaseErrorCode } from "@app/lib/error-codes";
-import { BadRequestError, DatabaseError, ForbiddenRequestError, NotFoundError } from "@app/lib/errors";
+import {
+  BadRequestError,
+  DatabaseError,
+  ForbiddenRequestError,
+  NotFoundError,
+  PolicyViolationError
+} from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { OrgServiceActor } from "@app/lib/types";
+import { TApprovalPolicyDALFactory } from "@app/services/approval-policy/approval-policy-dal";
+import { ApprovalPolicyType } from "@app/services/approval-policy/approval-policy-enums";
+import { APPROVAL_POLICY_FACTORY_MAP } from "@app/services/approval-policy/approval-policy-factory";
+import { TApprovalRequestGrantsDALFactory } from "@app/services/approval-policy/approval-request-dal";
 import { ActorType } from "@app/services/auth/auth-type";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TPamSessionExpirationServiceFactory } from "@app/services/pam-session-expiration/pam-session-expiration-queue";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { TUserDALFactory } from "@app/services/user/user-dal";
 
@@ -27,7 +45,8 @@ import { getFullPamFolderPath } from "../pam-folder/pam-folder-fns";
 import { TPamResourceDALFactory } from "../pam-resource/pam-resource-dal";
 import { PamResource } from "../pam-resource/pam-resource-enums";
 import { TPamAccountCredentials } from "../pam-resource/pam-resource-types";
-import { TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSqlAccountCredentials, TSqlResourceConnectionDetails } from "../pam-resource/shared/sql/sql-resource-types";
+import { TSSHAccountCredentials } from "../pam-resource/ssh/ssh-resource-types";
 import { TPamSessionDALFactory } from "../pam-session/pam-session-dal";
 import { PamSessionStatus } from "../pam-session/pam-session-enums";
 import { OrgPermissionGatewayActions, OrgPermissionSubjects } from "../permission/org-permission";
@@ -51,6 +70,9 @@ type TPamAccountServiceFactoryDep = {
   >;
   userDAL: TUserDALFactory;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
+  approvalPolicyDAL: TApprovalPolicyDALFactory;
+  approvalRequestGrantsDAL: TApprovalRequestGrantsDALFactory;
+  pamSessionExpirationService: Pick<TPamSessionExpirationServiceFactory, "scheduleSessionExpiration">;
 };
 export type TPamAccountServiceFactory = ReturnType<typeof pamAccountServiceFactory>;
 
@@ -67,7 +89,10 @@ export const pamAccountServiceFactory = ({
   licenseService,
   kmsService,
   gatewayV2Service,
-  auditLogService
+  auditLogService,
+  approvalPolicyDAL,
+  approvalRequestGrantsDAL,
+  pamSessionExpirationService
 }: TPamAccountServiceFactoryDep) => {
   const create = async (
     {
@@ -135,7 +160,8 @@ export const pamAccountServiceFactory = ({
       resource.resourceType as PamResource,
       connectionDetails,
       resource.gatewayId,
-      gatewayV2Service
+      gatewayV2Service,
+      resource.projectId
     );
     const validatedCredentials = await factory.validateAccountCredentials(credentials);
 
@@ -250,7 +276,8 @@ export const pamAccountServiceFactory = ({
         resource.resourceType as PamResource,
         connectionDetails,
         resource.gatewayId,
-        gatewayV2Service
+        gatewayV2Service,
+        account.projectId
       );
 
       const decryptedCredentials = await decryptAccountCredentials({
@@ -279,17 +306,27 @@ export const pamAccountServiceFactory = ({
       return decryptAccount(account, account.projectId, kmsService);
     }
 
-    const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
+    try {
+      const updatedAccount = await pamAccountDAL.updateById(accountId, updateDoc);
 
-    return {
-      ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
-      resource: {
-        id: resource.id,
-        name: resource.name,
-        resourceType: resource.resourceType,
-        rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+      return {
+        ...(await decryptAccount(updatedAccount, account.projectId, kmsService)),
+        resource: {
+          id: resource.id,
+          name: resource.name,
+          resourceType: resource.resourceType,
+          rotationCredentialsConfigured: !!resource.encryptedRotationAccountCredentials
+        }
+      };
+    } catch (err) {
+      if (err instanceof DatabaseError && (err.error as { code: string })?.code === DatabaseErrorCode.UniqueViolation) {
+        throw new BadRequestError({
+          message: `Account with name '${name}' already exists for this path`
+        });
       }
-    };
+
+      throw err;
+    }
   };
 
   const deleteById = async (id: string, actor: OrgServiceActor) => {
@@ -428,7 +465,7 @@ export const pamAccountServiceFactory = ({
     const totalCount = totalFolderCount + totalAccountCount;
 
     const decryptedAndPermittedAccounts: Array<
-      TPamAccounts & {
+      Omit<TPamAccounts, "encryptedCredentials" | "encryptedLastRotationMessage"> & {
         resource: Pick<TPamResources, "id" | "name" | "resourceType"> & { rotationCredentialsConfigured: boolean };
         credentials: TPamAccountCredentials;
         lastRotationMessage: string | null;
@@ -487,7 +524,7 @@ export const pamAccountServiceFactory = ({
   };
 
   const access = async (
-    { accountId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
+    { accountPath, projectId, actorEmail, actorIp, actorName, actorUserAgent, duration }: TAccessAccountDTO,
     actor: OrgServiceActor
   ) => {
     const orgLicensePlan = await licenseService.getPlan(actor.orgId);
@@ -497,50 +534,83 @@ export const pamAccountServiceFactory = ({
       });
     }
 
-    const account = await pamAccountDAL.findById(accountId);
-    if (!account) throw new NotFoundError({ message: `Account with ID '${accountId}' not found` });
+    const pathSegments: string[] = accountPath.split("/").filter(Boolean);
+    if (pathSegments.length === 0) {
+      throw new BadRequestError({ message: "Invalid accountPath. Path must contain at least the account name." });
+    }
+
+    const accountName: string = pathSegments[pathSegments.length - 1] ?? "";
+    const folderPathSegments: string[] = pathSegments.slice(0, -1);
+
+    const folderPath: string = folderPathSegments.length > 0 ? `/${folderPathSegments.join("/")}` : "/";
+
+    let folderId: string | null = null;
+    if (folderPath !== "/") {
+      const folder = await pamFolderDAL.findByPath(projectId, folderPath);
+      if (!folder) {
+        throw new NotFoundError({ message: `Folder at path '${folderPath}' not found` });
+      }
+      folderId = folder.id;
+    }
+
+    const account = await pamAccountDAL.findOne({
+      projectId,
+      folderId,
+      name: accountName
+    });
+
+    if (!account) {
+      throw new NotFoundError({
+        message: `Account with name '${accountName}' not found at path '${accountPath}'`
+      });
+    }
 
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    const { permission } = await permissionService.getProjectPermission({
-      actor: actor.type,
-      actorAuthMethod: actor.authMethod,
-      actorId: actor.id,
-      actorOrgId: actor.orgId,
-      projectId: account.projectId,
-      actionProjectType: ActionProjectType.PAM
-    });
+    const fac = APPROVAL_POLICY_FACTORY_MAP[ApprovalPolicyType.PamAccess](ApprovalPolicyType.PamAccess);
 
-    const accountPath = await getFullPamFolderPath({
-      pamFolderDAL,
-      folderId: account.folderId,
-      projectId: account.projectId
-    });
+    const inputs = {
+      resourceId: resource.id,
+      accountPath: path.join(folderPath, account.name)
+    };
 
-    ForbiddenError.from(permission).throwUnlessCan(
-      ProjectPermissionPamAccountActions.Access,
-      subject(ProjectPermissionSub.PamAccounts, {
-        resourceName: resource.name,
-        accountName: account.name,
-        accountPath
-      })
-    );
+    const canAccess = await fac.canAccess(approvalRequestGrantsDAL, resource.projectId, actor.id, inputs);
 
-    const session = await pamSessionDAL.create({
-      accountName: account.name,
-      actorEmail,
-      actorIp,
-      actorName,
-      actorUserAgent,
-      projectId: account.projectId,
-      resourceName: resource.name,
-      resourceType: resource.resourceType,
-      status: PamSessionStatus.Starting,
-      accountId: account.id,
-      userId: actor.id,
-      expiresAt: new Date(Date.now() + duration)
-    });
+    // Grant does not exist, check policy and fallback to permission check
+    if (!canAccess) {
+      const policy = await fac.matchPolicy(approvalPolicyDAL, resource.projectId, inputs);
+
+      if (policy) {
+        throw new PolicyViolationError({
+          message: "A policy is in place for this resource",
+          details: {
+            policyId: policy.id,
+            policyName: policy.name,
+            policyType: policy.type
+          }
+        });
+      }
+
+      // If there isn't a policy in place, continue with checking permission
+      const { permission } = await permissionService.getProjectPermission({
+        actor: actor.type,
+        actorAuthMethod: actor.authMethod,
+        actorId: actor.id,
+        actorOrgId: actor.orgId,
+        projectId: account.projectId,
+        actionProjectType: ActionProjectType.PAM
+      });
+
+      ForbiddenError.from(permission).throwUnlessCan(
+        ProjectPermissionPamAccountActions.Access,
+        subject(ProjectPermissionSub.PamAccounts, {
+          resourceName: resource.name,
+          accountName: account.name,
+          accountPath: folderPath
+        })
+      );
+    }
 
     const { connectionDetails, gatewayId, resourceType } = await decryptResource(
       resource,
@@ -551,13 +621,81 @@ export const pamAccountServiceFactory = ({
     const user = await userDAL.findById(actor.id);
     if (!user) throw new NotFoundError({ message: `User with ID '${actor.id}' not found` });
 
+    if (resourceType === PamResource.AwsIam) {
+      const awsCredentials = (await decryptAccountCredentials({
+        encryptedCredentials: account.encryptedCredentials,
+        kmsService,
+        projectId: account.projectId
+      })) as TAwsIamAccountCredentials;
+
+      const { consoleUrl, expiresAt } = await generateConsoleFederationUrl({
+        connectionDetails,
+        targetRoleArn: awsCredentials.targetRoleArn,
+        roleSessionName: actorEmail,
+        projectId: account.projectId, // Use project ID as External ID for security
+        sessionDuration: awsCredentials.defaultSessionDuration
+      });
+
+      const session = await pamSessionDAL.create({
+        accountName: account.name,
+        actorEmail,
+        actorIp,
+        actorName,
+        actorUserAgent,
+        projectId: account.projectId,
+        resourceName: resource.name,
+        resourceType: resource.resourceType,
+        status: PamSessionStatus.Active, // AWS IAM sessions are immediately active
+        accountId: account.id,
+        userId: actor.id,
+        expiresAt,
+        startedAt: new Date()
+      });
+
+      // Schedule session expiration job to run at expiresAt
+      await pamSessionExpirationService.scheduleSessionExpiration(session.id, expiresAt);
+
+      return {
+        sessionId: session.id,
+        resourceType,
+        account,
+        consoleUrl,
+        metadata: {
+          awsAccountId: extractAwsAccountIdFromArn(connectionDetails.roleArn),
+          targetRoleArn: awsCredentials.targetRoleArn,
+          federatedUsername: actorEmail,
+          expiresAt: expiresAt.toISOString()
+        }
+      };
+    }
+
+    // For gateway-based resources (Postgres, MySQL, SSH), create session first
+    const session = await pamSessionDAL.create({
+      accountName: account.name,
+      actorEmail,
+      actorIp,
+      actorName,
+      actorUserAgent,
+      projectId,
+      resourceName: resource.name,
+      resourceType: resource.resourceType,
+      status: PamSessionStatus.Starting,
+      accountId: account.id,
+      userId: actor.id,
+      expiresAt: new Date(Date.now() + duration)
+    });
+
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required for this resource type" });
+    }
+
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
       sessionId: session.id,
       resourceType: resource.resourceType as PamResource,
-      host: connectionDetails.host,
-      port: connectionDetails.port,
+      host: (connectionDetails as TSqlResourceConnectionDetails).host,
+      port: (connectionDetails as TSqlResourceConnectionDetails).port,
       actorMetadata: {
         id: actor.id,
         type: actor.type,
@@ -578,30 +716,30 @@ export const pamAccountServiceFactory = ({
           const connectionCredentials = (await decryptResourceConnectionDetails({
             encryptedConnectionDetails: resource.encryptedConnectionDetails,
             kmsService,
-            projectId: account.projectId
+            projectId
           })) as TSqlResourceConnectionDetails;
 
-          const credentials = await decryptAccountCredentials({
+          const credentials = (await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
-            projectId: account.projectId
-          });
+            projectId
+          })) as TSqlAccountCredentials;
 
           metadata = {
             username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
-            accountPath
+            accountPath: folderPath
           };
         }
         break;
       case PamResource.SSH:
         {
-          const credentials = await decryptAccountCredentials({
+          const credentials = (await decryptAccountCredentials({
             encryptedCredentials: account.encryptedCredentials,
             kmsService,
-            projectId: account.projectId
-          });
+            projectId
+          })) as TSSHAccountCredentials;
 
           metadata = {
             username: credentials.username
@@ -622,7 +760,7 @@ export const pamAccountServiceFactory = ({
       gatewayClientPrivateKey: gatewayConnectionDetails.gateway.clientPrivateKey,
       gatewayServerCertificateChain: gatewayConnectionDetails.gateway.serverCertificateChain,
       relayHost: gatewayConnectionDetails.relayHost,
-      projectId: account.projectId,
+      projectId,
       account,
       metadata
     };
@@ -674,7 +812,7 @@ export const pamAccountServiceFactory = ({
     const resource = await pamResourceDAL.findById(account.resourceId);
     if (!resource) throw new NotFoundError({ message: `Resource with ID '${account.resourceId}' not found` });
 
-    if (resource.gatewayIdentityId !== actor.id) {
+    if (resource.gatewayId && resource.gatewayIdentityId !== actor.id) {
       throw new ForbiddenRequestError({
         message: "Identity does not have access to fetch the PAM session credentials"
       });
@@ -738,7 +876,8 @@ export const pamAccountServiceFactory = ({
               resourceType as PamResource,
               connectionDetails,
               gatewayId,
-              gatewayV2Service
+              gatewayV2Service,
+              account.projectId
             );
 
             const newCredentials = await factory.rotateAccountCredentials(
