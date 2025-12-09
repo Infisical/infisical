@@ -272,7 +272,7 @@ export const RequestGrantTab = () => {
               <Tr>
                 <Th>User</Th>
                 <Th>Account Path</Th>
-                <Th>Duration</Th>
+                <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Granted</Th>
                 <Th>Expires</Th>

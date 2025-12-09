@@ -274,7 +274,7 @@ export const ApprovalRequestTab = () => {
               <Tr>
                 <Th>Requester</Th>
                 <Th>Account Path</Th>
-                <Th>Duration</Th>
+                <Th>Access Duration</Th>
                 <Th>Status</Th>
                 <Th>Requested</Th>
               </Tr>
