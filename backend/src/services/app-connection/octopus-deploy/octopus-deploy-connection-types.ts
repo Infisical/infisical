@@ -21,3 +21,49 @@ export type TOctopusDeployConnectionConfig = DiscriminativePick<
   TOctopusDeployConnectionInput,
   "method" | "app" | "credentials"
 >;
+
+export type TOctopusDeploySpaceResponse = {
+  Id: string;
+  Name: string;
+  Slug: string;
+  IsDefault: boolean;
+};
+
+export type TOctopusDeploySpace = {
+  id: string;
+  name: string;
+  slug: string;
+  isDefault: boolean;
+};
+
+export type TOctopusDeployProjectResponse = {
+  Id: string;
+  Name: string;
+  Slug: string;
+};
+
+export type TOctopusDeployProject = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export type TOctopusDeployScopeValuesResponse = {
+  ScopeValues: {
+    Environments: { Id: string; Name: string }[];
+    TenantTags: { Id: string; Name: string }[];
+    Machines: { Id: string; Name: string }[];
+    Processes: { Id: string; Name: string }[];
+    Actions: { Id: string; Name: string }[];
+    Channels: { Id: string; Name: string }[];
+  };
+};
+
+export type TOctopusDeployScopeValues = {
+  environments: { id: string; name: string }[];
+  tenantTags: { id: string; name: string }[];
+  machines: { id: string; name: string }[];
+  processes: { id: string; name: string }[];
+  actions: { id: string; name: string }[];
+  channels: { id: string; name: string }[];
+};

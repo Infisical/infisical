@@ -2686,6 +2686,12 @@ export const SecretSyncs = {
       siteId: "The ID of the Laravel Forge site to sync secrets to.",
       siteName: "The name of the Laravel Forge site to sync secrets to."
     },
+    OCTOPUS_DEPLOY: {
+      spaceId: "The ID of the Octopus Deploy space to sync secrets to.",
+      projectId: "The ID of the Octopus Deploy project to sync secrets to.",
+      scope: "The Octopus Deploy scope that secrets should be synced to.",
+      scopeValues: "The Octopus Deploy scope values that secrets should be synced to."
+    },
     WINDMILL: {
       workspace: "The Windmill workspace to sync secrets to.",
       path: "The Windmill workspace path to sync secrets to."

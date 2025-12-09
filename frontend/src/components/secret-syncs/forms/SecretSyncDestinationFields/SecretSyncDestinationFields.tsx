@@ -27,6 +27,7 @@ import { HumanitecSyncFields } from "./HumanitecSyncFields";
 import { LaravelForgeSyncFields } from "./LaravelForgeSyncFields";
 import { NetlifySyncFields } from "./NetlifySyncFields";
 import { NorthflankSyncFields } from "./NorthflankSyncFields";
+import { OctopusDeploySyncFields } from "./OctopusDeploySyncFields";
 import { OCIVaultSyncFields } from "./OCIVaultSyncFields";
 import { RailwaySyncFields } from "./RailwaySyncFields";
 import { RenderSyncFields } from "./RenderSyncFields";
@@ -109,6 +110,8 @@ export const SecretSyncDestinationFields = () => {
       return <ChefSyncFields />;
     case SecretSync.Northflank:
       return <NorthflankSyncFields />;
+    case SecretSync.OctopusDeploy:
+      return <OctopusDeploySyncFields />;
     default:
       throw new Error(`Unhandled Destination Config Field: ${destination}`);
   }
