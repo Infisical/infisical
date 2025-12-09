@@ -153,7 +153,7 @@ export const AwsIamResourceForm = ({ resource, onSubmit }: Props) => {
               <p className="mb-3 text-sm text-mineshaft-300">
                 This policy allows the Resource Role to assume target roles. For simplicity, use a
                 wildcard to allow assuming any role in your account. For more granular control,
-                replace <code className="rounded bg-mineshaft-700 px-1 text-xs">/*</code> with a
+                replace <code className="rounded bg-mineshaft-700 px-1 text-xs">*</code> with a
                 specific pattern like{" "}
                 <code className="rounded bg-mineshaft-700 px-1 text-xs">/pam-*</code> or{" "}
                 <code className="rounded bg-mineshaft-700 px-1 text-xs">/infisical-*</code>.
