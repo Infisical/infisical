@@ -26,12 +26,13 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
         .leftJoin(
           TableName.CertificateRequests,
           `${TableName.PkiAcmeOrder}.id`,
-          `${TableName.CertificateRequests}.certificateId`
+          `${TableName.CertificateRequests}.acmeOrderId`
         )
         .select(
           selectAllTableCols(TableName.PkiAcmeOrder),
           db.ref("id").withSchema(TableName.CertificateRequests).as("certificateRequestId"),
-          db.ref("status").withSchema(TableName.CertificateRequests).as("certificateRequestStatus")
+          db.ref("status").withSchema(TableName.CertificateRequests).as("certificateRequestStatus"),
+          db.ref("certificateId").withSchema(TableName.CertificateRequests).as("certificateId")
         )
         .forUpdate(TableName.PkiAcmeOrder)
         .where(`${TableName.PkiAcmeOrder}.id`, id)
@@ -39,15 +40,15 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
       if (!order) {
         return null;
       }
+      const { certificateRequestId, certificateRequestStatus, certificateId, ...details } = order;
       return {
-        ...order,
+        ...details,
         certificateRequest:
-          order.certificateRequestId && order.certificateRequestStatus
+          certificateRequestId && certificateRequestStatus && certificateId
             ? {
-                id: order.certificateRequestId,
-                status: order.certificateRequestStatus as CertificateRequestStatus,
-                // The certificate id for async certificate request is the same as the order id
-                certificateId: order.id
+                id: certificateRequestId,
+                status: certificateRequestStatus as CertificateRequestStatus,
+                certificateId
               }
             : undefined
       };

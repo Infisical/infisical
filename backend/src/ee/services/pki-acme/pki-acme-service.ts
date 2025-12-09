@@ -378,7 +378,8 @@ export const pkiAcmeServiceFactory = ({
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
-    if (order.status !== AcmeOrderStatus.Ready) {
+    if (order.status !== AcmeOrderStatus.Processing) {
+      // We only care about processing orders, as they are the ones that have async certificate requests
       return order;
     }
     return acmeOrderDAL.transaction(async (tx) => {
@@ -387,8 +388,9 @@ export const pkiAcmeServiceFactory = ({
       if (!orderWithCertificateRequest) {
         throw new NotFoundError({ message: "ACME order not found" });
       }
+      // Check the status again after we have acquired the lock, as things may have changed since we last checked
       if (
-        orderWithCertificateRequest.status !== AcmeOrderStatus.Ready ||
+        orderWithCertificateRequest.status !== AcmeOrderStatus.Processing ||
         !orderWithCertificateRequest.certificateRequest
       ) {
         return orderWithCertificateRequest;
@@ -896,6 +898,7 @@ export const pkiAcmeServiceFactory = ({
       notBefore: updatedCertificateRequest.notBefore,
       notAfter: updatedCertificateRequest.notAfter,
       status: CertificateRequestStatus.PENDING,
+      acmeOrderId: orderId,
       tx
     });
     const csrObj = new x509.Pkcs10CertificateRequest(csr);
