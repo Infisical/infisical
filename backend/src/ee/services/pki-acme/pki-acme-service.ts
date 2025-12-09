@@ -104,6 +104,7 @@ import {
   TRawJwsPayload,
   TRespondToAcmeChallengeResponse
 } from "./pki-acme-types";
+import { TPkiAcmeOrders } from "@app/db/schemas";
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
@@ -117,11 +118,13 @@ type TPkiAcmeServiceFactoryDep = {
   >;
   acmeOrderDAL: Pick<
     TPkiAcmeOrderDALFactory,
+    | "findById"
     | "create"
     | "transaction"
     | "updateById"
     | "findByAccountAndOrderIdWithAuthorizations"
     | "findByIdForFinalization"
+    | "findWithCertificateRequestForSync"
     | "listByAccountId"
   >;
   acmeAuthDAL: Pick<TPkiAcmeAuthDALFactory, "create" | "findByAccountIdAndAuthIdWithChallenges">;
@@ -368,6 +371,50 @@ export const pkiAcmeServiceFactory = ({
       certificate:
         order.status === AcmeOrderStatus.Valid ? buildUrl(profileId, `/orders/${order.id}/certificate`) : undefined
     };
+  };
+
+  const checkAndSyncAcmeOrderStatus = async ({ orderId }: { orderId: string }): Promise<TPkiAcmeOrders> => {
+    const order = await acmeOrderDAL.findById(orderId);
+    if (!order) {
+      throw new NotFoundError({ message: "ACME order not found" });
+    }
+    if (order.status !== AcmeOrderStatus.Ready) {
+      return order;
+    }
+    return acmeOrderDAL.transaction(async (tx) => {
+      // Lock the order for syncing with async cert request
+      const orderWithCertificateRequest = await acmeOrderDAL.findWithCertificateRequestForSync(orderId, tx);
+      if (!orderWithCertificateRequest) {
+        throw new NotFoundError({ message: "ACME order not found" });
+      }
+      if (
+        orderWithCertificateRequest.status !== AcmeOrderStatus.Ready ||
+        !orderWithCertificateRequest.certificateRequest
+      ) {
+        return orderWithCertificateRequest;
+      }
+      let newStatus: AcmeOrderStatus | undefined;
+      let newCertificateId: string | undefined;
+      switch (orderWithCertificateRequest.certificateRequest.status) {
+        case CertificateRequestStatus.PENDING:
+          break;
+        case CertificateRequestStatus.ISSUED:
+          newStatus = AcmeOrderStatus.Valid;
+          newCertificateId = orderWithCertificateRequest.certificateRequest.certificateId;
+          break;
+        case CertificateRequestStatus.FAILED:
+          newStatus = AcmeOrderStatus.Invalid;
+          break;
+        default:
+          throw new AcmeServerInternalError({
+            message: `Invalid certificate request status: ${orderWithCertificateRequest.certificateRequest.status as string}`
+          });
+      }
+      if (newStatus) {
+        return acmeOrderDAL.updateById(orderId, { status: newStatus, certificateId: newCertificateId }, tx);
+      }
+      return orderWithCertificateRequest;
+    });
   };
 
   const getAcmeDirectory = async (profileId: string): Promise<TGetAcmeDirectoryResponse> => {
@@ -737,9 +784,11 @@ export const pkiAcmeServiceFactory = ({
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
+    // Sync order first in case if there is a certificate request that needs to be processed
+    const syncedOrder = await checkAndSyncAcmeOrderStatus({ orderId });
     return {
       status: 200,
-      body: buildAcmeOrderResource({ profileId, order }),
+      body: buildAcmeOrderResource({ profileId, order: syncedOrder }),
       headers: {
         Location: buildUrl(profileId, `/orders/${orderId}`),
         Link: `<${buildUrl(profileId, "/directory")}>;rel="index"`
@@ -1001,7 +1050,7 @@ export const pkiAcmeServiceFactory = ({
       }
       if (certIssuanceJobData) {
         // TODO: ideally, this should be done inside the transaction, but the pg-boss queue doesn't support external transactions
-        //       as it seems to be.
+        //       as it seems to be. we need to commit the transaction before queuing the job, otherwise the job will fail (not found error).
         await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       order = updatedOrder;
@@ -1049,14 +1098,16 @@ export const pkiAcmeServiceFactory = ({
     if (!order) {
       throw new NotFoundError({ message: "ACME order not found" });
     }
-    if (order.status !== AcmeOrderStatus.Valid) {
+    // Sync order first in case if there is a certificate request that needs to be processed
+    const syncedOrder = await checkAndSyncAcmeOrderStatus({ orderId });
+    if (syncedOrder.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not valid" });
     }
-    if (!order.certificateId) {
+    if (!syncedOrder.certificateId) {
       throw new NotFoundError({ message: "The certificate for this ACME order no longer exists" });
     }
 
-    const certBody = await certificateBodyDAL.findOne({ certId: order.certificateId });
+    const certBody = await certificateBodyDAL.findOne({ certId: syncedOrder.certificateId });
     const certificateManagerKeyId = await getProjectKmsCertificateKeyId({
       projectId: profile.projectId,
       projectDAL,
