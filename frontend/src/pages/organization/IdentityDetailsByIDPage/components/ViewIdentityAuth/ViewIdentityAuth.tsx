@@ -1,8 +1,10 @@
+import { subject } from "@casl/ability";
 import { useParams } from "@tanstack/react-router";
 import { EllipsisIcon, LockIcon } from "lucide-react";
 
 import { UpgradePlanModal } from "@app/components/license/UpgradePlanModal";
 import { createNotification } from "@app/components/notifications";
+import { VariablePermissionCan } from "@app/components/permissions";
 import { DeleteActionModal, Modal, ModalContent, Tooltip } from "@app/components/v2";
 import {
   Badge,
@@ -16,7 +18,13 @@ import {
   UnstableDropdownMenuTrigger,
   UnstableIconButton
 } from "@app/components/v3";
-import { useOrganization } from "@app/context";
+import {
+  OrgPermissionIdentityActions,
+  OrgPermissionSubjects,
+  ProjectPermissionIdentityActions,
+  ProjectPermissionSub,
+  useOrganization
+} from "@app/context";
 import { usePopUp } from "@app/hooks";
 import {
   IdentityAuthMethod,
@@ -190,23 +198,61 @@ export const Content = ({
                     </UnstableIconButton>
                   </UnstableDropdownMenuTrigger>
                   <UnstableDropdownMenuContent align="end">
-                    <UnstableDropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpOpen("identityAuthMethod", authMethod);
-                      }}
+                    <VariablePermissionCan
+                      type={projectId ? "project" : "org"}
+                      I={
+                        projectId
+                          ? ProjectPermissionIdentityActions.Edit
+                          : OrgPermissionIdentityActions.Edit
+                      }
+                      a={
+                        projectId
+                          ? subject(ProjectPermissionSub.Identity, {
+                              identityId
+                            })
+                          : OrgPermissionSubjects.Identity
+                      }
                     >
-                      Edit Auth Method
-                    </UnstableDropdownMenuItem>
-                    <UnstableDropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePopUpOpen("revokeAuthMethod", authMethod);
-                      }}
-                      variant="danger"
+                      {(isAllowed) => (
+                        <UnstableDropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePopUpOpen("identityAuthMethod", authMethod);
+                          }}
+                        >
+                          Edit Auth Method
+                        </UnstableDropdownMenuItem>
+                      )}
+                    </VariablePermissionCan>
+                    <VariablePermissionCan
+                      type={projectId ? "project" : "org"}
+                      I={
+                        projectId
+                          ? ProjectPermissionIdentityActions.Delete
+                          : OrgPermissionIdentityActions.Delete
+                      }
+                      a={
+                        projectId
+                          ? subject(ProjectPermissionSub.Identity, {
+                              identityId
+                            })
+                          : OrgPermissionSubjects.Identity
+                      }
                     >
-                      Remove Auth Method
-                    </UnstableDropdownMenuItem>
+                      {(isAllowed) => (
+                        <UnstableDropdownMenuItem
+                          isDisabled={!isAllowed}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePopUpOpen("revokeAuthMethod", authMethod);
+                          }}
+                          variant="danger"
+                        >
+                          Remove Auth Method
+                        </UnstableDropdownMenuItem>
+                      )}
+                    </VariablePermissionCan>
                   </UnstableDropdownMenuContent>
                 </UnstableDropdownMenu>
               </UnstableAccordionTrigger>
