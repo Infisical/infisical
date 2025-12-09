@@ -40,7 +40,12 @@ export const PolicyFormSchema = z.object({
   }),
   steps: z
     .object({
-      name: z.string().max(128).nullable().optional(),
+      name: z
+        .string()
+        .max(128)
+        .nullable()
+        .optional()
+        .transform((name) => name || null),
       requiredApprovals: z.number().min(1).max(100),
       notifyApprovers: z.boolean().optional(),
       approvers: z
