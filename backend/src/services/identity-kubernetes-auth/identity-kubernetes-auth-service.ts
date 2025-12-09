@@ -904,6 +904,22 @@ export const identityKubernetesAuthServiceFactory = ({
     const effectiveGatewayId =
       gatewayId !== undefined ? gatewayId : (identityKubernetesAuth.gatewayId ?? identityKubernetesAuth.gatewayV2Id);
 
+    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
+      type: KmsDataKey.Organization,
+      orgId: identityMembershipOrg.scopeOrgId
+    });
+
+    let effectiveCaCert: string | undefined;
+    if (caCert !== undefined) {
+      effectiveCaCert = caCert;
+    } else if (identityKubernetesAuth.encryptedKubernetesCaCertificate) {
+      effectiveCaCert = decryptor({
+        cipherTextBlob: identityKubernetesAuth.encryptedKubernetesCaCertificate
+      }).toString();
+    } else {
+      effectiveCaCert = undefined;
+    }
+
     if (
       kubernetesHost &&
       effectiveTokenReviewMode === IdentityKubernetesAuthTokenReviewMode.Api &&
@@ -912,7 +928,7 @@ export const identityKubernetesAuthServiceFactory = ({
       logger.info({ kubernetesHost }, "Validating Kubernetes host connectivity for auth method update");
       await validateKubernetesHostConnectivity({
         kubernetesHost,
-        caCert: caCert || undefined
+        caCert: effectiveCaCert
       });
     }
 
@@ -929,7 +945,7 @@ export const identityKubernetesAuthServiceFactory = ({
       await validateTokenReviewerJwtPermissions({
         kubernetesHost: effectiveKubernetesHost,
         tokenReviewerJwt,
-        caCert: caCert || undefined
+        caCert: effectiveCaCert
       });
     }
 
@@ -948,11 +964,6 @@ export const identityKubernetesAuthServiceFactory = ({
         ? JSON.stringify(reformattedAccessTokenTrustedIps)
         : undefined
     };
-
-    const { encryptor, decryptor } = await kmsService.createCipherPairWithDataKey({
-      type: KmsDataKey.Organization,
-      orgId: identityMembershipOrg.scopeOrgId
-    });
 
     if (caCert !== undefined) {
       updateQuery.encryptedKubernetesCaCertificate = encryptor({ plainText: Buffer.from(caCert) }).cipherTextBlob;
