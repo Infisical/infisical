@@ -7,6 +7,7 @@ import {
   importJWK,
   JWSHeaderParameters
 } from "jose";
+import { Knex } from "knex";
 import { z, ZodError } from "zod";
 
 import { TPkiAcmeAccounts } from "@app/db/schemas/pki-acme-accounts";
@@ -30,6 +31,10 @@ import {
 import { orderCertificate } from "@app/services/certificate-authority/acme/acme-certificate-authority-fns";
 import { TCertificateAuthorityDALFactory } from "@app/services/certificate-authority/certificate-authority-dal";
 import { CaType } from "@app/services/certificate-authority/certificate-authority-enums";
+import {
+  TCertificateIssuanceQueueFactory,
+  TIssueCertificateFromProfileJobData
+} from "@app/services/certificate-authority/certificate-issuance-queue";
 import { TExternalCertificateAuthorityDALFactory } from "@app/services/certificate-authority/external-certificate-authority-dal";
 import {
   extractAlgorithmsFromCSR,
@@ -40,6 +45,8 @@ import {
   EnrollmentType,
   TCertificateProfileWithConfigs
 } from "@app/services/certificate-profile/certificate-profile-types";
+import { TCertificateRequestServiceFactory } from "@app/services/certificate-request/certificate-request-service";
+import { CertificateRequestStatus } from "@app/services/certificate-request/certificate-request-types";
 import { TCertificateTemplateV2DALFactory } from "@app/services/certificate-template-v2/certificate-template-v2-dal";
 import { TCertificateTemplateV2ServiceFactory } from "@app/services/certificate-template-v2/certificate-template-v2-service";
 import { TCertificateV3ServiceFactory } from "@app/services/certificate-v3/certificate-v3-service";
@@ -100,13 +107,9 @@ import {
 
 type TPkiAcmeServiceFactoryDep = {
   projectDAL: Pick<TProjectDALFactory, "findOne" | "updateById" | "transaction" | "findById">;
-  appConnectionDAL: Pick<TAppConnectionDALFactory, "findById">;
-  certificateDAL: Pick<TCertificateDALFactory, "create" | "transaction" | "updateById">;
   certificateAuthorityDAL: Pick<TCertificateAuthorityDALFactory, "findByIdWithAssociatedCa">;
-  externalCertificateAuthorityDAL: Pick<TExternalCertificateAuthorityDALFactory, "update">;
   certificateProfileDAL: Pick<TCertificateProfileDALFactory, "findByIdWithOwnerOrgId" | "findByIdWithConfigs">;
   certificateBodyDAL: Pick<TCertificateBodyDALFactory, "findOne" | "create">;
-  certificateSecretDAL: Pick<TCertificateSecretDALFactory, "findOne" | "create">;
   certificateTemplateV2DAL: Pick<TCertificateTemplateV2DALFactory, "findById">;
   acmeAccountDAL: Pick<
     TPkiAcmeAccountDALFactory,
@@ -135,6 +138,8 @@ type TPkiAcmeServiceFactoryDep = {
   licenseService: Pick<TLicenseServiceFactory, "getPlan">;
   certificateV3Service: Pick<TCertificateV3ServiceFactory, "signCertificateFromProfile">;
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
+  certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
+  certificateIssuanceQueue: Pick<TCertificateIssuanceQueueFactory, "queueCertificateIssuance">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
   auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
@@ -142,13 +147,9 @@ type TPkiAcmeServiceFactoryDep = {
 
 export const pkiAcmeServiceFactory = ({
   projectDAL,
-  appConnectionDAL,
-  certificateDAL,
   certificateAuthorityDAL,
-  externalCertificateAuthorityDAL,
   certificateProfileDAL,
   certificateBodyDAL,
-  certificateSecretDAL,
   certificateTemplateV2DAL,
   acmeAccountDAL,
   acmeOrderDAL,
@@ -160,6 +161,8 @@ export const pkiAcmeServiceFactory = ({
   licenseService,
   certificateV3Service,
   certificateTemplateV2Service,
+  certificateRequestService,
+  certificateIssuanceQueue,
   acmeChallengeService,
   pkiAcmeQueueService,
   auditLogService
@@ -744,6 +747,125 @@ export const pkiAcmeServiceFactory = ({
     };
   };
 
+  const processCertificateIssuanceForOrder = async ({
+    caType,
+    accountId,
+    actorOrgId,
+    profileId,
+    orderId,
+    csr,
+    finalizingOrder,
+    certificateRequest,
+    profile,
+    ca,
+    tx
+  }: {
+    caType: CaType;
+    accountId: string;
+    actorOrgId: string;
+    profileId: string;
+    orderId: string;
+    csr: string;
+    finalizingOrder: {
+      notBefore?: Date | null;
+      notAfter?: Date | null;
+    };
+    certificateRequest: ReturnType<typeof extractCertificateRequestFromCSR>;
+    profile: TCertificateProfileWithConfigs;
+    ca: Awaited<ReturnType<typeof certificateAuthorityDAL.findByIdWithAssociatedCa>>;
+    tx?: Knex;
+  }): Promise<{ certificateId?: string; certIssuanceJobData?: TIssueCertificateFromProfileJobData }> => {
+    if (caType === CaType.INTERNAL) {
+      const result = await certificateV3Service.signCertificateFromProfile({
+        actor: ActorType.ACME_ACCOUNT,
+        actorId: accountId,
+        actorAuthMethod: null,
+        actorOrgId,
+        profileId,
+        csr,
+        notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
+        notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
+        validity: !finalizingOrder.notAfter
+          ? {
+              // 47 days, the default TTL comes with Let's Encrypt
+              // TODO: read config from the profile to get the expiration time instead
+              ttl: `${47}d`
+            }
+          : // ttl is not used if notAfter is provided
+            ({ ttl: "0d" } as const),
+        enrollmentType: EnrollmentType.ACME
+      });
+      return {
+        certificateId: result.certificateId
+      };
+    }
+
+    const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
+      extractAlgorithmsFromCSR(csr);
+    const updatedCertificateRequest = {
+      ...certificateRequest,
+      keyAlgorithm: extractedKeyAlgorithm,
+      signatureAlgorithm: extractedSignatureAlgorithm,
+      validity: finalizingOrder.notAfter
+        ? (() => {
+            const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
+            const notAfter = new Date(finalizingOrder.notAfter);
+            const diffMs = notAfter.getTime() - notBefore.getTime();
+            const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+            return { ttl: `${diffDays}d` };
+          })()
+        : certificateRequest.validity
+    };
+
+    const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
+    if (!template) {
+      throw new NotFoundError({ message: "Certificate template not found" });
+    }
+    const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
+      template.id,
+      updatedCertificateRequest
+    );
+    if (!validationResult.isValid) {
+      throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
+    }
+
+    const certRequest = await certificateRequestService.createCertificateRequest({
+      actor: ActorType.ACME_ACCOUNT,
+      actorId: accountId,
+      actorAuthMethod: null,
+      actorOrgId,
+      projectId: profile.projectId,
+      caId: ca.id,
+      profileId: profile.id,
+      commonName: updatedCertificateRequest.commonName ?? "",
+      keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
+      extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
+      keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
+      signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
+      altNames: updatedCertificateRequest.subjectAlternativeNames?.map((san) => san.value).join(","),
+      notBefore: updatedCertificateRequest.notBefore,
+      notAfter: updatedCertificateRequest.notAfter,
+      status: CertificateRequestStatus.PENDING,
+      tx
+    });
+    return {
+      certIssuanceJobData: {
+        certificateId: orderId,
+        profileId: profile.id,
+        caId: profile.caId || "",
+        ttl: updatedCertificateRequest.validity?.ttl || "1y",
+        signatureAlgorithm: updatedCertificateRequest.signatureAlgorithm || "",
+        keyAlgorithm: updatedCertificateRequest.keyAlgorithm || "",
+        commonName: updatedCertificateRequest.commonName || "",
+        altNames: updatedCertificateRequest.subjectAlternativeNames?.map((san) => san.value) || [],
+        keyUsages: updatedCertificateRequest.keyUsages?.map((usage) => usage.toString()) ?? [],
+        extendedKeyUsages: updatedCertificateRequest.extendedKeyUsages?.map((usage) => usage.toString()) ?? [],
+        certificateRequestId: certRequest.id,
+        csr
+      }
+    };
+  };
+
   const finalizeAcmeOrder = async ({
     profileId,
     accountId,
@@ -768,7 +890,11 @@ export const pkiAcmeServiceFactory = ({
       throw new NotFoundError({ message: "ACME order not found" });
     }
     if (order.status === AcmeOrderStatus.Ready) {
-      const { order: updatedOrder, error } = await acmeOrderDAL.transaction(async (tx) => {
+      const {
+        order: updatedOrder,
+        error,
+        certIssuanceJobData
+      } = await acmeOrderDAL.transaction(async (tx) => {
         const finalizingOrder = (await acmeOrderDAL.findByIdForFinalization(orderId, tx))!;
         // TODO: ideally, this should be doen with onRequest: verifyAuth([AuthMode.ACME_JWS_SIGNATURE]), instead?
         const { ownerOrgId: actorOrgId } = (await certificateProfileDAL.findByIdWithOwnerOrgId(profileId, tx))!;
@@ -815,94 +941,33 @@ export const pkiAcmeServiceFactory = ({
         }
         const caType = (ca.externalCa?.type as CaType) ?? CaType.INTERNAL;
         let errorToReturn: Error | undefined;
+        let certIssuanceJobDataToReturn: TIssueCertificateFromProfileJobData | undefined;
         try {
-          const { certificateId } = await (async () => {
-            if (caType === CaType.INTERNAL) {
-              const result = await certificateV3Service.signCertificateFromProfile({
-                actor: ActorType.ACME_ACCOUNT,
-                actorId: accountId,
-                actorAuthMethod: null,
-                actorOrgId,
-                profileId,
-                csr,
-                notBefore: finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : undefined,
-                notAfter: finalizingOrder.notAfter ? new Date(finalizingOrder.notAfter) : undefined,
-                validity: !finalizingOrder.notAfter
-                  ? {
-                      // 47 days, the default TTL comes with Let's Encrypt
-                      // TODO: read config from the profile to get the expiration time instead
-                      ttl: `${47}d`
-                    }
-                  : // ttl is not used if notAfter is provided
-                    ({ ttl: "0d" } as const),
-                enrollmentType: EnrollmentType.ACME
-              });
-              return { certificateId: result.certificateId };
-            }
-            const { certificateAuthority } = (await certificateProfileDAL.findByIdWithConfigs(profileId, tx))!;
-            const csrObj = new x509.Pkcs10CertificateRequest(csr);
-            const csrPem = csrObj.toString("pem");
-
-            const { keyAlgorithm: extractedKeyAlgorithm, signatureAlgorithm: extractedSignatureAlgorithm } =
-              extractAlgorithmsFromCSR(csr);
-
-            certificateRequest.keyAlgorithm = extractedKeyAlgorithm;
-            certificateRequest.signatureAlgorithm = extractedSignatureAlgorithm;
-            if (finalizingOrder.notAfter) {
-              const notBefore = finalizingOrder.notBefore ? new Date(finalizingOrder.notBefore) : new Date();
-              const notAfter = new Date(finalizingOrder.notAfter);
-              const diffMs = notAfter.getTime() - notBefore.getTime();
-              const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-              certificateRequest.validity = { ttl: `${diffDays}d` };
-            }
-
-            const template = await certificateTemplateV2DAL.findById(profile.certificateTemplateId);
-            if (!template) {
-              throw new NotFoundError({ message: "Certificate template not found" });
-            }
-            const validationResult = await certificateTemplateV2Service.validateCertificateRequest(
-              template.id,
-              certificateRequest
-            );
-            if (!validationResult.isValid) {
-              throw new AcmeBadCSRError({ message: `Invalid CSR: ${validationResult.errors.join(", ")}` });
-            }
-            // TODO: this is pretty slow, and we are holding the transaction open for a long time,
-            //       we should queue the certificate issuance to a background job instead
-            const cert = await orderCertificate(
-              {
-                caId: certificateAuthority!.id,
-                // It is possible that the CSR does not have a common name, in which case we use an empty string
-                // (more likely than not for a CSR from a modern ACME client like certbot, cert-manager, etc.)
-                commonName: certificateRequest.commonName ?? "",
-                altNames: certificateRequest.subjectAlternativeNames?.map((san) => san.value),
-                csr: Buffer.from(csrPem),
-                // TODO: not 100% sure what are these columns for, but let's put the values for common website SSL certs for now
-                keyUsages: [CertKeyUsage.DIGITAL_SIGNATURE, CertKeyUsage.KEY_ENCIPHERMENT, CertKeyUsage.KEY_AGREEMENT],
-                extendedKeyUsages: [CertExtendedKeyUsage.SERVER_AUTH]
-              },
-              {
-                appConnectionDAL,
-                certificateAuthorityDAL,
-                externalCertificateAuthorityDAL,
-                certificateDAL,
-                certificateBodyDAL,
-                certificateSecretDAL,
-                kmsService,
-                projectDAL
-              }
-            );
-            return { certificateId: cert.id };
-          })();
-          await acmeOrderDAL.updateById(
+          const result = await processCertificateIssuanceForOrder({
+            caType,
+            accountId,
+            actorOrgId,
+            profileId,
             orderId,
-            {
-              status: AcmeOrderStatus.Valid,
-              csr,
-              certificateId
-            },
+            csr,
+            finalizingOrder,
+            certificateRequest,
+            profile,
+            ca,
             tx
-          );
+          });
+          if (result.certificateId) {
+            await acmeOrderDAL.updateById(
+              orderId,
+              {
+                status: AcmeOrderStatus.Valid,
+                csr,
+                certificateId: result.certificateId
+              },
+              tx
+            );
+          }
+          certIssuanceJobDataToReturn = result.certIssuanceJobData;
         } catch (exp) {
           await acmeOrderDAL.updateById(
             orderId,
@@ -920,16 +985,24 @@ export const pkiAcmeServiceFactory = ({
           } else if (exp instanceof AcmeError) {
             errorToReturn = exp;
           } else {
-            errorToReturn = new AcmeServerInternalError({ message: "Failed to sign certificate with internal error" });
+            errorToReturn = new AcmeServerInternalError({
+              message: "Failed to sign certificate with internal error"
+            });
           }
         }
         return {
           order: (await acmeOrderDAL.findByAccountAndOrderIdWithAuthorizations(accountId, orderId, tx))!,
-          error: errorToReturn
+          error: errorToReturn,
+          certIssuanceJobData: certIssuanceJobDataToReturn
         };
       });
       if (error) {
         throw error;
+      }
+      if (certIssuanceJobData) {
+        // TODO: ideally, this should be done inside the transaction, but the pg-boss queue doesn't support external transactions
+        //       as it seems to be.
+        await certificateIssuanceQueue.queueCertificateIssuance(certIssuanceJobData);
       }
       order = updatedOrder;
       await auditLogService.createAuditLog({
