@@ -126,21 +126,25 @@ export const kubernetesResourceFactory: TPamResourceFactory<
         async (baseUrl, httpsAgent) => {
           const { authMethod } = credentials;
           if (authMethod === KubernetesAuthMethod.ServiceAccountToken) {
-            // Validate service account token by making an authenticated API call
+            // Validate service account token using SelfSubjectReview API (whoami)
+            // This endpoint doesn't require any special permissions from the service account
             try {
-              // TODO: is this the best API endpoint to use for validation?
-              //       the SA may not have access to list ns
-              //       maybe we should use a more specific API endpoint?
-              //       use /apis/authentication.k8s.io/v1/selfsubjectreviews instead?
-              await axios.get(`${baseUrl}/api/v1/namespaces`, {
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${credentials.serviceAccountToken}`
+              await axios.post(
+                `${baseUrl}/apis/authentication.k8s.io/v1/selfsubjectreviews`,
+                {
+                  apiVersion: "authentication.k8s.io/v1",
+                  kind: "SelfSubjectReview"
                 },
-                ...(httpsAgent ? { httpsAgent } : {}),
-                signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
-                timeout: EXTERNAL_REQUEST_TIMEOUT
-              });
+                {
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${credentials.serviceAccountToken}`
+                  },
+                  ...(httpsAgent ? { httpsAgent } : {}),
+                  signal: AbortSignal.timeout(EXTERNAL_REQUEST_TIMEOUT),
+                  timeout: EXTERNAL_REQUEST_TIMEOUT
+                }
+              );
 
               logger.info("[Kubernetes Resource Factory] Kubernetes service account token authentication successful");
             } catch (error) {
