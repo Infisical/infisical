@@ -795,12 +795,6 @@
                   "documentation/platform/pam/product-reference/session-recording",
                   "documentation/platform/pam/product-reference/credential-rotation"
                 ]
-              },
-              {
-                "group": "Resources",
-                "pages": [
-                  "documentation/platform/pam/resources/aws-iam"
-                ]
               }
             ]
           }

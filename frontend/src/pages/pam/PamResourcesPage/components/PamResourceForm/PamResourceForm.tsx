@@ -10,6 +10,7 @@ import { DiscriminativePick } from "@app/types";
 
 import { PamResourceHeader } from "../PamResourceHeader";
 import { AwsIamResourceForm } from "./AwsIamResourceForm";
+import { KubernetesResourceForm } from "./KubernetesResourceForm";
 import { MySQLResourceForm } from "./MySQLResourceForm";
 import { PostgresResourceForm } from "./PostgresResourceForm";
 import { SSHResourceForm } from "./SSHResourceForm";
@@ -55,6 +56,8 @@ const CreateForm = ({ resourceType, onComplete, projectId }: CreateFormProps) =>
       return <MySQLResourceForm onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamResourceForm onSubmit={onSubmit} />;
     default:
@@ -87,6 +90,8 @@ const UpdateForm = ({ resource, onComplete }: UpdateFormProps) => {
       return <MySQLResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.SSH:
       return <SSHResourceForm resource={resource} onSubmit={onSubmit} />;
+    case PamResourceType.Kubernetes:
+      return <KubernetesResourceForm resource={resource} onSubmit={onSubmit} />;
     case PamResourceType.AwsIam:
       return <AwsIamResourceForm resource={resource} onSubmit={onSubmit} />;
     default:
