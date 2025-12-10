@@ -37,6 +37,7 @@ export type {
 export * from "./secrets/types";
 export type { CreateServiceTokenDTO, ServiceToken } from "./serviceTokens/types";
 export type { SubscriptionPlan } from "./subscriptions/types";
+export { SubscriptionProducts } from "./subscriptions/types";
 export type { WsTag } from "./tags/types";
 export type { OrgUser, TWorkspaceUser, User, UserEnc } from "./users/types";
 export type { TWebhook } from "./webhooks/types";

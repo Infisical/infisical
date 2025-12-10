@@ -1,4 +1,5 @@
 export type SubscriptionPlan = {
+  productPlans: Record<string, string>;
   id: string;
   membersUsed: number;
   memberLimit: number;
@@ -64,3 +65,11 @@ export type SubscriptionPlan = {
   machineIdentityAuthTemplates: boolean;
   pam: boolean;
 };
+
+export enum SubscriptionProducts {
+  Platform = "platform",
+  SecretManager = "secret-manager",
+  CertificateManager = "cert-manager",
+  SecretScanning = "secret-scanning",
+  PAM = "pam"
+}
