@@ -44,7 +44,7 @@ export const pkiAcmeOrderDALFactory = (db: TDbClient) => {
       return {
         ...details,
         certificateRequest:
-          certificateRequestId && certificateRequestStatus && certificateId
+          certificateRequestId && certificateRequestStatus
             ? {
                 id: certificateRequestId,
                 status: certificateRequestStatus as CertificateRequestStatus,
