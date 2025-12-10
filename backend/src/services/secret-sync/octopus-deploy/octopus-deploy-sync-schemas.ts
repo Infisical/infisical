@@ -17,10 +17,11 @@ export enum OctopusDeploySyncScope {
 }
 
 const OctopusDeploySyncDestinationConfigBaseSchema = z.object({
-  spaceId: z
+  spaceId: z.string().min(1, "Space ID is required").describe(SecretSyncs.DESTINATION_CONFIG.OCTOPUS_DEPLOY.spaceId),
+  spaceName: z
     .string()
-    .min(1, "Space ID required")
-    .describe(SecretSyncs.DESTINATION_CONFIG.OCTOPUS_DEPLOY.spaceId || "Octopus Deploy Space ID"),
+    .min(1, "Space Name is required")
+    .describe(SecretSyncs.DESTINATION_CONFIG.OCTOPUS_DEPLOY.spaceName),
   scope: z.nativeEnum(OctopusDeploySyncScope).default(OctopusDeploySyncScope.Project)
 });
 
@@ -31,8 +32,12 @@ export const OctopusDeploySyncDestinationConfigSchema = z.intersection(
       scope: z.literal(OctopusDeploySyncScope.Project),
       projectId: z
         .string()
-        .min(1, "Project ID required")
+        .min(1, "Project ID is required")
         .describe(SecretSyncs.DESTINATION_CONFIG.OCTOPUS_DEPLOY.projectId),
+      projectName: z
+        .string()
+        .min(1, "Project Name is required")
+        .describe(SecretSyncs.DESTINATION_CONFIG.OCTOPUS_DEPLOY.projectName),
       scopeValues: z
         .object({
           environments: z.array(z.string()).optional(),

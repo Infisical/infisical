@@ -31,7 +31,7 @@ import { OctopusDeploySyncScope } from "@app/hooks/api/secretSyncs/types/octopus
 import { TSecretSyncForm } from "../schemas";
 
 export const OctopusDeploySyncFields = () => {
-  const { control, setValue, getValues } = useFormContext<
+  const { control, setValue } = useFormContext<
     TSecretSyncForm & { destination: SecretSync.OctopusDeploy }
   >();
 
@@ -46,8 +46,6 @@ export const OctopusDeploySyncFields = () => {
       enabled: Boolean(connectionId)
     }
   );
-
-  console.log(getValues());
 
   const { data: projects = [], isLoading: isProjectsLoading } =
     useOctopusDeployConnectionListProjects(connectionId, spaceId, {
@@ -97,7 +95,9 @@ export const OctopusDeploySyncFields = () => {
               onChange={(option) => {
                 const selectedSpace = option as SingleValue<TOctopusDeploySpace>;
                 onChange(selectedSpace?.id ?? null);
+                setValue("destinationConfig.spaceName", selectedSpace?.name ?? "");
                 setValue("destinationConfig.projectId", "");
+                setValue("destinationConfig.projectName", "");
                 setValue("destinationConfig.scopeValues", undefined);
               }}
               options={spaces}
@@ -125,6 +125,7 @@ export const OctopusDeploySyncFields = () => {
               onValueChange={(val) => {
                 onChange(val);
                 setValue("destinationConfig.projectId", "");
+                setValue("destinationConfig.projectName", "");
                 setValue("destinationConfig.scopeValues", undefined);
               }}
               className="w-full border border-mineshaft-500 capitalize"
@@ -169,7 +170,9 @@ export const OctopusDeploySyncFields = () => {
                 isDisabled={Boolean(!connectionId || !spaceId)}
                 value={projects?.find((project) => project.id === value) ?? null}
                 onChange={(option) => {
-                  onChange((option as SingleValue<TOctopusDeployProject>)?.id ?? null);
+                  const selectedProject = option as SingleValue<TOctopusDeployProject>;
+                  onChange(selectedProject?.id ?? null);
+                  setValue("destinationConfig.projectName", selectedProject?.name ?? "");
                   setValue("destinationConfig.scopeValues", undefined);
                 }}
                 options={projects}

@@ -9,6 +9,7 @@ export enum OctopusDeploySyncScope {
 type TOctopusDeploySyncDestinationConfigProject = {
   scope: OctopusDeploySyncScope.Project;
   projectId: string;
+  projectName: string;
   scopeValues?: {
     environments?: string[];
     roles?: string[];
@@ -21,6 +22,7 @@ type TOctopusDeploySyncDestinationConfigProject = {
 
 type TOctopusDeploySyncDestinationConfig = {
   spaceId: string;
+  spaceName: string;
 } & TOctopusDeploySyncDestinationConfigProject;
 
 export type TOctopusDeploySync = TRootSecretSync & {

@@ -2688,7 +2688,9 @@ export const SecretSyncs = {
     },
     OCTOPUS_DEPLOY: {
       spaceId: "The ID of the Octopus Deploy space to sync secrets to.",
+      spaceName: "The name of the Octopus Deploy space to sync secrets to.",
       projectId: "The ID of the Octopus Deploy project to sync secrets to.",
+      projectName: "The name of the Octopus Deploy project to sync secrets to.",
       scope: "The Octopus Deploy scope that secrets should be synced to.",
       scopeValues: "The Octopus Deploy scope values that secrets should be synced to."
     },

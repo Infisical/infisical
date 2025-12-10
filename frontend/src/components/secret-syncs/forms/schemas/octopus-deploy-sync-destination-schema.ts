@@ -9,12 +9,14 @@ export const OctopusDeploySyncDestinationSchema = BaseSecretSyncSchema().merge(
     destination: z.literal(SecretSync.OctopusDeploy),
     destinationConfig: z.intersection(
       z.object({
-        spaceId: z.string().trim().min(1, { message: "Space ID is required" })
+        spaceId: z.string().trim().min(1, { message: "Space ID is required" }),
+        spaceName: z.string().trim().min(1, { message: "Space Name is required" })
       }),
       z.discriminatedUnion("scope", [
         z.object({
           scope: z.literal(OctopusDeploySyncScope.Project),
           projectId: z.string().trim().min(1, { message: "Project ID is required" }),
+          projectName: z.string().trim().min(1, { message: "Project Name is required" }),
           scopeValues: z
             .object({
               environments: z.array(z.string()).optional(),

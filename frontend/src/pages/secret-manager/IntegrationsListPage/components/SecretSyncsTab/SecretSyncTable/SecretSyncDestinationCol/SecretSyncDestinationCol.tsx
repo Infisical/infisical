@@ -25,6 +25,7 @@ import { LaravelForgeSyncDestinationCol } from "./LaravelForgeSyncDestinationCol
 import { NetlifySyncDestinationCol } from "./NetlifySyncDestinationCol";
 import { NorthflankSyncDestinationCol } from "./NorthflankSyncDestinationCol";
 import { OCIVaultSyncDestinationCol } from "./OCIVaultSyncDestinationCol";
+import { OctopusDeploySyncDestinationCol } from "./OctopusDeploySyncDestinationCol";
 import { RailwaySyncDestinationCol } from "./RailwaySyncDestinationCol";
 import { RenderSyncDestinationCol } from "./RenderSyncDestinationCol";
 import { SupabaseSyncDestinationCol } from "./SupabaseSyncDestinationCol";
@@ -106,6 +107,8 @@ export const SecretSyncDestinationCol = ({ secretSync }: Props) => {
       return <LaravelForgeSyncDestinationCol secretSync={secretSync} />;
     case SecretSync.Chef:
       return <ChefSyncDestinationCol secretSync={secretSync} />;
+    case SecretSync.OctopusDeploy:
+      return <OctopusDeploySyncDestinationCol secretSync={secretSync} />;
     default:
       throw new Error(
         `Unhandled Secret Sync Destination Col: ${(secretSync as TSecretSync).destination}`
