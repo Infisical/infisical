@@ -1,9 +1,10 @@
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
+import { faEdit, faInfoCircle } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { format } from "date-fns";
 
-import { GenericFieldLabel, IconButton } from "@app/components/v2";
-import { TAiMcpEndpointWithServerIds } from "@app/hooks/api";
+import { createNotification } from "@app/components/notifications";
+import { GenericFieldLabel, IconButton, Switch, Tooltip } from "@app/components/v2";
+import { TAiMcpEndpointWithServerIds, useUpdateAiMcpEndpoint } from "@app/hooks/api";
 
 type Props = {
   endpoint: TAiMcpEndpointWithServerIds;
@@ -27,6 +28,27 @@ const getStatusColor = (status: string | null) => {
 };
 
 export const MCPEndpointDetailsSection = ({ endpoint, onEdit }: Props) => {
+  const updateEndpoint = useUpdateAiMcpEndpoint();
+
+  const handlePiiFilteringToggle = async (checked: boolean) => {
+    try {
+      await updateEndpoint.mutateAsync({
+        endpointId: endpoint.id,
+        piiFiltering: checked
+      });
+      createNotification({
+        text: `PII filtering ${checked ? "enabled" : "disabled"} successfully`,
+        type: "success"
+      });
+    } catch (error) {
+      console.error("Failed to update PII filtering:", error);
+      createNotification({
+        text: "Failed to update PII filtering setting",
+        type: "error"
+      });
+    }
+  };
+
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
@@ -54,6 +76,31 @@ export const MCPEndpointDetailsSection = ({ endpoint, onEdit }: Props) => {
         <GenericFieldLabel label="Created">
           {format(new Date(endpoint.createdAt), "yyyy-MM-dd, hh:mm aaa")}
         </GenericFieldLabel>
+        <div className="border-t border-mineshaft-500 pt-3">
+          <div className="flex items-start justify-between">
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-mineshaft-200">PII Filtering</span>
+                <Tooltip
+                  content="When enabled, personally identifiable information (credit cards, addresses, phone numbers, etc.) will be redacted in requests and responses"
+                  className="max-w-xs"
+                >
+                  <FontAwesomeIcon
+                    icon={faInfoCircle}
+                    className="cursor-default text-bunker-400 hover:text-bunker-300"
+                  />
+                </Tooltip>
+              </div>
+              <span className="text-xs text-bunker-400">Redact sensitive data</span>
+            </div>
+            <Switch
+              id={`pii-filtering-${endpoint.id}`}
+              isChecked={endpoint.piiFiltering ?? false}
+              onCheckedChange={handlePiiFilteringToggle}
+              isDisabled={updateEndpoint.isPending}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

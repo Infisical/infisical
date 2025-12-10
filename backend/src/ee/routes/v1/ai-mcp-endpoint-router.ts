@@ -163,7 +163,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
           endpoints: z.array(
             AiMcpEndpointsSchema.extend({
               connectedServers: z.number(),
-              activeTools: z.number()
+              activeTools: z.number(),
+              piiFiltering: z.boolean().optional()
             })
           ),
           totalCount: z.number()
@@ -198,7 +199,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
           endpoint: AiMcpEndpointsSchema.extend({
             connectedServers: z.number(),
             activeTools: z.number(),
-            serverIds: z.array(z.string())
+            serverIds: z.array(z.string()),
+            piiFiltering: z.boolean().optional()
           })
         })
       }
@@ -226,7 +228,8 @@ export const registerAiMcpEndpointRouter = async (server: FastifyZodProvider) =>
       body: z.object({
         name: z.string().trim().min(1).max(64).optional(),
         description: z.string().trim().max(256).optional(),
-        serverIds: z.array(z.string().uuid()).optional()
+        serverIds: z.array(z.string().uuid()).optional(),
+        piiFiltering: z.boolean().optional()
       }),
       response: {
         200: z.object({

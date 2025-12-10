@@ -3,6 +3,7 @@ export type TAiMcpEndpoint = {
   name: string;
   description: string | null;
   status: string | null;
+  piiFiltering?: boolean;
   projectId: string;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +27,7 @@ export type TUpdateAiMcpEndpointDTO = {
   name?: string;
   description?: string;
   serverIds?: string[];
+  piiFiltering?: boolean;
 };
 
 export type TDeleteAiMcpEndpointDTO = {

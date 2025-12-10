@@ -124,6 +124,39 @@ export const aiMcpEndpointServiceFactory = ({
   authTokenService,
   userDAL
 }: TAiMcpEndpointServiceFactoryDep) => {
+  // PII filtering utility - redacts sensitive information
+  const applyPiiFiltering = (data: unknown): unknown => {
+    if (typeof data === "string") {
+      let filtered = data;
+
+      // Redact SSN (matches formats: 123-45-6789, 123456789)
+      filtered = filtered.replace(/\b\d{3}-?\d{2}-?\d{4}\b/g, "<REDACTED>");
+
+      // Redact Phone Numbers (matches various formats)
+      // Matches: (123) 456-7890, 123-456-7890, 123.456.7890, 1234567890, +1 123 456 7890
+      filtered = filtered.replace(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, "<REDACTED>");
+
+      // Redact Email Addresses
+      filtered = filtered.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "<REDACTED>");
+
+      return filtered;
+    }
+
+    if (Array.isArray(data)) {
+      return data.map((item) => applyPiiFiltering(item));
+    }
+
+    if (data && typeof data === "object") {
+      const filtered: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(data)) {
+        filtered[key] = applyPiiFiltering(value);
+      }
+      return filtered;
+    }
+
+    return data;
+  };
+
   const interactWithMcp = async ({ endpointId, userId }: TInteractWithMcpDTO) => {
     const appCfg = getConfig();
 
@@ -273,22 +306,28 @@ export const aiMcpEndpointServiceFactory = ({
       }
 
       try {
+        // Apply PII filtering to arguments if enabled
+        const filteredArgs = endpoint.piiFiltering ? applyPiiFiltering(args) : args;
+
         const result = await selectedMcpClient.client.callTool({
           name,
-          arguments: args
+          arguments: filteredArgs
         });
+
+        // Apply PII filtering to result if enabled
+        const filteredResult = endpoint.piiFiltering ? applyPiiFiltering(result) : result;
 
         await aiMcpActivityLogService.createActivityLog({
           endpointName: endpoint.name,
           serverName: selectedMcpClient.server.name,
           toolName: name,
           actor: user.email || "",
-          request: args,
-          response: result,
+          request: filteredArgs, // Log filtered args
+          response: filteredResult, // Log filtered response
           projectId: endpoint.projectId
         });
 
-        return result;
+        return filteredResult as Record<string, unknown>;
       } catch (error) {
         return {
           content: [
@@ -368,15 +407,22 @@ export const aiMcpEndpointServiceFactory = ({
     };
   };
 
-  const updateMcpEndpoint = async ({ endpointId, name, description, serverIds }: TUpdateAiMcpEndpointDTO) => {
+  const updateMcpEndpoint = async ({
+    endpointId,
+    name,
+    description,
+    serverIds,
+    piiFiltering
+  }: TUpdateAiMcpEndpointDTO) => {
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
     }
 
-    const updateData: { name?: string; description?: string } = {};
+    const updateData: { name?: string; description?: string; piiFiltering?: boolean } = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
+    if (piiFiltering !== undefined) updateData.piiFiltering = piiFiltering;
 
     let updatedEndpoint = endpoint;
     if (Object.keys(updateData).length > 0) {
