@@ -4,6 +4,7 @@ export * from "./access-approval-policies-bypassers";
 export * from "./access-approval-requests";
 export * from "./access-approval-requests-reviewers";
 export * from "./additional-privileges";
+export * from "./ai-mcp-activity-logs";
 export * from "./ai-mcp-endpoint-server-tools";
 export * from "./ai-mcp-endpoint-servers";
 export * from "./ai-mcp-endpoints";

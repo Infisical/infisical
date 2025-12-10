@@ -86,6 +86,20 @@ export async function up(knex: Knex): Promise<void> {
 
     await createOnUpdateTrigger(knex, TableName.AiMcpServerUserCredential);
   }
+
+  if (!(await knex.schema.hasTable(TableName.AiMcpActivityLog))) {
+    await knex.schema.createTable(TableName.AiMcpActivityLog, (t) => {
+      t.uuid("id", { primaryKey: true }).defaultTo(knex.fn.uuid());
+      t.string("projectId").notNullable();
+      t.string("endpointName").notNullable();
+      t.string("serverName").notNullable();
+      t.string("toolName").notNullable();
+      t.string("actor").notNullable();
+      t.jsonb("request").notNullable();
+      t.jsonb("response").notNullable();
+      t.timestamps(true, true, true);
+    });
+  }
 }
 
 export async function down(knex: Knex): Promise<void> {
@@ -102,4 +116,6 @@ export async function down(knex: Knex): Promise<void> {
 
   await dropOnUpdateTrigger(knex, TableName.AiMcpServer);
   await knex.schema.dropTableIfExists(TableName.AiMcpServer);
+
+  await knex.schema.dropTableIfExists(TableName.AiMcpActivityLog);
 }

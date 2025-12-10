@@ -17,7 +17,9 @@ import { AuthTokenType } from "@app/services/auth/auth-type";
 import { TAuthTokenServiceFactory } from "@app/services/auth-token/auth-token-service";
 import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
+import { TUserDALFactory } from "@app/services/user/user-dal";
 
+import { TAiMcpActivityLogServiceFactory } from "../ai-mcp-activity-log/ai-mcp-activity-log-service";
 import { TAiMcpServerDALFactory } from "../ai-mcp-server/ai-mcp-server-dal";
 import { AiMcpServerCredentialMode } from "../ai-mcp-server/ai-mcp-server-enum";
 import { TAiMcpServerServiceFactory } from "../ai-mcp-server/ai-mcp-server-service";
@@ -50,6 +52,7 @@ import {
 
 type TAiMcpEndpointServiceFactoryDep = {
   aiMcpEndpointDAL: TAiMcpEndpointDALFactory;
+  aiMcpActivityLogService: TAiMcpActivityLogServiceFactory;
   aiMcpEndpointServerDAL: TAiMcpEndpointServerDALFactory;
   aiMcpEndpointServerToolDAL: TAiMcpEndpointServerToolDALFactory;
   aiMcpServerDAL: TAiMcpServerDALFactory;
@@ -62,6 +65,7 @@ type TAiMcpEndpointServiceFactoryDep = {
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   authTokenService: Pick<TAuthTokenServiceFactory, "getUserTokenSessionById">;
+  userDAL: TUserDALFactory;
 };
 
 // OAuth schemas for parsing cached data
@@ -114,9 +118,11 @@ export const aiMcpEndpointServiceFactory = ({
   aiMcpServerToolDAL,
   aiMcpServerUserCredentialDAL,
   aiMcpServerService,
+  aiMcpActivityLogService,
   kmsService,
   keyStore,
-  authTokenService
+  authTokenService,
+  userDAL
 }: TAiMcpEndpointServiceFactoryDep) => {
   const interactWithMcp = async ({ endpointId, userId }: TInteractWithMcpDTO) => {
     const appCfg = getConfig();
@@ -125,6 +131,11 @@ export const aiMcpEndpointServiceFactory = ({
     const endpoint = await aiMcpEndpointDAL.findById(endpointId);
     if (!endpoint) {
       throw new NotFoundError({ message: `MCP endpoint with ID '${endpointId}' not found` });
+    }
+
+    const user = await userDAL.findById(userId);
+    if (!user) {
+      throw new NotFoundError({ message: `User with ID '${userId}' not found` });
     }
 
     // Get connected servers for this endpoint
@@ -265,6 +276,16 @@ export const aiMcpEndpointServiceFactory = ({
         const result = await selectedMcpClient.client.callTool({
           name,
           arguments: args
+        });
+
+        await aiMcpActivityLogService.createActivityLog({
+          endpointName: endpoint.name,
+          serverName: selectedMcpClient.server.name,
+          toolName: name,
+          actor: user.email || "",
+          request: args,
+          response: result,
+          projectId: endpoint.projectId
         });
 
         return result;

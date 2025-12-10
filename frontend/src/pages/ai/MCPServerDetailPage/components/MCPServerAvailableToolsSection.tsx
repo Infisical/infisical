@@ -33,7 +33,7 @@ export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
     <div className="flex w-full flex-col rounded-lg border border-mineshaft-600 bg-mineshaft-900">
       <div className="flex items-center justify-between border-b border-mineshaft-600 px-4 py-3">
         <div>
-          <h3 className="font-medium text-mineshaft-100">Available Tools</h3>
+          <h3 className="text-lg font-medium text-mineshaft-100">Available Tools</h3>
           <p className="text-sm text-bunker-300">
             Tools provided by this MCP server that can be enabled in endpoints
           </p>

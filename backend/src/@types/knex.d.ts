@@ -20,6 +20,9 @@ import {
   TAdditionalPrivileges,
   TAdditionalPrivilegesInsert,
   TAdditionalPrivilegesUpdate,
+  TAiMcpActivityLogs,
+  TAiMcpActivityLogsInsert,
+  TAiMcpActivityLogsUpdate,
   TAiMcpEndpoints,
   TAiMcpEndpointServers,
   TAiMcpEndpointServersInsert,
@@ -1518,6 +1521,11 @@ declare module "knex/types/tables" {
       TAiMcpServerUserCredentials,
       TAiMcpServerUserCredentialsInsert,
       TAiMcpServerUserCredentialsUpdate
+    >;
+    [TableName.AiMcpActivityLog]: KnexOriginal.CompositeTableType<
+      TAiMcpActivityLogs,
+      TAiMcpActivityLogsInsert,
+      TAiMcpActivityLogsUpdate
     >;
   }
 }

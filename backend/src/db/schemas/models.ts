@@ -231,7 +231,8 @@ export enum TableName {
   AiMcpServerUserCredential = "ai_mcp_server_user_credentials",
   AiMcpEndpoint = "ai_mcp_endpoints",
   AiMcpEndpointServer = "ai_mcp_endpoint_servers",
-  AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools"
+  AiMcpEndpointServerTool = "ai_mcp_endpoint_server_tools",
+  AiMcpActivityLog = "ai_mcp_activity_logs"
 }
 
 export type TImmutableDBKeys = "id" | "createdAt" | "updatedAt" | "commitId";

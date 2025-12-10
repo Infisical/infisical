@@ -6,12 +6,14 @@ import { ContentLoader, PageHeader, Tab, TabList, TabPanel, Tabs } from "@app/co
 import { useProject } from "@app/context";
 import { ProjectType } from "@app/hooks/api/projects/types";
 
+import { MCPActivityLogsTab } from "./components/MCPActivityLogsTab";
 import { MCPEndpointsTab } from "./components/MCPEndpointsTab";
 import { MCPServersTab } from "./components/MCPServersTab";
 
 enum TabSections {
   MCPEndpoints = "mcp-endpoints",
-  MCPServers = "mcp-servers"
+  MCPServers = "mcp-servers",
+  ActivityLogs = "activity-logs"
 }
 
 export const MCPPage = () => {
@@ -46,6 +48,9 @@ export const MCPPage = () => {
             <Tab variant="project" value={TabSections.MCPServers}>
               MCP Servers
             </Tab>
+            <Tab variant="project" value={TabSections.ActivityLogs}>
+              Activity Logs
+            </Tab>
           </TabList>
 
           <TabPanel value={TabSections.MCPEndpoints}>
@@ -54,6 +59,10 @@ export const MCPPage = () => {
 
           <TabPanel value={TabSections.MCPServers}>
             <MCPServersTab />
+          </TabPanel>
+
+          <TabPanel value={TabSections.ActivityLogs}>
+            <MCPActivityLogsTab />
           </TabPanel>
         </Tabs>
       </div>
