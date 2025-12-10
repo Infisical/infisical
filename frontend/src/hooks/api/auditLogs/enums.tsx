@@ -4,6 +4,8 @@ export enum ActorType {
   USER = "user",
   SERVICE = "service",
   IDENTITY = "identity",
+  ACME_PROFILE = "acmeProfile",
+  ACME_ACCOUNT = "acmeAccount",
   UNKNOWN_USER = "unknownUser"
 }
 
