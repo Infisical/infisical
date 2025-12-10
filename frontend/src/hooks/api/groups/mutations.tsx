@@ -5,7 +5,7 @@ import { apiRequest } from "@app/config/request";
 import { organizationKeys } from "../organization/queries";
 import { userKeys } from "../users/query-keys";
 import { groupKeys } from "./queries";
-import { TGroup, TGroupIdentity } from "./types";
+import { TGroup, TGroupMachineIdentity } from "./types";
 
 export const useCreateGroup = () => {
   const queryClient = useQueryClient();
@@ -136,8 +136,8 @@ export const useAddIdentityToGroup = () => {
       identityId: string;
       slug: string;
     }) => {
-      const { data } = await apiRequest.post<Pick<TGroupIdentity, "id" | "name">>(
-        `/api/v1/groups/${groupId}/identities/${identityId}`
+      const { data } = await apiRequest.post<Pick<TGroupMachineIdentity, "id" | "name">>(
+        `/api/v1/groups/${groupId}/machine-identities/${identityId}`
       );
 
       return data;
@@ -160,8 +160,8 @@ export const useRemoveIdentityFromGroup = () => {
       identityId: string;
       slug: string;
     }) => {
-      const { data } = await apiRequest.delete<Pick<TGroupIdentity, "id" | "name">>(
-        `/api/v1/groups/${groupId}/identities/${identityId}`
+      const { data } = await apiRequest.delete<Pick<TGroupMachineIdentity, "id" | "name">>(
+        `/api/v1/groups/${groupId}/machine-identities/${identityId}`
       );
 
       return data;

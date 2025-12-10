@@ -3,7 +3,7 @@ import { z } from "zod";
 import { GroupsSchema, IdentitiesSchema, OrgMembershipRole, ProjectsSchema, UsersSchema } from "@app/db/schemas";
 import {
   FilterMemberType,
-  FilterReturnedIdentities,
+  FilterReturnedMachineIdentities,
   FilterReturnedProjects,
   FilterReturnedUsers,
   GroupMembersOrderBy,
@@ -235,7 +235,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "GET",
-    url: "/:id/identities",
+    url: "/:id/machine-identities",
     config: {
       rateLimit: readLimit
     },
@@ -244,17 +244,20 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.LIST_IDENTITIES.id)
+        id: z.string().trim().describe(GROUPS.LIST_MACHINE_IDENTITIES.id)
       }),
       querystring: z.object({
-        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_IDENTITIES.offset),
-        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_IDENTITIES.limit),
-        search: z.string().trim().optional().describe(GROUPS.LIST_IDENTITIES.search),
-        filter: z.nativeEnum(FilterReturnedIdentities).optional().describe(GROUPS.LIST_IDENTITIES.filterIdentities)
+        offset: z.coerce.number().min(0).default(0).describe(GROUPS.LIST_MACHINE_IDENTITIES.offset),
+        limit: z.coerce.number().min(1).max(100).default(10).describe(GROUPS.LIST_MACHINE_IDENTITIES.limit),
+        search: z.string().trim().optional().describe(GROUPS.LIST_MACHINE_IDENTITIES.search),
+        filter: z
+          .nativeEnum(FilterReturnedMachineIdentities)
+          .optional()
+          .describe(GROUPS.LIST_MACHINE_IDENTITIES.filterMachineIdentities)
       }),
       response: {
         200: z.object({
-          identities: GroupIdentityResponseSchema.extend({
+          machineIdentities: GroupIdentityResponseSchema.extend({
             isPartOfGroup: z.boolean(),
             joinedGroupAt: z.date().nullable()
           }).array(),
@@ -263,7 +266,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       }
     },
     handler: async (req) => {
-      const { identities, totalCount } = await server.services.group.listGroupIdentities({
+      const { machineIdentities, totalCount } = await server.services.group.listGroupMachineIdentities({
         id: req.params.id,
         actor: req.permission.type,
         actorId: req.permission.id,
@@ -272,7 +275,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
         ...req.query
       });
 
-      return { identities, totalCount };
+      return { machineIdentities, totalCount };
     }
   });
 
@@ -311,20 +314,18 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       response: {
         200: z.object({
           members: z
-            .union([
-              UsersSchema.pick({
-                email: true,
-                username: true,
-                firstName: true,
-                lastName: true,
-                id: true
-              }).extend({
+            .discriminatedUnion("type", [
+              z.object({
+                id: z.string(),
                 joinedGroupAt: z.date().nullable(),
-                memberType: z.literal("user")
+                type: z.literal("user"),
+                user: UsersSchema.pick({ id: true, firstName: true, lastName: true, email: true, username: true })
               }),
-              GroupIdentityResponseSchema.extend({
+              z.object({
+                id: z.string(),
                 joinedGroupAt: z.date().nullable(),
-                memberType: z.literal("identity")
+                type: z.literal("machineIdentity"),
+                machineIdentity: GroupIdentityResponseSchema
               })
             ])
             .array(),
@@ -444,7 +445,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "POST",
-    url: "/:id/identities/:identityId",
+    url: "/:id/machine-identities/:machineIdentityId",
     config: {
       rateLimit: writeLimit
     },
@@ -453,24 +454,24 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.ADD_IDENTITY.id),
-        identityId: z.string().trim().describe(GROUPS.ADD_IDENTITY.identityId)
+        id: z.string().trim().describe(GROUPS.ADD_MACHINE_IDENTITY.id),
+        machineIdentityId: z.string().trim().describe(GROUPS.ADD_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
         200: GroupIdentityResponseSchema
       }
     },
     handler: async (req) => {
-      const identity = await server.services.group.addIdentityToGroup({
+      const machineIdentity = await server.services.group.addMachineIdentityToGroup({
         id: req.params.id,
-        identityId: req.params.identityId,
+        identityId: req.params.machineIdentityId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
 
-      return identity;
+      return machineIdentity;
     }
   });
 
@@ -514,7 +515,7 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
 
   server.route({
     method: "DELETE",
-    url: "/:id/identities/:identityId",
+    url: "/:id/machine-identities/:machineIdentityId",
     config: {
       rateLimit: writeLimit
     },
@@ -523,24 +524,24 @@ export const registerGroupRouter = async (server: FastifyZodProvider) => {
       hide: false,
       tags: [ApiDocsTags.Groups],
       params: z.object({
-        id: z.string().trim().describe(GROUPS.DELETE_IDENTITY.id),
-        identityId: z.string().trim().describe(GROUPS.DELETE_IDENTITY.identityId)
+        id: z.string().trim().describe(GROUPS.DELETE_MACHINE_IDENTITY.id),
+        machineIdentityId: z.string().trim().describe(GROUPS.DELETE_MACHINE_IDENTITY.machineIdentityId)
       }),
       response: {
         200: GroupIdentityResponseSchema
       }
     },
     handler: async (req) => {
-      const identity = await server.services.group.removeIdentityFromGroup({
+      const machineIdentity = await server.services.group.removeMachineIdentityFromGroup({
         id: req.params.id,
-        identityId: req.params.identityId,
+        identityId: req.params.machineIdentityId,
         actor: req.permission.type,
         actorId: req.permission.id,
         actorAuthMethod: req.permission.authMethod,
         actorOrgId: req.permission.orgId
       });
 
-      return identity;
+      return machineIdentity;
     }
   });
 };

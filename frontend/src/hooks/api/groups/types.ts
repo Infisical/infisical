@@ -42,6 +42,11 @@ export type TGroupWithProjectMemberships = {
   orgId: string;
 };
 
+export enum GroupMemberType {
+  USER = "user",
+  MACHINE_IDENTITY = "machineIdentity"
+}
+
 export type TGroupUser = {
   id: string;
   email: string;
@@ -51,18 +56,35 @@ export type TGroupUser = {
   joinedGroupAt: Date;
 };
 
-export enum GroupMemberType {
-  USER = "user",
-  IDENTITY = "identity"
-}
-
-export type TGroupMemberUser = TGroupUser & {
-  memberType: GroupMemberType.USER;
+export type TGroupMachineIdentity = {
+  id: string;
+  name: string;
+  joinedGroupAt: Date;
 };
 
-export type TGroupMemberIdentity = TGroupIdentity & {
-  memberType: GroupMemberType.IDENTITY;
+export type TGroupMemberUser = {
+  id: string;
+  joinedGroupAt: Date;
+  type: GroupMemberType.USER;
+  user: {
+    email: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+  };
 };
+
+export type TGroupMemberMachineIdentity = {
+  id: string;
+  joinedGroupAt: Date;
+  type: GroupMemberType.MACHINE_IDENTITY;
+  machineIdentity: {
+    id: string;
+    name: string;
+  };
+};
+
+export type TGroupMember = TGroupMemberUser | TGroupMemberMachineIdentity;
 
 export enum GroupMembersOrderBy {
   Name = "name"
@@ -70,16 +92,8 @@ export enum GroupMembersOrderBy {
 
 export enum FilterMemberType {
   USERS = "users",
-  IDENTITIES = "identities"
+  MACHINE_IDENTITIES = "machineIdentities"
 }
-
-export type TGroupMember = TGroupMemberUser | TGroupMemberIdentity;
-
-export type TGroupIdentity = {
-  id: string;
-  name: string;
-  joinedGroupAt: Date;
-};
 
 export type TGroupProject = {
   id: string;
@@ -95,9 +109,9 @@ export enum FilterReturnedUsers {
   NON_MEMBERS = "nonMembers"
 }
 
-export enum FilterReturnedIdentities {
-  ASSIGNED_IDENTITIES = "assignedIdentities",
-  NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
+export enum FilterReturnedMachineIdentities {
+  ASSIGNED_MACHINE_IDENTITIES = "assignedMachineIdentities",
+  NON_ASSIGNED_MACHINE_IDENTITIES = "nonAssignedMachineIdentities"
 }
 
 export enum FilterReturnedProjects {

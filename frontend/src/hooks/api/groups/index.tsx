@@ -9,7 +9,7 @@ export {
 } from "./mutations";
 export {
   useGetGroupById,
-  useListGroupIdentities,
+  useListGroupMachineIdentities,
   useListGroupProjects,
   useListGroupUsers
 } from "./queries";

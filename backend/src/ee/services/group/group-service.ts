@@ -27,16 +27,16 @@ import {
   removeUsersFromGroupByUserIds
 } from "./group-fns";
 import {
-  TAddIdentityToGroupDTO,
+  TAddMachineIdentityToGroupDTO,
   TAddUserToGroupDTO,
   TCreateGroupDTO,
   TDeleteGroupDTO,
   TGetGroupByIdDTO,
-  TListGroupIdentitiesDTO,
+  TListGroupMachineIdentitiesDTO,
   TListGroupMembersDTO,
   TListGroupProjectsDTO,
   TListGroupUsersDTO,
-  TRemoveIdentityFromGroupDTO,
+  TRemoveMachineIdentityFromGroupDTO,
   TRemoveUserFromGroupDTO,
   TUpdateGroupDTO
 } from "./group-types";
@@ -55,7 +55,7 @@ type TGroupServiceFactoryDep = {
     | "update"
     | "delete"
     | "findAllGroupPossibleUsers"
-    | "findAllGroupPossibleIdentities"
+    | "findAllGroupPossibleMachineIdentities"
     | "findAllGroupPossibleMembers"
     | "findById"
     | "transaction"
@@ -395,7 +395,7 @@ export const groupServiceFactory = ({
     return { users: members, totalCount };
   };
 
-  const listGroupIdentities = async ({
+  const listGroupMachineIdentities = async ({
     id,
     offset,
     limit,
@@ -405,7 +405,7 @@ export const groupServiceFactory = ({
     actorOrgId,
     search,
     filter
-  }: TListGroupIdentitiesDTO) => {
+  }: TListGroupMachineIdentitiesDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
     const { permission } = await permissionService.getOrgPermission({
@@ -428,7 +428,7 @@ export const groupServiceFactory = ({
         message: `Failed to find group with ID ${id}`
       });
 
-    const { identities, totalCount } = await groupDAL.findAllGroupPossibleIdentities({
+    const { machineIdentities, totalCount } = await groupDAL.findAllGroupPossibleMachineIdentities({
       orgId: group.orgId,
       groupId: group.id,
       offset,
@@ -437,7 +437,7 @@ export const groupServiceFactory = ({
       filter
     });
 
-    return { identities, totalCount };
+    return { machineIdentities, totalCount };
   };
 
   const listGroupMembers = async ({
@@ -618,14 +618,14 @@ export const groupServiceFactory = ({
     return users[0];
   };
 
-  const addIdentityToGroup = async ({
+  const addMachineIdentityToGroup = async ({
     id,
     identityId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TAddIdentityToGroupDTO) => {
+  }: TAddMachineIdentityToGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
     const { permission } = await permissionService.getOrgPermission({
@@ -772,14 +772,14 @@ export const groupServiceFactory = ({
     return users[0];
   };
 
-  const removeIdentityFromGroup = async ({
+  const removeMachineIdentityFromGroup = async ({
     id,
     identityId,
     actor,
     actorId,
     actorAuthMethod,
     actorOrgId
-  }: TRemoveIdentityFromGroupDTO) => {
+  }: TRemoveMachineIdentityFromGroupDTO) => {
     if (!actorOrgId) throw new UnauthorizedError({ message: "No organization ID provided in request" });
 
     const { permission } = await permissionService.getOrgPermission({
@@ -845,13 +845,13 @@ export const groupServiceFactory = ({
     updateGroup,
     deleteGroup,
     listGroupUsers,
-    listGroupIdentities,
+    listGroupMachineIdentities,
     listGroupMembers,
     listGroupProjects,
     addUserToGroup,
-    addIdentityToGroup,
+    addMachineIdentityToGroup,
     removeUserFromGroup,
-    removeIdentityFromGroup,
+    removeMachineIdentityFromGroup,
     getGroupById
   };
 };

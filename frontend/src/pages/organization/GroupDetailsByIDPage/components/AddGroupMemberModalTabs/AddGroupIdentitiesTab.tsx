@@ -18,8 +18,11 @@ import {
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
 import { useResetPageHelper } from "@app/hooks";
-import { useAddIdentityToGroup, useListGroupIdentities } from "@app/hooks/api";
-import { FilterReturnedIdentities, TGroupIdentity } from "@app/hooks/api/groups/types";
+import { useAddIdentityToGroup, useListGroupMachineIdentities } from "@app/hooks/api";
+import {
+  FilterReturnedMachineIdentities,
+  TGroupMachineIdentity
+} from "@app/hooks/api/groups/types";
 
 type Props = {
   groupId: string;
@@ -32,13 +35,13 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
   const [perPage, setPerPage] = useState(10);
 
   const offset = (page - 1) * perPage;
-  const { data, isPending } = useListGroupIdentities({
+  const { data, isPending } = useListGroupMachineIdentities({
     id: groupId,
     groupSlug,
     offset,
     limit: perPage,
     search,
-    filter: FilterReturnedIdentities.NON_ASSIGNED_IDENTITIES
+    filter: FilterReturnedMachineIdentities.NON_ASSIGNED_MACHINE_IDENTITIES
   });
 
   const { totalCount = 0 } = data ?? {};
@@ -84,7 +87,7 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
         <TBody>
           {isPending && <TableSkeleton columns={2} innerKey="group-identities" />}
           {!isPending &&
-            data?.identities?.map((identity: TGroupIdentity) => {
+            data?.machineIdentities?.map((identity: TGroupMachineIdentity) => {
               return (
                 <Tr className="items-center" key={`group-identity-${identity.id}`}>
                   <Td>
@@ -125,7 +128,7 @@ export const AddGroupIdentitiesTab = ({ groupId, groupSlug, search }: Props) => 
           onChangePerPage={(newPerPage) => setPerPage(newPerPage)}
         />
       )}
-      {!isPending && !data?.identities?.length && (
+      {!isPending && !data?.machineIdentities?.length && (
         <EmptyState
           title={
             search

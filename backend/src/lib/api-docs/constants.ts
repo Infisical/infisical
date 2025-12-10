@@ -106,23 +106,24 @@ export const GROUPS = {
     filterUsers:
       "Whether to filter the list of returned users. 'existingMembers' will only return existing users in the group, 'nonMembers' will only return users not in the group, undefined will return all users in the organization."
   },
-  LIST_IDENTITIES: {
+  LIST_MACHINE_IDENTITIES: {
     id: "The ID of the group to list identities for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th identity.",
     limit: "The number of identities to return.",
-    search: "The text string that identity name will be filtered by.",
-    filterIdentities:
-      "Whether to filter the list of returned identities. 'assignedIdentities' will only return identities assigned to the group, 'nonAssignedIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization."
+    search: "The text string that machine identity name will be filtered by.",
+    filterMachineIdentities:
+      "Whether to filter the list of returned identities. 'assignedMachineIdentities' will only return identities assigned to the group, 'nonAssignedMachineIdentities' will only return identities not assigned to the group, undefined will return all identities in the organization."
   },
   LIST_MEMBERS: {
     id: "The ID of the group to list members for.",
     offset: "The offset to start from. If you enter 10, it will start from the 10th member.",
     limit: "The number of members to return.",
-    search: "The text string that member email(in case of users) or name(in case of identities) will be filtered by.",
+    search:
+      "The text string that member email(in case of users) or name(in case of machine identities) will be filtered by.",
     orderBy: "The column to order members by.",
     orderDirection: "The direction to order members in.",
     memberTypeFilter:
-      "Filter members by type. Can be a single value ('users' or 'identities') or an array of values. If not specified, both users and identities will be returned."
+      "Filter members by type. Can be a single value ('users' or 'machineIdentities') or an array of values. If not specified, both users and machine identities will be returned."
   },
   LIST_PROJECTS: {
     id: "The ID of the group to list projects for.",
@@ -138,9 +139,9 @@ export const GROUPS = {
     id: "The ID of the group to add the user to.",
     username: "The username of the user to add to the group."
   },
-  ADD_IDENTITY: {
-    id: "The ID of the group to add the identity to.",
-    identityId: "The ID of the identity to add to the group."
+  ADD_MACHINE_IDENTITY: {
+    id: "The ID of the group to add the machine identity to.",
+    machineIdentityId: "The ID of the machine identity to add to the group."
   },
   GET_BY_ID: {
     id: "The ID of the group to fetch."
@@ -149,9 +150,9 @@ export const GROUPS = {
     id: "The ID of the group to remove the user from.",
     username: "The username of the user to remove from the group."
   },
-  DELETE_IDENTITY: {
-    id: "The ID of the group to remove the identity from.",
-    identityId: "The ID of the identity to remove from the group."
+  DELETE_MACHINE_IDENTITY: {
+    id: "The ID of the group to remove the machine identity from.",
+    machineIdentityId: "The ID of the machine identity to remove from the group."
   }
 } as const;
 

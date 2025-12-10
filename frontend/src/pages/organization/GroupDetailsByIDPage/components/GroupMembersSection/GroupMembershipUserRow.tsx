@@ -27,7 +27,11 @@ type Props = {
 };
 
 export const GroupMembershipUserRow = ({
-  user: { firstName, lastName, username, joinedGroupAt, email, id },
+  user: {
+    user: { firstName, lastName, email, username },
+    joinedGroupAt,
+    id
+  },
   handlePopUpOpen
 }: Props) => {
   const { currentOrg } = useOrganization();

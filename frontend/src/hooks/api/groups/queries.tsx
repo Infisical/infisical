@@ -5,12 +5,12 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "../generic/types";
 import {
   FilterMemberType,
-  FilterReturnedIdentities,
+  FilterReturnedMachineIdentities,
   FilterReturnedProjects,
   FilterReturnedUsers,
   GroupMembersOrderBy,
   TGroup,
-  TGroupIdentity,
+  TGroupMachineIdentity,
   TGroupMember,
   TGroupProject,
   TGroupUser
@@ -48,7 +48,7 @@ export const groupKeys = {
     offset: number;
     limit: number;
     search: string;
-    filter?: FilterReturnedIdentities;
+    filter?: FilterReturnedMachineIdentities;
   }) =>
     [...groupKeys.forGroupIdentitiesMemberships(slug), { offset, limit, search, filter }] as const,
   allGroupMembers: () => ["group-members"] as const,
@@ -214,7 +214,7 @@ export const useListGroupMembers = ({
   });
 };
 
-export const useListGroupIdentities = ({
+export const useListGroupMachineIdentities = ({
   id,
   groupSlug,
   offset = 0,
@@ -227,7 +227,7 @@ export const useListGroupIdentities = ({
   offset: number;
   limit: number;
   search: string;
-  filter?: FilterReturnedIdentities;
+  filter?: FilterReturnedMachineIdentities;
 }) => {
   return useQuery({
     queryKey: groupKeys.specificGroupIdentitiesMemberships({
@@ -247,12 +247,12 @@ export const useListGroupIdentities = ({
         ...(filter && { filter })
       });
 
-      const { data } = await apiRequest.get<{ identities: TGroupIdentity[]; totalCount: number }>(
-        `/api/v1/groups/${id}/identities`,
-        {
-          params
-        }
-      );
+      const { data } = await apiRequest.get<{
+        machineIdentities: TGroupMachineIdentity[];
+        totalCount: number;
+      }>(`/api/v1/groups/${id}/machine-identities`, {
+        params
+      });
 
       return data;
     }

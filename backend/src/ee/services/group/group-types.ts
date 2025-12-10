@@ -46,12 +46,12 @@ export type TListGroupUsersDTO = {
   filter?: FilterReturnedUsers;
 } & TGenericPermission;
 
-export type TListGroupIdentitiesDTO = {
+export type TListGroupMachineIdentitiesDTO = {
   id: string;
   offset: number;
   limit: number;
   search?: string;
-  filter?: FilterReturnedIdentities;
+  filter?: FilterReturnedMachineIdentities;
 } & TGenericPermission;
 
 export type TListGroupMembersDTO = {
@@ -83,7 +83,7 @@ export type TAddUserToGroupDTO = {
   username: string;
 } & TGenericPermission;
 
-export type TAddIdentityToGroupDTO = {
+export type TAddMachineIdentityToGroupDTO = {
   id: string;
   identityId: string;
 } & TGenericPermission;
@@ -93,7 +93,7 @@ export type TRemoveUserFromGroupDTO = {
   username: string;
 } & TGenericPermission;
 
-export type TRemoveIdentityFromGroupDTO = {
+export type TRemoveMachineIdentityFromGroupDTO = {
   id: string;
   identityId: string;
 } & TGenericPermission;
@@ -170,9 +170,9 @@ export enum FilterReturnedUsers {
   NON_MEMBERS = "nonMembers"
 }
 
-export enum FilterReturnedIdentities {
-  ASSIGNED_IDENTITIES = "assignedIdentities",
-  NON_ASSIGNED_IDENTITIES = "nonAssignedIdentities"
+export enum FilterReturnedMachineIdentities {
+  ASSIGNED_MACHINE_IDENTITIES = "assignedMachineIdentities",
+  NON_ASSIGNED_MACHINE_IDENTITIES = "nonAssignedMachineIdentities"
 }
 
 export enum FilterReturnedProjects {
@@ -190,5 +190,5 @@ export enum GroupMembersOrderBy {
 
 export enum FilterMemberType {
   USERS = "users",
-  IDENTITIES = "identities"
+  MACHINE_IDENTITIES = "machineIdentities"
 }

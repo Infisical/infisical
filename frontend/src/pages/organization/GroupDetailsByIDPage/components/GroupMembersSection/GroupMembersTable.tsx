@@ -117,8 +117,8 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
     },
     {
       icon: <HardDriveIcon size={16} />,
-      label: "Identities",
-      value: FilterMemberType.IDENTITIES
+      label: "Machine Identities",
+      value: FilterMemberType.MACHINE_IDENTITIES
     }
   ];
 
@@ -138,7 +138,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
               variant="plain"
               size="sm"
               className={twMerge(
-                "flex h-10 w-11 items-center justify-center overflow-hidden border border-mineshaft-600 bg-mineshaft-800 p-0 transition-all hover:border-primary/60 hover:bg-primary/10",
+                "border-mineshaft-600 bg-mineshaft-800 hover:border-primary/60 hover:bg-primary/10 flex h-10 w-11 items-center justify-center overflow-hidden border p-0 transition-all",
                 memberTypeFilter.length > 0 && "border-primary/50 text-primary"
               )}
             >
@@ -147,7 +147,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
           </DropdownMenuTrigger>
           <DropdownMenuContent
             sideOffset={2}
-            className="max-h-[70vh] thin-scrollbar overflow-y-auto"
+            className="thin-scrollbar max-h-[70vh] overflow-y-auto"
             align="end"
           >
             <DropdownMenuLabel>Filter by Member Type</DropdownMenuLabel>
@@ -209,7 +209,7 @@ export const GroupMembersTable = ({ groupId, groupSlug, handlePopUpOpen }: Props
             {isPending && <TableSkeleton columns={4} innerKey="group-user-memberships" />}
             {!isPending &&
               groupMemberships?.members?.map((userGroupMembership) => {
-                return userGroupMembership.memberType === GroupMemberType.USER ? (
+                return userGroupMembership.type === GroupMemberType.USER ? (
                   <GroupMembershipUserRow
                     key={`user-group-membership-${userGroupMembership.id}`}
                     user={userGroupMembership}

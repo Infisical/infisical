@@ -22,7 +22,11 @@ type Props = {
 };
 
 export const GroupMembershipUserRow = ({
-  user: { firstName, lastName, joinedGroupAt, email, id },
+  user: {
+    user: { firstName, lastName, email },
+    joinedGroupAt,
+    id
+  },
   onAssumePrivileges
 }: Props) => {
   return (

@@ -14,11 +14,11 @@ import {
   Tr
 } from "@app/components/v2";
 import { OrgPermissionGroupActions, OrgPermissionSubjects } from "@app/context";
-import { GroupMemberType, TGroupMemberIdentity } from "@app/hooks/api/groups/types";
+import { GroupMemberType, TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
 import { UsePopUpState } from "@app/hooks/usePopUp";
 
 type Props = {
-  identity: TGroupMemberIdentity;
+  identity: TGroupMemberMachineIdentity;
   handlePopUpOpen: (
     popUpName: keyof UsePopUpState<["removeMemberFromGroup"]>,
     data?: object
@@ -26,7 +26,11 @@ type Props = {
 };
 
 export const GroupMembershipIdentityRow = ({
-  identity: { name, joinedGroupAt, id },
+  identity: {
+    machineIdentity: { name },
+    joinedGroupAt,
+    id
+  },
   handlePopUpOpen
 }: Props) => {
   return (
@@ -64,7 +68,7 @@ export const GroupMembershipIdentityRow = ({
                         icon={<FontAwesomeIcon icon={faUserMinus} />}
                         onClick={() =>
                           handlePopUpOpen("removeMemberFromGroup", {
-                            memberType: GroupMemberType.IDENTITY,
+                            memberType: GroupMemberType.MACHINE_IDENTITY,
                             identityId: id,
                             name
                           })

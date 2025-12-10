@@ -14,15 +14,19 @@ import {
   Tr
 } from "@app/components/v2";
 import { ProjectPermissionIdentityActions, ProjectPermissionSub } from "@app/context";
-import { TGroupMemberIdentity } from "@app/hooks/api/groups/types";
+import { TGroupMemberMachineIdentity } from "@app/hooks/api/groups/types";
 
 type Props = {
-  identity: TGroupMemberIdentity;
+  identity: TGroupMemberMachineIdentity;
   onAssumePrivileges: (identityId: string) => void;
 };
 
 export const GroupMembershipIdentityRow = ({
-  identity: { name, joinedGroupAt, id },
+  identity: {
+    machineIdentity: { name },
+    joinedGroupAt,
+    id
+  },
   onAssumePrivileges
 }: Props) => {
   return (
