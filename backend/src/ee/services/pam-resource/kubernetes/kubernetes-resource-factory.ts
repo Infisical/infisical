@@ -51,7 +51,8 @@ export const executeWithGateway = async <T>(
   }
   const httpsAgent = new https.Agent({
     ca: connectionDetails.sslCertificate,
-    rejectUnauthorized: connectionDetails.sslRejectUnauthorized
+    rejectUnauthorized: connectionDetails.sslRejectUnauthorized,
+    servername: targetHost
   });
   return withGatewayV2Proxy(
     async (proxyPort) => {
