@@ -78,7 +78,8 @@ export type TCreateAuditLogDTO = {
     | ScimClientActor
     | PlatformActor
     | UnknownUserActor
-    | KmipClientActor;
+    | KmipClientActor
+    | AcmeProfileActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -574,7 +575,11 @@ export enum EventType {
   APPROVAL_REQUEST_CANCEL = "approval-request-cancel",
   APPROVAL_REQUEST_GRANT_LIST = "approval-request-grant-list",
   APPROVAL_REQUEST_GRANT_GET = "approval-request-grant-get",
-  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke"
+  APPROVAL_REQUEST_GRANT_REVOKE = "approval-request-grant-revoke",
+
+  // PKI ACME
+  CREATE_ACME_ACCOUNT = "create-acme-account",
+  RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -615,6 +620,10 @@ interface KmipClientActorMetadata {
   name: string;
 }
 
+interface AcmeProfileActorMetadata {
+  profileId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -652,7 +661,19 @@ export interface ScimClientActor {
   metadata: ScimClientActorMetadata;
 }
 
-export type Actor = UserActor | ServiceActor | IdentityActor | ScimClientActor | PlatformActor | KmipClientActor;
+export interface AcmeProfileActor {
+  type: ActorType.ACME_PROFILE;
+  metadata: AcmeProfileActorMetadata;
+}
+
+export type Actor =
+  | UserActor
+  | ServiceActor
+  | IdentityActor
+  | ScimClientActor
+  | PlatformActor
+  | KmipClientActor
+  | AcmeProfileActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;
@@ -4368,6 +4389,23 @@ interface ApprovalRequestGrantRevokeEvent {
   };
 }
 
+interface CreateAcmeAccountEvent {
+  type: EventType.CREATE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+    emails?: string[];
+  };
+}
+
+interface RetrieveAcmeAccountEvent {
+  type: EventType.RETRIEVE_ACME_ACCOUNT;
+  metadata: {
+    accountId: string;
+    publicKeyThumbprint: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4768,4 +4806,6 @@ export type Event =
   | ApprovalRequestCancelEvent
   | ApprovalRequestGrantListEvent
   | ApprovalRequestGrantGetEvent
-  | ApprovalRequestGrantRevokeEvent;
+  | ApprovalRequestGrantRevokeEvent
+  | CreateAcmeAccountEvent
+  | RetrieveAcmeAccountEvent;

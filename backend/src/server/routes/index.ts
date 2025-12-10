@@ -2332,7 +2332,8 @@ export const registerRoutes = async (
     certificateV3Service,
     certificateTemplateV2Service,
     acmeChallengeService,
-    pkiAcmeQueueService
+    pkiAcmeQueueService,
+    auditLogService
   });
 
   const pkiSubscriberService = pkiSubscriberServiceFactory({

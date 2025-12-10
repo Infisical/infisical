@@ -47,6 +47,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
@@ -136,6 +137,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -159,7 +161,8 @@ export const pkiAcmeServiceFactory = ({
   certificateV3Service,
   certificateTemplateV2Service,
   acmeChallengeService,
-  pkiAcmeQueueService
+  pkiAcmeQueueService,
+  auditLogService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -446,6 +449,23 @@ export const pkiAcmeServiceFactory = ({
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
     if (existingAccount) {
+      await auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.ACME_PROFILE,
+          metadata: {
+            profileId: profile.id
+          }
+        },
+        event: {
+          type: EventType.RETRIEVE_ACME_ACCOUNT,
+          metadata: {
+            accountId: existingAccount.id,
+            publicKeyThumbprint
+          }
+        }
+      });
+
       return {
         status: 200,
         body: {
@@ -518,7 +538,25 @@ export const pkiAcmeServiceFactory = ({
       publicKeyThumbprint,
       emails: contact ?? []
     });
-    // TODO: create audit log here
+
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_PROFILE,
+        metadata: {
+          profileId: profile.id
+        }
+      },
+      event: {
+        type: EventType.CREATE_ACME_ACCOUNT,
+        metadata: {
+          accountId: newAccount.id,
+          publicKeyThumbprint: newAccount.publicKeyThumbprint,
+          emails: newAccount.emails
+        }
+      }
+    });
+
     return {
       status: 201,
       body: {
