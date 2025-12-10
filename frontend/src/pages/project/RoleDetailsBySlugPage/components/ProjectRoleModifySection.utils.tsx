@@ -2025,6 +2025,16 @@ export const ProjectTypePermissionSubjects: Record<
     ...SecretsManagerPermissionSubjects(),
     ...PamPermissionSubjects(true),
     [ProjectPermissionSub.AppConnections]: false
+  },
+  [ProjectType.AI]: {
+    ...SharedPermissionSubjects,
+    ...SecretsManagerPermissionSubjects(),
+    ...KmsPermissionSubjects(),
+    ...CertificateManagerPermissionSubjects(),
+    ...SshPermissionSubjects(),
+    ...SecretScanningSubject(),
+    ...PamPermissionSubjects(),
+    [ProjectPermissionSub.AppConnections]: false
   }
 };
 
@@ -2495,6 +2505,9 @@ export const RoleTemplates: Record<ProjectType, RoleTemplate[]> = {
         }
       ]
     },
+    projectManagerTemplate()
+  ],
+  [ProjectType.AI]: [
     projectManagerTemplate()
   ]
 };
