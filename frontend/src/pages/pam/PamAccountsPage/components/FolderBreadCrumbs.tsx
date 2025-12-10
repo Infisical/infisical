@@ -27,7 +27,7 @@ export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
   return (
     <div className="flex items-center space-x-2">
       <div
-        className="breadcrumb relative z-20 border-solid border-mineshaft-600 bg-mineshaft-800 py-1 pr-2 pl-5 text-sm hover:bg-mineshaft-600"
+        className="breadcrumb border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-600 relative z-20 border-solid py-1 pl-5 pr-2 text-sm"
         onClick={() => onFolderCrumbClick(0)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -48,7 +48,7 @@ export const FolderBreadCrumbs = ({ path = "/" }: Props) => {
             key={`path-${index + 1}`}
             className={`breadcrumb relative z-20 ${
               index + 1 === arr.length ? "cursor-default" : "cursor-pointer"
-            } border-solid border-mineshaft-600 py-1 pr-2 pl-5 text-sm text-mineshaft-200`}
+            } border-mineshaft-600 text-mineshaft-200 border-solid py-1 pl-5 pr-2 text-sm`}
             onClick={() => onFolderCrumbClick(index + 1)}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {

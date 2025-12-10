@@ -49,7 +49,7 @@ export const Pagination = ({
   return (
     <div
       className={twMerge(
-        "flex w-full items-center justify-end border-t border-mineshaft-600 bg-mineshaft-800 px-4 py-3 text-white",
+        "border-mineshaft-600 bg-mineshaft-800 flex w-full items-center justify-end border-t px-4 py-3 text-white",
         className
       )}
     >
@@ -94,7 +94,7 @@ export const Pagination = ({
           onClick={() => onChangePage(1)}
           isDisabled={!canGoFirst}
         >
-          <FontAwesomeIcon className="absolute top-1 left-2.5 text-xs" icon={faChevronLeft} />
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronLeft} />
           <FontAwesomeIcon className="text-xs" icon={faChevronLeft} />
         </IconButton>
         <IconButton
@@ -120,7 +120,7 @@ export const Pagination = ({
           onClick={() => onChangePage(upperLimit)}
           isDisabled={!canGoLast}
         >
-          <FontAwesomeIcon className="absolute top-1 left-2.5 text-xs" icon={faChevronRight} />
+          <FontAwesomeIcon className="absolute left-2.5 top-1 text-xs" icon={faChevronRight} />
           <FontAwesomeIcon className="text-xs" icon={faChevronRight} />
         </IconButton>
       </div>
