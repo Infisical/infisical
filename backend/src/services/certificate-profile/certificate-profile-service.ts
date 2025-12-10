@@ -403,7 +403,13 @@ export const certificateProfileServiceFactory = ({
         apiConfigId = apiConfig.id;
       } else if (data.enrollmentType === EnrollmentType.ACME && data.acmeConfig) {
         const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
-        const acmeConfig = await acmeEnrollmentConfigDAL.create({ encryptedEabSecret }, tx);
+        const acmeConfig = await acmeEnrollmentConfigDAL.create(
+          {
+            encryptedEabSecret,
+            skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false
+          },
+          tx
+        );
         acmeConfigId = acmeConfig.id;
       }
 
@@ -505,7 +511,7 @@ export const certificateProfileServiceFactory = ({
     const updatedData =
       finalIssuerType === IssuerType.SELF_SIGNED && existingProfile.caId ? { ...data, caId: null } : data;
 
-    const { estConfig, apiConfig, ...profileUpdateData } = updatedData;
+    const { estConfig, apiConfig, acmeConfig, ...profileUpdateData } = updatedData;
 
     const updatedProfile = await certificateProfileDAL.transaction(async (tx) => {
       if (estConfig && existingProfile.estConfigId) {
@@ -542,6 +548,16 @@ export const certificateProfileServiceFactory = ({
           {
             autoRenew: apiConfig.autoRenew,
             renewBeforeDays: apiConfig.renewBeforeDays
+          },
+          tx
+        );
+      }
+
+      if (acmeConfig && existingProfile.acmeConfigId) {
+        await acmeEnrollmentConfigDAL.updateById(
+          existingProfile.acmeConfigId,
+          {
+            skipDnsOwnershipVerification: acmeConfig.skipDnsOwnershipVerification ?? false
           },
           tx
         );

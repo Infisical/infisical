@@ -83,6 +83,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     id: string;
     directoryUrl: string;
     encryptedEabSecret?: Buffer;
+    skipDnsOwnershipVerification?: boolean;
   };
 };
 
