@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import { PamResource } from "../pam-resource-enums";
 import {
+  BaseCreateGatewayPamResourceSchema,
   BaseCreatePamAccountSchema,
-  BaseCreatePamResourceSchema,
   BasePamAccountSchema,
   BasePamAccountSchemaWithResource,
   BasePamResourceSchema,
-  BaseUpdatePamAccountSchema,
-  BaseUpdatePamResourceSchema
+  BaseUpdateGatewayPamResourceSchema,
+  BaseUpdatePamAccountSchema
 } from "../pam-resource-schemas";
 import { KubernetesAuthMethod } from "./kubernetes-resource-enums";
 
@@ -57,12 +57,12 @@ export const SanitizedKubernetesResourceSchema = BaseKubernetesResourceSchema.ex
     .optional()
 });
 
-export const CreateKubernetesResourceSchema = BaseCreatePamResourceSchema.extend({
+export const CreateKubernetesResourceSchema = BaseCreateGatewayPamResourceSchema.extend({
   connectionDetails: KubernetesResourceConnectionDetailsSchema,
   rotationAccountCredentials: KubernetesAccountCredentialsSchema.nullable().optional()
 });
 
-export const UpdateKubernetesResourceSchema = BaseUpdatePamResourceSchema.extend({
+export const UpdateKubernetesResourceSchema = BaseUpdateGatewayPamResourceSchema.extend({
   connectionDetails: KubernetesResourceConnectionDetailsSchema.optional(),
   rotationAccountCredentials: KubernetesAccountCredentialsSchema.nullable().optional()
 });

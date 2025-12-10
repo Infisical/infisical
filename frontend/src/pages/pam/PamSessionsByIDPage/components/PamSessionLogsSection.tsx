@@ -56,7 +56,7 @@ export const PamSessionLogsSection = ({ session }: Props) => {
           </div>
         </div>
       )}
-      {!hasLogs && (
+      {!hasLogs && !isAwsIamSession && (
         <div className="text-bunker-300 flex grow items-center justify-center">
           <div className="text-center">
             <div className="mb-2">Session logs are not yet available</div>
