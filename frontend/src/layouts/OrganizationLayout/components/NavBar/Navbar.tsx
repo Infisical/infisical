@@ -170,7 +170,7 @@ export const Navbar = () => {
   const [isOrgSelectOpen, setIsOrgSelectOpen] = useState(false);
 
   const location = useLocation();
-  const isBillingPage = /^\/organization[s]?\/[^/]+\/billing$/.test(location.pathname);
+  const isBillingPage = location.pathname === `/organizations/${currentOrg.id}/billing`;
 
   const isModalIntrusive = Boolean(!isBillingPage && isCardDeclinedMoreThan30Days);
 
