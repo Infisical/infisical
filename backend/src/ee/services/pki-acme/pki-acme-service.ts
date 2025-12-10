@@ -1005,6 +1005,24 @@ export const pkiAcmeServiceFactory = ({
 
     const certLeaf = certObj.toString("pem").trim().replace("\n", "\r\n");
     const certChain = certificateChain.trim().replace("\n", "\r\n");
+
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_ACCOUNT,
+        metadata: {
+          profileId,
+          accountId
+        }
+      },
+      event: {
+        type: EventType.DOWNLOAD_ACME_CERTIFICATE,
+        metadata: {
+          orderId
+        }
+      }
+    });
+
     return {
       status: 200,
       body:
@@ -1087,6 +1105,7 @@ export const pkiAcmeServiceFactory = ({
     authzId: string;
     challengeId: string;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
+    const profile = await validateAcmeProfile(profileId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
@@ -1094,6 +1113,23 @@ export const pkiAcmeServiceFactory = ({
     await acmeChallengeService.markChallengeAsReady(challengeId);
     await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_ACCOUNT,
+        metadata: {
+          profileId,
+          accountId
+        }
+      },
+      event: {
+        type: EventType.RESPOND_TO_ACME_CHALLENGE,
+        metadata: {
+          challengeId,
+          type: challenge.type
+        }
+      }
+    });
     return {
       status: 200,
       body: {

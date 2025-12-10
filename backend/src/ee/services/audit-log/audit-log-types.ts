@@ -49,7 +49,7 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
-import { AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
+import { AcmeChallengeType, AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
@@ -583,7 +583,9 @@ export enum EventType {
   CREATE_ACME_ACCOUNT = "create-acme-account",
   RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account",
   CREATE_ACME_ORDER = "create-acme-order",
-  FINALIZE_ACME_ORDER = "finalize-acme-order"
+  FINALIZE_ACME_ORDER = "finalize-acme-order",
+  DOWNLOAD_ACME_CERTIFICATE = "download-acme-certificate",
+  RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4439,6 +4441,20 @@ interface FinalizeAcmeOrderEvent {
   };
 }
 
+interface DownloadAcmeCertificateEvent {
+  type: EventType.DOWNLOAD_ACME_CERTIFICATE;
+  metadata: {
+    orderId: string;
+  };
+}
+
+interface RespondToAcmeChallengeEvent {
+  type: EventType.RESPOND_TO_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4843,4 +4859,6 @@ export type Event =
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
   | CreateAcmeOrderEvent
-  | FinalizeAcmeOrderEvent;
+  | FinalizeAcmeOrderEvent
+  | DownloadAcmeCertificateEvent
+  | RespondToAcmeChallengeEvent;
