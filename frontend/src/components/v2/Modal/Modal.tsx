@@ -9,6 +9,7 @@ import { IconButton } from "../IconButton";
 
 export type ModalContentProps = Omit<DialogPrimitive.DialogContentProps, "title"> & {
   title?: ReactNode;
+  titleClassName?: string;
   subTitle?: ReactNode;
   footerContent?: ReactNode;
   bodyClassName?: string;
@@ -23,6 +24,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
     {
       children,
       title,
+      titleClassName,
       subTitle,
       className,
       overlayClassName,
@@ -66,7 +68,7 @@ export const ModalContent = forwardRef<HTMLDivElement, ModalContentProps>(
           style={{ maxHeight: "90%" }}
         >
           {title && (
-            <DialogPrimitive.Title>
+            <DialogPrimitive.Title className={titleClassName}>
               <CardTitle subTitle={subTitle}>{title}</CardTitle>
             </DialogPrimitive.Title>
           )}

@@ -21,5 +21,6 @@ export {
   useGetOrgTrialUrl,
   useUpdateOrg,
   useUpdateOrgBillingDetails,
-  useUpgradePrivilegeSystem
+  useUpgradePrivilegeSystem,
+  useUpgradeProductToPro
 } from "./queries";
