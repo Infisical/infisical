@@ -50,6 +50,7 @@ import { WorkflowIntegration } from "@app/services/workflow-integration/workflow
 
 import { KmipPermission } from "../kmip/kmip-enum";
 import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
+import { AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -79,7 +80,8 @@ export type TCreateAuditLogDTO = {
     | PlatformActor
     | UnknownUserActor
     | KmipClientActor
-    | AcmeProfileActor;
+    | AcmeProfileActor
+    | AcmeAccountActor;
   orgId?: string;
   projectId?: string;
 } & BaseAuthData;
@@ -579,7 +581,8 @@ export enum EventType {
 
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
-  RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account"
+  RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account",
+  CREATE_ACME_ORDER = "create-acme-order"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -624,6 +627,11 @@ interface AcmeProfileActorMetadata {
   profileId: string;
 }
 
+interface AcmeAccountActorMetadata {
+  profileId: string;
+  accountId: string;
+}
+
 interface UnknownUserActorMetadata {}
 
 export interface UserActor {
@@ -664,6 +672,11 @@ export interface ScimClientActor {
 export interface AcmeProfileActor {
   type: ActorType.ACME_PROFILE;
   metadata: AcmeProfileActorMetadata;
+}
+
+export interface AcmeAccountActor {
+  type: ActorType.ACME_ACCOUNT;
+  metadata: AcmeAccountActorMetadata;
 }
 
 export type Actor =
@@ -4406,6 +4419,17 @@ interface RetrieveAcmeAccountEvent {
   };
 }
 
+interface CreateAcmeOrderEvent {
+  type: EventType.CREATE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    identifiers: Array<{
+      type: AcmeIdentifierType;
+      value: string;
+    }>;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4808,4 +4832,5 @@ export type Event =
   | ApprovalRequestGrantGetEvent
   | ApprovalRequestGrantRevokeEvent
   | CreateAcmeAccountEvent
-  | RetrieveAcmeAccountEvent;
+  | RetrieveAcmeAccountEvent
+  | CreateAcmeOrderEvent;

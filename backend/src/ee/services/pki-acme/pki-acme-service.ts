@@ -685,7 +685,26 @@ export const pkiAcmeServiceFactory = ({
         })),
         tx
       );
-      // TODO: create audit log here
+      await auditLogService.createAuditLog({
+        projectId: account.profileId,
+        actor: {
+          type: ActorType.ACME_ACCOUNT,
+          metadata: {
+            profileId: account.profileId,
+            accountId: account.id
+          }
+        },
+        event: {
+          type: EventType.CREATE_ACME_ORDER,
+          metadata: {
+            orderId: createdOrder.id,
+            identifiers: authorizations.map((auth) => ({
+              type: auth.identifierType as AcmeIdentifierType,
+              value: auth.identifierValue
+            }))
+          }
+        }
+      });
       return { ...createdOrder, authorizations, account };
     });
 
