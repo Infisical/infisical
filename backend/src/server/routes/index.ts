@@ -2303,7 +2303,8 @@ export const registerRoutes = async (
   });
 
   const acmeChallengeService = pkiAcmeChallengeServiceFactory({
-    acmeChallengeDAL
+    acmeChallengeDAL,
+    auditLogService
   });
 
   const pkiAcmeQueueService = await pkiAcmeQueueServiceFactory({
