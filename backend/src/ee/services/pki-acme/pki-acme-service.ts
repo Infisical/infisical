@@ -613,6 +613,7 @@ export const pkiAcmeServiceFactory = ({
     //       if not, we may be able to reject it early with an unsupportedIdentifier error.
 
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
+    const profile = await validateAcmeProfile(profileId);
     if (payload.identifiers.some((identifier) => identifier.type !== AcmeIdentifierType.DNS)) {
       throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
     }
@@ -686,7 +687,7 @@ export const pkiAcmeServiceFactory = ({
         tx
       );
       await auditLogService.createAuditLog({
-        projectId: account.profileId,
+        projectId: profile.projectId,
         actor: {
           type: ActorType.ACME_ACCOUNT,
           metadata: {
@@ -932,6 +933,23 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       order = updatedOrder;
+      await auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.ACME_ACCOUNT,
+          metadata: {
+            profileId,
+            accountId
+          }
+        },
+        event: {
+          type: EventType.FINALIZE_ACME_ORDER,
+          metadata: {
+            orderId: updatedOrder.id,
+            csr: updatedOrder.csr!
+          }
+        }
+      });
     } else if (order.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
     }

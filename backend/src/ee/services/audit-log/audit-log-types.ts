@@ -49,8 +49,8 @@ import { TWebhookPayloads } from "@app/services/webhook/webhook-types";
 import { WorkflowIntegration } from "@app/services/workflow-integration/workflow-integration-types";
 
 import { KmipPermission } from "../kmip/kmip-enum";
-import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 import { AcmeIdentifierType } from "../pki-acme/pki-acme-schemas";
+import { ApprovalStatus } from "../secret-approval-request/secret-approval-request-types";
 
 export type TListProjectAuditLogDTO = {
   filter: {
@@ -582,7 +582,8 @@ export enum EventType {
   // PKI ACME
   CREATE_ACME_ACCOUNT = "create-acme-account",
   RETRIEVE_ACME_ACCOUNT = "retrieve-acme-account",
-  CREATE_ACME_ORDER = "create-acme-order"
+  CREATE_ACME_ORDER = "create-acme-order",
+  FINALIZE_ACME_ORDER = "finalize-acme-order"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4430,6 +4431,14 @@ interface CreateAcmeOrderEvent {
   };
 }
 
+interface FinalizeAcmeOrderEvent {
+  type: EventType.FINALIZE_ACME_ORDER;
+  metadata: {
+    orderId: string;
+    csr: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4833,4 +4842,5 @@ export type Event =
   | ApprovalRequestGrantRevokeEvent
   | CreateAcmeAccountEvent
   | RetrieveAcmeAccountEvent
-  | CreateAcmeOrderEvent;
+  | CreateAcmeOrderEvent
+  | FinalizeAcmeOrderEvent;
