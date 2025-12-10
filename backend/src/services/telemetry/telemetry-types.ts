@@ -1,4 +1,6 @@
 import {
+  AcmeAccountActor,
+  AcmeProfileActor,
   IdentityActor,
   KmipClientActor,
   PlatformActor,
@@ -60,6 +62,8 @@ export type TSecretModifiedEvent = {
       | ScimClientActor
       | PlatformActor
       | UnknownUserActor
+      | AcmeAccountActor
+      | AcmeProfileActor
       | KmipClientActor;
   };
 };
