@@ -113,7 +113,7 @@ export const registerOctopusDeployConnectionRouter = async (server: FastifyZodPr
               name: z.string()
             })
             .array(),
-          tenantTags: z
+          roles: z
             .object({
               id: z.string(),
               name: z.string()

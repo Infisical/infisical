@@ -51,7 +51,7 @@ export type TOctopusDeployProject = {
 export type TOctopusDeployScopeValuesResponse = {
   ScopeValues: {
     Environments: { Id: string; Name: string }[];
-    TenantTags: { Id: string; Name: string }[];
+    Roles: { Id: string; Name: string }[];
     Machines: { Id: string; Name: string }[];
     Processes: { Id: string; Name: string }[];
     Actions: { Id: string; Name: string }[];
@@ -61,7 +61,7 @@ export type TOctopusDeployScopeValuesResponse = {
 
 export type TOctopusDeployScopeValues = {
   environments: { id: string; name: string }[];
-  tenantTags: { id: string; name: string }[];
+  roles: { id: string; name: string }[];
   machines: { id: string; name: string }[];
   processes: { id: string; name: string }[];
   actions: { id: string; name: string }[];

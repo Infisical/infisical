@@ -72,8 +72,11 @@ export const getOctopusDeploySpaces = async (
     }));
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const errorMessage = (error.response?.data as { error: { ErrorMessage: string } })?.error?.ErrorMessage;
+
       throw new BadRequestError({
-        message: `Failed to list Octopus Deploy spaces: ${error.message || "Unknown error"}`
+        message: `Failed to list Octopus Deploy spaces: ${errorMessage || "Unknown error"}`,
+        error: error.response?.data
       });
     }
 
@@ -107,8 +110,11 @@ export const getOctopusDeployProjects = async (
     }));
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const errorMessage = (error.response?.data as { error: { ErrorMessage: string } })?.error?.ErrorMessage;
+
       throw new BadRequestError({
-        message: `Failed to list Octopus Deploy projects: ${error.message || "Unknown error"}`
+        message: `Failed to list Octopus Deploy projects: ${errorMessage || "Unknown error"}`,
+        error: error.response?.data
       });
     }
 
@@ -146,9 +152,9 @@ export const getOctopusDeployScopeValues = async (
         id: environment.Id,
         name: environment.Name
       })),
-      tenantTags: ScopeValues.TenantTags.map((tenantTag) => ({
-        id: tenantTag.Id,
-        name: tenantTag.Name
+      roles: ScopeValues.Roles.map((role) => ({
+        id: role.Id,
+        name: role.Name
       })),
       machines: ScopeValues.Machines.map((machine) => ({
         id: machine.Id,
@@ -171,8 +177,11 @@ export const getOctopusDeployScopeValues = async (
     return scopeValues;
   } catch (error: unknown) {
     if (error instanceof AxiosError) {
+      const errorMessage = (error.response?.data as { error: { ErrorMessage: string } })?.error?.ErrorMessage;
+
       throw new BadRequestError({
-        message: `Failed to get Octopus Deploy scope values: ${error.message || "Unknown error"}`
+        message: `Failed to get Octopus Deploy scope values: ${errorMessage || "Unknown error"}`,
+        error: error.response?.data
       });
     }
 
