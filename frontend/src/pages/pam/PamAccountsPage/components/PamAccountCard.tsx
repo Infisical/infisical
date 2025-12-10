@@ -1,5 +1,6 @@
-import { PAM_RESOURCE_TYPE_MAP, TPamAccount } from "@app/hooks/api/pam";
 import { LogInIcon } from "lucide-react";
+
+import { PAM_RESOURCE_TYPE_MAP, TPamAccount } from "@app/hooks/api/pam";
 
 type Props = {
   account: TPamAccount;
@@ -17,10 +18,10 @@ export const PamAccountCard = ({ account, onAccess, accountPath }: Props) => {
       onClick={() => onAccess(account)}
       type="button"
       key={account.id}
-      className="border-mineshaft-600 bg-mineshaft-800 hover:bg-mineshaft-700 flex cursor-pointer flex-col overflow-clip rounded-sm border p-4 text-start transition-transform duration-100 hover:scale-[103%]"
+      className="flex cursor-pointer flex-col overflow-clip rounded-sm border border-mineshaft-600 bg-mineshaft-800 p-4 text-start transition-transform duration-100 hover:scale-[103%] hover:bg-mineshaft-700"
     >
       <div className="flex items-center gap-4">
-        <div className="border-mineshaft-500 bg-mineshaft-600 rounded-sm border p-1.5 shadow-inner">
+        <div className="rounded-sm border border-mineshaft-500 bg-mineshaft-600 p-1.5 shadow-inner">
           <img
             alt={resourceTypeName}
             src={`/images/integrations/${image}`}
@@ -29,8 +30,8 @@ export const PamAccountCard = ({ account, onAccess, accountPath }: Props) => {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex justify-between gap-2">
-            <p className="text-mineshaft-100 truncate text-lg font-medium">{name}</p>
-            <LogInIcon className="text-mineshaft-400 size-5" />
+            <p className="truncate text-lg font-medium text-mineshaft-100">{name}</p>
+            <LogInIcon className="size-5 text-mineshaft-400" />
           </div>
 
           <p
@@ -40,7 +41,7 @@ export const PamAccountCard = ({ account, onAccess, accountPath }: Props) => {
           </p>
         </div>
       </div>
-      <p className="text-mineshaft-400 mt-4 truncate text-sm">{description || "No description"}</p>
+      <p className="mt-4 truncate text-sm text-mineshaft-400">{description || "No description"}</p>
     </button>
   );
 };

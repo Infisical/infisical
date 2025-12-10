@@ -11,7 +11,7 @@ type Props = {
 
 export const AccountViewToggle = ({ value, onChange }: Props) => {
   return (
-    <div className="border-mineshaft-600 bg-mineshaft-800 flex gap-0.5 rounded-md border p-1">
+    <div className="flex gap-0.5 rounded-md border border-mineshaft-600 bg-mineshaft-800 p-1">
       <IconButton
         variant="outline_bg"
         onClick={() => {
@@ -21,7 +21,7 @@ export const AccountViewToggle = ({ value, onChange }: Props) => {
         size="xs"
         className={`${
           value === PamAccountView.Flat ? "bg-mineshaft-500" : "bg-transparent"
-        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
+        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
       >
         <FontAwesomeIcon icon={faBorderAll} />
       </IconButton>
@@ -34,7 +34,7 @@ export const AccountViewToggle = ({ value, onChange }: Props) => {
         size="xs"
         className={`${
           value === PamAccountView.Nested ? "bg-mineshaft-500" : "bg-transparent"
-        } hover:bg-mineshaft-600 min-w-[2.4rem] rounded border-none`}
+        } min-w-[2.4rem] rounded border-none hover:bg-mineshaft-600`}
       >
         <FontAwesomeIcon icon={faList} />
       </IconButton>
