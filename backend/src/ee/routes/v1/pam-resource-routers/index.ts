@@ -4,6 +4,11 @@ import {
   UpdateAwsIamResourceSchema
 } from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
 import {
+  CreateKubernetesResourceSchema,
+  SanitizedKubernetesResourceSchema,
+  UpdateKubernetesResourceSchema
+} from "@app/ee/services/pam-resource/kubernetes/kubernetes-resource-schemas";
+import {
   CreateMySQLResourceSchema,
   MySQLResourceSchema,
   UpdateMySQLResourceSchema
@@ -48,6 +53,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedSSHResourceSchema,
       createResourceSchema: CreateSSHResourceSchema,
       updateResourceSchema: UpdateSSHResourceSchema
+    });
+  },
+  [PamResource.Kubernetes]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.Kubernetes,
+      resourceResponseSchema: SanitizedKubernetesResourceSchema,
+      createResourceSchema: CreateKubernetesResourceSchema,
+      updateResourceSchema: UpdateKubernetesResourceSchema
     });
   },
   [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
