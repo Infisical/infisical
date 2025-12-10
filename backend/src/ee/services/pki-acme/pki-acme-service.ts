@@ -393,7 +393,7 @@ export const pkiAcmeServiceFactory = ({
           break;
         case CertificateRequestStatus.ISSUED:
           newStatus = AcmeOrderStatus.Valid;
-          newCertificateId = orderWithCertificateRequest.certificateRequest.certificateId;
+          newCertificateId = orderWithCertificateRequest.certificateRequest.certificateId ?? undefined;
           break;
         case CertificateRequestStatus.FAILED:
           newStatus = AcmeOrderStatus.Invalid;
