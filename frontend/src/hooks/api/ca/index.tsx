@@ -4,6 +4,7 @@ export {
   useCreateCertificate,
   useCreateCertificateV3,
   useDeleteCa,
+  useGenerateRootCaCertificate,
   useImportCaCertificate,
   useOrderCertificateWithProfile,
   useRenewCa,

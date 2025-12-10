@@ -129,6 +129,74 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
   });
 
   server.route({
+    method: "POST",
+    url: "/:caId/generate-certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Generate certificate for root CA",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.caId)
+      }),
+      body: z.object({
+        notBefore: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.notBefore),
+        notAfter: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.notAfter),
+        maxPathLength: z
+          .number()
+          .min(-1)
+          .default(-1)
+          .describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.maxPathLength)
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.certificate),
+          certificateChain: z
+            .string()
+            .trim()
+            .describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.certificateChain),
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_ROOT_CA_CERTIFICATE.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { certificate, certificateChain, serialNumber, ca } =
+        await server.services.internalCertificateAuthority.generateRootCaCertificate({
+          caId: req.params.caId,
+          notBefore: req.body.notBefore,
+          notAfter: req.body.notAfter,
+          maxPathLength: req.body.maxPathLength,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.ISSUE_CERT,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            serialNumber
+          }
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:caId/ca-certificates",
     config: {

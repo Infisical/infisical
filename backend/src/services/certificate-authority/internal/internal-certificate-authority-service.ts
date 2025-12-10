@@ -60,6 +60,7 @@ import { TInternalCertificateAuthorityDALFactory } from "./internal-certificate-
 import {
   TCreateCaDTO,
   TDeleteCaDTO,
+  TGenerateRootCaCertificateDTO,
   TGetCaCertDTO,
   TGetCaCertificateTemplatesDTO,
   TGetCaCertsDTO,
@@ -194,12 +195,16 @@ export const internalCertificateAuthorityServiceFactory = ({
     const keys = await crypto.nativeCrypto.subtle.generateKey(alg, true, ["sign", "verify"]);
 
     const newCa = await certificateAuthorityDAL.transaction(async (tx) => {
-      const notBeforeDate = notBefore ? new Date(notBefore) : new Date();
+      let notBeforeDate: Date | undefined;
+      if (notAfter) {
+        notBeforeDate = notBefore ? new Date(notBefore) : new Date();
+      }
 
       // if undefined, set [notAfterDate] to 10 years from now
-      const notAfterDate = notAfter
-        ? new Date(notAfter)
-        : new Date(new Date().setFullYear(new Date().getFullYear() + 10));
+      let notAfterDate: Date | undefined;
+      if (notAfter) {
+        notAfterDate = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
+      }
 
       const serialNumber = createSerialNumber();
 
@@ -207,7 +212,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         {
           projectId,
           name: name || slugify(`${(friendlyName || dn).slice(0, 16)}-${alphaNumericNanoId(8)}`),
-          status: type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
+          status: notAfter && type === InternalCaType.ROOT ? CaStatus.ACTIVE : CaStatus.PENDING_CERTIFICATE,
           enableDirectIssuance: false
         },
         tx
@@ -228,9 +233,11 @@ export const internalCertificateAuthorityServiceFactory = ({
           keyAlgorithm,
           ...(type === InternalCaType.ROOT && {
             maxPathLength,
-            notBefore: notBeforeDate,
-            notAfter: notAfterDate,
-            serialNumber
+            ...(notAfter && {
+              notBefore: notBeforeDate,
+              notAfter: notAfterDate,
+              serialNumber
+            })
           })
         },
         tx
@@ -263,7 +270,7 @@ export const internalCertificateAuthorityServiceFactory = ({
         tx
       );
 
-      if (type === InternalCaType.ROOT) {
+      if (type === InternalCaType.ROOT && notAfter) {
         // note: create self-signed cert only applicable for root CA
         const cert = await x509.X509CertificateGenerator.createSelfSigned({
           name: dn,
@@ -2007,6 +2014,150 @@ export const internalCertificateAuthorityServiceFactory = ({
     };
   };
 
+  const generateRootCaCertificate = async ({
+    caId,
+    notBefore,
+    notAfter,
+    maxPathLength,
+    actorId,
+    actorAuthMethod,
+    actor,
+    actorOrgId
+  }: TGenerateRootCaCertificateDTO) => {
+    const ca = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId);
+    if (!ca?.internalCa) throw new NotFoundError({ message: `CA with ID '${caId}' not found` });
+    if (ca.internalCa.type !== InternalCaType.ROOT) {
+      throw new BadRequestError({ message: "Certificate generation is only available for root CAs" });
+    }
+    if (ca.status === CaStatus.ACTIVE) {
+      throw new BadRequestError({ message: "CA already has an active certificate" });
+    }
+
+    const { permission } = await permissionService.getProjectPermission({
+      actor,
+      actorId,
+      projectId: ca.projectId,
+      actorAuthMethod,
+      actorOrgId,
+      actionProjectType: ActionProjectType.CertificateManager
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Edit,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: ca.name })
+    );
+
+    return certificateAuthorityDAL.transaction(async (tx) => {
+      const notBeforeDate = new Date(notBefore);
+      const notAfterDate = new Date(notAfter);
+      const serialNumber = createSerialNumber();
+
+      await internalCertificateAuthorityDAL.updateById(
+        ca.internalCa!.id,
+        {
+          notBefore: notBeforeDate,
+          notAfter: notAfterDate,
+          serialNumber,
+          ...(maxPathLength !== undefined && { maxPathLength })
+        },
+        tx
+      );
+
+      const certificateManagerKmsId = await getProjectKmsCertificateKeyId({
+        projectId: ca.projectId,
+        projectDAL,
+        kmsService
+      });
+      const kmsEncryptor = await kmsService.encryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+
+      const caSecret = await certificateAuthoritySecretDAL.findOne({ caId });
+      if (!caSecret) throw new NotFoundError({ message: "CA secret not found" });
+
+      const kmsDecryptor = await kmsService.decryptWithKmsKey({
+        kmsId: certificateManagerKmsId
+      });
+      const privateKeyBlob = await kmsDecryptor({ cipherTextBlob: caSecret.encryptedPrivateKey });
+      if (!ca.internalCa) throw new BadRequestError({ message: "CA internal configuration not found" });
+
+      const alg = keyAlgorithmToAlgCfg(ca.internalCa.keyAlgorithm as CertKeyAlgorithm);
+
+      const actualPrivateKey = await crypto.nativeCrypto.subtle.importKey("pkcs8", privateKeyBlob, alg, true, ["sign"]);
+
+      const skObj = crypto.nativeCrypto.createPrivateKey({ key: privateKeyBlob, format: "der", type: "pkcs8" });
+      const pkObj = crypto.nativeCrypto.createPublicKey(skObj);
+      const publicKeyBuffer = pkObj.export({ format: "der", type: "spki" });
+      const actualPublicKey = await crypto.nativeCrypto.subtle.importKey("spki", publicKeyBuffer, alg, true, [
+        "verify"
+      ]);
+
+      const cert = await x509.X509CertificateGenerator.createSelfSigned({
+        name: ca.internalCa.dn,
+        serialNumber,
+        notBefore: notBeforeDate,
+        notAfter: notAfterDate,
+        signingAlgorithm: alg,
+        keys: { privateKey: actualPrivateKey, publicKey: actualPublicKey },
+        extensions: [
+          new x509.BasicConstraintsExtension(
+            true,
+            maxPathLength === -1 || maxPathLength === null || maxPathLength === undefined
+              ? undefined
+              : Number(maxPathLength),
+            true
+          ),
+          // eslint-disable-next-line no-bitwise
+          new x509.KeyUsagesExtension(x509.KeyUsageFlags.keyCertSign | x509.KeyUsageFlags.cRLSign, true),
+          await x509.SubjectKeyIdentifierExtension.create(actualPublicKey)
+        ]
+      });
+
+      const { cipherTextBlob: encryptedCertificate } = await kmsEncryptor({
+        plainText: Buffer.from(new Uint8Array(cert.rawData))
+      });
+
+      const { cipherTextBlob: encryptedCertificateChain } = await kmsEncryptor({
+        plainText: Buffer.alloc(0)
+      });
+
+      const caCert = await certificateAuthorityCertDAL.create(
+        {
+          caId: ca.id,
+          encryptedCertificate,
+          encryptedCertificateChain,
+          version: 1,
+          caSecretId: caSecret.id
+        },
+        tx
+      );
+
+      await internalCertificateAuthorityDAL.updateById(
+        ca.internalCa.id,
+        {
+          activeCaCertId: caCert.id
+        },
+        tx
+      );
+
+      await certificateAuthorityDAL.updateById(
+        ca.id,
+        {
+          status: CaStatus.ACTIVE
+        },
+        tx
+      );
+
+      const updatedCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(ca.id, tx);
+
+      return {
+        certificate: cert.toString("pem"),
+        certificateChain: "",
+        serialNumber,
+        ca: expandInternalCa(updatedCa)
+      };
+    });
+  };
+
   return {
     createCa,
     getCaById,
@@ -2021,6 +2172,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     importCertToCa,
     issueCertFromCa,
     signCertFromCa,
-    getCaCertificateTemplates
+    getCaCertificateTemplates,
+    generateRootCaCertificate
   };
 };
