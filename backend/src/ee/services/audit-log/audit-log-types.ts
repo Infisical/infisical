@@ -585,7 +585,10 @@ export enum EventType {
   CREATE_ACME_ORDER = "create-acme-order",
   FINALIZE_ACME_ORDER = "finalize-acme-order",
   DOWNLOAD_ACME_CERTIFICATE = "download-acme-certificate",
-  RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge"
+  RESPOND_TO_ACME_CHALLENGE = "respond-to-acme-challenge",
+  PASS_ACME_CHALLENGE = "pass-acme-challenge",
+  ATTEMPT_ACME_CHALLENGE = "attempt-acme-challenge",
+  FAIL_ACME_CHALLENGE = "fail-acme-challenge"
 }
 
 export const filterableSecretEvents: EventType[] = [
@@ -4455,6 +4458,34 @@ interface RespondToAcmeChallengeEvent {
     type: AcmeChallengeType;
   };
 }
+interface PassedAcmeChallengeEvent {
+  type: EventType.PASS_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+  };
+}
+
+interface AttemptAcmeChallengeEvent {
+  type: EventType.ATTEMPT_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
+interface FailAcmeChallengeEvent {
+  type: EventType.FAIL_ACME_CHALLENGE;
+  metadata: {
+    challengeId: string;
+    type: AcmeChallengeType;
+    retryCount: number;
+    errorMessage: string;
+  };
+}
+
 export type Event =
   | CreateSubOrganizationEvent
   | UpdateSubOrganizationEvent
@@ -4861,4 +4892,7 @@ export type Event =
   | CreateAcmeOrderEvent
   | FinalizeAcmeOrderEvent
   | DownloadAcmeCertificateEvent
-  | RespondToAcmeChallengeEvent;
+  | RespondToAcmeChallengeEvent
+  | PassedAcmeChallengeEvent
+  | AttemptAcmeChallengeEvent
+  | FailAcmeChallengeEvent;
