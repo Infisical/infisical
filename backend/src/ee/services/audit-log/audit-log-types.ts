@@ -692,7 +692,8 @@ export type Actor =
   | ScimClientActor
   | PlatformActor
   | KmipClientActor
-  | AcmeProfileActor;
+  | AcmeProfileActor
+  | AcmeAccountActor;
 
 interface GetSecretsEvent {
   type: EventType.GET_SECRETS;

@@ -1126,7 +1126,7 @@ export const pkiAcmeServiceFactory = ({
         type: EventType.RESPOND_TO_ACME_CHALLENGE,
         metadata: {
           challengeId,
-          type: challenge.type
+          type: challenge.type as AcmeChallengeType
         }
       }
     });
