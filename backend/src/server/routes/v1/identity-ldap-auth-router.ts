@@ -21,6 +21,7 @@ import { getConfig } from "@app/lib/config/env";
 import { UnauthorizedError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
+import { slugSchema } from "@app/server/lib/schemas";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
 import { TIdentityTrustedIp } from "@app/services/identity/identity-types";
@@ -124,7 +125,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       body: z.object({
         identityId: z.string().trim().describe(LDAP_AUTH.LOGIN.identityId),
         username: z.string().describe(LDAP_AUTH.LOGIN.username),
-        password: z.string().describe(LDAP_AUTH.LOGIN.password)
+        password: z.string().describe(LDAP_AUTH.LOGIN.password),
+        subOrganizationName: slugSchema().optional().describe(LDAP_AUTH.LOGIN.subOrganizationName)
       }),
       response: {
         200: z.object({
@@ -163,7 +165,8 @@ export const registerIdentityLdapAuthRouter = async (server: FastifyZodProvider)
       const { identityId, user } = req.passportMachineIdentity;
 
       const { accessToken, identityLdapAuth, identity } = await server.services.identityLdapAuth.login({
-        identityId
+        identityId,
+        subOrganizationName: req.body.subOrganizationName
       });
 
       await server.services.auditLog.createAuditLog({

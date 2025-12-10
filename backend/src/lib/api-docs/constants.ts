@@ -170,10 +170,13 @@ export const IDENTITIES = {
   }
 } as const;
 
+const IDENTITY_AUTH_SUB_ORGANIZATION_NAME = "sub-organization name to scope the token to";
+
 export const UNIVERSAL_AUTH = {
   LOGIN: {
     clientId: "Your Machine Identity Client ID.",
-    clientSecret: "Your Machine Identity Client Secret."
+    clientSecret: "Your Machine Identity Client Secret.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -247,7 +250,8 @@ export const LDAP_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
     username: "The username of the LDAP user to login.",
-    password: "The password of the LDAP user to login."
+    password: "The password of the LDAP user to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     templateId: "The ID of the identity auth template to attach the configuration onto.",
@@ -312,7 +316,8 @@ export const ALICLOUD_AUTH = {
     Timestamp: "The timestamp of the request in UTC, formatted as 'YYYY-MM-DDTHH:mm:ssZ'.",
     SignatureVersion: "The signature version. For STS GetCallerIdentity, this should be '1.0'.",
     SignatureNonce: "A unique random string to prevent replay attacks.",
-    Signature: "The signature string calculated based on the request parameters and AccessKey Secret."
+    Signature: "The signature string calculated based on the request parameters and AccessKey Secret.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -340,7 +345,8 @@ export const ALICLOUD_AUTH = {
 
 export const TLS_CERT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -378,7 +384,8 @@ export const AWS_AUTH = {
       "The base64-encoded HTTP URL used in the signed request. Most likely, the base64-encoding of https://sts.amazonaws.com/.",
     iamRequestBody:
       "The base64-encoded body of the signed request. Most likely, the base64-encoding of Action=GetCallerIdentity&Version=2011-06-15.",
-    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request."
+    iamRequestHeaders: "The base64-encoded headers of the sts:GetCallerIdentity signed request.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -416,7 +423,8 @@ export const OCI_AUTH = {
   LOGIN: {
     identityId: "The ID of the machine identity to login.",
     userOcid: "The OCID of the user attempting login.",
-    headers: "The headers of the signed request."
+    headers: "The headers of the signed request.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -448,7 +456,8 @@ export const OCI_AUTH = {
 
 export const AZURE_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -482,7 +491,8 @@ export const AZURE_AUTH = {
 
 export const GCP_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -520,7 +530,8 @@ export const GCP_AUTH = {
 
 export const KUBERNETES_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -600,7 +611,8 @@ export const TOKEN_AUTH = {
   },
   CREATE_TOKEN: {
     identityId: "The ID of the machine identity to create the token for.",
-    name: "The name of the token to create."
+    name: "The name of the token to create.",
+    subOrganizationName: "The sub organization name to scope the token to."
   },
   UPDATE_TOKEN: {
     tokenId: "The ID of the token to update metadata for.",
@@ -613,7 +625,8 @@ export const TOKEN_AUTH = {
 
 export const OIDC_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -653,7 +666,8 @@ export const OIDC_AUTH = {
 
 export const JWT_AUTH = {
   LOGIN: {
-    identityId: "The ID of the machine identity to login."
+    identityId: "The ID of the machine identity to login.",
+    subOrganizationName: IDENTITY_AUTH_SUB_ORGANIZATION_NAME
   },
   ATTACH: {
     identityId: "The ID of the machine identity to attach the configuration onto.",
@@ -2860,6 +2874,12 @@ export const SecretRotations = {
     },
     REDIS_CREDENTIALS: {
       permissionScope: "The ACL permission scope to assign to the issued Redis users."
+    },
+    MONGODB_CREDENTIALS: {
+      username1:
+        "The username of the first MongoDB user to rotate passwords for. This user must already exist in your database.",
+      username2:
+        "The username of the second MongoDB user to rotate passwords for. This user must already exist in your database."
     }
   },
   SECRETS_MAPPING: {
@@ -2890,6 +2910,10 @@ export const SecretRotations = {
     OKTA_CLIENT_SECRET: {
       clientId: "The name of the secret that the client ID will be mapped to.",
       clientSecret: "The name of the secret that the rotated client secret will be mapped to."
+    },
+    MONGODB_CREDENTIALS: {
+      username: "The name of the secret that the active username will be mapped to.",
+      password: "The name of the secret that the generated password will be mapped to."
     }
   }
 };

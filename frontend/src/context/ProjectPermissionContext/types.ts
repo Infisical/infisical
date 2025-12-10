@@ -228,6 +228,16 @@ export enum ProjectPermissionPamSessionActions {
   // Terminate = "terminate"
 }
 
+export enum ProjectPermissionApprovalRequestActions {
+  Read = "read",
+  Create = "create"
+}
+
+export enum ProjectPermissionApprovalRequestGrantActions {
+  Read = "read",
+  Revoke = "revoke"
+}
+
 export type IdentityManagementSubjectFields = {
   identityId: string;
 };
@@ -339,7 +349,9 @@ export enum ProjectPermissionSub {
   PamFolders = "pam-folders",
   PamResources = "pam-resources",
   PamAccounts = "pam-accounts",
-  PamSessions = "pam-sessions"
+  PamSessions = "pam-sessions",
+  ApprovalRequests = "approval-requests",
+  ApprovalRequestGrants = "approval-request-grants"
 }
 
 export type SecretSubjectFields = {
@@ -577,6 +589,8 @@ export type ProjectPermissionSet =
         | (ForcedSubject<ProjectPermissionSub.PamAccounts> & PamAccountSubjectFields)
       )
     ]
-  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions];
+  | [ProjectPermissionPamSessionActions, ProjectPermissionSub.PamSessions]
+  | [ProjectPermissionApprovalRequestActions, ProjectPermissionSub.ApprovalRequests]
+  | [ProjectPermissionApprovalRequestGrantActions, ProjectPermissionSub.ApprovalRequestGrants];
 
 export type TProjectPermission = MongoAbility<ProjectPermissionSet>;

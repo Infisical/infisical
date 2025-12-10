@@ -84,7 +84,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.body.identityId,
-          projectMembershipId: req.body.projectId,
           projectId: req.body.projectId,
           slug: privilege.name
         }
@@ -168,7 +167,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: privilegeDoc.actorIdentityId as string,
-          projectMembershipId: privilegeDoc.projectId as string,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
@@ -222,7 +220,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: privilegeDoc.actorIdentityId as string,
-          projectMembershipId: privilegeDoc.projectId as string,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
@@ -276,7 +273,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: privilegeDoc.actorIdentityId as string,
-          projectMembershipId: privilegeDoc.projectId as string,
           projectId: privilegeDoc.projectId as string,
           slug: privilege.name
         }
@@ -339,7 +335,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privilege: {
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: privilege.projectId as string,
           projectId,
           slug: privilege.name
         }
@@ -391,7 +386,6 @@ export const registerIdentityProjectAdditionalPrivilegeRouter = async (server: F
         privileges: privileges.map((privilege) => ({
           ...privilege,
           identityId: req.query.identityId,
-          projectMembershipId: privilege.projectId as string,
           projectId: req.query.projectId,
           slug: privilege.name
         }))

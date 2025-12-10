@@ -17,7 +17,8 @@ export enum NotificationType {
   PROJECT_INVITATION = "project-invitation",
   SECRET_SYNC_FAILED = "secret-sync-failed",
   GATEWAY_HEALTH_ALERT = "gateway-health-alert",
-  RELAY_HEALTH_ALERT = "relay-health-alert"
+  RELAY_HEALTH_ALERT = "relay-health-alert",
+  APPROVAL_REQUIRED = "approval-required"
 }
 
 export interface TCreateUserNotificationDTO {

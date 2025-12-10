@@ -1,4 +1,9 @@
 import {
+  CreateAwsIamResourceSchema,
+  SanitizedAwsIamResourceSchema,
+  UpdateAwsIamResourceSchema
+} from "@app/ee/services/pam-resource/aws-iam/aws-iam-resource-schemas";
+import {
   CreateKubernetesResourceSchema,
   SanitizedKubernetesResourceSchema,
   UpdateKubernetesResourceSchema
@@ -57,6 +62,15 @@ export const PAM_RESOURCE_REGISTER_ROUTER_MAP: Record<PamResource, (server: Fast
       resourceResponseSchema: SanitizedKubernetesResourceSchema,
       createResourceSchema: CreateKubernetesResourceSchema,
       updateResourceSchema: UpdateKubernetesResourceSchema
+    });
+  },
+  [PamResource.AwsIam]: async (server: FastifyZodProvider) => {
+    registerPamResourceEndpoints({
+      server,
+      resourceType: PamResource.AwsIam,
+      resourceResponseSchema: SanitizedAwsIamResourceSchema,
+      createResourceSchema: CreateAwsIamResourceSchema,
+      updateResourceSchema: UpdateAwsIamResourceSchema
     });
   }
 };

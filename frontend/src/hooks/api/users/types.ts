@@ -78,6 +78,7 @@ export type TUserMembership = {
   scope: string;
   scopeOrgId: string;
   actorUserId: string;
+  actorGroupId: string;
 };
 
 export type TProjectMembership = {

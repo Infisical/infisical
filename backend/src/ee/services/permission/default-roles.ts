@@ -3,6 +3,8 @@ import { AbilityBuilder, createMongoAbility, MongoAbility } from "@casl/ability"
 import {
   ProjectPermissionActions,
   ProjectPermissionAppConnectionActions,
+  ProjectPermissionApprovalRequestActions,
+  ProjectPermissionApprovalRequestGrantActions,
   ProjectPermissionAuditLogsActions,
   ProjectPermissionCertificateActions,
   ProjectPermissionCertificateAuthorityActions,
@@ -339,6 +341,16 @@ const buildAdminPermissionRules = () => {
 
   can([ProjectPermissionPamSessionActions.Read], ProjectPermissionSub.PamSessions);
 
+  can(
+    [ProjectPermissionApprovalRequestActions.Read, ProjectPermissionApprovalRequestActions.Create],
+    ProjectPermissionSub.ApprovalRequests
+  );
+
+  can(
+    [ProjectPermissionApprovalRequestGrantActions.Read, ProjectPermissionApprovalRequestGrantActions.Revoke],
+    ProjectPermissionSub.ApprovalRequestGrants
+  );
+
   return rules;
 };
 
@@ -585,6 +597,8 @@ const buildMemberPermissionRules = () => {
     [ProjectPermissionPamAccountActions.Access, ProjectPermissionPamAccountActions.Read],
     ProjectPermissionSub.PamAccounts
   );
+
+  can([ProjectPermissionApprovalRequestActions.Create], ProjectPermissionSub.ApprovalRequests);
 
   return rules;
 };

@@ -624,7 +624,10 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                     secretValueHidden: z.boolean(),
                     secretPath: z.string().optional(),
                     secretMetadata: ResourceMetadataSchema.optional(),
-                    tags: SanitizedTagSchema.array().optional()
+                    tags: SanitizedTagSchema.array().optional(),
+                    reminder: RemindersSchema.extend({
+                      recipients: z.string().array()
+                    }).nullable()
                   })
                   .nullable()
                   .array()
@@ -743,6 +746,7 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 ReturnType<typeof server.services.secretRotationV2.getDashboardSecretRotations>
               >[number]["secrets"][number] & {
                 isEmpty: boolean;
+                reminder: Awaited<ReturnType<typeof server.services.reminder.getRemindersForDashboard>>[string] | null;
               }
             > | null)[];
           })[]
@@ -847,27 +851,38 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
         );
 
         if (remainingLimit > 0 && totalSecretRotationCount > adjustedOffset) {
-          secretRotations = (
-            await server.services.secretRotationV2.getDashboardSecretRotations(
-              {
-                projectId,
-                search,
-                orderBy,
-                orderDirection,
-                environments: [environment],
-                secretPath,
-                limit: remainingLimit,
-                offset: adjustedOffset
-              },
-              req.permission
-            )
-          ).map((rotation) => ({
+          const rawSecretRotations = await server.services.secretRotationV2.getDashboardSecretRotations(
+            {
+              projectId,
+              search,
+              orderBy,
+              orderDirection,
+              environments: [environment],
+              secretPath,
+              limit: remainingLimit,
+              offset: adjustedOffset
+            },
+            req.permission
+          );
+
+          const allRotationSecretIds = rawSecretRotations
+            .flatMap((rotation) => rotation.secrets)
+            .filter((secret) => Boolean(secret))
+            .map((secret) => secret.id);
+
+          const rotationReminders =
+            allRotationSecretIds.length > 0
+              ? await server.services.reminder.getRemindersForDashboard(allRotationSecretIds)
+              : {};
+
+          secretRotations = rawSecretRotations.map((rotation) => ({
             ...rotation,
             secrets: rotation.secrets.map((secret) =>
               secret
                 ? {
                     ...secret,
-                    isEmpty: !secret.secretValue
+                    isEmpty: !secret.secretValue,
+                    reminder: rotationReminders[secret.id] ?? null
                   }
                 : secret
             )
@@ -948,7 +963,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
             search,
             tagSlugs: tags,
             includeTagsInSearch: true,
-            includeMetadataInSearch: true
+            includeMetadataInSearch: true,
+            excludeRotatedSecrets: includeSecretRotations
           });
 
           if (remainingLimit > 0 && totalSecretCount > adjustedOffset) {
@@ -970,7 +986,8 @@ export const registerDashboardRouter = async (server: FastifyZodProvider) => {
                 offset: adjustedOffset,
                 tagSlugs: tags,
                 includeTagsInSearch: true,
-                includeMetadataInSearch: true
+                includeMetadataInSearch: true,
+                excludeRotatedSecrets: includeSecretRotations
               })
             ).secrets;
 

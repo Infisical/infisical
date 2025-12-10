@@ -23,18 +23,17 @@ export const PamAccessAccountModal = ({
   projectId,
   accountPath
 }: Props) => {
-  let fullAccountPath = account?.name;
-  if (accountPath) {
-    let path = accountPath;
-    if (path.startsWith("/")) path = path.slice(1);
-    fullAccountPath = `${path}/${account?.name}`;
-  }
+  const [duration, setDuration] = useState("4h");
 
   const { protocol, hostname, port } = window.location;
   const portSuffix = port && port !== "80" && port !== "443" ? `:${port}` : "";
   const siteURL = `${protocol}//${hostname}${portSuffix}`;
 
-  const [duration, setDuration] = useState("4h");
+  let fullAccountPath = account?.name ?? "";
+  if (accountPath) {
+    const path = accountPath.replace(/^\/+|\/+$/g, "");
+    fullAccountPath = `${path}/${account?.name ?? ""}`;
+  }
 
   const isDurationValid = useMemo(() => duration && ms(duration || "1s") > 0, [duration]);
 
@@ -91,7 +90,7 @@ export const PamAccessAccountModal = ({
       default:
         return "";
     }
-  }, [account, cliDuration]);
+  }, [account, fullAccountPath, projectId, cliDuration, siteURL]);
 
   if (!account) return null;
 

@@ -3,15 +3,19 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { KmsDataKey } from "@app/services/kms/kms-types";
 
 import { decryptAccountCredentials } from "../pam-account/pam-account-fns";
+import { getAwsIamResourceListItem } from "./aws-iam/aws-iam-resource-fns";
 import { getKubernetesResourceListItem } from "./kubernetes/kubernetes-resource-fns";
 import { getMySQLResourceListItem } from "./mysql/mysql-resource-fns";
 import { TPamResource, TPamResourceConnectionDetails } from "./pam-resource-types";
 import { getPostgresResourceListItem } from "./postgres/postgres-resource-fns";
 
 export const listResourceOptions = () => {
-  return [getPostgresResourceListItem(), getMySQLResourceListItem(), getKubernetesResourceListItem()].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  return [
+    getPostgresResourceListItem(),
+    getMySQLResourceListItem(),
+    getAwsIamResourceListItem(),
+    getKubernetesResourceListItem()
+  ].sort((a, b) => a.name.localeCompare(b.name));
 };
 
 // Resource
