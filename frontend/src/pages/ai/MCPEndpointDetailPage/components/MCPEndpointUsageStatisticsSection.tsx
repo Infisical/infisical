@@ -23,14 +23,14 @@ type StatCardProps = {
 
 const StatCard = ({ icon, label, value, subtitle, trend }: StatCardProps) => {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
       <div className="flex items-center gap-2 text-bunker-300">
         <FontAwesomeIcon icon={icon} className="text-sm" />
         <span className="text-xs tracking-wide uppercase">{label}</span>
       </div>
       <div className="flex flex-col">
-        <div className="text-3xl font-semibold text-mineshaft-100">{value}</div>
-        {subtitle && <div className="text-sm text-bunker-300">{subtitle}</div>}
+        <div className="text-2xl font-semibold text-mineshaft-100">{value}</div>
+        {subtitle && <div className="text-xs text-bunker-300">{subtitle}</div>}
         {trend && (
           <div className={`text-xs ${trend.value >= 0 ? "text-emerald-500" : "text-red-500"}`}>
             {trend.value >= 0 ? "+" : ""}
@@ -132,7 +132,7 @@ export const MCPEndpointUsageStatisticsSection = ({
       <div className="border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Usage Statistics</h3>
       </div>
-      <div className="grid grid-cols-3 gap-4 py-1">
+      <div className="grid grid-cols-3 gap-4">
         <StatCard
           icon={faChartLine}
           label="Total Requests"

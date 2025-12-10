@@ -48,53 +48,55 @@ export const MCPServerAvailableToolsSection = ({ serverId }: Props) => {
           Sync Tools
         </Button>
       </div>
-      <TableContainer>
-        <Table>
-          <THead>
-            <Tr>
-              <Th className="w-1/3">Tool Name</Th>
-              <Th>Description</Th>
-            </Tr>
-          </THead>
-          <TBody>
-            {isPending && (
+      <div className="p-4">
+        <TableContainer>
+          <Table>
+            <THead>
               <Tr>
-                <Td colSpan={2} className="text-center text-mineshaft-400">
-                  Loading tools...
-                </Td>
+                <Th className="w-1/3">Tool Name</Th>
+                <Th>Description</Th>
               </Tr>
-            )}
-            {!isPending && tools.length === 0 && (
-              <Tr>
-                <Td colSpan={2}>
-                  <EmptyState title="No tools available" className="py-8" />
-                </Td>
-              </Tr>
-            )}
-            {tools.map((tool) => (
-              <Tr key={tool.id} className="hover:bg-mineshaft-700">
-                <Td>
-                  <code className="rounded bg-mineshaft-700 px-2 py-1 font-mono text-sm text-mineshaft-200">
-                    {tool.name}
-                  </code>
-                </Td>
-                <Td className="max-w-md text-mineshaft-300">
-                  {tool.description ? (
-                    <Tooltip
-                      content={tool.description}
-                      className="max-h-96 max-w-lg overflow-y-auto"
-                    >
-                      <span className="line-clamp-2 cursor-help">{tool.description}</span>
-                    </Tooltip>
-                  ) : (
-                    "-"
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </TBody>
-        </Table>
-      </TableContainer>
+            </THead>
+            <TBody>
+              {isPending && (
+                <Tr>
+                  <Td colSpan={2} className="text-center text-mineshaft-400">
+                    Loading tools...
+                  </Td>
+                </Tr>
+              )}
+              {!isPending && tools.length === 0 && (
+                <Tr>
+                  <Td colSpan={2}>
+                    <EmptyState title="No tools available" className="py-8" />
+                  </Td>
+                </Tr>
+              )}
+              {tools.map((tool) => (
+                <Tr key={tool.id} className="hover:bg-mineshaft-700">
+                  <Td>
+                    <code className="rounded bg-mineshaft-700 px-2 py-1 font-mono text-sm text-mineshaft-200">
+                      {tool.name}
+                    </code>
+                  </Td>
+                  <Td className="max-w-md text-mineshaft-300">
+                    {tool.description ? (
+                      <Tooltip
+                        content={tool.description}
+                        className="max-h-96 max-w-lg overflow-y-auto"
+                      >
+                        <span className="line-clamp-2 cursor-help">{tool.description}</span>
+                      </Tooltip>
+                    ) : (
+                      "-"
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </TBody>
+          </Table>
+        </TableContainer>
+      </div>
     </div>
   );
 };

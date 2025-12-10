@@ -1,4 +1,4 @@
-import { GenericFieldLabel } from "@app/components/v2";
+import { Button, GenericFieldLabel } from "@app/components/v2";
 import { AiMcpServerCredentialMode, TAiMcpServer } from "@app/hooks/api";
 
 type Props = {
@@ -14,10 +14,18 @@ const getCredentialModeLabel = (mode: AiMcpServerCredentialMode) => {
 };
 
 export const MCPServerCredentialsSection = ({ server }: Props) => {
+  const handleManageCredentials = () => {
+    // TODO: Implement credential management modal
+    // Will handle re-authentication and credential removal
+  };
+
   return (
     <div className="flex w-full flex-col gap-3 rounded-lg border border-mineshaft-600 bg-mineshaft-900 px-4 py-3">
       <div className="flex items-center justify-between border-b border-mineshaft-400 pb-2">
         <h3 className="text-lg font-medium text-mineshaft-100">Credentials</h3>
+        <Button variant="outline_bg" size="xs" onClick={handleManageCredentials}>
+          Manage
+        </Button>
       </div>
       <div className="space-y-3">
         <GenericFieldLabel label="Credential Mode">

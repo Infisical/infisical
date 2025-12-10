@@ -8,12 +8,14 @@ const CREDENTIAL_MODE_OPTIONS = [
   {
     value: MCPServerCredentialMode.SHARED,
     label: "Shared Credentials",
-    description: "All users will authenticate as the same shared account"
+    description:
+      "Your credentials will be used by all connecting users - everyone will authenticate as you"
   },
   {
     value: MCPServerCredentialMode.PERSONAL,
     label: "Personal Credentials",
-    description: "Each user will authenticate with their own credentials"
+    description:
+      "Each connecting user must provide and authenticate with their own individual credentials"
   }
 ];
 
@@ -91,7 +93,8 @@ export const BasicInfoStep = () => {
               value={value}
               onValueChange={onChange}
               className="w-full"
-              placeholder="Select credential mode..."
+              position="popper"
+              dropdownContainerClassName="max-w-none"
             >
               {CREDENTIAL_MODE_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>

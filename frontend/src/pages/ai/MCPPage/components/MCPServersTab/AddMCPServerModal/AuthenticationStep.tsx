@@ -280,6 +280,8 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
               className="w-full"
               placeholder="Select authentication type..."
               isDisabled={isOAuthPending}
+              position="popper"
+              dropdownContainerClassName="max-w-none"
             >
               {AUTH_METHOD_OPTIONS.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
@@ -346,7 +348,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
       {authMethod === MCPServerAuthMethod.OAUTH && (
         <div className="mt-2 space-y-4">
           {/* Optional client credentials for servers without DCR support (like GitHub) */}
-          <div className="space-y-3 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-4">
+          <div className="space-y-4 rounded-md border border-mineshaft-600 bg-mineshaft-700/50 p-4">
             <p className="text-xs text-bunker-300">
               Optional: For MCP servers that don&apos;t support Dynamic Client Registration, enter
               your OAuth app credentials below.
@@ -361,7 +363,7 @@ export const AuthenticationStep = ({ onOAuthSuccess }: Props) => {
                   label="Client ID"
                   isError={Boolean(error)}
                   errorText={error?.message}
-                  className="mb-0"
+                  className="mb-2"
                 >
                   <Input
                     {...field}

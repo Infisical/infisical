@@ -107,7 +107,7 @@ export const getProjectLottieIcon = (type: ProjectType) => {
     [ProjectType.SSH]: "terminal",
     [ProjectType.SecretScanning]: "secret-scan",
     [ProjectType.PAM]: "groups",
-    [ProjectType.AI]: "user"
+    [ProjectType.AI]: "moving-block"
   };
   return titleConvert[type];
 };

@@ -412,43 +412,48 @@ export const McpEndpointFinalizePage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <Controller
-            control={control}
-            name="expireIn"
-            render={({ field, fieldState: { error } }) => (
-              <FormControl
-                label="Access Duration"
-                isError={Boolean(error)}
-                errorText={error?.message}
-                helperText="How long the access token should be valid (e.g., 1h, 7d, 30d)"
-              >
-                <Input {...field} placeholder="30d" />
-              </FormControl>
-            )}
-          />
+        {/* Only show authorization form after all servers are authenticated */}
+        {allServersAuthenticated && (
+          <>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <Controller
+                control={control}
+                name="expireIn"
+                render={({ field, fieldState: { error } }) => (
+                  <FormControl
+                    label="Access Duration"
+                    isError={Boolean(error)}
+                    errorText={error?.message}
+                    helperText="How long the access token should be valid (e.g., 1h, 7d, 30d)"
+                  >
+                    <Input {...field} placeholder="30d" />
+                  </FormControl>
+                )}
+              />
 
-          <div className="mt-6 flex gap-3">
-            <Button
-              type="submit"
-              className="flex-1"
-              isLoading={isSubmitting || isPending}
-              isDisabled={isSubmitting || isPending || !endpoint || !allServersAuthenticated}
-            >
-              Authorize
-            </Button>
-            <Link to="/">
-              <Button variant="outline_bg" colorSchema="secondary">
-                Cancel
-              </Button>
-            </Link>
-          </div>
-        </form>
+              <div className="mt-6 flex gap-3">
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  isLoading={isSubmitting || isPending}
+                  isDisabled={isSubmitting || isPending || !endpoint}
+                >
+                  Authorize
+                </Button>
+                <Link to="/">
+                  <Button variant="outline_bg" colorSchema="secondary">
+                    Cancel
+                  </Button>
+                </Link>
+              </div>
+            </form>
 
-        <p className="mt-6 text-center text-xs text-bunker-400">
-          By authorizing, you grant the external application access to interact with the tools
-          available through this MCP endpoint.
-        </p>
+            <p className="mt-6 text-center text-xs text-bunker-400">
+              By authorizing, you grant the external application access to interact with the tools
+              available through this MCP endpoint.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
