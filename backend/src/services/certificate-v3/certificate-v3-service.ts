@@ -420,6 +420,29 @@ const parseTtlToDays = (ttl: string): number => {
   }
 };
 
+const parseTtlToMs = (ttl: string): number => {
+  const regex = new RE2("^(\\d+)(s|m|h|d)$");
+  const match = regex.exec(ttl);
+
+  if (!match) throw new Error(`Invalid TTL format: ${ttl}`);
+
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+
+  switch (unit) {
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    case "d":
+      return value * 24 * 60 * 60 * 1000;
+    default:
+      throw new Error(`Unknown TTL unit: ${unit}`);
+  }
+};
+
 const generateSelfSignedCertificate = async ({
   certificateRequest,
   template,
@@ -1589,10 +1612,23 @@ export const certificateV3ServiceFactory = ({
         throw new NotFoundError({ message: "Certificate template not found for this profile" });
       }
 
-      const originalTtlInDays = Math.ceil(
-        (new Date(originalCert.notAfter).getTime() - new Date(originalCert.notBefore).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      const ttl = `${originalTtlInDays}d`;
+      const getSimpleTtl = (startDate: Date, endDate: Date): string => {
+        const diffMs = endDate.getTime() - startDate.getTime();
+
+        const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        if (days > 0) return `${days}d`;
+
+        const hours = Math.floor(diffMs / (1000 * 60 * 60));
+        if (hours > 0) return `${hours}h`;
+
+        const minutes = Math.floor(diffMs / (1000 * 60));
+        if (minutes > 0) return `${minutes}m`;
+
+        const seconds = Math.floor(diffMs / 1000);
+        return `${seconds}s`;
+      };
+
+      const ttl = getSimpleTtl(originalCert.notBefore, originalCert.notAfter);
 
       const certificateRequest = {
         commonName: originalCert.commonName || undefined,
@@ -1627,7 +1663,7 @@ export const certificateV3ServiceFactory = ({
       }
 
       const notBefore = new Date();
-      const notAfter = new Date(Date.now() + parseTtlToDays(ttl) * 24 * 60 * 60 * 1000);
+      const notAfter = new Date(Date.now() + parseTtlToMs(ttl));
 
       const finalRenewBeforeDays = profile ? calculateFinalRenewBeforeDays(profile, ttl, notAfter) : undefined;
 
