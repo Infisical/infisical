@@ -139,6 +139,22 @@ export const aiMcpEndpointServiceFactory = ({
       // Redact Email Addresses
       filtered = filtered.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, "<REDACTED>");
 
+      // Redact Passport Numbers (matches common formats)
+      // Matches: US (9 digits), international alphanumeric (e.g., AB1234567, P12345678)
+      filtered = filtered.replace(/\b[A-Z]{1,2}\d{6,9}\b/g, "<REDACTED>");
+      filtered = filtered.replace(/\bP\d{8}\b/g, "<REDACTED>");
+
+      // Redact Driver's License Numbers (matches common US state formats)
+      // Matches various state formats: alphanumeric combinations typically 6-20 characters
+      // Examples: CA: A1234567, TX: 12345678, NY: 123456789, FL: A123-456-78-901-0
+      filtered = filtered.replace(/\b[A-Z]{1,2}[-\s]?\d{6,8}\b/g, "<REDACTED>");
+      filtered = filtered.replace(/\b\d{7,9}\b/g, "<REDACTED>");
+      filtered = filtered.replace(/\b[A-Z]\d{3}-\d{3}-\d{2}-\d{3}-\d\b/g, "<REDACTED>");
+
+      // Redact State ID Numbers (similar patterns to driver's licenses)
+      // Matches alphanumeric state ID formats
+      filtered = filtered.replace(/\b[A-Z]{1,3}\d{5,12}\b/g, "<REDACTED>");
+
       return filtered;
     }
 
