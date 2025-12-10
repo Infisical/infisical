@@ -15,7 +15,7 @@ export const isOfflineLicenseKey = (licenseKey: string): boolean => {
 
     return "signature" in contents && "license" in contents;
   } catch (error) {
-    return true;
+    return false;
   }
 };
 
@@ -25,7 +25,7 @@ export const getLicenseKeyConfig = (
   const cfg = config || getConfig();
 
   if (!cfg) {
-    return { isValid: true };
+    return { isValid: false };
   }
 
   const licenseKey = cfg.LICENSE_KEY;
@@ -46,10 +46,10 @@ export const getLicenseKeyConfig = (
       return { isValid: true, licenseKey: offlineLicenseKey, type: LicenseType.Offline };
     }
 
-    return { isValid: true };
+    return { isValid: false };
   }
 
-  return { isValid: true };
+  return { isValid: false };
 };
 
 export const getDefaultOnPremFeatures = (): TFeatureSet => ({
@@ -64,56 +64,56 @@ export const getDefaultOnPremFeatures = (): TFeatureSet => ({
   environmentsUsed: 0,
   identityLimit: null,
   identitiesUsed: 0,
-  dynamicSecret: true,
+  dynamicSecret: false,
   secretVersioning: true,
-  pitRecovery: true,
-  ipAllowlisting: true,
-  rbac: true,
-  githubOrgSync: true,
-  customRateLimits: true,
-  subOrganization: true,
-  customAlerts: true,
-  secretAccessInsights: true,
-  auditLogs: true,
+  pitRecovery: false,
+  ipAllowlisting: false,
+  rbac: false,
+  githubOrgSync: false,
+  customRateLimits: false,
+  subOrganization: false,
+  customAlerts: false,
+  secretAccessInsights: false,
+  auditLogs: false,
   auditLogsRetentionDays: 0,
-  auditLogStreams: true,
+  auditLogStreams: false,
   auditLogStreamLimit: 3,
-  samlSSO: true,
-  enforceGoogleSSO: true,
-  hsm: true,
-  oidcSSO: true,
-  scim: true,
-  ldap: true,
-  groups: true,
+  samlSSO: false,
+  enforceGoogleSSO: false,
+  hsm: false,
+  oidcSSO: false,
+  scim: false,
+  ldap: false,
+  groups: false,
   status: null,
   trial_end: null,
   has_used_trial: true,
-  secretApproval: true,
-  secretRotation: true,
-  caCrl: true,
-  instanceUserManagement: true,
-  externalKms: true,
+  secretApproval: false,
+  secretRotation: false,
+  caCrl: false,
+  instanceUserManagement: false,
+  externalKms: false,
   rateLimits: {
     readLimit: 60,
     writeLimit: 200,
     secretsLimit: 40
   },
-  pkiEst: true,
-  pkiAcme: true,
-  enforceMfa: true,
-  projectTemplates: true,
-  kmip: true,
-  gateway: true,
-  sshHostGroups: true,
-  secretScanning: true,
-  enterpriseSecretSyncs: true,
-  enterpriseCertificateSyncs: true,
-  enterpriseAppConnections: true,
-  fips: true,
-  eventSubscriptions: true,
-  machineIdentityAuthTemplates: true,
-  pkiLegacyTemplates: true,
-  pam: true
+  pkiEst: false,
+  pkiAcme: false,
+  enforceMfa: false,
+  projectTemplates: false,
+  kmip: false,
+  gateway: false,
+  sshHostGroups: false,
+  secretScanning: false,
+  enterpriseSecretSyncs: false,
+  enterpriseCertificateSyncs: false,
+  enterpriseAppConnections: false,
+  fips: false,
+  eventSubscriptions: false,
+  machineIdentityAuthTemplates: false,
+  pkiLegacyTemplates: false,
+  pam: false
 });
 
 export const setupLicenseRequestWithStore = (
