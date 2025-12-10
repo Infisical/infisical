@@ -4,7 +4,7 @@ import { apiRequest } from "@app/config/request";
 import { OrderByDirection } from "@app/hooks/api/generic/types";
 
 import { TGroupOrgMembership } from "../groups/types";
-import { IntegrationAuth } from "../types";
+import { IntegrationAuth, SubscriptionProducts } from "../types";
 import {
   BillingDetails,
   Invoice,
@@ -24,9 +24,9 @@ import {
 export const organizationKeys = {
   getUserOrganizations: ["organization"] as const,
   getOrgPlanBillingInfo: (orgId: string) => [{ orgId }, "organization-plan-billing"] as const,
-  getOrgPlanTable: (orgId: string) => [{ orgId }, "organization-plan-table"] as const,
+  getOrgPlanTable: (orgId: string) => ["organization-plan-table", { orgId }] as const,
   getOrgPlansTable: (orgId: string, billingCycle: "monthly" | "yearly") =>
-    [{ orgId, billingCycle }, "organization-plans-table"] as const,
+    ["organization-plans-table", { orgId, billingCycle }] as const,
   getOrgBillingDetails: (orgId: string) => [{ orgId }, "organization-billing-details"] as const,
   getOrgPmtMethods: (orgId: string) => [{ orgId }, "organization-pmt-methods"] as const,
   getOrgTaxIds: (orgId: string) => [{ orgId }, "organization-tax-ids"] as const,
@@ -270,6 +270,27 @@ export const useUpdateOrgBillingDetails = () => {
     onSuccess(_, dto) {
       queryClient.invalidateQueries({
         queryKey: organizationKeys.getOrgBillingDetails(dto.organizationId)
+      });
+    }
+  });
+};
+
+export const useUpgradeProductToPro = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ product }: { product: SubscriptionProducts }) => {
+      const { data } = await apiRequest.post(
+        `/api/v1/organizations/upgrade-product-to-pro/${product}`
+      );
+
+      return data;
+    },
+    onSuccess() {
+      queryClient.invalidateQueries({
+        queryKey: ["organization-plan-table"]
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["plan"]
       });
     }
   });
