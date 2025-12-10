@@ -137,6 +137,7 @@ export const registerPamAccountRouter = async (server: FastifyZodProvider) => {
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Postgres) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.MySQL) }),
           GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.SSH) }),
+          GatewayAccessResponseSchema.extend({ resourceType: z.literal(PamResource.Kubernetes) }),
           // AWS IAM (no gateway, returns console URL)
           z.object({
             sessionId: z.string(),

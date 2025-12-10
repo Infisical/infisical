@@ -75,6 +75,9 @@ export const kubernetesResourceFactory: TPamResourceFactory<
   TKubernetesAccountCredentials
 > = (resourceType, connectionDetails, gatewayId, gatewayV2Service) => {
   const validateConnection = async () => {
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required" });
+    }
     try {
       await executeWithGateway(
         { connectionDetails, gatewayId, resourceType },
@@ -119,6 +122,9 @@ export const kubernetesResourceFactory: TPamResourceFactory<
   const validateAccountCredentials: TPamResourceFactoryValidateAccountCredentials<
     TKubernetesAccountCredentials
   > = async (credentials) => {
+    if (!gatewayId) {
+      throw new BadRequestError({ message: "Gateway ID is required" });
+    }
     try {
       await executeWithGateway(
         { connectionDetails, gatewayId, resourceType },

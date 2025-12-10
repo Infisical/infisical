@@ -705,6 +705,7 @@ export const pamAccountServiceFactory = ({
               port: portNumber
             };
           })();
+
     const gatewayConnectionDetails = await gatewayV2Service.getPAMConnectionDetails({
       gatewayId,
       duration,
@@ -742,7 +743,7 @@ export const pamAccountServiceFactory = ({
           })) as TSqlAccountCredentials;
 
           metadata = {
-            username: (credentials as TSqlAccountCredentials).username,
+            username: credentials.username,
             database: connectionCredentials.database,
             accountName: account.name,
             accountPath: folderPath
@@ -758,7 +759,7 @@ export const pamAccountServiceFactory = ({
           })) as TSSHAccountCredentials;
 
           metadata = {
-            username: (credentials as TSSHAccountCredentials).username
+            username: credentials.username
           };
         }
         break;
