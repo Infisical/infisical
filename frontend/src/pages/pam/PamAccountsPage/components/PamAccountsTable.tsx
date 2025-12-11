@@ -262,7 +262,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                   setAccountView(e);
 
                   // Reset perPage to appropriate default for the view
-                  const newPerPage = e === PamAccountView.Flat ? 16 : 10;
+                  const newPerPage = e === PamAccountView.Flat ? 12 : 10;
                   setPerPage(newPerPage);
                   setUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, newPerPage);
 
@@ -417,7 +417,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
       {accountView === PamAccountView.Nested && <FolderBreadCrumbs path={accountPath} />}
       {accountView === PamAccountView.Flat ? (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {filteredAccounts.map((account) => (
               <PamAccountCard
                 key={account.id}
@@ -434,7 +434,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
             perPage={perPage}
             onChangePage={(newPage) => setPage(newPage)}
             onChangePerPage={handlePerPageChange}
-            perPageList={[8, 12, 16, 20, 40]}
+            perPageList={[9, 12, 15, 18, 27]}
           />
         </>
       ) : (
