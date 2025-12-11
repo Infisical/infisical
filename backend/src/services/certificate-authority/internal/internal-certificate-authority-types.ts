@@ -89,6 +89,13 @@ export type TDeleteCaDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;
 
+export type TGenerateRootCaCertificateDTO = {
+  caId: string;
+  notBefore: string;
+  notAfter: string;
+  maxPathLength?: number | null;
+} & Omit<TProjectPermission, "projectId">;
+
 export type TGetCaCsrDTO = {
   caId: string;
 } & Omit<TProjectPermission, "projectId">;

@@ -213,3 +213,37 @@ export const useRenewCa = () => {
     }
   });
 };
+
+export const useGenerateCaCertificate = () => {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { certificate: string; certificateChain: string; serialNumber: string },
+    object,
+    {
+      caId: string;
+      parentCaId?: string;
+      notBefore: string;
+      notAfter: string;
+      maxPathLength?: number;
+    }
+  >({
+    mutationFn: async ({ caId, ...body }) => {
+      const { data } = await apiRequest.post<{
+        certificate: string;
+        certificateChain: string;
+        serialNumber: string;
+      }>(`/api/v1/cert-manager/ca/internal/${caId}/certificate`, body);
+      return data;
+    },
+    onSuccess: (_, { caId }) => {
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaById(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCert(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCerts(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCsr(caId) });
+      queryClient.invalidateQueries({ queryKey: caKeys.getCaCrl(caId) });
+      queryClient.invalidateQueries({
+        queryKey: caKeys.listCasByTypeAndProjectId(CaType.INTERNAL, "")
+      });
+    }
+  });
+};

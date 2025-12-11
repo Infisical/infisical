@@ -202,12 +202,14 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           } as TCertificateProfileWithConfigs["acmeConfig"])
         : undefined;
 
-      const certificateAuthority = {
-        id: result.caId,
-        projectId: result.caProjectId,
-        status: result.caStatus,
-        name: result.caName
-      } as TCertificateProfileWithConfigs["certificateAuthority"];
+      const certificateAuthority = result.caId
+        ? ({
+            id: result.caId,
+            projectId: result.caProjectId,
+            status: result.caStatus,
+            name: result.caName
+          } as TCertificateProfileWithConfigs["certificateAuthority"])
+        : undefined;
 
       const certificateTemplate =
         result.templateId && result.templateProjectId && result.templateName

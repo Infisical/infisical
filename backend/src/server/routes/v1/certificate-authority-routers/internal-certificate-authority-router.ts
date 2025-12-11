@@ -129,6 +129,113 @@ export const registerInternalCertificateAuthorityRouter = async (server: Fastify
   });
 
   server.route({
+    method: "POST",
+    url: "/:caId/certificate",
+    config: {
+      rateLimit: writeLimit
+    },
+    onRequest: verifyAuth([AuthMode.JWT, AuthMode.IDENTITY_ACCESS_TOKEN]),
+    schema: {
+      hide: false,
+      tags: [ApiDocsTags.PkiCertificateAuthorities],
+      description: "Generate certificate for a Certificate Authority",
+      params: z.object({
+        caId: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.caId)
+      }),
+      body: z.object({
+        notBefore: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.notBefore),
+        notAfter: validateCaDateField.describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.notAfter),
+        maxPathLength: z
+          .number()
+          .min(-1)
+          .default(-1)
+          .describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.maxPathLength),
+        parentCaId: z.string().trim().optional().describe("Parent CA ID for intermediate certificate generation")
+      }),
+      response: {
+        200: z.object({
+          certificate: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.certificate),
+          certificateChain: z
+            .string()
+            .trim()
+            .describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.certificateChain),
+          serialNumber: z.string().trim().describe(CERTIFICATE_AUTHORITIES.GENERATE_CA_CERTIFICATE.serialNumber)
+        })
+      }
+    },
+    handler: async (req) => {
+      const { parentCaId, ...certificateData } = req.body;
+
+      let certificate: string;
+      let certificateChain: string;
+      let serialNumber: string;
+      let ca: { id: string; dn: string; projectId: string };
+
+      if (parentCaId) {
+        const intermediateCert = await server.services.internalCertificateAuthority.generateIntermediateCaCertificate({
+          caId: req.params.caId,
+          parentCaId,
+          notBefore: certificateData.notBefore,
+          notAfter: certificateData.notAfter,
+          maxPathLength: certificateData.maxPathLength,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+        certificate = intermediateCert.certificate;
+        certificateChain = intermediateCert.certificateChain;
+        serialNumber = intermediateCert.serialNumber;
+
+        ca = await server.services.internalCertificateAuthority.getCaById({
+          caId: req.params.caId,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+      } else {
+        const rootCert = await server.services.internalCertificateAuthority.generateRootCaCertificate({
+          caId: req.params.caId,
+          notBefore: certificateData.notBefore,
+          notAfter: certificateData.notAfter,
+          maxPathLength: certificateData.maxPathLength,
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId
+        });
+
+        certificate = rootCert.certificate;
+        certificateChain = rootCert.certificateChain;
+        serialNumber = rootCert.serialNumber;
+        ca = rootCert.ca;
+      }
+
+      await server.services.auditLog.createAuditLog({
+        ...req.auditLogInfo,
+        projectId: ca.projectId,
+        event: {
+          type: EventType.GENERATE_CA_CERTIFICATE,
+          metadata: {
+            caId: ca.id,
+            dn: ca.dn,
+            serialNumber,
+            ...(parentCaId && { parentCaId })
+          }
+        }
+      });
+
+      return {
+        certificate,
+        certificateChain,
+        serialNumber
+      };
+    }
+  });
+
+  server.route({
     method: "GET",
     url: "/:caId/ca-certificates",
     config: {
