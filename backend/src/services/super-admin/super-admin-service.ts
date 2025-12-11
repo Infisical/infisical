@@ -78,7 +78,7 @@ type TSuperAdminServiceFactoryDep = {
   kmsRootConfigDAL: TKmsRootConfigDALFactory;
   orgService: Pick<TOrgServiceFactory, "createOrganization">;
   keyStore: Pick<TKeyStoreFactory, "getItem" | "setItemWithExpiry" | "deleteItem" | "deleteItems">;
-  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "onPremFeatures" | "updateOrgSubscription">;
   microsoftTeamsService: Pick<TMicrosoftTeamsServiceFactory, "initializeTeamsBot">;
   invalidateCacheQueue: TInvalidateCacheQueueFactory;
   smtpService: Pick<TSmtpService, "sendMail">;
@@ -872,7 +872,7 @@ export const superAdminServiceFactory = ({
       return { organization: org, users };
     });
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.updateOrgSubscription(organization.id);
 
     await Promise.allSettled(
       usersToEmail.map(async (user) => {
