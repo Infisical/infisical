@@ -82,7 +82,7 @@ type TLdapConfigServiceFactoryDep = {
   >;
   userAliasDAL: Pick<TUserAliasDALFactory, "create" | "findOne">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -539,7 +539,7 @@ export const ldapConfigServiceFactory = ({
         return newUserAlias;
       });
     }
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.updateOrgSubscription(organization.id);
 
     const user = await userDAL.transaction(async (tx) => {
       const newUser = await userDAL.findOne({ id: userAlias.userId }, tx);

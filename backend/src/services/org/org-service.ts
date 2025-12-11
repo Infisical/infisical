@@ -106,7 +106,7 @@ type TOrgServiceFactoryDep = {
   permissionService: TPermissionServiceFactory;
   licenseService: Pick<
     TLicenseServiceFactory,
-    "getPlan" | "updateSubscriptionOrgMemberCount" | "generateOrgCustomerId" | "removeOrgCustomer"
+    "getPlan" | "updateOrgSubscription" | "generateOrgCustomerId" | "removeOrgCustomer"
   >;
   projectBotService: Pick<TProjectBotServiceFactory, "getBotKey">;
   loginService: Pick<TAuthLoginFactory, "generateUserTokens">;
@@ -655,7 +655,7 @@ export const orgServiceFactory = ({
 
     const organization = await (trx ? createOrg(trx) : orgDAL.transaction(createOrg));
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id, trx);
+    await licenseService.updateOrgSubscription(organization.id, trx);
     return organization;
   };
 
@@ -962,7 +962,7 @@ export const orgServiceFactory = ({
         scopeOrgId: orgId,
         status: OrgMembershipStatus.Accepted
       });
-      await licenseService.updateSubscriptionOrgMemberCount(orgId);
+      await licenseService.updateOrgSubscription(orgId);
       return { user };
     }
 

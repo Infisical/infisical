@@ -628,7 +628,8 @@ export const registerRoutes = async (
     licenseDAL,
     keyStore,
     projectDAL,
-    envConfig
+    envConfig,
+    queueService
   });
 
   const tokenService = tokenServiceFactory({ tokenDAL: authTokenDAL, userDAL, membershipUserDAL, orgDAL });
@@ -2212,7 +2213,8 @@ export const registerRoutes = async (
     pkiSubscriberDAL,
     projectDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    licenseService
   });
 
   const certificateEstService = certificateEstServiceFactory({
@@ -2251,7 +2253,8 @@ export const registerRoutes = async (
     pkiCollectionItemDAL,
     certificateSyncDAL,
     pkiSyncDAL,
-    pkiSyncQueue
+    pkiSyncQueue,
+    licenseService
   });
 
   const certificateRequestService = certificateRequestServiceFactory({
@@ -2295,7 +2298,8 @@ export const registerRoutes = async (
     projectDAL,
     certificateBodyDAL,
     certificateIssuanceQueue,
-    certificateRequestService
+    certificateRequestService,
+    licenseService
   });
 
   const certificateV3Queue = certificateV3QueueServiceFactory({

@@ -39,7 +39,7 @@ type TIdentityServiceFactoryDep = {
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityProjectDAL: Pick<TIdentityProjectDALFactory, "findByIdentityId">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission" | "getOrgPermissionByRoles">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
   keyStore: Pick<TKeyStoreFactory, "getKeysByPattern" | "getItem">;
   orgDAL: Pick<TOrgDALFactory, "findById">;
   additionalPrivilegeDAL: Pick<TAdditionalPrivilegeDALFactory, "delete">;
@@ -157,7 +157,7 @@ export const identityServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(orgId);
+    await licenseService.updateOrgSubscription(orgId);
 
     return identity;
   };
@@ -338,7 +338,7 @@ export const identityServiceFactory = ({
         throw new BadRequestError({ message: "Identity has delete protection" });
 
       const deletedIdentity = await identityDAL.deleteById(id);
-      await licenseService.updateSubscriptionOrgMemberCount(identityOrgMembership.scopeOrgId);
+      await licenseService.updateOrgSubscription(identityOrgMembership.scopeOrgId);
       return { ...deletedIdentity, orgId: identityOrgMembership.scopeOrgId };
     }
 

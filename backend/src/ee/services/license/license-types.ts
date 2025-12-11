@@ -1,3 +1,4 @@
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { TOrgPermission } from "@app/lib/types";
 
 export enum InstanceType {
@@ -34,6 +35,7 @@ export type TPlanBillingInfo = {
 export type TFeatureSet = {
   _id: null;
   slug: string | null;
+  productPlans: Record<string, string>;
   tier: -1;
   workspaceLimit: null;
   workspacesUsed: number;
@@ -121,6 +123,10 @@ export type TOrgBillingDetailsDTO = TOrgPermission;
 export type TUpdateOrgBillingDetailsDTO = TOrgPermission & {
   name?: string;
   email?: string;
+};
+
+export type TUpdateOrgProductToPro = TOrgPermission & {
+  product: SubscriptionProductCategory;
 };
 
 export type TOrgPmtMethodsDTO = TOrgPermission;
