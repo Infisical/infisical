@@ -47,6 +47,7 @@ import { TKmsServiceFactory } from "@app/services/kms/kms-service";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 import { getProjectKmsCertificateKeyId } from "@app/services/project/project-fns";
 
+import { EventType, TAuditLogServiceFactory } from "../audit-log/audit-log-types";
 import { TLicenseServiceFactory } from "../license/license-service";
 import { TPkiAcmeAccountDALFactory } from "./pki-acme-account-dal";
 import { TPkiAcmeAuthDALFactory } from "./pki-acme-auth-dal";
@@ -136,6 +137,7 @@ type TPkiAcmeServiceFactoryDep = {
   certificateTemplateV2Service: Pick<TCertificateTemplateV2ServiceFactory, "validateCertificateRequest">;
   acmeChallengeService: Pick<TPkiAcmeChallengeServiceFactory, "markChallengeAsReady">;
   pkiAcmeQueueService: Pick<TPkiAcmeQueueServiceFactory, "queueChallengeValidation">;
+  auditLogService: Pick<TAuditLogServiceFactory, "createAuditLog">;
 };
 
 export const pkiAcmeServiceFactory = ({
@@ -159,7 +161,8 @@ export const pkiAcmeServiceFactory = ({
   certificateV3Service,
   certificateTemplateV2Service,
   acmeChallengeService,
-  pkiAcmeQueueService
+  pkiAcmeQueueService,
+  auditLogService
 }: TPkiAcmeServiceFactoryDep): TPkiAcmeServiceFactory => {
   const validateAcmeProfile = async (profileId: string): Promise<TCertificateProfileWithConfigs> => {
     const profile = await certificateProfileDAL.findByIdWithConfigs(profileId);
@@ -446,6 +449,23 @@ export const pkiAcmeServiceFactory = ({
       throw new AcmeExternalAccountRequiredError({ message: "External account binding is required" });
     }
     if (existingAccount) {
+      await auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.ACME_PROFILE,
+          metadata: {
+            profileId: profile.id
+          }
+        },
+        event: {
+          type: EventType.RETRIEVE_ACME_ACCOUNT,
+          metadata: {
+            accountId: existingAccount.id,
+            publicKeyThumbprint
+          }
+        }
+      });
+
       return {
         status: 200,
         body: {
@@ -518,7 +538,25 @@ export const pkiAcmeServiceFactory = ({
       publicKeyThumbprint,
       emails: contact ?? []
     });
-    // TODO: create audit log here
+
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_PROFILE,
+        metadata: {
+          profileId: profile.id
+        }
+      },
+      event: {
+        type: EventType.CREATE_ACME_ACCOUNT,
+        metadata: {
+          accountId: newAccount.id,
+          publicKeyThumbprint: newAccount.publicKeyThumbprint,
+          emails: newAccount.emails
+        }
+      }
+    });
+
     return {
       status: 201,
       body: {
@@ -647,7 +685,26 @@ export const pkiAcmeServiceFactory = ({
         })),
         tx
       );
-      // TODO: create audit log here
+      await auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.ACME_ACCOUNT,
+          metadata: {
+            profileId: account.profileId,
+            accountId: account.id
+          }
+        },
+        event: {
+          type: EventType.CREATE_ACME_ORDER,
+          metadata: {
+            orderId: createdOrder.id,
+            identifiers: authorizations.map((auth) => ({
+              type: auth.identifierType as AcmeIdentifierType,
+              value: auth.identifierValue
+            }))
+          }
+        }
+      });
       return { ...createdOrder, authorizations, account };
     });
 
@@ -875,6 +932,23 @@ export const pkiAcmeServiceFactory = ({
         throw error;
       }
       order = updatedOrder;
+      await auditLogService.createAuditLog({
+        projectId: profile.projectId,
+        actor: {
+          type: ActorType.ACME_ACCOUNT,
+          metadata: {
+            profileId,
+            accountId
+          }
+        },
+        event: {
+          type: EventType.FINALIZE_ACME_ORDER,
+          metadata: {
+            orderId: updatedOrder.id,
+            csr: updatedOrder.csr!
+          }
+        }
+      });
     } else if (order.status !== AcmeOrderStatus.Valid) {
       throw new AcmeOrderNotReadyError({ message: "ACME order is not ready" });
     }
@@ -930,6 +1004,24 @@ export const pkiAcmeServiceFactory = ({
 
     const certLeaf = certObj.toString("pem").trim().replace("\n", "\r\n");
     const certChain = certificateChain.trim().replace("\n", "\r\n");
+
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_ACCOUNT,
+        metadata: {
+          profileId,
+          accountId
+        }
+      },
+      event: {
+        type: EventType.DOWNLOAD_ACME_CERTIFICATE,
+        metadata: {
+          orderId
+        }
+      }
+    });
+
     return {
       status: 200,
       body:
@@ -1012,6 +1104,7 @@ export const pkiAcmeServiceFactory = ({
     authzId: string;
     challengeId: string;
   }): Promise<TAcmeResponse<TRespondToAcmeChallengeResponse>> => {
+    const profile = await validateAcmeProfile(profileId);
     const result = await acmeChallengeDAL.findByAccountAuthAndChallengeId(accountId, authzId, challengeId);
     if (!result) {
       throw new NotFoundError({ message: "ACME challenge not found" });
@@ -1019,6 +1112,23 @@ export const pkiAcmeServiceFactory = ({
     await acmeChallengeService.markChallengeAsReady(challengeId);
     await pkiAcmeQueueService.queueChallengeValidation(challengeId);
     const challenge = (await acmeChallengeDAL.findByIdForChallengeValidation(challengeId))!;
+    await auditLogService.createAuditLog({
+      projectId: profile.projectId,
+      actor: {
+        type: ActorType.ACME_ACCOUNT,
+        metadata: {
+          profileId,
+          accountId
+        }
+      },
+      event: {
+        type: EventType.RESPOND_TO_ACME_CHALLENGE,
+        metadata: {
+          challengeId,
+          type: challenge.type as AcmeChallengeType
+        }
+      }
+    });
     return {
       status: 200,
       body: {
