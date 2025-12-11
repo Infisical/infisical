@@ -4,7 +4,7 @@ import { faGithub, faGitlab, faGoogle } from "@fortawesome/free-brands-svg-icons
 import { faLock } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import HCaptcha from "@hcaptcha/react-hcaptcha";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 
 import Error from "@app/components/basic/Error";
 import { RegionSelect } from "@app/components/navigation/RegionSelect";
@@ -38,6 +38,7 @@ export const InitialStep = ({
   isAdmin
 }: Props) => {
   const navigate = useNavigate();
+  const searchParams = useSearch({ from: "/_restrict-login-signup" });
 
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
@@ -92,20 +93,10 @@ export const InitialStep = ({
   };
 
   const handleOauth = (provider: string) => {
-    const callbackPort = queryParams.get("callback_port");
-    const searchParams = new URLSearchParams();
+    const queryString = new URLSearchParams(searchParams as Record<string, string>).toString();
 
     console.log("used the handle Oauth function");
-
-    if (callbackPort) {
-      searchParams.append("callback_port", callbackPort);
-    }
-
-    if (isAdmin) {
-      searchParams.append("is_admin_login", "true");
-    }
-
-    const queryString = searchParams.toString();
+    console.log("search params", queryParams);
 
     window.open(`/api/v1/sso/redirect/${provider}${queryString ? `?${queryString}` : ""}`);
     window.close();
