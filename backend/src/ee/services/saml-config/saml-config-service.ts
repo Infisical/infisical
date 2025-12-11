@@ -72,7 +72,7 @@ type TSamlConfigServiceFactoryDep = {
   identityMetadataDAL: Pick<TIdentityMetadataDALFactory, "delete" | "insertMany" | "transaction">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail">;
   kmsService: Pick<TKmsServiceFactory, "createCipherPairWithDataKey">;
@@ -719,7 +719,7 @@ export const samlConfigServiceFactory = ({
         return newUser;
       });
     }
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.updateOrgSubscription(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted && user.isEmailVerified && userAlias.isEmailVerified);
     const providerAuthToken = crypto.jwt().sign(

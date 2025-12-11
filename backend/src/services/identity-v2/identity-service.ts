@@ -22,7 +22,10 @@ import { newProjectIdentityFactory } from "./project/project-identity-factory";
 type TScopedIdentityV2ServiceFactoryDep = {
   identityDAL: TIdentityV2DALFactory;
   permissionService: TPermissionServiceFactory;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<
+    TLicenseServiceFactory,
+    "getPlan" | "updateOrgSubscription" | "updateOrgSubscription"
+  >;
   membershipIdentityDAL: TMembershipIdentityDALFactory;
   membershipRoleDAL: TMembershipRoleDALFactory;
   identityMetadataDAL: TIdentityMetadataDALFactory;
@@ -133,7 +136,8 @@ export const identityV2ServiceFactory = ({
         metadata: insertedMetadata
       };
     });
-    await licenseService.updateSubscriptionOrgMemberCount(dto.permission.orgId);
+    await licenseService.updateOrgSubscription(dto.permission.orgId);
+    await licenseService.updateOrgSubscription(dto.permission.orgId);
 
     return { identity };
   };
@@ -207,7 +211,7 @@ export const identityV2ServiceFactory = ({
 
     const deletedIdentity = await identityDAL.deleteById(dto.selector.identityId);
 
-    await licenseService.updateSubscriptionOrgMemberCount(scopeData.orgId);
+    await licenseService.updateOrgSubscription(scopeData.orgId);
 
     return { identity: deletedIdentity };
   };

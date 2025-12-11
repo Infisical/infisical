@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import RE2 from "re2";
 
 import { ActionProjectType, TCertificates } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -121,6 +122,7 @@ type TCertificateV3ServiceFactoryDep = {
     "queueCertificateIssuance"
   >;
   certificateRequestService: Pick<TCertificateRequestServiceFactory, "createCertificateRequest">;
+  licenseService: Pick<TLicenseServiceFactory, "updateOrgSubscription">;
 };
 
 export type TCertificateV3ServiceFactory = ReturnType<typeof certificateV3ServiceFactory>;
@@ -873,7 +875,8 @@ export const certificateV3ServiceFactory = ({
   kmsService,
   projectDAL,
   certificateIssuanceQueue,
-  certificateRequestService
+  certificateRequestService,
+  licenseService
 }: TCertificateV3ServiceFactoryDep) => {
   const issueCertificateFromProfile = async ({
     profileId,
@@ -993,6 +996,7 @@ export const certificateV3ServiceFactory = ({
         return { ...selfSignedResult, certificateRequestId: certRequestResult.id };
       });
 
+      await licenseService.updateOrgSubscription(actorOrgId);
       const { selfSignedResult, certificateData, certificateRequestId } = result;
 
       const subjectCommonName =
@@ -1124,6 +1128,7 @@ export const certificateV3ServiceFactory = ({
       return { ...certResult, cert: certificateRecord, certificateRequestId: certRequestResult.id };
     });
 
+    await licenseService.updateOrgSubscription(actorOrgId);
     let finalCertificateChain = bufferToString(certificateChain);
     if (removeRootsFromChain) {
       finalCertificateChain = removeRootCaFromChain(finalCertificateChain);
@@ -1300,6 +1305,7 @@ export const certificateV3ServiceFactory = ({
     if (removeRootsFromChain) {
       certificateChainString = removeRootCaFromChain(certificateChainString);
     }
+    await licenseService.updateOrgSubscription(actorOrgId);
 
     return {
       certificate: certificateString,
@@ -1870,6 +1876,7 @@ export const certificateV3ServiceFactory = ({
       throw new BadRequestError({ message: "External CA renewals should be handled asynchronously" });
     }
 
+    await licenseService.updateOrgSubscription(actorOrgId);
     await triggerAutoSyncForCertificate(renewalResult.newCert.id, {
       certificateSyncDAL,
       pkiSyncDAL,

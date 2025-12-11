@@ -66,7 +66,7 @@ type TOidcConfigServiceFactoryDep = {
   >;
   membershipGroupDAL: Pick<TMembershipGroupDALFactory, "find">;
   membershipRoleDAL: Pick<TMembershipRoleDALFactory, "create">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
   tokenService: Pick<TAuthTokenServiceFactory, "createTokenForUser">;
   smtpService: Pick<TSmtpService, "sendMail" | "verify">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
@@ -421,7 +421,7 @@ export const oidcConfigServiceFactory = ({
       }
     }
 
-    await licenseService.updateSubscriptionOrgMemberCount(organization.id);
+    await licenseService.updateOrgSubscription(organization.id);
 
     const isUserCompleted = Boolean(user.isAccepted) && userAlias.isEmailVerified;
     const providerAuthToken = crypto.jwt().sign(

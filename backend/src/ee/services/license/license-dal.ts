@@ -1,8 +1,9 @@
 import { Knex } from "knex";
 
 import { TDbClient } from "@app/db";
-import { AccessScope, OrgMembershipStatus, TableName } from "@app/db/schemas";
+import { AccessScope, OrgMembershipStatus, ProjectType, TableName } from "@app/db/schemas";
 import { DatabaseError } from "@app/lib/errors";
+import { CertStatus } from "@app/services/certificate/certificate-types";
 
 export type TLicenseDALFactory = ReturnType<typeof licenseDALFactory>;
 
@@ -84,5 +85,83 @@ export const licenseDALFactory = (db: TDbClient) => {
     }
   };
 
-  return { countOfOrgMembers, countOrgUsersAndIdentities, countOfOrgIdentities };
+  const countIdentitiesByProjectType = async (rootOrgId: string) => {
+    try {
+      const orgs = db(TableName.Organization).where("id", rootOrgId).orWhere("rootOrgId", rootOrgId).select("id");
+
+      const result = await db
+        .replicaNode()(TableName.Membership)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
+        .leftJoin(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
+        .leftJoin(TableName.UserGroupMembership, (qb) => {
+          void qb.on(`${TableName.Groups}.id`, `${TableName.UserGroupMembership}.groupId`);
+        })
+        .where(`${TableName.Membership}.scope`, AccessScope.Project)
+        .where(`${TableName.Membership}.scopeOrgId`, orgs)
+        .where((qb) => {
+          void qb
+            .whereNotNull(`${TableName.Membership}.actorUserId`)
+            .orWhereNotNull(`${TableName.Membership}.actorIdentityId`)
+            .orWhereNotNull(`${TableName.UserGroupMembership}.userId`);
+        })
+        .groupBy(`${TableName.Project}.type`)
+        .select(db.ref("type").withSchema(TableName.Project))
+        .select(
+          db.raw(
+            `COUNT(DISTINCT COALESCE("${TableName.Membership}"."actorUserId", "${TableName.UserGroupMembership}"."userId")) as "userCount"`
+          )
+        )
+        .select(db.raw(`COUNT(DISTINCT "${TableName.Membership}"."actorIdentityId") as "identityCount"`));
+      return result as unknown as Array<{ type: ProjectType; userCount: string; identityCount: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountIdentityByProjectType" });
+    }
+  };
+
+  const getAllUniqueCertificates = async (rootOrgId: string) => {
+    try {
+      const orgs = db(TableName.Organization).where("id", rootOrgId).orWhere("rootOrgId", rootOrgId).select("id");
+      const result = await db
+        .replicaNode()(TableName.Certificate)
+        .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Certificate}.projectId`)
+        .where(`${TableName.Project}.orgId`, orgs)
+        .where(`${TableName.Certificate}.status`, CertStatus.ACTIVE)
+        .distinct(
+          db.ref("commonName").withSchema(TableName.Certificate),
+          db.ref("altNames").withSchema(TableName.Certificate)
+        );
+      return result as Array<{ commonName: string; altNames: string }>;
+    } catch (error) {
+      throw new DatabaseError({ error, name: "GetAllUniqueCertificates" });
+    }
+  };
+
+  const countInternalCas = async (rootOrgId: string) => {
+    try {
+      const orgs = db(TableName.Organization)
+        .join(TableName.Project, `${TableName.Project}.orgId`, `${TableName.Organization}.id`)
+        .join(TableName.CertificateAuthority, `${TableName.CertificateAuthority}.projectId`, `${TableName.Project}.id`)
+        .where(`${TableName.Organization}.id`, rootOrgId)
+        .orWhere("rootOrgId", rootOrgId)
+        .select(db.ref("id").withSchema(TableName.CertificateAuthority));
+
+      const result = await db
+        .replicaNode()(TableName.InternalCertificateAuthority)
+        .where(`${TableName.InternalCertificateAuthority}.caId`, orgs)
+        .count();
+
+      return Number(result?.[0]?.count || 0);
+    } catch (error) {
+      throw new DatabaseError({ error, name: "CountInternalCas" });
+    }
+  };
+
+  return {
+    countOfOrgMembers,
+    countOrgUsersAndIdentities,
+    countOfOrgIdentities,
+    countIdentitiesByProjectType,
+    getAllUniqueCertificates,
+    countInternalCas
+  };
 };

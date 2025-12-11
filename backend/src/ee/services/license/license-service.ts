@@ -9,12 +9,13 @@ import { AxiosError } from "axios";
 import { CronJob } from "cron";
 import { Knex } from "knex";
 
-import { OrganizationActionScope } from "@app/db/schemas";
+import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
 import { TEnvConfig } from "@app/lib/config/env";
 import { verifyOfflineLicense } from "@app/lib/crypto";
 import { BadRequestError, NotFoundError } from "@app/lib/errors";
 import { logger } from "@app/lib/logger";
+import { QueueJobs, QueueName, TQueueServiceFactory } from "@app/queue";
 import { TOrgDALFactory } from "@app/services/org/org-dal";
 import { TProjectDALFactory } from "@app/services/project/project-dal";
 
@@ -43,7 +44,8 @@ import {
   TOrgPmtMethodsDTO,
   TPlanBillingInfo,
   TStartOrgTrialDTO,
-  TUpdateOrgBillingDetailsDTO
+  TUpdateOrgBillingDetailsDTO,
+  TUpdateOrgProductToPro
 } from "./license-types";
 
 type TLicenseServiceFactoryDep = {
@@ -56,6 +58,7 @@ type TLicenseServiceFactoryDep = {
   licenseDAL: TLicenseDALFactory;
   keyStore: Pick<TKeyStoreFactory, "setItemWithExpiry" | "getItem" | "deleteItem">;
   projectDAL: TProjectDALFactory;
+  queueService: TQueueServiceFactory;
 };
 
 export type TLicenseServiceFactory = ReturnType<typeof licenseServiceFactory>;
@@ -72,7 +75,8 @@ export const licenseServiceFactory = ({
   licenseDAL,
   keyStore,
   projectDAL,
-  envConfig
+  envConfig,
+  queueService
 }: TLicenseServiceFactoryDep) => {
   let isValidLicense = false;
   let instanceType = InstanceType.OnPrem;
@@ -293,34 +297,6 @@ export const licenseServiceFactory = ({
     await licenseServerCloudApi.request.delete(`/api/license-server/v1/customers/${customerId}`);
   };
 
-  const updateSubscriptionOrgMemberCount = async (orgId: string, tx?: Knex) => {
-    const org = await orgDAL.findRootOrgDetails(orgId, tx);
-    if (!org) throw new NotFoundError({ message: `Organization with ID '${orgId}' not found` });
-
-    const rootOrgId = org.id;
-    if (instanceType === InstanceType.Cloud) {
-      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId, tx);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId, tx);
-      if (org?.customerId) {
-        await licenseServerCloudApi.request.patch(`/api/license-server/v1/customers/${org.customerId}/cloud-plan`, {
-          quantity,
-          quantityIdentities
-        });
-      }
-      await keyStore.deleteItem(FEATURE_CACHE_KEY(rootOrgId));
-    } else if (instanceType === InstanceType.EnterpriseOnPrem) {
-      const usedSeats = await licenseDAL.countOfOrgMembers(null, tx);
-      const usedIdentitySeats = await licenseDAL.countOrgUsersAndIdentities(null, tx);
-      onPremFeatures.membersUsed = usedSeats;
-      onPremFeatures.identitiesUsed = usedIdentitySeats;
-      await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, {
-        usedSeats,
-        usedIdentitySeats
-      });
-    }
-    await refreshPlan(rootOrgId);
-  };
-
   // below all are api calls
   const getOrgPlansTableByBillCycle = async ({
     orgId,
@@ -368,46 +344,6 @@ export const licenseServiceFactory = ({
     }
     const plan = await getPlan(rootOrgId, projectId);
     return plan;
-  };
-
-  const startOrgTrial = async ({
-    orgId,
-    actorId,
-    actor,
-    actorOrgId,
-    actorAuthMethod,
-    success_url
-  }: TStartOrgTrialDTO) => {
-    const { permission } = await permissionService.getOrgPermission({
-      actorId,
-      actor,
-      orgId,
-      actorOrgId,
-      actorAuthMethod,
-      scope: OrganizationActionScope.ParentOrganization
-    });
-    ForbiddenError.from(permission).throwUnlessCan(
-      OrgPermissionBillingActions.ManageBilling,
-      OrgPermissionSubjects.Billing
-    );
-
-    const organization = await orgDAL.findById(orgId);
-    if (!organization) {
-      throw new NotFoundError({
-        message: `Organization with ID '${orgId}' not found`
-      });
-    }
-
-    await updateSubscriptionOrgMemberCount(orgId);
-
-    const {
-      data: { url }
-    } = await licenseServerCloudApi.request.post(
-      `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
-      { success_url }
-    );
-    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
-    return { url };
   };
 
   const createOrganizationPortalSession = async ({
@@ -554,6 +490,7 @@ export const licenseServiceFactory = ({
       const { data } = await licenseServerCloudApi.request.get<{
         head: { name: string }[];
         rows: { name: string; allowed: boolean }[];
+        productRows: Record<string, { name: string; allowed: boolean }[]>;
       }>(`${baseUrl}/${customerId}/cloud-plan/table`);
       return data;
     }
@@ -562,6 +499,7 @@ export const licenseServiceFactory = ({
       const { data } = await licenseServerOnPremApi.request.get<{
         head: { name: string }[];
         rows: { name: string; allowed: boolean }[];
+        productRows: Record<string, { name: string; allowed: boolean }[]>;
       }>(`${baseUrl}/on-prem-plan/table`);
       return data;
     }
@@ -598,7 +536,8 @@ export const licenseServiceFactory = ({
         rows: tableResponse.rows.map((row) => ({
           ...row,
           used: calculateUsageValue(row.name, "", projectCount, totalIdentities)
-        }))
+        })),
+        productRows: tableResponse.productRows
       };
     }
 
@@ -933,6 +872,220 @@ export const licenseServiceFactory = ({
     return selfHostedLicense?.licenseId;
   };
 
+  const updateOrgProductToPro = async ({
+    actorId,
+    actor,
+    actorAuthMethod,
+    actorOrgId,
+    orgId,
+    product
+  }: TUpdateOrgProductToPro) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actorId,
+      actor,
+      orgId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
+
+    const organization = await orgDAL.findById(orgId);
+    if (!organization) {
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
+      });
+    }
+
+    const plan = await getPlan(organization.id);
+    if (plan.productPlans?.[product]?.startsWith("-pro"))
+      throw new BadRequestError({ message: "You are already a Pro User" });
+
+    try {
+      const { data } = await licenseServerCloudApi.request.post(
+        `/api/license-server/v1/customers/${organization.customerId}/upgrade-to-pro/${product}`
+      );
+      return data;
+    } catch (error) {
+      if (error instanceof AxiosError) {
+        throw new BadRequestError({
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          message: `Failed to upgrade: ${error.response?.data?.message}`
+        });
+      }
+      throw new BadRequestError({
+        message: "Unable to upgrade"
+      });
+    } finally {
+      await invalidateGetPlan(orgId);
+    }
+  };
+
+  const updateOrgSubscription = async (orgId: string) => {
+    await queueService.queue(
+      QueueName.SubscriptionMetricsUpdate,
+      QueueJobs.SubscriptionMetricsUpdate,
+      {
+        orgId
+      },
+      {
+        removeOnFail: {
+          count: 3
+        },
+        removeOnComplete: true
+      }
+    );
+  };
+
+  queueService.start(QueueName.SubscriptionMetricsUpdate, async (job) => {
+    const { orgId } = job.data;
+
+    const orgDetails = await orgDAL.findRootOrgDetails(orgId);
+    if (!orgDetails) throw new BadRequestError({ message: "Organization not found" });
+    const rootOrgId = orgDetails.id;
+
+    const { customerId } = orgDetails;
+    if (!customerId) return;
+
+    try {
+      const metrics = await licenseDAL.countIdentitiesByProjectType(rootOrgId);
+      const cerificates = await licenseDAL.getAllUniqueCertificates(rootOrgId);
+      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId);
+      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
+      const usedCertManagerCas = await licenseDAL.countInternalCas(rootOrgId);
+
+      const licensePayload = {
+        quantity,
+        quantityIdentities,
+        usedPAMIdentitySeats: 0,
+        usedSecretsManagementSeats: 0,
+        usedSecretScanningContributors: 0,
+        usedCertManagerSans: 0,
+        usedCertManagerCas,
+        usedCertManagerWildcards: 0
+      };
+      const projectTypes = Object.values(ProjectType);
+      for (const projectType of projectTypes) {
+        const identitySeats = metrics.find((el) => el.type === projectType);
+        const userSeats = identitySeats?.userCount ? parseInt(identitySeats?.userCount, 10) : 0;
+        const machineIdentitySeats = identitySeats?.identityCount ? parseInt(identitySeats?.identityCount, 10) : 0;
+        const totalSeats = userSeats + machineIdentitySeats;
+        switch (projectType) {
+          case ProjectType.SecretManager: {
+            licensePayload.usedSecretsManagementSeats = totalSeats;
+            break;
+          }
+          case ProjectType.CertificateManager: {
+            const uniqueSet = new Set<string>();
+            cerificates.forEach((el) => {
+              const commonName = el.commonName.trim();
+              if (!uniqueSet.has(commonName)) {
+                uniqueSet.add(commonName);
+                if (commonName.includes("*")) {
+                  licensePayload.usedCertManagerWildcards += 1;
+                } else {
+                  licensePayload.usedCertManagerSans += 1;
+                }
+              }
+              const altNames = el.altNames
+                ?.split(",")
+                ?.map((i) => i.trim())
+                .filter(Boolean);
+              altNames.forEach((altName) => {
+                if (!uniqueSet.has(altName)) {
+                  uniqueSet.add(altName);
+                  if (altName.includes("*")) {
+                    licensePayload.usedCertManagerWildcards += 1;
+                  } else {
+                    licensePayload.usedCertManagerSans += 1;
+                  }
+                }
+              });
+            });
+            break;
+          }
+          case ProjectType.KMS: {
+            // we don't do anything
+            break;
+          }
+          case ProjectType.SSH: {
+            // we don't do anything
+            break;
+          }
+          case ProjectType.SecretScanning: {
+            licensePayload.usedSecretScanningContributors = totalSeats;
+            break;
+          }
+          case ProjectType.PAM: {
+            licensePayload.usedPAMIdentitySeats = totalSeats;
+            break;
+          }
+          default:
+            break;
+        }
+      }
+
+      if (instanceType === InstanceType.Cloud) {
+        console.log(">>> license", licensePayload);
+        await licenseServerCloudApi.request.patch(
+          `/api/license-server/v1/customers/${customerId}/cloud-plan`,
+          licensePayload
+        );
+        await keyStore.deleteItem(FEATURE_CACHE_KEY(rootOrgId));
+      } else if (instanceType === InstanceType.EnterpriseOnPrem) {
+        onPremFeatures.membersUsed = quantity;
+        onPremFeatures.identitiesUsed = quantity;
+        await licenseServerOnPremApi.request.patch(`/api/license/v1/license`, licensePayload);
+      }
+      await refreshPlan(rootOrgId);
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  const startOrgTrial = async ({
+    orgId,
+    actorId,
+    actor,
+    actorOrgId,
+    actorAuthMethod,
+    success_url
+  }: TStartOrgTrialDTO) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actorId,
+      actor,
+      orgId,
+      actorOrgId,
+      actorAuthMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(
+      OrgPermissionBillingActions.ManageBilling,
+      OrgPermissionSubjects.Billing
+    );
+
+    const organization = await orgDAL.findById(orgId);
+    if (!organization) {
+      throw new NotFoundError({
+        message: `Organization with ID '${orgId}' not found`
+      });
+    }
+
+    await updateOrgSubscription(orgId);
+
+    const {
+      data: { url }
+    } = await licenseServerCloudApi.request.post(
+      `/api/license-server/v1/customers/${organization.customerId}/session/trial`,
+      { success_url }
+    );
+    await keyStore.deleteItem(FEATURE_CACHE_KEY(orgId));
+    return { url };
+  };
+
   return {
     generateOrgCustomerId,
     removeOrgCustomer,
@@ -950,7 +1103,7 @@ export const licenseServiceFactory = ({
     getCustomerId,
     getLicenseId,
     invalidateGetPlan,
-    updateSubscriptionOrgMemberCount,
+    updateOrgSubscription,
     getOrgPlan,
     getOrgPlansTableByBillCycle,
     startOrgTrial,
@@ -967,6 +1120,7 @@ export const licenseServiceFactory = ({
     getOrgTaxIds,
     addOrgTaxId,
     delOrgTaxId,
-    initializeBackgroundSync
+    initializeBackgroundSync,
+    updateOrgProductToPro
   };
 };

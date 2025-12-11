@@ -3,6 +3,7 @@
 // TODO(akhilmhdh): Fix this when license service gets it type
 import { z } from "zod";
 
+import { SubscriptionProductCategory } from "@app/db/schemas";
 import { readLimit, writeLimit } from "@app/server/config/rateLimiter";
 import { verifyAuth } from "@app/server/plugins/auth/verify-auth";
 import { AuthMode } from "@app/services/auth/auth-type";
@@ -422,6 +423,34 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
         actorOrgId: req.permission.orgId,
         orgId: req.params.organizationId,
         taxId: req.params.taxId
+      });
+      return data;
+    }
+  });
+
+  server.route({
+    method: "POST",
+    url: "/upgrade-product-to-pro/:product",
+    config: {
+      rateLimit: writeLimit
+    },
+    schema: {
+      params: z.object({
+        product: z.nativeEnum(SubscriptionProductCategory)
+      }),
+      response: {
+        200: z.any()
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.license.updateOrgProductToPro({
+        actorId: req.permission.id,
+        actor: req.permission.type,
+        actorAuthMethod: req.permission.authMethod,
+        actorOrgId: req.permission.orgId,
+        orgId: req.permission.orgId,
+        product: req.params.product
       });
       return data;
     }

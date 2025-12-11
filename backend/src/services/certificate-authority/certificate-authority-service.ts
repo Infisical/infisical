@@ -1,6 +1,7 @@
 import { ForbiddenError, subject } from "@casl/ability";
 
 import { ActionProjectType, TableName } from "@app/db/schemas";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateAuthorityActions,
@@ -79,6 +80,7 @@ type TCertificateAuthorityServiceFactoryDep = {
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
   certificateProfileDAL?: Pick<TCertificateProfileDALFactory, "findById">;
+  licenseService: Pick<TLicenseServiceFactory, "updateOrgSubscription">;
 };
 
 export type TCertificateAuthorityServiceFactory = ReturnType<typeof certificateAuthorityServiceFactory>;
@@ -98,7 +100,8 @@ export const certificateAuthorityServiceFactory = ({
   pkiSubscriberDAL,
   pkiSyncDAL,
   pkiSyncQueue,
-  certificateProfileDAL
+  certificateProfileDAL,
+  licenseService
 }: TCertificateAuthorityServiceFactoryDep) => {
   const acmeFns = AcmeCertificateAuthorityFns({
     appConnectionDAL,
@@ -164,6 +167,7 @@ export const certificateAuthorityServiceFactory = ({
         });
       }
 
+      await licenseService.updateOrgSubscription(actor.rootOrgId);
       return {
         id: ca.id,
         type,
@@ -492,6 +496,7 @@ export const certificateAuthorityServiceFactory = ({
 
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
+    await licenseService.updateOrgSubscription(actor.rootOrgId);
     if (type === CaType.INTERNAL) {
       return {
         id: certificateAuthority.id,
@@ -639,6 +644,7 @@ export const certificateAuthorityServiceFactory = ({
 
     await certificateAuthorityDAL.deleteById(certificateAuthority.id);
 
+    await licenseService.updateOrgSubscription(actor.rootOrgId);
     if (type === CaType.INTERNAL) {
       return {
         id: certificateAuthority.id,

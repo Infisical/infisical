@@ -93,7 +93,7 @@ type TScimServiceFactoryDep = {
   >;
   projectKeyDAL: Pick<TProjectKeyDALFactory, "find" | "findLatestProjectKey" | "insertMany" | "delete">;
   projectBotDAL: Pick<TProjectBotDALFactory, "findOne">;
-  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateSubscriptionOrgMemberCount">;
+  licenseService: Pick<TLicenseServiceFactory, "getPlan" | "updateOrgSubscription">;
   permissionService: Pick<TPermissionServiceFactory, "getOrgPermission">;
   smtpService: Pick<TSmtpService, "sendMail">;
   externalGroupOrgRoleMappingDAL: TExternalGroupOrgRoleMappingDALFactory;
@@ -474,7 +474,7 @@ export const scimServiceFactory = ({
           );
         }
       }
-      await licenseService.updateSubscriptionOrgMemberCount(org.id);
+      await licenseService.updateOrgSubscription(org.id);
       return { user, orgMembership };
     });
 

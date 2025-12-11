@@ -4,6 +4,7 @@ import * as x509 from "@peculiar/x509";
 
 import { ActionProjectType } from "@app/db/schemas";
 import { TCertificateAuthorityCrlDALFactory } from "@app/ee/services/certificate-authority-crl/certificate-authority-crl-dal";
+import { TLicenseServiceFactory } from "@app/ee/services/license/license-service";
 import { TPermissionServiceFactory } from "@app/ee/services/permission/permission-service-types";
 import {
   ProjectPermissionCertificateActions,
@@ -70,6 +71,7 @@ type TCertificateServiceFactoryDep = {
   certificateSyncDAL: Pick<TCertificateSyncDALFactory, "findPkiSyncIdsByCertificateId">;
   pkiSyncDAL: Pick<TPkiSyncDALFactory, "find">;
   pkiSyncQueue: Pick<TPkiSyncQueueFactory, "queuePkiSyncSyncCertificatesById">;
+  licenseService: Pick<TLicenseServiceFactory, "updateOrgSubscription">;
 };
 
 export type TCertificateServiceFactory = ReturnType<typeof certificateServiceFactory>;
@@ -89,7 +91,8 @@ export const certificateServiceFactory = ({
   permissionService,
   certificateSyncDAL,
   pkiSyncDAL,
-  pkiSyncQueue
+  pkiSyncQueue,
+  licenseService
 }: TCertificateServiceFactoryDep) => {
   /**
    * Return details for certificate with serial number [serialNumber]
@@ -190,7 +193,7 @@ export const certificateServiceFactory = ({
     );
 
     const deletedCert = await certificateDAL.deleteById(cert.id);
-
+    await licenseService.updateOrgSubscription(actorOrgId);
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
       certificateSyncDAL,
@@ -269,6 +272,7 @@ export const certificateServiceFactory = ({
       }
     );
 
+    await licenseService.updateOrgSubscription(actorOrgId);
     // Trigger auto sync for PKI syncs connected to this certificate
     await triggerAutoSyncForCertificate(cert.id, {
       certificateSyncDAL,

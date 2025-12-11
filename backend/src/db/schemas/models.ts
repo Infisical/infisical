@@ -341,6 +341,14 @@ export enum ProjectType {
   AI = "ai"
 }
 
+export enum SubscriptionProductCategory {
+  SecretsManager = "secret-manager",
+  SecretsScanning = "secret-scanning",
+  Pam = "pam",
+  CertManager = "cert-manager",
+  Platform = "platform"
+}
+
 export enum ActionProjectType {
   SecretManager = ProjectType.SecretManager,
   CertificateManager = ProjectType.CertificateManager,
