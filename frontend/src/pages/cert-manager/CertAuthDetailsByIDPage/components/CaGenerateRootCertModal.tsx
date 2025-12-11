@@ -82,7 +82,7 @@ export const CaGenerateRootCertModal = ({ popUp, handlePopUpToggle }: Props) => 
       caId: popUpData.caId,
       notBefore: now,
       notAfter,
-      maxPathLength: maxPathLength !== "-1" ? Number(maxPathLength) : undefined
+      maxPathLength: maxPathLength ? Number(maxPathLength) : undefined
     });
 
     handlePopUpToggle("generateRootCaCert", false);

@@ -204,7 +204,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       // if undefined, set [notAfterDate] to 10 years from now
       let notAfterDate: Date | undefined;
       if (notAfter) {
-        notAfterDate = new Date(new Date().setFullYear(new Date().getFullYear() + 10));
+        notAfterDate = new Date(notAfter);
       }
 
       const serialNumber = createSerialNumber();
@@ -1202,7 +1202,7 @@ export const internalCertificateAuthorityServiceFactory = ({
     actorId: string;
     actorAuthMethod: ActorAuthMethod;
     actor: ActorType;
-    actorOrgId: string | undefined;
+    actorOrgId: string;
     tx?: Knex.Transaction;
   }) => {
     const intermediateCa = await certificateAuthorityDAL.findByIdWithAssociatedCa(caId, tx);
@@ -1223,6 +1223,11 @@ export const internalCertificateAuthorityServiceFactory = ({
     ForbiddenError.from(permission).throwUnlessCan(
       ProjectPermissionCertificateAuthorityActions.Create,
       subject(ProjectPermissionSub.CertificateAuthorities, { name: intermediateCa.name })
+    );
+
+    ForbiddenError.from(permission).throwUnlessCan(
+      ProjectPermissionCertificateAuthorityActions.Create,
+      subject(ProjectPermissionSub.CertificateAuthorities, { name: parentCa.name })
     );
 
     const caSecret = await certificateAuthoritySecretDAL.findOne(
@@ -1290,7 +1295,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       actorAuthMethod,
       actor,
-      actorOrgId: actorOrgId!
+      actorOrgId
     });
 
     await importCertToCa({
@@ -1300,7 +1305,7 @@ export const internalCertificateAuthorityServiceFactory = ({
       actorId,
       actorAuthMethod,
       actor,
-      actorOrgId: actorOrgId!
+      actorOrgId
     });
 
     return {
