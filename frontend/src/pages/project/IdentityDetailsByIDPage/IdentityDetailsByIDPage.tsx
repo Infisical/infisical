@@ -1,7 +1,6 @@
 import { Helmet } from "react-helmet";
 import { useTranslation } from "react-i18next";
 import { subject } from "@casl/ability";
-import { DropdownMenu } from "@radix-ui/react-dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { ChevronLeftIcon, EllipsisIcon, InfoIcon } from "lucide-react";
@@ -26,6 +25,7 @@ import {
   UnstableCardDescription,
   UnstableCardHeader,
   UnstableCardTitle,
+  UnstableDropdownMenu,
   UnstableDropdownMenuContent,
   UnstableDropdownMenuItem,
   UnstableDropdownMenuTrigger,
@@ -187,7 +187,7 @@ const Page = () => {
             description={`Configure and manage${isProjectIdentity ? " machine identity and " : " "}project access control`}
             title={identityMembershipDetails.identity.name}
           >
-            <DropdownMenu>
+            <UnstableDropdownMenu>
               <UnstableDropdownMenuTrigger asChild>
                 <UnstableButton variant="outline">
                   Options
@@ -197,7 +197,7 @@ const Page = () => {
               <UnstableDropdownMenuContent align="end">
                 <UnstableDropdownMenuItem
                   onClick={() => {
-                    navigator.clipboard.writeText(identityMembershipDetails.id);
+                    navigator.clipboard.writeText(identityMembershipDetails.identity.id);
                     createNotification({
                       text: "Machine identity ID copied to clipboard",
                       type: "info"
@@ -211,7 +211,6 @@ const Page = () => {
                   a={subject(ProjectPermissionSub.Identity, {
                     identityId: identityMembershipDetails?.identity.id
                   })}
-                  passThrough={false}
                 >
                   {(isAllowed) => (
                     <UnstableDropdownMenuItem
@@ -221,7 +220,7 @@ const Page = () => {
                       Assume Privileges
                       <Tooltip
                         side="bottom"
-                        content="Assume the privileges of the machine identity, allowing you to replicate their access behavior."
+                        content="Assume the privileges of this machine identity, allowing you to replicate their access behavior."
                       >
                         <div>
                           <InfoIcon className="text-muted" />
@@ -251,7 +250,7 @@ const Page = () => {
                   )}
                 </ProjectPermissionCan>
               </UnstableDropdownMenuContent>
-            </DropdownMenu>
+            </UnstableDropdownMenu>
           </PageHeader>
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
@@ -283,7 +282,7 @@ const Page = () => {
                       <UnstableAlertDescription>
                         <p>
                           This machine identity&apos;s authentication methods are controlled by your
-                          organization. To make changes,{" "}
+                          organization. <br /> To make changes,{" "}
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Read}
                             an={OrgPermissionSubjects.Identity}
