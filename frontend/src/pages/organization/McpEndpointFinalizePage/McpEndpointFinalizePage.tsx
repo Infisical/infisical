@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Helmet } from "react-helmet";
 import { Controller, useForm } from "react-hook-form";
 import { faCheckCircle, faExternalLink, faSpinner } from "@fortawesome/free-solid-svg-icons";
@@ -29,7 +29,6 @@ const FinalizeFormSchema = z.object({
 type FormData = z.infer<typeof FinalizeFormSchema>;
 
 type ServerOAuthState = {
-  serverId: string;
   sessionId: string | null;
   isPending: boolean;
   isAuthorized: boolean;
@@ -37,13 +36,10 @@ type ServerOAuthState = {
 
 export const McpEndpointFinalizePage = () => {
   const [isRedirecting, setIsRedirecting] = useState(false);
-  const [serverOAuthStates, setServerOAuthStates] = useState<Map<string, ServerOAuthState>>(
-    new Map()
-  );
-  const [activeOAuthServerId, setActiveOAuthServerId] = useState<string | null>(null);
-  const popupRef = useRef<Window | null>(null);
-  const isSavingCredentialsRef = useRef(false);
-  const processedSessionsRef = useRef<Set<string>>(new Set());
+  const [serverStates, setServerStates] = useState<Map<string, ServerOAuthState>>(new Map());
+  const [activeServerId, setActiveServerId] = useState<string | null>(null);
+
+  console.log("I AM A VERSION INDICATOR");
 
   const search = useSearch({
     from: "/_authenticate/organization/mcp-endpoint-finalize"
@@ -61,13 +57,16 @@ export const McpEndpointFinalizePage = () => {
   const initiateServerOAuth = useInitiateServerOAuth();
   const saveUserCredential = useSaveUserServerCredential();
 
-  // Get the active session ID for OAuth polling
-  const activeServerState = activeOAuthServerId ? serverOAuthStates.get(activeOAuthServerId) : null;
+  // Get active server's state for polling
+  const activeState = activeServerId ? serverStates.get(activeServerId) : null;
+  const activeSessionId = activeState?.sessionId ?? null;
+  const shouldPoll = Boolean(activeSessionId) && activeState?.isPending === true;
 
+  // Poll OAuth status - continues until authorized: true
   const { data: oauthStatus } = useGetOAuthStatus(
-    { sessionId: activeServerState?.sessionId || "" },
+    { sessionId: activeSessionId || "" },
     {
-      enabled: Boolean(activeServerState?.sessionId) && activeServerState?.isPending === true,
+      enabled: shouldPoll,
       refetchInterval: OAUTH_POLL_INTERVAL
     }
   );
@@ -83,201 +82,138 @@ export const McpEndpointFinalizePage = () => {
     }
   });
 
-  // Initialize server OAuth states when data loads
+  // Initialize server states when data loads
   useEffect(() => {
     if (serversRequiringAuth && serversRequiringAuth.length > 0) {
-      const initialStates = new Map<string, ServerOAuthState>();
-      serversRequiringAuth.forEach((server) => {
-        initialStates.set(server.id, {
-          serverId: server.id,
-          sessionId: null,
-          isPending: false,
-          isAuthorized: server.hasCredentials
+      setServerStates((prev) => {
+        const newStates = new Map<string, ServerOAuthState>();
+        serversRequiringAuth.forEach((server) => {
+          // Preserve existing state if available, otherwise initialize
+          const existing = prev.get(server.id);
+          newStates.set(server.id, {
+            sessionId: existing?.sessionId ?? null,
+            isPending: existing?.isPending ?? false,
+            isAuthorized: existing?.isAuthorized ?? server.hasCredentials
+          });
         });
+        return newStates;
       });
-      setServerOAuthStates(initialStates);
     }
   }, [serversRequiringAuth]);
 
-  // Handle OAuth status updates
+  // Handle OAuth success - save credentials when authorized
   useEffect(() => {
-    const sessionId = activeServerState?.sessionId;
-
-    // Only process when:
-    // 1. We have authorized oauth status with tokens
-    // 2. There's an active server being authenticated
-    // 3. That server has a sessionId (meaning the OAuth flow was properly initiated for THIS server)
-    // 4. We're not already saving credentials (prevent duplicate calls)
-    // 5. We haven't already processed this session (prevent re-processing on re-renders)
     if (
-      oauthStatus?.authorized &&
-      oauthStatus.accessToken &&
-      activeOAuthServerId &&
-      sessionId &&
-      !isSavingCredentialsRef.current &&
-      !processedSessionsRef.current.has(sessionId)
+      !oauthStatus?.authorized ||
+      !oauthStatus.accessToken ||
+      !activeServerId ||
+      !activeSessionId
     ) {
-      // Mark as saving and processed to prevent duplicate calls
-      isSavingCredentialsRef.current = true;
-      processedSessionsRef.current.add(sessionId);
+      return;
+    }
 
-      // Save the credentials
-      saveUserCredential.mutate(
-        {
-          endpointId: search.endpointId,
-          serverId: activeOAuthServerId,
-          accessToken: oauthStatus.accessToken,
-          refreshToken: oauthStatus.refreshToken,
-          expiresAt: oauthStatus.expiresAt,
-          tokenType: oauthStatus.tokenType
+    // Prevent duplicate saves
+    const state = serverStates.get(activeServerId);
+    if (!state?.isPending) {
+      return;
+    }
+
+    // Save credentials
+    saveUserCredential.mutate(
+      {
+        endpointId: search.endpointId,
+        serverId: activeServerId,
+        accessToken: oauthStatus.accessToken,
+        refreshToken: oauthStatus.refreshToken,
+        expiresAt: oauthStatus.expiresAt,
+        tokenType: oauthStatus.tokenType
+      },
+      {
+        onSuccess: () => {
+          setServerStates((prev) => {
+            const newMap = new Map(prev);
+            newMap.set(activeServerId, {
+              sessionId: null,
+              isPending: false,
+              isAuthorized: true
+            });
+            return newMap;
+          });
+          setActiveServerId(null);
+          createNotification({
+            text: "Server authentication successful",
+            type: "success"
+          });
         },
-        {
-          onSuccess: () => {
-            isSavingCredentialsRef.current = false;
-
-            // Update the state to mark as authorized
-            setServerOAuthStates((prev) => {
-              const newMap = new Map(prev);
-              const state = newMap.get(activeOAuthServerId);
-              if (state) {
-                newMap.set(activeOAuthServerId, {
-                  ...state,
-                  isPending: false,
-                  isAuthorized: true,
-                  sessionId: null
-                });
-              }
-              return newMap;
-            });
-
-            setActiveOAuthServerId(null);
-
-            createNotification({
-              text: "Server authentication successful",
-              type: "success"
-            });
-          },
-          onError: () => {
-            isSavingCredentialsRef.current = false;
-            // Remove from processed so it can be retried
-            processedSessionsRef.current.delete(sessionId);
-
-            createNotification({
-              text: "Failed to save credentials",
-              type: "error"
-            });
-          }
+        onError: () => {
+          createNotification({
+            text: "Failed to save credentials",
+            type: "error"
+          });
         }
-      );
-    }
-  }, [
-    oauthStatus,
-    activeOAuthServerId,
-    activeServerState?.sessionId,
-    search.endpointId,
-    saveUserCredential
-  ]);
-
-  // Check if popup was closed manually
-  useEffect(() => {
-    let checkPopupClosed: NodeJS.Timeout | null = null;
-    let cleanupTimeout: NodeJS.Timeout | null = null;
-
-    if (activeOAuthServerId && activeServerState?.isPending) {
-      checkPopupClosed = setInterval(() => {
-        if (popupRef.current?.closed) {
-          if (checkPopupClosed) {
-            clearInterval(checkPopupClosed);
-          }
-          // Give more time for the OAuth polling and save to complete
-          // Also check if we're in the middle of saving before clearing state
-          cleanupTimeout = setTimeout(() => {
-            // Don't clear state if we're currently saving credentials
-            if (isSavingCredentialsRef.current) {
-              return;
-            }
-
-            const currentState = serverOAuthStates.get(activeOAuthServerId);
-            if (currentState && !currentState.isAuthorized) {
-              setServerOAuthStates((prev) => {
-                const newMap = new Map(prev);
-                newMap.set(activeOAuthServerId, {
-                  ...currentState,
-                  isPending: false,
-                  sessionId: null
-                });
-                return newMap;
-              });
-              setActiveOAuthServerId(null);
-            }
-          }, 5000); // Increased from 3000 to 5000ms
-        }
-      }, 500);
-    }
-
-    return () => {
-      if (checkPopupClosed) {
-        clearInterval(checkPopupClosed);
       }
-      if (cleanupTimeout) {
-        clearTimeout(cleanupTimeout);
-      }
-    };
-  }, [activeOAuthServerId, activeServerState?.isPending, serverOAuthStates]);
+    );
+  }, [oauthStatus?.authorized, oauthStatus?.accessToken, activeServerId, activeSessionId]);
 
   const handleServerOAuth = useCallback(
     async (serverId: string) => {
       try {
-        // Update state to pending
-        setServerOAuthStates((prev) => {
+        // Set pending state
+        setServerStates((prev) => {
           const newMap = new Map(prev);
-          const state = newMap.get(serverId);
-          if (state) {
-            newMap.set(serverId, { ...state, isPending: true });
-          }
+          const existing = prev.get(serverId);
+          newMap.set(serverId, {
+            sessionId: null,
+            isPending: true,
+            isAuthorized: existing?.isAuthorized ?? false
+          });
           return newMap;
         });
-        setActiveOAuthServerId(serverId);
+        setActiveServerId(serverId);
 
+        // Get OAuth URL and session
         const { authUrl, sessionId } = await initiateServerOAuth.mutateAsync({
           endpointId: search.endpointId,
           serverId
         });
 
-        // Update state with session ID
-        setServerOAuthStates((prev) => {
+        // Store session ID to start polling
+        setServerStates((prev) => {
           const newMap = new Map(prev);
-          const state = newMap.get(serverId);
-          if (state) {
-            newMap.set(serverId, { ...state, sessionId });
-          }
+          const existing = prev.get(serverId);
+          newMap.set(serverId, {
+            sessionId,
+            isPending: true,
+            isAuthorized: existing?.isAuthorized ?? false
+          });
           return newMap;
         });
 
-        // Open popup
+        // Open OAuth popup
         const left = window.screenX + (window.outerWidth - OAUTH_POPUP_WIDTH) / 2;
         const top = window.screenY + (window.outerHeight - OAUTH_POPUP_HEIGHT) / 2;
 
-        popupRef.current = window.open(
+        const popup = window.open(
           authUrl,
-          "MCP Server OAuth",
+          `oauth_${serverId}`,
           `width=${OAUTH_POPUP_WIDTH},height=${OAUTH_POPUP_HEIGHT},left=${left},top=${top},scrollbars=yes,resizable=yes`
         );
 
-        if (!popupRef.current) {
+        if (!popup) {
           createNotification({
             text: "Failed to open OAuth popup. Please allow popups for this site.",
             type: "error"
           });
-          setServerOAuthStates((prev) => {
+          setServerStates((prev) => {
             const newMap = new Map(prev);
-            const state = newMap.get(serverId);
-            if (state) {
-              newMap.set(serverId, { ...state, isPending: false, sessionId: null });
-            }
+            newMap.set(serverId, {
+              sessionId: null,
+              isPending: false,
+              isAuthorized: false
+            });
             return newMap;
           });
-          setActiveOAuthServerId(null);
+          setActiveServerId(null);
         }
       } catch (error) {
         console.error("Failed to initiate OAuth:", error);
@@ -285,26 +221,26 @@ export const McpEndpointFinalizePage = () => {
           text: "Failed to initiate authentication",
           type: "error"
         });
-        setServerOAuthStates((prev) => {
+        setServerStates((prev) => {
           const newMap = new Map(prev);
-          const state = newMap.get(serverId);
-          if (state) {
-            newMap.set(serverId, { ...state, isPending: false, sessionId: null });
-          }
+          newMap.set(serverId, {
+            sessionId: null,
+            isPending: false,
+            isAuthorized: false
+          });
           return newMap;
         });
-        setActiveOAuthServerId(null);
+        setActiveServerId(null);
       }
     },
     [search.endpointId, initiateServerOAuth]
   );
 
-  // Check if all servers requiring auth have been authenticated
   const allServersAuthenticated =
     !serversRequiringAuth ||
     serversRequiringAuth.length === 0 ||
     serversRequiringAuth.every((server) => {
-      const state = serverOAuthStates.get(server.id);
+      const state = serverStates.get(server.id);
       return state?.isAuthorized || server.hasCredentials;
     });
 
@@ -355,7 +291,7 @@ export const McpEndpointFinalizePage = () => {
 
   const hasServersRequiringAuth = serversRequiringAuth && serversRequiringAuth.length > 0;
   const pendingServers = serversRequiringAuth?.filter((server) => {
-    const state = serverOAuthStates.get(server.id);
+    const state = serverStates.get(server.id);
     return !state?.isAuthorized && !server.hasCredentials;
   });
 
@@ -414,7 +350,7 @@ export const McpEndpointFinalizePage = () => {
               </p>
             )}
             {serversRequiringAuth.map((server) => {
-              const state = serverOAuthStates.get(server.id);
+              const state = serverStates.get(server.id);
               const isAuthorized = state?.isAuthorized || server.hasCredentials;
               const isServerPending = state?.isPending;
 
@@ -442,9 +378,7 @@ export const McpEndpointFinalizePage = () => {
                         size="xs"
                         variant="outline_bg"
                         onClick={() => handleServerOAuth(server.id)}
-                        isLoading={
-                          initiateServerOAuth.isPending && activeOAuthServerId === server.id
-                        }
+                        isLoading={initiateServerOAuth.isPending && activeServerId === server.id}
                         leftIcon={<FontAwesomeIcon icon={faExternalLink} />}
                       >
                         Authenticate

@@ -82,6 +82,10 @@ export const useGetOAuthStatus = (
       return data;
     },
     enabled: Boolean(sessionId) && enabled,
-    refetchInterval
+    refetchInterval,
+    // Keep polling even when window loses focus (user is in OAuth popup)
+    refetchIntervalInBackground: true,
+    // Don't use React Query's retry mechanism - we want continuous polling, not 3 retries then stop
+    retry: false
   });
 };
