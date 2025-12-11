@@ -249,7 +249,8 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
             acmeConfig: z
               .object({
                 id: z.string(),
-                directoryUrl: z.string()
+                directoryUrl: z.string(),
+                skipDnsOwnershipVerification: z.boolean().optional()
               })
               .optional(),
             externalConfigs: ExternalConfigUnionSchema

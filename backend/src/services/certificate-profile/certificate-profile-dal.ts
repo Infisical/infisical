@@ -361,7 +361,11 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
           db.ref("id").withSchema(TableName.PkiApiEnrollmentConfig).as("apiId"),
           db.ref("autoRenew").withSchema(TableName.PkiApiEnrollmentConfig).as("apiAutoRenew"),
           db.ref("renewBeforeDays").withSchema(TableName.PkiApiEnrollmentConfig).as("apiRenewBeforeDays"),
-          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId")
+          db.ref("id").withSchema(TableName.PkiAcmeEnrollmentConfig).as("acmeId"),
+          db
+            .ref("skipDnsOwnershipVerification")
+            .withSchema(TableName.PkiAcmeEnrollmentConfig)
+            .as("acmeSkipDnsOwnershipVerification")
         );
 
       if (processedRules) {
@@ -398,7 +402,8 @@ export const certificateProfileDALFactory = (db: TDbClient) => {
 
         const acmeConfig = result.acmeId
           ? {
-              id: result.acmeId as string
+              id: result.acmeId as string,
+              skipDnsOwnershipVerification: !!result.acmeSkipDnsOwnershipVerification
             }
           : undefined;
 
