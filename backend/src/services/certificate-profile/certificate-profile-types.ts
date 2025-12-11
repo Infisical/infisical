@@ -46,7 +46,9 @@ export type TCertificateProfileUpdate = Omit<
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+  };
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {
@@ -83,6 +85,7 @@ export type TCertificateProfileWithConfigs = TCertificateProfile & {
     id: string;
     directoryUrl: string;
     encryptedEabSecret?: Buffer;
+    skipDnsOwnershipVerification?: boolean;
   };
 };
 
