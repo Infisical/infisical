@@ -828,9 +828,9 @@ export const kmsServiceFactory = ({
   };
 
   const $getBasicEncryptionKey = () => {
-    const encryptionKey = envConfig.ROOT_ENCRYPTION_KEY || envConfig.ENCRYPTION_KEY;
+    const encryptionKey = envConfig.ENCRYPTION_KEY || envConfig.ROOT_ENCRYPTION_KEY;
 
-    const isBase64 = envConfig.ROOT_ENCRYPTION_KEY;
+    const isBase64 = !envConfig.ENCRYPTION_KEY;
     if (!encryptionKey)
       throw new Error(
         "Root encryption key not found for KMS service. Did you set the ENCRYPTION_KEY or ROOT_ENCRYPTION_KEY environment variables?"

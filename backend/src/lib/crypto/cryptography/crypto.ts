@@ -17,6 +17,7 @@ import { RootKeyEncryptionStrategy } from "@app/services/kms/kms-types";
 import { TSuperAdminDALFactory } from "@app/services/super-admin/super-admin-dal";
 import { ADMIN_CONFIG_DB_UUID } from "@app/services/super-admin/super-admin-service";
 
+import { isBase64 } from "../../base64";
 import { getConfig, TEnvConfig } from "../../config/env";
 import { CryptographyError } from "../../errors";
 import { logger } from "../../logger";
@@ -113,7 +114,7 @@ const cryptographyFactory = () => {
     enabled: boolean,
     hsmService: THsmServiceFactory,
     kmsRootConfigDAL: TKmsRootConfigDALFactory,
-    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY" | "ROOT_ENCRYPTION_KEY">
+    envCfg?: Pick<TEnvConfig, "ENCRYPTION_KEY">
   ) => {
     // If FIPS is enabled, we need to validate that the ENCRYPTION_KEY is in a base64 format, and is a 256-bit key.
     if (enabled) {
@@ -134,20 +135,18 @@ const cryptographyFactory = () => {
 
       // only perform encryption key validation if it's actually required.
       if (needsEncryptionKey) {
-        const encryptionKey = appCfg.ROOT_ENCRYPTION_KEY || appCfg.ENCRYPTION_KEY;
-
-        if (encryptionKey) {
+        if (appCfg.ENCRYPTION_KEY) {
           // we need to validate that the ENCRYPTION_KEY is a base64 encoded 256-bit key
 
           // note(daniel): for some reason this resolves as true for some hex-encoded strings.
-          if (!encryptionKey) {
+          if (!isBase64(appCfg.ENCRYPTION_KEY)) {
             throw new CryptographyError({
               message:
                 "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a base64 encoded 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
             });
           }
 
-          if (bytesToBits(Buffer.from(encryptionKey, "base64").length) !== 256) {
+          if (bytesToBits(Buffer.from(appCfg.ENCRYPTION_KEY, "base64").length) !== 256) {
             throw new CryptographyError({
               message:
                 "FIPS mode is enabled, but the ENCRYPTION_KEY environment variable is not a 256-bit key.\nYou can generate a 256-bit key using the following command: `openssl rand -base64 32`"
