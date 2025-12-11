@@ -46,7 +46,9 @@ export type TCertificateProfileUpdate = Omit<
     autoRenew?: boolean;
     renewBeforeDays?: number;
   };
-  acmeConfig?: unknown;
+  acmeConfig?: {
+    skipDnsOwnershipVerification?: boolean;
+  };
 };
 
 export type TCertificateProfileWithConfigs = TCertificateProfile & {

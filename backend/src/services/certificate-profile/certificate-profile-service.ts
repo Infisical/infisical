@@ -405,8 +405,8 @@ export const certificateProfileServiceFactory = ({
         const { encryptedEabSecret } = await generateAndEncryptAcmeEabSecret(projectId, kmsService, projectDAL);
         const acmeConfig = await acmeEnrollmentConfigDAL.create(
           {
-            encryptedEabSecret,
-            skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false
+            skipDnsOwnershipVerification: data.acmeConfig.skipDnsOwnershipVerification ?? false,
+            encryptedEabSecret
           },
           tx
         );
