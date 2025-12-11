@@ -185,49 +185,45 @@ export const Page = () => {
                   >
                     Copy User ID
                   </UnstableDropdownMenuItem>
-                  {!isOwnProjectMembershipDetails && (
-                    <>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionMemberActions.AssumePrivileges}
-                        a={ProjectPermissionSub.Member}
+                  <ProjectPermissionCan
+                    I={ProjectPermissionMemberActions.AssumePrivileges}
+                    a={ProjectPermissionSub.Member}
+                  >
+                    {(isAllowed) => (
+                      <UnstableDropdownMenuItem
+                        isDisabled={!isAllowed}
+                        onClick={() =>
+                          handlePopUpOpen("assumePrivileges", {
+                            userId: membershipDetails.user.id
+                          })
+                        }
                       >
-                        {(isAllowed) => (
-                          <UnstableDropdownMenuItem
-                            isDisabled={!isAllowed}
-                            onClick={() =>
-                              handlePopUpOpen("assumePrivileges", {
-                                userId: membershipDetails.user.id
-                              })
-                            }
-                          >
-                            Assume Privileges
-                            <Tooltip
-                              side="bottom"
-                              content="Assume the privileges of this user, allowing you to replicate their access behavior."
-                            >
-                              <div>
-                                <InfoIcon className="text-muted" />
-                              </div>
-                            </Tooltip>
-                          </UnstableDropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                      <ProjectPermissionCan
-                        I={ProjectPermissionMemberActions.Delete}
-                        a={ProjectPermissionSub.Member}
+                        Assume Privileges
+                        <Tooltip
+                          side="bottom"
+                          content="Assume the privileges of this user, allowing you to replicate their access behavior."
+                        >
+                          <div>
+                            <InfoIcon className="text-muted" />
+                          </div>
+                        </Tooltip>
+                      </UnstableDropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
+                  <ProjectPermissionCan
+                    I={ProjectPermissionMemberActions.Delete}
+                    a={ProjectPermissionSub.Member}
+                  >
+                    {(isAllowed) => (
+                      <UnstableDropdownMenuItem
+                        variant="danger"
+                        isDisabled={!isAllowed}
+                        onClick={() => handlePopUpOpen("removeMember")}
                       >
-                        {(isAllowed) => (
-                          <UnstableDropdownMenuItem
-                            variant="danger"
-                            isDisabled={!isAllowed}
-                            onClick={() => handlePopUpOpen("removeMember")}
-                          >
-                            Remove User From Project
-                          </UnstableDropdownMenuItem>
-                        )}
-                      </ProjectPermissionCan>
-                    </>
-                  )}
+                        Remove User From Project
+                      </UnstableDropdownMenuItem>
+                    )}
+                  </ProjectPermissionCan>
                 </UnstableDropdownMenuContent>
               </UnstableDropdownMenu>
             )}
