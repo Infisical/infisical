@@ -613,7 +613,7 @@ export const pkiAcmeServiceFactory = ({
           const auth = await acmeAuthDAL.create(
             {
               accountId: account.id,
-              status: AcmeAuthStatus.Pending,
+              status: skipDnsOwnershipVerification ? AcmeAuthStatus.Valid : AcmeAuthStatus.Pending,
               identifierType: identifier.type,
               identifierValue: identifier.value,
               // RFC 8555 suggests a token with at least 128 bits of entropy
@@ -625,15 +625,17 @@ export const pkiAcmeServiceFactory = ({
             },
             tx
           );
-          // TODO: support other challenge types here. Currently only HTTP-01 is supported.
-          await acmeChallengeDAL.create(
-            {
-              authId: auth.id,
-              status: skipDnsOwnershipVerification ? AcmeChallengeStatus.Valid : AcmeChallengeStatus.Pending,
-              type: AcmeChallengeType.HTTP_01
-            },
-            tx
-          );
+          if (!skipDnsOwnershipVerification) {
+            // TODO: support other challenge types here. Currently only HTTP-01 is supported.
+            await acmeChallengeDAL.create(
+              {
+                authId: auth.id,
+                status: AcmeChallengeStatus.Pending,
+                type: AcmeChallengeType.HTTP_01
+              },
+              tx
+            );
+          }
           return auth;
         })
       );
