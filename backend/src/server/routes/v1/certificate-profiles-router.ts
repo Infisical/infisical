@@ -439,6 +439,11 @@ export const registerCertificateProfilesRouter = async (server: FastifyZodProvid
               renewBeforeDays: z.number().min(1).max(30).optional()
             })
             .optional(),
+          acmeConfig: z
+            .object({
+              skipDnsOwnershipVerification: z.boolean().optional()
+            })
+            .optional(),
           externalConfigs: ExternalConfigUnionSchema
         })
         .refine(
