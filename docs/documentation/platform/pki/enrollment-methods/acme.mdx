@@ -26,12 +26,14 @@ In the following steps, we explore how to issue a X.509 certificate using the AC
 
     ![pki acme config](/images/platform/pki/enrollment-methods/acme/acme-config.png)
 
+    <Note>
     By default, when your ACME client attempts to get a certificate issued with the certificate profile, the Infisical ACME server will verify your domain ownership.
     Currently only HTTP-01 is supported.
     If you want to skip the domain validation process, please check the `Skip DNS Ownership Validation` checkbox.
     However, please note that we can only skip the DNS validation for certificate issuance requests from your ACME client to our Infisical ACME server.
     If you are using a third-party ACME external Certificate Authority as the source of certificate issuance, that external CA may still require domain ownership validation.
     Please read the [document for external ACME CA](/documentation/platform/pki/ca/acme-ca) to learn more.
+    </Note>
 
   </Step>
   <Step title="Obtain the ACME configuration">
