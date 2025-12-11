@@ -567,6 +567,8 @@ export const pkiAcmeServiceFactory = ({
     accountId: string;
     payload: TCreateAcmeOrderPayload;
   }): Promise<TAcmeResponse<TAcmeOrderResource>> => {
+    const profile = await validateAcmeProfile(profileId);
+    const skipDnsOwnershipVerification = profile.acmeConfig?.skipDnsOwnershipVerification ?? false;
     // TODO: check and see if we have existing orders for this account that meet the criteria
     //       if we do, return the existing order
     // TODO: check the identifiers and see if are they even allowed for this profile.
@@ -592,7 +594,7 @@ export const pkiAcmeServiceFactory = ({
       const createdOrder = await acmeOrderDAL.create(
         {
           accountId: account.id,
-          status: AcmeOrderStatus.Pending,
+          status: skipDnsOwnershipVerification ? AcmeOrderStatus.Valid : AcmeOrderStatus.Pending,
           notBefore: payload.notBefore ? new Date(payload.notBefore) : undefined,
           notAfter: payload.notAfter ? new Date(payload.notAfter) : undefined,
           // TODO: read config from the profile to get the expiration time instead
@@ -627,7 +629,7 @@ export const pkiAcmeServiceFactory = ({
           await acmeChallengeDAL.create(
             {
               authId: auth.id,
-              status: AcmeChallengeStatus.Pending,
+              status: skipDnsOwnershipVerification ? AcmeChallengeStatus.Valid : AcmeChallengeStatus.Pending,
               type: AcmeChallengeType.HTTP_01
             },
             tx
