@@ -613,7 +613,6 @@ export const pkiAcmeServiceFactory = ({
     //       if not, we may be able to reject it early with an unsupportedIdentifier error.
 
     // TODO: ideally, we should return an error with subproblems if we have multiple unsupported identifiers
-    const profile = await validateAcmeProfile(profileId);
     if (payload.identifiers.some((identifier) => identifier.type !== AcmeIdentifierType.DNS)) {
       throw new AcmeUnsupportedIdentifierError({ message: "Only DNS identifiers are supported" });
     }
