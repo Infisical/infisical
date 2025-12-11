@@ -89,7 +89,7 @@ export const licenseDALFactory = (db: TDbClient) => {
     try {
       const orgs = db(TableName.Organization).where("id", rootOrgId).orWhere("rootOrgId", rootOrgId).select("id");
 
-      const result = await db
+      const docs = await db
         .replicaNode()(TableName.Membership)
         .join(TableName.Project, `${TableName.Project}.id`, `${TableName.Membership}.scopeProjectId`)
         .leftJoin(TableName.Groups, `${TableName.Groups}.id`, `${TableName.Membership}.actorGroupId`)
@@ -112,7 +112,11 @@ export const licenseDALFactory = (db: TDbClient) => {
           )
         )
         .select(db.raw(`COUNT(DISTINCT "${TableName.Membership}"."actorIdentityId") as "identityCount"`));
-      return result as unknown as Array<{ type: ProjectType; userCount: string; identityCount: string }>;
+
+      const result = (docs as unknown as Array<{ type: ProjectType; userCount: string; identityCount: string }>).map(
+        (el) => ({ ...el, identityCount: Number(el.identityCount || 0), userCount: Number(el.userCount || 0) })
+      );
+      return result;
     } catch (error) {
       throw new DatabaseError({ error, name: "CountIdentityByProjectType" });
     }

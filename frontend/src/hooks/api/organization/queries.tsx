@@ -16,6 +16,7 @@ import {
   PmtMethod,
   ProductsTable,
   TaxID,
+  TBillingMetrics,
   TListOrgIdentitiesDTO,
   TOrgIdentitiesList,
   UpdateOrgDTO
@@ -41,6 +42,7 @@ export const organizationKeys = {
   }: TListOrgIdentitiesDTO) =>
     [...organizationKeys.getOrgIdentityMemberships(orgId), params] as const,
   getOrgGroups: (orgId: string) => [{ orgId }, "organization-groups"] as const,
+  getOrgBillingMetrics: (orgId: string) => ["billing-metrics", { orgId }] as const,
   getOrgIntegrationAuths: (orgId: string) => [{ orgId }, "integration-auths"] as const,
   getOrgById: (orgId: string) => ["organization", { orgId }],
   getAvailableIdentities: () => ["available-identities"],
@@ -611,4 +613,14 @@ export const useGetAvailableOrgUsers = (enabled = true) =>
       return data.users;
     },
     enabled
+  });
+
+export const useGetOrgBillingMetrics = (orgId: string) =>
+  useQuery({
+    queryKey: organizationKeys.getOrgBillingMetrics(orgId),
+    queryFn: async () => {
+      const { data } = await apiRequest.get<TBillingMetrics>("/api/v1/organizations/metrics");
+
+      return data;
+    }
   });

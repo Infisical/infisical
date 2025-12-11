@@ -129,6 +129,10 @@ export type TUpdateOrgProductToPro = TOrgPermission & {
   product: SubscriptionProductCategory;
 };
 
+export type TGetMySubscriptionMetrics = {
+  orgPermission: TOrgPermission;
+};
+
 export type TOrgPmtMethodsDTO = TOrgPermission;
 
 export type TAddOrgPmtMethodDTO = TOrgPermission & { success_url: string; cancel_url: string };
