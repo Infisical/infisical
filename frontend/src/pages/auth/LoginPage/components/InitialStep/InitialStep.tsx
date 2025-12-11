@@ -57,7 +57,10 @@ export const InitialStep = ({
       callbackPort ? `?callback_port=${callbackPort}` : ""
     }`;
 
-    window.location.assign(redirectUrl);
+    navigate({
+      href: redirectUrl,
+      reloadDocument: true
+    });
   };
 
   const redirectToOidc = (orgSlug: string) => {
@@ -66,7 +69,10 @@ export const InitialStep = ({
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
 
-    window.location.assign(redirectUrl);
+    navigate({
+      href: redirectUrl,
+      reloadDocument: true
+    });
   };
 
   useEffect(() => {
