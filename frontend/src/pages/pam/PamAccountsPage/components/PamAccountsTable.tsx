@@ -129,7 +129,7 @@ export const PamAccountsTable = ({ projectId }: Props) => {
     setOrderDirection,
     setOrderBy
   } = usePagination<PamAccountOrderBy>(PamAccountOrderBy.Name, {
-    initPerPage: getUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, 16),
+    initPerPage: getUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, 18),
     initSearch
   });
 
@@ -260,12 +260,6 @@ export const PamAccountsTable = ({ projectId }: Props) => {
                   setPage(1);
                   setFilter({ resourceIds: [] });
                   setAccountView(e);
-
-                  // Reset perPage to appropriate default for the view
-                  const newPerPage = e === PamAccountView.Flat ? 12 : 10;
-                  setPerPage(newPerPage);
-                  setUserTablePreference("pamAccountsTable", PreferenceKey.PerPage, newPerPage);
-
                   navigate({
                     search: (prev) => ({
                       ...prev,
@@ -427,15 +421,24 @@ export const PamAccountsTable = ({ projectId }: Props) => {
               />
             ))}
           </div>
-          <Pagination
-            className="col-span-full justify-start! border-transparent bg-transparent pl-2"
-            count={totalCount}
-            page={page}
-            perPage={perPage}
-            onChangePage={(newPage) => setPage(newPage)}
-            onChangePerPage={handlePerPageChange}
-            perPageList={[9, 12, 15, 18, 27]}
-          />
+          {!isLoading && isContentEmpty && (
+            <EmptyState
+              title={isSearchEmpty ? "No accounts match search" : "No accounts"}
+              icon={isSearchEmpty ? faSearch : faCircleXmark}
+              className="rounded border border-mineshaft-500"
+            />
+          )}
+          {Boolean(totalCount) && !isLoading && !isContentEmpty && (
+            <Pagination
+              className="col-span-full justify-start! border-transparent bg-transparent pl-2"
+              count={totalCount}
+              page={page}
+              perPage={perPage}
+              onChangePage={(newPage) => setPage(newPage)}
+              onChangePerPage={handlePerPageChange}
+              perPageList={[9, 18, 48, 99]}
+            />
+          )}
         </>
       ) : (
         <TableContainer>
@@ -487,20 +490,20 @@ export const PamAccountsTable = ({ projectId }: Props) => {
               )}
             </TBody>
           </Table>
-
-          {Boolean(totalCount) && !isLoading && (
+          {!isLoading && isContentEmpty && (
+            <EmptyState
+              title={isSearchEmpty ? "No accounts match search" : "No accounts"}
+              icon={isSearchEmpty ? faSearch : faCircleXmark}
+            />
+          )}
+          {Boolean(totalCount) && !isLoading && !isContentEmpty && (
             <Pagination
               count={totalCount}
               page={page}
               perPage={perPage}
               onChangePage={(newPage) => setPage(newPage)}
               onChangePerPage={handlePerPageChange}
-            />
-          )}
-          {!isLoading && isContentEmpty && (
-            <EmptyState
-              title={isSearchEmpty ? "No accounts match search" : "No accounts"}
-              icon={isSearchEmpty ? faSearch : faCircleXmark}
+              perPageList={[9, 18, 48, 99]}
             />
           )}
         </TableContainer>
