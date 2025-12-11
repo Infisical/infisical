@@ -58,6 +58,10 @@ export const additionalPrivilegeServiceFactory = ({
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = data.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
+    if (dto.data.actorId === dto.permission.id) {
+      throw new BadRequestError({ message: "Cannot assign additional privileges to your own membership" });
+    }
+
     const existingSlug = await additionalPrivilegeDAL.findOne({
       name: data.name,
       [dbActorField]: data.actorId,
@@ -120,6 +124,10 @@ export const additionalPrivilegeServiceFactory = ({
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
 
+    if (dto.selector.actorId === dto.permission.id) {
+      throw new BadRequestError({ message: "Cannot update additional privileges on your own membership" });
+    }
+
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       [dbActorField]: dto.selector.actorId,
       id: dto.selector.id,
@@ -180,6 +188,10 @@ export const additionalPrivilegeServiceFactory = ({
     await factory.onDeleteAdditionalPrivilegesGuard(dto);
     const scope = factory.getScopeField(dto.scopeData);
     const dbActorField = dto.selector.actorType === ActorType.IDENTITY ? "actorIdentityId" : "actorUserId";
+
+    if (dto.selector.actorId === dto.permission.id) {
+      throw new BadRequestError({ message: "Cannot remove additional privileges from your own membership" });
+    }
 
     const existingPrivilege = await additionalPrivilegeDAL.findOne({
       id: selector.id,

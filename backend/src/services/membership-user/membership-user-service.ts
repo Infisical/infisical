@@ -326,6 +326,11 @@ export const membershipUserServiceFactory = ({
         message: "User doesn't have membership"
       });
 
+    if (existingMembership.actorUserId === dto.permission.id)
+      throw new BadRequestError({
+        message: "You can't update your own membership"
+      });
+
     const scopeField = factory.getScopeField(dto.scopeData);
     const customRoles = hasCustomRole
       ? await roleDAL.find({
