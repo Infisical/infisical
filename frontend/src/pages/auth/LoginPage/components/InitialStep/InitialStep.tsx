@@ -38,13 +38,12 @@ export const InitialStep = ({
   isAdmin
 }: Props) => {
   const navigate = useNavigate();
-  const searchParams = useSearch({ from: "/_restrict-login-signup" });
+  const queryParams = useSearch({ from: "/_restrict-login-signup" });
 
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState(false);
   const { config } = useServerConfig();
-  const queryParams = new URLSearchParams(window.location.search);
   const [captchaToken, setCaptchaToken] = useState("");
   const [shouldShowCaptcha, setShouldShowCaptcha] = useState(false);
   const captchaRef = useRef<HCaptcha>(null);
@@ -53,7 +52,7 @@ export const InitialStep = ({
   const { navigateToSelectOrganization } = useNavigateToSelectOrganization();
 
   const redirectToSaml = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
+    const callbackPort = queryParams.callback_port?.toString();
     const redirectUrl = `/api/v1/sso/redirect/saml2/organizations/${orgSlug}${
       callbackPort ? `?callback_port=${callbackPort}` : ""
     }`;
@@ -62,7 +61,7 @@ export const InitialStep = ({
   };
 
   const redirectToOidc = (orgSlug: string) => {
-    const callbackPort = queryParams.get("callback_port");
+    const callbackPort = queryParams.callback_port?.toString();
     const redirectUrl = `/api/v1/sso/oidc/login?orgSlug=${orgSlug}${
       callbackPort ? `&callbackPort=${callbackPort}` : ""
     }`;
@@ -95,8 +94,8 @@ export const InitialStep = ({
   const handleOauth = (provider: string) => {
     const params = new URLSearchParams();
 
-    if (searchParams.callback_port != null) {
-      params.set("callback_port", String(searchParams.callback_port));
+    if (queryParams.callback_port != null) {
+      params.set("callback_port", String(queryParams.callback_port));
     }
 
     if (isAdmin) {
@@ -122,8 +121,8 @@ export const InitialStep = ({
       }
 
       setIsLoading(true);
-      if (queryParams && queryParams.get("callback_port")) {
-        const callbackPort = queryParams.get("callback_port");
+      if (queryParams.callback_port) {
+        const callbackPort = queryParams.callback_port.toString();
 
         // attemptCliLogin
         const isCliLoginSuccessful = await attemptCliLogin({
