@@ -10,6 +10,7 @@ export {
   useGetOrganizationGroups,
   useGetOrganizations,
   useGetOrgBillingDetails,
+  useGetOrgBillingMetrics,
   useGetOrgIntegrationAuths,
   useGetOrgInvoices,
   useGetOrgLicenses,

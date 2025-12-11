@@ -2,12 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable @typescript-eslint/no-unsafe-assignment
 
-// TODO(akhilmhdh): With tony find out the api structure and fill it here
-
 import { ForbiddenError } from "@casl/ability";
 import { AxiosError } from "axios";
 import { CronJob } from "cron";
-import { Knex } from "knex";
 
 import { OrganizationActionScope, ProjectType } from "@app/db/schemas";
 import { TKeyStoreFactory } from "@app/keystore/keystore";
@@ -33,6 +30,7 @@ import {
   TDelOrgPmtMethodDTO,
   TDelOrgTaxIdDTO,
   TFeatureSet,
+  TGetMySubscriptionMetrics,
   TGetOrgBillInfoDTO,
   TGetOrgTaxIdDTO,
   TOfflineLicense,
@@ -940,6 +938,72 @@ export const licenseServiceFactory = ({
     );
   };
 
+  const $getMyLicenseMetrics = async (rootOrgId: string) => {
+    const identityMetrics = await licenseDAL.countIdentitiesByProjectType(rootOrgId);
+    const cerificates = await licenseDAL.getAllUniqueCertificates(rootOrgId);
+    const quantity = await licenseDAL.countOfOrgMembers(rootOrgId);
+    const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
+    const usedCertManagerCas = await licenseDAL.countInternalCas(rootOrgId);
+    const certificateMetrics = { sanCount: 0, wildcardCount: 0 };
+    const uniqueSet = new Set<string>();
+    cerificates.forEach((el) => {
+      const commonName = el.commonName.trim();
+      if (!uniqueSet.has(commonName)) {
+        uniqueSet.add(commonName);
+        if (commonName.includes("*")) {
+          certificateMetrics.wildcardCount += 1;
+        } else {
+          certificateMetrics.sanCount += 1;
+        }
+      }
+      const altNames = el.altNames
+        ?.split(",")
+        ?.map((i) => i.trim())
+        .filter(Boolean);
+      altNames.forEach((altName) => {
+        if (!uniqueSet.has(altName)) {
+          uniqueSet.add(altName);
+          if (altName.includes("*")) {
+            certificateMetrics.wildcardCount += 1;
+          } else {
+            certificateMetrics.sanCount += 1;
+          }
+        }
+      });
+    });
+
+    const identityMetricsGroupByProjectType = identityMetrics.reduce(
+      (prev, curr) => {
+        // eslint-disable-next-line no-param-reassign
+        prev[curr.type] = curr;
+        return prev;
+      },
+      {} as Record<ProjectType, { userCount: number; identityCount: number }>
+    );
+    return {
+      identityMetrics: identityMetricsGroupByProjectType,
+      certificateMetrics,
+      quantity,
+      quantityIdentities,
+      usedCertManagerCas
+    };
+  };
+
+  const getMySubscriptionMetrics = async ({ orgPermission }: TGetMySubscriptionMetrics) => {
+    const { permission } = await permissionService.getOrgPermission({
+      actorId: orgPermission.actorId,
+      actor: orgPermission.actor,
+      orgId: orgPermission.orgId,
+      actorOrgId: orgPermission.orgId,
+      actorAuthMethod: orgPermission.actorAuthMethod,
+      scope: OrganizationActionScope.ParentOrganization
+    });
+    ForbiddenError.from(permission).throwUnlessCan(OrgPermissionBillingActions.Read, OrgPermissionSubjects.Billing);
+
+    const metrics = await $getMyLicenseMetrics(orgPermission.orgId);
+    return metrics;
+  };
+
   queueService.start(QueueName.SubscriptionMetricsUpdate, async (job) => {
     const { orgId } = job.data;
 
@@ -951,11 +1015,8 @@ export const licenseServiceFactory = ({
     if (!customerId) return;
 
     try {
-      const metrics = await licenseDAL.countIdentitiesByProjectType(rootOrgId);
-      const cerificates = await licenseDAL.getAllUniqueCertificates(rootOrgId);
-      const quantity = await licenseDAL.countOfOrgMembers(rootOrgId);
-      const quantityIdentities = await licenseDAL.countOrgUsersAndIdentities(rootOrgId);
-      const usedCertManagerCas = await licenseDAL.countInternalCas(rootOrgId);
+      const { identityMetrics, certificateMetrics, quantity, quantityIdentities, usedCertManagerCas } =
+        await $getMyLicenseMetrics(rootOrgId);
 
       const licensePayload = {
         quantity,
@@ -963,68 +1024,23 @@ export const licenseServiceFactory = ({
         usedPAMIdentitySeats: 0,
         usedSecretsManagementSeats: 0,
         usedSecretScanningContributors: 0,
-        usedCertManagerSans: 0,
+        usedCertManagerSans: certificateMetrics.sanCount,
         usedCertManagerCas,
-        usedCertManagerWildcards: 0
+        usedCertManagerWildcards: certificateMetrics.wildcardCount
       };
+
       const projectTypes = Object.values(ProjectType);
       for (const projectType of projectTypes) {
-        const identitySeats = metrics.find((el) => el.type === projectType);
-        const userSeats = identitySeats?.userCount ? parseInt(identitySeats?.userCount, 10) : 0;
-        const machineIdentitySeats = identitySeats?.identityCount ? parseInt(identitySeats?.identityCount, 10) : 0;
+        const identitySeats = identityMetrics?.[projectType];
+        const userSeats = identitySeats?.userCount || 0;
+        const machineIdentitySeats = identitySeats?.identityCount || 0;
         const totalSeats = userSeats + machineIdentitySeats;
-        switch (projectType) {
-          case ProjectType.SecretManager: {
-            licensePayload.usedSecretsManagementSeats = totalSeats;
-            break;
-          }
-          case ProjectType.CertificateManager: {
-            const uniqueSet = new Set<string>();
-            cerificates.forEach((el) => {
-              const commonName = el.commonName.trim();
-              if (!uniqueSet.has(commonName)) {
-                uniqueSet.add(commonName);
-                if (commonName.includes("*")) {
-                  licensePayload.usedCertManagerWildcards += 1;
-                } else {
-                  licensePayload.usedCertManagerSans += 1;
-                }
-              }
-              const altNames = el.altNames
-                ?.split(",")
-                ?.map((i) => i.trim())
-                .filter(Boolean);
-              altNames.forEach((altName) => {
-                if (!uniqueSet.has(altName)) {
-                  uniqueSet.add(altName);
-                  if (altName.includes("*")) {
-                    licensePayload.usedCertManagerWildcards += 1;
-                  } else {
-                    licensePayload.usedCertManagerSans += 1;
-                  }
-                }
-              });
-            });
-            break;
-          }
-          case ProjectType.KMS: {
-            // we don't do anything
-            break;
-          }
-          case ProjectType.SSH: {
-            // we don't do anything
-            break;
-          }
-          case ProjectType.SecretScanning: {
-            licensePayload.usedSecretScanningContributors = totalSeats;
-            break;
-          }
-          case ProjectType.PAM: {
-            licensePayload.usedPAMIdentitySeats = totalSeats;
-            break;
-          }
-          default:
-            break;
+        if (projectType === ProjectType.SecretManager) {
+          licensePayload.usedSecretsManagementSeats = totalSeats;
+        } else if (projectType === ProjectType.PAM) {
+          licensePayload.usedPAMIdentitySeats = totalSeats;
+        } else if (projectType === ProjectType.SecretScanning) {
+          licensePayload.usedSecretScanningContributors = totalSeats;
         }
       }
 
@@ -1121,6 +1137,7 @@ export const licenseServiceFactory = ({
     addOrgTaxId,
     delOrgTaxId,
     initializeBackgroundSync,
-    updateOrgProductToPro
+    updateOrgProductToPro,
+    getMySubscriptionMetrics
   };
 };

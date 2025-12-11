@@ -509,4 +509,45 @@ export const registerLicenseRouter = async (server: FastifyZodProvider) => {
       return data;
     }
   });
+
+  server.route({
+    method: "GET",
+    url: "/metrics",
+    config: {
+      rateLimit: readLimit
+    },
+    schema: {
+      response: {
+        200: z.object({
+          identityMetrics: z.record(
+            z.string(),
+            z.object({
+              userCount: z.number(),
+              identityCount: z.number()
+            })
+          ),
+          certificateMetrics: z.object({
+            sanCount: z.number(),
+            wildcardCount: z.number()
+          }),
+          quantity: z.number(),
+          quantityIdentities: z.number(),
+          usedCertManagerCas: z.number()
+        })
+      }
+    },
+    onRequest: verifyAuth([AuthMode.JWT]),
+    handler: async (req) => {
+      const data = await server.services.license.getMySubscriptionMetrics({
+        orgPermission: {
+          actor: req.permission.type,
+          actorId: req.permission.id,
+          actorAuthMethod: req.permission.authMethod,
+          actorOrgId: req.permission.orgId,
+          orgId: req.permission.orgId
+        }
+      });
+      return data;
+    }
+  });
 };
