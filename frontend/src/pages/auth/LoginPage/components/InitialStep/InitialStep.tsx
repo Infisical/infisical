@@ -93,7 +93,13 @@ export const InitialStep = ({
   };
 
   const handleOauth = (provider: string) => {
-    const queryString = new URLSearchParams(searchParams as Record<string, string>).toString();
+    const params = new URLSearchParams(searchParams as Record<string, string>);
+
+    if (isAdmin) {
+      params.append("is_admin_login", "true");
+    }
+
+    const queryString = params.toString();
 
     console.log("used the handle Oauth function");
     console.log("search params", queryParams);
