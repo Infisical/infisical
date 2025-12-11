@@ -93,7 +93,11 @@ export const InitialStep = ({
   };
 
   const handleOauth = (provider: string) => {
-    const params = new URLSearchParams(searchParams as Record<string, string>);
+    const params = new URLSearchParams();
+
+    if (searchParams.callback_port != null) {
+      params.set("callback_port", String(searchParams.callback_port));
+    }
 
     if (isAdmin) {
       params.append("is_admin_login", "true");
@@ -101,11 +105,10 @@ export const InitialStep = ({
 
     const queryString = params.toString();
 
-    console.log("used the handle Oauth function");
-    console.log("search params", queryParams);
-
-    window.open(`/api/v1/sso/redirect/${provider}${queryString ? `?${queryString}` : ""}`);
-    window.close();
+    navigate({
+      href: `/api/v1/sso/redirect/${provider}${queryString ? `?${queryString}` : ""}`,
+      reloadDocument: true
+    });
   };
 
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
