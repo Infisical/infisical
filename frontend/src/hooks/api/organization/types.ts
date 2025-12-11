@@ -171,3 +171,11 @@ export enum OrgMembershipStatus {
   Invited = "invited",
   Accepted = "accepted"
 }
+
+export type TBillingMetrics = {
+  identityMetrics: Record<string, { userCount: number; identityCount: number }>;
+  certificateMetrics: { sanCount: number; wildcardCount: number };
+  quantity: number;
+  quantityIdentities: number;
+  usedCertManagerCas: number;
+};
