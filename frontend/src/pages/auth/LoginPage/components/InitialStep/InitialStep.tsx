@@ -91,6 +91,26 @@ export const InitialStep = ({
     }
   };
 
+  const handleOauth = (provider: string) => {
+    const callbackPort = queryParams.get("callback_port");
+    const searchParams = new URLSearchParams();
+
+    console.log("used the handle Oauth function");
+
+    if (callbackPort) {
+      searchParams.append("callback_port", callbackPort);
+    }
+
+    if (isAdmin) {
+      searchParams.append("is_admin_login", "true");
+    }
+
+    const queryString = searchParams.toString();
+
+    window.open(`/api/v1/sso/redirect/${provider}${queryString ? `?${queryString}` : ""}`);
+    window.close();
+  };
+
   const shouldDisplayLoginMethod = (method: LoginMethod) =>
     isAdmin || !config.enabledLoginMethods || config.enabledLoginMethods.includes(method);
 
@@ -267,23 +287,7 @@ export const InitialStep = ({
               ariaLabel={t("login.continue-with-google")}
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/google${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("google")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGoogle} />
@@ -296,23 +300,7 @@ export const InitialStep = ({
               ariaLabel="Login continue with GitHub"
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/github${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("github")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGithub} />
@@ -325,23 +313,7 @@ export const InitialStep = ({
               ariaLabel="Login continue with GitLab"
               colorSchema="primary"
               variant="outline_bg"
-              onClick={() => {
-                const callbackPort = queryParams.get("callback_port");
-                const searchParams = new URLSearchParams();
-
-                if (callbackPort) {
-                  searchParams.append("callback_port", callbackPort);
-                }
-
-                if (isAdmin) {
-                  searchParams.append("is_admin_login", "true");
-                }
-
-                const queryString = searchParams.toString();
-
-                window.open(`/api/v1/sso/redirect/gitlab${queryString ? `?${queryString}` : ""}`);
-                window.close();
-              }}
+              onClick={() => handleOauth("gitlab")}
               className="h-10 w-full bg-mineshaft-600"
             >
               <FontAwesomeIcon icon={faGitlab} />
