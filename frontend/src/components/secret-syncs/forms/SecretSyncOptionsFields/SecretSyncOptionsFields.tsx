@@ -9,7 +9,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 import { FormControl, Input, Select, SelectItem, Switch, Tooltip } from "@app/components/v2";
 import { SECRET_SYNC_INITIAL_SYNC_BEHAVIOR_MAP, SECRET_SYNC_MAP } from "@app/helpers/secretSyncs";
-import { SecretSync, useSecretSyncOption } from "@app/hooks/api/secretSyncs";
+import {
+  SecretSync,
+  SecretSyncInitialSyncBehavior,
+  useSecretSyncOption
+} from "@app/hooks/api/secretSyncs";
 
 import { TSecretSyncForm } from "../schemas";
 import { AwsParameterStoreSyncOptionsFields } from "./AwsParameterStoreSyncOptionsFields";
@@ -139,13 +143,25 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
               </FormControl>
             )}
           />
-          {!syncOption?.canImportSecrets && (
+          {!syncOption?.canImportSecrets ? (
             <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
               <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
               {destinationName} only supports overwriting destination secrets.{" "}
               {!currentSyncOption.disableSecretDeletion &&
-                "Secrets not present in Infisical will be removed from the destination."}
+                `Secrets not present in Infisical will be removed from the destination. Consider adding a key schema or disabling secret deletion if you do not want existing secrets to be removed from ${destinationName}.`}
             </p>
+          ) : (
+            currentSyncOption.initialSyncBehavior ===
+              SecretSyncInitialSyncBehavior.OverwriteDestination &&
+            !currentSyncOption.disableSecretDeletion && (
+              <p className="-mt-2.5 mb-2.5 text-xs text-yellow">
+                <FontAwesomeIcon className="mr-1" size="xs" icon={faTriangleExclamation} />
+                Secrets not present in Infisical will be removed from the destination. If you have
+                secrets in {destinationName} that you do not want deleted, consider setting initial
+                sync behavior to import destination secrets. Alternatively, configure a key schema
+                or disable secret deletion below to have Infisical ignore these secrets.
+              </p>
+            )
           )}
         </>
       )}
@@ -183,26 +199,26 @@ export const SecretSyncOptionsFields = ({ hideInitialSync }: Props) => {
                 className="max-w-md"
                 content={
                   <span>
-                    We highly recommend using a{" "}
+                    We highly recommend configuring a{" "}
                     <a
                       href="https://infisical.com/docs/integrations/secret-syncs/overview#key-schemas"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
                     >
-                      Key Schema
+                      key schema
                     </a>{" "}
-                    to ensure that Infisical only manages the specific keys you intend, keeping
-                    everything else untouched.
+                    to ensure that Infisical only manages secrets in {destinationName} that match
+                    the key pattern.
                     <br />
                     <br />
                     Destination secrets that do not match the schema will not be deleted or updated.
                   </span>
                 }
               >
-                <div>
-                  <span>Infisical strongly advises setting a Key Schema</span>{" "}
-                  <FontAwesomeIcon icon={faCircleInfo} className="text-mineshaft-400" />
+                <div className="text-info">
+                  <span>Infisical strongly advises configuring a key schema</span>{" "}
+                  <FontAwesomeIcon icon={faCircleInfo} />
                 </div>
               </Tooltip>
             }
