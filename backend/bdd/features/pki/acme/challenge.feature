@@ -212,7 +212,7 @@ Feature: Challenge
     And I create a RSA private key pair as cert_key
     And I sign the certificate signing request csr with private key cert_key and output it as csr_pem in PEM format
     And I submit the certificate signing request PEM csr_pem certificate order to the ACME server as order
-    And the value order.body with jq ".status" should be equal to "valid"
+    And the value order.body with jq ".status" should be equal to "ready"
     And I poll and finalize the ACME order order as finalized_order
     And the value finalized_order.body with jq ".status" should be equal to "valid"
     And I parse the full-chain certificate from order finalized_order as cert
