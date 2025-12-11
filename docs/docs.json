@@ -2868,9 +2868,9 @@
   },
   "footer": {
     "socials": {
-      "x": "https://www.twitter.com/infisical/",
       "linkedin": "https://www.linkedin.com/company/infisical/",
-      "github": "https://github.com/Infisical/infisical-cli",
+      "github": "https://github.com/Infisical/infisical",
+      "x": "https://www.twitter.com/infisical/",
       "slack": "https://infisical.com/slack"
     },
     "links": [
@@ -2886,7 +2886,7 @@
             "href": "https://infisical.com/radar"
           },
           {
-            "label": "Share Secrets",
+            "label": "Share Secret",
             "href": "https://app.infisical.com/share-secret"
           },
           {
@@ -2907,7 +2907,7 @@
           },
           {
             "label": "Forum",
-            "href": "https://questions.infisical.com/"
+            "href": "https://questions.infisical.com/kb"
           }
         ]
       },
@@ -2916,7 +2916,7 @@
         "items": [
           {
             "label": "Infisical Agent",
-            "href": "https://infisical.com/docs/documentation/getting-started/introduction"
+            "href": "https://infisical.com/docs/integrations/platforms/infisical-agent"
           },
           {
             "label": "Kubernetes",
@@ -2928,7 +2928,7 @@
           },
           {
             "label": "Terraform",
-            "href": "https://registry.terraform.io/providers/Infisical/infisical/latest/docs"
+            "href": "https://infisical.com/docs/integrations/frameworks/terraform"
           },
           {
             "label": "Ansible",
@@ -2955,7 +2955,7 @@
             "href": "https://infisical.com/docs/integrations/cicd/githubactions"
           },
           {
-            "label": "SDK",
+            "label": "SDKs",
             "href": "https://infisical.com/docs/sdks/overview"
           }
         ]
@@ -2964,8 +2964,16 @@
         "header": "DEVELOPERS",
         "items": [
           {
+            "label": "Documentation",
+            "href": "https://infisical.com/docs/documentation/getting-started/overview"
+          },
+          {
             "label": "Changelog",
-            "href": "https://www.infisical.com/docs/changelog"
+            "href": "https://infisical.com/docs/changelog"
+          },
+          {
+            "label": "API Reference",
+            "href": "https://infisical.com/docs/api-reference/overview/introduction"
           },
           {
             "label": "Status",
@@ -2976,21 +2984,17 @@
             "href": "https://github.com/Infisical/infisical/issues"
           },
           {
-            "label": "Trust of Center",
-            "href": "https://app.vanta.com/infisical.com/trust/hoop8cr78cuarxo9sztvs"
-          },
-          {
-            "label": "Open Source Friends",
-            "href": "https://infisical.com/infisical-friends"
+            "label": "Community Slack",
+            "href": "https://infisical.com/slack"
           },
           {
             "label": "How to contribute",
-            "href": "https://www.infisical.com/infisical-heroes"
+            "href": "https://infisical.com/infisical-heroes"
           }
         ]
       },
       {
-        "header": "OTHERS",
+        "header": "RESOURCES & LEGAL",
         "items": [
           {
             "label": "Customers",
@@ -2998,11 +3002,19 @@
           },
           {
             "label": "Company Handbook",
-            "href": "https://infisical.com/wiki/handbook/overview"
+            "href": "https://infisical.com/wiki/handbook/"
           },
           {
             "label": "Careers",
             "href": "https://infisical.com/careers"
+          },
+          {
+            "label": "Open Source Friends",
+            "href": "https://infisical.com/infisical-friends"
+          },
+          {
+            "label": "Trust Center",
+            "href": "https://trust.infisical.com/"
           },
           {
             "label": "Terms of Service",
@@ -3017,7 +3029,7 @@
             "href": "https://infisical.com/subprocessors"
           },
           {
-            "label": "SLA",
+            "label": "Service Level Agreement",
             "href": "https://infisical.com/sla"
           },
           {
