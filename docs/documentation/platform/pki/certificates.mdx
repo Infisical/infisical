@@ -215,20 +215,22 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 
   </Step>
   <Step title="Creating a certificate">
-    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/issue-certificate) API endpoint,
+    To create a certificate under the certificate template, make an API request to the [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint,
     specifying the issuing CA.
-    
+
     ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/issue-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
       --header 'Content-Type: application/json' \
       --data-raw '{
           "profileId": "<profile-id>",
-          "commonName": "service.acme.com",
-          "ttl": "1y",
-          "signatureAlgorithm": "RSA-SHA256",
-          "keyAlgorithm": "RSA_2048"
+          "attributes": {
+              "commonName": "service.acme.com",
+              "ttl": "1y",
+              "signatureAlgorithm": "RSA-SHA256",
+              "keyAlgorithm": "RSA_2048"
+          }
       }'
     ```
 
@@ -236,11 +238,15 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 
     ```bash Response
     {
-      certificate: "...",
-      certificateChain: "...",
-      issuingCaCertificate: "...",
-      privateKey: "...",
-      serialNumber: "..."
+      "certificate": {
+        "certificate": "...",
+        "certificateChain": "...",
+        "issuingCaCertificate": "...",
+        "privateKey": "...",
+        "serialNumber": "...",
+        "certificateId": "..."
+      },
+      "certificateRequestId": "..."
     }
     ```
 
@@ -255,17 +261,19 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
       Make sure to store the `privateKey` as it is only returned once here at the time of certificate issuance. The `certificate` and `certificateChain` will remain accessible and can be retrieved at any time.
     </Note>
 
-    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the [Sign Certificate](/api-reference/endpoints/certificates/sign-certificate) API endpoint, specifying the issuing CA.
+    If you have an external private key, you can also create a certificate by making an API request containing a pem-encoded CSR (Certificate Signing Request) to the same [Issue Certificate](/api-reference/endpoints/certificates/create-certificate) API endpoint.
 
      ### Sample request
 
     ```bash Request
-    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates/sign-certificate' \
+    curl --location --request POST 'https://app.infisical.com/api/v1/cert-manager/certificates' \
       --header 'Content-Type: application/json' \
       --data-raw '{
-          "certificateTemplateId": "<certificate-template-id>",
-          "csr": "...",
-          "ttl": "1y",
+          "profileId": "<certificate-profile-id>",
+          "csr": "-----BEGIN CERTIFICATE REQUEST-----\nMIICvDCCAaQCAQAwdzELMAkGA1UEBhMCVVMxDTALBgNVBAgMBE9oaW8...\n-----END CERTIFICATE REQUEST-----",
+          "attributes": {
+              "ttl": "1y"
+          }
       }'
     ```
 
@@ -273,11 +281,14 @@ In the following steps, we explore how to issue a X.509 certificate under a CA.
 
     ```bash Response
     {
-      certificate: "...",
-      certificateChain: "...",
-      issuingCaCertificate: "...",
-      privateKey: "...",
-      serialNumber: "..."
+      "certificate": {
+        "certificate": "...",
+        "certificateChain": "...",
+        "issuingCaCertificate": "...",
+        "serialNumber": "...",
+        "certificateId": "..."
+      },
+      "certificateRequestId": "..."
     }
     ```
 

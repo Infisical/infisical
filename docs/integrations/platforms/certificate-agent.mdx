@@ -1,0 +1,421 @@
+---
+title: "Infisical Certificate Agent"
+description: "Learn how to use Infisical CLI Agent to manage certificates automatically."
+---
+
+The Infisical Certificate Agent is a specialized feature of the Infisical CLI designed to automatically manage certificates from your Infisical instance. It operates as a daemon process that continuously monitors and handles certificate lifecycle events including issuance, renewal, and storage without manual intervention.
+
+## Key features
+
+- **Automated Certificate Management**: Automatically issue, monitor, and renew certificates from Infisical [Certificate Profiles](/documentation/platform/pki/certificates/profiles)
+- **Certificate Signing Request (CSR) Support**: Submit pre-generated CSRs for certificate issuance
+- **Intelligent Renewal**: Configurable renewal thresholds and automatic certificate renewal before expiration
+- **Post-Event Hooks**: Execute custom commands after certificate issuance, renewal, or failure events
+- **Multiple Authentication Methods**: Support for Universal Auth, Kubernetes, AWS, GCP, and Azure authentication
+
+## Getting Started
+
+To use the Certificate Agent, you'll need:
+
+1. **Infisical CLI installed**: Download from [GitHub releases](https://github.com/Infisical/cli/releases)
+2. **Certificate Profile configured**: Set up a [certificate profile](/documentation/platform/pki/certificates/profiles) in your Infisical project
+3. **Authentication credentials**: [Machine identity](/documentation/platform/identities/overview) with appropriate permissions
+
+The agent operates using a YAML configuration file that defines authentication, certificate profiles, and operational parameters. When started, it authenticates with Infisical and begins monitoring certificates according to your configuration.
+
+## Certificate Management
+
+### Manual Certificate Issuance
+
+The agent will issue a certificate with specified parameters:
+
+```yaml
+version: v1
+
+certificates:
+  - profile-id: "prof-web-server-12345"
+    common-name: "api.company.com"
+    alt-names:
+      - "www.api.company.com"
+      - "api-v2.company.com"
+    key-algorithm: "RSA_2048"
+    signature-algorithm: "RSA-SHA256"
+    key-usages:
+      - "digital_signature"
+      - "key_encipherment"
+    extended-key-usages:
+      - "server_auth"
+    ttl: "30d"
+    file-output:
+      private-key-path: "./certs/api/private.key"
+      certificate-path: "./certs/api/certificate.crt"
+      file-permissions: "0600"
+```
+
+### CSR-based Issuance
+
+Submit a pre-generated [Certificate Signing Request](/documentation/platform/pki/certificates#guide-to-issuing-certificates):
+
+```yaml
+version: v1
+
+certificates:
+  - profile-id: "prof-external-ca-12345"
+    csr-path: "/etc/ssl/requests/api.csr"
+    file-output:
+      certificate-path: "/etc/ssl/certs/api.crt"
+      ca-certificate-path: "/etc/ssl/certs/ca.crt"
+      file-permissions: "0644"
+```
+
+## Lifecycle Management
+
+The Certificate Agent provides comprehensive certificate lifecycle management with configurable monitoring and renewal:
+
+```yaml
+version: v1
+
+certificates:
+  - profile-id: "prof-web-server-12345"
+    common-name: "web.company.com"
+    alt-names: ["www.company.com"]
+    ttl: "90d"
+    lifecycle:
+      renew-before-expiry: "14d"     # Renew 14 days before expiration
+      status-check-interval: "6h"    # Check certificate status every 6 hours
+    file-output:
+      private-key-path: "./certs/web/private.key"
+      certificate-path: "./certs/web/certificate.crt"
+      file-permissions: "0600"
+    post-hooks:
+      on-issuance:
+        command: "systemctl reload nginx"
+        timeout: 30
+      on-renewal:
+        command: "systemctl reload nginx && logger 'Certificate renewed'"
+        timeout: 30
+```
+
+## Post-Event Hooks
+
+Execute custom commands in response to certificate lifecycle events using the `post-hooks` configuration:
+
+<Tabs>
+  <Tab title="Issuance Hook">
+    Runs when a new certificate is successfully issued:
+
+    ```yaml
+    post-hooks:
+      on-issuance:
+        command: |
+          echo "New certificate issued for ${CERT_COMMON_NAME}"
+          chown nginx:nginx ${CERT_FILE_PATH}
+          chmod 644 ${CERT_FILE_PATH}
+          systemctl reload nginx
+        timeout: 30
+    ```
+  </Tab>
+
+  <Tab title="Renewal Hook">
+    Runs when a certificate is successfully renewed:
+
+    ```yaml
+    post-hooks:
+      on-renewal:
+        command: |
+          echo "Certificate renewed for ${CERT_COMMON_NAME}"
+          # Reload services that use the certificate
+          systemctl reload nginx
+          systemctl reload haproxy
+
+          # Send notification
+          curl -X POST https://hooks.slack.com/... \
+            -d "{'text': 'Certificate for ${CERT_COMMON_NAME} renewed successfully'}"
+        timeout: 60
+    ```
+  </Tab>
+
+  <Tab title="Failure Hook">
+    Runs when certificate operations fail:
+
+    ```yaml
+    post-hooks:
+      on-failure:
+        command: |
+          echo "Certificate operation failed for ${CERT_COMMON_NAME}: ${ERROR_MESSAGE}"
+          # Send alert
+          mail -s "Certificate Failure Alert" admin@company.com < /dev/null
+          # Log to syslog
+          logger -p daemon.error "Certificate agent failure: ${ERROR_MESSAGE}"
+        timeout: 30
+    ```
+  </Tab>
+</Tabs>
+
+## Authentication
+
+The Certificate Agent uses the same authentication system as the Infisical CLI. Configure authentication in the `auth` section of your configuration file.
+
+<AccordionGroup>
+<Accordion title="Universal Auth">
+  The Universal Auth method uses a client ID and secret for authentication.
+
+  <Steps>
+    <Step title="Create a universal auth machine identity">
+      To create a universal auth machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/universal-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Update the agent configuration file with the auth method and credentials:
+
+    ```yaml
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "./client-id"           # Path to file containing client ID
+        client-secret: "./client-secret"   # Path to file containing client secret
+        remove-client-secret-on-read: false # Optional: remove secret file after reading
+    ```
+
+    You can also provide credentials directly:
+
+    ```yaml
+    auth:
+      type: "universal-auth"
+      config:
+        client-id: "your-client-id"
+        client-secret: "your-client-secret"
+    ```
+    </Step>
+  </Steps>
+</Accordion>
+<Accordion title="Kubernetes Auth">
+  The Kubernetes Auth method is used when running the agent in a Kubernetes environment.
+
+  <Steps>
+    <Step title="Create a Kubernetes machine identity">
+      To create a Kubernetes machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/kubernetes-auth).
+    </Step>
+    <Step title="Configure the agent">
+      Configure the agent to use Kubernetes service account authentication:
+
+    ```yaml
+    auth:
+      type: "kubernetes-auth"
+      config:
+        identity-id: "your-kubernetes-identity-id"
+        service-account-token-path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    ```
+    </Step>
+  </Steps>
+</Accordion>
+  <Accordion title="Azure Auth">
+    The Azure Auth method is used when running the agent in an Azure environment.
+
+    <Steps>
+      <Step title="Create an Azure machine identity">
+        To create an Azure machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/azure-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Configure the agent to use Azure managed identity authentication:
+
+      ```yaml
+      auth:
+        type: "azure-auth"
+        config:
+          identity-id: "your-azure-identity-id"
+      ```
+      </Step>
+    </Steps>
+  </Accordion>
+  <Accordion title="Native GCP ID Token">
+    The Native GCP ID Token method is used to authenticate with Infisical when running in a GCP environment.
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID:
+
+      ```yaml
+      auth:
+        type: "gcp-id-token"
+        config:
+          identity-id: "your-gcp-identity-id"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="GCP IAM">
+    The GCP IAM method is used to authenticate with Infisical with a GCP service account key.
+
+    <Steps>
+      <Step title="Create a GCP machine identity">
+        To create a GCP machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/gcp-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method, identity ID, and service account key:
+
+      ```yaml
+      auth:
+        type: "gcp-iam"
+        config:
+          identity-id: "your-gcp-identity-id"
+          service-account-key: "/path/to/service-account-key.json"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+  <Accordion title="Native AWS IAM">
+    The AWS IAM method is used to authenticate with Infisical with an AWS IAM role while running in an AWS environment.
+
+    <Steps>
+      <Step title="Create an AWS machine identity">
+        To create an AWS machine identity, follow the step by step guide outlined [here](/documentation/platform/identities/aws-auth).
+      </Step>
+      <Step title="Configure the agent">
+        Update the agent configuration file with the specified auth method and identity ID:
+
+      ```yaml
+      auth:
+        type: "aws-iam"
+        config:
+          identity-id: "your-aws-identity-id"
+      ```
+      </Step>
+    </Steps>
+
+  </Accordion>
+</AccordionGroup>
+
+## Retrying mechanism
+
+The Certificate Agent will automatically attempt to retry failed API requests such as authentication, certificate issuance, and renewal operations.
+By default, the agent will retry up to 3 times with a base delay of 200ms and a maximum delay of 5s.
+
+You can configure the retrying mechanism through the agent configuration file:
+
+```yaml
+infisical:
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# ... rest of the agent configuration file
+```
+
+#### Certificate Configuration Parameters
+
+| Parameter                                         | Description                                                                  |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `profile-id`                                      | [Certificate profile](/documentation/platform/pki/certificates/profiles) identifier                                               |
+| `common-name`                                     | Certificate common name                                                      |
+| `alt-names`                                       | List of alternative names                                                    |
+| `ttl`                                             | Certificate validity period                                                  |
+| `key-algorithm`                                   | Private key algorithm (RSA_2048, RSA_4096, ECDSA_P256, ECDSA_P384)         |
+| `signature-algorithm`                             | Signature algorithm (RSA-SHA256, RSA-SHA512, ECDSA-SHA256)                  |
+| `key-usages`                                      | List of key usage values                                                     |
+| `extended-key-usages`                             | List of extended key usage values                                            |
+| `csr-path`                                        | Path to CSR file                                                            |
+| `file-output.private-key-path`     | Where to store private key                                                   |
+| `file-output.certificate-path`     | Where to store certificate                                                   |
+| `file-output.ca-certificate-path`  | Where to store CA certificate                                               |
+| `file-output.file-permissions`     | File permissions for generated files                                        |
+| `lifecycle.renew-before-expiry`                   | When to renew before expiration                                             |
+| `lifecycle.status-check-interval`                 | How often to check certificate status                                       |                                       |
+| `post-hooks.on-issuance.command`                  | Command to run on certificate issuance                                      |
+| `post-hooks.on-issuance.timeout`                  | Timeout for issuance command                                               |
+| `post-hooks.on-renewal.command`                   | Command to run on certificate renewal                                       |
+| `post-hooks.on-renewal.timeout`                   | Timeout for renewal command                                                |
+| `post-hooks.on-failure.command`                   | Command to run on operation failure                                         |
+| `post-hooks.on-failure.timeout`                   | Timeout for failure command                                                |
+
+## Agent configuration file
+
+The Certificate Agent configuration file is a YAML file that defines how the agent should behave. It includes authentication settings, certificate profiles, and operational parameters.
+
+Below is a comprehensive example of a Certificate Agent configuration file:
+
+```yaml example-cert-agent-config.yaml
+version: v1
+
+# Required: Infisical server configuration
+infisical:
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 3
+    max-delay: "5s"
+    base-delay: "200ms"
+
+# Authentication configuration
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "your-client-id"
+    client-secret: "your-client-secret"
+
+certificates:
+  - profile-id: "prof-web-server-12345"
+    common-name: "web.company.com"
+    alt-names: ["web.company.com", "www.company.com"]
+    ttl: "90d"
+    key-algorithm: "RSA_2048"
+    signature-algorithm: "RSA-SHA256"
+    key-usages:
+      - "digital_signature"
+      - "key_encipherment"
+    extended-key-usages:
+      - "server_auth"
+
+    # Lifecycle management
+    lifecycle:
+      renew-before-expiry: "30d"
+      status-check-interval: "6h"
+      max-failure-retries: 3
+      failure-retry-interval: "1h"
+
+    # File output configuration
+    file-output:
+      private-key-path: "/etc/ssl/private/web.key"
+      certificate-path: "/etc/ssl/certs/web.crt"
+      ca-certificate-path: "/etc/ssl/certs/ca.crt"
+      file-permissions: "0600"
+
+    # Post-event hooks
+    post-hooks:
+      on-issuance:
+        command: |
+          echo "Certificate issued for ${CERT_COMMON_NAME}"
+          systemctl reload nginx
+        timeout: 30
+
+      on-renewal:
+        command: |
+          echo "Certificate renewed for ${CERT_COMMON_NAME}"
+          systemctl reload nginx
+        timeout: 30
+
+      on-failure:
+        command: |
+          echo "Certificate operation failed: ${ERROR_MESSAGE}"
+          mail -s "Certificate Alert" admin@company.com < /dev/null
+        timeout: 30
+```
+
+After defining the agent configuration file, run the command below pointing to the path where the agent configuration file is located.
+
+```bash
+infisical cert-manager agent --config /path/to/your/agent-config.yaml
+```
+
+The agent will start as a daemon process, continuously monitoring and managing certificates according to your configuration. You can also run it in the foreground for debugging:
+
+```bash
+infisical cert-manager agent --config /path/to/your/agent-config.yaml --verbose
+```
+
+For production deployments, consider running the agent as a system service to ensure it starts automatically and runs continuously.
