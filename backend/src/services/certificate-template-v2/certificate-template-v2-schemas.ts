@@ -114,13 +114,13 @@ export const certificateTemplateV2ResponseSchema = z.object({
     .min(1, "Template name is required")
     .max(255, "Template name must be less than 255 characters")
     .regex(new RE2("^[a-zA-Z0-9-_]+$"), "Template name must contain only letters, numbers, hyphens, and underscores"),
-  description: z.string().trim().max(1000, "Description must be less than 1000 characters").nullable().optional(),
-  subject: z.array(templateV2SubjectSchema).optional(),
-  sans: z.array(templateV2SanSchema).optional(),
-  keyUsages: templateV2KeyUsagesSchema.optional(),
-  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.optional(),
-  algorithms: templateV2AlgorithmsSchema.optional(),
-  validity: templateV2ValiditySchema.optional(),
+  description: z.string().trim().max(1000, "Description must be less than 1000 characters").nullable().nullish(),
+  subject: z.array(templateV2SubjectSchema).nullish(),
+  sans: z.array(templateV2SanSchema).nullish(),
+  keyUsages: templateV2KeyUsagesSchema.nullish(),
+  extendedKeyUsages: templateV2ExtendedKeyUsagesSchema.nullish(),
+  algorithms: templateV2AlgorithmsSchema.nullish(),
+  validity: templateV2ValiditySchema.nullish(),
   createdAt: z.date(),
   updatedAt: z.date()
 });
