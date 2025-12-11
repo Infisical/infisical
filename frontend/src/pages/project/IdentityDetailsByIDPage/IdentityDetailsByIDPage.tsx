@@ -16,6 +16,7 @@ import {
 } from "@app/components/v2";
 import {
   OrgIcon,
+  SubOrgIcon,
   UnstableAlert,
   UnstableAlertDescription,
   UnstableAlertTitle,
@@ -164,6 +165,10 @@ const Page = () => {
     return <UnstablePageLoader />;
   }
 
+  const isOrgIdentity = !isProjectIdentity;
+  const isSubOrgIdentity =
+    isOrgIdentity && currentOrg.rootOrgId !== identityMembershipDetails?.identity.orgId;
+
   return (
     <div className="mx-auto flex max-w-8xl flex-col">
       {identityMembershipDetails ? (
@@ -255,7 +260,8 @@ const Page = () => {
           <div className="flex flex-col gap-5 lg:flex-row">
             <ProjectIdentityDetailsSection
               identity={identity || { ...identityMembershipDetails?.identity, projectId: "" }}
-              isOrgIdentity={!isProjectIdentity}
+              isOrgIdentity={isOrgIdentity}
+              isSubOrgIdentity={isSubOrgIdentity}
               membership={identityMembershipDetails!}
             />
 
@@ -274,15 +280,15 @@ const Page = () => {
                     </UnstableCardDescription>
                   </UnstableCardHeader>
                   <UnstableCardContent>
-                    <UnstableAlert variant="org">
-                      <OrgIcon />
+                    <UnstableAlert variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                      {isSubOrgIdentity ? <SubOrgIcon /> : <OrgIcon />}
                       <UnstableAlertTitle>
-                        Machine identity managed by organization
+                        Machine identity managed by {isSubOrgIdentity ? "sub-" : ""}organization
                       </UnstableAlertTitle>
                       <UnstableAlertDescription>
                         <p>
-                          This machine identity&apos;s authentication methods are controlled by your
-                          organization. <br /> To make changes,{" "}
+                          This machine identity&apos;s authentication methods are managed by your
+                          {isSubOrgIdentity ? "sub-" : ""}organization. <br /> To make changes,{" "}
                           <OrgPermissionCan
                             I={OrgPermissionIdentityActions.Read}
                             an={OrgPermissionSubjects.Identity}
@@ -294,10 +300,10 @@ const Page = () => {
                                   className="inline-block cursor-pointer text-foreground underline underline-offset-2"
                                   params={{
                                     identityId,
-                                    orgId: currentOrg.id
+                                    orgId: identityMembershipDetails.identity.orgId
                                   }}
                                 >
-                                  go to organization access control
+                                  go to {isSubOrgIdentity ? "sub-" : ""}organization access control
                                 </Link>
                               ) : null
                             }

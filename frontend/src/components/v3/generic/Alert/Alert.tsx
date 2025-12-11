@@ -11,8 +11,9 @@ const alertVariants = cva(
     variants: {
       variant: {
         default: "bg-container text-card-foreground",
-        info: "bg-info/10 text-info border-info/20",
-        org: "bg-org/10 text-org border-org/20"
+        info: "bg-info/5 text-info border-info/20",
+        org: "bg-org/5 text-org border-org/20",
+        "sub-org": "bg-sub-org/5 text-sub-org border-sub-org/20"
       }
     },
     defaultVariants: {

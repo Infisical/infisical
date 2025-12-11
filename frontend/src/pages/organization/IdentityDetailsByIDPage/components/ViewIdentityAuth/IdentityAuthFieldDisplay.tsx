@@ -16,7 +16,7 @@ export const IdentityAuthFieldDisplay = ({ label, children, className }: Props) 
         {children ? (
           <p className="break-words">{children}</p>
         ) : (
-          <p className="text-muted italic">Not set</p>
+          <p className="text-muted">Not set</p>
         )}
       </DetailValue>
     </Detail>

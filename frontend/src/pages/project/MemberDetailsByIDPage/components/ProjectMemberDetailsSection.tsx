@@ -48,7 +48,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
         <DetailGroup>
           <Detail>
             <DetailLabel>Name</DetailLabel>
-            <DetailValue>{name || <span className="text-muted italic">Not set</span>}</DetailValue>
+            <DetailValue>{name || <span className="text-muted">Not set</span>}</DetailValue>
           </Detail>
           <Detail>
             <DetailLabel>ID</DetailLabel>
@@ -63,7 +63,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
                   variant="ghost"
                   size="xs"
                 >
-                  {/* TODO(scott): color this should be a button variant */}
+                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
                 </UnstableIconButton>
               </Tooltip>
@@ -82,7 +82,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
                   variant="ghost"
                   size="xs"
                 >
-                  {/* TODO(scott): color this should be a button variant */}
+                  {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                   {isCopyingEmail ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
                 </UnstableIconButton>
               </Tooltip>
@@ -91,9 +91,7 @@ export const ProjectMemberDetailsSection = ({ membership }: Props) => {
           {username !== email && (
             <Detail>
               <DetailLabel>Username</DetailLabel>
-              <DetailValue>
-                {email || <span className="text-muted italic">Not set</span>}
-              </DetailValue>
+              <DetailValue>{username || <span className="text-muted">Not set</span>}</DetailValue>
             </Detail>
           )}
           <Detail>

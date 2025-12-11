@@ -12,6 +12,7 @@ import {
   DetailValue,
   OrgIcon,
   ProjectIcon,
+  SubOrgIcon,
   UnstableButtonGroup,
   UnstableCard,
   UnstableCardAction,
@@ -30,10 +31,16 @@ import { ProjectIdentityModal } from "@app/pages/project/AccessControlPage/compo
 type Props = {
   identity: TProjectIdentity;
   isOrgIdentity?: boolean;
+  isSubOrgIdentity?: boolean;
   membership: IdentityProjectMembershipV1;
 };
 
-export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, membership }: Props) => {
+export const ProjectIdentityDetailsSection = ({
+  identity,
+  isOrgIdentity,
+  isSubOrgIdentity,
+  membership
+}: Props) => {
   // eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-unused-vars
   const [_, isCopyingId, setCopyTextId] = useTimedReset<string>({
     initialState: "Copy ID to clipboard"
@@ -90,7 +97,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                     variant="ghost"
                     size="xs"
                   >
-                    {/* TODO(scott): color this should be a button variant */}
+                    {/* TODO(scott): color this should be a button variant and create re-usable copy button */}
                     {isCopyingId ? <CheckIcon /> : <ClipboardListIcon className="text-label" />}
                   </UnstableIconButton>
                 </Tooltip>
@@ -100,9 +107,9 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
               <DetailLabel>Managed by</DetailLabel>
               <DetailValue>
                 {isOrgIdentity ? (
-                  <Badge variant="org">
-                    <OrgIcon />
-                    Organization
+                  <Badge variant={isSubOrgIdentity ? "sub-org" : "org"}>
+                    {isSubOrgIdentity ? <SubOrgIcon /> : <OrgIcon />}
+                    {isSubOrgIdentity ? "Sub-" : ""}Organization
                   </Badge>
                 ) : (
                   <Badge variant="project">
@@ -127,7 +134,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                     </UnstableButtonGroup>
                   ))
                 ) : (
-                  <span className="text-muted italic">No metadata</span>
+                  <span className="text-muted">No metadata</span>
                 )}
               </DetailValue>
             </Detail>
@@ -143,7 +150,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                     {membership.lastLoginAuthMethod ? (
                       identityAuthToNameMap[membership.lastLoginAuthMethod]
                     ) : (
-                      <span className="text-muted italic">N/A</span>
+                      <span className="text-muted">N/A</span>
                     )}
                   </DetailValue>
                 </Detail>
@@ -153,7 +160,7 @@ export const ProjectIdentityDetailsSection = ({ identity, isOrgIdentity, members
                     {membership.lastLoginTime ? (
                       format(membership.lastLoginTime, "PPpp")
                     ) : (
-                      <span className="text-muted italic">N/A</span>
+                      <span className="text-muted">N/A</span>
                     )}
                   </DetailValue>
                 </Detail>
