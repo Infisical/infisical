@@ -42,6 +42,8 @@ export const McpEndpointFinalizePage = () => {
   );
   const [activeOAuthServerId, setActiveOAuthServerId] = useState<string | null>(null);
   const popupRef = useRef<Window | null>(null);
+  const isSavingCredentialsRef = useRef(false);
+  const processedSessionsRef = useRef<Set<string>>(new Set());
 
   const search = useSearch({
     from: "/_authenticate/organization/mcp-endpoint-finalize"
@@ -99,7 +101,26 @@ export const McpEndpointFinalizePage = () => {
 
   // Handle OAuth status updates
   useEffect(() => {
-    if (oauthStatus?.authorized && oauthStatus.accessToken && activeOAuthServerId) {
+    const sessionId = activeServerState?.sessionId;
+
+    // Only process when:
+    // 1. We have authorized oauth status with tokens
+    // 2. There's an active server being authenticated
+    // 3. That server has a sessionId (meaning the OAuth flow was properly initiated for THIS server)
+    // 4. We're not already saving credentials (prevent duplicate calls)
+    // 5. We haven't already processed this session (prevent re-processing on re-renders)
+    if (
+      oauthStatus?.authorized &&
+      oauthStatus.accessToken &&
+      activeOAuthServerId &&
+      sessionId &&
+      !isSavingCredentialsRef.current &&
+      !processedSessionsRef.current.has(sessionId)
+    ) {
+      // Mark as saving and processed to prevent duplicate calls
+      isSavingCredentialsRef.current = true;
+      processedSessionsRef.current.add(sessionId);
+
       // Save the credentials
       saveUserCredential.mutate(
         {
@@ -112,6 +133,8 @@ export const McpEndpointFinalizePage = () => {
         },
         {
           onSuccess: () => {
+            isSavingCredentialsRef.current = false;
+
             // Update the state to mark as authorized
             setServerOAuthStates((prev) => {
               const newMap = new Map(prev);
@@ -135,6 +158,10 @@ export const McpEndpointFinalizePage = () => {
             });
           },
           onError: () => {
+            isSavingCredentialsRef.current = false;
+            // Remove from processed so it can be retried
+            processedSessionsRef.current.delete(sessionId);
+
             createNotification({
               text: "Failed to save credentials",
               type: "error"
@@ -143,11 +170,18 @@ export const McpEndpointFinalizePage = () => {
         }
       );
     }
-  }, [oauthStatus, activeOAuthServerId, search.endpointId, saveUserCredential]);
+  }, [
+    oauthStatus,
+    activeOAuthServerId,
+    activeServerState?.sessionId,
+    search.endpointId,
+    saveUserCredential
+  ]);
 
   // Check if popup was closed manually
   useEffect(() => {
     let checkPopupClosed: NodeJS.Timeout | null = null;
+    let cleanupTimeout: NodeJS.Timeout | null = null;
 
     if (activeOAuthServerId && activeServerState?.isPending) {
       checkPopupClosed = setInterval(() => {
@@ -155,8 +189,14 @@ export const McpEndpointFinalizePage = () => {
           if (checkPopupClosed) {
             clearInterval(checkPopupClosed);
           }
-          // Give some time for the callback to process
-          setTimeout(() => {
+          // Give more time for the OAuth polling and save to complete
+          // Also check if we're in the middle of saving before clearing state
+          cleanupTimeout = setTimeout(() => {
+            // Don't clear state if we're currently saving credentials
+            if (isSavingCredentialsRef.current) {
+              return;
+            }
+
             const currentState = serverOAuthStates.get(activeOAuthServerId);
             if (currentState && !currentState.isAuthorized) {
               setServerOAuthStates((prev) => {
@@ -170,7 +210,7 @@ export const McpEndpointFinalizePage = () => {
               });
               setActiveOAuthServerId(null);
             }
-          }, 3000);
+          }, 5000); // Increased from 3000 to 5000ms
         }
       }, 500);
     }
@@ -178,6 +218,9 @@ export const McpEndpointFinalizePage = () => {
     return () => {
       if (checkPopupClosed) {
         clearInterval(checkPopupClosed);
+      }
+      if (cleanupTimeout) {
+        clearTimeout(cleanupTimeout);
       }
     };
   }, [activeOAuthServerId, activeServerState?.isPending, serverOAuthStates]);
@@ -399,7 +442,9 @@ export const McpEndpointFinalizePage = () => {
                         size="xs"
                         variant="outline_bg"
                         onClick={() => handleServerOAuth(server.id)}
-                        isLoading={initiateServerOAuth.isPending}
+                        isLoading={
+                          initiateServerOAuth.isPending && activeOAuthServerId === server.id
+                        }
                         leftIcon={<FontAwesomeIcon icon={faExternalLink} />}
                       >
                         Authenticate
